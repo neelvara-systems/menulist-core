@@ -23,7 +23,11 @@ const requiredFiles = [
   "src/lib/validation/campaigncuePackTemplateSchemas.ts",
   "src/lib/campaigncue/pack-templates/category.ts",
   "src/lib/campaigncue/pack-templates/catalog.ts",
+  "src/lib/campaigncue/pack-templates/editorDocumentBoundary.ts",
+  "src/lib/campaigncue/pack-templates/factSlotReadiness.ts",
+  "src/lib/campaigncue/pack-templates/templateScopeBoundary.ts",
   "src/lib/campaigncue/pack-templates/workspaceTemplates.ts",
+  "src/lib/campaigncue/pack-templates/workspaceTemplateIndexBoundary.ts",
   "src/lib/campaigncue/pack-templates/applyTemplate.ts",
   "src/components/templates/campaigncue/PackTemplatePicker.tsx",
   "scripts/campaigncue/read-shared-business-categories.js",
@@ -47,6 +51,14 @@ const categoriesInSeeds = new Set();
 for (const seed of seeds) {
   if (!validCategories.includes(seed.businessCategory)) fail(`seed uses unsupported category ${seed.businessCategory}`);
   if (!seed.templateId || !seed.outputPackShape || !seed.decisionSeed) fail(`seed ${seed.templateId || "unknown"} is incomplete`);
+  const slotTypes = seed.factSlots.map((slot) => slot.type);
+  if (new Set(slotTypes).size !== slotTypes.length) fail(`seed ${seed.templateId} has duplicate fact slots`);
+  const requiredSlots = seed.factSlots.filter((slot) => slot.required).map((slot) => slot.type).sort();
+  const optionalSlots = seed.factSlots.filter((slot) => !slot.required).map((slot) => slot.type).sort();
+  if (JSON.stringify(requiredSlots) !== JSON.stringify([...new Set(seed.requiredFactTypes)].sort())
+    || JSON.stringify(optionalSlots) !== JSON.stringify([...new Set(seed.optionalFactTypes)].sort())) {
+    fail(`seed ${seed.templateId} fact-slot metadata does not match its payload`);
+  }
   categoriesInSeeds.add(seed.businessCategory);
 }
 for (const category of validCategories) {
@@ -57,6 +69,9 @@ assertIncludes("src/config/features.ts", "ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGIS
 assertIncludes("src/config/features.ts", "ENABLE_CAMPAIGNCUE_OUTPUT_PICKER");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_PICKER_ITEMS");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_PICKER_GROUPS");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "CAMPAIGNCUE_OUTPUT_PICKER_ITEM_IDS");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "requiredFactGroups");
+assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaignCueOutputIntentSupportsOwnerGoal");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaignCueOutputItemMatchesTemplate");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaign_proof_deck");
 assertIncludes("src/constants/campaigncue/outputPicker.ts", "campaign_proof_deck_pdf");
@@ -90,13 +105,53 @@ assertIncludes("src/lib/campaigncue/pack-templates/applyTemplate.ts", "input.bus
 assertIncludes("src/lib/campaigncue/pack-templates/category.ts", "resolveBusinessCategory");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadPlatformTemplates");
 assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "loadWorkspaceTemplates");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "getBlob(ref(firebaseStorage, path), maxBytes)");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "assertCampaignCuePackTemplatePayloadIdentity");
+assertIncludes("src/lib/campaigncue/pack-templates/catalog.ts", "CampaignCuePackTemplateEditorDocumentSchema.parse(value)");
+assertIncludes("src/lib/campaigncue/pack-templates/editorDocumentBoundary.ts", "prepareCampaignCuePackTemplateEditorDocument");
+assertIncludes("src/lib/campaigncue/pack-templates/editorDocumentBoundary.ts", "hydrateCampaignCuePackTemplateEditorDocument");
+assertIncludes("src/lib/campaigncue/pack-templates/editorDocumentBoundary.ts", "if (element.type === \"image\") continue;");
+assertIncludes("src/lib/campaigncue/pack-templates/factSlotReadiness.ts", "getUnresolvedCampaignCuePackTemplateFactSlots");
+assertIncludes("src/lib/campaigncue/pack-templates/factSlotReadiness.ts", "getUnresolvedCampaignCueOutputIntentRequirements");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "getUnresolvedCampaignCuePackTemplateFactSlots");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "intent.id === \"reuse_old_asset\"");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "outputIntentId: templateDraft?.outputIntentId");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "sourceTemplateId: templateDraft?.sourceTemplateId");
+assertIncludes("src/lib/validation/campaigncueSchemas.ts", "outputIntentId: z.enum(CAMPAIGNCUE_OUTPUT_PICKER_ITEM_IDS)");
+assertIncludes("src/lib/campaigncue/server.ts", "getUnresolvedCampaignCueOutputIntentRequirements");
+assertIncludes("src/lib/campaigncue/server.ts", "outputIntentDecisions");
+assertIncludes("src/lib/campaigncue/server.ts", "requestedOutputTypes: outputIntent?.id");
+assertIncludes("src/lib/campaigncue/dailyDesk.ts", "requestedOutputTypes: params.campaign.pack?.requestedOutputTypes");
+assertIncludes("src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx", "Requested output focus:");
+assertIncludes("src/lib/campaigncue/pack-templates/templateScopeBoundary.ts", "Template fact-slot metadata does not match its payload.");
+assertIncludes("src/lib/campaigncue/pack-templates/templateScopeBoundary.ts", "assertCampaignCuePlatformTemplateCatalogScope");
+assertIncludes("src/lib/campaigncue/pack-templates/templateScopeBoundary.ts", "assertCampaignCueWorkspaceTemplateIndexScope");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "MAX_WORKSPACE_TEMPLATES");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "campaigncue_workspace_template_storage_cleanup_failed");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "getBoundedRuntimeStringContext(\"storagePath\", path)");
 assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "isMissingStorageObjectError");
-assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupTarget: \"payload\"");
-assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupTarget: \"editorDocument\"");
-assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupTarget: \"preview\"");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "path?.endsWith(\"/pack-template.json\")");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "path?.endsWith(\"/editor-document.json\")");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "const versionRoot = `${root}/versions/${safeSegment(createRuntimeId(\"save\"))}`");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "const summary = await runTransaction(firebaseClient");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "transaction.set(indexRef, index)");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "cleanupWorkspaceTemplateSummaries(obsoleteRecords");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "campaigncue_workspace_template_persistence_probe_failed");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "campaigncue_workspace_template_delete_probe_failed");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "upsertWorkspaceTemplateIndex");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "removeWorkspaceTemplateFromIndex");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "campaignCueWorkspacePackTemplateDeleteSchema.parse(input)");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "isOwnedWorkspaceTemplateStoragePath");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplates.ts", "prepareCampaignCuePackTemplateEditorDocument");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplateIndexBoundary.ts", "obsoleteRecords");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplateIndexBoundary.ts", "const templateRoot = `${storageRoot}/${workspaceId}/${templateId}/`");
+assertIncludes("src/lib/campaigncue/pack-templates/workspaceTemplateIndexBoundary.ts", "pack-template\\.json|editor-document\\.json|preview");
+assertIncludes("package.json", "test:campaigncue-workspace-template-index-boundary");
+assertIncludes("package.json", "test:campaigncue-pack-template-boundaries");
+assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "CAMPAIGNCUE_FIREBASE_PROJECT_ID and CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET are required");
+assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "pack-template-${contentHash}.json");
+assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "preconditionOpts: { ifGenerationMatch: 0 }");
+assertIncludes("scripts/campaigncue/seed-platform-pack-templates.js", "const batch = db.batch()");
 assertIncludes("src/lib/campaigncue/server.ts", "Creator fit check");
 assertIncludes("src/lib/campaigncue/server.ts", "baseline views, real comment quality, local audience fit");
 assertIncludes("src/lib/campaigncue/server.ts", "3-test plan");
@@ -114,6 +169,7 @@ assertIncludes("firestore-campaigncue.rules", "campaigncuePlatformPackTemplates"
 assertIncludes("firestore-campaigncue.rules", "packTemplateIndexes");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/platform");
 assertIncludes("storage-campaigncue.rules", "campaigncue/templates/workspaces");
+assertIncludes("storage-campaigncue.rules", "match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{versionId}/{fileName}");
 assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md", "1 Firestore read");
 assertIncludes("__docs__/campaigncue/campaign-pack-template-registry/campaign-pack-template-registry_firebase.md", "Unexpected cleanup failures log bounded diagnostics");
 assertIncludes("__docs__/audits/menulist-production-readiness-audit.md", "CampaignCue workspace template Storage cleanup diagnostics checkpoint: fixed in source.");
@@ -135,6 +191,10 @@ if (implementation.includes("onSnapshot(")) {
 }
 if (implementation.includes("httpsCallable(")) {
   fail("CampaignCue pack template browsing must not call Cloud Functions");
+}
+if (read("src/lib/campaigncue/pack-templates/applyTemplate.ts").includes("input.campaign.brief")
+  || read("src/lib/campaigncue/pack-templates/applyTemplate.ts").includes("input.businessBrain.name")) {
+  fail("Workspace template metadata must not persist stale campaign copy or business identity");
 }
 if (implementation.includes("]).catch(() => undefined);") || implementation.includes("deleteObject(ref(firebaseStorage, path)).catch(() => undefined)")) {
   fail("CampaignCue workspace template Storage cleanup failures must be logged instead of silently swallowed");

@@ -218,6 +218,13 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
         priority: 0.78,
         changeFrequency: 'weekly',
     },
+    {
+        path: '/resources/founder-launch-kit',
+        title: 'Founder Support Launch Kit | AnswerLattice',
+        description: 'Prepare product sources, test ten priority support questions, verify the widget, and measure explicit end-user resolution.',
+        priority: 0.8,
+        changeFrequency: 'monthly',
+    },
     ...ANSWERLATTICE_RESOURCE_ARTICLES.map((article) => ({
         path: article.path,
         title: article.metaTitle,
@@ -263,7 +270,7 @@ export const ANSWERLATTICE_PUBLIC_PAGES: Array<{
     {
         path: '/proof',
         title: 'Proof Pack | AnswerLattice',
-        description: 'Example AnswerLattice workloads for billing, onboarding, releases, errors, and support-gap review.',
+        description: 'Clearly labelled AnswerLattice workload examples plus consented customer evidence only after measurement and public-use approval are complete.',
         priority: 0.74,
         changeFrequency: 'monthly',
     },

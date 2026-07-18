@@ -20,7 +20,7 @@ type CreditPackCardProps = {
 };
 
 const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurchase, activeSubscription }) => {
-    const { data: session, status } = useSession();
+    const { data: session } = useSession();
     const t = useTranslations('Website.Pricing');
 
     const price = pack[`price${currency}`].price;
@@ -84,7 +84,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                 variant='ghost'
                 onClick={() => window.location.assign(buildCurrentWebsiteSignInPath())}
             >
-                Sign in to add credits
+                {t('creditPackSignIn')}
             </Button>
         } else if (Boolean(activeSubscription?.id)) {
             return <Button
@@ -92,7 +92,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                 variant='ghost'
                 onClick={() => onPurchase(pack, currency)}
             >
-                Add more credits<>&nbsp; {currentStyle.icon}</>
+                {t('creditPackAdd')}<>&nbsp; {currentStyle.icon}</>
             </Button>
         } else {
             return <Button
@@ -100,7 +100,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                 variant='ghost'
                 onClick={() => onClickOurchasePlan()}
             >
-                Add more credits
+                {t('creditPackChoosePlan')}
             </Button>
         }
     }
@@ -108,11 +108,11 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
     return (
         <Card className={cardClasses}>
             <CardHeader className="text-center pb-2">
-                <CardTitle className="text-lg font-semibold m-0 text-center text-gray-600 dark:text-gray-400">{pack.name}</CardTitle>
+                <CardTitle className="text-lg font-semibold m-0 text-center text-gray-600 dark:text-gray-400">{t('creditPackName')}</CardTitle>
             </CardHeader>
             <CardContent className="p-3 pt-0 flex-grow flex flex-col items-center justify-between">
                 <div className="text-center">
-                    <p className="text-gray-600 dark:text-gray-300 text-sm">{pack.description || 'Enhancement Pack'}</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm">{t('creditPackDescription')}</p>
                     <p className="mt-3 mb-1 text-base font-semibold text-slate-900 dark:text-white">
                         {t('creditPackAmount', { credits: pack.creditAmount })}
                     </p>
@@ -122,7 +122,7 @@ const CreditPackCard: React.FC<CreditPackCardProps> = ({ pack, currency, onPurch
                             images: examples.generatedMenuImages,
                         })}
                     </p>
-                    <span className="text-3xl font-bold text-slate-900 dark:text-white mt-1 block">{price !== null ? formatCurrencyOnPricingPage(price, currency) : 'N/A'}</span>
+                    <span className="text-3xl font-bold text-slate-900 dark:text-white mt-1 block">{price !== null ? formatCurrencyOnPricingPage(price, currency) : t('planPriceUnavailable')}</span>
                 </div>
                 <CTAButton />
             </CardContent>

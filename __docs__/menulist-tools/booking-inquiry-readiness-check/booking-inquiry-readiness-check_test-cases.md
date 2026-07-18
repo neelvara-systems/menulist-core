@@ -1,7 +1,7 @@
 # Booking Inquiry Readiness Check - Test Cases
 
 **Status:** Source-gated acceptance cases
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -15,6 +15,8 @@
 | Missing response or hours context | `unclear` |
 | Missing current customer link | `unclear` or `missing_basics` depending other basics |
 | External booking inspection row | Always `not_checked` |
+| `tel:not-a-phone`, `mailto:not-an-email`, `whatsapp://evil?...`, or phone text containing letters | Destination is `unclear`, never `present` |
+| Valid formatted phone, `tel:+...`, `mailto:owner@example.com`, or `whatsapp://send?phone=...` | Destination is `present` without opening the provider |
 
 ## Boundary Cases
 
@@ -40,4 +42,5 @@ Run:
 ```bash
 npm run verify:booking-inquiry-readiness-check
 npm run verify:public-truth-tools
+npm run test:public-truth-tools-runtime
 ```

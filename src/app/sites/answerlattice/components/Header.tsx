@@ -232,6 +232,11 @@ export default function AnswerlatticeHeader({ basePath = '' }: { basePath?: stri
 
     const handleDesktopDropdownKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDivElement>) => {
         if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.currentTarget.querySelectorAll<HTMLElement>('a, button, [tabindex]').forEach((element) => {
+            element.blur();
+        });
         const activeElement = document.activeElement;
         if (activeElement instanceof HTMLElement) activeElement.blur();
     }, []);

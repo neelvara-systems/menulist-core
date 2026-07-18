@@ -200,7 +200,7 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc) {
     'manual refresh model',
     'bounded action body',
     'simple Firestore document ID',
-    'actions update only existing alert documents',
+    'Actions update only existing alert documents',
     'hashed per-operator action limiter',
     'current persisted platform authorization',
     'bounded, newest-first window',

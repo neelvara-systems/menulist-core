@@ -489,11 +489,18 @@ function verifyCoreAuthHelpers() {
   );
 
   assertIncludes(
+      'src/lib/permissions/scopeDocumentId.ts',
+      [
+      "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
+      'export function normalizeStorePermissionScopeDocumentId(',
+      'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
+    ],
+    'store permission scope document ID helper',
+  );
+  assertIncludes(
       'src/lib/permissions/server.ts',
       [
-      'import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";',
-      'export function normalizeStorePermissionScopeDocumentId(value: unknown): StorePermissionScopeDocumentId | null {',
-      'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
+      'import { normalizeStorePermissionScopeDocumentId } from "./scopeDocumentId";',
       'const storeScope = normalizeStorePermissionScopeDocumentId(getRawSessionStoreId(session));',
       'const tenantScope = normalizeStorePermissionScopeDocumentId(getRawSessionTenantId(session));',
       'const storeScope = normalizeStorePermissionScopeDocumentId(storeId);',
@@ -820,7 +827,6 @@ function verifyCallerSuppliedTenantStoreRoutes() {
       route,
       [
         'withAuth',
-        'requireAnyStorePermission',
         'requireAnyStorePermissionForStoreData',
         'readBoundedJsonBody',
         'validateAPIInput(schema, bodyResult.data)',
@@ -876,6 +882,8 @@ function verifyCallerSuppliedTenantStoreRoutes() {
       'withAuth',
       'RequestSchema.safeParse',
       'parseProjectIds(projectId)',
+      'requireAnyStorePermission',
+      'PERMISSIONS.USE_MENU_EXTRACTION',
       'checkSafeMode()',
       'verifyTenantAccess(session, ids.tId, ids.sId, request)',
       'const userRateLimitHash = hashPublicRateLimitValue(ids.uId);',
@@ -915,6 +923,9 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     'src/app/api/menu-extraction/jobs/route.ts',
     [
       'const validation = RequestSchema.safeParse(bodyResult.data);',
+      'const projectIds = parseProjectIds(projectId);',
+      'const permissionResponse = await requireAnyStorePermission(',
+      '[PERMISSIONS.USE_MENU_EXTRACTION]',
       'if (validation.data.retriedFromJobId) {',
       'retryContext = await loadRetryContext({',
       'retriedFromJobId: validation.data.retriedFromJobId',
@@ -957,6 +968,8 @@ function verifyCallerSuppliedTenantStoreRoutes() {
       'key: `menu-intake:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
       'readBoundedJsonBody(request, MENU_INTAKE_IDENTITY_MAX_BODY_BYTES)',
       'IntakeRequestSchema.safeParse(bodyResult.data)',
+      'requireAnyStorePermission',
+      'PERMISSIONS.USE_MENU_EXTRACTION',
     ],
     'menu intake identity hashed limiter and bounded body guard',
   );
@@ -964,6 +977,16 @@ function verifyCallerSuppliedTenantStoreRoutes() {
   assert(!read('src/app/api/menu-intake-identity/route.ts').includes('verifyTenantAccess(session, ids.tId, ids.sId, request)'), 'menu intake identity must not verify raw session scope after normalization');
   assert(!read('src/app/api/menu-intake-identity/route.ts').includes('hashPublicRateLimitValue(ids.tId)'), 'menu intake identity must hash normalized tenant document IDs');
   assert(!read('src/app/api/menu-intake-identity/route.ts').includes('hashPublicRateLimitValue(ids.sId)'), 'menu intake identity must hash normalized store document IDs');
+  assertOrder(
+    'src/app/api/menu-intake-identity/route.ts',
+    [
+      'const validation = IntakeRequestSchema.safeParse(bodyResult.data);',
+      'const permissionResponse = await requireAnyStorePermission(',
+      '[PERMISSIONS.USE_MENU_EXTRACTION]',
+      'runMenuIntakeIdentityCheck({',
+    ],
+    'menu intake identity requires current persisted extraction permission before provider work',
+  );
   assertIncludes(
     'src/lib/menu-extraction/menuIntakeIdentityServer.ts',
     [
@@ -1003,6 +1026,8 @@ function verifyCallerSuppliedTenantStoreRoutes() {
       'key: `menu-link-import:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`',
       'readBoundedJsonBody(request, MENU_LINK_IMPORT_MAX_BODY_BYTES)',
       'RequestSchema.safeParse(bodyResult.data)',
+      'requireAnyStorePermission',
+      'PERMISSIONS.USE_MENU_EXTRACTION',
       'MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED',
       'createOrReuseActiveMenuExtractionJob',
       'additionalCreates: [{ data: artifactData, ref: artifactRef }]',
@@ -1021,6 +1046,17 @@ function verifyCallerSuppliedTenantStoreRoutes() {
     'menu link import atomically creates artifact metadata with the extraction job',
   );
   const menuLinkImportRoute = read('src/app/api/menu-link-imports/route.ts');
+  assertOrder(
+    'src/app/api/menu-link-imports/route.ts',
+    [
+      'const validation = RequestSchema.safeParse(bodyResult.data);',
+      'const permissionResponse = await requireAnyStorePermission(',
+      '[PERMISSIONS.USE_MENU_EXTRACTION]',
+      'const projectDoc = await projectRef.get();',
+      'const acquisition = await acquireMenuLinkSource(',
+    ],
+    'menu link import requires current persisted extraction permission before project and provider work',
+  );
   assert(!menuLinkImportRoute.includes('key: `menu-link-import:${ids.uId}:${ids.tId}:${ids.sId}`'), 'menu link import must not store raw user/tenant/store IDs in rate-limit keys');
   assert(!menuLinkImportRoute.includes('Promise.allSettled(createdStoragePaths.map((path) => storageAdmin.bucket().file(path).delete'), 'menu link import must not silently swallow storage cleanup failures');
   assert(!menuLinkImportRoute.includes('artifactRef.set('), 'menu link import must not create artifact metadata outside the active-job transaction');
@@ -1246,8 +1282,8 @@ function verifyPosSyncOwnerSafeFailureContract() {
       'mobile_pos_sync_store_update_rejected',
       'mobile_pos_sync_secret_copy_failed',
       "getBoundedMobileOwnerStringContext('status', nextPosSync.status)",
-      'pendingSecretRotation: Boolean(pendingSecretRotationAudit)',
-      'webhookSecretLength: String(nextPosSync.webhookSecret || \'\').length',
+      "action: 'rotate'",
+      'hasWebhookSecret: Boolean(webhookSecret)',
       'webhookSecretLength: webhookSecret.length',
     ],
     'mobile POS sync owner-safe failure display',
@@ -1265,7 +1301,6 @@ function verifyPosSyncOwnerSafeFailureContract() {
     [
       'POS_SYNC_DELIVERY_TRIGGER_FAILED',
       'POS_SYNC_DELIVERY_REQUEST_REJECTED',
-      'if (!posSync?.webhookSecret) return;',
       'logSecurityFailure(',
       "getBoundedSecurityStringContext('storeId', storeId)",
       "getBoundedSecurityStringContext('tenantId', tenantId)",
@@ -1285,6 +1320,7 @@ function verifyPosSyncOwnerSafeFailureContract() {
   ].forEach((rawSnippet) => {
     assert(!posSyncEventBuilder.includes(rawSnippet), `POS sync debounced delivery must not silently swallow failures: ${rawSnippet}`);
   });
+  assert(!posSyncEventBuilder.includes('if (!posSync?.webhookSecret) return;'), 'POS sync debounce must not depend on a browser-readable signing secret');
 }
 
 function verifyPosSyncWebhookNetworkGuard() {
@@ -1317,8 +1353,10 @@ function verifyPosSyncWebhookNetworkGuard() {
     [
       'const webhookValidation = validatePosSyncWebhookUrl(String(posSync.webhookUrl));',
       'const networkValidation = await validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl);',
-      'const projectData = await getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId);',
+      'const projectRef = db',
       'const deliveryClaim = await db.runTransaction(async (transaction) => {',
+      'transaction.get(projectRef)',
+      'const payload = buildMenuSnapshot(',
       'const response = await postPosSyncWebhook({',
     ],
     'POS delivery DNS target guard before project read, version increment, outbound fetch, and redirect boundary',
@@ -1329,8 +1367,9 @@ function verifyPosSyncWebhookNetworkGuard() {
     [
       'const webhookValidation = validatePosSyncWebhookUrl(String(posSync.webhookUrl));',
       'const networkValidation = await validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl);',
-      'const freshStoreDoc = await storeRef.get();',
-      'const testPayload = buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || \'INR\');',
+      'const secretRef = getPosSyncSecretRef(db, tenantDocumentId, storeDocumentId);',
+      'const connectionClaim = await db.runTransaction(async (transaction) => {',
+      'const testPayload = buildTestPayload(storeId, tenantId, connectionClaim.currency);',
       'const response = await postPosSyncWebhook({',
     ],
     'POS test DNS target guard before test payload, outbound fetch, and redirect boundary',
@@ -1346,10 +1385,6 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
     'requireAnyStorePermissionForStoreData',
     'checkRateLimit',
     'revalidateTag',
-    'menu-store-',
-    'store-',
-    'client-stores',
-    'screen-data',
     'touchDigitalScreenContentVersionForStoreServer',
     'invalidateOwnerBusinessAssistantPacketCache',
   ];
@@ -1358,10 +1393,19 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
     'src/app/api/outlets/create/route.ts',
     'src/app/api/outlets/deactivate/route.ts',
     'src/app/api/outlets/rename/route.ts',
-    'src/app/api/projects/outlet-save/route.ts',
   ].forEach((route) => {
-    assertIncludes(route, sharedNeedles, `${route} multi-outlet public truth write guards`);
+    assertIncludes(route, [...sharedNeedles, 'runStorePublicTruthPostCommitEffects({', 'revalidate: (tag) => revalidateTag(tag)'], `${route} multi-outlet public truth write guards`);
   });
+  assertIncludes(
+    'src/app/api/projects/outlet-save/route.ts',
+    [...sharedNeedles, 'runStorePublicTruthPostCommitEffects({', 'storeIds: [String(outletStoreId)]', 'revalidate: (tag) => revalidateTag(tag)'],
+    'linked outlet save public truth write guards',
+  );
+  assertIncludes(
+    'src/lib/cache/storePublicTruthPostCommit.ts',
+    ['`menu-store-${storeId}`', '`store-${storeId}`', "params.deps.revalidate('client-stores')", "params.deps.revalidate('screen-data')"],
+    'shared store public-truth cache-tag boundary',
+  );
 
   assertIncludes(
     'src/app/api/projects/outlet-save/route.ts',
@@ -1378,23 +1422,36 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
       'active: z.boolean().optional()',
       'outletStatus: z.enum(["active", "inactive"]).optional()',
       'outletProjectRef.tId !== masterProjectRef.tId',
-      'Number(callerStoreSnap.data()?.tenantId) !== tenantId',
-      'Number(outletStore?.tenantId) !== tenantId || outletStore?.active === false',
-      'Number(masterStore?.tenantId) !== tenantId || masterStore?.active === false',
-      'Outlet store not in tenant',
+      'outletProjectRef.sId === masterProjectRef.sId',
+      'const outletPolicy = requireLinkedOutletAuthority({',
+      'Number(callerStore?.tenantId) !== tenantId',
+      'Number(outletStore?.tenantId) !== tenantId',
+      'Number(masterStore?.tenantId) !== tenantId',
+      'const callerIsInTenant = tenantStores.some',
+      'const targetIsInTenant = tenantStores.some',
+      'const masterIsInTenant = tenantStores.some',
+      'if (!callerIsInTenant || !targetIsInTenant || !masterIsInTenant)',
+      '"Store membership changed", "linked_outlet_membership_invalid"',
       'Only the outlet or master store can save this menu',
-      'collectLocalIds(standardProject.files)',
-      'getOutletPolicyViolation(standardProject, existingProject, outletPolicy)',
-      'buildSummaryProjectFieldPayload(standardProject.projectId, "active", standardProject.active)',
+      'transaction.get(callerStoreDocumentRef)',
+      'transaction.get(outletStoreDocumentRef)',
+      'transaction.get(masterStoreDocumentRef)',
+      'transaction.get(tenantDocumentRef)',
+      'collectLocalIds(effectiveStandardProject.files)',
+      'getOutletPolicyViolation(effectiveStandardProject, existingProject, outletPolicy)',
+      'buildSummaryProjectFieldPayload(effectiveStandardProject.projectId, "active", effectiveStandardProject.active)',
       'const expectedBucket = storageAdmin.bucket().name',
       'normalizeImageBatchProjectSelections(',
       'transaction.get(persistedOutletProjectRef)',
       'transaction.get(masterProjectDocumentRef)',
       'outletPolicy.imageOverride !== true',
-      'const writeBatch = db.batch();',
-      'await writeBatch.commit();',
+      'transaction.set(latestOutletSnap.ref, safeProject, { merge: true });',
     ],
     'linked outlet save target and policy guards',
+  );
+  assert(
+    !read('src/app/api/projects/outlet-save/route.ts').includes('const writeBatch = db.batch();'),
+    'linked outlet save must not restore a stale batch write outside the authority transaction',
   );
   assert(
     !read('src/app/api/projects/outlet-save/route.ts').includes('const currentStoreId = Number(session.sId || session.user?.storeId);'),
@@ -1490,8 +1547,11 @@ function verifyMultiOutletPublicTruthWriteRoutes() {
       'Number(outlet.tenantId) !== Number(tenantId)',
       'outlet.isMaster',
       'outlet.active === false',
-      'const [tenantDoc, freshOutletSnap] = await Promise.all([',
+      'const [freshMasterSnap, tenantDoc, freshOutletSnap] = await Promise.all([',
+      'tx.get(masterStoreRef)',
       'Number(freshOutlet.tenantId) !== Number(tenantId)',
+      'freshMasterSummary.isMaster !== true',
+      'freshOutletSummary.isMaster === true',
       'readOutletSlugReservationInTransaction({',
       'writeCurrentOutletSlugClaim(tx, newReservation, now);',
       'writeRedirectOutletSlugClaim(tx, oldReservation, now)',
@@ -1769,7 +1829,7 @@ function verifySessionScopedPublicTruthRoutes() {
   assertOrder(
     'src/app/api/public-truth-monitor/summary/route.ts',
     [
-      'const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read");',
+      'const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read", {',
       'const sessionScope = getPublicTruthMonitorSessionScope(session);',
       'if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request))',
       'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
@@ -1783,14 +1843,14 @@ function verifySessionScopedPublicTruthRoutes() {
   assertOrder(
     'src/app/api/public-truth-monitor/refresh/route.ts',
     [
-      'const rateLimitResponse = await checkDataWriteLimit();',
+      'const rateLimitResponse = await checkDataWriteLimit({',
       'const validation = validateAPIInput(PublicTruthMonitorRefreshRequestSchema, jsonBody.data);',
       'const sessionScope = getPublicTruthMonitorSessionScope(session);',
       'if (!verifyTenantAccess(session, sessionScope.tenantScope.numericId, sessionScope.storeScope.numericId, request))',
       'const storeData = await readPublicTruthMonitorStoreDataServer(sessionScope.storeScope.documentId);',
       'const permissionError = requireAnyStorePermissionForStoreData(',
       'const entitlement = await evaluatePublicTruthMonitorServerEntitlement({',
-      'await writePublicTruthMonitorSummaryServer({',
+      'await updatePublicTruthMonitorSummaryServer({',
     ],
     'Public Truth Monitor refresh must rate-limit, validate, tenant-check, permission-check, then write summary',
   );
@@ -2086,6 +2146,7 @@ function verifySessionScopedPublicTruthRoutes() {
       'requireAnyStorePermission(',
       '[PERMISSIONS.MANAGE_PUBLIC_PRESENCE, PERMISSIONS.MANAGE_STORE]',
       "getRateLimitForFeature('DATA_WRITE')",
+      'failClosedOnProviderError: true',
       'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || \'unknown\');',
       'const storeRateLimitHash = hashPublicRateLimitValue(sId);',
       'key: `compliance:${userRateLimitHash}:${storeRateLimitHash}`',
@@ -2175,12 +2236,10 @@ function verifySessionScopedPublicTruthRoutes() {
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
       'createdBy: userId || null',
       'storeRef.update',
-      'revalidateTag(`menu-store-${storeId}`)',
-      'revalidateTag(`store-${storeId}`)',
-      "revalidateTag('client-stores')",
-      "revalidateTag('screen-data')",
-      "touchDigitalScreenContentVersionForStoreServer(storeId, 'storeTempStatus')",
+      'runStorePublicTruthPostCommitEffects({',
+      "touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus')",
       'invalidateOwnerBusinessAssistantPacketCache',
+      'effectsPending: postCommit.effectsPending, success: true',
     ],
     'temporary status session-scoped public truth write guard',
   );
@@ -2268,12 +2327,14 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'writeRedirectSubdomainClaim({',
       'previousSubdomains: nextHistory',
       'previousSubdomainSlugs: nextHistorySlugs',
-      "revalidateTag(`menu-store-${storeIdStr}`)",
-      "revalidateTag(`store-${storeIdStr}`)",
-      "revalidateTag('client-stores')",
-      "revalidateTag('screen-data')",
-      "touchDigitalScreenContentVersionForStoreServer(storeIdStr, 'adminSubdomainRename')",
+      'runStorePublicTruthPostCommitEffects({',
+      'storeIds: [storeIdStr]',
+      'revalidate: (tag) => revalidateTag(tag)',
+      "touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'adminSubdomainRename')",
       'invalidateOwnerBusinessAssistantPacketCache',
+      "logSecurityFailure('admin_subdomain_rename_post_commit_effect_failed'",
+      'derivedEffectsPending: postCommit.effectsPending',
+      'failedEffectCount: postCommit.failedEffectCount',
       "logSecurityFailure('admin_subdomain_rename_failed'",
       "logger.security(\n                'Admin subdomain rename'",
       'auditIdPresent: auditRef.id.length > 0',
@@ -2391,11 +2452,14 @@ function verifyPlatformAdminMutationBoundedBodies() {
       'tenantBlockedSyncedAt: now',
       'transaction.set(summaryRef, {',
       'const result = await updateTenantBlockStateAtomically({',
-      'revalidateStorePublicCache(storeId, tenantScope.documentId)',
+      'runStorePublicTruthPostCommitEffects({',
+      'storeIds: result.affectedStoreIds.map(String)',
+      'platform_entity_block_tenant_post_commit_effect_failed',
       'const storeScope = entityScope;',
       'const freshStoreSnap = await transaction.get(docRef);',
       'hasExactStoredEntityIdentity(freshStore, \'storeId\', storeScope)',
-      'await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);',
+      'storeIds: [storeScope.documentId]',
+      'platform_entity_block_store_post_commit_effect_failed',
       'storesSummary',
       'authAdmin.updateUser',
       'authAdmin.revokeRefreshTokens',
@@ -3003,16 +3067,16 @@ function verifyPublicTruthMutationBoundedBodies() {
       'const tenantId = normalizeSessionDocumentId(rawTenantId);',
       'const storeId = normalizeSessionDocumentId(rawStoreId);',
       'const userId = normalizeSessionDocumentId(rawUserId);',
-      'const permissionError = await requireAnyStorePermission(',
       "const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');",
       'const userRateLimitHash = hashPublicRateLimitValue(userId || \'unknown\');',
       'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
       'key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`',
       'const bodyResult = await readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
       'const validation = RequestSchema.safeParse(body);',
+      'const permissionError = await requireAnyStorePermission(',
       'const db = admin.firestore();',
       'storeRef.update',
-      'revalidateTag(`menu-store-${storeId}`)',
+      'runStorePublicTruthPostCommitEffects({',
     ],
     'temporary status permission, limiter, bounded body, and cache ordering',
   );
@@ -3099,7 +3163,7 @@ function verifyPublicTruthMutationBoundedBodies() {
       'const outletStoreIdStr = normalizeOutletDocumentId(outletStoreId);',
       'if (!outletStoreIdStr)',
       'const outletRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreIdStr}`);',
-      'touchDigitalScreenContentVersionForStoreServer(outletStoreIdStr, \'outletRename\')',
+      'touchDigitalScreenContentVersionForStoreServer(storeId, \'outletRename\')',
     ],
     'outlet rename target document ID boundary',
   );
@@ -3109,7 +3173,7 @@ function verifyPublicTruthMutationBoundedBodies() {
       'const outletStoreDocumentId = normalizeOutletDocumentId(outletStoreId);',
       'if (!outletStoreDocumentId)',
       'const targetStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${outletStoreDocumentId}`);',
-      'touchDigitalScreenContentVersionForStoreServer(outletStoreDocumentId, \'outletDeactivate\')',
+      'touchDigitalScreenContentVersionForStoreServer(effectStoreId, \'outletDeactivate\')',
     ],
     'outlet deactivate target document ID boundary',
   );
@@ -3216,10 +3280,12 @@ function verifyPublicTruthMutationBoundedBodies() {
       'const userRateLimitHash = hashPublicRateLimitValue(session.uId || session.user?.id || "unknown");',
       'const projectRateLimitHash = hashPublicRateLimitValue(project.projectId);',
       'const rateLimit = await checkRateLimit({',
-      'const [commonSnapshots, existingProjectSnap] = await Promise.all([',
-      'const [callerStoreSnap, outletStoreSnap, masterStoreSnap, tenantSnap] = commonSnapshots;',
+      'const callerStoreDocumentRef = db.doc(`${DB_COLLECTIONS.STORES}/${currentStoreId}`);',
+      'savedProject = await db.runTransaction(async (transaction) => {',
+      'transaction.get(callerStoreDocumentRef)',
+      'const outletPolicy = requireLinkedOutletAuthority({',
     ],
-    'linked outlet save bounded body before tenant/store reads',
+    'linked outlet save bounded body before transaction-owned tenant/store reads',
   );
   assertIncludes(
     'src/app/api/projects/outlet-save/route.ts',
@@ -3242,7 +3308,7 @@ function verifyPublicTruthMutationBoundedBodies() {
         'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
         'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
         'verifyTenantAccess(session, tenantId, storeId, request)',
-        'const rlResult = await checkRateLimit({ key:',
+        'const rlResult = await checkRateLimit({',
         'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
         'const storeDoc = await storeRef.get();',
         'const targetPermissionError = requireAnyStorePermissionForStoreData(',
@@ -3669,6 +3735,7 @@ function verifyAnalyticsErrorBoundary() {
   const analyticsSession = read('src/lib/analytics/session.ts');
   const analyticsDal = read('src/lib/analytics/dal.ts');
   const ownerActionMarkDoneRoute = read('src/app/api/analytics/owner-action/mark-done/route.ts');
+  const ownerActionReceiptTransaction = read('src/lib/analytics/ownerActionReceiptTransaction.ts');
   const ownerDashboardDal = read('src/database/ownerDashboard/index.ts');
   const analyticsComparison = read('src/lib/analytics/comparison.ts');
   const analyticsComparisonView = read('src/components/analytics/ComparisonView.tsx');
@@ -4042,8 +4109,17 @@ function verifyAnalyticsErrorBoundary() {
   assert(!read('src/app/api/ai-operations/route.ts').includes('key: `ai-operations:${userId}:${tenantId}:${storeId}`'), 'AI operations route must not store raw user/tenant/store IDs in rate-limit keys');
   assert(!aiOperationsRoute.includes('.doc(String(tenantId))'), 'AI operations route must not build history refs from raw tenant IDs');
   assert(!aiOperationsRoute.includes('.collection(String(storeId))'), 'AI operations route must not build history refs from raw store IDs');
+  assert(aiOperationsRoute.includes("import { requireAnyStorePermission } from '@lib/permissions/server';"), 'AI operations route must use current persisted store permission authority');
+  assert(aiOperationsRoute.includes('[PERMISSIONS.ACCESS_BILLING]'), 'AI operations route must require billing access before ledger reads');
+  assert(
+    aiOperationsRoute.indexOf('const permissionError = await requireAnyStorePermission(')
+      < aiOperationsRoute.indexOf('const cursorDoc = await getCursorDoc(tenantId, storeId, cursorId);'),
+    'AI operations route must authorize before the first ledger read',
+  );
   assert(productionAudit.includes('AI Operations History Scope Document ID Boundary checkpoint'), 'Production audit AI operations history scope boundary missing');
+  assert(productionAudit.includes('AI operation persisted-cursor admission checkpoint'), 'Production audit AI operations persisted cursor boundary missing');
   assert(changelog.includes('AI Operations History Scope Document ID Boundary'), 'Changelog AI operations history scope boundary missing');
+  assert(changelog.includes('AI Operation Persisted Cursor Admission'), 'Changelog AI operations persisted cursor boundary missing');
   assert(read('__docs__/changelog.md').includes('AI Operations History Scope Document ID Boundary'), 'Lowercase changelog AI operations history scope boundary missing');
   assertIncludes(
     '__docs__/ai-system-layer/ai-system-layer_impl.md',
@@ -4911,15 +4987,14 @@ function verifyAnalyticsErrorBoundary() {
       ".regex(/^[A-Za-z0-9_-]+$/)",
       ".refine(isValidFirestoreDocumentId, 'Invalid project ID')",
       'projectId: MarkDoneProjectIdSchema',
-      'const OWNER_ACTION_RECEIPT_ID_PATTERN = /^[a-f0-9]{32}$/;',
       'const OWNER_ACTION_SCOPE_DOCUMENT_ID_PATTERN = /^\\d+$/;',
       'function normalizeMarkDoneScopeDocumentId(value: unknown): string | null',
       'OWNER_ACTION_SCOPE_DOCUMENT_ID_PATTERN.test(documentId)',
       'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',
-      'function isOwnerActionReceiptId',
-      'const entries = getReceiptEntries(data).filter(([receiptId]) => isOwnerActionReceiptId(receiptId));',
       'if (!isValidFirestoreDocumentId(dashboardDocId))',
       "logAnalyticsFailure('owner_action_mark_done_invalid_dashboard_doc_id'",
+      "import { markOwnerActionDoneTransaction } from '@lib/analytics/ownerActionReceiptTransaction';",
+      'const outcome = await markOwnerActionDoneTransaction(admin.firestore(), {',
       'const tenantId = normalizeMarkDoneScopeDocumentId(rawTenantId);',
       'const storeId = normalizeMarkDoneScopeDocumentId(rawStoreId);',
       'if (!tenantId || !storeId)',
@@ -4949,6 +5024,19 @@ function verifyAnalyticsErrorBoundary() {
   assert(!ownerActionMarkDoneRoute.includes('if (!isValidFirestoreDocumentId(tenantId) || !isValidFirestoreDocumentId(storeId))'), 'owner dashboard action mark-done session scope must not rely on trim-tolerant direct document-ID checks');
   assert(!ownerActionMarkDoneRoute.includes('projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/)'), 'owner dashboard action mark-done projectId must not keep regex-only validation');
   assert(!ownerActionMarkDoneRoute.includes('const dashboardRef = admin.firestore().collection(DB_COLLECTIONS.ANALYTICS).doc(`${tenantId}_${storeId}_${projectId}_dashboard_summary`)'), 'owner dashboard action mark-done must keep the dashboard doc id inspectable before Firestore access');
+  assert(!ownerActionMarkDoneRoute.includes('await dashboardRef.get();'), 'owner dashboard action mark-done must not read outside its receipt transaction');
+  assert(!ownerActionMarkDoneRoute.includes('await dashboardRef.update(updates);'), 'owner dashboard action mark-done must not write outside its receipt transaction');
+  [
+    'const OWNER_ACTION_RECEIPT_ID_PATTERN = /^[a-f0-9]{32}$/;',
+    'function isOwnerActionReceiptId',
+    'const entries = getReceiptEntries(data).filter(([receiptId]) => isOwnerActionReceiptId(receiptId));',
+    'export function getOwnerActionReceiptIdsToPrune(',
+    'const incomingAlreadyExists = entries.some(([receiptId]) => receiptId === incomingReceiptId);',
+    '.filter(([receiptId]) => receiptId !== incomingReceiptId)',
+    'return firestore.runTransaction(async (transaction) => {',
+    'const dashboardSnap = await transaction.get(params.dashboardRef);',
+    'transaction.update(params.dashboardRef, updates);',
+  ].forEach((token) => assert(ownerActionReceiptTransaction.includes(token), `owner action receipt transaction helper missing ${token}`));
   assert(analyticsFirebaseDoc.includes('Owner action mark-done session scope boundary'), 'Analytics Firebase docs must record owner action mark-done session scope ID boundary');
   assert(analyticsFirebaseDoc.includes('Whitespace-mutated, nonnumeric, zero, negative, unsafe, or reserved session scope'), 'Analytics Firebase docs must record strict owner action mark-done session scope rejection');
   assert(analyticsFirebaseDoc.includes('Owner action mark-done project/receipt ID boundary'), 'Analytics Firebase docs must record owner action mark-done project/receipt ID boundary');
@@ -5241,7 +5329,8 @@ function verifyOwnerUtilitySecureLogging() {
     assert(source.includes('logMobileOwnerFailure'), `${label} must use bounded mobile owner diagnostics`);
   });
   assert(mobileBasicSettings.includes('addressLine: formData.addressLine'), 'Mobile Basic Settings must keep public address edits on the active screen');
-  assert(mobileBasicSettings.includes('updates.geo = { latitude, longitude };'), 'Mobile Basic Settings must keep coordinate edits on the active screen');
+  assert(mobileBasicSettings.includes('normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)'), 'Mobile Basic Settings must keep validated coordinate edits on the active screen');
+  assert(mobileBasicSettings.includes('if (normalizedGeo.geo || storeDetails.geo) updates.geo = normalizedGeo.geo;'), 'Mobile Basic Settings must persist valid coordinate pairs and explicit clears');
   assert(mobileBasicSettings.includes('mobile_basic_settings_save_failed'), 'Mobile Basic Settings must log bounded save failures');
   assert(storesDal.includes('export function assertStoreUpdateSucceeded'), 'Store DAL must expose an explicit update acknowledgement guard');
   assert(storesDal.includes('const assertActiveSessionStore = async'), 'Store DAL owner-local writes must expose active session store guard');
@@ -5274,7 +5363,7 @@ function verifyOwnerUtilitySecureLogging() {
   assert(mobileBusinessAttributes.includes('assertStoreUpdateSucceeded('), 'Mobile Business Attributes must require explicit store-write acknowledgement before local success state');
   assert(mobileBusinessAttributes.includes('mobile_business_attributes_store_update_rejected'), 'Mobile Business Attributes must include bounded store rejected acknowledgement code');
   assert(mobileBusinessAttributes.includes('enabledAttributeCount: Object.values(attributes).filter(Boolean).length'), 'Mobile Business Attributes must include bounded enabled count context');
-  assert(mobileBusinessAttributes.includes('customAttributeCount: payload.publicPresence.customAttributes.length'), 'Mobile Business Attributes must include bounded custom count context');
+  assert(mobileBusinessAttributes.includes('customAttributeCount: normalizedCustomAttributes.length'), 'Mobile Business Attributes must include bounded normalized custom count context');
   assert(mobileBusinessCopy.includes('assertStoreUpdateSucceeded('), 'Mobile Business Copy must require explicit store-write acknowledgement before local success state');
   assert(mobileBusinessCopy.includes('mobile_business_copy_store_update_rejected'), 'Mobile Business Copy must include bounded generated-copy store rejected acknowledgement code');
   assert(mobileBusinessCopy.includes('mobile_business_copy_translation_store_update_rejected'), 'Mobile Business Copy must include bounded translation-repair store rejected acknowledgement code');
@@ -5324,6 +5413,8 @@ function verifyOwnerUtilitySecureLogging() {
   assert(authBrowserRequestPolicy.includes("cache: 'no-store' as RequestCache"), 'domain settings shared browser request policy must bypass browser caches');
   assert(authBrowserRequestPolicy.includes("credentials: 'same-origin' as RequestCredentials"), 'domain settings shared browser request policy must keep credentials same-origin');
   assert(authBrowserRequestPolicy.includes("redirect: 'manual' as RequestRedirect"), 'domain settings shared browser request policy must not follow redirects');
+  assert(storesDal.includes('`/api/domain?candidate=${encodeURIComponent(normalizedDomain)}`'), 'custom-domain availability must use the authenticated server claim boundary');
+  assert(!storesDal.includes("where('customDomain', '==', normalizedDomain)"), 'custom-domain availability must not query cross-store uniqueness from the browser');
   [
     ['Desktop Domain Settings', desktopDomainSettings],
     ['Desktop Custom Domain', desktopCustomDomain],
@@ -5466,11 +5557,12 @@ function verifyOwnerUtilitySecureLogging() {
       "Toast.show({ content: 'Could not mute alerts'",
       "Toast.show({ content: 'Republish failed'",
     ]],
-    ['src/components/mobile/screens/MobileDomainSettingsScreen.tsx', [
-      'function normalizeDnsRecords(config: any, domain: string)',
-      'const domainDnsConfig = domainStatus?.config || domainStatus?.verification',
-      'const dnsRecords = useMemo',
-      'Array.isArray(config?.configuredBy)',
+	    ['src/components/mobile/screens/MobileDomainSettingsScreen.tsx', [
+	      'normalizeVercelDomainDnsRecords',
+	      'const domainDnsConfig = domainStatus?.config || domainStatus?.verification',
+	      'const dnsRecords = useMemo',
+	      'domainStatus?.projectDomain',
+	      'DNS records are not available yet. Check verification again in a moment.',
       'copyMobileDomainSettingsText(record.value)',
       'MOBILE_DOMAIN_SETTINGS_COPY_UNAVAILABLE',
       "const copied = document.execCommand('copy');",
@@ -5498,7 +5590,7 @@ function verifyOwnerUtilitySecureLogging() {
 	      'logMobileOwnerFailure',
 	      "getBoundedMobileOwnerStringContext('status', nextPosSync.status)",
 	      'webhookUrlLength: String(nextPosSync.webhookUrl || \'\').length',
-	      'webhookSecretLength: String(nextPosSync.webhookSecret || \'\').length',
+	      'hasWebhookSecret: Boolean(webhookSecret)',
 	      'webhookSecretLength: webhookSecret.length',
 	      "lastError: enabled && !connectionChanged && currentPosSync.lastError ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : ''",
 	      'message: POS_SYNC_CONNECTION_ISSUE_MESSAGE',
@@ -5960,43 +6052,48 @@ function verifyOwnerUtilitySecureLogging() {
       'SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED',
       'SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED',
       'SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED',
-	      'SCHEDULER_KB_GENERATION_WATCHDOG_JOB_UPDATE_FAILED',
 	      'SCHEDULER_COMPLETION_ALERT_FAILED',
-	      "getSchedulerIdLogContext('jobId', context.jobId)",
       "getSchedulerIdLogContext('resellerProfileId', context.resellerProfileId)",
       "getSchedulerIdLogContext('subscriptionId', context.subscriptionId)",
       "logSchedulerFailure(logger, '[DecisionBlocks] No-stores run log failed'",
       "logSchedulerFailure(logger, 'Lifecycle Messaging retry task failed'",
       "logSchedulerFailure(logger, 'Lifecycle Messaging digest task failed'",
-	      "logSchedulerFailure(logger, '[KB Gen Watchdog] Job timeout update failed'",
+	      "name: 'kb_generation_watchdog'",
+	      "details: { reason: 'moved_to_answerlattice_runtime' }",
 	      "logSchedulerFailure(logger, '[DecisionBlocks] Completion alert failed'",
 	      "logSchedulerFailure(logger, '[DecisionBlocks] Store enrichment collection failed'",
 	      "operation: 'collect_store_enrichment'",
 	    ]],
     ['src/app/api/ops/messaging-onboarding/route.ts', [
       'function serializeEvent',
-      'const BOUNDED_METADATA_KEYS = new Set',
-      'function getBoundedMetadataContext',
       'function buildMessagingOpsResponseId',
-      'function buildMessagingAlertMessage',
-      'function serializeHealthAlerts',
-      'function isSafeMetadataKey',
       "getRateLimitForFeature('DATA_READ')",
       'checkRateLimit({',
       'const userRateLimitHash = hashPublicRateLimitValue(userId);',
       'key: `${MESSAGING_ONBOARDING_OPS_RATE_LIMIT_KEY}:${userRateLimitHash}`',
       "'X-RateLimit-Limit': String(rateLimitConfig.limit)",
       'checkMessagingOnboardingOpsRateLimit(session)',
-      'alerts: serializeHealthAlerts(data.alerts)',
-      "id: buildMessagingOpsResponseId('event', doc.id)",
-      "sessionId: buildMessagingOpsResponseId('session', data.sessionId || doc.id)",
-      "id: buildMessagingOpsResponseId('session', doc.id)",
-      "id: buildMessagingOpsResponseId('alert', doc.id)",
-      'title: buildMessagingAlertTitle(severity)',
-      'message: buildMessagingAlertMessage(data)',
-      'code: data.error.code',
-      'retryable: data.error.retryable',
-      'metadata: sanitizeMetadata(data.metadata)',
+      'normalizeMessagingOnboardingOpsHealth',
+      'normalizeMessagingOnboardingOpsEvent',
+      'normalizeMessagingOnboardingOpsSession',
+      'normalizeMessagingOnboardingOpsAlert',
+      ".where('metadata.subsystem', '==', 'messaging_onboarding')",
+      ".where('timestamp', '<=', windowEnd)",
+    ]],
+    ['src/lib/ops/messagingOnboardingOpsBoundary.ts', [
+      'const BOUNDED_METADATA_KEYS = new Set',
+      'function getStoredTextContext',
+      'function buildAlertMessage',
+      'function normalizeHealthAlerts',
+      'function isSafeMetadataKey',
+      'export function sanitizeMessagingOnboardingOpsMetadata',
+      'export function maskMessagingOnboardingOpsDisplayId',
+      'export function normalizeMessagingOnboardingOpsHealth',
+      'export function normalizeMessagingOnboardingOpsEvent',
+      'export function normalizeMessagingOnboardingOpsSession',
+      'export function normalizeMessagingOnboardingOpsAlert',
+      'export function isMessagingOnboardingOpsSnapshotResponse',
+      'return value.slice(0, MESSAGING_ONBOARDING_HEALTH_ALERT_LIMIT)',
     ]],
     ['src/lib/ops/messagingOnboardingTypes.ts', [
       'export interface MessagingOnboardingOpsEvent',
@@ -6117,7 +6214,11 @@ function verifyOwnerUtilitySecureLogging() {
 		      'errorCode: getSessionEngineErrorCode(error)',
 		      'getSessionEngineErrorContext(err)',
 			      'async function appendStoredUploadOrCleanup',
-			      'await deleteStoredUpload(upload, session.sessionId, result.status)',
+			      'export function isMessagingUploadPathReferencedBySession',
+			      'async function deleteStoredUploadIfUnreferenced',
+			      'await deleteStoredUploadIfUnreferenced(upload, session.sessionId, "session_append_failed")',
+			      'await deleteStoredUploadIfUnreferenced(upload, preGeneratedSessionId, "session_create_failed")',
+			      'const uploadId = crypto.randomUUID().replace(/-/g, "")',
 			      'const reopenedFromFailure = session.state === "FAILED"',
 			      'reason: "Valid upload received after failure"',
 			      'extractionCompletedJobId: null',
@@ -6340,7 +6441,7 @@ function verifyOwnerUtilitySecureLogging() {
       'normalizeScopeDocumentId(current.storeId ?? current.sId)',
       'Math.max(0, Math.floor(activeOfflineStores) - 1)',
       "where('billingEntitlementSyncPending', '==', true)",
-      "'menulistMaintenanceScheduler:resellerLicenseExpiryRetry'",
+      "'menulistMaintenanceScheduler:pendingEntitlementRepair'",
       'billingEntitlementSyncPending: true',
       'billingEntitlementSyncPending: FieldValue.delete()',
       'await syncStorePlanEntitlement(',
@@ -6426,6 +6527,8 @@ function verifyOwnerUtilitySecureLogging() {
       "assertPlatformOwner(request, 'force republish stores')",
       'normalizeOwnerNotificationDocumentId(request.auth?.token?.uId)',
       'forceRepublishActiveProjects(storeId, tenantId, userId)',
+      'revalidatePublicClientCacheForStore(',
+      'if (!refreshResult.cacheRevalidated)',
       'const result = await verifyPublish(publicMenuUrl);',
       'updateStoreHealth(storeId, tenantId, userId, result, {',
       'requirePlatformAuthority: true,',
@@ -6613,7 +6716,7 @@ function verifyOwnerUtilitySecureLogging() {
       'getLatestHealthSnapshot()',
       'getInboundQueueCounts()',
       'getSessionStateCounts()',
-      'getWebhookWindow()',
+      'getWebhookWindow(generatedAt)',
       'getRecentSessions()',
       'getRecentAlerts()',
     ],
@@ -6705,12 +6808,10 @@ function verifyOwnerUtilitySecureLogging() {
       'MESSAGING_ONBOARDING_MONITOR_RESPONSE_JSON_MAX_BYTES = 256 * 1024',
       'readJsonResponseWithLimit<unknown>',
       'isMessagingOnboardingOpsSnapshotResponse',
-      'isMessagingOnboardingOpsHealth',
-      'isWebhookWindow',
-      'isInboundQueue',
-      'isOpsEvent',
-      'isOpsSession',
-      'isOpsAlert',
+      'const activeRequestRef = useRef<AbortController | null>(null)',
+      'activeRequestRef.current?.abort()',
+      'signal: controller.signal',
+      'setSnapshot(null)',
       'messaging_onboarding_monitor_response_parse_failed',
       'messaging_onboarding_monitor_response_invalid',
       'messaging_onboarding_monitor_response_rejected',
@@ -6719,6 +6820,17 @@ function verifyOwnerUtilitySecureLogging() {
       'MESSAGING_ONBOARDING_MONITOR_LOAD_FAILED',
     ],
     'Messaging onboarding monitor bounded response reader',
+  );
+  assertIncludes(
+    'src/lib/ops/messagingOnboardingOpsBoundary.ts',
+    [
+      'isCanonicalIsoTimestamp(value.generatedAt)',
+      'isNonNegativeSafeInteger(value.inboundQueue?.[key])',
+      'value.recentSessions.length > MESSAGING_ONBOARDING_RECENT_SESSION_LIMIT',
+      'value.recentEvents.length > MESSAGING_ONBOARDING_RECENT_EVENT_LIMIT',
+      'value.recentAlerts.length > MESSAGING_ONBOARDING_RECENT_ALERT_LIMIT',
+    ],
+    'Messaging onboarding shared response boundary',
   );
   assert(!messagingOnboardingMonitor.includes('setSnapshot(await response.json())'), 'Messaging onboarding monitor must not set state from direct unbounded response parsing');
   assert(!messagingOnboardingMonitor.includes('response.json()'), 'Messaging onboarding monitor must not use direct unbounded response parsing');
@@ -7732,13 +7844,15 @@ function verifyPaymentMutationBoundedJson() {
       'export function normalizeScopeDocumentId',
       'export async function syncStorePlanEntitlement',
       '): Promise<boolean> {',
-      'transaction.get(activeSubscriptionsQuery)',
+      'transaction.get(entitledSubscriptionsQuery)',
+      ".where('status', 'in', [...PLAN_ENTITLED_SUBSCRIPTION_STATUSES])",
+      ".where('cycleEndDate', '>=', Timestamp.now())",
       ".orderBy('cycleEndDate', 'desc')",
       '.orderBy(FieldPath.documentId())',
       'const sub = { ...docSnap.data(), id: docSnap.id }',
       'const currentSnapshot = await transaction.get(docSnap.ref);',
       'transaction.update(docSnap.ref, updates);',
-      'updates.statuses = [',
+      'updates.statuses = appendBoundedBillingStatusHistory(current.statuses, {',
       'updates.creditsLastResetMonth = billingPeriod;',
     ],
     'Functions subscription reconciliation bounded diagnostics',
@@ -8452,14 +8566,14 @@ function verifyPaymentMutationBoundedJson() {
     assertIncludes(
       '__docs__/auth-onboarding/auth-onboarding_impl.md',
       [
-        'July 5 onboarding user-ID boundary note',
-        'July 6 onboarding compensation scope boundary note',
+        'Onboarding user-ID boundary',
+        'Onboarding compensation scope boundary',
         'src/lib/onboarding/onboardingUserId.ts',
         'whitespace-mutated',
         'oversized',
-        'compensateFailedTenantStoreOnboarding()',
+        '`compensateFailedTenantStoreOnboarding()`',
         'exact positive numeric tenant/store document IDs',
-        'reseller onboarding normalizes Firebase Auth-generated UIDs',
+        'Reseller onboarding normalizes Firebase Auth-generated UIDs',
       ],
       'auth onboarding implementation user ID boundary docs',
     );
@@ -8472,7 +8586,7 @@ function verifyPaymentMutationBoundedJson() {
         'exact positive numeric tenant/store document IDs',
         'whitespace-mutated',
         'oversized',
-        'adds no reads or writes for valid requests',
+        'add no reads or writes for valid requests',
       ],
       'auth onboarding Firebase user ID boundary docs',
     );
@@ -8752,12 +8866,22 @@ function verifyPaymentMutationBoundedJson() {
 	    const onboardRoute = read('src/app/api/reseller/onboard/route.ts');
 	    assert(onboardRoute.includes('revalidateMenuCache(result.storeId, { tId: result.tenantId });'), 'reseller onboard must refresh public cache after tenant/store creation');
 	    assert(onboardRoute.includes('import { compensateFailedTenantStoreOnboarding } from "@lib/onboarding/compensateFailedOnboarding";'), 'reseller onboard must import failed onboarding compensation helper');
-	    assert(onboardRoute.includes('async function compensateResellerPaymentProviderFailure'), 'reseller onboard must define provider-failure compensation');
+	    assert(onboardRoute.includes('async function compensateResellerOnboardingFailure'), 'reseller onboard must define provider-failure compensation');
 	    assert(onboardRoute.includes('await compensateFailedTenantStoreOnboarding({'), 'reseller online provider failure must compensate the created tenant/store scope');
 	    assert(onboardRoute.includes('source: "RESELLER_ONBOARDING"'), 'reseller online provider failure compensation must record reseller source');
 	    assert(onboardRoute.includes('reason: \'reseller_online_provider_setup_failed\''), 'reseller online provider failure compensation must record stable reason');
 	    assert(onboardRoute.includes('await authAdmin.setCustomUserClaims(params.authUid, {'), 'reseller provider failure compensation must clear just-set owner auth scope claims');
-	    assert(onboardRoute.includes('await compensateResellerPaymentProviderFailure({'), 'reseller online provider catch must call compensation before rethrow');
+	    assert(onboardRoute.includes('await compensateResellerOnboardingFailure({'), 'reseller online provider catch must call compensation before rethrow');
+	    assert(onboardRoute.includes('normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url)'), 'reseller online onboarding must allowlist the provider checkout URL');
+	    assertOrder(
+	      'src/app/api/reseller/onboard/route.ts',
+	      [
+	        'await razorpayClient.subscriptions.cancel(razorpaySubscription.id);',
+	        'await compensateResellerOnboardingFailure({',
+	        'throw providerError;',
+	      ],
+	      'reseller provider setup failure must cancel before local compensation and rethrow',
+	    );
 	    assert(onboardRoute.includes("getResellerApiFailureLogData('reseller_onboard_route_failed'"), 'reseller onboard local error log must use bounded failure payload');
 	    assert(onboardRoute.includes('RESELLER_ONBOARD_AUTH_CLEANUP_FAILED'), 'reseller onboard must code auth cleanup rollback failures');
 	    assert(onboardRoute.includes("getBoundedResellerApiStringContext('authUid'"), 'reseller onboard auth cleanup diagnostic must bound auth UID context');
@@ -8881,10 +9005,11 @@ function verifyPaymentMutationBoundedJson() {
 	        'desktop_reseller_dashboard_payment_link_copy_failed',
 	        'desktop_reseller_dashboard_payment_link_open_failed',
 	        'desktop_reseller_dashboard_payment_link_open_blocked',
-	        'copyResellerTextToClipboard(link)',
+	        'normalizeRazorpaySubscriptionCheckoutUrl(link)',
+	        'copyResellerTextToClipboard(checkoutUrl)',
 	        'hasClipboardWrite: hasResellerClipboardWrite()',
 	        'hasCopyFallback: hasResellerCopyFallback()',
-	        "window.open(link, '_blank', 'noopener,noreferrer')",
+	        "window.open(checkoutUrl, '_blank', 'noopener,noreferrer')",
 	        "getBoundedResellerStringContext('paymentLink', link)",
 	        'void copyPaymentLink(record.subscriptionShortUrl, record)',
         'openPaymentLink(record.subscriptionShortUrl, record)',
@@ -9181,7 +9306,8 @@ function verifyPaymentMutationBoundedJson() {
       'payment_desktop_subscription_resume_failed',
       'payment_desktop_subscription_payment_link_open_failed',
       'getBoundedPaymentStringContext',
-      "window.open(activeSubscription.shortUrl, '_blank', 'noopener,noreferrer')",
+      'const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl);',
+      "window.open(subscriptionCheckoutUrl, '_blank', 'noopener,noreferrer')",
       "message.error('Subscription cancellation failed. Please contact support.')",
     ],
     'desktop subscription-card bounded payment diagnostics',
@@ -9506,7 +9632,8 @@ function verifyStaffTenantBoundary() {
   assert(!staffHelper.includes('sanitizeStaffUserForAuthority(input.userId'), 'staff mutation acknowledgements must not use raw input user IDs');
   assert(!staffHelper.includes('userId: input.userId'), 'staff mutation logs/responses must not use raw input user IDs after normalization');
   assert((staffHelper.match(/normalizeStaffStoreScopeDocumentId/g) || []).length >= 5, 'staff store read/write paths must normalize store scope before refs');
-  assert((staffHelper.match(/\.doc\(storeScope\.documentId\)/g) || []).length >= 2, 'staff route-side store document refs must use normalized store scope document IDs');
+  assert((staffHelper.match(/\.doc\(storeScope\.documentId\)/g) || []).length >= 1, 'staff route-side store document refs must use normalized store scope document IDs');
+  assert(staffHelper.includes('const repair = await runStaffRoleMutationTransaction({'), 'staff default-role repair must serialize through the role transaction boundary');
   assert(staffConcurrencyBoundary.includes('.doc(scope.documentId)'), 'staff transaction boundary must use normalized store scope document IDs');
   assert(!staffHelper.includes('.doc(String(storeId))'), 'staff store reads must not use raw store IDs');
   assert(!staffHelper.includes('.doc(String(store.storeId))'), 'staff default-role repair writes must not use raw store IDs');
@@ -9773,7 +9900,7 @@ function verifyStaffAndProfileHelperBodyAdmission() {
     'changelog records profile update user document-ID boundary',
   );
 
-  const permissionsHelper = read('src/lib/permissions/server.ts');
+  const permissionsHelper = `${read('src/lib/permissions/scopeDocumentId.ts')}\n${read('src/lib/permissions/server.ts')}`;
   [
     'normalizeStorePermissionScopeDocumentId',
     'Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId',

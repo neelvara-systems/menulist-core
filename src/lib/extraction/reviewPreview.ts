@@ -2,6 +2,50 @@ import type { ComparisonEngineOutput } from './comparisonEngine.types';
 
 export type ReviewPreviewState = ComparisonEngineOutput['preview'];
 
+export interface ReviewPreviewSession {
+    identity: string;
+    preview: ReviewPreviewState;
+}
+
+export function getReviewPreviewIdentity(projectId: string, jobId: string): string {
+    return `${projectId.length}:${projectId}${jobId.length}:${jobId}`;
+}
+
+export function createReviewPreviewSession(
+    projectId: string,
+    jobId: string,
+    preview: ReviewPreviewState,
+): ReviewPreviewSession {
+    return {
+        identity: getReviewPreviewIdentity(projectId, jobId),
+        preview,
+    };
+}
+
+export function resolveReviewPreviewSession(
+    session: ReviewPreviewSession,
+    projectId: string,
+    jobId: string,
+    preview: ReviewPreviewState,
+): ReviewPreviewSession {
+    const identity = getReviewPreviewIdentity(projectId, jobId);
+    return session.identity === identity ? session : { identity, preview };
+}
+
+export function updateReviewPreviewSession(
+    session: ReviewPreviewSession,
+    projectId: string,
+    jobId: string,
+    initialPreview: ReviewPreviewState,
+    update: (preview: ReviewPreviewState) => ReviewPreviewState,
+): ReviewPreviewSession {
+    const activeSession = resolveReviewPreviewSession(session, projectId, jobId, initialPreview);
+    return {
+        ...activeSession,
+        preview: update(activeSession.preview),
+    };
+}
+
 function isRowSafe(row: { warnings?: string[]; matchType?: string }) {
     return !(row.warnings?.length) && row.matchType !== 'weak';
 }

@@ -1,6 +1,6 @@
 # Digital Screens — Help Documentation
 
-**Last Updated:** June 2, 2026
+**Last Updated:** July 16, 2026
 
 ## Source Gate
 
@@ -24,6 +24,7 @@ Both use your current MenuList menu source. Saved menu changes refresh connected
 - A TV, tablet, or any screen with a web browser
 - Internet connection for the screen
 - An active MenuList account with at least one menu
+- A role with permission to manage Digital Screens
 
 ### How to Set Up (One TV)
 
@@ -61,7 +62,7 @@ The Menu Board displays your **full menu** from the current MenuList source:
 
 - **Categories** — from your menu structure in the Editor
 - **Items** — all available items, grouped by category
-- **Prices** — from your menu data. If a price is missing or unclear, the board shows `Ask`.
+- **Prices** — valid prices from your menu data. If a price is missing or unclear, the board shows `Ask` rather than inventing a value.
 - **Availability** — sold-out items disappear automatically
 - **Pages** — if your menu is large, pages rotate automatically
 
@@ -112,7 +113,7 @@ Bookmark the one you need on each TV. That's it.
 3. Add a slide name so you can recognize it in your dashboard
 4. Your image will appear in the Highlights rotation
 5. The slide name is for your dashboard list. It is not placed over your poster on the TV.
-6. Custom images automatically expire after 14 days
+6. Custom images stop appearing after 14 days; expired slides no longer use one of your three active slide spaces
 7. Menu Board is not affected — it always shows your full menu
 
 ### How to remove a custom image
@@ -120,6 +121,7 @@ Bookmark the one you need on each TV. That's it.
 1. Go to **Settings** → **Digital Screen**
 2. Find the image in "Your Custom Slides"
 3. Click the delete icon and confirm
+4. The slide leaves Highlights after the connected screen refreshes
 
 ### How to use only your own designs (Highlights only)
 
@@ -173,12 +175,13 @@ Saved Editor changes refresh screens through public cache invalidation and the s
 2. Wait a few minutes for the screen cache/listener path to settle
 3. If needed, refresh the TV browser manually
 
-### Screen works but then goes blank after a while
+### Screen loses its connection after it was already showing content
 
-The screen automatically refreshes every 6 hours and caches data for offline use. If it goes blank:
+An already-loaded screen keeps its last valid content in memory/local storage and performs a six-hour health refresh. A TV browser opened from a fully cold state still needs a connection to load the screen page. If an already-running display stops updating:
 
 1. Check the TV has a stable internet connection
-2. The screen should recover automatically — it shows cached content even when offline
+2. Leave the loaded screen open; it keeps the last valid display while offline
+3. When the connection returns, refresh the TV browser if it does not recover on its own
 
 ### Menu Board shows too many items / pages rotate too fast
 
@@ -193,7 +196,7 @@ The system auto-paginates for large menus. Page timing is system-controlled (15-
 - Use **landscape orientation** for best layout
 - Keep your menu updated — screens pull from the saved MenuList source
 - Consider a dedicated cheap tablet if you don't have a TV
-- No need to turn off the screen — it runs itself indefinitely
+- Leave the browser open during business hours; the display performs its own six-hour health refresh
 
 ## Related Features
 

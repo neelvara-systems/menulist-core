@@ -2,8 +2,10 @@ import FormElementWrapper from "@atoms/formElementWrapper"
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider"
 import { UserDataType } from "@type/platform/user"
 import { removeObjRef } from "@util/utils"
-import { Select } from "antd"
+import { Alert, Flex, Select } from "antd"
 import { useContext } from "react"
+import { DEFAULT_ROLE_IDS } from "@data/shared/defaultRoles"
+import { OWNER_ACCESS_NOT_TRANSFER_COPY } from "@lib/staffManagement/ownershipTransferBoundary"
 
 function RolesMapping({ disabled = false, staffStores = [], userDetails, onChangeValue }) {
 
@@ -24,18 +26,23 @@ function RolesMapping({ disabled = false, staffStores = [], userDetails, onChang
     }
 
     return (
-        <FormElementWrapper label="Role">
-            <Select
-                allowClear
-                style={{ width: '100%' }}
-                placeholder="Select role"
-                disabled={disabled}
-                defaultValue={currentRole}
-                value={currentRole}
-                onChange={(value) => onChangeRoleValue(value)}
-                options={activeStoreRoles?.filter((role) => role.active !== false)?.map((role) => ({ label: role.name, value: role.id }))}
-            />
-        </FormElementWrapper>
+        <Flex gap={8} vertical>
+            <FormElementWrapper label="Role">
+                <Select
+                    allowClear
+                    style={{ width: '100%' }}
+                    placeholder="Select role"
+                    disabled={disabled}
+                    defaultValue={currentRole}
+                    value={currentRole}
+                    onChange={(value) => onChangeRoleValue(value)}
+                    options={activeStoreRoles?.filter((role) => role.active !== false)?.map((role) => ({ label: role.name, value: role.id }))}
+                />
+            </FormElementWrapper>
+            {currentRole === DEFAULT_ROLE_IDS.OWNER ? (
+                <Alert message={OWNER_ACCESS_NOT_TRANSFER_COPY} showIcon type="warning" />
+            ) : null}
+        </Flex>
     )
 }
 

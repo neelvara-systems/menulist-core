@@ -2,7 +2,7 @@
 
 **Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** approved
+**Status:** retired
 **Approval:** automatic
 **Autonomy level:** 2
 **Output file:** packages/asset-factory/briefs/menulist.industry.salons-spas.demo-placeholder.md
@@ -17,7 +17,7 @@ Show the shape of a fictional salon service-list page while routed demo screensh
 - Route: /industries/salons-spas
 - Placement: bounded service-list demo proof
 - Component: src/content/websiteIndustries.ts
-- Destination: public/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg
+- Historical internal file: packages/asset-factory/published/placeholders/glow-blade-service-list-placeholder.svg
 
 ## Output Contract
 
@@ -25,7 +25,7 @@ Show the shape of a fictional salon service-list page while routed demo screensh
 
 ## Existing Files
 
-- primary: public/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg
+- primary: packages/asset-factory/published/placeholders/glow-blade-service-list-placeholder.svg
 
 ## Narrative Rules
 

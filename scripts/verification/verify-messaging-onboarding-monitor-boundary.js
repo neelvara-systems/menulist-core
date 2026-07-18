@@ -81,25 +81,16 @@ function verifyRoute(route) {
     "withAuth(async (request, session) =>",
     "requiredPlatformRole: 'PLATFORM'",
     '!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING_DASHBOARD',
-    "import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';",
     "const HEALTH_CONTROL_DOC = 'messaging_onboarding_control';",
     'const EVENT_WINDOW_HOURS = 24;',
-    'const RECENT_EVENT_LIMIT = 12;',
-    'const RECENT_SESSION_LIMIT = 8;',
-    'const RECENT_ALERT_LIMIT = 8;',
-    'const MAX_METADATA_KEYS = 40;',
-    'const MAX_METADATA_STRING_LENGTH = 96;',
     "const MESSAGING_ONBOARDING_OPS_RATE_LIMIT_KEY = 'messaging-onboarding-ops';",
-    'SAFE_METADATA_KEYS',
-    'BOUNDED_METADATA_KEYS',
     'buildMessagingOpsResponseId',
     "createHash('sha256')",
-    'function normalizeMessagingHealthSnapshotId(value: unknown): string | null',
-    'return isValidFirestoreDocumentId(snapshotId) ? snapshotId : null;',
-    'sanitizeMetadata(data.metadata)',
-    'maskDisplayId(data.providerDisplayId)',
-    'buildMessagingAlertTitle(severity)',
-    'buildMessagingAlertMessage(data)',
+    'normalizeMessagingHealthSnapshotId',
+    'normalizeMessagingOnboardingOpsHealth',
+    'normalizeMessagingOnboardingOpsEvent',
+    'normalizeMessagingOnboardingOpsSession',
+    'normalizeMessagingOnboardingOpsAlert',
     "getRateLimitForFeature('DATA_READ')",
     'hashPublicRateLimitValue(userId)',
     'key: `${MESSAGING_ONBOARDING_OPS_RATE_LIMIT_KEY}:${userRateLimitHash}`',
@@ -109,17 +100,23 @@ function verifyRoute(route) {
     'healthCollection.doc(HEALTH_CONTROL_DOC).get()',
     'const lastSnapshotId = normalizeMessagingHealthSnapshotId(control.data()?.lastSnapshotId);',
     'healthCollection.doc(lastSnapshotId).get()',
+    "throw new Error('MESSAGING_ONBOARDING_OPS_COUNT_INVALID')",
     'INBOUND_STATUSES.map',
     'WATCHED_STATES.map',
     'WEBHOOK_EVENT_COUNTS.map',
     ".where('timestamp', '>=', windowStart)",
     ".orderBy('timestamp', 'desc')",
-    '.limit(RECENT_EVENT_LIMIT)',
-    '.limit(RECENT_SESSION_LIMIT)',
-    '.limit(30)',
-    '.slice(0, RECENT_ALERT_LIMIT)',
+    '.limit(MESSAGING_ONBOARDING_RECENT_EVENT_LIMIT)',
+    '.limit(MESSAGING_ONBOARDING_RECENT_SESSION_LIMIT)',
+    ".where('metadata.subsystem', '==', 'messaging_onboarding')",
+    '.limit(MESSAGING_ONBOARDING_RECENT_ALERT_LIMIT)',
     "providerMode: 'official_cloud_api'",
-    "accessModel: 'platform_role'",
+    "accessModel: 'current_persisted_platform_user'",
+    'failClosedOnProviderError: true',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
+    "const generatedAt = Timestamp.now();",
+    "getWebhookWindow(generatedAt)",
+    "generatedAt: generatedAt.toDate().toISOString()",
     "logOpsFailure('ops_messaging_onboarding_route_failed'",
     "getBoundedOpsStringContext('requestPath', request.nextUrl.pathname)",
   ].forEach((token) => assertIncludes(route, token, 'Messaging onboarding ops route'));
@@ -130,7 +127,7 @@ function verifyRoute(route) {
     'getLatestHealthSnapshot(),',
     'getInboundQueueCounts(),',
     'getSessionStateCounts(),',
-    'getWebhookWindow(),',
+    'getWebhookWindow(generatedAt),',
     'getRecentSessions(),',
     'getRecentAlerts(),',
     'return NextResponse.json(',
@@ -146,6 +143,12 @@ function verifyRoute(route) {
     '__name__',
     'const lastSnapshotId = control.data()?.lastSnapshotId;',
     "typeof lastSnapshotId === 'string' && lastSnapshotId.trim()",
+    'function sanitizeMetadata',
+    'function maskDisplayId',
+    'runMetrics: data.runMetrics || {}',
+    'retention: data.retention || {}',
+    '.limit(30)',
+    ".filter((doc) => doc.data()?.metadata?.subsystem === 'messaging_onboarding')",
     'id: doc.id,',
     "sessionId: String(data.sessionId || '-')",
     'alerts: Array.isArray(data.alerts) ? data.alerts : []',
@@ -155,6 +158,52 @@ function verifyRoute(route) {
     'console.error',
     'error.message',
   ].forEach((token) => assertNotIncludes(route, token, 'Messaging onboarding ops route boundary'));
+
+  const closedWindowMatches = route.match(/\.where\('timestamp', '<=', windowEnd\)/g) || [];
+  assert(closedWindowMatches.length === 2, 'Messaging onboarding ops route must close recent and count queries at one window end');
+}
+
+function verifyIndexes(indexes) {
+  assertIncludes(indexes, '"fieldPath": "metadata.subsystem"', 'Messaging onboarding alert subsystem index');
+  const subsystemIndexStart = indexes.indexOf('"fieldPath": "metadata.subsystem"');
+  const timestampAfterSubsystem = indexes.indexOf('"fieldPath": "timestamp"', subsystemIndexStart);
+  const descendingAfterSubsystem = indexes.indexOf('"order": "DESCENDING"', timestampAfterSubsystem);
+  assert(
+    subsystemIndexStart >= 0 && timestampAfterSubsystem > subsystemIndexStart && descendingAfterSubsystem > timestampAfterSubsystem,
+    'Messaging onboarding alert subsystem index must order timestamp descending',
+  );
+}
+
+function verifyOpsBoundary(boundary) {
+  [
+    'export const MESSAGING_ONBOARDING_HEALTH_ALERT_LIMIT = 8;',
+    'export const MESSAGING_ONBOARDING_RECENT_ALERT_LIMIT = 8;',
+    'export const MESSAGING_ONBOARDING_RECENT_EVENT_LIMIT = 12;',
+    'export const MESSAGING_ONBOARDING_RECENT_SESSION_LIMIT = 8;',
+    'export function normalizeMessagingHealthSnapshotId(value: unknown): string | null',
+    'value.trim() !== value',
+    'export function normalizeMessagingOnboardingOpsHealth(',
+    'return value.slice(0, MESSAGING_ONBOARDING_HEALTH_ALERT_LIMIT)',
+    'export function sanitizeMessagingOnboardingOpsMetadata',
+    'export function maskMessagingOnboardingOpsDisplayId',
+    'export function normalizeMessagingOnboardingOpsEvent(',
+    'export function normalizeMessagingOnboardingOpsSession(',
+    'export function normalizeMessagingOnboardingOpsAlert(',
+    'export function isMessagingOnboardingOpsSnapshotResponse(',
+    'isCanonicalIsoTimestamp(value.generatedAt)',
+    'value.recentEvents.length > MESSAGING_ONBOARDING_RECENT_EVENT_LIMIT',
+    'value.recentSessions.length > MESSAGING_ONBOARDING_RECENT_SESSION_LIMIT',
+    'value.recentAlerts.length > MESSAGING_ONBOARDING_RECENT_ALERT_LIMIT',
+  ].forEach((token) => assertIncludes(boundary, token, 'Messaging onboarding persisted/read-model boundary'));
+
+  [
+    'runMetrics: source.runMetrics',
+    'metrics: source.metrics',
+    'costs: source.costs',
+    'retention: source.retention',
+    'String(source.userIdMasked)',
+    'Number(source.processingRuns)',
+  ].forEach((token) => assertNotIncludes(boundary, token, 'Messaging onboarding persisted/read-model boundary'));
 }
 
 function verifyMonitor(monitor) {
@@ -169,22 +218,13 @@ function verifyMonitor(monitor) {
     'MESSAGING_ONBOARDING_MONITOR_RESPONSE_JSON_MAX_BYTES = 256 * 1024',
     'readJsonResponseWithLimit<unknown>',
     'isMessagingOnboardingOpsSnapshotResponse(payload)',
-    'function isMessagingOnboardingOpsHealth',
-    'isMessagingOnboardingOpsHealth(value.health)',
-    'function isWebhookWindow',
-    'isWebhookWindow(value.webhookWindow)',
-    'function isInboundQueue',
-    'isInboundQueue(value.inboundQueue)',
-    'function isOpsEvent',
-    'value.recentEvents.every(isOpsEvent)',
-    'function isOpsSession',
-    'value.recentSessions.every(isOpsSession)',
-    'function isOpsAlert',
-    'value.recentAlerts.every(isOpsAlert)',
-    'function isMessagingOnboardingOpsFeature',
-    'isMessagingOnboardingOpsFeature(value.feature)',
-    "value.providerMode === 'official_cloud_api'",
-    "value.accessModel === 'platform_role'",
+    "import { isMessagingOnboardingOpsSnapshotResponse } from '@lib/ops/messagingOnboardingOpsBoundary';",
+    'const activeRequestRef = useRef<AbortController | null>(null);',
+    'activeRequestRef.current?.abort();',
+    'signal: controller.signal',
+    'if (activeRequestRef.current !== controller) return;',
+    'if (controller.signal.aborted || activeRequestRef.current !== controller) return;',
+    'setSnapshot(null);',
     'logRuntimeFailure(MESSAGING_ONBOARDING_MONITOR_RESPONSE_PARSE_FAILED',
     'MESSAGING_ONBOARDING_MONITOR_RESPONSE_REJECTED',
     'MESSAGING_ONBOARDING_MONITOR_RESPONSE_INVALID',
@@ -208,7 +248,7 @@ function verifyTypes(types) {
   [
     "export type MessagingOnboardingOpsStatus = 'healthy' | 'degraded' | 'critical' | 'unknown';",
     "providerMode: 'official_cloud_api';",
-    "accessModel: 'platform_role';",
+    "accessModel: 'current_persisted_platform_user';",
     'recentSessions: MessagingOnboardingOpsSession[];',
     'recentEvents: MessagingOnboardingOpsEvent[];',
     'recentAlerts: MessagingOnboardingOpsAlert[];',
@@ -244,21 +284,44 @@ function verifyMobileSurface(mobileShell, mobileMore, mobilePlatformInternal) {
 function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, docs, changelogDoc) {
   assertIncludes(
     packageJson,
-    '"verify:messaging-onboarding-monitor-boundary": "node scripts/verification/verify-messaging-onboarding-monitor-boundary.js"',
+    '"verify:messaging-onboarding-monitor-boundary": "node scripts/verification/verify-messaging-onboarding-monitor-boundary.js && npm run test:messaging-onboarding-ops-boundary"',
+    '"test:messaging-onboarding-ops-boundary": "ts-node --compiler-options',
     'package.json messaging onboarding monitor verifier',
   );
 
   [
-    '/ops/messaging-onboarding` keeps the same platform-only route and manual refresh model',
-    'caps `/api/ops/messaging-onboarding` response JSON at 256KB',
-    'Rejected, oversized, malformed, or invalid responses use fixed platform failure copy',
-    'DATA_READ limiter',
-    'systemHealth/messaging_onboarding_control.lastSnapshotId',
-    'avoiding document-id prefix scans or a `__name__` index dependency',
-    'July 6 follow-up: `systemHealth/messaging_onboarding_control.lastSnapshotId` now passes through the shared Firestore document-ID guard',
-    'existing unknown-health state',
-    'Source gate: `npm run verify:messaging-onboarding-monitor-boundary`',
+    '`/api/ops/messaging-onboarding`',
+    'The following now all re-prove current persisted platform authority',
+    'Their privileged read/mutation limiters fail closed on provider outage.',
+    'bounded recent-window counts',
+    '`messagingOnboardingOpsBoundary.ts`',
   ].forEach((token) => assertIncludes(opsDoc, token, 'Ops docs messaging onboarding monitor source gate'));
+
+  [
+    'July 13 ops read-model audit',
+    'src/lib/ops/messagingOnboardingOpsBoundary.ts',
+    'indexed `metadata.subsystem == messaging_onboarding` query capped at eight rows',
+  ].forEach((token) => assertIncludes(docs.readme, token, 'Messaging onboarding README ops read-model audit'));
+
+  [
+    'July 13, 2026 Platform Monitor Data Contract',
+    'does not forward Firestore `runMetrics`, `metrics`, `costs`, `retention`',
+    'The health producer intentionally stores fields such as `retention.retainPublishedSourceFiles`',
+    'The alert query uses `metadata.subsystem == messaging_onboarding`',
+  ].forEach((token) => assertIncludes(docs.impl, token, 'Messaging onboarding implementation ops read-model audit'));
+
+  [
+    'July 13, 2026 Ops Monitor Read/Cost Boundary',
+    'at most 30 document reads plus 18 aggregation-count queries',
+    'systemAlerts(metadata.subsystem ASC, timestamp DESC)',
+    'No new collection or summary-document write loop was added.',
+  ].forEach((token) => assertIncludes(docs.firebase, token, 'Messaging onboarding Firebase ops read-cost audit'));
+
+  [
+    'July 13, 2026 Ops Monitor Regression Matrix',
+    'Real health producer retention shape includes `retainPublishedSourceFiles: true`',
+    'Indexed subsystem query still returns the recent messaging alert, capped at 8 reads',
+  ].forEach((token) => assertIncludes(docs.tests, token, 'Messaging onboarding test cases ops regression audit'));
 
   [
     'Messaging Onboarding Health Snapshot Document ID Boundary checkpoint',
@@ -459,6 +522,8 @@ function verifyMessagingOnboardingMonitorBoundary() {
       functionsProductionExample: read('functions/.env.menulist.example'),
     },
     monitor: read('src/components/templates/main-app/platform/messagingOnboardingMonitor/index.tsx'),
+    opsBoundary: read('src/lib/ops/messagingOnboardingOpsBoundary.ts'),
+    indexes: read('firestore.indexes.json'),
     types: read('src/lib/ops/messagingOnboardingTypes.ts'),
     mobileShell: read('src/components/mobile/MobileShell.tsx'),
     mobileMore: read('src/components/mobile/screens/MobileMoreScreen.tsx'),
@@ -481,6 +546,8 @@ function verifyMessagingOnboardingMonitorBoundary() {
 
   verifyProviderRuntimeBoundary(files.providerRegistry, files.constants, files.webhookHandler, files.envFiles);
   verifyRoute(files.route);
+  verifyOpsBoundary(files.opsBoundary);
+  verifyIndexes(files.indexes);
   verifyMonitor(files.monitor);
   verifyTypes(files.types);
   verifyMobileSurface(files.mobileShell, files.mobileMore, files.mobilePlatformInternal);

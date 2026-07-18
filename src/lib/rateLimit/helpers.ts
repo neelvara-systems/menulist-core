@@ -139,8 +139,8 @@ export async function checkAIOperationLimit(): Promise<NextResponse | null> {
 /**
  * Convenience wrapper for data write operations
  */
-export async function checkDataWriteLimit(): Promise<NextResponse | null> {
-    return checkAIRateLimit('DATA_WRITE', 'write');
+export async function checkDataWriteLimit(options: AIRateLimitOptions = {}): Promise<NextResponse | null> {
+    return checkAIRateLimit('DATA_WRITE', 'write', options);
 }
 
 /**

@@ -555,9 +555,27 @@ export function buildPublicRelatedContent(surface: AnswerlatticeSurfaceContentIt
     if (!surface) return undefined;
     return {
         ...surface,
-        articles: (surface.articles || []).slice(0, 5),
+        articles: (surface.articles || []).slice(0, 5).map(({ url: _url, ...article }) => article),
         faqs: (surface.faqs || []).slice(0, 5),
         changelogs: (surface.changelogs || []).slice(0, 3),
         tickets: { total: 0, open: 0, recentDisplayIds: [] },
     };
+}
+
+export function normalizeAnswerlatticePublicRelatedContent(
+    value: unknown,
+): AnswerlatticeSurfaceContentItem | null {
+    if (!isRecord(value)) return null;
+    if (
+        !Array.isArray(value.articles)
+        || !Array.isArray(value.changelogs)
+        || (value.faqs !== undefined && !Array.isArray(value.faqs))
+        || !isRecord(value.tickets)
+    ) {
+        return null;
+    }
+    const key = normalizeSurfaceKey(value.key);
+    if (!key || value.key !== key) return null;
+    const normalized = normalizeSurfaceContentItem(key, value);
+    return normalized ? buildPublicRelatedContent(normalized) || null : null;
 }

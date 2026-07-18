@@ -1,5 +1,6 @@
 import { FieldValue, type Firestore } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
+import { resolveNextSpecialMenuTransitionAt } from '../sharedData/specialMenuSchedule';
 
 type SpecialMenuSchedulerAction = 'activate' | 'expire';
 
@@ -40,6 +41,44 @@ const SPECIAL_MENU_STATUSES = new Set<SpecialMenuStatus>([
     'expired',
     'cancelled',
 ]);
+const UNSAFE_SUMMARY_PATH_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
+
+function isSummaryRecord(value: unknown): value is Record<string, unknown> {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isSafeSummaryPathSegment(value: string): boolean {
+    return value.length > 0 && !UNSAFE_SUMMARY_PATH_SEGMENTS.has(value);
+}
+
+export function parseSpecialMenuSummaryProjects(
+    data: unknown,
+): Record<string, Record<string, unknown>> {
+    if (!isSummaryRecord(data)) return {};
+    const result: Record<string, Record<string, unknown>> = Object.create(null);
+
+    if (isSummaryRecord(data.projects)) {
+        for (const [projectId, projectData] of Object.entries(data.projects)) {
+            if (isSafeSummaryPathSegment(projectId) && isSummaryRecord(projectData)) {
+                result[projectId] = { ...projectData };
+            }
+        }
+    }
+
+    for (const [key, value] of Object.entries(data)) {
+        if (!key.startsWith('projects.')) continue;
+        const [projectId, ...fieldPath] = key.slice('projects.'.length).split('.');
+        if (![projectId, ...fieldPath].every(isSafeSummaryPathSegment)) continue;
+        if (!result[projectId]) result[projectId] = {};
+        if (fieldPath.length === 0 && isSummaryRecord(value)) {
+            result[projectId] = { ...result[projectId], ...value };
+        } else if (fieldPath.length === 1) {
+            result[projectId][fieldPath[0]] = value;
+        }
+    }
+
+    return result;
+}
 
 function normalizeNumericDocumentId(value: unknown): string | null {
     if (typeof value !== 'string' || !NUMERIC_DOCUMENT_ID_PATTERN.test(value)) return null;
@@ -114,6 +153,34 @@ function shouldClearSpecialMenuTempStatus(
         || (activeSpecialMenuId === projectId && sourceProjectId === null);
 }
 
+function isLiveCompetingSpecialMenuProject(
+    value: unknown,
+    projectId: string,
+    tId: string,
+    sId: string,
+    now: Date,
+): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const projectData = value as Record<string, unknown>;
+    if (
+        (projectData.projectId !== undefined && projectData.projectId !== projectId)
+        || (projectData.tId !== undefined && String(projectData.tId) !== tId)
+        || (projectData.sId !== undefined && String(projectData.sId) !== sId)
+        || projectData.deleted === true
+        || projectData.active === false
+    ) {
+        return false;
+    }
+
+    const metadata = normalizeSpecialMenuMetadata(projectData._specialMenu);
+    return Boolean(
+        metadata
+        && normalizeProjectId(metadata.baseProjectId, tId, sId)
+        && metadata.status === 'active'
+        && Date.parse(metadata.endsAt) > now.getTime()
+    );
+}
+
 export async function transitionScheduledSpecialMenu(
     params: SpecialMenuSchedulerTransitionParams,
 ): Promise<SpecialMenuSchedulerTransitionResult> {
@@ -134,6 +201,7 @@ export async function transitionScheduledSpecialMenu(
     return params.db.runTransaction(async (transaction) => {
         const projectSnapshot = await transaction.get(projectRef);
         const storeSnapshot = await transaction.get(storeRef);
+        const summarySnapshot = await transaction.get(summaryRef);
         if (!projectSnapshot.exists) throw new Error('special_menu_scheduler_project_missing');
         if (!storeSnapshot.exists) throw new Error('special_menu_scheduler_store_missing');
 
@@ -158,10 +226,62 @@ export async function transitionScheduledSpecialMenu(
             ? storeData.activeSpecialMenuId
             : null;
         const summaryStatusField = `projects.${projectId}.specialMenuStatus`;
+        const summaryProjects = parseSpecialMenuSummaryProjects(summarySnapshot.data());
+        let hasLiveCompetingActiveMenu = false;
+        if (
+            params.action === 'activate'
+            && activeSpecialMenuId
+            && activeSpecialMenuId !== projectId
+        ) {
+            const competingProjectId = normalizeProjectId(activeSpecialMenuId, tId, sId);
+            if (competingProjectId) {
+                const competingProjectSnapshot = await transaction.get(
+                    projectRef.parent.doc(competingProjectId),
+                );
+                hasLiveCompetingActiveMenu = competingProjectSnapshot.exists
+                    && isLiveCompetingSpecialMenuProject(
+                        competingProjectSnapshot.data(),
+                        competingProjectId,
+                        tId,
+                        sId,
+                        params.now,
+                    );
+            }
+        }
+        const buildSummaryUpdate = (
+            lifecycleMetadata: SpecialMenuMetadata,
+            status: SpecialMenuStatus,
+        ): Record<string, unknown> => ({
+            [summaryStatusField]: status,
+            lastUpdated: FieldValue.serverTimestamp(),
+            specialMenuNextTransitionAt: resolveNextSpecialMenuTransitionAt({
+                ...summaryProjects,
+                [projectId]: {
+                    ...summaryProjects[projectId],
+                    active: true,
+                    deleted: false,
+                    isSpecialMenu: true,
+                    specialMenuEndsAt: lifecycleMetadata.endsAt,
+                    specialMenuStartsAt: lifecycleMetadata.startsAt,
+                    specialMenuStatus: status,
+                },
+            }) || FieldValue.delete(),
+        });
+        const clearOwnedStoreState = (): Record<string, unknown> => {
+            const storeUpdate: Record<string, unknown> = {};
+            if (activeSpecialMenuId === projectId) {
+                storeUpdate.activeSpecialMenuId = FieldValue.delete();
+            }
+            if (shouldClearSpecialMenuTempStatus(storeData, activeSpecialMenuId, projectId)) {
+                storeUpdate.tempStatus = FieldValue.delete();
+            }
+            return storeUpdate;
+        };
 
         if (params.action === 'activate') {
             if (metadata.status === 'active') {
-                if (activeSpecialMenuId && activeSpecialMenuId !== projectId) {
+                if (hasLiveCompetingActiveMenu) {
+                    transaction.set(summaryRef, buildSummaryUpdate(metadata, metadata.status), { merge: true });
                     return { outcome: 'blocked', projectId };
                 }
                 const displayName = resolveDisplayName(metadata.displayName);
@@ -179,20 +299,22 @@ export async function transitionScheduledSpecialMenu(
                     };
                 }
                 transaction.set(storeRef, storeUpdate, { merge: true });
-                transaction.set(summaryRef, {
-                    [summaryStatusField]: 'active',
-                    lastUpdated: FieldValue.serverTimestamp(),
-                }, { merge: true });
+                transaction.set(summaryRef, buildSummaryUpdate(metadata, 'active'), { merge: true });
                 return { outcome: 'repaired', projectId };
             }
-            if (metadata.status !== 'scheduled') return { outcome: 'noop', projectId };
+            if (metadata.status !== 'scheduled') {
+                transaction.set(summaryRef, buildSummaryUpdate(metadata, metadata.status), { merge: true });
+                return { outcome: 'noop', projectId };
+            }
             if (
                 Date.parse(metadata.startsAt) > params.now.getTime()
                 || Date.parse(metadata.endsAt) <= params.now.getTime()
             ) {
+                transaction.set(summaryRef, buildSummaryUpdate(metadata, metadata.status), { merge: true });
                 return { outcome: 'noop', projectId };
             }
-            if (activeSpecialMenuId && activeSpecialMenuId !== projectId) {
+            if (hasLiveCompetingActiveMenu) {
+                transaction.set(summaryRef, buildSummaryUpdate(metadata, metadata.status), { merge: true });
                 return { outcome: 'blocked', projectId };
             }
 
@@ -218,34 +340,28 @@ export async function transitionScheduledSpecialMenu(
 
             transaction.set(projectRef, { _specialMenu: nextMetadata }, { merge: true });
             transaction.set(storeRef, storeUpdate, { merge: true });
-            transaction.set(summaryRef, {
-                [summaryStatusField]: 'active',
-                lastUpdated: FieldValue.serverTimestamp(),
-            }, { merge: true });
+            transaction.set(summaryRef, buildSummaryUpdate(nextMetadata, 'active'), { merge: true });
             return { outcome: 'activated', projectId };
         }
 
         if (metadata.status === 'expired') {
-            const storeUpdate: Record<string, unknown> = {};
-            if (activeSpecialMenuId === projectId) {
-                storeUpdate.activeSpecialMenuId = FieldValue.delete();
-            }
-            if (shouldClearSpecialMenuTempStatus(storeData, activeSpecialMenuId, projectId)) {
-                storeUpdate.tempStatus = FieldValue.delete();
-            }
+            const storeUpdate = clearOwnedStoreState();
             if (Object.keys(storeUpdate).length) {
                 transaction.set(storeRef, storeUpdate, { merge: true });
             }
-            transaction.set(summaryRef, {
-                [summaryStatusField]: 'expired',
-                lastUpdated: FieldValue.serverTimestamp(),
-            }, { merge: true });
+            transaction.set(summaryRef, buildSummaryUpdate(metadata, 'expired'), { merge: true });
             return { outcome: 'repaired', projectId };
         }
-        if (
-            metadata.status === 'cancelled'
-            || Date.parse(metadata.endsAt) > params.now.getTime()
-        ) {
+        if (metadata.status === 'cancelled') {
+            const storeUpdate = clearOwnedStoreState();
+            if (Object.keys(storeUpdate).length) {
+                transaction.set(storeRef, storeUpdate, { merge: true });
+            }
+            transaction.set(summaryRef, buildSummaryUpdate(metadata, 'cancelled'), { merge: true });
+            return { outcome: 'repaired', projectId };
+        }
+        if (Date.parse(metadata.endsAt) > params.now.getTime()) {
+            transaction.set(summaryRef, buildSummaryUpdate(metadata, metadata.status), { merge: true });
             return { outcome: 'noop', projectId };
         }
 
@@ -255,19 +371,10 @@ export async function transitionScheduledSpecialMenu(
             status: 'expired',
         };
         transaction.set(projectRef, { _specialMenu: nextMetadata }, { merge: true });
-        transaction.set(summaryRef, {
-            [summaryStatusField]: 'expired',
-            lastUpdated: FieldValue.serverTimestamp(),
-        }, { merge: true });
+        transaction.set(summaryRef, buildSummaryUpdate(nextMetadata, 'expired'), { merge: true });
 
         if (!activeSpecialMenuId || activeSpecialMenuId === projectId) {
-            const storeUpdate: Record<string, unknown> = {};
-            if (activeSpecialMenuId === projectId) {
-                storeUpdate.activeSpecialMenuId = FieldValue.delete();
-            }
-            if (shouldClearSpecialMenuTempStatus(storeData, activeSpecialMenuId, projectId)) {
-                storeUpdate.tempStatus = FieldValue.delete();
-            }
+            const storeUpdate = clearOwnedStoreState();
             if (Object.keys(storeUpdate).length) {
                 transaction.set(storeRef, storeUpdate, { merge: true });
             }

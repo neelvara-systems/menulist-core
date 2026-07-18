@@ -14,7 +14,10 @@ import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import '@/styles/website.css';
-import { recordStarterActivationSignal } from '@database/stores';
+import {
+    assertStarterActivationSignalUpdateSucceeded,
+    recordStarterActivationSignal,
+} from '@database/stores';
 import {
     STARTER_ACTIVATION_SIGNALS,
     type StarterActivationSignal,
@@ -22,6 +25,7 @@ import {
 import { secureError } from '@lib/security/secureLogger';
 import { useTranslations } from 'next-intl';
 import { useSearchParams } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMapPin, LuMessageCircle, LuQrCode } from 'react-icons/lu';
 import AnimateOnScroll from '@/components/website/shared/AnimateOnScroll';
@@ -31,6 +35,7 @@ const CREATE_MENU_SUCCESS_BUSINESS_NAME_MAX_LENGTH = 80;
 const CREATE_MENU_SUCCESS_URL_MAX_LENGTH = 2048;
 const CREATE_MENU_SUCCESS_INVALID_BUSINESS_NAME_REPORT_LIMIT = 100;
 const CREATE_MENU_SUCCESS_INVALID_URL_REPORT_LIMIT = 100;
+const CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS = 3_000;
 
 type CreateMenuSuccessUrlKind = 'menuUrl' | 'officialPageUrl';
 type CreateMenuSuccessBusinessNameInvalidReason = 'control_chars' | 'too_long';
@@ -259,6 +264,7 @@ async function copyCreateMenuSuccessLinkToClipboard(menuUrl: string) {
 export default function CreateMenuSuccessClient() {
     const t = useTranslations('Website');
     const searchParams = useSearchParams();
+    const { update: updateSession } = useSession();
     const defaultBusinessName = t('CreateMenuSuccess.defaultBusinessName');
     const rawMenuUrl = searchParams.get('menuUrl') || '';
     const rawOfficialPageUrl = searchParams.get('officialPageUrl') || '';
@@ -289,14 +295,18 @@ export default function CreateMenuSuccessClient() {
             if (!storeId) return;
 
             recordedSignalsRef.current.add(signal);
-            recordStarterActivationSignal(storeId, signal).catch((error) => {
-                recordedSignalsRef.current.delete(signal);
-                logCreateMenuSuccessFailure(
-                    'public_create_menu_success_starter_signal_write_failed',
-                    error,
-                    getCreateMenuSuccessStarterSignalContext(signal, rawClaim, storeId),
-                );
-            });
+            recordStarterActivationSignal(storeId, signal)
+                .then((result) => {
+                    assertStarterActivationSignalUpdateSucceeded(result, storeId, signal);
+                })
+                .catch((error) => {
+                    recordedSignalsRef.current.delete(signal);
+                    logCreateMenuSuccessFailure(
+                        'public_create_menu_success_starter_signal_write_failed',
+                        error,
+                        getCreateMenuSuccessStarterSignalContext(signal, rawClaim, storeId),
+                    );
+                });
         } catch (error) {
             logCreateMenuSuccessFailure(
                 'public_create_menu_success_starter_signal_claim_read_failed',
@@ -353,6 +363,22 @@ export default function CreateMenuSuccessClient() {
             setHandoffError(t('CreateMenuSuccess.whatsAppFailed'));
         }
     }, [hasOfficialPageUrl, menuUrl, officialPageUrl, recordStarterSignal, t]);
+
+    const handleDashboardHandoff = useCallback(async () => {
+        try {
+            await Promise.race([
+                updateSession(),
+                new Promise((resolve) => setTimeout(resolve, CREATE_MENU_SUCCESS_SESSION_REFRESH_TIMEOUT_MS)),
+            ]);
+        } catch (error) {
+            logCreateMenuSuccessFailure('public_create_menu_success_session_refresh_failed', error, {
+                hasMenuUrl,
+                hasOfficialPageUrl,
+            });
+        } finally {
+            window.location.assign('/use-menulist');
+        }
+    }, [hasMenuUrl, hasOfficialPageUrl, updateSession]);
 
     return (
         <div className="ws-page">
@@ -570,6 +596,10 @@ export default function CreateMenuSuccessClient() {
                     <AnimateOnScroll delay={0.34}>
                         <a
                             href="/use-menulist"
+                            onClick={(event) => {
+                                event.preventDefault();
+                                void handleDashboardHandoff();
+                            }}
                             style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',

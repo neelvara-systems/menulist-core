@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
+import { FEATURE_FLAGS } from "@config/features";
 import { uploadPreparedMediaImageWithLedger } from "@database/storage/uploadPreparedMediaImage";
 import { collection, deleteField, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, serverTimestamp, setDoc, Timestamp, type Transaction, where } from "@firebase/firestore";
 import { requestBodyComposer } from "@lib/apiHelper";
@@ -16,7 +16,7 @@ import {
 } from "@lib/campaigns/campaignActionState";
 import { normalizeOwnerSlideCaption } from "@lib/screen/screenContent";
 import { getPublicScreenStateDocRef, toPublicScreenState } from "@lib/screen/publicScreenState";
-import { generateScreenToken, isValidScreenToken } from "@lib/screen/utils";
+import { filterExpiredSlides, generateScreenToken, getActiveScreenSlides, getOwnerUploadExpiry, isValidScreenToken } from "@lib/screen/utils";
 import { secureError } from "@lib/security/secureLogger";
 import { createRandomIdSegment } from "@lib/runtime/randomId";
 import {
@@ -37,6 +37,8 @@ import type LoginUserType from "@type/loginUser";
 const CAMPAIGNS_COLLECTION = DB_COLLECTIONS.CAMPAIGNS;
 const EXPORTS_COLLECTION = DB_COLLECTIONS.CAMPAIGN_EXPORTS;
 const PLATFORM_SUMMARY = DB_COLLECTIONS.PLATFORM_SUMMARY;
+const DIGITAL_SCREEN_MAX_UPLOADS = FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS;
+const DIGITAL_SCREEN_UPLOAD_EXPIRY_DAYS = FEATURE_FLAGS.DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS;
 
 const getLogErrorName = (error: unknown): string => (
     error instanceof Error ? error.name : typeof error
@@ -89,6 +91,10 @@ const isPinnedScreenSlide = (value: unknown): value is ScreenSlide => {
         && isFirestoreTimestampLike(slide.validUntil);
 };
 
+const getActivePinnedScreenSlides = (slides: ScreenSlide[] = []): ScreenSlide[] => (
+    getActiveScreenSlides(slides, DIGITAL_SCREEN_MAX_UPLOADS)
+);
+
 export const isDigitalScreenState = (value: unknown): value is DigitalScreenState => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
     const screen = value as Partial<DigitalScreenState>;
@@ -105,7 +111,7 @@ export const isDigitalScreenState = (value: unknown): value is DigitalScreenStat
         && screen.currentMinConfidence <= 1
         && typeof screen.ownerOverrideEnabled === 'boolean'
         && Array.isArray(screen.pinnedSlides)
-        && screen.pinnedSlides.length <= 3
+        && screen.pinnedSlides.length <= DIGITAL_SCREEN_MAX_UPLOADS
         && screen.pinnedSlides.every(isPinnedScreenSlide)
         && (screen.screenLastSeenAt === undefined || isFirestoreTimestampLike(screen.screenLastSeenAt));
 };
@@ -127,6 +133,7 @@ export function assertDigitalScreenMutationSucceeded(
 
 export const isDigitalScreenSlideUploadResult = (result: unknown): result is ScreenSlide => (
     isPinnedScreenSlide(result)
+    && filterExpiredSlides([result]).length === 1
 );
 
 export function assertDigitalScreenSlideUploadSucceeded(
@@ -731,7 +738,11 @@ export const getScreenState = async (): Promise<DigitalScreenState | null> => {
             }
 
             const data = docSnap.data() as CampaignsSummaryDocument;
-            return data.screen || null;
+            if (!isDigitalScreenState(data.screen)) return null;
+            return {
+                ...data.screen,
+                pinnedSlides: getActivePinnedScreenSlides(data.screen.pinnedSlides),
+            };
         },
         null,
         "getScreenState"
@@ -757,8 +768,12 @@ export const initializeScreenState = async (): Promise<DigitalScreenState> => {
                     if (!isDigitalScreenState(currentScreen)) {
                         throw new Error('digital_screen_state_invalid');
                     }
-                    setScreenStateInTransaction(transaction, session, currentScreen);
-                    return currentScreen;
+                    const activeScreen = {
+                        ...currentScreen,
+                        pinnedSlides: getActivePinnedScreenSlides(currentScreen.pinnedSlides),
+                    };
+                    setScreenStateInTransaction(transaction, session, activeScreen);
+                    return activeScreen;
                 }
 
                 // Generate high-entropy screen token (22 chars, ~130-bit).
@@ -808,13 +823,18 @@ export const updateScreenSettings = async (settings: { ownerOverrideEnabled?: bo
                 const ownerOverrideEnabled = typeof settings.ownerOverrideEnabled === "boolean"
                     ? settings.ownerOverrideEnabled
                     : currentScreen.ownerOverrideEnabled;
-                if (ownerOverrideEnabled === currentScreen.ownerOverrideEnabled) {
+                const activePinnedSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
+                if (
+                    ownerOverrideEnabled === currentScreen.ownerOverrideEnabled
+                    && activePinnedSlides.length === currentScreen.pinnedSlides.length
+                ) {
                     return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
                 }
 
                 const nextScreen: DigitalScreenState = {
                     ...currentScreen,
                     ownerOverrideEnabled,
+                    pinnedSlides: activePinnedSlides,
                     contentVersion: (currentScreen.contentVersion || 0) + 1,
                     lastContentChangeAt: Timestamp.now(),
                 };
@@ -847,12 +867,22 @@ export const addPinnedSlide = async (slide: ScreenSlide): Promise<DigitalScreenM
                     : null;
                 if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
-                const currentSlides = currentScreen.pinnedSlides || [];
+                const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
                 if (currentSlides.some((currentSlide) => currentSlide.id === slide.id)) {
+                    if (currentSlides.length !== currentScreen.pinnedSlides.length) {
+                        const nextScreen: DigitalScreenState = {
+                            ...currentScreen,
+                            pinnedSlides: currentSlides,
+                            contentVersion: (currentScreen.contentVersion || 0) + 1,
+                            lastContentChangeAt: Timestamp.now(),
+                        };
+                        setScreenStateInTransaction(transaction, session, nextScreen);
+                        return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+                    }
                     return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
                 }
-                if (currentSlides.length >= 3) {
-                    throw new Error("Maximum 3 pinned slides allowed");
+                if (currentSlides.length >= DIGITAL_SCREEN_MAX_UPLOADS) {
+                    throw new Error(`Maximum ${DIGITAL_SCREEN_MAX_UPLOADS} pinned slides allowed`);
                 }
 
                 const nextScreen: DigitalScreenState = {
@@ -885,8 +915,18 @@ export const removePinnedSlide = async (slideId: string): Promise<DigitalScreenM
                     : null;
                 if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
-                const currentSlides = currentScreen.pinnedSlides || [];
+                const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
                 if (!currentSlides.some((slide) => slide.id === slideId)) {
+                    if (currentSlides.length !== currentScreen.pinnedSlides.length) {
+                        const nextScreen: DigitalScreenState = {
+                            ...currentScreen,
+                            pinnedSlides: currentSlides,
+                            contentVersion: (currentScreen.contentVersion || 0) + 1,
+                            lastContentChangeAt: Timestamp.now(),
+                        };
+                        setScreenStateInTransaction(transaction, session, nextScreen);
+                        return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+                    }
                     return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
                 }
                 const nextScreen: DigitalScreenState = {
@@ -920,10 +960,20 @@ export const updatePinnedSlideCaption = async (slideId: string, caption: string)
                     : null;
                 if (!isDigitalScreenState(currentScreen)) throw new Error("Screen not initialized");
 
-                const currentSlides = currentScreen.pinnedSlides || [];
+                const currentSlides = getActivePinnedScreenSlides(currentScreen.pinnedSlides);
                 const targetSlide = currentSlides.find((slide) => slide.id === slideId);
                 if (!targetSlide) throw new Error('digital_screen_slide_not_found');
                 if ((targetSlide.caption || '') === nextCaption) {
+                    if (currentSlides.length !== currentScreen.pinnedSlides.length) {
+                        const nextScreen: DigitalScreenState = {
+                            ...currentScreen,
+                            pinnedSlides: currentSlides,
+                            contentVersion: (currentScreen.contentVersion || 0) + 1,
+                            lastContentChangeAt: Timestamp.now(),
+                        };
+                        setScreenStateInTransaction(transaction, session, nextScreen);
+                        return { success: true, screen: nextScreen } satisfies DigitalScreenMutationResult;
+                    }
                     return { success: true, screen: currentScreen } satisfies DigitalScreenMutationResult;
                 }
 
@@ -968,6 +1018,7 @@ export const bumpScreenContentVersion = async (): Promise<void> => {
 
                 const nextScreen: DigitalScreenState = {
                     ...currentScreen,
+                    pinnedSlides: getActivePinnedScreenSlides(currentScreen.pinnedSlides),
                     contentVersion: (currentScreen.contentVersion || 0) + 1,
                     lastContentChangeAt: Timestamp.now(),
                 };
@@ -1002,15 +1053,15 @@ export const uploadScreenSlide = async (
                 screenState = await initializeScreenState();
             }
 
-            // Check max slides limit (3)
-            if (screenState.pinnedSlides.length >= 3) {
-                throw new Error("Maximum 3 custom slides allowed");
+            // Check the shared active-slide cap. Expired references do not block
+            // a replacement upload and are pruned by the add transaction.
+            if (screenState.pinnedSlides.length >= DIGITAL_SCREEN_MAX_UPLOADS) {
+                throw new Error(`Maximum ${DIGITAL_SCREEN_MAX_UPLOADS} custom slides allowed`);
             }
 
             // Generate unique slide ID
             const slideId = `upload-${Date.now()}-${createRandomIdSegment(9)}`;
             let imageUrl = data.url;
-            let uploadedUrls: string[] = [];
 
             // Upload prepared media to immutable profile-aware Storage path
             if (data.blob || isDataUrl(data.url)) {
@@ -1028,12 +1079,7 @@ export const uploadScreenSlide = async (
                     variant: 'full',
                 });
                 imageUrl = uploaded.primaryUrl;
-                uploadedUrls = uploaded.uploadedUrls;
             }
-
-            // Calculate expiry (14 days)
-            const expiryDate = new Date();
-            expiryDate.setDate(expiryDate.getDate() + 14);
 
             // Create slide object
             const newSlide: ScreenSlide = {
@@ -1045,7 +1091,7 @@ export const uploadScreenSlide = async (
                 confidenceScore: 1.0, // Owner uploads always max confidence
                 availabilityLinked: false,
                 availabilityReliability: "high",
-                validUntil: Timestamp.fromDate(expiryDate)
+                validUntil: getOwnerUploadExpiry(DIGITAL_SCREEN_UPLOAD_EXPIRY_DAYS)
             };
 
             // Add to pinned slides
@@ -1056,17 +1102,6 @@ export const uploadScreenSlide = async (
                     'digital_screen_slide_upload_update_rejected',
                 );
             } catch (error) {
-                const cleanupResults = await Promise.all(uploadedUrls.map((url) => deleteFileByUrl(url)));
-                if (cleanupResults.some((cleanup) => !cleanup.success)) {
-                    logCampaignScreenFailure(
-                        'digital_screen_slide_upload_cleanup_failed',
-                        error,
-                        {
-                            uploadedVariantCount: uploadedUrls.length,
-                            failedCleanupCount: cleanupResults.filter((cleanup) => !cleanup.success).length,
-                        },
-                    );
-                }
                 throw error;
             }
 

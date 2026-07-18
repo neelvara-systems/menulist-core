@@ -102,7 +102,7 @@ projectsSummary/projects_{sId}.projects.{projectId} = {
 
 1. Owner enters domain in Business Settings
 2. `POST /api/domain` → Vercel API adds domain to project
-3. Owner configures DNS (CNAME → `cname.vercel-dns.com`)
+3. Owner configures the exact Vercel-recommended DNS record returned for that project/domain: preferred IPv4/A for apex, project-specific CNAME for a subdomain, plus any ownership challenge
 4. `GET /api/domain` → checks verification status
 5. When verified → store doc updated with `domainVerified: true`
 6. Middleware detects custom domain → renders client page

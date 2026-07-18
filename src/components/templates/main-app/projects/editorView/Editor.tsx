@@ -12,8 +12,7 @@ import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
 import { appendImageBatchSelectionsToProject } from "@lib/ai/imageBatchProjectSelection";
 import { resolveProjectForRender } from "@lib/multiOutlet";
 import { stripResolvedOutletProjectForSave } from "@lib/multiOutlet/outletProjectPersistence";
-import { triggerPosSyncDebounced } from "@lib/posSync/eventBuilder";
-import { getCanonicalProjectSourceLanguage } from "@lib/localization/languagePolicy";
+import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import {
     PlatformGlobalDataContext,
     PlatformGlobalDataProviderType,
@@ -140,6 +139,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     const { tenantDetails, storeDetails, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(
         PlatformGlobalDataContext,
     );
+    const canGenerateDescriptions = userPermissions?.canGenerateDescriptions === true;
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'Business'), [storeDetails]);
     const { activeProject, setActiveProject, setCurrentView } =
         useContext<ProjectsDataProviderType>(ProjectsDataContext);
@@ -208,7 +208,13 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     const handleSetIsDescModalOpen = (state: {
         active: boolean;
         sourceFile?: ProjectFileType;
-    }) => setIsDescModalOpen(state);
+    }) => {
+        if (state.active && !canGenerateDescriptions) {
+            antdMessage.info('You do not have permission to generate descriptions.');
+            return;
+        }
+        setIsDescModalOpen(state);
+    };
     const handleSetIsImageModalOpen = (state: {
         active: boolean;
         item?: ExtractedDataItem;
@@ -421,7 +427,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
 
     const validateProject = (data: Project): string[] => {
         const errors: string[] = [];
-        const activeLang = data.languages?.[0] || "en";
+        const activeLang = getCanonicalProjectSourceLanguage(data.languages);
 
         data.files?.forEach((file, fileIndex) => {
             const fileLabel = file.name || `File ${fileIndex + 1}`;
@@ -567,13 +573,6 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     setProjectData(updatedData.masterProjectId ? updatedData : updatedProject);
                     setActiveProject(updatedProject);
                     setLastSavedAt(Date.now());
-                    triggerPosSyncDebounced(
-                        storeDetails?.storeId,
-                        storeDetails?.tenantId,
-                        selectedProject.projectId,
-                        storeDetails?.posSync,
-                    );
-
                     // Behavior Engineering: One-time confidence reinforcement per editor session.
                     // Reinforces Loop 2 ("Update Once, Done Everywhere") — owner sees that
                     // saving automatically updates what customers see via their link.
@@ -863,9 +862,12 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
         let activeFileId: unknown;
         let activeSourceLanguageCode: string | undefined;
         let activeTargetLanguageCode: string | undefined;
+        let completedTranslationRequest = false;
+        let workingProject: Project | null = null;
         try {
+            const normalizedUpdatedLanguages = normalizeProjectLanguages(updatedLanguages);
             // Defensive check: Prevent exceeding MAX_LANGUAGES_PER_PROJECT
-            if (updatedLanguages.length > LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT) {
+            if (normalizedUpdatedLanguages.length > LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT) {
                 antdMessage.warning(
                     `Maximum ${LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT} languages allowed per project.`
                 );
@@ -873,94 +875,95 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             }
 
             let prevData = removeObjRef(projectData);
+            workingProject = prevData;
             const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
-            const newLanguages = updatedLanguages.filter(
-                (lang) => !prevData.languages?.includes(lang),
+            const currentLanguages = normalizeProjectLanguages(prevData.languages);
+            const newLanguages = normalizedUpdatedLanguages.filter(
+                (lang) => !currentLanguages.includes(lang),
             );
             const removedLanguages =
-                prevData.languages?.filter(
-                    (lang) => !updatedLanguages.includes(lang),
-                ) || [];
+                currentLanguages.filter(
+                    (lang) => !normalizedUpdatedLanguages.includes(lang),
+                );
 
-            prevData.languages = updatedLanguages;
+            if (newLanguages.length > 0 && !canGenerateDescriptions) {
+                antdMessage.info('You do not have permission to add translated languages.');
+                return;
+            }
 
+            prevData.languages = normalizedUpdatedLanguages;
+
+            let wasCancelled = false;
             if (newLanguages.length > 0) {
                 // Start translation with progress tracking
                 setIsTranslating(true);
                 cancelTranslationRef.current = false;
-                const totalFiles =
-                    prevData.files?.filter((f) => f.extractedData?.data)?.length || 0;
+                const filesToTranslate = (prevData.files || [])
+                    .filter((file) => file.extractedData?.data)
+                    .map((file) => ({ name: file.name, uid: file.uid }));
+                const totalFiles = filesToTranslate.length * newLanguages.length;
 
                 const sourceLanguage = getCanonicalProjectSourceLanguage(prevData.languages);
                 activeSourceLanguageCode = sourceLanguage;
                 const sourceLang = GlobalLanguagesList.find(
                     (lang) => lang.code === sourceLanguage,
                 );
-                const languageToAdd = newLanguages[0];
-                activeTargetLanguageCode = languageToAdd;
-                const targetLang = GlobalLanguagesList.find(
-                    (lang) => lang.code === languageToAdd,
-                );
+                if (!sourceLang) throw new Error('Translation source language is unavailable.');
 
-                let wasCancelled = false;
-                if (prevData.files) {
-                    let fileIndex = 0;
-                    for (const file of prevData.files) {
+                let requestIndex = 0;
+                translationLoop:
+                for (const languageToAdd of newLanguages) {
+                    activeTargetLanguageCode = languageToAdd;
+                    const targetLang = GlobalLanguagesList.find(
+                        (lang) => lang.code === languageToAdd,
+                    );
+                    if (!targetLang) throw new Error('Translation target language is unavailable.');
+
+                    for (const fileRef of filesToTranslate) {
                         // Check if cancelled
                         if (cancelTranslationRef.current) {
                             wasCancelled = true;
-                            break;
+                            break translationLoop;
                         }
 
-                        if (file.extractedData?.data) {
-                            activeFileId = file.uid;
-                            fileIndex++;
-                            setTranslationProgress({
-                                currentFile: fileIndex,
-                                totalFiles,
-                                fileName: file.name || `File ${fileIndex}`,
-                            });
+                        const file = prevData.files?.find((candidate) => candidate.uid === fileRef.uid);
+                        if (!file?.extractedData?.data) continue;
 
+                        activeFileId = file.uid;
+                        requestIndex += 1;
+                        setTranslationProgress({
+                            currentFile: requestIndex,
+                            totalFiles,
+                            fileName: fileRef.name || `File ${requestIndex}`,
+                        });
+
+                        const fileLanguages = file.extractedData.data.languages || [];
+                        if (!fileLanguages.some((language) => language.code === targetLang.code)) {
                             file.extractedData.data.languages = [
-                                ...file.extractedData.data.languages,
+                                ...fileLanguages,
                                 { code: targetLang?.code, name: targetLang?.name },
                             ];
-                            setFileProcessingId(file.uid);
-                            const {
-                                updatedProject,
-                                message: resultMessage,
-                                messageType,
-                            } = await translateFile(
-                                prevData,
-                                file,
-                                targetLang,
-                                sourceLang,
-                                AI_ACTIONS_TYPES.LANGUAGE_ADDITION,
-                                // Multi-outlet: Pass governance to filter out inherited items
-                                isMasterLinked ? { itemStates, categoryStates } : undefined
-                            );
-                            if (messageType === "error" && resultMessage) {
-                                antdMessage.error(resultMessage);
-                            }
-                            prevData = updatedProject;
-                            if (isMasterLinked) {
-                                setProjectData(removeObjRef(updatedProject));
-                            } else {
-                                setActiveProject(updatedProject);
-                            }
-                            setFileProcessingId(null);
                         }
+
+                        setFileProcessingId(file.uid);
+                        const result = await translateFile(
+                            prevData,
+                            file,
+                            targetLang,
+                            sourceLang,
+                            AI_ACTIONS_TYPES.LANGUAGE_ADDITION,
+                            isMasterLinked ? { itemStates, categoryStates } : undefined,
+                        );
+                        if (result.messageType === "error") {
+                            throw new Error(result.message || 'Translation failed.');
+                        }
+                        if (result.messageType === "success") completedTranslationRequest = true;
+                        prevData = result.updatedProject;
+                        workingProject = prevData;
                     }
                 }
 
-                setIsTranslating(false);
-                setTranslationProgress(undefined);
-
-                if (wasCancelled) {
-                    antdMessage.warning(
-                        "Translation cancelled. Partial translations saved.",
-                    );
-                }
+                wasCancelled = wasCancelled || cancelTranslationRef.current;
 
                 if (!wasCancelled) {
                     const translatedProjectContent = await translateProjectPublicContent({
@@ -971,6 +974,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     });
 
                     if (translatedProjectContent) {
+                        completedTranslationRequest = true;
                         if (translatedProjectContent.name) {
                             prevData.name = translatedProjectContent.name as any;
                             projectMetadataTranslationUpdate.name = translatedProjectContent.name;
@@ -1010,14 +1014,26 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
             applyPersistedEditorProject(prevData, persistedProject || undefined);
             setIsLanguageModalOpen(false);
 
-            if (newLanguages.length > 0) {
+            if (wasCancelled) {
+                antdMessage.warning("Translation cancelled. Completed translations were saved.");
+            } else if (newLanguages.length > 0) {
                 antdMessage.success("Language added and translations saved!");
             } else if (removedLanguages.length > 0) {
                 antdMessage.success("Language removed successfully!");
             }
         } catch (error) {
-            setIsTranslating(false);
-            setTranslationProgress(undefined);
+            if (workingProject && completedTranslationRequest) {
+                try {
+                    const persistedProject = await persistEditorProject(workingProject);
+                    applyPersistedEditorProject(workingProject, persistedProject || undefined);
+                    antdMessage.warning('Translation stopped. Completed translations were saved.');
+                } catch (partialSaveError) {
+                    logTranslationFailure('menu_translation_partial_save_failed', partialSaveError, {
+                        ...getTranslationScopeLogContext(projectData.projectId, activeFileId),
+                        ...getTranslationLanguageLogContext(activeTargetLanguageCode, activeSourceLanguageCode),
+                    });
+                }
+            }
             if (error instanceof AICapacityError) {
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
@@ -1025,9 +1041,13 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 logTranslationFailure('menu_translation_language_toggle_failed', error, {
                     ...getTranslationScopeLogContext(projectData.projectId, activeFileId),
                     ...getTranslationLanguageLogContext(activeTargetLanguageCode, activeSourceLanguageCode),
-                    updatedLanguageCount: updatedLanguages.length,
+                    updatedLanguageCount: normalizeProjectLanguages(updatedLanguages).length,
                 });
             }
+        } finally {
+            setFileProcessingId(null);
+            setIsTranslating(false);
+            setTranslationProgress(undefined);
         }
     };
 
@@ -1036,19 +1056,27 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
     };
 
     const onRetryTranslations = async (file: any) => {
+        if (!canGenerateDescriptions) {
+            antdMessage.info('You do not have permission to refresh translations.');
+            return;
+        }
         let activeSourceLanguageCode: string | undefined;
         let activeTargetLanguageCode: string | undefined;
+        let completedTranslationRequest = false;
+        let workingProject = removeObjRef(projectData);
         try {
-            let prevData = removeObjRef(projectData);
+            let prevData = workingProject;
             const sourceLanguage = getCanonicalProjectSourceLanguage(projectData.languages);
             activeSourceLanguageCode = sourceLanguage;
             const sourceLang = GlobalLanguagesList.find(
                 (lang) => lang.code === sourceLanguage,
             );
+            if (!sourceLang) throw new Error('Translation source language is unavailable.');
             dispatch(startLoader("retrying translations"));
 
-            // Skip primary language (index 0) — it's the source, not a translation target
-            for (const lang of projectData.languages.slice(1)) {
+            const targetLanguageCodes = normalizeProjectLanguages(projectData.languages)
+                .filter((languageCode) => languageCode !== sourceLanguage);
+            for (const lang of targetLanguageCodes) {
                 const targetLanguage = GlobalLanguagesList.find(
                     (gl) => gl.code === lang,
                 );
@@ -1064,31 +1092,40 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                         file,
                         targetLanguage,
                         sourceLang,
-                        AI_ACTIONS_TYPES.IMAGE_TRANSLATION,
+                        AI_ACTIONS_TYPES.LANGUAGE_ADDITION,
                         // Multi-outlet: Pass governance to filter out inherited items
                         isMasterLinked ? { itemStates, categoryStates } : undefined
                     );
-                    if (messageType && resultMessage) {
-                        antdMessage[messageType as "success" | "error" | "warning"](
-                            resultMessage,
-                        );
+                    if (messageType === 'error') {
+                        throw new Error(resultMessage || 'Translation retry failed.');
                     }
+                    if (messageType === 'success') completedTranslationRequest = true;
                     prevData = updatedProject;
-                    if (isMasterLinked) {
-                        setProjectData(removeObjRef(updatedProject));
-                    } else {
-                        setActiveProject(updatedProject);
-                    }
-                    setFileProcessingId(null);
+                    workingProject = prevData;
                 }
             }
 
             // Save to database
             const persistedProject = await persistEditorProject(prevData);
-            dispatch(stopLoader("retrying translations"));
             applyPersistedEditorProject(prevData, persistedProject || undefined);
-            antdMessage.success("Translations updated and saved!");
+            if (completedTranslationRequest) {
+                antdMessage.success("Translations updated and saved!");
+            } else {
+                antdMessage.info('No missing translations found.');
+            }
         } catch (error) {
+            if (completedTranslationRequest) {
+                try {
+                    const persistedProject = await persistEditorProject(workingProject);
+                    applyPersistedEditorProject(workingProject, persistedProject || undefined);
+                    antdMessage.warning('Translation stopped. Completed translations were saved.');
+                } catch (partialSaveError) {
+                    logTranslationFailure('menu_translation_retry_partial_save_failed', partialSaveError, {
+                        ...getTranslationScopeLogContext(projectData.projectId, file?.uid),
+                        ...getTranslationLanguageLogContext(activeTargetLanguageCode, activeSourceLanguageCode),
+                    });
+                }
+            }
             if (error instanceof AICapacityError) {
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
@@ -1100,6 +1137,8 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     languageCount: projectData.languages?.length ?? 0,
                 });
             }
+        } finally {
+            setFileProcessingId(null);
             dispatch(stopLoader("retrying translations"));
         }
     };
@@ -1156,6 +1195,10 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 setIsLanguageModalOpen(true);
                 break;
             case "description":
+                if (!canGenerateDescriptions) {
+                    antdMessage.info('You do not have permission to generate descriptions.');
+                    return;
+                }
                 setIsDescModalOpen({ active: true });
                 break;
             case "images":
@@ -1168,6 +1211,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 setIsReorderModalOpen(true);
                 break;
             case "decisionBlocks":
+                if (!FEATURE_FLAGS.ENABLE_DECISION_BLOCKS) return;
                 setIsDecisionBlocksModalOpen(true);
                 break;
             case "storeCustomization":
@@ -1236,6 +1280,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                                 filters={filters}
                                 onFiltersChange={setFilters}
                                 showItemPrices={showItemPrices}
+                                currencySymbol={storeDetails?.currencySymbol || '₹'}
                             />
                         </Flex>
                         <Flex gap={8}>
@@ -1267,7 +1312,11 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                                     },
                                 ]}
                             />
-                            <EditorActionsPopover onActionClick={handleActionClick} isMasterLinked={isMasterLinked} />
+                            <EditorActionsPopover
+                                canGenerateDescriptions={canGenerateDescriptions}
+                                onActionClick={handleActionClick}
+                                isMasterLinked={isMasterLinked}
+                            />
                             {FEATURE_FLAGS.ENABLE_EDITOR_KEYBOARD_SHORTCUTS && (
                                 <Tooltip title="Keyboard Shortcuts (Shift+?)">
                                     <Button
@@ -1515,21 +1564,24 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                 }}
             />
 
-            <DecisionBlocksSettingsModal
-                open={isDecisionBlocksModalOpen}
-                projectData={projectData}
-                businessType={storeDetails?.businessType || tenantDetails?.businessType}
-                businessCategory={storeDetails?.businessCategory}
-                onClose={() => setIsDecisionBlocksModalOpen(false)}
-                onApply={(updatedProject) => {
-                    setProjectData(updatedProject);
-                    setActiveProject(updatedProject);
-                    setHasChanges(true);
-                    hasChangesRef.current = true;
-                }}
-            />
+            {FEATURE_FLAGS.ENABLE_DECISION_BLOCKS ? (
+                <DecisionBlocksSettingsModal
+                    open={isDecisionBlocksModalOpen}
+                    projectData={projectData}
+                    businessType={storeDetails?.businessType || tenantDetails?.businessType}
+                    businessCategory={storeDetails?.businessCategory}
+                    onClose={() => setIsDecisionBlocksModalOpen(false)}
+                    onApply={(updatedProject) => {
+                        setProjectData(updatedProject);
+                        setActiveProject(updatedProject);
+                        setHasChanges(true);
+                        hasChangesRef.current = true;
+                    }}
+                />
+            ) : null}
 
             <LanguageSelectorModal
+                canTranslate={canGenerateDescriptions}
                 projectData={projectData}
                 handleLanguageToggle={handleLanguageToggle}
                 open={isLanguageModalOpen}
@@ -1564,7 +1616,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                             file: null,
                         })
                     }
-                    selectedLanguages={projectData.languages || ["en"]}
+                    selectedLanguages={normalizeProjectLanguages(projectData.languages)}
                     setUpdatedFileData={handleModalFileUpdate}
                     fileData={editCategoryModalState.file}
                     projectData={projectData}
@@ -1589,7 +1641,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                             file: null,
                         })
                     }
-                    selectedLanguages={projectData.languages || ["en"]}
+                    selectedLanguages={normalizeProjectLanguages(projectData.languages)}
                     projectData={projectData}
                     onImageUpload={onImageUpload}
                     openAddImageModal={(itemData) =>
@@ -1620,6 +1672,7 @@ function Editor({ selectedProject, onRemove, addFileButton, initialQualityAction
                     storeName={storeContextName}
                     storeDetails={storeDetails}
                     allowInheritedDescriptionOverride={outletPolicy?.descriptionOverride === true}
+                    canGenerateDescriptions={canGenerateDescriptions}
                     initialAction={commandCenterInitialAction}
                     onClose={() => {
                         setCommandCenterInitialAction(null);

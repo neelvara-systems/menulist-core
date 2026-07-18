@@ -7,6 +7,7 @@ import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/payment
 import { useAppDispatch } from '@hook/useAppDispatch';
 import usePaymentHandler from '@hook/usePaymentHandler';
 import type { CancellationReasonCode } from '@lib/billing/cancellationReasons';
+import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { formatDateTime } from '@util/dateTime';
@@ -39,6 +40,7 @@ interface ActiveSubscriptionCardProps {
     creditBalanceLabel?: string,
     creditPackButtonLabel?: string,
     canUpgradePlan?: boolean,
+    allowCreditPackPurchase?: boolean,
     allowSubscriptionSelfService?: boolean,
 }
 function ActiveSubscriptionCard({
@@ -55,6 +57,7 @@ function ActiveSubscriptionCard({
     creditBalanceLabel = 'Enhancements left',
     creditPackButtonLabel,
     canUpgradePlan,
+    allowCreditPackPurchase = true,
     allowSubscriptionSelfService = true,
 }: ActiveSubscriptionCardProps) {
     const { token } = theme.useToken();
@@ -73,6 +76,7 @@ function ActiveSubscriptionCard({
         ...metadata,
     });
     const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
+    const keepsMonthlyCapacityPrivate = productId === PRODUCT_IDS.MENULIST;
     const monthlyCredits = Number(activeSubscription.monthlyCredits || 0);
     const topUpCredits = Number(activeSubscription.topUpCredits || 0);
     const monthlyCreditsAllowance = Number(activeSubscription.monthlyCreditsAllowance || 0);
@@ -81,6 +85,7 @@ function ActiveSubscriptionCard({
     const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const isManualBilling = activeSubscription.billingMode === 'manual';
     const isPaymentPending = activeSubscription.status === 'pending';
+    const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(activeSubscription.shortUrl);
     const intervalLabel = activeSubscription.planType === 'YEAR' ? 'Year' : 'Month';
     const amountSuffix = isManualBilling
         ? `one-time prepaid${activeSubscription.commitmentPeriodMonths ? ` / ${activeSubscription.commitmentPeriodMonths} months` : ''}`
@@ -158,15 +163,15 @@ function ActiveSubscriptionCard({
     };
 
     const handleOpenPaymentLink = (flow: 'pending_payment' | 'retry_payment') => {
-        if (!activeSubscription.shortUrl) return;
+        if (!subscriptionCheckoutUrl) return;
         try {
-            const opened = window.open(activeSubscription.shortUrl, '_blank', 'noopener,noreferrer');
+            const opened = window.open(subscriptionCheckoutUrl, '_blank', 'noopener,noreferrer');
             if (!opened) {
                 throw new Error('desktop_subscription_payment_link_open_blocked');
             }
         } catch (error) {
             logPaymentFailure('payment_desktop_subscription_payment_link_open_failed', error, buildSubscriptionActionPaymentLogContext(flow, {
-                ...getBoundedPaymentStringContext('shortUrl', activeSubscription.shortUrl),
+                ...getBoundedPaymentStringContext('shortUrl', subscriptionCheckoutUrl),
             }));
             message.error('Could not open payment link.');
         }
@@ -182,7 +187,7 @@ function ActiveSubscriptionCard({
         const isFinalCycle = Boolean(activeSubscription.renewsOn?.seconds && activeSubscription.subscriptionEndDate?.seconds)
             && Math.abs(activeSubscription.renewsOn.seconds - activeSubscription.subscriptionEndDate.seconds) <= 86400;
         if (isPaymentPending) {
-            return activeSubscription.shortUrl ? (
+            return subscriptionCheckoutUrl ? (
                 <Button type="primary" icon={<LuCreditCard />} onClick={() => handleOpenPaymentLink('pending_payment')}>
                     Pay Now
                 </Button>
@@ -228,7 +233,7 @@ function ActiveSubscriptionCard({
         if (activeSubscription.status === 'past_due') {
             return <Space>
                 {!isFinalCycle && <Button icon={<LuXCircle />} danger onClick={() => setIsCancellationModalOpen(true)}>Cancel Subscription</Button>}
-                {activeSubscription.shortUrl ? (
+                {subscriptionCheckoutUrl ? (
                     <Button type="primary" icon={<LuCreditCard />} onClick={() => handleOpenPaymentLink('retry_payment')}>
                         Retry Payment
                     </Button>
@@ -452,39 +457,53 @@ function ActiveSubscriptionCard({
                                 {creditDescription}
                             </Text>
 
-                            <Statistic
-                                title={creditBalanceLabel}
-                                value={totalCredits}
-                                valueStyle={{
-                                    color: totalCredits > 0 ? token.colorSuccessText : token.colorWarningText,
-                                    fontSize: 36,
-                                    fontWeight: 700,
-                                }}
-                            />
+                            {keepsMonthlyCapacityPrivate ? (
+                                <>
+                                    <Statistic
+                                        title="Pack balance"
+                                        value={topUpCredits}
+                                        suffix={<Text type="secondary">credits</Text>}
+                                        valueStyle={{ fontSize: 30, fontWeight: 700 }}
+                                    />
+                                    <Text type="secondary">Your plan enhancements are included automatically.</Text>
+                                </>
+                            ) : (
+                                <>
+                                    <Statistic
+                                        title={creditBalanceLabel}
+                                        value={totalCredits}
+                                        valueStyle={{
+                                            color: totalCredits > 0 ? token.colorSuccessText : token.colorWarningText,
+                                            fontSize: 36,
+                                            fontWeight: 700,
+                                        }}
+                                    />
 
-                            <Progress
-                                percent={Math.max(0, Math.min(100, monthlyCreditUsage))}
-                                showInfo={false}
-                                status={monthlyCredits > 0 ? 'active' : 'exception'}
-                                strokeColor={monthlyCredits > 0 ? token.colorSuccess : token.colorWarning}
-                            />
+                                    <Progress
+                                        percent={Math.max(0, Math.min(100, monthlyCreditUsage))}
+                                        showInfo={false}
+                                        status={monthlyCredits > 0 ? 'active' : 'exception'}
+                                        strokeColor={monthlyCredits > 0 ? token.colorSuccess : token.colorWarning}
+                                    />
 
-                            <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                                <Flex justify="space-between">
-                                    <Text type="secondary">Plan balance</Text>
-                                    <Text strong>{monthlyCredits} of {monthlyCreditsAllowance}</Text>
-                                </Flex>
-                                <Flex justify="space-between">
-                                    <Text type="secondary">Used this cycle</Text>
-                                    <Text>{monthlyCreditsUsed}</Text>
-                                </Flex>
-                                <Flex justify="space-between">
-                                    <Text type="secondary">Pack balance</Text>
-                                    <Text>{topUpCredits}</Text>
-                                </Flex>
-                            </Space>
+                                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                        <Flex justify="space-between">
+                                            <Text type="secondary">Plan balance</Text>
+                                            <Text strong>{monthlyCredits} of {monthlyCreditsAllowance}</Text>
+                                        </Flex>
+                                        <Flex justify="space-between">
+                                            <Text type="secondary">Used this cycle</Text>
+                                            <Text>{monthlyCreditsUsed}</Text>
+                                        </Flex>
+                                        <Flex justify="space-between">
+                                            <Text type="secondary">Pack balance</Text>
+                                            <Text>{topUpCredits}</Text>
+                                        </Flex>
+                                    </Space>
+                                </>
+                            )}
 
-                            {totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2) ? (
+                            {!keepsMonthlyCapacityPrivate && totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2) ? (
                                 <Text type="warning">
                                     Running low. Add a pack before generation pauses.
                                 </Text>
@@ -492,9 +511,11 @@ function ActiveSubscriptionCard({
 
                             <Flex align='end' style={{ width: '100%' }} gap={16}>
                                 <Button block icon={<LuHistory />} onClick={() => router.push(usageRoute)}>View Usage</Button>
-                                <Button type="primary" ghost block icon={<LuZap />} onClick={() => setIsCreditsModalOpen(true)}>
-                                    {creditPackButtonLabel || (totalCredits > 0 ? 'Get Enhancements' : 'Get More Enhancements')}
-                                </Button>
+                                {allowCreditPackPurchase ? (
+                                    <Button type="primary" ghost block icon={<LuZap />} onClick={() => setIsCreditsModalOpen(true)}>
+                                        {creditPackButtonLabel || (totalCredits > 0 ? 'Get Enhancements' : 'Get More Enhancements')}
+                                    </Button>
+                                ) : null}
                             </Flex>
                         </Space>
                     </Card>

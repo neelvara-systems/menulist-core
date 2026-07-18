@@ -14,17 +14,26 @@ import { normalizeAnswerlatticeScopeDocumentId } from './sessionScope';
 
 const FRESHNESS_CLOCK_SKEW_MS = 1000;
 
-export const getAnswerlatticeTimestampMillis = (value: any): number => {
-    if (!value) return 0;
-    if (typeof value.toMillis === 'function') return value.toMillis();
-    if (typeof value.toDate === 'function') return value.toDate().getTime();
-    if (value instanceof Date) return value.getTime();
-    if (typeof value === 'number') return value;
-    const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : 0;
+export const getAnswerlatticeTimestampMillis = (value: unknown): number => {
+    if (!value || typeof value !== 'object') return 0;
+
+    try {
+        if (typeof (value as { toMillis?: unknown }).toMillis === 'function') {
+            const millis = Number((value as { toMillis(): unknown }).toMillis());
+            return Number.isFinite(millis) && millis > 0 ? millis : 0;
+        }
+        if (value instanceof Date) {
+            const millis = value.getTime();
+            return Number.isFinite(millis) && millis > 0 ? millis : 0;
+        }
+    } catch {
+        return 0;
+    }
+
+    return 0;
 };
 
-const isModifiedAfterCache = (modifiedOn: any, cachedAtMs: number): boolean => {
+const isModifiedAfterCache = (modifiedOn: unknown, cachedAtMs: number): boolean => {
     const modifiedMs = getAnswerlatticeTimestampMillis(modifiedOn);
     return Boolean(modifiedMs && cachedAtMs && modifiedMs > cachedAtMs + FRESHNESS_CLOCK_SKEW_MS);
 };

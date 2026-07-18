@@ -14,6 +14,11 @@ import {
 import { createRandomIdSegment } from '@lib/runtime/randomId';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
+import { shouldCleanupUploadedFilesAfterJobStartError } from '@lib/menu-extraction/jobStartFailure';
+import {
+    MENULIST_ANSWERLATTICE_TARGETS,
+    getMenuListAnswerlatticeTargetProps,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildOwnerDetectedUploadDetails, buildOwnerUploadConcernDetails, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
@@ -211,6 +216,8 @@ export default function MenuUploadSheet({
         };
     }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
     const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
+    const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;
+    const canManageStore = userPermissions?.canManageStore === true;
     const canUploadToCurrentContext = Boolean(currentProjectId) || canCreateLocalProjects;
 
     const hasSelectedFiles = selectedFiles.length > 0;
@@ -256,6 +263,10 @@ export default function MenuUploadSheet({
     }, []);
 
     const handleSelectedFile = useCallback(async (file: File, fileList: File[]) => {
+        if (!canUseMenuExtraction) {
+            Toast.show({ content: 'Menu extraction is not enabled for this location.', duration: 1800 });
+            return false;
+        }
         if (!canUploadToCurrentContext) {
             Toast.show({ content: 'New local menus are not enabled for this location.', duration: 1800 });
             return false;
@@ -348,6 +359,7 @@ export default function MenuUploadSheet({
         return false;
     }, [
         canUploadToCurrentContext,
+        canUseMenuExtraction,
         existingFiles,
         existingPendingFileCount,
         getRemainingMenuUploadSlots,
@@ -435,6 +447,7 @@ export default function MenuUploadSheet({
     const maybeAcceptBusinessIdentitySuggestions = useCallback(async (
         result: Awaited<ReturnType<typeof runMenuIntakeIdentityPreflight>> | null,
     ) => {
+        if (!canManageStore) return;
         const suggestions = buildBusinessIdentitySuggestions(result, storeDetails);
         if (!suggestions.length || !storeDetails?.storeId) return;
         const detectedDetails = buildOwnerDetectedUploadDetails(result);
@@ -481,7 +494,7 @@ export default function MenuUploadSheet({
                 }
             },
         });
-    }, [setStoreDetails, storeDetails]);
+    }, [canManageStore, setStoreDetails, storeDetails]);
 
     const confirmMenuIntakeDecision = useCallback(async (
         projectId: string,
@@ -597,19 +610,25 @@ export default function MenuUploadSheet({
         if (files.length === 0) return;
 
         const cleanupResults = await Promise.allSettled(files.map(file => deleteFileByUrl(file.url)));
-        const failedCleanups = cleanupResults.filter((result) => result.status === 'rejected') as PromiseRejectedResult[];
+        const failedCleanupCount = cleanupResults.filter((result) => (
+            result.status === 'rejected' || result.value.success !== true
+        )).length;
 
-        if (failedCleanups.length > 0) {
-            logMenuProcessingFailure('mobile_menu_upload_uploaded_file_cleanup_failed', failedCleanups[0]?.reason, {
+        if (failedCleanupCount > 0) {
+            logMenuProcessingFailure('mobile_menu_upload_uploaded_file_cleanup_failed', new Error('storage_cleanup_failed'), {
                 ...getMenuProcessingProjectLogContext(projectId),
                 ...getBoundedMenuProcessingStringContext('cleanupReason', cleanupReason),
                 attemptedCleanupCount: files.length,
-                failedCleanupCount: failedCleanups.length,
+                failedCleanupCount,
             });
         }
     }, []);
 
     const handleUploadAndProcess = useCallback(async () => {
+        if (!canUseMenuExtraction) {
+            Toast.show({ content: 'Menu extraction is not enabled for this location.', duration: 1800 });
+            return;
+        }
         if (!selectedFiles.length) return;
         if (existingPendingFileCount + selectedFiles.length > MAX_MENU_EXTRACTION_FILES) {
             showMenuUploadFileLimitError();
@@ -732,16 +751,24 @@ export default function MenuUploadSheet({
 
             const languageCodes = currentProjectLanguages?.length ? currentProjectLanguages : ['en'];
             const targetLanguages = GlobalLanguagesList.filter((language) => languageCodes.includes(language.code));
-            const { jobId } = await createProcessingJob({
-                files: filesForJob,
-                targetLanguages: targetLanguages.length
-                    ? targetLanguages
-                    : [{ code: 'en', name: 'English' }],
-                projectId: targetProjectId,
-                businessCategory: storeDetails?.businessCategory,
-                businessType: storeDetails?.businessType,
-                identityOverrideConfirmed: intakeDecision.identityOverrideConfirmed,
-            });
+            let jobId: string;
+            try {
+                ({ jobId } = await createProcessingJob({
+                    files: filesForJob,
+                    targetLanguages: targetLanguages.length
+                        ? targetLanguages
+                        : [{ code: 'en', name: 'English' }],
+                    projectId: targetProjectId,
+                    businessCategory: storeDetails?.businessCategory,
+                    businessType: storeDetails?.businessType,
+                    identityOverrideConfirmed: intakeDecision.identityOverrideConfirmed,
+                }));
+            } catch (error) {
+                if (shouldCleanupUploadedFilesAfterJobStartError(error)) {
+                    await cleanupUploadedMenuFiles(filesForJob, 'job_start_rejected', targetProjectId);
+                }
+                throw error;
+            }
 
             setProgress(100);
             onJobCreated({ jobId, projectId: targetProjectId });
@@ -755,6 +782,7 @@ export default function MenuUploadSheet({
         }
     }, [
         canCreateLocalProjects,
+        canUseMenuExtraction,
         cleanupUploadedMenuFiles,
         confirmMenuIntakeDecision,
         currentProjectId,
@@ -771,6 +799,10 @@ export default function MenuUploadSheet({
 
     const handleMenuLinkImport = useCallback(async () => {
         if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) return;
+        if (!canUseMenuExtraction) {
+            Toast.show({ content: 'Menu extraction is not enabled for this location.', duration: 1800 });
+            return;
+        }
         if (!linkUrl.trim()) {
             Toast.show({ content: 'Paste a public menu link.', duration: 1800 });
             return;
@@ -832,6 +864,7 @@ export default function MenuUploadSheet({
         }
     }, [
         canCreateLocalProjects,
+        canUseMenuExtraction,
         currentProjectId,
         linkPermissionConfirmed,
         linkUrl,
@@ -911,6 +944,7 @@ export default function MenuUploadSheet({
                                 <Flex style={{ width: '100%' }} align='center' justify='center'>
                                     <Upload {...uploadProps}>
                                         <Button
+                                            {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_CHOOSE_SOURCE)}
                                             block
                                             color="primary"
                                             disabled={!canUploadToCurrentContext}
@@ -974,6 +1008,7 @@ export default function MenuUploadSheet({
                                         I confirm this is my business menu or I have permission to import it.
                                     </Checkbox>
                                     <Button
+                                        {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}
                                         block
                                         color="primary"
                                         disabled={!canUploadToCurrentContext || !linkUrl.trim() || !linkPermissionConfirmed}
@@ -1109,7 +1144,14 @@ export default function MenuUploadSheet({
                                 <Button key="cancel" block fill="outline" onClick={onClose} size="large">
                                     {t('cancel')}
                                 </Button>,
-                                <Button key="retry" block color="primary" onClick={handleReset} size="large">
+                                <Button
+                                    {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_RETRY)}
+                                    key="retry"
+                                    block
+                                    color="primary"
+                                    onClick={handleReset}
+                                    size="large"
+                                >
                                     {t('tryAgain')}
                                 </Button>,
                             ]}
@@ -1147,6 +1189,7 @@ export default function MenuUploadSheet({
                                 </Upload>
 
                                 <Button
+                                    {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}
                                     block
                                     color="primary"
                                     disabled={!canUploadToCurrentContext}

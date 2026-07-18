@@ -3,7 +3,7 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Source-bound help draft
 **Created:** February 27, 2026  
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Reseller Partners (Customer-Facing Help Article)
 
 ---
@@ -40,6 +40,7 @@ The Reseller Dashboard lets you set up MenuList accounts for local businesses on
 - **Business Type** — Select from the dropdown (Restaurant, Cafe, Salon, etc.)
 - **Owner Phone** — Select country and enter the business owner's phone number (required)
 - **Owner Email** — Optional, but helps with login
+- **Owner Password** — Required; hand it to the owner securely after setup
 
 ### Step 3: Confirm Account Handoff
 - Confirm the owner phone and optional email
@@ -58,7 +59,7 @@ The system shows the total amount automatically.
 
 **If Online Payment:**
 1. Review the summary
-2. Click "Create & Generate Payment Link"
+2. Click the create-link action
 3. Share the payment link with the business owner (WhatsApp, SMS)
 4. The account activates automatically when they pay
 5. Share the dashboard/customer links after payment is complete
@@ -66,17 +67,16 @@ The system shows the total amount automatically.
 **If Offline Payment:**
 1. Collect payment from the business owner (cash, UPI, bank transfer)
 2. Review the summary
-3. Check the "I confirm payment has been received" box
-4. Click "Create & Activate"
-5. The account is active immediately for the selected prepaid period
-6. Share the dashboard/customer links with the business owner
+3. Click **"Confirm Prepaid Payment & Activate"** on desktop or **"Confirm Prepaid"** on mobile only after collection
+4. The account is active immediately for the selected prepaid period
+5. Share the dashboard/customer links with the business owner
 
 ---
 
 ## Managing Your Clients
 
 ### Viewing Your Clients
-- Go to **"My Clients"** in the sidebar
+- Open the client list on the Reseller Dashboard
 - See all businesses you've onboarded
 - Each row shows: business name, plan, status, paid locations, and expiry date
 
@@ -111,10 +111,10 @@ Online clients can add locations only after the subscription is active. If Razor
 | 🟠 **Expiring Soon** | Less than 30 days until expiry |
 | 🔴 **Expired** | Plan has ended — needs renewal |
 
-### Client Details
-- Click on any client to see their full details
-- View subscription status, payment history, and expiry date
-- You cannot edit the business details after creation
+### Current Client Row
+- Current status, paid location count, amount, and expiry are shown directly in the dashboard row/card
+- There is no separate reseller client-detail screen
+- The reseller cannot edit the owner's business details after creation
 
 ---
 
@@ -122,12 +122,12 @@ Online clients can add locations only after the subscription is active. If Razor
 
 When a client's plan is about to expire or has expired:
 
-1. Go to **"My Clients"** → click on the client
+1. Open the client row/card in the Reseller Dashboard
 2. Click **"Renew"**
 3. Select duration (3, 6, or 12 months)
-4. Select payment mode (online or offline)
-5. If offline: confirm payment received
-6. The plan extends from the previous expiry date
+4. Collect the displayed offline prepaid amount
+5. Confirm the renewal
+6. An active plan extends from its previous expiry; an expired plan starts again from the confirmation time
 
 **Tip:** Renew before the plan expires to avoid any interruption for the business owner.
 
@@ -140,13 +140,11 @@ You've reached your limit for offline (cash) activations. Contact the MenuList t
 
 ### Client can't log in
 - Make sure you entered the correct phone number or email during onboarding
-- The client can log in using Google (if email was provided) or via the activation link
+- Use the username/login email and password shown after onboarding with the dashboard sign-in link
 - Contact the MenuList team if the issue persists
 
-### Payment link expired
-Online payment links expire after 7 days. If the client hasn't paid:
-1. Go to the client's detail page
-2. The system will show the option to generate a new payment link
+### Payment link unavailable
+Use **"Copy link"** or **"Open"** while the client remains pending. The reseller flow does not generate a replacement link. If the validated provider link is unavailable, contact the MenuList team for support review.
 
 ### Menu still needs to be added
 The reseller onboarding flow creates the account and links. The business owner adds photos, PDFs, typed menu content, or other sources from the normal MenuList dashboard/import flow after logging in.
@@ -158,7 +156,7 @@ The reseller onboarding flow creates the account and links. The business owner a
 1. **Collect the right menu source** — Good photos, PDFs, or typed text make the later owner import/review flow easier.
 2. **Collect payment during setup** — Don't leave without payment. Use offline mode and confirm on the spot.
 3. **Show the handoff** — After setup, show the business owner the dashboard link, customer link, and where menu content is added.
-4. **Save the QR code** — Download the QR code and share it with the business owner for their tables.
+4. **Share the customer link** — QR creation and menu publishing remain in the normal owner workflow.
 5. **Check expiry dates** — Visit "My Clients" weekly to catch upcoming expirations before they happen.
 
 ---
@@ -178,4 +176,4 @@ The reseller onboarding flow creates the account and links. The business owner a
 ---
 
 **DOCUMENT STATUS:** Source-bound help draft
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026

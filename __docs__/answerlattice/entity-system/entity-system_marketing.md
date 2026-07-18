@@ -1,16 +1,16 @@
 # Entity System — Marketing & Sales Collateral
 
 > **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-18
 > **Audience:** Sales, Marketing, Partnerships
 
 ---
 
 ## 1. Positioning Statement
 
-**Answerlattice doesn't search documents. It understands your product.**
+**Answerlattice governs product concepts before fallback searches documents.**
 
-While other help center AI tools run semantic search over articles, Answerlattice builds a structured product ontology — a knowledge graph of your product's features, integrations, error codes, and workflows. Every support query resolves through product concepts first, not keyword matching.
+Answerlattice combines a structured product ontology with approved canonical answers and bounded knowledge-base fallback. The ontology represents product features, integrations, errors, roles, plans, states, and workflows; it does not make generated answers authoritative.
 
 ---
 
@@ -18,21 +18,21 @@ While other help center AI tools run semantic search over articles, Answerlattic
 
 ### For SaaS Founders
 
-- **Deterministic answers:** Same question → same answer, every time. No random article lottery.
+- **Canonical authority:** Matching canonical questions return the approved answer; fallback remains explicitly non-canonical.
 - **Knowledge gaps visible:** Answerlattice shows which product concepts lack documentation — based on real query demand.
-- **Self-improving:** As users ask questions, the entity graph learns new aliases and improves detection automatically.
-- **Zero manual tagging:** AI extracts entities from articles during creation. Authors just write.
+- **Governed improvement:** Support signals can produce review work; they do not silently rewrite entities or aliases.
+- **Assisted tagging:** When ontology is enabled, post-save extraction reuses known entities and proposes new concepts for review.
 
 ### For Support Teams
 
-- **Entity-centric troubleshooting:** When a user reports "webhook failing," Answerlattice knows Webhooks, Retry Policy, and Rate Limits are related — and retrieves all relevant docs.
+- **Entity-centric troubleshooting:** When a user reports "webhook failing," governed entity relationships can add relevant product context without allowing fallback evidence to override an approved answer.
 - **Coverage dashboard:** See which product areas have strong documentation and which need attention.
 - **Alias management:** Users say "token" but docs say "API Keys" — Answerlattice resolves both to the same concept.
 
 ### For Engineering Teams
 
 - **Product ontology as code:** Entities represent real product architecture — features, plans, roles, workflows, states, integrations, errors.
-- **Version-aware:** Entities track product versions. Answers automatically scope to the user's current version.
+- **Version-aware answers:** Approved answers can carry explicit version applicability and validation windows.
 - **Governance built-in:** Drift detection flags when knowledge becomes stale. Mutation proposals suggest updates.
 
 ---
@@ -41,47 +41,48 @@ While other help center AI tools run semantic search over articles, Answerlattic
 
 | Capability | Typical Help AI | Answerlattice |
 |------------|----------------|----------|
-| Retrieval method | Vector similarity (probabilistic) | Entity-first (deterministic) + vector fallback |
+| Retrieval method | Usually document or vector retrieval | Canonical first, deterministic entity resolution, then bounded fallback |
 | Product understanding | None — treats docs as text blobs | Structured ontology of product concepts |
-| Answer consistency | Varies per query | Same entities → same answers |
+| Answer consistency | Generated output may vary | Approved canonical answers remain authoritative |
 | Knowledge gaps | Invisible | Entity coverage metrics reveal gaps |
-| Alias handling | None | Automatic alias detection + resolution |
-| Version awareness | None | Entity version windows filter answers |
+| Alias handling | Varies | Owner-governed aliases with deterministic resolution |
+| Version awareness | Varies | Explicit answer version windows |
 | Self-improvement | Manual retraining | Signal-driven mutation proposals |
 
 ---
 
 ## 4. Demo Script
 
-**Setup:** Show a knowledge base with 50+ articles about a SaaS product.
+**Setup:** Use a real, owner-approved SaaS knowledge base and representative support questions.
 
 **Demo 1 — Entity Detection:**
 - Type "token not working"
 - Show: system resolves "token" → "API Keys" entity
-- Result: deterministic retrieval of API Keys documentation
+- Result: deterministic entity resolution followed by an approved answer or bounded fallback
 
 **Demo 2 — Knowledge Graph:**
 - Show entity dashboard with product concepts
 - Click "Webhooks" entity → see related: Retry Policy, Rate Limits, Endpoint URL
-- Show how a query about "webhook failing" retrieves docs across all related entities
+- Show how a query about "webhook failing" uses approved relationships without overriding canonical authority
 
 **Demo 3 — Coverage Gaps:**
 - Show entity with high query demand but low article count
 - "This is your documentation blind spot — users keep asking about this, but you don't have enough content."
 
-**Demo 4 — Automatic Entity Extraction:**
+**Demo 4 — Post-Save Entity Extraction:**
+- Enable ontology for the demo workspace
 - Create a new article about "OAuth Token Refresh"
-- Show entity suggestions appearing automatically
-- Confirm entities with one click
-- Article immediately becomes entity-indexed
+- Show the best-effort post-save extraction result
+- Review any new entity candidates in the governance queue
+- Show the linked entities after the protected route succeeds
 
 ---
 
 ## 5. One-Line Descriptions
 
 - **Tagline:** "Product knowledge, not document search."
-- **Elevator:** "Answerlattice builds a product ontology from your docs and uses it for deterministic support answers."
-- **Technical:** "Entity-first retrieval with version-aware governance and signal-driven knowledge mutation."
+- **Elevator:** "Answerlattice structures product concepts, serves approved answers first, and uses bounded fallback when approved truth is not available."
+- **Technical:** "Canonical-first retrieval with deterministic entity resolution, explicit applicability, and human-reviewed knowledge mutation."
 
 ---
 
@@ -89,7 +90,7 @@ While other help center AI tools run semantic search over articles, Answerlattic
 
 | Objection | Response |
 |-----------|----------|
-| "We already have Intercom/Zendesk AI" | Those search documents. Answerlattice understands product structure. Entity-first retrieval produces consistent answers. |
-| "Our KB is small" | Even 20 articles benefit from entity normalization. Users say "token" — your docs say "API Key." Entity aliases fix this. |
-| "We don't want to tag entities manually" | You don't. AI extracts entities automatically on article save. Authors just write. |
-| "How is this different from RAG?" | RAG is vector search — probabilistic. Entity retrieval is structural — deterministic. Answerlattice uses entity-first, RAG as fallback. |
+| "We already have Intercom/Zendesk AI" | Answerlattice is the governed authority layer behind support surfaces: approved answers, product applicability, dependency tracking, and reviewable change. |
+| "Our KB is small" | Start with the repeated questions whose wrong answers cost founder time. Entity aliases help when user language and product terminology differ. |
+| "We don't want to tag entities manually" | With ontology enabled, Answerlattice matches known entities after article save and sends genuinely new concepts to review. |
+| "How is this different from RAG?" | Retrieval is a mechanism. Answerlattice keeps approved answers authoritative, records applicability and evidence, and turns unresolved gaps into human review. |

@@ -6,6 +6,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
+import { markOwnerActionDoneTransaction } from '@lib/analytics/ownerActionReceiptTransaction';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -18,9 +19,6 @@ import { z } from 'zod';
 import { withAuth } from '../../../../../middleware/auth';
 
 const MARK_DONE_MAX_BODY_BYTES = 6 * 1024;
-const MAX_OWNER_ACTION_RECEIPTS = 20;
-const RESULT_CHECK_DELAY_DAYS = 7;
-const OWNER_ACTION_RECEIPT_ID_PATTERN = /^[a-f0-9]{32}$/;
 const OWNER_ACTION_SCOPE_DOCUMENT_ID_PATTERN = /^\d+$/;
 
 const MarkDoneProjectIdSchema = z.string()
@@ -38,19 +36,8 @@ const MarkDoneSchema = z.object({
     metricLabel: z.string().max(120).optional(),
 });
 
-function addDaysToDateKey(dateKey: string, days: number): string {
-    const [year, month, day] = dateKey.split('-').map((part) => Number(part));
-    const date = new Date(Date.UTC(year, month - 1, day));
-    date.setUTCDate(date.getUTCDate() + days);
-    return date.toISOString().slice(0, 10);
-}
-
 function buildReceiptId(projectId: string, actionId: string): string {
     return createHash('sha256').update(`${projectId}:${actionId}`).digest('hex').slice(0, 32);
-}
-
-function isOwnerActionReceiptId(value: unknown): value is string {
-    return typeof value === 'string' && OWNER_ACTION_RECEIPT_ID_PATTERN.test(value);
 }
 
 function normalizeMarkDoneScopeDocumentId(value: unknown): string | null {
@@ -62,35 +49,6 @@ function normalizeMarkDoneScopeDocumentId(value: unknown): string | null {
     return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
         ? documentId
         : null;
-}
-
-function pickBaselineMetrics(data: Record<string, any>) {
-    return data?.wtd?.metrics
-        || data?.weekly?.metrics
-        || data?.daily?.metrics
-        || data?.overview?.wtd?.metrics
-        || data?.overview?.yesterday?.metrics
-        || {};
-}
-
-function getReceiptEntries(data: Record<string, any>) {
-    const receipts = data.ownerActionReceipts
-        || data.ownerActionPlan?.receipts
-        || data.overview?.ownerActionPlan?.receipts
-        || {};
-    return Object.entries(receipts).filter(([, receipt]) => receipt && typeof receipt === 'object');
-}
-
-function getOldestReceiptId(data: Record<string, any>): string | null {
-    const entries = getReceiptEntries(data).filter(([receiptId]) => isOwnerActionReceiptId(receiptId));
-    if (entries.length < MAX_OWNER_ACTION_RECEIPTS) return null;
-    const sorted = entries.sort(([, a], [, b]) => {
-        const aTime = new Date((a as any).markedDoneAt || 0).getTime() || 0;
-        const bTime = new Date((b as any).markedDoneAt || 0).getTime() || 0;
-        return aTime - bTime;
-    });
-    const receiptId = sorted[0]?.[0] || null;
-    return isOwnerActionReceiptId(receiptId) ? receiptId : null;
 }
 
 export const POST = withAuth(async (request: NextRequest, session) => {
@@ -156,62 +114,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const dashboardRef = admin.firestore().collection(DB_COLLECTIONS.ANALYTICS).doc(dashboardDocId);
 
     try {
-        const dashboardSnap = await dashboardRef.get();
-        if (!dashboardSnap.exists) {
-            return NextResponse.json({ error: 'Action list is not ready yet' }, { status: 404 });
-        }
-
-        const dashboardData = dashboardSnap.data() || {};
-        const actionPlan = dashboardData.ownerActionPlan || dashboardData.overview?.ownerActionPlan;
-        const currentAction = Array.isArray(actionPlan?.actions)
-            ? actionPlan.actions.find((action: any) => action?.id === actionId)
-            : null;
-        if (!currentAction) {
-            return NextResponse.json({ error: 'Action is no longer available' }, { status: 409 });
-        }
-
-        const baselineLocalDate = dashboardData.lastSettledLocalDate || dashboardData.daily?.date || null;
-        if (!baselineLocalDate) {
-            return NextResponse.json({ error: 'Settled analytics are not ready yet' }, { status: 409 });
-        }
-
-        const markedDoneAt = new Date().toISOString();
-        const receipt = {
-            receiptId,
+        const outcome = await markOwnerActionDoneTransaction(admin.firestore(), {
             actionId,
-            actionType: currentAction.type || actionType,
-            actionTitle: currentAction.title || actionTitle,
-            actionLabel: currentAction.actionLabel || actionLabel,
-            ...(currentAction.metricLabel || metricLabel ? { metricLabel: currentAction.metricLabel || metricLabel } : {}),
-            status: 'marked_done',
-            markedDoneAt,
-            markedBy: userId,
-            baselineLocalDate,
-            checkAfterLocalDate: addDaysToDateKey(baselineLocalDate, RESULT_CHECK_DELAY_DAYS),
-            baselineSnapshot: pickBaselineMetrics(dashboardData),
-            result: {
-                status: 'pending',
-                label: 'Marked',
-                message: 'Marked done. MenuList will check the next settled results after a few days.',
-                checkAfterLocalDate: addDaysToDateKey(baselineLocalDate, RESULT_CHECK_DELAY_DAYS),
-            },
-        };
-
-        const updates: Record<string, any> = {
-            [`ownerActionReceipts.${receiptId}`]: receipt,
-            [`ownerActionPlan.receipts.${receiptId}`]: receipt,
-            [`overview.ownerActionPlan.receipts.${receiptId}`]: receipt,
-            modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
-        };
-        const oldestReceiptId = getOldestReceiptId(dashboardData);
-        if (oldestReceiptId && oldestReceiptId !== receiptId) {
-            updates[`ownerActionReceipts.${oldestReceiptId}`] = admin.firestore.FieldValue.delete();
-            updates[`ownerActionPlan.receipts.${oldestReceiptId}`] = admin.firestore.FieldValue.delete();
-            updates[`overview.ownerActionPlan.receipts.${oldestReceiptId}`] = admin.firestore.FieldValue.delete();
+            actionLabel,
+            actionTitle,
+            actionType,
+            dashboardRef,
+            metricLabel,
+            receiptId,
+            userId,
+        });
+        if (outcome.ok === false) {
+            return NextResponse.json({ error: outcome.error }, { status: outcome.status });
         }
-
-        await dashboardRef.update(updates);
-        return NextResponse.json({ success: true, receipt });
+        return NextResponse.json({ success: true, receipt: outcome.receipt });
     } catch (error) {
         logAnalyticsFailure('owner_action_mark_done_failed', error, {
             ...getBoundedAnalyticsStringContext('endpoint', '/api/analytics/owner-action/mark-done'),

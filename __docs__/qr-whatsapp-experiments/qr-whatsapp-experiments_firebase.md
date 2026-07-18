@@ -1,13 +1,19 @@
 # QR WhatsApp Experiments Firebase Cost
 
-**Status:** Docs-ready
-**Last Updated:** June 25, 2026
+**Status:** PLANNING ONLY — ZERO CURRENT FIREBASE OPERATIONS
+**Last Updated:** July 17, 2026
+
+## Current Source Truth
+
+Current Firestore operations: zero. There is no collection constant, DAL, rule, index, TTL policy, listener, scheduler, Function, Storage path, public counter, webhook, or provider integration for this proposal. The disabled feature flag has no runtime consumer.
+
+No rules, indexes, TTL policy, listeners, scheduler, or Functions should be added until an approved implementation requires them. Keeping the proposal infrastructure-free is the smallest and cheapest current design.
 
 ## Cost Principle
 
 This feature must be aggregate-first. It should help an SMB owner decide a campaign winner without turning every scan into a Firestore document.
 
-## Expected Runtime Cost Shape
+## Proposed Runtime Cost Shape
 
 | Operation | Firestore Reads | Firestore Writes | Storage | Functions/API | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |

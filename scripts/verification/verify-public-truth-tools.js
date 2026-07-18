@@ -279,9 +279,16 @@ const ACTIVE_TOOL_DOC_DIRS = [
 
 const CURRENT_DOC_DATE = 'July 4, 2026';
 const DOC_DATE_OVERRIDES = {
-  '__docs__/menulist-tools/shareable-tool-reports': 'July 5, 2026',
+  '__docs__/menulist-tools/public-truth-tools': 'July 16, 2026',
+  '__docs__/menulist-tools/public-truth-monitor-addon': 'July 16, 2026',
+  '__docs__/menulist-tools/shareable-tool-reports': 'July 16, 2026',
+  '__docs__/menulist-tools/print-share-tools': 'July 16, 2026',
+  '__docs__/menulist-tools/public-truth-check': 'July 16, 2026',
+  '__docs__/menulist-tools/booking-inquiry-readiness-check': 'July 16, 2026',
+  '__docs__/menulist-tools/business-facts-copy-pack': 'July 16, 2026',
   '__docs__/menulist-tools/tools-hub': 'July 9, 2026',
-  '__docs__/menulist-tools/whatsapp-action-link-check': 'July 5, 2026',
+  '__docs__/menulist-tools/whatsapp-action-link-check': 'July 16, 2026',
+  '__docs__/menulist-tools/whatsapp-reply-pack': 'July 16, 2026',
 };
 
 function getActualToolRoutes() {
@@ -304,6 +311,7 @@ function assertPublicToolInventoryBoundary() {
   const actualSlugs = getActualToolRoutes();
   const expectedToolModules = [
     'ownerPublicTruthReadiness.ts',
+    'phoneValidation.ts',
     'publicTruthMonitorDiagnostics.ts',
     'publicTruthMonitorEntitlements.ts',
     'publicTruthMonitorReport.ts',
@@ -353,16 +361,27 @@ function assertPublicToolInventoryBoundary() {
   const enUS = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
   const hiIN = JSON.parse(read('public/locales/menulist.ai/hi-IN.json'));
   const publicUrlValidation = read('src/lib/public-truth-tools/publicUrlValidation.ts');
+  const phoneValidation = read('src/lib/public-truth-tools/phoneValidation.ts');
   const mapsPlaceCheck = read('functions/src/logic/mapsPlaceCheck.ts');
   const mapsPlaceCheckSpec = read('__docs__/menulist-tools/maps-place-check/maps-place-check_spec.md');
   const mapsPlaceCheckImpl = read('__docs__/menulist-tools/maps-place-check/maps-place-check_impl.md');
   const mapsPlaceCheckFirebase = read('__docs__/menulist-tools/maps-place-check/maps-place-check_firebase.md');
   const mapsPlaceCheckTests = read('__docs__/menulist-tools/maps-place-check/maps-place-check_test-cases.md');
   const mapsPlaceCheckValidation = read('__docs__/menulist-tools/maps-place-check/maps-place-check_validation.md');
+  const masterInventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
+  const masterReport = read('FEATURE_SWEEP_MASTER_REPORT.md');
+  const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
+  const changelog = read('__docs__/changelog.md');
 
   assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_TOOLS: true', 'Public Truth Tools family feature flag');
   assertIncludes(features, 'ENABLE_PUBLIC_ASSET_TOOLS: true', 'Public asset tools family feature flag');
   assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_MONITOR_ADDON: true', 'Public Truth Monitor Add-On feature flag');
+  assertIncludes(packageScripts['test:public-truth-tools-runtime'], 'test-public-truth-tools-runtime.ts', 'Public Truth Tools runtime test registry');
+  assertIncludes(masterInventory, '| public_truth_tools |', 'Public Truth Tools master inventory row');
+  assertIncludes(masterInventory, 'item 27 local source complete', 'Public Truth Tools master inventory status');
+  assertIncludes(masterReport, '## Public Truth Tools Boundary', 'Public Truth Tools master report boundary');
+  assertIncludes(productionAudit, '## Public Truth Tools End-to-End Boundary - July 16, 2026', 'Public Truth Tools production audit boundary');
+  assertIncludes(changelog, '## July 16, 2026 - Public Truth Tools End-to-End Hardening', 'Public Truth Tools changelog boundary');
   assertIncludes(familyReadme, 'sixteen public tools', 'Public Truth Tools family count');
   assertIncludes(familyReadme, 'eighteen owner readiness modules', 'Public Truth Tools owner module count');
   assertIncludes(familyReadme, 'owner fix lists', 'Public Truth Tools owner fix-list boundary');
@@ -380,6 +399,10 @@ function assertPublicToolInventoryBoundary() {
   assertIncludes(publicUrlValidation, "normalized.endsWith('.local')", 'Public Truth Tools shared URL parser must reject local hostnames');
   assertIncludes(publicUrlValidation, 'isPrivateIpv4', 'Public Truth Tools shared URL parser must reject private IPv4');
   assertIncludes(publicUrlValidation, 'url.username || url.password', 'Public Truth Tools shared URL parser must reject credentialed URLs');
+  assertIncludes(publicUrlValidation, "normalized.includes(':')", 'Public Truth Tools shared URL parser must reject raw IPv6 hosts');
+  assertIncludes(publicUrlValidation, "normalized.split('.').some((label) => !label)", 'Public Truth Tools shared URL parser must reject empty host labels');
+  assertIncludes(phoneValidation, 'PHONE_INPUT_PATTERN', 'Public Truth Tools shared phone boundary');
+  assertIncludes(phoneValidation, 'getWhatsAppSchemePhoneDigits', 'Public Truth Tools WhatsApp scheme boundary');
   assertIncludes(publicUrlValidation, "logRuntimeFailure('public_truth_tool_url_parse_failed'", 'Public Truth Tools shared URL parser parse diagnostics');
   assertIncludes(publicUrlValidation, 'MAX_PUBLIC_TRUTH_URL_PARSE_DIAGNOSTICS', 'Public Truth Tools shared URL parser diagnostic cap');
   assertIncludes(publicUrlValidation, 'reportedPublicTruthUrlParseFailures.add(failureKey)', 'Public Truth Tools shared URL parser capped shape guard');
@@ -580,6 +603,24 @@ for (const verifier of VERIFIERS) {
   if (result.status !== 0) {
     process.exit(result.status || 1);
   }
+}
+
+const runtimeResult = spawnSync(
+  process.platform === 'win32' ? 'npm.cmd' : 'npm',
+  ['run', 'test:public-truth-tools-runtime'],
+  {
+    cwd: ROOT,
+    env: process.env,
+    stdio: 'inherit',
+  },
+);
+
+if (runtimeResult.error) {
+  throw runtimeResult.error;
+}
+
+if (runtimeResult.status !== 0) {
+  process.exit(runtimeResult.status || 1);
 }
 
 console.log('Public Truth Tools verification passed');

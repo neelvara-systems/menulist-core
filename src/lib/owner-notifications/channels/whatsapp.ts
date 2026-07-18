@@ -7,6 +7,7 @@ const GRAPH_API_VERSION = 'v21.0';
 const MAX_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200;
 const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
 const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_PARSE_FAILED = 'whatsapp_response_parse_failed';
+const OWNER_NOTIFICATION_WHATSAPP_TIMEOUT_MS = 15_000;
 
 function getWhatsAppProviderMessageId(value: unknown): string | undefined {
     if (!value || typeof value !== 'object') return undefined;
@@ -99,6 +100,7 @@ export async function sendOwnerNotificationWhatsApp(params: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(body),
+            signal: AbortSignal.timeout(OWNER_NOTIFICATION_WHATSAPP_TIMEOUT_MS),
         });
 
         if (!response.ok) {

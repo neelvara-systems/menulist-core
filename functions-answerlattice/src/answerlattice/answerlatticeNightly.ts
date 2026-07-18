@@ -40,6 +40,7 @@ import { emitIntegrationEvent, resetNightlyEventCounts } from '../integrations/e
 import { COVERAGE_DROP_THRESHOLD, EVENT_SEVERITY, INTEGRATION_EVENT_TYPES } from '../integrations/types';
 import { bumpAnswerlatticeCacheVersion, ANSWERLATTICE_CACHE_SOURCES } from './cacheVersionManifest';
 import { syncChatAnalyticsNightly } from './chatAnalyticsAggregation';
+import { calculateConfirmedResolutionMetrics } from './confirmedResolution';
 import { syncAnswerlatticeChatIntelligence } from './chatIntelligence';
 import { repairCompiledContextBundle } from './contextBundleBuilder';
 import {
@@ -52,6 +53,7 @@ import { deriveAutomatedDriftState } from './driftState';
 import { aggregateFrictionStats, cleanupExpiredFrictionStats } from './frictionAggregation';
 import { generateFrictionInsight } from './frictionInsight';
 import { syncKnowledgeIntakeSummary } from './knowledgeIntakeSummary';
+import { expireStaleAnswerlatticeGenerationJobs } from './kbGenerationWatchdog';
 import { runOnboardingBootstrap } from './onboardingBootstrap';
 import { runPredictiveTriggerSync } from './predictiveTriggerSync';
 import { extractTicketKnowledge } from './resolutionExtractor';
@@ -372,6 +374,10 @@ interface AnswerlatticeCoverageHistoryRow {
     canonicalAnswerId?: string;
     matchedEntityIds: string[];
     confidence?: string;
+    createdOnMillis: number;
+    resolutionSubmittedAtMillis?: number;
+    widgetSessionId?: string;
+    resolutionOutcome?: 'resolved' | 'not_resolved';
 }
 
 interface CoverageKpiResult {
@@ -900,15 +906,19 @@ async function resolveUnresolvedSignals(tId: number, sId: number): Promise<{ res
 async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageKpiResult> {
     const result: CoverageKpiResult = { hits: 0, misses: 0, rate: 0, errors: [], historyRows: [] };
 
-    // Read last 24h of search history to count canonical vs non-canonical
-    const dayAgo = Timestamp.fromMillis(Date.now() - 24 * 60 * 60 * 1000);
+    // Read the newest bounded 24h sample. Explicit ordering avoids an arbitrary
+    // 500-document subset for high-volume workspaces.
+    const nowMillis = Date.now();
+    const dayAgo = Timestamp.fromMillis(nowMillis - 24 * 60 * 60 * 1000);
 
     try {
         const historySnap = await db
             .collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)
+            .where('pId', '==', 'AL')
             .where('tId', '==', tId)
             .where('sId', '==', sId)
             .where('createdOn', '>=', dayAgo)
+            .orderBy('createdOn', 'desc')
             .limit(500)
             .get();
 
@@ -919,6 +929,14 @@ async function aggregateCoverageKPI(tId: number, sId: number): Promise<CoverageK
                 canonicalAnswerId: typeof data.canonicalAnswerId === 'string' ? data.canonicalAnswerId : undefined,
                 matchedEntityIds: normalizeAnswerlatticeFunctionEntityIds(data.matchedEntityIds),
                 confidence: typeof data.confidence === 'string' ? data.confidence : undefined,
+                createdOnMillis: timestampToMillis(data.createdOn),
+                resolutionSubmittedAtMillis: timestampToMillis(data.submittedAt) || undefined,
+                widgetSessionId: typeof data.widgetSessionId === 'string' && data.widgetSessionId.length <= 120
+                    ? data.widgetSessionId
+                    : undefined,
+                resolutionOutcome: data.resolutionOutcome === 'resolved' || data.resolutionOutcome === 'not_resolved'
+                    ? data.resolutionOutcome
+                    : undefined,
             });
             if (data.canonical === true) {
                 result.hits++;
@@ -1082,6 +1100,8 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
             : 0;
         result.resolutionRate = resolutionRate;
 
+        const confirmedResolution = calculateConfirmedResolutionMetrics(coverageResult.historyRows, 24);
+
         const driftedAnswers = activeAnswers.filter(answer => answer.governance?.driftFlag === true);
         const driftRate = toPercent(driftedAnswers.length, activeAnswers.length);
         result.driftRate = driftRate;
@@ -1172,6 +1192,10 @@ async function aggregateTrustMetrics(tId: number, sId: number, coverageResult: C
                 escalated: escalatedQueries,
                 total: totalQueries,
                 previousRate: getPreviousMetric(previous, 'resolution.rate'),
+            },
+            confirmedResolution: {
+                ...confirmedResolution,
+                previousRate: getPreviousMetric(previous, 'confirmedResolution.rate'),
             },
             drift: {
                 rate: driftRate,
@@ -1733,6 +1757,9 @@ export interface AnswerlatticeNightlyResult {
     knowledgeIntakeJobsScanned: number;
     knowledgeIntakeSummaryWritten: number;
     knowledgeIntakeUsageUnits: number;
+    kbGenerationJobsScanned: number;
+    kbGenerationJobsTimedOut: number;
+    kbGenerationJobsSkippedInvalidScope: number;
     // Daily owner conversation summaries
     chatAnalyticsChangedSessionsScanned: number;
     chatAnalyticsDatesProcessed: number;
@@ -1829,6 +1856,9 @@ export async function runAnswerlatticeNightly(options: {
         knowledgeIntakeJobsScanned: 0,
         knowledgeIntakeSummaryWritten: 0,
         knowledgeIntakeUsageUnits: 0,
+        kbGenerationJobsScanned: 0,
+        kbGenerationJobsTimedOut: 0,
+        kbGenerationJobsSkippedInvalidScope: 0,
         chatAnalyticsChangedSessionsScanned: 0,
         chatAnalyticsDatesProcessed: 0,
         chatAnalyticsSummariesWritten: 0,
@@ -1885,6 +1915,9 @@ export async function runAnswerlatticeNightly(options: {
                     knowledgeIntakeJobsScanned: result.knowledgeIntakeJobsScanned,
                     knowledgeIntakeSummaryWritten: result.knowledgeIntakeSummaryWritten,
                     knowledgeIntakeUsageUnits: result.knowledgeIntakeUsageUnits,
+                    kbGenerationJobsScanned: result.kbGenerationJobsScanned,
+                    kbGenerationJobsTimedOut: result.kbGenerationJobsTimedOut,
+                    kbGenerationJobsSkippedInvalidScope: result.kbGenerationJobsSkippedInvalidScope,
                     chatAnalyticsChangedSessionsScanned: result.chatAnalyticsChangedSessionsScanned,
                     chatAnalyticsDatesProcessed: result.chatAnalyticsDatesProcessed,
                     chatAnalyticsSummariesWritten: result.chatAnalyticsSummariesWritten,
@@ -2038,6 +2071,20 @@ export async function runAnswerlatticeNightly(options: {
                 tenantCount: tenants.length,
                 limit: SCHEDULER_LIMITS.tenantDiscoveryDocs,
             });
+        }
+
+        try {
+            const watchdog = await expireStaleAnswerlatticeGenerationJobs();
+            result.kbGenerationJobsScanned = watchdog.scanned;
+            result.kbGenerationJobsTimedOut = watchdog.timedOut;
+            result.kbGenerationJobsSkippedInvalidScope = watchdog.skippedInvalidScope;
+        } catch (error) {
+            const diagnostic = buildDiagnostic(error, {
+                phase: 'kb_generation_watchdog',
+                operation: 'expire_stale_answerlattice_generation_jobs',
+            });
+            recordDiagnostic(diagnostic);
+            logger.error('[Answerlattice Nightly] KB generation watchdog failed', getSchedulerDiagnosticLogContext(diagnostic));
         }
 
         if (tenants.length === 0) {

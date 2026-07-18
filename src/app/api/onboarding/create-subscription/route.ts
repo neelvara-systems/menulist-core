@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { getB2BPlansList, getB2CPlansList } from "@data/PlatformPlansList";
 import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
-import { createInitialSubscription } from "@database/subscriptions/server";
+import { createInitialSubscription, getSubscriptionById } from "@database/subscriptions/server";
 import { handlePaymentError } from "@lib/errors/firestoreErrors";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
@@ -17,6 +17,7 @@ import {
 import {
     findOnboardingProviderSubscriptionForAttempt,
     isOnboardingProviderSubscription,
+    isMatchingPersistedOnboardingSubscription,
     resolveOnboardingPlanPrice,
     type OnboardingProviderSubscription,
 } from "@lib/onboarding/onboardingSubscriptionBoundary";
@@ -169,7 +170,7 @@ async function compensateOnboardingSubscriptionPersistenceFailure(params: {
     tenantId: number;
     userId: string;
     userType?: unknown;
-}) {
+}): Promise<boolean> {
     try {
         await razorpayClient.subscriptions.cancel(params.providerSubscriptionId, false);
     } catch (cancellationError) {
@@ -185,12 +186,14 @@ async function compensateOnboardingSubscriptionPersistenceFailure(params: {
                 }),
             ),
         );
+        return false;
     }
 
     await compensateOnboardingPaymentProviderFailure({
         ...params,
         reason: ONBOARDING_SUBSCRIPTION_PERSISTENCE_FAILED_CODE,
     });
+    return true;
 }
 
 async function recoverOnboardingProviderSubscription(params: {
@@ -604,20 +607,30 @@ export const POST = withAuth(async (request, session) => {
         try {
             await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
         } catch (persistenceError) {
-            await compensateOnboardingSubscriptionPersistenceFailure({
-                businessName,
-                businessIndustry,
-                currency,
-                db,
-                interval,
+            const persistedSubscription = await getSubscriptionById(razorpaySubscription.id).catch(() => null);
+            if (!isMatchingPersistedOnboardingSubscription({
                 planId,
                 providerSubscriptionId: razorpaySubscription.id,
                 storeId: result.storeId,
+                subscription: persistedSubscription,
                 tenantId: result.tenantId,
                 userId,
-                userType,
-            });
-            throw persistenceError;
+            })) {
+                await compensateOnboardingSubscriptionPersistenceFailure({
+                    businessName,
+                    businessIndustry,
+                    currency,
+                    db,
+                    interval,
+                    planId,
+                    providerSubscriptionId: razorpaySubscription.id,
+                    storeId: result.storeId,
+                    tenantId: result.tenantId,
+                    userId,
+                    userType,
+                });
+                throw persistenceError;
+            }
         }
 
         await writeLogEntry({

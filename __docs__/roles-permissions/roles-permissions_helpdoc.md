@@ -1,6 +1,6 @@
 # Roles & Permissions — Help Documentation
 
-**Last Updated:** May 19, 2026
+**Last Updated:** July 16, 2026
 
 ## Quick Summary
 
@@ -13,7 +13,7 @@ Roles control what each team member can see and do in your MenuList dashboard. E
 | Role        | Access Level | Key Capabilities                                                                              |
 | ----------- | ------------ | --------------------------------------------------------------------------------------------- |
 | **Owner**   | Full access  | Billing, staff, roles, public presence, integrations, menu, analytics, and store management   |
-| **Manager** | Operations   | Menu, publishing, sharing, feedback, analytics, staff, and screens — no billing or public identity changes |
+| **Manager** | Operations   | Menu, publishing, sharing, feedback, analytics, ordinary staff, and screens — no billing, role assignment, Owner-account changes, or public identity changes |
 | **Staff**   | Minimal      | Customer chat only                                                                            |
 | **Custom**  | Configurable | Owner creates custom roles with specific permissions (29 toggles)                             |
 
@@ -30,6 +30,8 @@ Roles control what each team member can see and do in your MenuList dashboard. E
 5. Select their role (Owner, Manager, Staff, or a custom role)
 6. Save the user
 
+If you are signed in as a Manager, MenuList limits new accounts to the ordinary Staff role. Only an Owner, or a custom role that includes **Assign Roles**, can assign Owner, Manager, or custom roles.
+
 If email is provided, MenuList sends a password setup email and the staff member signs in with that email.
 
 MenuList also creates a Staff ID for the staff member. If email is left blank, MenuList shows a temporary **Passcode** once. Use **Copy Staff ID**, **Copy passcode**, **Copy both**, **Share** when the browser supports it, or **Open WhatsApp Web** from the login details popup to share those details with the staff member. If the staff phone number is saved, WhatsApp Web opens directly for that number. They sign in from the normal MenuList sign-in page using Staff ID or phone and the passcode.
@@ -45,6 +47,8 @@ MenuList also creates a Staff ID for the staff member. If email is left blank, M
 7. The staff member can sign in with their email, Staff ID, or phone using that passcode
 
 Owners can reset staff access, but MenuList does not show the existing password.
+
+Managers cannot reset, sign out, deactivate, edit, or remove an Owner account. Owner rows remain visible but read-only. This prevents an operational staff manager from taking over or disrupting the business owner account.
 
 ### How to change someone's role
 
@@ -84,6 +88,10 @@ Owners can reset staff access, but MenuList does not show the existing password.
 
 Your role must include **Assign Roles**. Contact the account owner.
 
+### I can see an Owner account but the actions are unavailable
+
+This is expected. **Manage Users** covers ordinary staff. Changes to anyone with Owner access also require **Assign Roles**. Ask another Owner to make the change.
+
 ### I changed a role but the user still has old permissions
 
 **The user needs to refresh or re-login.** Permission changes apply on the next session load.
@@ -93,6 +101,12 @@ Your role must include **Assign Roles**. Contact the account owner.
 If they use email, ask them to open the login page and use **Forgot password**, or reset their access from **Users**.
 
 If they do not use email, click **Reset password** in **Users** and share the new Staff ID/passcode details shown on screen.
+
+If MenuList says the email is already registered or the authentication binding is incomplete, do not mark the user verified manually. Use a different unregistered email or contact MenuList support so the existing identity can be reviewed safely.
+
+### My own password reset action is unavailable in Users
+
+For your own account, open **Profile → Account access** and change the password/passcode there. The staff-management reset action is intentionally for another team member.
 
 ---
 

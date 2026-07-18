@@ -83,7 +83,7 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Owner reports "my screen shows old price"        | "MenuList verified and saved your latest menu. Screens refresh through their device polling and cache path, so check the target screen state before closing the issue." |
 | Owner asks "how long until my changes are live?" | "Your changes are verified on save. Each surface then follows its own refresh, download, provider, or device timing."                       |
-| Owner asks "can I check if my menu is correct?"  | "MenuList verifies your menu automatically every time you save. No manual checking needed."                                           |
+| Owner asks "can I check if my menu is correct?"  | "Menu Check shows current review items. Standalone save and publish paths also record local validation metadata." |
 
 ---
 
@@ -92,7 +92,7 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 ### What MCE Is
 
 - Infrastructure that makes MenuList trustworthy
-- Automatic verification of menu correctness on every save
+- Automatic deterministic checks on supported standalone save/publish paths and the editor gate
 - Zero additional Firebase cost
 - Invisible to the owner — works without configuration
 
@@ -138,7 +138,7 @@ MenuList's identity is "the calm system businesses depend on daily." Calmness re
 
 ### Q: Does this work for single-store owners?
 
-**A:** Yes. MCE validates and verifies menus for every store — single or multi-outlet. The multi-outlet validation is an additional layer for chain operators, but single-store owners benefit equally from price validation, field checking, and surface consistency.
+**A:** Single-store owners receive the standalone transaction stamp and editor gate. Linked outlets receive the resolved editor gate plus the authenticated outlet policy/schema transaction; do not claim that linked outlet documents carry `_mce` today.
 
 ---
 
@@ -240,7 +240,7 @@ Competitors can build:
 - POS integrations
 
 What they cannot easily replicate:
-**Deterministic validation enforcement on every save with zero-cost verification metadata.**
+**Deterministic validation on supported mutation paths with zero-extra-write metadata.**
 
 That is infrastructure thinking. It is hard to copy because it requires embedding validation into the core data flow, not just adding a feature.
 
@@ -261,8 +261,8 @@ If MCE is boring and invisible for 3 years — it's working perfectly.
 
 ### Do
 
-- Say "verified" — it's accurate and reassuring
-- Say "supported surfaces read from the same verified project truth" — it matches the current source contract
+- Say "validated project source" only for the audited standalone path or editor gate being discussed
+- Say "supported surfaces read the same validated project data through their audited paths" and keep each target's refresh/evidence boundary explicit
 - Say "automatic" — MCE requires zero owner action
 - Focus on the outcome (correct menus) not the mechanism (validation rules, metadata)
 - Use calm, confident language
@@ -284,7 +284,7 @@ If MCE is boring and invisible for 3 years — it's working perfectly.
 | Feature                 | How to Position MCE with It                                                                                   |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
 | **Digital Screens**     | "Your screen reads from the same verified project truth as your QR code after its device refresh path completes." |
-| **Multi-Outlet**        | "Every location reads from verified project truth while preserving outlet overrides through the existing location flow." |
+| **Multi-Outlet**        | "The editor checks resolved outlet data, while the outlet save route separately enforces scope, policy, and shape." |
 | **POS Sync**            | "Your POS connection reads from the same verified project truth when the connected provider flow runs."       |
 | **PDF Export**          | "PDFs are generated from the same verified source as your digital menu when the owner regenerates the artifact." |
 | **Menu Command Center** | "Bulk changes go through the same verification path before publishing flows continue." |

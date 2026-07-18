@@ -47,7 +47,13 @@ type ResellerProfileResponse = {
 };
 
 type ResellerClientsResponse = {
+    isPartial?: unknown;
     transactions?: unknown;
+};
+
+type ResellerClientsResult = {
+    isPartial: boolean;
+    transactions: ResellerTransaction[];
 };
 
 const createResellerDashboardResponseError = (
@@ -151,7 +157,7 @@ const fetchResellerProfile = async (): Promise<ResellerProfile> => {
     return data.profile as unknown as ResellerProfile;
 };
 
-const fetchResellerClients = async (): Promise<ResellerTransaction[]> => {
+const fetchResellerClients = async (): Promise<ResellerClientsResult> => {
     const response = await fetch('/api/reseller/clients', RESELLER_DASHBOARD_REQUEST_POLICY);
     const data = await readResellerDashboardResponseJson<ResellerClientsResponse>(
         response,
@@ -164,7 +170,7 @@ const fetchResellerClients = async (): Promise<ResellerTransaction[]> => {
         );
         throw new Error('Failed to load reseller clients');
     }
-    if (!Array.isArray(data?.transactions)) {
+    if (!Array.isArray(data?.transactions) || typeof data?.isPartial !== 'boolean') {
         logInvalidResellerDashboardResponse(
             response,
             'clients',
@@ -172,7 +178,10 @@ const fetchResellerClients = async (): Promise<ResellerTransaction[]> => {
         );
         throw new Error('Failed to load reseller clients');
     }
-    return data.transactions as ResellerTransaction[];
+    return {
+        isPartial: data.isPartial,
+        transactions: data.transactions as ResellerTransaction[],
+    };
 };
 
 /**
@@ -186,7 +195,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     );
 
-    const { data: transactions, error: transactionsError, isLoading: transactionsLoading, mutate: mutateTransactions } = useSWR<ResellerTransaction[]>(
+    const { data: clientsResult, error: transactionsError, isLoading: transactionsLoading, mutate: mutateTransactions } = useSWR<ResellerClientsResult>(
         resellerId ? `reseller-transactions-${resellerId}-${isPlatform}` : null,
         fetchResellerClients,
         { revalidateOnFocus: false, dedupingInterval: 60000 }
@@ -198,6 +207,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     );
 
+    const transactions = clientsResult?.transactions;
     const clients = transactions
         ? Array.from(
             transactions.reduce((byStore, transaction) => {
@@ -244,6 +254,7 @@ export function useResellerDashboard(resellerId: string, isPlatform: boolean = f
         stats,
         isLoading,
         error,
+        isClientListPartial: clientsResult?.isPartial === true,
         mutateProfile,
         mutateTransactions,
         refresh: () => {

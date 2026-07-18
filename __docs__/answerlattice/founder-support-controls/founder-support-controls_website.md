@@ -6,12 +6,14 @@
 
 ### Test support before users depend on it
 
-Save the questions your users ask most. Answerlattice shows which approved answer, FAQ/owner answer, provider fallback, escalation, or no-answer path would run for each page and customer context.
+Save the questions your users ask most. Answerlattice shows which approved answer, FAQ/owner answer, provider fallback, escalation, or no-answer path would run for each page and customer context, then checks required claims and supporting article references.
 
 - Reusable question sets.
 - Exact source and answer version.
+- Required/forbidden claims and bounded evidence-reference checks.
 - Canonical-only checks without an AI call.
-- Release checks for affected product areas.
+- Release checks for affected product areas with advisory ready, review, or blocked proof status.
+- Read-only proposal impact previews for explicitly linked priority questions before owner approval.
 
 ### Keep temporary problems separate from permanent truth
 

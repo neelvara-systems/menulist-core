@@ -38,6 +38,14 @@ const WIDGET_RUNTIME_TOKEN_HEADER = 'X-Answerlattice-Widget-Runtime';
 const WIDGET_ANSWER_FAILED_MESSAGE = 'Could not answer that right now. Try again.';
 const WIDGET_FEEDBACK_FAILED_MESSAGE = 'Could not save feedback. Try again.';
 const WIDGET_LINK_OPEN_FAILED_MESSAGE = 'Could not open link. Try again.';
+const GUIDANCE_CONTRACT_VERSION = 'answerlattice.guidance.v1';
+const GUIDANCE_SEMANTIC_ID_PATTERN = /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/;
+const GUIDANCE_ACTIONS = new Set([
+    'open', 'navigate', 'click', 'select', 'enter', 'toggle', 'submit', 'confirm',
+    'download', 'upload', 'copy', 'paste', 'scroll', 'expand', 'collapse',
+]);
+const GUIDANCE_WARNING_SEVERITIES = new Set(['info', 'warning', 'destructive']);
+const GUIDANCE_PREREQUISITE_TYPES = new Set(['role', 'plan', 'state', 'general']);
 const WIDGET_SEARCH_PUBLIC_ERROR_MESSAGES = new Set([
     WIDGET_ANSWER_FAILED_MESSAGE,
     'Help needs to reconnect. Reload this page and try again.',
@@ -64,14 +72,27 @@ interface WidgetProcedureStep {
     action?: string;
     instruction: string;
     target?: string;
+    expectedEvent?: string;
     expectedResult?: string;
     troubleshootingHint?: string;
 }
 
 interface WidgetProcedure {
-    steps?: WidgetProcedureStep[];
+    procedureSlug?: string;
+    steps: WidgetProcedureStep[];
     warnings?: { message: string; severity?: string }[];
     prerequisites?: { description: string; type?: string; value?: string }[];
+}
+
+type WidgetGuidanceOutcome = 'completed' | 'abandoned' | 'escalated' | 'target_missing';
+type WidgetGuidanceTargetStatus = 'locating' | 'found' | 'missing' | 'waiting';
+
+interface ActiveWidgetGuidance {
+    messageId: string;
+    procedure: WidgetProcedure;
+    procedureSessionId: string;
+    searchHistoryId: string;
+    stepIndex: number;
 }
 
 interface WidgetMessage {
@@ -91,7 +112,7 @@ interface WidgetMessage {
     };
     suggestedQuestions?: string[];
     searchHistoryId?: string;
-    feedback?: 'up' | 'down' | null;
+    feedback?: 'resolved' | 'not_resolved' | null;
     imageBase64?: string;
     imageMimeType?: string;
     procedure?: WidgetProcedure;
@@ -197,26 +218,48 @@ const isWidgetProcedureStep = (value: unknown): value is WidgetProcedureStep => 
     isPlainRecord(value)
     && typeof value.stepOrder === 'number'
     && Number.isInteger(value.stepOrder)
-    && value.stepOrder >= 0
-    && value.stepOrder <= 100
-    && isBoundedString(value.instruction, 1000)
-    && isOptionalBoundedString(value.action, 160)
-    && isOptionalBoundedString(value.target, 240)
-    && isOptionalBoundedString(value.expectedResult, 600)
-    && isOptionalBoundedString(value.troubleshootingHint, 600)
+    && value.stepOrder >= 1
+    && value.stepOrder <= 12
+    && isBoundedString(value.instruction, 80)
+    && typeof value.action === 'string'
+    && GUIDANCE_ACTIONS.has(value.action)
+    && isOptionalBoundedString(value.target, 120)
+    && (value.target === undefined || GUIDANCE_SEMANTIC_ID_PATTERN.test(value.target))
+    && isOptionalBoundedString(value.expectedEvent, 120)
+    && (value.expectedEvent === undefined || GUIDANCE_SEMANTIC_ID_PATTERN.test(value.expectedEvent))
+    && isOptionalBoundedString(value.expectedResult, 120)
+    && isOptionalBoundedString(value.troubleshootingHint, 200)
 );
 
 const isWidgetProcedure = (value: unknown): value is WidgetProcedure => {
     if (!isPlainRecord(value)) return false;
-    if (value.steps !== undefined && (!Array.isArray(value.steps) || value.steps.length > 20 || !value.steps.every(isWidgetProcedureStep))) return false;
-    if (value.warnings !== undefined && (!Array.isArray(value.warnings) || value.warnings.length > 10 || !value.warnings.every((item) => (
-        isPlainRecord(item) && isBoundedString(item.message, 600) && isOptionalBoundedString(item.severity, 40)
-    )))) return false;
-    if (value.prerequisites !== undefined && (!Array.isArray(value.prerequisites) || value.prerequisites.length > 10 || !value.prerequisites.every((item) => (
+    if (
+        !Array.isArray(value.steps)
+        || value.steps.length < 1
+        || value.steps.length > 12
+        || !value.steps.every(isWidgetProcedureStep)
+    ) return false;
+    const orderedSteps = [...value.steps].sort((left, right) => left.stepOrder - right.stepOrder);
+    if (!orderedSteps.every((step, index) => step.stepOrder === index + 1)) return false;
+    if (
+        value.procedureSlug !== undefined
+        && (
+            !isBoundedString(value.procedureSlug, 60)
+            || !/^[a-z0-9_]+$/.test(value.procedureSlug)
+        )
+    ) return false;
+    if (value.warnings !== undefined && (!Array.isArray(value.warnings) || value.warnings.length > 5 || !value.warnings.every((item) => (
         isPlainRecord(item)
-        && isBoundedString(item.description, 600)
-        && isOptionalBoundedString(item.type, 80)
-        && isOptionalBoundedString(item.value, 240)
+        && isBoundedString(item.message, 200)
+        && typeof item.severity === 'string'
+        && GUIDANCE_WARNING_SEVERITIES.has(item.severity)
+    )))) return false;
+    if (value.prerequisites !== undefined && (!Array.isArray(value.prerequisites) || value.prerequisites.length > 5 || !value.prerequisites.every((item) => (
+        isPlainRecord(item)
+        && isBoundedString(item.description, 200)
+        && typeof item.type === 'string'
+        && GUIDANCE_PREREQUISITE_TYPES.has(item.type)
+        && isOptionalBoundedString(item.value, 120)
     )))) return false;
     return true;
 };
@@ -505,11 +548,17 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     const [headerTitle, setHeaderTitle] = useState('Help');
     const [accentColor, setAccentColor] = useState('#6366f1');
     const [poweredByVisible, setPoweredByVisible] = useState(true);
+    const [guidedResolutionEnabled, setGuidedResolutionEnabled] = useState(false);
+    const [activeGuidance, setActiveGuidance] = useState<ActiveWidgetGuidance | null>(null);
+    const [guidanceTargetStatus, setGuidanceTargetStatus] = useState<WidgetGuidanceTargetStatus>('locating');
+    const [guidanceCompletedMessageId, setGuidanceCompletedMessageId] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const activeRequestRef = useRef(0);
     const widgetSessionIdRef = useRef(createTimestampedRuntimeId('w', 8));
+    const activeGuidanceRef = useRef<ActiveWidgetGuidance | null>(null);
+    const guidanceOutcomeSentRef = useRef<Set<string>>(new Set());
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -517,14 +566,144 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
     useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
 
+    const setCurrentGuidance = useCallback((guidance: ActiveWidgetGuidance | null) => {
+        activeGuidanceRef.current = guidance;
+        setActiveGuidance(guidance);
+    }, []);
+
+    const clearGuidanceWithoutOutcome = useCallback(() => {
+        setCurrentGuidance(null);
+        setGuidanceTargetStatus('locating');
+        window.parent?.postMessage({ type: 'answerlattice-guidance-clear' }, '*');
+    }, [setCurrentGuidance]);
+
+    const sendGuidanceStepToHost = useCallback((guidance: ActiveWidgetGuidance) => {
+        const step = guidance.procedure.steps[guidance.stepIndex];
+        if (!step) return;
+        setGuidanceTargetStatus(step.expectedEvent ? 'waiting' : 'locating');
+        window.parent?.postMessage({
+            type: 'answerlattice-guidance-step',
+            sessionId: guidance.procedureSessionId,
+            step: {
+                stepOrder: step.stepOrder,
+                target: step.target,
+                expectedEvent: step.expectedEvent,
+            },
+        }, '*');
+    }, []);
+
+    const submitGuidanceOutcome = useCallback(async (
+        guidance: ActiveWidgetGuidance,
+        outcome: WidgetGuidanceOutcome,
+        completedSteps: number,
+    ) => {
+        const outcomeKey = `${guidance.searchHistoryId}:${guidance.procedureSessionId}`;
+        if (guidanceOutcomeSentRef.current.has(outcomeKey)) return;
+        guidanceOutcomeSentRef.current.add(outcomeKey);
+
+        const activeStep = guidance.procedure.steps[guidance.stepIndex];
+        try {
+            const response = await fetch('/api/widget/guidance-outcome', {
+                method: 'POST',
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey,
+                    ...(runtimeAuthorizationToken
+                        ? { [WIDGET_RUNTIME_TOKEN_HEADER]: runtimeAuthorizationToken }
+                        : {}),
+                },
+                body: JSON.stringify({
+                    contractVersion: GUIDANCE_CONTRACT_VERSION,
+                    requestId: createTimestampedRuntimeId('guidance', 12),
+                    procedureSessionId: guidance.procedureSessionId,
+                    searchHistoryId: guidance.searchHistoryId,
+                    procedureSlug: guidance.procedure.procedureSlug,
+                    outcome,
+                    totalSteps: guidance.procedure.steps.length,
+                    completedSteps,
+                    ...(outcome !== 'completed' ? { blockedStepOrder: activeStep?.stepOrder } : {}),
+                    targetId: activeStep?.target,
+                    expectedEvent: activeStep?.expectedEvent,
+                    widgetSessionId: widgetSessionIdRef.current,
+                    contextKey: typeof productContext?.contextKey === 'string'
+                        ? productContext.contextKey
+                        : undefined,
+                }),
+            });
+            if (!response.ok) {
+                throw new Error(`answerlattice_guidance_outcome_${response.status}`);
+            }
+        } catch (outcomeError) {
+            logRuntimeFailure('answerlattice_widget_guidance_outcome_submit_failed', outcomeError, {
+                surface: 'widget_client',
+                outcome,
+                completedSteps,
+                totalSteps: guidance.procedure.steps.length,
+            });
+        }
+    }, [apiKey, productContext, runtimeAuthorizationToken]);
+
+    const beginGuidance = useCallback((message: WidgetMessage) => {
+        if (!guidedResolutionEnabled || !message.procedure || !message.searchHistoryId) return;
+        clearGuidanceWithoutOutcome();
+        const guidance: ActiveWidgetGuidance = {
+            messageId: message.id,
+            procedure: {
+                ...message.procedure,
+                steps: [...message.procedure.steps].sort((left, right) => left.stepOrder - right.stepOrder),
+            },
+            procedureSessionId: createTimestampedRuntimeId('guide', 12),
+            searchHistoryId: message.searchHistoryId,
+            stepIndex: 0,
+        };
+        setGuidanceCompletedMessageId(null);
+        setCurrentGuidance(guidance);
+        sendGuidanceStepToHost(guidance);
+    }, [clearGuidanceWithoutOutcome, guidedResolutionEnabled, sendGuidanceStepToHost, setCurrentGuidance]);
+
+    const advanceGuidance = useCallback((sessionId: string, stepOrder: number) => {
+        const guidance = activeGuidanceRef.current;
+        const activeStep = guidance?.procedure.steps[guidance.stepIndex];
+        if (
+            !guidance
+            || guidance.procedureSessionId !== sessionId
+            || !activeStep
+            || activeStep.stepOrder !== stepOrder
+        ) return;
+
+        const completedSteps = guidance.stepIndex + 1;
+        if (completedSteps >= guidance.procedure.steps.length) {
+            void submitGuidanceOutcome(guidance, 'completed', guidance.procedure.steps.length);
+            setGuidanceCompletedMessageId(guidance.messageId);
+            clearGuidanceWithoutOutcome();
+            return;
+        }
+
+        const nextGuidance = { ...guidance, stepIndex: guidance.stepIndex + 1 };
+        setCurrentGuidance(nextGuidance);
+        sendGuidanceStepToHost(nextGuidance);
+    }, [clearGuidanceWithoutOutcome, sendGuidanceStepToHost, setCurrentGuidance, submitGuidanceOutcome]);
+
+    const endGuidance = useCallback((outcome: Exclude<WidgetGuidanceOutcome, 'completed'>) => {
+        const guidance = activeGuidanceRef.current;
+        if (!guidance) return;
+        void submitGuidanceOutcome(guidance, outcome, guidance.stepIndex);
+        clearGuidanceWithoutOutcome();
+    }, [clearGuidanceWithoutOutcome, submitGuidanceOutcome]);
+
     const clearConversation = useCallback(() => {
         activeRequestRef.current += 1;
+        clearGuidanceWithoutOutcome();
         setMessages([]);
         setQuery('');
         setLoading(false);
         setError(null);
         setSelectedImage(null);
-    }, []);
+        setGuidanceCompletedMessageId(null);
+    }, [clearGuidanceWithoutOutcome]);
 
     const closeWidget = useCallback(() => {
         window.parent?.postMessage({ type: 'answerlattice-widget-close' }, '*');
@@ -600,6 +779,9 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
             if (e.data?.type === 'answerlattice-widget-visibility') {
                 const nextHistoryMode: WidgetHistoryMode = e.data.historyMode === 'forget' ? 'forget' : 'session';
                 setHistoryMode(nextHistoryMode);
+                if (e.data.state === 'closed') {
+                    clearGuidanceWithoutOutcome();
+                }
                 if (e.data.state === 'closed' && e.data.clearHistory) {
                     clearConversation();
                 }
@@ -620,6 +802,13 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
 
                 if (typeof e.data.config?.poweredByVisible === 'boolean') {
                     setPoweredByVisible(e.data.config.poweredByVisible);
+                }
+
+                if (typeof e.data.config?.guidedResolutionEnabled === 'boolean') {
+                    setGuidedResolutionEnabled(e.data.config.guidedResolutionEnabled);
+                    if (!e.data.config.guidedResolutionEnabled) {
+                        clearGuidanceWithoutOutcome();
+                    }
                 }
             }
             if (e.data?.type === 'answerlattice-widget-clear-history') {
@@ -663,11 +852,44 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                     }];
                 });
             }
+            if (e.data?.type === 'answerlattice-guidance-step-result') {
+                const guidance = activeGuidanceRef.current;
+                const activeStep = guidance?.procedure.steps[guidance.stepIndex];
+                if (
+                    !guidance
+                    || !activeStep
+                    || e.data.sessionId !== guidance.procedureSessionId
+                    || e.data.stepOrder !== activeStep.stepOrder
+                ) return;
+
+                if (activeStep.target && e.data.targetFound !== true) {
+                    setGuidanceTargetStatus('missing');
+                } else if (activeStep.expectedEvent) {
+                    setGuidanceTargetStatus('waiting');
+                } else {
+                    setGuidanceTargetStatus('found');
+                }
+            }
+            if (e.data?.type === 'answerlattice-guidance-host-reset') {
+                clearGuidanceWithoutOutcome();
+            }
+            if (e.data?.type === 'answerlattice-guidance-event') {
+                const guidance = activeGuidanceRef.current;
+                const activeStep = guidance?.procedure.steps[guidance.stepIndex];
+                if (
+                    !guidance
+                    || !activeStep
+                    || e.data.sessionId !== guidance.procedureSessionId
+                    || e.data.stepOrder !== activeStep.stepOrder
+                    || e.data.eventName !== activeStep.expectedEvent
+                ) return;
+                advanceGuidance(guidance.procedureSessionId, activeStep.stepOrder);
+            }
         };
         window.addEventListener('message', handler);
         window.parent?.postMessage({ type: 'answerlattice-widget-ready' }, '*');
         return () => window.removeEventListener('message', handler);
-    }, [clearConversation]);
+    }, [advanceGuidance, clearConversation, clearGuidanceWithoutOutcome]);
 
     // Build conversation history for context (last 5 messages)
     const getConversationHistory = () => {
@@ -871,12 +1093,13 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
     };
 
     // Feedback handler
-    const handleFeedback = async (msgId: string, isGood: boolean) => {
+    const handleFeedback = async (msgId: string, resolutionOutcome: 'resolved' | 'not_resolved') => {
         const msg = messages.find(m => m.id === msgId);
         if (!msg?.searchHistoryId || msg.feedback) return;
+        const isGood = resolutionOutcome === 'resolved';
 
         setMessages(prev => prev.map(m =>
-            m.id === msgId ? { ...m, feedback: isGood ? 'up' : 'down' } : m
+            m.id === msgId ? { ...m, feedback: resolutionOutcome } : m
         ));
 
         try {
@@ -892,7 +1115,7 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                         ? { [WIDGET_RUNTIME_TOKEN_HEADER]: runtimeAuthorizationToken }
                         : {}),
                 },
-                body: JSON.stringify({ searchHistoryId: msg.searchHistoryId, isGood }),
+                body: JSON.stringify({ searchHistoryId: msg.searchHistoryId, isGood, resolutionOutcome }),
             });
             if (!response.ok) {
                 throw new Error(WIDGET_FEEDBACK_FAILED_MESSAGE);
@@ -1049,11 +1272,30 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                     <div style={styles.procedureSteps}>
                                         {[...(msg.procedure.steps || [])]
                                             .sort((a, b) => a.stepOrder - b.stepOrder)
-                                            .map((step, i) => (
-                                                <div key={`${step.stepOrder}-${i}`} style={styles.procedureStep}>
-                                                    <span style={{ ...styles.procedureStepNumber, background: accentColor }}>{step.stepOrder || i + 1}</span>
+                                            .map((step, i) => {
+                                                const isCurrentStep = activeGuidance?.messageId === msg.id
+                                                    && activeGuidance.stepIndex === i;
+                                                const isCompletedStep = activeGuidance?.messageId === msg.id
+                                                    && activeGuidance.stepIndex > i;
+                                                return (
+                                                <div
+                                                    key={`${step.stepOrder}-${i}`}
+                                                    style={{
+                                                        ...styles.procedureStep,
+                                                        ...(isCurrentStep ? styles.procedureStepActive : {}),
+                                                    }}
+                                                >
+                                                    <span style={{
+                                                        ...styles.procedureStepNumber,
+                                                        background: isCompletedStep ? '#15803d' : accentColor,
+                                                    }}>
+                                                        {isCompletedStep ? <LuCheckCircle size={12} aria-hidden /> : step.stepOrder || i + 1}
+                                                    </span>
                                                     <div style={styles.procedureStepBody}>
                                                         <p style={styles.procedureStepText}>{step.instruction}</p>
+                                                        {step.target && (
+                                                            <p style={styles.procedureStepTarget}>On this screen: {step.target.replace(/[._:-]+/g, ' ')}</p>
+                                                        )}
                                                         {step.expectedResult && (
                                                             <p style={styles.procedureStepHint}>{step.expectedResult}</p>
                                                         )}
@@ -1062,8 +1304,80 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                                         )}
                                                     </div>
                                                 </div>
-                                            ))}
+                                                );
+                                            })}
                                     </div>
+
+                                    {guidedResolutionEnabled && msg.searchHistoryId && (
+                                        <div style={styles.guidanceControls}>
+                                            {guidanceCompletedMessageId === msg.id && activeGuidance?.messageId !== msg.id ? (
+                                                <div style={styles.guidanceComplete} role="status">
+                                                    <LuCheckCircle size={14} aria-hidden />
+                                                    Guided steps completed
+                                                </div>
+                                            ) : activeGuidance?.messageId === msg.id ? (
+                                                <>
+                                                    <div style={styles.guidanceStatus} role="status">
+                                                        {guidanceTargetStatus === 'missing'
+                                                            ? 'The marked control is not available on this screen. You can continue with the written step.'
+                                                            : guidanceTargetStatus === 'waiting'
+                                                                ? 'Waiting for the product to confirm this step.'
+                                                                : guidanceTargetStatus === 'locating'
+                                                                    ? 'Locating this step on the current screen...'
+                                                                    : 'The current step is marked on the product screen.'}
+                                                    </div>
+                                                    <div style={styles.guidanceActionRow}>
+                                                        {!activeGuidance.procedure.steps[activeGuidance.stepIndex]?.expectedEvent && (
+                                                            <button
+                                                                type="button"
+                                                                style={{ ...styles.guidancePrimaryBtn, background: accentColor }}
+                                                                onClick={() => {
+                                                                    const step = activeGuidance.procedure.steps[activeGuidance.stepIndex];
+                                                                    if (step) advanceGuidance(activeGuidance.procedureSessionId, step.stepOrder);
+                                                                }}
+                                                            >
+                                                                {activeGuidance.stepIndex === activeGuidance.procedure.steps.length - 1
+                                                                    ? 'Finish guide'
+                                                                    : 'Next step'}
+                                                            </button>
+                                                        )}
+                                                        {guidanceTargetStatus === 'missing' && (
+                                                            <button
+                                                                type="button"
+                                                                style={styles.guidanceSecondaryBtn}
+                                                                onClick={() => endGuidance('target_missing')}
+                                                            >
+                                                                Target missing
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            type="button"
+                                                            style={styles.guidanceSecondaryBtn}
+                                                            onClick={() => endGuidance('escalated')}
+                                                        >
+                                                            Still stuck
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            style={styles.guidanceTextBtn}
+                                                            onClick={() => endGuidance('abandoned')}
+                                                        >
+                                                            Stop
+                                                        </button>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    style={{ ...styles.guidancePrimaryBtn, background: accentColor }}
+                                                    onClick={() => beginGuidance(msg)}
+                                                >
+                                                    <LuListChecks size={14} aria-hidden />
+                                                    Guide me through this
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -1142,16 +1456,19 @@ export default function WidgetClient({ apiKey }: WidgetClientProps) {
                                 <div style={styles.feedbackRow}>
                                     {msg.feedback ? (
                                         <span style={styles.feedbackDone}>
-                                            {msg.feedback === 'up' ? <LuThumbsUp size={13} aria-hidden /> : <LuThumbsDown size={13} aria-hidden />}
-                                            Thanks for feedback
+                                            {msg.feedback === 'resolved' ? <LuThumbsUp size={13} aria-hidden /> : <LuThumbsDown size={13} aria-hidden />}
+                                            {msg.feedback === 'resolved' ? 'Marked solved' : 'Marked unresolved'}
                                         </span>
                                     ) : (
                                         <>
-                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, true)} title="Helpful" aria-label="Helpful">
+                                            <span style={styles.feedbackQuestion}>Did this solve your issue?</span>
+                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, 'resolved')} title="Solved" aria-label="Solved">
                                                 <LuThumbsUp size={15} aria-hidden />
+                                                <span>Solved</span>
                                             </button>
-                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, false)} title="Not helpful" aria-label="Not helpful">
+                                            <button style={styles.feedbackBtn} onClick={() => handleFeedback(msg.id, 'not_resolved')} title="Still need help" aria-label="Still need help">
                                                 <LuThumbsDown size={15} aria-hidden />
+                                                <span>Still need help</span>
                                             </button>
                                         </>
                                     )}
@@ -1303,12 +1620,21 @@ const styles: Record<string, CSSProperties> = {
     procedureWarningBox: { display: 'flex', gap: 8, padding: 8, borderRadius: 8, background: '#fff7ed', color: '#c2410c', marginBottom: 8 },
     procedureWarningText: { margin: '0 0 3px 0', fontSize: 11, lineHeight: 1.4 },
     procedureSteps: { display: 'flex', flexDirection: 'column', gap: 8 },
-    procedureStep: { display: 'flex', gap: 8, alignItems: 'flex-start' },
+    procedureStep: { display: 'flex', gap: 8, alignItems: 'flex-start', padding: 6, borderRadius: 8, border: '1px solid transparent' },
+    procedureStepActive: { background: '#f8fafc', borderColor: '#cbd5e1' },
     procedureStepNumber: { width: 22, height: 22, borderRadius: '50%', background: '#6366f1', color: '#ffffff', fontSize: 11, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
     procedureStepBody: { minWidth: 0, flex: 1 },
     procedureStepText: { margin: 0, color: '#111827', fontSize: 12, lineHeight: 1.45, overflowWrap: 'break-word' },
+    procedureStepTarget: { margin: '3px 0 0 0', color: '#475569', fontSize: 10, lineHeight: 1.4, textTransform: 'capitalize' },
     procedureStepHint: { margin: '3px 0 0 0', color: '#4b5563', fontSize: 11, lineHeight: 1.4, overflowWrap: 'break-word' },
     procedureTroubleshoot: { margin: '3px 0 0 0', color: '#6b7280', fontSize: 11, lineHeight: 1.4, fontStyle: 'italic', overflowWrap: 'break-word' },
+    guidanceControls: { marginTop: 10, paddingTop: 10, borderTop: '1px solid #e5e7eb' },
+    guidanceStatus: { marginBottom: 8, color: '#475569', fontSize: 11, lineHeight: 1.45 },
+    guidanceActionRow: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+    guidancePrimaryBtn: { minHeight: 44, border: 'none', borderRadius: 8, padding: '0 12px', color: '#ffffff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
+    guidanceSecondaryBtn: { minHeight: 44, border: '1px solid #cbd5e1', borderRadius: 8, padding: '0 10px', background: '#ffffff', color: '#334155', fontSize: 11, fontWeight: 600, cursor: 'pointer' },
+    guidanceTextBtn: { minHeight: 44, border: 'none', borderRadius: 8, padding: '0 8px', background: 'transparent', color: '#64748b', fontSize: 11, cursor: 'pointer' },
+    guidanceComplete: { minHeight: 36, display: 'flex', alignItems: 'center', gap: 6, color: '#15803d', fontSize: 11, fontWeight: 700 },
     refsContainer: { marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 },
     refTag: { padding: '3px 8px', borderRadius: 4, border: 0, background: '#e5e7eb', fontSize: 11, color: '#4b5563', display: 'inline-flex', alignItems: 'center', gap: 4 },
     refTagButton: { cursor: 'pointer', textAlign: 'left' as const },
@@ -1317,8 +1643,9 @@ const styles: Record<string, CSSProperties> = {
     relatedList: { display: 'flex', flexDirection: 'column', gap: 5 },
     relatedBtn: { minHeight: 34, width: '100%', padding: '5px 8px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', color: '#374151', fontSize: 11, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, textAlign: 'left' as const },
     relatedBtnText: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    feedbackRow: { marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 },
-    feedbackBtn: { width: 36, height: 36, borderRadius: 8, border: '1px solid #e5e7eb', background: '#ffffff', color: '#4b5563', fontSize: 14, cursor: 'pointer', lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' },
+    feedbackRow: { marginTop: 8, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+    feedbackQuestion: { width: '100%', fontSize: 11, color: '#6b7280' },
+    feedbackBtn: { minHeight: 44, borderRadius: 8, border: '1px solid #e5e7eb', padding: '0 10px', background: '#ffffff', color: '#4b5563', fontSize: 11, cursor: 'pointer', lineHeight: 1.2, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 },
     feedbackDone: { fontSize: 11, color: '#9ca3af', display: 'inline-flex', alignItems: 'center', gap: 4 },
     suggestionsContainer: { marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 },
     suggestionBtn: { padding: '6px 10px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#ffffff', color: '#6366f1', fontSize: 12, cursor: 'pointer', textAlign: 'left' as const },

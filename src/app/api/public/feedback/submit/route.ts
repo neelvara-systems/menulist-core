@@ -22,6 +22,7 @@ import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { withCORS } from '@lib/security/corsValidation';
 import { guestFeedbackSubmitSchema } from '@lib/validation/apiSchemas';
+import { randomUUID } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import {
     checkPublicRateLimit,
@@ -72,7 +73,7 @@ function requiredFieldError() {
 /**
  * POST /api/public/feedback/submit
  * 
- * Submit guest feedback for a restaurant.
+ * Submit guest feedback for a business.
  * Public endpoint - no authentication required.
  */
 async function postGuestFeedback(req: NextRequest) {
@@ -113,6 +114,10 @@ async function postGuestFeedback(req: NextRequest) {
     }
 
     const data = validation.data;
+    // Preserve compatibility with an already-open pre-deploy form. Current
+    // clients always send a stable key; legacy omissions receive a unique key
+    // and retain the prior one-request/one-record behavior.
+    const submissionId = data.submissionId || randomUUID();
     const projectId = normalizeGuestFeedbackProjectId(data.projectId);
     const tenantScope = normalizeGuestFeedbackNumericDocumentId(data.tId);
     const storeScope = normalizeGuestFeedbackNumericDocumentId(data.sId);
@@ -272,6 +277,7 @@ async function postGuestFeedback(req: NextRequest) {
     const effectivePhone = defaults.collectPhone ? sanitizedPhone : undefined;
     const effectiveEmail = defaults.collectEmail ? sanitizedEmail : undefined;
 
+    if (effectiveName && effectiveName.length < 2) return requiredFieldError();
     if (defaults.collectCommentRequired && !effectiveMessage) return requiredFieldError();
     if (defaults.collectNameRequired && !effectiveName) return requiredFieldError();
     if (defaults.collectPhoneRequired && !effectivePhone) return requiredFieldError();
@@ -279,26 +285,34 @@ async function postGuestFeedback(req: NextRequest) {
 
     // 9. Submit feedback
     try {
-        const feedback = await submitGuestFeedbackAdmin({
+        const submission = await submitGuestFeedbackAdmin({
             tId: tenantId,
             sId: storeId,
             projectId,
             rating: data.rating as 1 | 2 | 3 | 4 | 5,
             source: data.source,
+            submissionId,
             message: effectiveMessage,
             customerName: effectiveName,
             customerPhone: effectivePhone,
             customerEmail: effectiveEmail,
         });
-        await logFeedbackMOLEventAdmin('FEEDBACK_SUBMITTED', tenantId, storeId, projectId, data.rating);
+        await logFeedbackMOLEventAdmin(
+            'FEEDBACK_SUBMITTED',
+            tenantId,
+            storeId,
+            projectId,
+            data.rating,
+            submission.feedback.id,
+        );
 
         return NextResponse.json(
             {
                 success: true,
-                feedbackId: feedback.id,
+                feedbackId: submission.feedback.id,
                 reviewUrl,
             },
-            { status: 201 }
+            { status: submission.created ? 201 : 200 }
         );
     } catch (error) {
         logGuestFeedbackFailure('public_guest_feedback_submit_failed', error, {

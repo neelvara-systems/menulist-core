@@ -16,7 +16,7 @@ import { GuestFeedback } from '@type/guestFeedback';
 import { toDate } from '@util/dateTime';
 import { timeAgo } from '@util/dateTime/timeAgo';
 import { Button, Card, Tag, Tooltip, theme, message } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import React, { useState } from 'react';
 import {
     LuCheck,
@@ -99,6 +99,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
     storeName,
 }) => {
     const t = useTranslations('FeedbackInbox');
+    const locale = useLocale();
     const { token } = theme.useToken();
     const [isUpdating, setIsUpdating] = useState(false);
 
@@ -130,7 +131,7 @@ export const FeedbackCard: React.FC<FeedbackCardProps> = ({
     const formatDate = (timestamp: any) => {
         if (!timestamp) return '';
         const date = toDate(timestamp);
-        return timeAgo(date);
+        return timeAgo(date, locale);
     };
 
     const handleCopyReply = async (replyTemplate: FeedbackReplyTemplate) => {

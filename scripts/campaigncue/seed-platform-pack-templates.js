@@ -2,6 +2,7 @@
 
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { readSharedBusinessCategories } = require("./read-shared-business-categories");
 
 const APPLY = process.argv.includes("--apply");
@@ -28,7 +29,7 @@ function payloadFor(seed) {
   };
 }
 
-function summaryFor(seed, now) {
+function summaryFor(seed, now, payloadPath) {
   return {
     businessCategory: seed.businessCategory,
     channels: seed.channels,
@@ -38,7 +39,7 @@ function summaryFor(seed, now) {
     optionalFactTypes: seed.optionalFactTypes,
     outputTypes: seed.outputTypes,
     ownerGoals: seed.ownerGoals,
-    payloadPath: `campaigncue/templates/platform/${seed.businessCategory}/${seed.templateId}/pack-template.json`,
+    payloadPath,
     priority: seed.priority,
     qualityTier: "platform_curated",
     recipeIds: seed.recipeIds,
@@ -70,26 +71,67 @@ function summaryFor(seed, now) {
   };
 }
 
-function groupByCategory(seeds, now) {
+function buildSeedArtifact(seed) {
+  const payloadJson = JSON.stringify(payloadFor(seed), null, 2);
+  const contentHash = crypto.createHash("sha256").update(payloadJson).digest("hex").slice(0, 24);
+  return {
+    payloadJson,
+    payloadPath: `campaigncue/templates/platform/${seed.businessCategory}/${seed.templateId}/pack-template-${contentHash}.json`,
+    seed,
+  };
+}
+
+function assertSeedFactSlotContract(seed) {
+  if (!Array.isArray(seed.factSlots) || !Array.isArray(seed.requiredFactTypes) || !Array.isArray(seed.optionalFactTypes)) {
+    throw new Error(`Template seed ${seed.templateId || "unknown"} has an invalid fact-slot contract`);
+  }
+  const slotTypes = seed.factSlots.map((slot) => String(slot?.type || "").trim());
+  if (slotTypes.some((type) => !/^[a-zA-Z0-9_-]{1,100}$/.test(type)) || new Set(slotTypes).size !== slotTypes.length) {
+    throw new Error(`Template seed ${seed.templateId || "unknown"} has invalid or duplicate fact slots`);
+  }
+  const requiredSlots = seed.factSlots.filter((slot) => slot.required === true).map((slot) => slot.type).sort();
+  const optionalSlots = seed.factSlots.filter((slot) => slot.required === false).map((slot) => slot.type).sort();
+  const requiredTypes = [...new Set(seed.requiredFactTypes)].sort();
+  const optionalTypes = [...new Set(seed.optionalFactTypes)].sort();
+  if (JSON.stringify(requiredSlots) !== JSON.stringify(requiredTypes)
+    || JSON.stringify(optionalSlots) !== JSON.stringify(optionalTypes)) {
+    throw new Error(`Template seed ${seed.templateId || "unknown"} fact-slot metadata does not match its payload`);
+  }
+}
+
+function groupByCategory(artifacts, now) {
   const grouped = new Map();
-  for (const seed of seeds) {
+  const identities = new Set();
+  for (const artifact of artifacts) {
+    const { seed } = artifact;
     if (!VALID_CATEGORIES.has(seed.businessCategory)) {
       throw new Error(`Unsupported business category: ${seed.businessCategory}`);
     }
     if (!seed.templateId || !seed.title) {
       throw new Error(`Template seed is missing id/title in ${seed.businessCategory}`);
     }
+    assertSeedFactSlotContract(seed);
+    const identity = `${seed.businessCategory}:${seed.templateId}`;
+    if (identities.has(identity)) throw new Error(`Duplicate template seed: ${identity}`);
+    identities.add(identity);
     const list = grouped.get(seed.businessCategory) || [];
-    list.push(summaryFor(seed, now));
+    list.push(summaryFor(seed, now, artifact.payloadPath));
+    if (list.length > 80) throw new Error(`${seed.businessCategory} exceeds the 80-template catalog limit`);
     grouped.set(seed.businessCategory, list);
   }
   return grouped;
 }
 
+function isStoragePreconditionFailure(error) {
+  return Boolean(error) && typeof error === "object" && Number(error.code) === 412;
+}
+
 async function main() {
   const seeds = JSON.parse(fs.readFileSync(SEED_PATH, "utf8"));
+  if (!Array.isArray(seeds)) throw new Error("Platform template seed file must contain an array");
+  const artifacts = seeds.map(buildSeedArtifact);
   const now = Date.now();
-  const grouped = groupByCategory(seeds, now);
+  const grouped = groupByCategory(artifacts, now);
   const updatedBy = process.env.CAMPAIGNCUE_TEMPLATE_SEED_ACTOR || "campaigncue-template-seed";
 
   const catalogs = Array.from(grouped.entries()).map(([businessCategory, data]) => ({
@@ -110,7 +152,7 @@ async function main() {
     console.log(`${APPLY ? "Apply" : "Dry-run"} ${COLLECTION}/${catalog.catalogId}: ${catalog.data.length} templates, ${bytes} bytes`);
   }
 
-  const storageWrites = seeds.length;
+  const storageWrites = artifacts.length;
   const writeSummary = APPLY
     ? `${catalogs.length} catalog doc writes and ${storageWrites} Storage payload uploads`
     : `would write ${catalogs.length} catalog docs and ${storageWrites} Storage payloads`;
@@ -120,29 +162,45 @@ async function main() {
     return;
   }
 
+  const projectId = String(process.env.CAMPAIGNCUE_FIREBASE_PROJECT_ID || "").trim();
+  const storageBucket = String(process.env.CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET || "").trim();
+  const databaseId = String(process.env.CAMPAIGNCUE_FIRESTORE_DATABASE_ID || "").trim();
+  if (!projectId || !storageBucket) {
+    throw new Error("CAMPAIGNCUE_FIREBASE_PROJECT_ID and CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET are required for --apply");
+  }
+
   const admin = require("firebase-admin");
+  const { getFirestore } = require("firebase-admin/firestore");
   if (!admin.apps.length) {
     admin.initializeApp({
-      projectId: process.env.CAMPAIGNCUE_FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT,
-      storageBucket: process.env.CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET,
+      projectId,
+      storageBucket,
     });
   }
-  const db = admin.firestore();
+  const app = admin.app();
+  if (app.options.projectId !== projectId || app.options.storageBucket !== storageBucket) {
+    throw new Error("CampaignCue Firebase Admin target does not match the explicit seed target");
+  }
+  const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
   const bucket = admin.storage().bucket();
 
-  for (const seed of seeds) {
-    const payloadPath = `campaigncue/templates/platform/${seed.businessCategory}/${seed.templateId}/pack-template.json`;
-    await bucket.file(payloadPath).save(JSON.stringify(payloadFor(seed), null, 2), {
-      contentType: "application/json",
-      metadata: {
-        cacheControl: "private, max-age=31536000, immutable",
-      },
-    });
+  for (const artifact of artifacts) {
+    try {
+      await bucket.file(artifact.payloadPath).save(artifact.payloadJson, {
+        contentType: "application/json",
+        metadata: {
+          cacheControl: "private, max-age=31536000, immutable",
+        },
+        preconditionOpts: { ifGenerationMatch: 0 },
+      });
+    } catch (error) {
+      if (!isStoragePreconditionFailure(error)) throw error;
+    }
   }
 
-  for (const catalog of catalogs) {
-    await db.collection(COLLECTION).doc(catalog.catalogId).set(catalog);
-  }
+  const batch = db.batch();
+  catalogs.forEach((catalog) => batch.set(db.collection(COLLECTION).doc(catalog.catalogId), catalog));
+  await batch.commit();
   console.log("CampaignCue platform pack templates seeded.");
 }
 

@@ -6,6 +6,7 @@ import { ANALYTICS_SETTINGS_GROUPING_NOTE, ANALYTICS_TRACKING_CATEGORY_DISCLOSUR
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedStoreKeywords } from '@lib/localization/storeContent';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { theme } from 'antd';
@@ -157,7 +158,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
             const update: any = { storeId: storeDetails.storeId };
             if (field.startsWith('analytics.')) {
                 const analyticsKey = field.replace('analytics.', '');
-                update.analytics = { ...storeDetails.analytics, [analyticsKey]: value };
+                update.analytics = { [analyticsKey]: value };
             } else {
                 update[field] = value;
             }
@@ -167,7 +168,13 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 storeDetails.storeId,
                 'mobile_seo_analytics_field_store_update_rejected',
             );
-            setStoreDetails({ ...storeDetails, ...update });
+            setStoreDetails({
+                ...storeDetails,
+                ...update,
+                ...(update.analytics ? {
+                    analytics: { ...storeDetails.analytics, ...update.analytics },
+                } : {}),
+            });
             Toast.show({ content: t('saved'), duration: 800 });
         } catch (error) {
             logMobileOwnerFailure('mobile_seo_analytics_field_save_failed', error, {
@@ -479,11 +486,14 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
             setIsAnalyticsSaving(true);
             const analyticsBase: Record<string, any> = { ...(storeDetails.analytics || {}) };
             delete analyticsBase.searchConsoleVerification;
+            const nextAnalytics = {
+                ...analyticsBase,
+                ...analyticsDraft,
+            };
             const update = {
-                analytics: {
-                    ...analyticsBase,
-                    ...analyticsDraft,
-                },
+                analytics: getStoreDeepDifference(nextAnalytics, storeDetails.analytics || {}, {
+                    detectRemovedRootKeys: true,
+                }),
                 storeId: storeDetails.storeId,
             };
             const writeResult = await updateStore(update);
@@ -492,7 +502,7 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                 storeDetails.storeId,
                 'mobile_analytics_settings_store_update_rejected',
             );
-            setStoreDetails({ ...storeDetails, ...update });
+            setStoreDetails({ ...storeDetails, analytics: nextAnalytics });
             setOriginalAnalyticsState(analyticsDraft);
             Toast.show({ content: t('saved'), duration: 800 });
         } catch (error) {
@@ -555,7 +565,10 @@ export default function MobileSeoAnalyticsScreen({ onBack, mode = 'seo' }: Mobil
                     Object.fromEntries(Object.entries(localizedSeoDrafts).map(([languageCode, draft]) => [languageCode, draft.tagline])),
                 ),
             };
-            const writeResult = await updateStore(update);
+            const writeResult = await updateStore({
+                ...getStoreDeepDifference(update, storeDetails),
+                storeId: storeDetails.storeId,
+            });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,

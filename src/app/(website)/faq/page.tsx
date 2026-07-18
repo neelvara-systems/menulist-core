@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -9,7 +10,7 @@ import { Metadata } from 'next';
 const title = 'MenuList FAQ | Menu Preview, Publishing, Pricing, and Safety';
 const description = 'Answers for owners about creating a customer link, importing a menu or service list, review before publishing, pricing, data safety, AI Menu Manager, and supported publishing boundaries.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description,
     url: '/faq',
   },
-};
+});
 
 export default function Page() {
   return (

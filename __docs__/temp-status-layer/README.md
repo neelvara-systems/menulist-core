@@ -1,106 +1,65 @@
 # Temporary Status Layer
 
-> **"Closed today" / "Special menu only" / "Opening late" — real-time status banners with auto-expiry.**
+**Status:** Implemented; local source boundary complete
+**Feature flag:** `ENABLE_TEMP_STATUS: true`
+**Last code-truth review:** July 16, 2026
 
-**Created:** February 19, 2026
-**Source:** ChatGPT Strategic Planning Session — Part 9
-**Status:** ✅ IMPLEMENTED (February 19, 2026)
-**Last Source Gate Update:** July 6, 2026
-**Parent:** [`__docs__/customer-facing-infrastructure/`](../customer-facing-infrastructure/README.md)
-
----
-
-## Quick Navigation
-
-| Document                                                | Audience     | Purpose                |
-| ------------------------------------------------------- | ------------ | ---------------------- |
-| [Spec](./temp-status-layer_spec.md)                     | CEO, PM      | Business requirements  |
-| [Impl](./temp-status-layer_impl.md)                     | Developers   | Technical architecture |
-| [Marketing](./temp-status-layer_marketing.md)           | Sales        | Pitch deck, messaging  |
-| [Website](./temp-status-layer_website.md)               | Public       | Landing page content   |
-| [Help Doc](./temp-status-layer_helpdoc.md)              | Customers    | How to use temp status |
-| [Firebase](./temp-status-layer_firebase.md)             | Cost Control | Storage + expiry cost  |
-| [Mobile Support](./temp-status-layer_mobile-support.md) | Internal     | Mobile status toggle   |
-
----
+Temporary Status lets an authorized owner place one short, time-bounded notice on supported MenuList customer surfaces. It is for temporary exceptions; recurring hours continue to use Working Hours.
 
 ## Source Gate
 
-Current source/docs parity is guarded by `npm run verify:temporary-status-boundary`:
+Run `npm run verify:temporary-status-boundary` for the focused boundary.
 
 ```bash
 npm run verify:temporary-status-boundary
 ```
 
-The gate checks the authenticated set/clear route, strict session document-ID admission for tenant/store/actor IDs, hashed write limiter, 4KB body cap, bounded 8KB browser response parser, desktop and mobile optimistic rollback, Mobile Today shortcuts, OBP/menu/feedback/public API expiry guards, public pull API hides expired temporary status values, public cache invalidation, Digital Screens invalidation, Owner Business Assistant cache invalidation, and this doc set.
+The gate covers route admission, expiry, owner acknowledgement and rollback, public projections, live banner expiry, Special Menu ownership, cache/screen/assistant invalidation, structured data, tests, and this maintained doc set.
 
-## One-Liner
+## Current Contract
 
-Quick temporary banners on the official page — "Closed for private event", "Opening late today" — with automatic expiry.
+- Owner choices are Closed Today, Opening Late, Closing Early, Kitchen Closed, Special Menu, and Custom.
+- `POST /api/store/temp-status` accepts `set` or `clear`; tenant, store, and actor identity come from the authenticated session.
+- The route is feature-gated, permissioned, bounded to 4KB JSON, Zod-validated, and protected by a hashed fail-closed `DATA_WRITE` limiter.
+- A successful set writes the existing store document's `tempStatus` field. A successful clear deletes it.
+- Desktop Business Settings and the two MobileShell entry points update optimistically, but keep that state and show success only after a bounded valid `{ success: true }` response.
+- Public menu, Official Business Page (OBP), feedback, browser store payload, and pull API share the canonical active-status boundary. Invalid or expired truth is omitted.
+- Mounted public and owner components schedule expiry locally, so a notice disappears when its expiry passes without requiring a reload.
+- Only `closed_today` produces a whole-business closure in structured data. `kitchen_closed` and other notices never mark the complete business closed.
+- A Special Menu can own `type: special_menu` using `sourceProjectId`; its browser and scheduler lifecycle clears only the status owned by that project.
 
-## Problem Solved
+## Expired-State Boundary
 
-Hours status badge + availability toggles cover 70% of real-time scenarios. The remaining 30%:
+Expiry is a visibility rule, not a cleanup promise. The persisted field may remain after expiry; customer and browser projections hide it. A later set replaces it and an explicit clear deletes it. There is no Temporary Status cleanup worker, collection, queue, listener, or scheduled scan.
 
-- "Closed for private event today"
-- "Opening late today"
-- "Special menu only (festival)"
-- "Temporarily closed for renovation"
+## Post-Commit Effects
 
-These are infrequent but create customer anger when not communicated.
-
-## Architecture Overview
-
-```
-Store Document
-  └── tempStatus?: {
-        type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
-        message?: string;        // Custom message (max 100 chars)
-        expiresAt: string;       // ISO string; public surfaces hide expired statuses
-        createdAt: string;
-      }
-  ↓
-OBP + Digital Menu (banner display)
-  └── Yellow/orange banner above content when active
-  ↓
-Auto-expiry (client-side check OR nightly cleanup)
-  └── Remove expired statuses
-```
-
-## Cache Behavior
-
-Status writes affect customer-facing output, so the API invalidates all public menu tags for the store:
+After the store write commits, the route attempts the existing public effects together:
 
 - `menu-store-{storeId}`
 - `store-{storeId}`
 - `client-stores`
 - `screen-data`
+- Digital Screens content-version touch
+- Owner Business Assistant packet-cache invalidation
 
-Mobile "Mark Closed for Today" uses this temporary status path. Recurring weekday hours remain a separate working-hours edit.
+If one of these effects fails, the response remains a committed success with `effectsPending: true`; owner UI warns that customer pages may take a moment. It does not roll back to false local truth after the Firestore write has committed.
 
-The route also touches the Digital Screens content version with `storeTempStatus` and invalidates the Owner Business Assistant packet cache for the store. Public pages and the public pull API hide expired temporary status values instead of showing stale customer-facing notices.
+The public pull API hides expired temporary status values, and the shared browser projection omits expired or malformed values.
 
-## Feature Flag
+## Maintained Documents
 
-```typescript
-ENABLE_TEMP_STATUS: true; // In src/config/features.ts
-```
+- [Specification](./temp-status-layer_spec.md)
+- [Implementation](./temp-status-layer_impl.md)
+- [Firebase and scale](./temp-status-layer_firebase.md)
+- [Mobile support](./temp-status-layer_mobile-support.md)
+- [Help](./temp-status-layer_helpdoc.md)
+- [Marketing](./temp-status-layer_marketing.md)
+- [Website](./temp-status-layer_website.md)
+- [Validation](./temp-status-layer_validation.md)
 
-## Key Files
+Superseded pre-review narratives are retained under `_archive/pre-2026-07-16/`.
 
-| File                                                                    | Purpose                             |
-| ----------------------------------------------------------------------- | ----------------------------------- |
-| `src/types/platform/store.ts`                                           | `tempStatus` field on StoreDataType |
-| `src/app/api/store/temp-status/route.ts`                                | API route (set/clear)               |
-| `src/lib/auth/browserRequestPolicy.ts`                                  | Shared authenticated browser request boundary |
-| `src/lib/tempStatus/clientResponse.ts`                                  | Bounded browser response parser     |
-| `src/components/atoms/TempStatusBanner/index.tsx`                       | Banner for OBP + menu               |
-| `src/components/templates/main-app/businessSettings/TempStatusCard.tsx` | Desktop card                        |
-| `src/components/mobile/screens/MobileTempStatusScreen.tsx`              | Mobile screen                       |
-| `src/app/client/obp/OBPResolvedSurface.tsx`                             | OBP page integration                |
-| `src/app/client/[[...slug]]/page.tsx`                                   | Digital menu integration            |
-| `src/app/api/public/v1/business/route.ts`                               | Public pull API active status field |
+## Release Boundary
 
----
-
-**Last Updated:** July 2, 2026 — source gate, active flag, OBP banner, public API expiry guard, Digital Screens cache, and Owner Business Assistant cache invalidation documented
+Local source completion is not production certification. Approved app release, authenticated desktop/MobileShell set-clear QA, hosted menu/OBP/feedback/pull-API/cache/screen smoke, expiry observation, browser/device QA, and production-host evidence remain pending.

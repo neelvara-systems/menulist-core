@@ -877,13 +877,13 @@ const assertKBQualityDiagnosticsRouting = () => {
     );
     assertIncludes(
         productSeparationPlaybook,
-        'Legacy MenuList chat-monitoring boundary',
-        'Answerlattice product separation playbook must name the current KB Quality runtime boundary.',
+        'Dormant MenuList chat-monitoring compatibility boundary',
+        'Answerlattice product separation playbook must state that the old MenuList intelligence workers are dormant.',
     );
     assertIncludes(
         multiProductTenancy,
-        'Legacy MenuList chat-monitoring boundary',
-        'Answerlattice multi-product doctrine must name the current KB Quality runtime boundary.',
+        'Dormant MenuList chat-monitoring compatibility boundary',
+        'Answerlattice multi-product doctrine must state that the old MenuList intelligence workers are dormant.',
     );
     [
         answerlatticeFunctionsIndex,
@@ -1081,47 +1081,13 @@ const assertChatAggregationDiagnosticsRouting = () => {
 
     assertIncludes(
         aggregateDailyChatStats,
-        "const CHAT_DAILY_STORE_AGGREGATION_FAILED = 'CHAT_DAILY_STORE_AGGREGATION_FAILED';",
-        'Daily chat aggregation store failures must use a stable failure code.',
-    );
-    assertIncludes(
-        aggregateDailyChatStats,
-        "const CHAT_BACKFILL_DAY_FAILED = 'CHAT_BACKFILL_DAY_FAILED';",
-        'Daily chat aggregation backfill failures must use a stable failure code.',
-    );
-    assertIncludes(
-        aggregateDailyChatStats,
-        "'chatAnalytics.lastError': CHAT_DAILY_STORE_AGGREGATION_FAILED",
-        'Daily chat aggregation must persist stable store failure codes.',
-    );
-    assertIncludes(
-        aggregateDailyChatStats,
-        'Check Functions logs for bounded store context.',
-        'Daily chat aggregation Slack alerts must avoid raw tenant/store error lists.',
-    );
-    assertIncludes(
-        aggregateDailyChatStats,
-        "import { validateNetworkTargetUrl } from './utils/networkTarget';",
-        'Daily chat aggregation Slack alerts must import the shared network target validator.',
-    );
-    assertIncludes(
-        aggregateDailyChatStats,
-        "const CHAT_DAILY_SLACK_TARGET_REJECTED = 'CHAT_DAILY_SLACK_TARGET_REJECTED';",
-        'Daily chat aggregation Slack target rejections must use a stable failure code.',
-    );
-    assertIncludes(
-        aggregateDailyChatStats,
-        'validateNetworkTargetUrl(String(webhookUrl))',
-        'Daily chat aggregation Slack alerts must validate configured webhook targets before fetching.',
-    );
-    assertIncludes(
-        aggregateDailyChatStats,
-        'fetch(targetValidation.normalizedUrl,',
-        'Daily chat aggregation Slack alerts must fetch only the validated normalized webhook URL.',
+        "throw new HttpsError('failed-precondition', LEGACY_CHAT_ANALYTICS_MIGRATED);",
+        'Legacy MenuList chat backfill must fail closed after Answerlattice isolation.',
     );
     assert(
-        !aggregateDailyChatStats.includes('fetch(webhookUrl'),
-        'Daily chat aggregation Slack alerts must not fetch the raw configured webhook URL.',
+        !aggregateDailyChatStats.includes('firestoreAdmin')
+        && !aggregateDailyChatStats.includes('DB_COLLECTIONS'),
+        'Legacy MenuList chat aggregation must not retain datastore access.',
     );
     assertIncludes(
         negativeFeedbackAlert,
@@ -1147,45 +1113,15 @@ const assertChatAggregationDiagnosticsRouting = () => {
         !negativeFeedbackAlert.includes('fetch(webhookUrl'),
         'Negative feedback Slack alerts must not fetch the raw configured webhook URL.',
     );
-    [
-        'Final Results:',
-        'Errors encountered:',
-        'Tenant ${e.tId}',
-        'error instanceof Error ? error.message',
-        'String(error)',
-    ].forEach((rawPattern) => {
-        assert(
-            !aggregateDailyChatStats.includes(rawPattern),
-            `Daily chat aggregation must not keep raw diagnostic pattern ${rawPattern}.`,
-        );
-    });
-
     assertIncludes(
         triggerAggregationManual,
-        "const MANUAL_CHAT_AGGREGATION_DAY_FAILED = 'MANUAL_CHAT_AGGREGATION_DAY_FAILED';",
-        'Manual chat aggregation day failures must use a stable failure code.',
+        "throw new HttpsError('failed-precondition', LEGACY_CHAT_ANALYTICS_MIGRATED);",
+        'Legacy MenuList manual chat aggregation must fail closed after Answerlattice isolation.',
     );
-    assertIncludes(
-        triggerAggregationManual,
-        "'chatAnalytics.lastError': MANUAL_CHAT_AGGREGATION_FAILED",
-        'Manual chat aggregation catch-all must persist a stable failure code.',
+    assert(
+        !triggerAggregationManual.includes('firestoreAdmin'),
+        'Legacy MenuList manual chat aggregation must not access a datastore.',
     );
-    assertIncludes(
-        triggerAggregationManual,
-        'Aggregation failed for one or more days. Please try again.',
-        'Manual chat aggregation partial failures must return fixed callable copy.',
-    );
-    [
-        '[Manual Trigger]',
-        'Aggregation failed: ${results.errors.join',
-        'error instanceof Error ? error.message',
-        'String(error)',
-    ].forEach((rawPattern) => {
-        assert(
-            !triggerAggregationManual.includes(rawPattern),
-            `Manual chat aggregation must not keep raw diagnostic pattern ${rawPattern}.`,
-        );
-    });
 };
 
 const assertRealtimeTrackingDiagnosticsRouting = () => {
@@ -1284,7 +1220,6 @@ const assertSchedulerManualRetentionDiagnosticsRouting = () => {
         "const SCHEDULER_EXTRACTION_LEARNING_FAILED = 'SCHEDULER_EXTRACTION_LEARNING_FAILED';",
         "const SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED = 'SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED';",
         "const SCHEDULER_STALENESS_CHECK_FAILED = 'SCHEDULER_STALENESS_CHECK_FAILED';",
-        "const SCHEDULER_KB_GENERATION_WATCHDOG_FAILED = 'SCHEDULER_KB_GENERATION_WATCHDOG_FAILED';",
         "const SCHEDULER_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_RUN_LOG_PERSIST_FAILED';",
         "const SCHEDULER_DECISION_BLOCKS_FATAL_FAILED = 'SCHEDULER_DECISION_BLOCKS_FATAL_FAILED';",
         "const SCHEDULER_COMPLETION_ALERT_FAILED = 'SCHEDULER_COMPLETION_ALERT_FAILED';",
@@ -1299,6 +1234,8 @@ const assertSchedulerManualRetentionDiagnosticsRouting = () => {
         'function logSchedulerInfo(',
         'function logSchedulerWarn(',
         'function buildSchedulerFailureDiagnostic(',
+        "name: 'kb_generation_watchdog'",
+        "details: { reason: 'moved_to_answerlattice_runtime' }",
         "logSchedulerFailure(logger, '[DecisionBlocks] Completion alert failed'",
         "logSchedulerFailure(logger, '[DecisionBlocks] Store enrichment collection failed'",
         "operation: 'collect_store_enrichment'",
@@ -1603,6 +1540,7 @@ const authIndex = read('src/lib/auth/index.ts');
 const serverUserContext = read('src/lib/auth/serverUserContext.ts');
 const authMiddleware = read('src/middleware/auth.ts');
 const setClaimsRoute = read('src/app/api/auth/set-claims/route.ts');
+const setClaimsWorkspace = read('src/lib/auth/setClaimsWorkspace.ts');
 const authSecurity = read('src/lib/auth/security.ts');
 const phoneOtpHelper = read('src/lib/auth/phoneOtp.ts');
 const forgotPassword = read('src/components/templates/forgotPassword/index.tsx');
@@ -1773,7 +1711,9 @@ assertIncludes(platformRouteGuard, 'getServerSession(authOptions)', 'Platform ro
 assertIncludes(platformRouteGuard, 'allowedPlatformRoles: readonly string[]', 'Platform route guard must accept an explicit platform-role allowlist.');
 assertIncludes(platformRouteGuard, '!allowedPlatformRoles.includes(getPlatformRoleFromSession(session))', 'Platform route guard must reject sessions outside the explicit role allowlist.');
 assertIncludes(platformRouteGuard, 'redirect(redirectPath)', 'Platform route guard must redirect rejected sessions through the selected route boundary.');
-assertIncludes(platformRouteGuard, 'return requirePlatformRoleRouteAccess([ECOMSAI_PLATFORM_USER_ROLE], redirectPath);', 'Platform admin route guard must remain the full PLATFORM-role shortcut.');
+assertIncludes(platformRouteGuard, 'const session = await requirePlatformRoleRouteAccess([ECOMSAI_PLATFORM_USER_ROLE], redirectPath);', 'Platform admin route guard must keep the full PLATFORM signed-role admission.');
+assertIncludes(platformRouteGuard, 'const currentPlatformUser = await getCurrentPlatformUser(session);', 'Platform admin route guard must re-read current persisted authority.');
+assertIncludes(platformRouteGuard, 'if (!currentPlatformUser) redirect(redirectPath);', 'Platform admin route guard must reject stale or revoked persisted authority.');
 assertIncludes(platformLayout, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Platform layout must use the shared platform route guard.');
 assertIncludes(platformLayout, 'await requirePlatformAdminRouteAccess();', 'Platform layout must guard /platform routes before rendering.');
 assertIncludes(opsLayout, "import { requirePlatformAdminRouteAccess } from '@lib/auth/platformRouteGuard';", 'Ops layout must use the shared platform route guard.');
@@ -2368,7 +2308,10 @@ assertIncludes(changelog, 'CSV Export Spreadsheet Formula Boundary', 'Changelog 
 assertIncludes(sharedUtils, 'image_compression_failed', 'Shared utility helpers must code image compression failures.');
 assertIncludes(sharedUtils, 'await Promise.allSettled(names.map((name) => caches.delete(name)))', 'Browser cache reset must finish deletion attempts before reload.');
 assert(!sharedUtils.includes('names.forEach(async'), 'Browser cache reset must not launch unobserved deletions.');
-assertIncludes(globalPagesError, 'onClick={() => void clearBrowserCache(true)}', 'Global error recovery must explicitly launch the async cache reset.');
+assert(!globalPagesError.includes('clearBrowserCache'), 'Ordinary global error recovery must not delete browser caches.');
+assertIncludes(globalPagesError, 'onClick={() => reset()}>Try Again</Button>', 'Global error recovery must expose an in-place retry.');
+assertIncludes(globalPagesError, 'onClick={() => window.location.reload()}>Refresh Page</Button>', 'Global error recovery must make hard refresh explicit.');
+assertIncludes(globalPagesError, 'href={HELP_ROUTE}>Get Help</Button>', 'Global error recovery must link Help instead of relabeling retry as contact.');
 assert(!sharedUtils.includes('console.log(manifestString)'), 'Shared utility helpers must not keep old manifest debug console probes.');
 assertIncludes(aiSearchActionButtons, 'ai_search_answer_copy_failed', 'AI search action buttons must code clipboard failures.');
 assertIncludes(aiSearchActionButtons, 'copyAiSearchAnswerToClipboard', 'AI search action buttons must centralize answer copy acknowledgement.');
@@ -2625,8 +2568,11 @@ assertIncludes(platformUsers, 'assertUserUpdateSucceeded(', 'Platform users dash
 assertIncludes(platformUsers, 'platform_user_update_rejected', 'Platform users dashboard must include bounded rejected user-write acknowledgement code.');
 assertIncludes(platformUsers, 'platform_user_update_failed', 'Platform users dashboard must code user-update failures.');
 assertIncludes(platformUsers, 'readCreateStaffCompatibilityResponse', 'Platform users dashboard must use bounded create-staff compatibility response parsing.');
-assertIncludes(platformUsers, 'isCreateStaffCompatibilitySuccessResponse(data)', 'Platform users dashboard must require a shaped create-staff success acknowledgement.');
-assertIncludes(platformUsers, 'isCreateStaffCompatibilityEmailExistsResponse(data)', 'Platform users dashboard must only accept the allowlisted EMAIL_EXISTS compatibility acknowledgement.');
+assertIncludes(platformUsers, 'isCreateStaffCompatibilityVerificationResponse(', 'Platform users dashboard must require an explicit Auth-binding acknowledgement.');
+assertIncludes(platformUsers, 'userModal.id,', 'Platform users dashboard must bind verification acknowledgement to the expected user ID.');
+assertIncludes(platformUsers, 'userModal.email,', 'Platform users dashboard must bind verification acknowledgement to the expected email.');
+assert(!platformUsers.includes('isCreateStaffCompatibilityEmailExistsResponse'), 'Platform users dashboard must reject orphan Auth email collisions.');
+assert(!platformUsers.includes('await updateUser(updatedUser);'), 'Platform users dashboard must not client-mark verification after a generic compatibility response.');
 assertIncludes(platformUsers, 'STAFF_CLIENT_REQUEST_POLICY', 'Platform users dashboard must use shared staff request policy for create-staff verification.');
 assert(!platformUsers.includes('const data = await res.json()'), 'Platform users dashboard must not parse create-staff responses directly.');
 assert(!platformUsers.includes('res.json().catch'), 'Platform users dashboard must not silently swallow create-staff response parse failures.');
@@ -2642,15 +2588,25 @@ assert((staffClient.match(/STAFF_CLIENT_REQUEST_POLICY/g) || []).length >= 9, 'S
 assertIncludes(staffClient, 'staff_create_compatibility_response_invalid', 'Staff client must code invalid create-staff compatibility response shapes.');
 assertIncludes(staffClient, 'isCreateStaffCompatibilityRejectedResponse', 'Staff client must validate create-staff rejected response shapes.');
 assertIncludes(staffClient, 'isCreateStaffCompatibilitySuccessResponse', 'Staff client must expose a create-staff success acknowledgement guard.');
-assertIncludes(staffClient, 'isCreateStaffCompatibilityEmailExistsResponse', 'Staff client must expose the allowlisted EMAIL_EXISTS compatibility guard.');
+assertIncludes(staffClient, 'isCreateStaffCompatibilityVerificationResponse', 'Staff client must expose an identity-bound verification acknowledgement guard.');
 assertIncludes(staffClient, 'CREATE_STAFF_COMPATIBILITY_SUCCESS_MODES', 'Staff client must restrict create-staff compatibility successes to create-staff modes.');
+assertIncludes(staffClient, '"existing_user_auth_bound"', 'Staff compatibility verification must require the explicit Auth-binding mode.');
+assertIncludes(staffClient, 'value.user?.isVerified === true', 'Staff compatibility verification must require verified returned user state.');
 assertIncludes(staffClient, 'requireUser: true', 'Create-staff compatibility success must include the returned user envelope.');
 assertIncludes(staffClient, 'requireUserId: true', 'Create-staff compatibility success must include returned user identity.');
+assertIncludes(staffServer, 'mutation: { kind: "upsert", mapping: stores[0], verified: true }', 'Existing placeholder verification must commit through the staff access transaction.');
+assertIncludes(staffConcurrencyBoundary, 'currentData.isVerified !== false', 'Unverified users must not enter active staff/last-owner assignment state.');
+assertIncludes(staffServer, 'mode: "existing_user_auth_bound"', 'Existing placeholder verification must return an explicit Auth-binding acknowledgement.');
+assertIncludes(staffServer, 'staff_verify_auth_compensation_failed', 'Failed placeholder Auth binding must compensate the created Auth user.');
+assertIncludes(staffServer, 'AUTH_BINDING_INVALID', 'Incomplete pre-existing Auth bindings must fail closed.');
+assertIncludes(staffServer, 'PASSWORD_RESET_EMAIL_REQUEST_FAILED', 'Password setup email network failures must return a bounded result after account commit.');
+assertIncludes(staffServer, 'AbortSignal.timeout(STAFF_PASSWORD_RESET_PROVIDER_TIMEOUT_MS)', 'Password setup email provider calls must have a bounded wait.');
+assertIncludes(staffServer, 'staff_password_setup_metadata_write_failed', 'Password setup metadata failures must stay observable without reversing account success.');
 assertIncludes(staffClient, 'type StaffMutationParseOptions', 'Staff client must support operation-specific mutation acknowledgement requirements.');
 assertIncludes(staffClient, 'isStaffUserSummaryResponse', 'Staff client must validate returned staff user envelopes before UI state updates.');
 assertIncludes(staffClient, 'hasConsistentStaffMutationIdentity', 'Staff client must verify returned staff user and userId acknowledgement identity.');
 assertIncludes(staffClient, 'return value.user.id === value.userId;', 'Staff client must reject mismatched returned staff user/userId envelopes.');
-assertIncludes(staffClient, 'expectedModes: ["new_user_created", "existing_user_added_to_store"]', 'Create staff client call must require create/add-to-store acknowledgement modes.');
+assertIncludes(staffClient, 'expectedModes: ["new_user_created", "existing_user_added_to_store", "existing_user_auth_bound"]', 'Create staff client call must require create/add-to-store/Auth-binding acknowledgement modes.');
 assertIncludes(staffClient, 'expectedModes: ["user_updated"]', 'Update/reset staff client calls must require user-updated acknowledgement mode.');
 assertIncludes(staffClient, 'expectedModes: ["store_mapping_removed", "user_deactivated"]', 'Remove staff client call must require removal/deactivation acknowledgement modes.');
 assertIncludes(staffClient, 'expectedModes: ["session_revoked"]', 'Force sign-out staff client call must require session-revoked acknowledgement mode.');
@@ -2679,7 +2635,8 @@ assert((staffServer.match(/const targetUserId = normalizeStaffUserId\(input\.use
 assert((staffServer.match(/\.doc\(targetUserId\)/g) || []).length >= 3, 'Staff route-side mutation user document refs must use normalized target user IDs.');
 assertIncludes(staffConcurrencyBoundary, '.doc(params.userId)', 'Staff transaction user document refs must use normalized target user IDs.');
 assert((staffServer.match(/normalizeStaffStoreScopeDocumentId/g) || []).length >= 5, 'Staff store read/write paths must normalize store scope before refs.');
-assert((staffServer.match(/\.doc\(storeScope\.documentId\)/g) || []).length >= 2, 'Staff route-side store document refs must use normalized store scope document IDs.');
+assert((staffServer.match(/\.doc\(storeScope\.documentId\)/g) || []).length >= 1, 'Staff route-side store document refs must use normalized store scope document IDs.');
+assertIncludes(staffServer, 'runStaffRoleMutationTransaction({', 'Role/default-role writes must use the normalized transactional store boundary.');
 assertIncludes(staffConcurrencyBoundary, '.doc(scope.documentId)', 'Staff transaction store refs must use normalized store scope document IDs.');
 assert(!staffServer.includes('const StaffUserIdSchema = z.string()\n    .trim()'), 'Staff user ID schema must not trim IDs before boundary validation.');
 assert(!staffServer.includes('.doc(input.userId)'), 'Staff mutation user document refs must not use raw input user IDs.');
@@ -2923,9 +2880,18 @@ assertIncludes(uploadBlobFileToStorage, 'resolve(null);', 'Blob storage helper m
 assertIncludes(uploadBlobFileToStorage, 'storage_blob_download_url_failed', 'Blob storage helper must log download URL failures without hanging.');
 assertIncludes(firebaseStorageHelper, 'firebase_storage_upload_failed', 'Firebase upload helper must log upload failures with normalized code.');
 assertIncludes(firebaseStorageHelper, 'firebase_storage_download_url_failed', 'Firebase upload helper must log download URL failures with normalized code.');
+assertIncludes(firebaseStorageHelper, 'cleanupCompletedUploadAfterUrlFailure', 'Firebase upload helper must expose completed-upload cleanup acknowledgement handling.');
+assertIncludes(firebaseStorageHelper, 'firebase_storage_unreferenced_upload_cleanup_failed', 'Firebase upload helper must log failed orphan cleanup with a normalized code.');
+assertIncludes(firebaseStorageHelper, '() => deleteObject(uploadTask.snapshot.ref)', 'Firebase upload helper must delete the exact completed upload when opt-in cleanup is enabled.');
 assertIncludes(firebaseStorageHelper, "reject(new Error('Failed to upload file'))", 'Firebase upload helper must reject with generic failure text.');
 assert(!firebaseStorageHelper.includes("reject(error);"), 'Firebase upload helper must not reject raw provider errors.');
 assert(!firebaseStorageHelper.includes('Upload failed:'), 'Firebase upload helper must not log raw upload errors.');
+const pwaDal = read('src/database/pwa/index.ts');
+const kbUploadModal = read('src/components/templates/platform/KBGeneration/UploadModal.tsx');
+assertIncludes(pwaDal, "const fileId = `${createRuntimeId('pwa_icon')}.png`;", 'PWA icon cleanup opt-in requires an attempt-unique object ID.');
+assertIncludes(pwaDal, 'cleanupOnDownloadUrlFailure: true', 'PWA icon upload must opt into completed-upload cleanup.');
+assertIncludes(kbUploadModal, 'uuidv4()', 'Knowledge source cleanup opt-in requires an attempt-unique object ID.');
+assertIncludes(kbUploadModal, 'cleanupOnDownloadUrlFailure: true', 'Knowledge source upload must opt into completed-upload cleanup.');
 assertIncludes(uploadOBPPhoto, 'storage_obp_photo_batch_delete_failed', 'OBP photo batch delete failures must use bounded diagnostics.');
 assert(!uploadOBPPhoto.includes('[deleteOBPPhotos] Some OBP photo deletes failed.'), 'OBP photo helper must not keep raw batch delete warning.');
 assertIncludes(
@@ -2956,8 +2922,9 @@ assertIncludes(
 assertNoDirectConsole(staticAssetDiagnostics, 'Static asset diagnostics must not direct-console failures.');
 assertIncludes(staticAssetData, 'logStaticAssetFailure', 'Static asset DAL must use bounded static asset failure diagnostics.');
 assertIncludes(staticAssetData, 'logStaticAssetDiagnostic', 'Static asset DAL must use bounded static asset diagnostic events.');
-assertIncludes(staticAssetData, 'static_asset_category_file_cleanup_failed', 'Static asset category cleanup failures must be coded.');
-assertIncludes(staticAssetData, 'static_asset_subcategory_file_cleanup_failed', 'Static asset subcategory cleanup failures must be coded.');
+assertIncludes(staticAssetData, 'static_asset_persisted_file_cleanup_deferred_shared_reference', 'Static asset persisted shared-reference retention must be coded.');
+assert(!staticAssetData.includes('static_asset_category_file_cleanup_failed'), 'Static asset category delete must not remove globally shareable persisted previews.');
+assert(!staticAssetData.includes('static_asset_subcategory_file_cleanup_failed'), 'Static asset subcategory delete must not remove globally shareable persisted previews.');
 assertIncludes(staticAssetData, 'static_asset_item_update_item_missing', 'Static asset item update missing-item paths must be coded.');
 assertIncludes(staticAssetData, 'static_asset_item_delete_item_missing', 'Static asset item delete missing-item paths must be coded.');
 assertNoDirectConsole(staticAssetData, 'Static asset DAL must not direct-console asset IDs, URLs, or provider errors.');
@@ -3246,7 +3213,11 @@ assertIncludes(campaigncueFirebaseAdmin, 'campaigncue_admin_file_credential_load
 assertIncludes(campaigncueFirebaseAdmin, 'campaigncue_admin_local_adc_initialize_failed', 'CampaignCue Firebase Admin must code local ADC diagnostics.');
 assertIncludes(signaldeskFirebaseAdmin, 'signaldesk_admin_env_credential_invalid', 'SignalDesk Firebase Admin must code invalid env credential diagnostics.');
 assertIncludes(signaldeskFirebaseAdmin, 'signaldesk_admin_file_credential_load_failed', 'SignalDesk Firebase Admin must code file credential diagnostics.');
-assertIncludes(signaldeskFirebaseAdmin, 'signaldesk_admin_local_adc_initialize_failed', 'SignalDesk Firebase Admin must code local ADC diagnostics.');
+assert(
+    !signaldeskFirebaseAdmin.includes('signaldesk_admin_local_adc_initialize_failed')
+        && !signaldeskFirebaseAdmin.includes('applicationDefault('),
+    'SignalDesk Firebase Admin must stay on explicit product credentials or emulator identity instead of generic local ADC fallback.',
+);
 [
     ['Firebase client bootstrap', firebaseClient],
     ['App Check bootstrap', appCheck],
@@ -3272,6 +3243,8 @@ assertIncludes(firebaseAuthSyncHelper, 'createFirebaseBootstrapError', 'Firebase
 assertIncludes(firebaseAuthSyncHelper, 'firebase_auth_sync_http_failed', 'Firebase Auth sync helper must code set-claims HTTP failures.');
 assertIncludes(firebaseAuthSyncHelper, 'firebase_auth_claims_refresh_http_failed', 'Firebase Auth sync helper must code claims refresh HTTP failures.');
 assertIncludes(firebaseAuthSyncHelper, 'firebase_auth_claims_refresh_mismatch', 'Firebase Auth sync helper must code target-store claim acknowledgement failures.');
+assertIncludes(firebaseAuthSyncHelper, 'from "@lib/auth/firebaseClaimsAcknowledgement"', 'Firebase Auth sync helper must keep claim acknowledgement on a client-safe module boundary.');
+assert(!firebaseAuthSyncHelper.includes('@lib/auth/setClaimsWorkspace'), 'Firebase Auth sync helper must not pull the server-only workspace resolver into the browser provider graph.');
 assertIncludes(firebaseAuthSyncHelper, 'firebaseClaimsMatchTargetStore(refreshedToken?.claims, targetStoreId)', 'Firebase Auth refresh must verify the minted target-store claims before UI context changes.');
 assertIncludes(firebaseAuthSyncHelper, 'AUTH_BROWSER_REQUEST_POLICY', 'Firebase Auth sync helper must use the shared browser auth request policy.');
 assert((firebaseAuthSyncHelper.match(/AUTH_BROWSER_REQUEST_POLICY/g) || []).length >= 3, 'Firebase Auth sync helper must apply the shared policy to sync and refresh set-claims calls.');
@@ -3435,7 +3408,10 @@ assert(!setClaimsRoute.includes('key: `auth-set-claims:${session.uId'), 'Set-cla
 assert(!setClaimsRoute.includes('key: `auth-set-claims:${session.user.email'), 'Set-claims route must not store raw emails in rate-limit keys.');
 assert(!setClaimsRoute.includes('key: `${SET_CLAIMS_RATE_LIMIT_KEY}:${session'), 'Set-claims route must build limiter keys from hashed identity material.');
 assertIncludes(setClaimsRoute, "import { normalizeStorePermissionScopeDocumentId, type StorePermissionScopeDocumentId } from '@lib/permissions/server';", 'Set-claims route must reuse the shared tenant/store scope document ID normalizer.');
-assertIncludes(setClaimsRoute, "import { resolveSetClaimsWorkspaceFromStore } from '@lib/auth/setClaimsWorkspace';", 'Set-claims route must reuse the canonical store workspace resolver.');
+assertIncludes(setClaimsRoute, "from '@lib/auth/setClaimsWorkspace';", 'Set-claims route must reuse the canonical store workspace and role resolvers.');
+assertIncludes(setClaimsWorkspace, 'export const resolveSetClaimsRole = (params:', 'Set-claims workspace helper must expose fail-closed store-role resolution.');
+assertIncludes(setClaimsWorkspace, "return params.hasPlatformAccess ? 'staff' : null;", 'Missing store roles must not default normal users to owner.');
+assertIncludes(setClaimsWorkspace, "role.toUpperCase() === 'PLATFORM'", 'Non-platform users must not mint a privileged platform role claim.');
 assertIncludes(setClaimsRoute, 'const resolveClaimStoreScope = (dbUser: any, targetStoreId?: number): StorePermissionScopeDocumentId | null => {', 'Set-claims route must expose a normalized claim-store scope resolver.');
 assertIncludes(setClaimsRoute, 'const claimStoreScope = resolvedTargetStoreId && (hasDefaultPlatformAccess || canAccessTargetStore)', 'Set-claims route must normalize the selected claim store scope.');
 assertIncludes(setClaimsRoute, '? normalizeStorePermissionScopeDocumentId(resolvedTargetStoreId)', 'Set-claims route must pass the selected claim store through the shared document-ID normalizer.');
@@ -3443,6 +3419,12 @@ assertIncludes(setClaimsRoute, '.doc(claimStoreScope.documentId)', 'Set-claims r
 assertIncludes(setClaimsRoute, 'const canonicalWorkspace = canonicalStoreSnapshot.exists', 'Set-claims route must require canonical selected-store truth.');
 assertIncludes(setClaimsRoute, 'dbUserTenantId: dbUser.tenantId ?? dbUser.tId', 'Set-claims route must compare non-platform user tenant scope with canonical store truth.');
 assertIncludes(setClaimsRoute, 'const claimTenantScope = canonicalWorkspace.tenantScope;', 'Set-claims route must derive the minted tenant from canonical store truth.');
+assertIncludes(setClaimsRoute, 'resolveSetClaimsRole({', 'Set-claims route must resolve a bounded store role before minting claims.');
+assertIncludes(setClaimsRoute, 'userRole: storeRole,', 'Set-claims route must derive store authority from the exact current membership role.');
+assert(!setClaimsRoute.includes('storeRole || dbUser.role'), 'Set-claims route must not replace a missing membership role with account-level authority.');
+assertIncludes(setClaimsRoute, 'scope.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF', 'Answerlattice platform fallback must use a least-privileged store role.');
+assertIncludes(setClaimsRoute, 'set_claims_missing_or_privileged_store_role_rejected', 'Set-claims route must reject missing or privileged non-platform store roles.');
+assert(!setClaimsRoute.includes("role: userRole || 'OWNER'"), 'Set-claims route must not default a missing store role to owner.');
 assertIncludes(setClaimsRoute, '? PRODUCT_IDS.ANSWERLATTICE', 'Separate Answerlattice sync must force the Answerlattice product claim.');
 assertIncludes(setClaimsRoute, 'storeIds: [scope.storeId]', 'Answerlattice platform fallback must not copy MenuList store memberships.');
 assertIncludes(setClaimsRoute, 'rawRoles: canonicalStoreSnapshot.data()?.answerlatticeRoles', 'Set-claims Answerlattice permission lookup must use roles from the normalized canonical store read.');
@@ -3794,6 +3776,11 @@ assertIncludes(loginPage, 'login_page_validate_claim_response_invalid', 'Login p
 assertIncludes(loginPage, "isSuccessfulClaimAccountResponse(claimData, 'google')", 'Login Google claim linking must require the google claim-account mode.');
 assertIncludes(loginPage, "isSuccessfulClaimAccountResponse(data, 'email-password')", 'Login email claim setup must require the email-password claim-account mode.');
 assertIncludes(loginPage, "isSuccessfulClaimAccountResponse(data, 'whatsapp-phone')", 'Login phone claim setup must require the whatsapp-phone claim-account mode.');
+assertIncludes(loginPage, 'const claimProcessingRef = useRef(false);', 'Login Google claim linking must keep a synchronous in-flight guard.');
+assertIncludes(loginPage, 'if (pendingClaim && claimProcessingRef.current) return;', 'A rerender must not start redirect or Firebase sync while a claim is being committed.');
+assertIncludes(loginPage, 'claimProcessingRef.current = true;', 'Login Google claim linking must reserve the in-flight guard before its route call.');
+assertIncludes(loginPage, 'claimProcessingRef.current = false;', 'Login Google claim linking must release its in-flight guard after completion.');
+assert(!loginPage.includes('[sessionData, router, claimProcessing, dispatch, updateSession]'), 'Claim processing state must not retrigger the post-login claim effect.');
 assertIncludes(loginPage, '&& isClaimIdentityValue(value.tenantId)', 'Login claim-account acknowledgement must include tenant identity.');
 assertIncludes(loginPage, '&& isClaimIdentityValue(value.storeId)', 'Login claim-account acknowledgement must include store identity.');
 assertIncludes(validateClaim, 'status: "valid"', 'Validate-claim route must return explicit valid status for accepted preview tokens.');
@@ -4081,9 +4068,11 @@ assertIncludes(
 );
 assertIncludes(
     claimAccount,
-    'const rl = await checkRateLimit({ key: `auth-claim:${ipHash}`, ...getRateLimitForFeature(\'AUTH_SENSITIVE\') });',
+    'key: `auth-claim:${ipHash}`',
     'Claim account must store hashed IP rate-limit keys.',
 );
+assertIncludes(claimAccount, 'failClosedOnProviderError: true', 'Claim account must stop identity mutation when the shared limiter is unavailable.');
+assertIncludes(claimAccount, "rl.reason === 'provider_unavailable'", 'Claim account must distinguish limiter outages from caller throttling.');
 assertIncludes(
     claimAccount,
     'getBoundedSecurityRouteContext(null, request)',
@@ -4144,9 +4133,11 @@ assertIncludes(
 );
 assertIncludes(
     claimAccount,
-    'await revalidateMenuCache(claimScope.storeId, { tId: claimScope.tenantId });',
-    'Claim account cache revalidation must use normalized numeric tenant/store scope.',
+    'await revalidateClaimAccountPublicCache(claimScope, request);',
+    'Claim account post-commit cache revalidation must use the normalized claimed scope.',
 );
+assertIncludes(claimAccount, 'claim_account_cache_revalidation_failed', 'Claim account must observe post-commit public cache failures without failing the completed claim.');
+assert((claimAccount.match(/await revalidateClaimAccountPublicCache\(claimScope, request\);/g) || []).length >= 2, 'Both email and Google claim modes must run non-fatal public cache recovery.');
 assert(!claimAccount.includes('logger.error("[claim-account] Error"'), 'Claim account must not raw-log unexpected failures.');
 assert(!claimAccount.includes('new Error(String(error))'), 'Claim account must not stringify unexpected thrown values.');
 assert(!claimAccount.includes('key: `auth-claim:${ip}`'), 'Claim account must not store raw request IP in rate-limit keys.');
@@ -4164,6 +4155,8 @@ assertIncludes(
     'logAuthFailure(\n      "validate_claim_unexpected_error"',
     'Validate-claim unexpected failures must use bounded auth diagnostics.',
 );
+assertIncludes(validateClaim, 'failClosedOnProviderError: true', 'Validate-claim must stop public token lookup when the shared limiter is unavailable.');
+assertIncludes(validateClaim, "rl.reason === 'provider_unavailable'", 'Validate-claim must distinguish limiter outages from caller throttling.');
 assertIncludes(
     validateClaim,
     'const ipHash = hashPublicRateLimitValue(ip);',
@@ -4176,7 +4169,7 @@ assertIncludes(
 );
 assertIncludes(
     validateClaim,
-    'const rl = await checkRateLimit({ key: `auth-validate:${ipHash}`, ...getRateLimitForFeature(\'AUTH_SENSITIVE\') });',
+    'key: `auth-validate:${ipHash}`',
     'Validate-claim must store hashed IP rate-limit keys.',
 );
 assertIncludes(
@@ -4574,7 +4567,9 @@ assertOrder(
     claimAccount,
     [
         'const ipHash = hashPublicRateLimitValue(ip);',
-        "checkRateLimit({ key: `auth-claim:${ipHash}`",
+        'const rl = await checkRateLimit({',
+        'key: `auth-claim:${ipHash}`',
+        'failClosedOnProviderError: true',
         'readBoundedJsonBody(request, CLAIM_ACCOUNT_MAX_BODY_BYTES',
         'const { email, password, useWhatsappPhone } = body;',
         'const claimToken = normalizeAuthClaimToken(body.claimToken);',
@@ -4638,6 +4633,9 @@ assertIncludes(phoneOtpStart, "'phone_otp_start_route_failed'", 'Phone OTP start
 assertIncludes(phoneOtpStart, "getBoundedAuthStringContext('requestIp', getRequestIp(request))", 'Phone OTP start diagnostics must bound request IP metadata.');
 assertIncludes(phoneOtpStart, "action: 'start'", 'Phone OTP start route must return explicit start acknowledgement.');
 assertIncludes(phoneOtpStart, 'purpose: parsed.data.purpose', 'Phone OTP start route must echo the accepted purpose.');
+assert((phoneOtpStart.match(/failClosedOnProviderError: true/g) || []).length >= 2, 'Phone OTP start must fail closed for both IP and phone limiter provider outages.');
+assertIncludes(phoneOtpStart, "ipRate.reason === 'provider_unavailable'", 'Phone OTP start must return provider-unavailable behavior for the IP limiter.');
+assertIncludes(phoneOtpStart, "phoneRate.reason === 'provider_unavailable'", 'Phone OTP start must return provider-unavailable behavior for the phone limiter.');
 assert(!phoneOtpStart.includes('error.message'), 'Phone OTP start must not return custom exception messages to the browser.');
 assert(!phoneOtpStart.includes("secureError('[Phone OTP] Start route failed'"), 'Phone OTP start must not raw secureError unexpected failures.');
 
@@ -4657,6 +4655,9 @@ assertIncludes(phoneOtpVerify, "'phone_otp_verify_route_failed'", 'Phone OTP ver
 assertIncludes(phoneOtpVerify, "getBoundedAuthStringContext('requestIp', getRequestIp(request))", 'Phone OTP verify diagnostics must bound request IP metadata.');
 assertIncludes(phoneOtpVerify, "action: 'verify'", 'Phone OTP verify route must return explicit verify acknowledgement.');
 assertIncludes(phoneOtpVerify, 'challengeId: parsed.data.challengeId', 'Phone OTP verify route must echo the verified challenge id.');
+assert((phoneOtpVerify.match(/failClosedOnProviderError: true/g) || []).length >= 2, 'Phone OTP verify must fail closed for both IP and challenge limiter provider outages.');
+assertIncludes(phoneOtpVerify, "ipRate.reason === 'provider_unavailable'", 'Phone OTP verify must return provider-unavailable behavior for the IP limiter.');
+assertIncludes(phoneOtpVerify, "challengeRate.reason === 'provider_unavailable'", 'Phone OTP verify must return provider-unavailable behavior for the challenge limiter.');
 assertIncludes(phoneOtpVerify, 'normalizePhoneOtpChallengeId', 'Phone OTP verify route must use the shared challenge ID normalizer.');
 assertIncludes(phoneOtpVerify, 'const PhoneOtpChallengeIdSchema = z.string()', 'Phone OTP verify route must define a challenge ID schema.');
 assertIncludes(phoneOtpVerify, ".refine((value) => normalizePhoneOtpChallengeId(value) !== null, 'Invalid challenge')", 'Phone OTP verify route must reject malformed challenge IDs before challenge throttling.');

@@ -4,7 +4,12 @@ import { calculateOfflineAmount, getActiveResellerTiers, RESELLER_COMMITMENT_OPT
 import { BUSINESS_TYPES } from '@data/shared/businessTypes';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
+import {
+    clearResellerOperationId,
+    getOrCreateResellerOperationId,
+    getResellerOperationIntentKey,
+    RESELLER_REQUEST_POLICY,
+} from '@template/main-app/reseller/resellerDiagnostics';
 import { formatInrPaise } from '@util/formatters';
 import { theme } from 'antd';
 import { useMemo, useState } from 'react';
@@ -44,6 +49,7 @@ type OnboardResult = {
     subdomain?: string;
     subscriptionId: string;
     tenantId: number;
+    transactionId: string;
 };
 
 type MobileResellerOnboardingHandoffKind =
@@ -119,7 +125,7 @@ function createMobileResellerOnboardStatusError(code: string, status?: number) {
     return error;
 }
 
-function isValidMobileOnboardResult(data: unknown): data is OnboardResult {
+function isValidMobileOnboardResult(data: unknown, expectedOperationId: string): data is OnboardResult {
     if (!isRecord(data)) return false;
     const storeId = Number(data.storeId);
     const tenantId = Number(data.tenantId);
@@ -128,7 +134,8 @@ function isValidMobileOnboardResult(data: unknown): data is OnboardResult {
         && typeof data.subscriptionId === 'string'
         && data.subscriptionId.length > 0
         && typeof data.status === 'string'
-        && data.status.length > 0;
+        && data.status.length > 0
+        && data.transactionId === expectedOperationId;
 }
 
 const initialDraft: OnboardDraft = {
@@ -251,6 +258,21 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
     const submit = async () => {
         if (!validateStep()) return;
         setLoading(true);
+        const operationIntentKey = getResellerOperationIntentKey('onboard-client', [
+            draft.billingInterval,
+            draft.businessName.trim(),
+            draft.businessType,
+            draft.commitmentMonths || null,
+            Math.max(1, Number(draft.locationCount || 1)),
+            draft.ownerEmail.trim(),
+            draft.ownerPassword,
+            normalizedOwnerPhone.countryCode,
+            normalizedOwnerPhone.dialCode,
+            normalizedOwnerPhone.phoneNumber,
+            draft.paymentMode,
+            draft.pricingTier,
+        ]);
+        const operationId = getOrCreateResellerOperationId(operationIntentKey);
         const onboardLogContext = buildResellerOnboardingLogContext('onboard_client', {
             billingInterval: draft.billingInterval,
         });
@@ -258,6 +280,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
             const response = await fetch('/api/reseller/onboard', {
                 ...RESELLER_REQUEST_POLICY,
                 body: JSON.stringify({
+                    operationId,
                     billingInterval: draft.billingInterval,
                     businessName: draft.businessName.trim(),
                     businessType: draft.businessType,
@@ -278,7 +301,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
             if (!response.ok) {
                 throw createMobileResellerOnboardStatusError('mobile_reseller_onboard_rejected', response.status);
             }
-            if (!isValidMobileOnboardResult(data)) {
+            if (!isValidMobileOnboardResult(data, operationId)) {
                 const invalidResponseError = createMobileResellerOnboardStatusError(
                     'mobile_reseller_onboard_response_invalid',
                     response.status,
@@ -290,6 +313,7 @@ export default function MobileResellerOnboardingScreen({ onBack }: { onBack: () 
                 });
                 throw invalidResponseError;
             }
+            clearResellerOperationId(operationIntentKey);
             setResult(data);
             Toast.show({ content: 'Client onboarded successfully', duration: 1800, icon: 'success' });
         } catch (error) {

@@ -61,6 +61,21 @@ export type CampaignCueDecisionOutputType =
     | "campaign_proof_deck_pdf"
     | "manual_task";
 
+export type CampaignCueOutputIntentId =
+    | "recommended_pack"
+    | "source_to_channel_pack"
+    | "whatsapp_sales_pack"
+    | "booking_push_pack"
+    | "google_local_update"
+    | "instagram_post_story"
+    | "print_in_store"
+    | "staff_share_pack"
+    | "ad_handoff_pack"
+    | "local_creator_test_brief"
+    | "campaign_proof_deck"
+    | "reuse_old_asset"
+    | "custom_size";
+
 export type CampaignCueActionType = typeof CAMPAIGNCUE_EXPORT_ACTIONS[number];
 export type CampaignCueDisabledProviderActionType = typeof CAMPAIGNCUE_DISABLED_PROVIDER_ACTIONS[number];
 
@@ -375,6 +390,9 @@ export interface CampaignCueCampaign extends CampaignCueTimestamped {
         patternCueSourceHash?: string;
         reusedFromCampaignId?: string;
         reuseMode?: "rebuild_from_current_truth";
+        sourceTemplateId?: string;
+        outputIntentId?: CampaignCueOutputIntentId;
+        requestedOutputTypes?: CampaignCueDecisionOutputType[];
         freshness?: CampaignCuePackFreshness;
         commercialGate?: CampaignCueCommercialGate;
         experiment?: CampaignCueExperimentSuggestion;
@@ -866,6 +884,11 @@ export interface CampaignCueOutputPack {
         whyNow: string[];
         confidence: CampaignCueOutputPackStatus;
         riskState: CampaignCueOutputPackStatus;
+        outputIntent?: {
+            id: CampaignCueOutputIntentId;
+            title: string;
+            requestedOutputTypes: CampaignCueDecisionOutputType[];
+        };
     };
     facts: {
         usedFactRefs: string[];

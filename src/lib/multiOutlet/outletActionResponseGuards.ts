@@ -29,6 +29,8 @@ export type OutletRenameResponse = {
 
 export type OutletDeactivateResponse = {
     alreadyInactive?: boolean;
+    billingActionRequired?: 'CONTACT_SUPPORT' | null;
+    billingReductionPending?: boolean;
     billingReduced: boolean;
     outletStoreId: number;
     success: true;
@@ -95,4 +97,10 @@ export const isOutletDeactivateResponse = (data: unknown): data is OutletDeactiv
     && isFiniteNumber(data.outletStoreId)
     && typeof data.billingReduced === 'boolean'
     && (data.alreadyInactive === undefined || typeof data.alreadyInactive === 'boolean')
+    && (data.billingReductionPending === undefined || typeof data.billingReductionPending === 'boolean')
+    && (
+        data.billingActionRequired === undefined
+        || data.billingActionRequired === null
+        || data.billingActionRequired === 'CONTACT_SUPPORT'
+    )
 );

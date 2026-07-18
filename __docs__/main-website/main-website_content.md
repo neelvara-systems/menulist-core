@@ -1,7 +1,7 @@
 # Website Content — MenuList Main Website (menulist.ai)
 
 **Status:** ✅ CURRENT — Canonical website copy and section map
-**Last Updated:** July 10, 2026
+**Last Updated:** July 18, 2026
 **Governance:** All content follows `02-language-governance.md` + `10-communication-worldbuilding-doctrine.md`  
 **Test:** Every line passes: "Would a busy restaurant owner in Mumbai, reading this on their phone between lunch rush and dinner prep, immediately understand what this means for them?"
 
@@ -27,6 +27,8 @@
 
 > Privacy and analytics note (June 5, 2026; CTA label updated June 22, 2026; vendor boundary tightened June 25, 2026; Plausible website-only layer added June 26, 2026; mobile banner compacted June 27, 2026; Clarity config fallback removed July 5, 2026; consent storage fallback diagnostics added July 5, 2026; resource payload boundary added July 5, 2026; GA page-location boundary added July 5, 2026): Main MenuList website analytics are consent-gated. Plausible, Google Analytics, and Microsoft Clarity must not load from `src/app/(website)/layout.tsx` until `WebsiteAnalyticsConsent` records an accepted analytics choice. Consent storage fallback diagnostics are bounded: if localStorage cannot be read, the banner shows the consent panel again and Plausible skips events until consent can be read; if localStorage cannot be written, the page keeps the runtime choice for the current view. Plausible is website-only and env-gated by `NEXT_PUBLIC_MENULIST_PLAUSIBLE_DOMAIN`; GA4 remains for paid-ad/conversion continuity; Clarity is MenuList-only and env-gated by `NEXT_PUBLIC_CLARITY_ID` for visual behavior observation. Google Analytics page views strip query strings and hash fragments from `page_location`, and the GA script fails closed unless `NEXT_PUBLIC_GA_MEASUREMENT_ID` matches the GA4 `G-...` measurement-id shape. Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEvent`: resource page, CTA, AI/referrer, create-menu/pricing, and checklist-copy event strings strip control characters and cap URL/referrer/UTM-style values before GA4 receives them. Footer preferences include an Analytics control so visitors can change the choice later. The first-load mobile consent panel must stay compact enough that it does not cover the hero `Create customer link` or `See example customer page` actions. Public website third-party events may include page, entry-page, referrer, UTM, locale, CTA, and target URL context, but they must not send custom repo-generated session identifiers, tenant ids, owner ids, customer ids, emails, phone numbers, private business identifiers, raw storage keys, or browser exception messages. This does not apply to owner custom-domain compliance pages or customer menu/OBP analytics, which are separate product surfaces with their own settings and privacy rules.
 
+> Website alias and legal truth note (July 16, 2026): Every website-internal route family, including FAQ, Tools, WhatsApp, private Invite, and reviewed locale-prefixed Resources, must preserve the active `menulist.digital/ml` product alias. Route-state and resource-locale code inspects the public pathname after removing that alias, then reapplies it to the destination. Terms and Refund copy must remain plan-specific and purpose-based: do not promise universal external publishing, all-feature access, fixed post-subscription deletion, absolute ownership of generated output, or provider certification. Cancelled/paused owners retain their current purchased plan only through the paid `cycleEndDate`; source copy and owner billing UI must not imply access beyond it.
+
 > Business Health website note (June 17, 2026): Business Health may now be promoted as MenuList's AI health check for the menu and public presence. This is a diagnostic-only AI positioning: Business Health checks cached MenuList facts, shows what needs attention, says No action needed when stable, and hands fixes to AI Menu Manager or existing owner screens. Do not call it a chatbot, autonomous business agent, revenue optimizer, prediction system, competitor tracker, or direct public-truth editor.
 
 > Featured Choices website note (June 9, 2026): Decision Intelligence is publicly exposed as Featured Choices at `/features/featured-choices`. Public copy should say Featured, Quick, and Value choices help customers choose from the current approved menu. Do not use internal names, algorithm language, exact decision-time claims, or guaranteed sales-lift claims.
@@ -51,7 +53,7 @@
 
 > Non-technical owner copy polish (July 1, 2026): public website copy should read like it is for a busy SMB owner, not an internal product team. Avoid visible jargon such as `PWA`, `crawler`, `structured data`, `schema`, `source-of-truth`, `diagnostic layer`, `signals`, `raw tables`, and generic `dashboard` language unless the page is legal/security/resource-specific or `Owner phone dashboard` is the actual feature label. Prefer `approved list`, `customer link`, `clear public page`, `activity view`, `phone dashboard`, `review before publishing`, and `search and AI tools` where owners need the practical meaning.
 
-> Create-menu preview bridge note (July 7, 2026): the homepage now includes `CreateMenuPreviewSection` immediately after the hero and uses a browser-local selector for the three owner inputs that matter most before signup: photo, owned public link, and typed list. It is a conversion bridge into `/create-menu`, not a second intake implementation. Copy may invite owners to start from a photo, owned public link, or typed list, but it must keep the current guardrails explicit: sign in before processing, private owner-bound preview, five preview attempts per day, 24-hour draft expiry, and review before publishing.
+> Create-menu preview bridge note (July 7, 2026; runtime truth corrected July 18, 2026): the homepage includes `CreateMenuPreviewSection` immediately after the hero and uses a browser-local selector for the two public inputs supported by `/create-menu`: a photo/image or an owned public link. An owned public link may point to a menu, service list, image, or PDF. It is a conversion bridge into `/create-menu`, not a second intake implementation. Keep the current guardrails explicit: sign in before processing, private owner-bound preview, five preview attempts per day, 24-hour draft expiry, and review before publishing.
 
 > Mobile try-first homepage note (July 3, 2026): the homepage now makes the preview path the first action after the hero. The first-scroll story is `upload or paste current list -> private preview -> review -> publish`, followed by a short before/after block, customer output proof, compact AI Menu Manager + Business Health USP proof, six conversion FAQ questions, and final CTA. The deep operating-loop, setup, surfaces, resources, AI Menu Manager, and Business Health explanations belong on `/how-it-works`, `/features`, `/ai-menu-manager`, `/features/business-health`, `/resources`, and `/faq` rather than in the first mobile scroll.
 
@@ -158,9 +160,9 @@ Industry pages explain how the same official-source layer applies to common list
 6. `/industries/service-list-businesses`
 7. `/industries/local-service-businesses`
 
-**Content rule:** Industry pages may describe fit, common public-list problems, how MenuList helps, placeholder or approved demo proof, and related resource links. They must not claim category-specific revenue lift, automatic Google updates, delivery-marketplace replacement, POS replacement, booking replacement, job-management replacement, or guaranteed search/AI visibility.
+**Content rule:** Industry pages may describe fit, common public-list problems, how MenuList works, approved demo/product proof, and related resource links. They must not claim category-specific revenue lift, automatic Google updates, delivery-marketplace replacement, POS replacement, booking replacement, job-management replacement, or guaranteed search/AI visibility.
 
-**Placeholder proof note (June 23, 2026):** `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses` currently use labelled sample/demo SVG placeholders from `public/images/website/demo-placeholders/`. Replace those assets with routed demo screenshots or permissioned proof before broad campaign use.
+**Proof note (updated July 18, 2026):** `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses` no longer render internal placeholder labels or replacement instructions. Add routed demo screenshots or permissioned proof through AssetOS only after review; until then, the shared industry shell remains text-first.
 
 ---
 
@@ -172,11 +174,11 @@ Industry pages explain how the same official-source layer applies to common list
 
 **Subline:**
 
-> Start with a photo, PDF, existing menu link, or typed menu. MenuList prepares it for review, then keeps your public menu, business page, QR, print files, customer actions, owner updates, feedback, and health checks connected to the version you approve.
+> Start with a clear photo or an owned public menu, service-list, image, or PDF link. MenuList prepares it for review, then keeps supported MenuList public outputs connected to the version you approve.
 
 **Primary CTA:** Create customer link →
 **Secondary CTA:** See example customer page (`/features/official-business-page`)
-**Micro-trust line:** Start with a 7-day setup. Review the public version before choosing a paid plan.
+**Micro-trust line:** Publish and try the starter link during the 7-day setup. Choose a paid plan before the deadline to keep the same URL live.
 
 **Proof strip:** Owner-approved · Use as website link · QR and print ready
 
@@ -207,7 +209,7 @@ Industry pages explain how the same official-source layer applies to common list
 
 **Subline:**
 
-> Start from a photo, an owned public link, or a typed list. MenuList prepares a private preview connected to your account.
+> Start from a photo or an owned public link. MenuList prepares a private preview connected to your account.
 
 **CTA:** Start menu preview (`/create-menu`)
 
@@ -218,7 +220,7 @@ Industry pages explain how the same official-source layer applies to common list
 - Drafts expire after 24 hours
 - Nothing becomes public until the owner reviews and confirms
 
-**Interactive proof:** The three selector cards are local UI only. Switching between photo, owned-link, and typed-list examples changes the sample private-preview copy inside the panel. It must not submit files, fetch links, call providers, create drafts, reserve public URLs, or write analytics/product state beyond ordinary consent-gated website events already present elsewhere.
+**Interactive proof:** The two selector cards are local UI only. Switching between photo and owned-link examples changes the sample private-preview copy inside the panel. It must not submit files, fetch links, call providers, create drafts, reserve public URLs, or write analytics/product state beyond ordinary consent-gated website events already present elsewhere.
 
 **Policy:** This section must not process uploads, reserve public slugs, show a no-account-needed promise, or imply direct public publishing from the homepage. It is a proof-and-routing bridge into the existing authenticated `/create-menu` flow.
 
@@ -246,7 +248,7 @@ This section shows the practical path from the menu or service list a business a
 
 | Step | Label | Title | Description |
 | --- | --- | --- | --- |
-| 1 | Start | Use your current list | Photo, PDF, link, or typed items and services. The owner-approved version is the starting point. |
+| 1 | Start | Use your current list | Use a clear photo or an owned public menu/service-list/image/PDF link. The owner-approved version is the starting point. |
 | 2 | Publish | Customers see one clear page | The customer link and official page replace old files, screenshots, and broken links. |
 | 3 | Share | Put the same link everywhere | QR, web link, screen, and PDF all point back to the current source. |
 | 4 | Action | Customers can act quickly | Call, WhatsApp, directions, order, book, and share stay close to the list. |
@@ -351,7 +353,7 @@ The old `SolutionSection` with "One menu. Public places stay aligned.", a centra
 
 | Step | Title | Description |
 | --- | --- | --- |
-| 1 | Start with the menu you already use | Photo, PDF, existing menu link, or typed menu. Start with what your business already uses. |
+| 1 | Start with the menu you already use | Use a clear photo or an owned public menu/service-list/image/PDF link in the public setup path. |
 | 2 | Prepare the customer-ready version | Items, sections, prices, descriptions, images, languages, and business details are prepared for review. |
 | 3 | Publish the approved menu and page | The customer-facing menu and Official Business Page go live only from the version the owner approves. |
 | 4 | Place it where customers look | Put the approved link and fresh assets on QR, WhatsApp, Instagram, Google profile, packaging, print files, table cards, counters, and configured screens. |
@@ -791,11 +793,12 @@ Key FAQ topics:
 
 **Body:**
 
-> Take a photo of your paper menu, upload a PDF, paste an existing menu link, or type items directly. MenuList prepares the draft for owner review without manual formatting.
+> The public setup path accepts a supported photo/image upload or an owned public list link. An owned public PDF can be supplied through its link. Signed-in owner editor and extraction workflows may support additional sources under their own validated limits.
 
 **Key points:**
 
-- Works with photo, PDF, existing link, or typed input
+- Public setup supports a photo/image upload or owned public link
+- Direct PDF upload and typed-list intake must not be promised on `/create-menu` unless that runtime changes first
 - Items, prices, and categories read for you — no manual entry
 - Can help with multi-page menus and clear handwritten menus
 - Edit anything before publishing — you stay in control, without the setup work
@@ -1482,7 +1485,7 @@ Right-side sticky cards:
 
 **Body:**
 
-> Every plan includes menu preparation features. For businesses with larger menus or frequent updates, Enhancement Packs provide additional capacity. One-time purchase. No expiry.
+> Every plan includes menu preparation capacity. For businesses with larger menus or frequent updates, Enhancement Packs add capacity. Purchased pack credits remain available while the eligible subscription remains available.
 
 **Source:** `ai-enhancement-packs_website.md`
 
@@ -1711,6 +1714,13 @@ Chat-style sequence:
 2. Review the customer-facing version.
 3. Publish the official link.
 
+**Layout and repetition policy:**
+
+- Desktop uses a context/action split: heading, subline, the single three-step process, supported-source note, and proof stay in the left context column; the sign-in or authenticated photo/link task stays in the right action column.
+- Mobile uses one document-flow column in this order: heading and subline, active sign-in/source task, then process and proof.
+- Do not repeat the three-step process, supported inputs, or proof list inside the sign-in card. The card should stay focused on account connection.
+- Do not make the action panel sticky; OTP, validation, and source-entry states must remain reachable on short screens.
+
 **Preview claim CTA:**
 
 > Create official link
@@ -1728,7 +1738,7 @@ Chat-style sequence:
 
 **Notes:**
 
-- This pass changes public copy/metadata only. Upload, extraction, claim, publish, auth, billing, and dashboard runtime stay unchanged.
+- The current layout pass changes presentation only. Upload, extraction, claim, publish, auth, billing, and dashboard runtime stay unchanged.
 - The page remains sign-in-first before upload/link processing.
 - Link import copy must say owned or permissioned link. Do not imply generic scraping, marketplace import, automatic cloning, or publishing without owner review.
 - The conversion outcome is the official customer link, not merely a generated menu.
@@ -1789,7 +1799,9 @@ Chat-style sequence:
 **Notes:**
 
 - Contact page keeps the existing form fields and sends them through the bounded public API route.
-- New proof strip reinforces real product team, setup/pricing help, and multi-location planning.
+- The proof strip names the supported question types without promising a monitored response time.
+- A successful form submission means the enquiry was recorded in `landingPageEnquiries`; direct team conversation is routed to `hello@menulist.ai`.
+- A monitored general-enquiry consumer/alert is still an owner-operated production requirement and must not be implied by website success copy until evidence exists.
 
 ---
 
@@ -1832,8 +1844,10 @@ Chat-style sequence:
 - **Privacy Policy retention content:** Use purpose-based retention language unless an exact lifecycle is enforced in code or provider configuration. Do not publish fixed 90-day, 35-day, DPA, SCC, or sub-processor commitments until the matching operational artifacts exist.
 - **Privacy/security claim discipline:** Avoid exact encryption algorithms, fixed backup windows, broad model-training guarantees, DPA/SCC/sub-processor readiness, universal export/delete controls, and "all third parties" confidentiality language unless the matching code, provider configuration, or legal artifact is present.
 - **Terms staff-access content:** Make owners responsible for staff access they create, safe sharing of Staff ID/passcode details, correct role assignment, and ending access when staff leave.
+- **Terms content/output rights:** Owners retain rights they already hold in uploaded content and grant a limited processing licence. Generated-output use stays subject to input rights, applicable law, and provider terms; do not promise automatic copyright ownership, unrestricted commercial rights, or universal no-attribution status.
+- **Terms payment handling:** State that Razorpay handles checkout/payment-method entry and MenuList stores the billing references/status needed for subscriptions. Do not publish a provider certification claim unless the current provider artifact has been independently approved for that exact public wording.
 - **Trust/security staff-access content:** Use factual role-scoped access language. Do not claim legal certification, GDPR certification, HR/payroll/attendance coverage, or full workforce management.
-- **Refund Policy:** No staff-specific change required.
+- **Refund Policy:** State the general no-refund boundary with applicable-law and confirmed duplicate/incorrect-charge exceptions. Current paid plan access continues through `cycleEndDate`; data follows Privacy Policy purpose-based retention. Do not promise all-plan features or fixed 30-day deletion.
 - **Styling:** Apply new design system (clean typography, proper spacing)
 - **Layout:** Single column, `max-w-3xl`, generous line height
 
@@ -1978,7 +1992,7 @@ The removed global helper components were useful during early conversion hardeni
 | Page           | Title Tag                                              | Meta Description                                                                                                                           |
 | -------------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | Homepage       | MenuList - One Official Customer Link for Menus and Services | Turn your current menu or service list into one official customer link for business page, QR, print files, customer actions, owner updates, feedback, and health checks. |
-| Product        | How MenuList Works — From Current List to Customer Link | Start from a menu, catalogue, price list, service list, photo, PDF, existing link, or typed items. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based. |
+| Product        | How MenuList Works — From Current List to Customer Link | Start from a clear photo or an owned public menu, catalogue, price-list, service-list, image, or PDF link. MenuList prepares the owner-reviewed version, then keeps supported updates approval-based. |
 | Multi-Location | Multi-Location Source Management — MenuList \| One Source, Every Location | Manage menus and service lists across locations from one approved source. A master source can keep every outlet aligned without manual coordination. |
 | Pricing        | MenuList Pricing — Simple, Transparent Plans           | Start managing your official menu. Simple plans with transparent pricing in INR. No hidden fees.                                           |
 | About          | About MenuList — Built in India for Growing Businesses | MenuList is a public menu infrastructure system built in India for cafes, service businesses, and growing teams that publish customer-facing offers. |

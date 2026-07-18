@@ -124,6 +124,9 @@ const CatalogCard = ({
     const isInactive = projectStatus === 'inactive';
     const statusPresentation = getStatusPresentation(projectStatus);
     const specialMenuStatus = getResolvedSpecialMenuStatus(project);
+    const canDeleteProject = project.isSpecialMenu !== true
+        || project.specialMenuStatus === 'expired'
+        || project.specialMenuStatus === 'cancelled';
 
     const handleMenuClick = (info: { domEvent: React.MouseEvent }, action: () => void) => {
         info.domEvent.stopPropagation();
@@ -135,8 +138,10 @@ const CatalogCard = ({
         ...(project.isSpecialMenu ? [] : [
             { key: 'duplicate', label: 'Duplicate', icon: <LuCopy size={14} />, onClick: (e: any) => handleMenuClick(e, onDuplicate) },
         ]),
-        { type: 'divider' as const },
-        { key: 'delete', label: 'Delete', icon: <LuTrash2 size={14} />, danger: true, onClick: (e: any) => handleMenuClick(e, onDelete) },
+        ...(canDeleteProject ? [
+            { type: 'divider' as const },
+            { key: 'delete', label: 'Delete', icon: <LuTrash2 size={14} />, danger: true, onClick: (e: any) => handleMenuClick(e, onDelete) },
+        ] : []),
     ];
 
     return (

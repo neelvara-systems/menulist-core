@@ -253,6 +253,14 @@ export function createAnswerlatticeWebClient(initialOptions) {
             var _a, _b;
             (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.setEvidenceLinks) === null || _b === void 0 ? void 0 : _b.call(_a, links);
         },
+        emitWorkflowEvent(eventName) {
+            var _a, _b;
+            return ((_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.emitWorkflowEvent) === null || _b === void 0 ? void 0 : _b.call(_a, eventName)) === true;
+        },
+        getGuidanceState() {
+            var _a, _b;
+            return ((_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.getGuidanceState) === null || _b === void 0 ? void 0 : _b.call(_a)) || null;
+        },
         on(eventName, callback) {
             var _a, _b;
             (_b = (_a = getRuntime()) === null || _a === void 0 ? void 0 : _a.on) === null || _b === void 0 ? void 0 : _b.call(_a, eventName, callback);

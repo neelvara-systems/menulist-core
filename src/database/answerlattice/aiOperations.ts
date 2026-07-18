@@ -1,4 +1,8 @@
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
+import {
+    AiOperationHistoryRow,
+    normalizeAiOperationHistoryPage,
+} from '@lib/ai/operationHistoryClientContract';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import dayjs from 'dayjs';
@@ -12,9 +16,9 @@ export interface AnswerlatticeAiOperationPaginationOptions {
 }
 
 export interface AnswerlatticeAiOperationsPaginatedResponse {
-    data: any[];
+    data: AiOperationHistoryRow[];
     hasMore: boolean;
-    lastVisibleDoc: { id?: string } | null;
+    lastVisibleDoc: { id: string } | null;
 }
 
 const EMPTY_PAGINATED_RESPONSE: AnswerlatticeAiOperationsPaginatedResponse = {
@@ -31,23 +35,6 @@ const ANSWERLATTICE_AI_OPERATIONS_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'c
 const ANSWERLATTICE_AI_OPERATIONS_RESPONSE_PARSE_FAILED = 'answerlattice_ai_operations_client_response_parse_failed';
 const ANSWERLATTICE_AI_OPERATIONS_RESPONSE_REJECTED = 'answerlattice_ai_operations_client_response_rejected';
 const ANSWERLATTICE_AI_OPERATIONS_RESPONSE_INVALID = 'answerlattice_ai_operations_client_response_invalid';
-
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-);
-
-const isValidCursor = (value: unknown): value is { id?: string } | null => (
-    value === null
-    || value === undefined
-    || (isRecord(value) && (value.id === undefined || typeof value.id === 'string'))
-);
-
-const isPaginatedResponse = (response: unknown): response is AnswerlatticeAiOperationsPaginatedResponse => (
-    isRecord(response)
-    && Array.isArray(response.data)
-    && typeof response.hasMore === 'boolean'
-    && isValidCursor(response.lastVisibleDoc)
-);
 
 const getAnswerlatticeAiOperationsResponseLogContext = (
     response: Response,
@@ -85,26 +72,18 @@ const readAnswerlatticeAiOperationsResponse = async (
         return null;
     }
 
-    if (!isPaginatedResponse(payload)) {
+    const normalized = normalizeAiOperationHistoryPage(payload, { requireManualContinuationField: false });
+    if (!normalized) {
         logRuntimeFailure(ANSWERLATTICE_AI_OPERATIONS_RESPONSE_INVALID, undefined, context);
         return null;
     }
 
-    return payload;
+    return normalized;
 };
 
 const normalizePaginatedResponse = (response: unknown): AnswerlatticeAiOperationsPaginatedResponse => {
-    if (
-        response
-        && typeof response === 'object'
-        && Array.isArray((response as AnswerlatticeAiOperationsPaginatedResponse).data)
-    ) {
-        return {
-            data: (response as AnswerlatticeAiOperationsPaginatedResponse).data,
-            hasMore: Boolean((response as AnswerlatticeAiOperationsPaginatedResponse).hasMore),
-            lastVisibleDoc: (response as AnswerlatticeAiOperationsPaginatedResponse).lastVisibleDoc || null,
-        };
-    }
+    const normalized = normalizeAiOperationHistoryPage(response, { requireManualContinuationField: false });
+    if (normalized) return normalized;
 
     return EMPTY_PAGINATED_RESPONSE;
 };

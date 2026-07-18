@@ -1,6 +1,7 @@
 import { uploadFile } from '@database/projects';
 import type { ItemForDropdown, Project } from '../../types';
 import type { UserUploadedFileType } from '@type/common';
+import { isDataUrl } from '@lib/media/mediaStorage';
 import { removeObjRef } from '@util/utils';
 
 function normalizeItemImages(images: unknown): UserUploadedFileType[] {
@@ -16,7 +17,7 @@ export async function associateItemImagesWithProject(
     let itemUpdated = false;
 
     for (const imageData of imagesToUpload) {
-        if (imageData.url.includes('base64')) {
+        if (isDataUrl(imageData.url)) {
             const uploadedUrl = await uploadFile(
                 {
                     blob: imageData.blob,

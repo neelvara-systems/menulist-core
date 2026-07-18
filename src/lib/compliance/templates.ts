@@ -15,6 +15,33 @@ export interface ComplianceInputs {
     country: string;
     contactEmail: string | null;
     contactPhone: string | null;
+    lastUpdated: string;
+}
+
+const COMPLIANCE_TEMPLATE_EFFECTIVE_DATE = 'July 16, 2026';
+
+function formatComplianceDate(value: unknown): string | null {
+    try {
+        let date: Date | null = null;
+        if (value instanceof Date) {
+            date = value;
+        } else if (value && typeof value === 'object' && typeof (value as { toDate?: unknown }).toDate === 'function') {
+            date = (value as { toDate: () => Date }).toDate();
+        } else if (value && typeof value === 'object' && Number.isFinite(Number((value as { seconds?: unknown }).seconds))) {
+            date = new Date(Number((value as { seconds: unknown }).seconds) * 1000);
+        } else if (typeof value === 'string' || typeof value === 'number') {
+            date = new Date(value);
+        }
+        if (!date || !Number.isFinite(date.getTime())) return null;
+        return date.toLocaleDateString('en-US', {
+            day: 'numeric',
+            month: 'long',
+            timeZone: 'UTC',
+            year: 'numeric',
+        });
+    } catch {
+        return null;
+    }
 }
 
 /**
@@ -43,7 +70,7 @@ export function generateComplianceContent(
     type: CompliancePageType,
     inputs: ComplianceInputs,
 ): string {
-    const { businessName, address, country, contactEmail, contactPhone } = inputs;
+    const { businessName, address, country, contactEmail, contactPhone, lastUpdated } = inputs;
 
     const contact = contactEmail
         ? `Email: ${contactEmail}`
@@ -54,12 +81,6 @@ export function generateComplianceContent(
     const governingLaw = country?.toLowerCase() === 'india'
         ? 'the laws of India'
         : `the applicable laws of ${country || 'the jurisdiction in which the business operates'}`;
-
-    const lastUpdated = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-    });
 
     if (type === 'privacy') {
         return generatePrivacyPolicy(businessName, address, contact, governingLaw, lastUpdated);
@@ -213,22 +234,13 @@ This policy outlines the refund and cancellation terms for services associated w
 
 This page provides publicly available business information including menu items, hours, and contact details. It is an informational service, not a direct ordering or transactional platform.
 
-3. Subscription Services
+3. Purchases and Cancellations
 
-If you have subscribed to a service plan through this platform, the following applies:
-
-- Cancellation requests may be submitted through the dashboard or by contacting us directly.
-- Cancellations take effect at the end of the current billing period.
-- No partial refunds are provided for unused portions of a billing period unless required by applicable law.
+This public page does not accept orders or payments. Any purchase, booking, cancellation, or payment made directly with ${businessName} is governed by the terms confirmed by the business at the time of that transaction.
 
 4. Refund Eligibility
 
-Refunds may be considered in the following circumstances:
-- Duplicate payments or billing errors
-- Service not delivered as described
-- Technical issues preventing access to paid features
-
-Refund requests should be submitted within 7 days of the transaction.
+Contact ${businessName} using the details below to ask whether a purchase or booking is eligible for a refund or cancellation. Eligibility, required evidence, and any applicable time limit depend on the terms agreed directly with the business and applicable law.
 
 5. Refund Process
 
@@ -237,14 +249,11 @@ To request a refund, contact us using the details below. Please include:
 - Transaction date and amount
 - Reason for the refund request
 
-Refund requests are typically reviewed within 5-7 business days. Approved refunds are processed to the original payment method.
+${businessName} is responsible for reviewing the request and, when approved, processing it through the payment method used for the original transaction. MenuList cannot approve or process customer refunds on behalf of the business.
 
 6. Non-Refundable Items
 
-The following are generally not eligible for refunds:
-- Services already rendered
-- Completed billing periods
-- Promotional or discounted subscriptions (unless required by law)
+Any exclusions or non-refundable items must be confirmed by ${businessName}. This baseline does not create a refund entitlement or a non-refundable category.
 
 7. Contact Information
 
@@ -291,5 +300,11 @@ export function extractComplianceInputs(store: any): ComplianceInputs | null {
         country: store?.country || 'India',
         contactEmail,
         contactPhone,
+        lastUpdated: formatComplianceDate(
+            store?.modifiedOn
+            ?? store?.updatedAt
+            ?? store?.createdOn
+            ?? store?.createdAt,
+        ) || COMPLIANCE_TEMPLATE_EFFECTIVE_DATE,
     };
 }

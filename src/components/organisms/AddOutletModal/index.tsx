@@ -3,7 +3,7 @@
 /**
  * AddOutletModal — Confirmation modal before creating an outlet
  * Shows billing impact (proration) and collects outlet name.
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §6
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §6
  */
 
 import { FEATURE_FLAGS } from '@config/features';

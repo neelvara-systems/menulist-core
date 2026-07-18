@@ -5,6 +5,7 @@ import {
     OWNER_REFERRAL_LEDGER_EVENT,
     OWNER_REFERRAL_LEDGER_TRANSACTION_TYPE,
     OWNER_REFERRAL_PENDING_REPAIR_LIMIT,
+    OWNER_REFERRAL_PROGRAM_VERSION,
     OWNER_REFERRAL_REFERRED_CREDITS,
     OWNER_REFERRAL_REFERRER_CREDITS,
     OWNER_REFERRAL_REWARD_TYPE,
@@ -13,6 +14,7 @@ import {
 import { FEATURE_FLAGS } from '@config/features';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 import {
     getOwnerReferralDocumentId,
@@ -41,13 +43,25 @@ type OwnerReferralSettlementResult =
     | 'payment_pending'
     | 'reward_issued';
 
+const isOwnerReferralSettlementPendingStatus = (value: unknown): boolean => (
+    value === OWNER_REFERRAL_STATUS.ATTRIBUTED
+    || value === OWNER_REFERRAL_STATUS.PAYMENT_PENDING
+);
+
 const timestampToMillis = (value: any): number | null => {
     if (!value) return null;
-    if (typeof value.toMillis === 'function') return Number(value.toMillis());
-    if (typeof value.toDate === 'function') return Number(value.toDate().getTime());
-    if (value instanceof Date) return value.getTime();
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : null;
+    try {
+        let parsed: number | null = null;
+        if (typeof value.toMillis === 'function') parsed = Number(value.toMillis());
+        else if (typeof value.toDate === 'function') parsed = Number(value.toDate().getTime());
+        else if (value instanceof Date) parsed = value.getTime();
+        else if (typeof value === 'string') parsed = Date.parse(value);
+        else if (typeof value === 'number') parsed = value;
+        else if (typeof value.seconds === 'number') parsed = value.seconds * 1000;
+        return parsed !== null && Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    } catch {
+        return null;
+    }
 };
 
 const isCurrentVerifiedPaidSubscription = (subscription: Record<string, any> | null | undefined): boolean => {
@@ -75,9 +89,42 @@ export const getDirectVerifiedPaidOwnerReferralWallet = async (
     return { id: subscription.id, subscription };
 };
 
-const normalizeTopUpCredits = (value: unknown): number => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+const normalizeTopUpCredits = (value: unknown, creditsToAdd: number): number | null => {
+    if (value === undefined || value === null) return 0;
+    if (
+        typeof value !== 'number'
+        || !Number.isSafeInteger(value)
+        || value < 0
+        || value > Number.MAX_SAFE_INTEGER - creditsToAdd
+    ) return null;
+    return value;
+};
+
+const normalizeOwnerReferralScope = (tenantId: unknown, storeId: unknown): OwnerReferralScope | null => {
+    const normalizedTenantId = Number(tenantId);
+    const normalizedStoreId = Number(storeId);
+    if (
+        !Number.isSafeInteger(normalizedTenantId)
+        || normalizedTenantId <= 0
+        || !Number.isSafeInteger(normalizedStoreId)
+        || normalizedStoreId <= 0
+    ) return null;
+    return { tenantId: normalizedTenantId, storeId: normalizedStoreId };
+};
+
+const isOwnerReferralStoreEligible = (
+    snapshot: FirebaseFirestore.DocumentSnapshot,
+    scope: OwnerReferralScope,
+): boolean => {
+    const store = snapshot.exists ? snapshot.data() : null;
+    return Boolean(
+        store
+        && Number(store.tenantId) === scope.tenantId
+        && Number(store.storeId ?? snapshot.id) === scope.storeId
+        && store.active !== false
+        && store.deleted !== true
+        && !isPlatformEntityBlocked(store)
+    );
 };
 
 const normalizeEvidenceText = (value: string, maxLength: number): string => (
@@ -138,17 +185,29 @@ const settleOwnerReferral = async (params: {
     const initialReferral = initialReferralSnapshot.data() as OwnerReferralDocument;
     if (initialReferral.status === OWNER_REFERRAL_STATUS.REWARD_ISSUED) return 'already_issued';
 
-    const referrerScope = {
-        tenantId: Number(initialReferral.referrerTenantId),
-        storeId: Number(initialReferral.referrerStoreId),
-    };
-    const referredScope = {
-        tenantId: Number(initialReferral.referredTenantId),
-        storeId: Number(initialReferral.referredStoreId),
-    };
-    const [referrerWallet, referredWallet] = await Promise.all([
+    const referrerScope = normalizeOwnerReferralScope(
+        initialReferral.referrerTenantId,
+        initialReferral.referrerStoreId,
+    );
+    const referredScope = normalizeOwnerReferralScope(
+        initialReferral.referredTenantId,
+        initialReferral.referredStoreId,
+    );
+    if (
+        initialReferral.programVersion !== OWNER_REFERRAL_PROGRAM_VERSION
+        || !referrerScope
+        || !referredScope
+        || !isOwnerReferralSettlementPendingStatus(initialReferral.status)
+    ) {
+        throw new Error('owner_referral_document_invalid');
+    }
+    const referrerStoreRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(referrerScope.storeId));
+    const referredStoreRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(referredScope.storeId));
+    const [referrerWallet, referredWallet, referrerStore, referredStore] = await Promise.all([
         getDirectVerifiedPaidOwnerReferralWallet(referrerScope),
         getDirectVerifiedPaidOwnerReferralWallet(referredScope),
+        referrerStoreRef.get(),
+        referredStoreRef.get(),
     ]);
     const effectiveEvidence = params.evidence || (referredWallet ? {
         paidAt: new Date(
@@ -162,12 +221,32 @@ const settleOwnerReferral = async (params: {
         subscriptionId: referredWallet.id,
     } : undefined);
 
-    if (!referrerWallet || !referredWallet || referrerWallet.id === referredWallet.id) {
+    if (
+        !referrerWallet
+        || !referredWallet
+        || referrerWallet.id === referredWallet.id
+        || !isOwnerReferralStoreEligible(referrerStore, referrerScope)
+        || !isOwnerReferralStoreEligible(referredStore, referredScope)
+    ) {
         await firestoreAdmin.runTransaction(async (transaction) => {
             const currentSnapshot = await transaction.get(referralRef);
             if (!currentSnapshot.exists) return;
             const current = currentSnapshot.data() as OwnerReferralDocument;
             if (current.status === OWNER_REFERRAL_STATUS.REWARD_ISSUED) return;
+            const currentReferrerScope = normalizeOwnerReferralScope(current.referrerTenantId, current.referrerStoreId);
+            const currentReferredScope = normalizeOwnerReferralScope(current.referredTenantId, current.referredStoreId);
+            if (
+                current.programVersion !== OWNER_REFERRAL_PROGRAM_VERSION
+                || !currentReferrerScope
+                || !currentReferredScope
+                || currentReferrerScope.tenantId !== referrerScope.tenantId
+                || currentReferrerScope.storeId !== referrerScope.storeId
+                || currentReferredScope.tenantId !== referredScope.tenantId
+                || currentReferredScope.storeId !== referredScope.storeId
+                || !isOwnerReferralSettlementPendingStatus(current.status)
+            ) {
+                throw new Error('owner_referral_document_invalid');
+            }
             const now = admin.firestore.Timestamp.now();
             transaction.update(referralRef, {
                 status: OWNER_REFERRAL_STATUS.PAYMENT_PENDING,
@@ -197,14 +276,42 @@ const settleOwnerReferral = async (params: {
     const createdAtSeconds = Math.floor(Date.now() / 1000);
 
     return firestoreAdmin.runTransaction(async (transaction) => {
-        const [referralSnapshot, referrerSubscriptionSnapshot, referredSubscriptionSnapshot] = await Promise.all([
+        const [
+            referralSnapshot,
+            referrerSubscriptionSnapshot,
+            referredSubscriptionSnapshot,
+            currentReferrerStore,
+            currentReferredStore,
+        ] = await Promise.all([
             transaction.get(referralRef),
             transaction.get(referrerSubscriptionRef),
             transaction.get(referredSubscriptionRef),
+            transaction.get(referrerStoreRef),
+            transaction.get(referredStoreRef),
         ]);
         if (!referralSnapshot.exists) return 'missing_referral';
         const referral = referralSnapshot.data() as OwnerReferralDocument;
         if (referral.status === OWNER_REFERRAL_STATUS.REWARD_ISSUED) return 'already_issued';
+        const currentReferrerScope = normalizeOwnerReferralScope(
+            referral.referrerTenantId,
+            referral.referrerStoreId,
+        );
+        const currentReferredScope = normalizeOwnerReferralScope(
+            referral.referredTenantId,
+            referral.referredStoreId,
+        );
+        if (
+            referral.programVersion !== OWNER_REFERRAL_PROGRAM_VERSION
+            || !currentReferrerScope
+            || !currentReferredScope
+            || currentReferrerScope.tenantId !== referrerScope.tenantId
+            || currentReferrerScope.storeId !== referrerScope.storeId
+            || currentReferredScope.tenantId !== referredScope.tenantId
+            || currentReferredScope.storeId !== referredScope.storeId
+            || !isOwnerReferralSettlementPendingStatus(referral.status)
+        ) {
+            throw new Error('owner_referral_document_invalid');
+        }
 
         const referrerSubscription = referrerSubscriptionSnapshot.data() || {};
         const referredSubscription = referredSubscriptionSnapshot.data() || {};
@@ -216,6 +323,8 @@ const settleOwnerReferral = async (params: {
             || Number(referrerSubscription.storeId) !== Number(referral.referrerStoreId)
             || Number(referredSubscription.tenantId) !== Number(referral.referredTenantId)
             || Number(referredSubscription.storeId) !== Number(referral.referredStoreId)
+            || !isOwnerReferralStoreEligible(currentReferrerStore, referrerScope)
+            || !isOwnerReferralStoreEligible(currentReferredStore, referredScope)
         ) {
             const now = admin.firestore.Timestamp.now();
             transaction.update(referralRef, {
@@ -235,8 +344,17 @@ const settleOwnerReferral = async (params: {
             return 'payment_pending';
         }
 
-        const referrerTopUpBefore = normalizeTopUpCredits(referrerSubscription.topUpCredits);
-        const referredTopUpBefore = normalizeTopUpCredits(referredSubscription.topUpCredits);
+        const referrerTopUpBefore = normalizeTopUpCredits(
+            referrerSubscription.topUpCredits,
+            OWNER_REFERRAL_REFERRER_CREDITS,
+        );
+        const referredTopUpBefore = normalizeTopUpCredits(
+            referredSubscription.topUpCredits,
+            OWNER_REFERRAL_REFERRED_CREDITS,
+        );
+        if (referrerTopUpBefore === null || referredTopUpBefore === null) {
+            throw new Error('owner_referral_wallet_credit_invalid');
+        }
         const referrerTopUpAfter = referrerTopUpBefore + OWNER_REFERRAL_REFERRER_CREDITS;
         const referredTopUpAfter = referredTopUpBefore + OWNER_REFERRAL_REFERRED_CREDITS;
         const rewardIssuedAt = admin.firestore.Timestamp.now();
@@ -312,8 +430,10 @@ export const recordReferredOwnerReferralPaymentAndSettle = async (params: {
 export const settlePendingOwnerReferralsForPaidStore = async (
     paidScope: OwnerReferralScope,
     options: { skipDirectReferral?: boolean } = {},
-): Promise<{ issued: number; processed: number }> => {
-    if (!FEATURE_FLAGS.ENABLE_OWNER_REFERRAL_REWARD_PROCESSING) return { issued: 0, processed: 0 };
+): Promise<{ hasMore: boolean; issued: number; processed: number }> => {
+    if (!FEATURE_FLAGS.ENABLE_OWNER_REFERRAL_REWARD_PROCESSING) {
+        return { hasMore: false, issued: 0, processed: 0 };
+    }
 
     let issued = 0;
     let processed = 0;
@@ -324,30 +444,28 @@ export const settlePendingOwnerReferralsForPaidStore = async (
         if (directResult === 'reward_issued') issued += 1;
     }
 
-    let cursor: FirebaseFirestore.QueryDocumentSnapshot | undefined;
-    while (true) {
-        let query: FirebaseFirestore.Query = firestoreAdmin
-            .collection(DB_COLLECTIONS.OWNER_REFERRALS)
-            .where('referrerTenantId', '==', paidScope.tenantId)
-            .where('referrerStoreId', '==', paidScope.storeId)
-            .where('status', '==', OWNER_REFERRAL_STATUS.PAYMENT_PENDING)
-            .orderBy('referredFirstPaidAt', 'asc')
-            .limit(OWNER_REFERRAL_PENDING_REPAIR_LIMIT);
-        if (cursor) query = query.startAfter(cursor);
-        const page = await query.get();
-        if (page.empty) break;
-
-        for (const referral of page.docs) {
-            if (referral.id === directReferralId) continue;
-            const result = await settleOwnerReferral({ referralId: referral.id });
-            processed += 1;
-            if (result === 'reward_issued') issued += 1;
-        }
-        if (page.size < OWNER_REFERRAL_PENDING_REPAIR_LIMIT) break;
-        cursor = page.docs[page.docs.length - 1];
+    const page = await firestoreAdmin
+        .collection(DB_COLLECTIONS.OWNER_REFERRALS)
+        .where('referrerTenantId', '==', paidScope.tenantId)
+        .where('referrerStoreId', '==', paidScope.storeId)
+        .where('status', '==', OWNER_REFERRAL_STATUS.PAYMENT_PENDING)
+        .orderBy('referredFirstPaidAt', 'asc')
+        .limit(OWNER_REFERRAL_PENDING_REPAIR_LIMIT + 1)
+        .get();
+    const repairCandidates = page.docs
+        .filter((referral) => referral.id !== directReferralId)
+        .slice(0, OWNER_REFERRAL_PENDING_REPAIR_LIMIT);
+    for (const referral of repairCandidates) {
+        const result = await settleOwnerReferral({ referralId: referral.id });
+        processed += 1;
+        if (result === 'reward_issued') issued += 1;
     }
 
-    return { issued, processed };
+    return {
+        hasMore: page.size > OWNER_REFERRAL_PENDING_REPAIR_LIMIT,
+        issued,
+        processed,
+    };
 };
 
 export const safelyRecordOwnerReferralPaymentAndRepair = async (params: {
@@ -360,7 +478,22 @@ export const safelyRecordOwnerReferralPaymentAndRepair = async (params: {
             evidence: params.evidence,
             referredScope: params.paidScope,
         });
-        await settlePendingOwnerReferralsForPaidStore(params.paidScope, { skipDirectReferral: true });
+        const repair = await settlePendingOwnerReferralsForPaidStore(
+            params.paidScope,
+            { skipDirectReferral: true },
+        );
+        if (repair.hasMore) {
+            logger.error(
+                'Owner referral pending repair batch remains',
+                new Error('owner_referral_pending_repair_remaining'),
+                {
+                    tenantId: params.paidScope.tenantId,
+                    storeId: params.paidScope.storeId,
+                    processed: repair.processed,
+                    issued: repair.issued,
+                },
+            );
+        }
     } catch (error) {
         logger.error(
             'Owner referral settlement failed after verified payment',

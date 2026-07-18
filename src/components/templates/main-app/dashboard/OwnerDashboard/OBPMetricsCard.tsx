@@ -10,6 +10,7 @@ import {
     OBPSourceBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
+import { formatNumber } from '@util/formatters';
 import { Card, Col, Divider, Empty, Flex, Row, Statistic, Tag, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
@@ -118,10 +119,10 @@ function SourceBreakdown({ sources, t }: { sources?: OBPSourceBreakdown[]; t: Da
                         <Flex vertical gap={2}>
                             <Text strong style={{ fontSize: 12 }}>{source.label}</Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {t('obp.sourceViews', { count: source.views.toLocaleString() })}
-                                {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: source.menuClicks.toLocaleString() })}` : ''}
-                                {source.actionClicks > 0 ? ` · ${t('obp.sourceActions', { count: source.actionClicks.toLocaleString() })}` : ''}
-                                {source.linkClicks > 0 ? ` · ${t('obp.sourceLinks', { count: source.linkClicks.toLocaleString() })}` : ''}
+                                {t('obp.sourceViews', { count: formatNumber(source.views) })}
+                                {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: formatNumber(source.menuClicks) })}` : ''}
+                                {source.actionClicks > 0 ? ` · ${t('obp.sourceActions', { count: formatNumber(source.actionClicks) })}` : ''}
+                                {source.linkClicks > 0 ? ` · ${t('obp.sourceLinks', { count: formatNumber(source.linkClicks) })}` : ''}
                             </Text>
                         </Flex>
                     </Card>
@@ -138,17 +139,17 @@ function OpenHoursBreakdown({ breakdown, t }: { breakdown?: OBPOpenHoursActionBr
     return (
         <div>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                {dashboardLabel(t, 'details.sections.openHoursActions', 'Open/Closed Action Timing')}
+                {dashboardLabel(t, 'details.sections.openHoursActions', 'Actions by business hours')}
             </Text>
             <Flex gap={16} wrap="wrap">
                 {Number(breakdown?.open || 0) > 0 ? (
-                    <Statistic title={dashboardLabel(t, 'details.openHours.open', 'Actions while open')} value={breakdown?.open || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                    <Statistic title={dashboardLabel(t, 'details.openHours.open', 'Actions when open')} value={breakdown?.open || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
                 ) : null}
                 {Number(breakdown?.closed || 0) > 0 ? (
-                    <Statistic title={dashboardLabel(t, 'details.openHours.closed', 'Actions while closed')} value={breakdown?.closed || 0} suffix={`${breakdown?.closedShare || 0}%`} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                    <Statistic title={dashboardLabel(t, 'details.openHours.closed', 'Actions when closed')} value={breakdown?.closed || 0} suffix={`${breakdown?.closedShare || 0}%`} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
                 ) : null}
                 {Number(breakdown?.unknown || 0) > 0 ? (
-                    <Statistic title={dashboardLabel(t, 'details.openHours.unknown', 'Actions with hours hidden')} value={breakdown?.unknown || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
+                    <Statistic title={dashboardLabel(t, 'details.openHours.unknown', 'Actions when hours status was unavailable')} value={breakdown?.unknown || 0} prefix={<LuClock size={12} />} valueStyle={{ fontSize: 16 }} />
                 ) : null}
             </Flex>
         </div>
@@ -172,8 +173,8 @@ function LanguageBreakdown({ languages, t }: { languages?: OBPLanguageUsage[]; t
                         <Flex vertical gap={2}>
                             <Text strong style={{ fontSize: 12 }}>{language.label}</Text>
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                {t('obp.pageOpens', { count: Math.max(language.sessions, language.views).toLocaleString() })}
-                                {language.adoptions > 0 ? ` · ${t('obp.stayedAfterSwitch', { count: language.adoptions.toLocaleString() })}` : ''}
+                                {t('obp.pageOpens', { count: formatNumber(Math.max(language.sessions, language.views)) })}
+                                {language.adoptions > 0 ? ` · ${t('obp.stayedAfterSwitch', { count: formatNumber(language.adoptions) })}` : ''}
                             </Text>
                         </Flex>
                     </Card>
@@ -435,11 +436,11 @@ const OBPMetricsCard: React.FC<OBPMetricsCardProps> = ({ data, loading, loadingT
                         <Flex justify="space-between" align="center" wrap="wrap" gap={8}>
                             <Text type="secondary" style={{ fontSize: 11 }}>
                                 {t('obp.lifetimeSummary', {
-                                    views: overall.lifetimeViews.toLocaleString(),
-                                    menuClicks: overall.lifetimeMenuClicks.toLocaleString(),
-                                    actions: overall.lifetimeActionClicks.toLocaleString(),
-                                    links: overall.lifetimeLinkClicks.toLocaleString(),
-                                    shares: overall.lifetimeShares.toLocaleString(),
+                                    views: formatNumber(overall.lifetimeViews),
+                                    menuClicks: formatNumber(overall.lifetimeMenuClicks),
+                                    actions: formatNumber(overall.lifetimeActionClicks),
+                                    links: formatNumber(overall.lifetimeLinkClicks),
+                                    shares: formatNumber(overall.lifetimeShares),
                                 })}
                             </Text>
                             {overall.firstDataDate ? (

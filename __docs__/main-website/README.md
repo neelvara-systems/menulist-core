@@ -1,8 +1,8 @@
 # MenuList Main Website (menulist.ai)
 
-**Version:** 3.6.111 (Header Interaction Hardening)
+**Version:** 3.6.115 (Website Truth and Owner Journey Audit)
 **Status:** ✅ IMPLEMENTED — Canonical
-**Last Updated:** July 11, 2026
+**Last Updated:** July 18, 2026
 **Workflow:** `.codex/workflows/website.md`
 
 ---
@@ -13,11 +13,31 @@ The current implementation is the only default MenuList marketing website.
 
 | Canonical Version | Name | Core Message | Status |
 | ----------------- | ---- | ------------ | ------ |
-| **3.6.111** | **Header Interaction Hardening** | **The shared website header keeps Features, Resources, and the mobile drawer usable across hover, keyboard, consent-banner, and short-phone states.** | **ACTIVE** |
+| **3.6.115** | **Website Truth and Owner Journey Audit** | **The owner journey now advertises only supported intake, explains the live seven-day starter URL accurately, uses accessible navigation/forms, and keeps public claims aligned with current pricing and runtime behavior.** | **ACTIVE** |
+
+Version 3.6.115 audits the website from first owner question through create-menu, pricing, contact, public proof, and owner-dashboard handoff. Homepage and How It Works no longer advertise direct typed-list or direct PDF upload through `/create-menu`; the supported public entry is a photo/image upload or an owned public menu/service-list/image/PDF link. The starter link and QR can be published and tried during the seven-day setup; a paid plan must be active before the deadline to keep the same URL live afterward. Pricing comparison entitlement values are preserved while unsupported accuracy, direct social-posting, search-appearance, virtual-try-on, and hype claims are removed. About and Contact remain discoverable from the footer, stale anchors and three public placeholder-proof blocks are removed, `/ml/create-menu` retains the alias through sign-in and preview, and private owner routes now use honest metadata with `noindex, nofollow, nocache`.
+
+The same pass improves keyboard, screen-reader, reduced-motion, and mobile behavior across the shared header/drawer, language menu, create-menu upload target, contact form, pricing controls/table/dialogs, sticky CTA, hero media, and contrast tokens. Route-specific Open Graph metadata now keeps the approved preview image and matching Twitter title/description through one shared completion helper, including generated localized Resource metadata. Contact form success now means the row was recorded; direct conversation points to `hello@menulist.ai`. A monitored general-enquiry consumer/alert and response owner remain production-owner work because the maintained Ops consumer is report-lead scoped. Doctrine now keeps silence for healthy routine operation while explicitly allowing owner review for public truth, billing, legal, security, and exceptions. No extraction, publish, cache, subscription, Razorpay, owner data, Firebase, Cloud Function, provider, dependency, Vercel deployment, or production build contract changed in this website pass.
+
+Version 3.6.114 remains Alias, Legal, and Paid-Cycle Truth and is preserved below as the previous website version note.
+
+Version 3.6.114 makes the shared website path provider authoritative for the canonical host and the `menulist.digital/ml` product alias. FAQ, Tools, WhatsApp, private Invite, and reviewed locale-prefixed resource links retain the alias; the resource language switcher strips and reapplies it; desktop/mobile header active state reads the public pathname. The language menu now exposes expanded state, menu roles, button types, and Escape-to-trigger focus return. `npm run test:website-product-path-boundary` locks canonical, alias, reviewed-locale, external/unsafe, and app-route behavior. Public Terms and Refund pages now use plan-specific access, purpose-based retention, cautious generated-output rights, and code-truth Razorpay handling instead of fixed deletion, all-features, absolute ownership, or provider-certification claims. Cross-checking the cancellation promise also fixed the runtime plan mirror: current-cycle cancelled/paused rows keep their paid plan until `cycleEndDate`, then a bounded hourly leased Function transitions them to expired and repairs store/platform entitlement. This pass changes one MenuList Firestore index and the existing maintenance Function. Both QA deploys were attempted: the index stopped at the Firebase Rules test endpoint HTTP 403, and the Function passed predeploy lint/build then stopped at Cloud Resource Manager HTTP 403; neither uploaded. Vercel/app release, host/browser smoke, provider sandbox evidence, and legal approval remain owner-controlled evidence.
+
+Version 3.6.113 remains Create Menu Split Conversion Layout and is preserved below as the previous website version note.
+
+Version 3.6.113 restructures `/create-menu` as an asymmetric desktop conversion layout. The plain-language heading, three-step process, supported-source note, and trust proof stay in the left context column while the existing sign-in or authenticated photo/link intake remains the focused right action column. On mobile the same content collapses to heading, active action, then supporting process and proof. Repeated process and supported-input blocks were removed from inside the sign-in card; auth providers, upload/link behavior, validation, extraction, preview, claim/publish, pricing/payment, Firebase, Cloud Functions, Vercel deployment, and DNS were not changed.
+
+Version 3.6.112 remains Feature Menu Affordance Polish and is preserved below as the previous website version note.
+
+Version 3.6.112 polishes the desktop Features menu after design-taste review. Every route card now shows a resting arrow affordance, hover/focus states move the arrow and icon together, and submenu descriptions use stronger contrast so they read as supporting copy instead of disabled text. The shared `websiteFeatureNavGroups` source, mobile drawer accordion, nav labels, routes, locale copy, discovery files, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, production build, Vercel deploy, and DNS were not changed.
+
+Version 3.6.111 remains Header Interaction Hardening and is preserved below as the previous website version note.
 
 Version 3.6.111 hardens the shared website header interactions without changing navigation labels, routes, or website copy. `Header.tsx` now lets desktop Features and Resources dropdowns close with Escape, lets the mobile drawer close with Escape, marks the drawer as a dialog, and keeps the scrollable drawer nav separate from the bottom CTA. `website.css` adds Resources dropdown scroll containment, shared hover bridges for desktop dropdown pointer travel, drawer safe-area CTA styling, and drawer isolation above the public analytics consent banner. This is static website header/CSS/docs work only; feature routes, locale copy, discovery files, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, production build, Vercel deploy, and DNS were not changed.
 
 **Public contact delivery boundary (July 13, 2026):** `/api/public/contact` fails closed with `503` when its configured contact-form rate limiter cannot establish admission, while other public endpoints retain their explicit availability policy. Turnstile verification uses the fixed Cloudflare endpoint with manual redirects, an 8-second abort deadline, bounded response parsing, and timer cleanup. Accepted enquiry rows store source/referrer paths without query strings or fragments and preserve valid zero report counts. The path still performs at most one `landingPageEnquiries` write after bounded JSON, schema, honeypot, and Turnstile checks; no report body, raw IP, Turnstile token, or URL query is persisted. The unused client-side enquiry DAL has been retired, so maintained writes stay behind this validated route and maintained platform reads stay behind the bounded current-authorization Ops route.
+
+**Public contact Firebase cost boundary (July 17, 2026):** `landingPageEnquiries.message` and `landingPageEnquiries.sourceContext` are exempt from unused automatic indexing. They remain private persisted payload read only after a bounded enquiry document is selected. Query and routing scalars such as `sourceKind`, `createdOn`, status, tool, and report status remain indexed as required; accepted submissions still perform the same single document write. The scoped `menulist-qa` index deploy was attempted after validation and stopped before upload at the Firebase Rules test endpoint with HTTP 403 caller permission, so live effect remains owner/IAM-pending.
 
 Version 3.6.110 remains Feature Dropdown Workflow Rows and is preserved below as the previous website version note.
 
@@ -29,7 +49,7 @@ Version 3.6.109 removes the hardcoded test-number action from `/whatsapp`. The r
 
 Version 3.6.108 remains Homepage Preview Source Selector and is preserved below as the previous website version note.
 
-Version 3.6.108 turns `CreateMenuPreviewSection` into a small browser-local proof selector for the three owner inputs that matter most before signup: a photo of the current list, an owned public link, or typed items/services/prices. The preview panel updates the sample private-preview output without uploading files, reading URLs, reserving slugs, calling providers, creating drafts, or changing the authenticated `/create-menu` flow. Guardrails remain visible: account before processing, five preview attempts per day, 24-hour draft expiry, and review before anything becomes public. This is public website component/CSS/locale/docs work only; `/create-menu` upload/link runtime, preview processing, auth, pricing/payment, owner dashboard, customer menu/OBP runtime, Firebase rules, Cloud Functions, Vercel deployment, production build, and DNS were not changed.
+Historical v3.6.108 behavior used a three-option browser-local proof selector. Version 3.6.115 supersedes the typed-list option because `/create-menu` supports photo/image upload and owned public-link intake; the remaining selector still updates sample private-preview copy without uploading files, reading URLs, reserving slugs, calling providers, creating drafts, or changing the authenticated flow.
 
 Version 3.6.107 remains Website Google Analytics Page-Location Boundary and is preserved below as the previous website version note.
 
@@ -109,7 +129,7 @@ Version 3.6.86 closes the dedicated feature-page dropdown parity gap. `/features
 
 Version 3.6.85 remains Placeholder-Backed Service Industry Pages and is preserved below as the previous website version note.
 
-Version 3.6.85 adds placeholder-backed broad-SMB industry pages for `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses`. The pages reuse the existing industry landing-page shell, metadata pattern, `WebsitePageStructuredData`, `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. The placeholder SVG assets live under `public/images/website/demo-placeholders/` and are visibly labelled as sample/demo placeholders. They unblock code-side service-list SEO review, but final routed screenshots/videos or permissioned proof must replace them before Product Hunt gallery use, paid traffic, broad partner outreach, or final public campaign visuals. This is public website route/discovery/docs work only; upload/extraction, demo tenant creation, owner dashboard runtime, customer menu/OBP runtime, Firebase rules, Cloud Functions, Search Console setup, sitemap submission, production build, Vercel deploy, and DNS were not changed.
+Historical v3.6.85 added placeholder-backed broad-SMB industry pages for `/industries/salons-spas`, `/industries/service-list-businesses`, and `/industries/local-service-businesses`. Version 3.6.115 removes the public placeholder blocks and keeps those routes text-first until routed demo screenshots or permissioned proof pass AssetOS review.
 
 Version 3.6.84 remains Public Menu Noindex Hardening and is preserved below as the previous website version note.
 
@@ -922,6 +942,10 @@ Protected scope:
 
 | Version | Date | Changes |
 | ------- | ---- | ------- |
+| 3.6.115 | July 18, 2026 | Audited the owner journey end to end; aligned supported intake and seven-day pricing truth, removed public placeholder/editorial copy, localized pricing comparison details, fixed alias/navigation/contact/accessibility gaps, and clarified truth-first doctrine without changing product or payment runtime. |
+| 3.6.114 | July 16, 2026 | Made canonical/`/ml` website links and resource-language switching alias-safe, corrected legal/retention/payment/output-rights claims, and aligned cancelled/paused paid-cycle plan mirrors with owner-visible access through a bounded hourly expiry task. |
+| 3.6.113 | July 13, 2026 | Reworked `/create-menu` into a desktop context/action split with an action-first single-column mobile order, removing repeated process copy from the sign-in card without changing auth or intake runtime. |
+| 3.6.112 | July 13, 2026 | Polished the desktop Features menu cards with visible resting arrow affordance, coordinated hover/focus movement, and stronger submenu description contrast without changing routes, labels, mobile drawer grouping, or runtime behavior. |
 | 3.6.111 | July 11, 2026 | Hardened the shared header interactions: desktop Features and Resources dropdowns now close on Escape, Resources gets the same scroll containment and pointer-travel bridge as Features, and the mobile drawer is a dialog with Escape close, safe-area CTA spacing, and layering above the consent banner. |
 | 3.6.96 | June 30, 2026 | Hardened `/create-menu` upload/link, preview polling, and claim browser requests with same-origin credentials, no-store cache policy, and manual redirect handling before bounded response parsing. |
 | 3.6.95 | June 30, 2026 | Hardened `/create-menu/success` Copy Link to fall through from rejected Clipboard API writes to acknowledged textarea fallback before copied state or starter activation signals. |

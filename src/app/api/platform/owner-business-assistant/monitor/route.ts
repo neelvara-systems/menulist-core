@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -25,6 +26,7 @@ async function checkOwnerBusinessAssistantMonitorRateLimit(session: any) {
   const rateLimit = await checkRateLimit({
     key: `${OWNER_BUSINESS_ASSISTANT_MONITOR_RATE_LIMIT_KEY}:${userRateLimitHash}`,
     ...rateLimitConfig,
+    failClosedOnProviderError: true,
   });
 
   if (rateLimit.allowed) return null;
@@ -32,7 +34,9 @@ async function checkOwnerBusinessAssistantMonitorRateLimit(session: any) {
   const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
   return NextResponse.json(
     {
-      error: 'Too many requests. Please try again later.',
+      error: rateLimit.reason === 'provider_unavailable'
+        ? 'Business Health monitor is temporarily unavailable.'
+        : 'Too many requests. Please try again later.',
       retryAfter: waitSeconds,
       resetAt: rateLimit.resetAt,
     },
@@ -43,7 +47,7 @@ async function checkOwnerBusinessAssistantMonitorRateLimit(session: any) {
         'X-RateLimit-Remaining': String(rateLimit.remaining),
         'X-RateLimit-Reset': String(rateLimit.resetAt),
       },
-      status: 429,
+      status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
     },
   );
 }
@@ -262,6 +266,11 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
     const rateLimitResponse = await checkOwnerBusinessAssistantMonitorRateLimit(session);
     if (rateLimitResponse) return rateLimitResponse;
+
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const [eventsSnap, feedbackSnap] = await Promise.all([
       firestoreAdmin

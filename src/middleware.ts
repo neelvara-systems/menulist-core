@@ -403,6 +403,7 @@ const MYCODEX_PRODUCT_ALIAS_HOSTS = new Set([
     'menulist.digital',
     'www.menulist.digital',
 ]);
+const MYCODEX_INTERNAL_BASE_PATH = '/sites/mycodex';
 
 const SIGNALDESK_HOST_PASSTHROUGH_PATHS = [
     '/forgot-password',
@@ -595,6 +596,18 @@ export async function middleware(request: NextRequest) {
     // explicitly mapped to their own route groups, never nested under /sites.
     // In local dev, path prefixes work too: /__answerlattice/pricing → /sites/answerlattice/pricing
     // and /__campaigncue/app → /campaigncue/app.
+
+    // MyCodex contains private repository documentation. Its internal rewrite
+    // namespace is never a public entry point, including on non-Vercel hosts.
+    if (
+        pathname === MYCODEX_INTERNAL_BASE_PATH
+        || pathname.startsWith(`${MYCODEX_INTERNAL_BASE_PATH}/`)
+    ) {
+        return applySecurityHeaders(
+            request,
+            setMyCodexResponseHeaders(new NextResponse(null, { status: 404 })),
+        );
+    }
 
     // Block direct access to /sites/* in production (only reachable via middleware rewrite)
     if (pathname.startsWith('/sites/') && process.env.VERCEL === '1') {

@@ -71,6 +71,7 @@ async function run(): Promise<void> {
         assert.equal(storeData.activeSpecialMenuId, MENU_A);
         assert.equal(storeData.tempStatus?.sourceProjectId, MENU_A);
         assert.equal(summaryData[`projects.${MENU_A}.specialMenuStatus`], 'active');
+        assert.equal(summaryData.specialMenuNextTransitionAt, ENDS_AT);
 
         await summaryRef.set({
             [`projects.${MENU_A}.specialMenuStatus`]: 'scheduled',
@@ -118,6 +119,35 @@ async function run(): Promise<void> {
                 .filter((snapshot) => snapshot.data()?._specialMenu?.status === 'active').length,
             1,
         );
+
+        await Promise.all([
+            projectRef(activeProjectId).set(metadata(activeProjectId, 'expired')),
+            projectRef(MENU_C).set(metadata(MENU_C, 'scheduled')),
+            storeRef.set({
+                activeSpecialMenuId: activeProjectId,
+                tempStatus: {
+                    type: 'special_menu',
+                    message: 'Expired menu',
+                    expiresAt: ENDS_AT,
+                    createdAt: NOW.toISOString(),
+                    sourceProjectId: activeProjectId,
+                },
+            }, { merge: true }),
+        ]);
+        const stalePointerRecovery = await transitionScheduledSpecialMenu({
+            action: 'activate',
+            db,
+            enableTempStatus: true,
+            now: NOW,
+            projectId: MENU_C,
+            sId: S_ID,
+            tId: T_ID,
+        });
+        assert.equal(stalePointerRecovery.outcome, 'activated');
+        storeData = (await storeRef.get()).data() || {};
+        assert.equal(storeData.activeSpecialMenuId, MENU_C);
+        assert.equal(storeData.tempStatus?.sourceProjectId, MENU_C);
+        assert.equal((await projectRef(MENU_C).get()).data()?._specialMenu?.status, 'active');
 
         await projectRef(MENU_C).set(metadata(MENU_C, 'active'));
         await storeRef.set({

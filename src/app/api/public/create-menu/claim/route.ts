@@ -14,8 +14,9 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import countryData from '@atoms/phoneNumberInput/countryData';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PERMISSIONS } from '@constant/permissions';
 import { appendPublicPath, getMenuUrl } from '@constant/urls';
-import { FALLBACK_BUSINESS_TYPE, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
+import { FALLBACK_BUSINESS_TYPE, getBusinessTypeConfig, resolveStoreBusinessCategory } from '@data/shared/businessTypes';
 import { getSuggestionValue, normalizeExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import {
     getPublicMenuDraftTimestampMillis,
@@ -26,6 +27,7 @@ import { admin, storageAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { normalizeGrowthAcquisitionAttribution } from '@lib/growth/acquisitionAttribution';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { mceValidate, toMCEMetadata } from '@lib/mce';
 import { CANONICAL_SOURCE_LANGUAGE, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import {
@@ -36,7 +38,10 @@ import {
 } from '@lib/onboarding/createTenantStore';
 import { STARTER_ACTIVATION_MS, STARTER_ACTIVATION_STATUS } from '@lib/onboarding/starterActivation';
 import { normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
+import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
 import { normalizePublicDraftSourceForProject } from '@lib/public-menu-entry/publicDraftSource';
+import { resolvePublicMenuEntryProjectSlug } from '@lib/public-menu-entry/claimProjectSlug';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
 import {
@@ -241,7 +246,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const userId = session.user.id;
-    const hasExistingAccount = !!(session.user.tenantId && session.user.storeId);
+    const sessionTenantPresent = session.user.tenantId !== undefined
+        && session.user.tenantId !== null
+        && String(session.user.tenantId).trim().length > 0;
+    const sessionStorePresent = session.user.storeId !== undefined
+        && session.user.storeId !== null
+        && String(session.user.storeId).trim().length > 0;
+    if (sessionTenantPresent !== sessionStorePresent) {
+        return NextResponse.json(
+            { success: false, error: 'Your account setup is incomplete. Please sign in again.' },
+            { status: 409 },
+        );
+    }
+    const hasExistingAccount = sessionTenantPresent && sessionStorePresent;
     let draftIdForDiagnostics: string | undefined;
     let clearReferralCookieOnResponse = false;
 
@@ -300,6 +317,19 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const businessCategory = sanitizeString(rawBusinessCategory) || '';
         const phone = sanitizeString(rawPhone) || '';
         const normalizedPhone = normalizePhoneNumberForStorage({ phoneNumber: phone });
+        if (
+            phone
+            && (
+                !normalizedPhone.phone
+                || normalizedPhone.internationalDigits.length < 8
+                || normalizedPhone.internationalDigits.length > 15
+            )
+        ) {
+            return NextResponse.json(
+                { success: false, error: 'Enter a valid phone number.' },
+                { status: 400 },
+            );
+        }
         const city = sanitizeString(rawCity) || '';
         const addressLine = sanitizeString(rawAddressLine) || '';
 
@@ -365,6 +395,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             if (!extractedData) {
                 throw new PublicMenuClaimError(422, 'This menu could not be validated. Please upload it again.');
             }
+            try {
+                normalizeExtractedMenuPriceTruth(extractedData);
+            } catch {
+                throw new PublicMenuClaimError(422, 'This menu contains an invalid price. Please upload it again.');
+            }
             const draftSource = normalizePublicDraftSourceForProject(draft, draftId, {
                 allowedBucket: storageAdmin.bucket().name,
                 allowLocalEmulator: process.env.NODE_ENV !== 'production',
@@ -391,7 +426,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             let storeDocumentId: string;
             let subdomain: string;
             let referralBoundInTransaction = false;
-            let resolvedBusinessType = businessType || draft.detectedBusinessType || FALLBACK_BUSINESS_TYPE;
+            let resolvedBusinessType = getBusinessTypeConfig(
+                businessType || draft.detectedBusinessType || FALLBACK_BUSINESS_TYPE,
+            )?.value || FALLBACK_BUSINESS_TYPE;
             let resolvedBusinessCategory = resolveStoreBusinessCategory(
                 resolvedBusinessType,
                 businessCategory || draft.detectedBusinessCategory,
@@ -437,6 +474,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ) {
                     throw new PublicMenuClaimError(403, 'Account is not ready to publish this menu.');
                 }
+                const permissionError = requireAnyStorePermissionForStoreData(
+                    request,
+                    session,
+                    storeData,
+                    [PERMISSIONS.PUBLISH_MENU],
+                    'Public menu setup publish',
+                    storeId,
+                    tenantId,
+                );
+                if (permissionError) {
+                    throw new PublicMenuClaimError(403, 'You do not have permission to publish this menu.');
+                }
                 resolvedBusinessType = storeData.businessType || resolvedBusinessType;
                 resolvedBusinessCategory = resolveStoreBusinessCategory(resolvedBusinessType, storeData.businessCategory || resolvedBusinessCategory);
                 subdomain = storeData.subdomain || `store-${storeId}`;
@@ -446,7 +495,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     brandAccentColor,
                     businessType: resolvedBusinessType,
                     existingPublicPresence: storeData.publicPresence,
-                    phone,
+                    phone: normalizedPhone.phone,
                 });
                 const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(
                     extractedMenuData,
@@ -461,6 +510,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         ? { publicPresence: { ...(storeData.publicPresence || {}), ...publicPresenceDefaults } }
                         : {}),
                     ...(nextBusinessAttributes ? { businessAttributes: nextBusinessAttributes } : {}),
+                    lastPublishedAt: now,
                 };
 
                 if (Object.keys(storeDefaultsPatch).length > 0) {
@@ -475,7 +525,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     addressLine,
                     brandAccentColor,
                     businessType: resolvedBusinessType,
-                    phone: normalizedPhone.phone || phone,
+                    phone: normalizedPhone.phone,
                 });
                 const initialBusinessAttributes = getBusinessAttributesWithMenuDefaults(
                     extractedMenuData,
@@ -514,6 +564,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                         starterActivationStatus: STARTER_ACTIVATION_STATUS.STARTER_ACTIVE,
                         starterActivatedAt,
                         activationDeadline,
+                        lastPublishedAt: now,
                         activeLanguages: extractedLanguageCodes,
                         defaultLanguage: detectedDefaultLanguage,
                         ...(mergeDefinedObject(initialPublicPresence) ? { publicPresence: initialPublicPresence } : {}),
@@ -590,13 +641,21 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     },
                 },
             };
-            const projectData = {
+            const projectSlug = resolvePublicMenuEntryProjectSlug(
+                existingSummaryProjectsForDefaultDemotion,
+                projectName,
+                projectId,
+            );
+            const projectData: Record<string, any> = {
+                projectId,
                 name: projectName,
                 description: projectName === businessName ? `Menu for ${businessName}` : `${projectName} for ${businessName}`,
                 businessType: resolvedBusinessType,
                 businessCategory: resolvedBusinessCategory,
                 active: true,
+                deleted: false,
                 isDefault: true,
+                slug: projectSlug,
                 files: [fileEntry],
                 languages: extractedLanguageCodes,
                 defaultLanguage: detectedDefaultLanguage,
@@ -609,11 +668,30 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 ...(growthAcquisition ? { growthAcquisition } : {}),
                 createdOn: now,
                 modifiedOn: now,
+                lastPublishedAt: now,
             };
+
+            if (FEATURE_FLAGS.ENABLE_MCE) {
+                try {
+                    projectData._mce = toMCEMetadata(mceValidate({
+                        isOutlet: false,
+                        projectData,
+                    }));
+                } catch (error) {
+                    logSecurityFailure('public_menu_claim_mce_validation_failed', error, getPublicMenuClaimDiagnosticContext({
+                        draftId,
+                        userId,
+                        tenantId,
+                        storeId,
+                        projectId,
+                        hasExistingAccount,
+                        isNewAccount: !hasExistingAccount,
+                    }));
+                }
+            }
 
             transaction.set(projectRef, projectData);
 
-            const projectSlug = slugify(projectName) || 'menu';
             Object.assign(summaryUpdate, buildSummaryProjectPayload(projectId, {
                     name: projectName,
                     description: projectName === businessName ? `Menu for ${businessName}` : `${projectName} for ${businessName}`,
@@ -624,6 +702,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     slug: projectSlug,
                     createdOn: now,
                     modifiedOn: now,
+                    lastPublishedAt: now,
             }));
             transaction.set(projectsSummaryRef, summaryUpdate, { merge: true });
 

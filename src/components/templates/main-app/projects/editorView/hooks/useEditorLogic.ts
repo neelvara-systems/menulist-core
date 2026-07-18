@@ -1,3 +1,5 @@
+import { parseSingleMenuPrice } from "@lib/pricing/formatMenuPrice";
+import { hasPublicItemDisplayPrice } from "@lib/pricing/publicItemPricePresentation";
 import { removeObjRef } from "@util/utils";
 import { useCallback, useRef, useState } from "react";
 import {
@@ -120,30 +122,25 @@ export const useEditorLogic = ({
             // 3. Price Range Filter
             if (showItemPrices && filters?.priceRange) {
                 const { min, max } = filters.priceRange;
-                filtered = filtered.filter((item) => {
-                    const price = parseFloat(
-                        String(item.price || "0").replace(/[^0-9.-]+/g, ""),
-                    );
-
-                    if (min !== null && max !== null) {
-                        return price >= min && price <= max;
-                    } else if (min !== null) {
-                        return price >= min;
-                    } else if (max !== null) {
-                        return price <= max;
-                    }
-
-                    return true;
-                });
+                if (min !== null || max !== null) {
+                    filtered = filtered.filter((item) => {
+                        const numericPrices = [
+                            parseSingleMenuPrice(item.price),
+                            ...(item.attributes || [])
+                                .filter((attribute) => attribute.active !== false)
+                                .map((attribute) => parseSingleMenuPrice(attribute.price)),
+                        ].filter((price): price is number => price !== null);
+                        return numericPrices.some((price) => (
+                            (min === null || price >= min) && (max === null || price <= max)
+                        ));
+                    });
+                }
             }
 
             // 4. Has Price Filter
             if (showItemPrices && filters?.hasPrice !== null && filters?.hasPrice !== undefined) {
                 filtered = filtered.filter((item) => {
-                    const price = Number(
-                        String(item.price || "").replace(/[^0-9.-]+/g, ""),
-                    );
-                    const hasPrice = Number.isFinite(price) && price > 0;
+                    const hasPrice = hasPublicItemDisplayPrice(item);
                     return hasPrice === filters.hasPrice;
                 });
             }

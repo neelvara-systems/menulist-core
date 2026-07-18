@@ -18,6 +18,7 @@ import { secureError } from "@lib/security/secureLogger";
 import {
     CampaignsSummaryDocument,
     DigitalScreenState,
+    MenuItemForSlide,
     ScreenMenuProjection,
     ScreenStoreInfo,
 } from "@type/campaigns";
@@ -215,19 +216,7 @@ export const getMenuItemsForScreenServer = async (
     tenantId: string,
     activeSpecialMenuId?: string | null,
     baseProjectId?: string | null,
-): Promise<Array<{
-    id: string;
-    name: string;
-    imageUrl?: string;
-    price?: number;
-    available: boolean;
-    isBestSeller?: boolean;
-    categoryName?: string;
-    categoryOrderIndex?: number;
-    orderIndex?: number;
-    description?: string;
-    tags?: string[];
-}>> => {
+): Promise<MenuItemForSlide[]> => {
     try {
         if (
             !NUMERIC_SCOPE_ID_PATTERN.test(storeId)

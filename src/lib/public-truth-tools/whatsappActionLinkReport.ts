@@ -2,6 +2,11 @@ import {
   getUrlWithPublicHttpsProtocol,
   isPublicHttpsUrl as isValidHttpUrl,
 } from './publicUrlValidation';
+import {
+  getWhatsAppSchemePhoneDigits,
+  isLikelyPhoneNumber,
+  normalizePhoneDigits,
+} from './phoneValidation';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type {
   WhatsAppActionLinkCheckId,
@@ -32,24 +37,8 @@ function trimMessage(value?: string): string {
   return (value || '').replace(/\r\n/g, '\n').trim();
 }
 
-function normalizePhoneDigits(value: string): string {
-  const trimmed = value.trim();
-  const digits = trimmed.replace(/\D/g, '');
-  if (trimmed.startsWith('00') && digits.length > 2) return digits.slice(2);
-  return digits;
-}
-
-function hasLikelyCountryCode(rawValue: string, digits: string): boolean {
-  const trimmed = rawValue.trim();
-  return trimmed.startsWith('+') || trimmed.startsWith('00') || digits.length > 10;
-}
-
 function isLikelyWhatsAppPhone(rawValue: string): boolean {
-  const digits = normalizePhoneDigits(rawValue);
-  return digits.length >= 8
-    && digits.length <= 15
-    && !digits.startsWith('0')
-    && hasLikelyCountryCode(rawValue, digits);
+  return isLikelyPhoneNumber(rawValue, { requireCountryCode: true });
 }
 
 function getUrlWithProtocol(value: string): string {
@@ -117,11 +106,18 @@ function getPhoneFromWhatsAppUrl(url: URL | null): string {
 
   const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
   if (hostname === 'wa.me') {
-    return normalizePhoneDigits(url.pathname.replace(/^\/+/, '').split('/')[0] || '');
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const phone = pathParts.length === 1 ? pathParts[0] : '';
+    return /^\d{8,15}$/.test(phone) && !phone.startsWith('0') ? phone : '';
   }
 
-  if (hostname === 'api.whatsapp.com' || hostname === 'web.whatsapp.com' || url.protocol === 'whatsapp:') {
-    return normalizePhoneDigits(url.searchParams.get('phone') || '');
+  if (url.protocol === 'whatsapp:') {
+    return getWhatsAppSchemePhoneDigits(url.toString());
+  }
+
+  if (hostname === 'api.whatsapp.com' || hostname === 'web.whatsapp.com') {
+    const rawPhone = url.searchParams.get('phone') || '';
+    return isLikelyWhatsAppPhone(rawPhone) ? normalizePhoneDigits(rawPhone) : '';
   }
 
   return '';
@@ -131,10 +127,11 @@ function isRecognizedWhatsAppUrl(url: URL | null): boolean {
   if (!url) return false;
 
   const hostname = url.hostname.toLowerCase().replace(/^www\./, '');
-  return hostname === 'wa.me'
-    || hostname === 'api.whatsapp.com'
-    || hostname === 'web.whatsapp.com'
-    || url.protocol === 'whatsapp:';
+  if (url.protocol === 'whatsapp:') return Boolean(getWhatsAppSchemePhoneDigits(url.toString()));
+  if (url.protocol !== 'https:' || url.username || url.password || url.port) return false;
+  if (hostname === 'wa.me') return true;
+  if (hostname !== 'api.whatsapp.com' && hostname !== 'web.whatsapp.com') return false;
+  return /^\/send\/?$/i.test(url.pathname);
 }
 
 function getValidLinkPhone(rawLink: string): string {

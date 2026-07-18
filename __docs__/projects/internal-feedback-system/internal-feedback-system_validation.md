@@ -1,241 +1,106 @@
-# Internal Feedback System — Validation Report
+# Guest Feedback System — Validation Matrix
 
-**Generated:** February 2026  
-**Last Runtime Audit:** June 11, 2026
-**Status:** ✅ FULLY IMPLEMENTED  
-**Spec Compliance:** 100%
-
----
-
-## Executive Summary
-
-The Internal Feedback System core implementation is complete and ready for integration testing. All security patterns, public APIs, guest UI, and owner dashboard components are implemented per spec.
-
-### Implementation Score
-
-| Phase                      | Tasks  | Completed | Status   |
-| -------------------------- | ------ | --------- | -------- |
-| Phase 1: Foundation        | 9      | 9         | ✅ 100%  |
-| Phase 2: Public API        | 5      | 5         | ✅ 100%  |
-| Phase 3: Guest UI          | 4      | 4         | ✅ 100%  |
-| Phase 4: Owner Dashboard   | 9      | 9         | ✅ 100%  |
-| Phase 5: Settings & Polish | 6      | 6         | ✅ 100%  |
-| **Total**                  | **33** | **33**    | **100%** |
+**Status:** Source validation maintained; external certification is separate
+**Last Source Audit:** July 16, 2026
+**Audience:** QA, engineering, release reviewers
 
 ---
 
-## Files Created (16 new files)
+## Current Launch Boundary
 
-| File                                                                | Purpose                                 | LOC  | Status |
-| ------------------------------------------------------------------- | --------------------------------------- | ---- | ------ |
-| `src/types/guestFeedback.ts`                                        | Type definitions                        | ~120 | ✅     |
-| `src/database/guestFeedback/index.ts`                               | DAL for CRUD                            | ~230 | ✅     |
-| `src/app/api/public/feedback/submit/route.ts`                       | Public submit endpoint                  | ~165 | ✅     |
-| `src/app/feedback/[projectId]/page.tsx`                             | Standalone QR page (server component)   | ~191 | ✅     |
-| `src/middleware/publicApi.ts`                                       | Public rate limit + honeypot + sanitize | ~111 | ✅     |
-| `src/lib/utils/whatsappLink.ts`                                     | WhatsApp deep link                      | ~80  | ✅     |
-| `src/lib/utils/feedbackQrCode.ts`                                   | QR code generator                       | ~120 | ✅     |
-| `src/components/atoms/GuestFeedbackForm/index.tsx`                  | Guest form                              | ~270 | ✅     |
-| `src/components/atoms/GuestFeedbackForm/StarRating.tsx`             | Star rating                             | ~115 | ✅     |
-| `src/components/templates/main-app/feedback/index.tsx`              | Inbox page                              | ~195 | ✅     |
-| `src/components/templates/main-app/feedback/FeedbackCard.tsx`       | Card component                          | ~195 | ✅     |
-| `src/components/templates/main-app/feedback/FeedbackFilters.tsx`    | Filter controls                         | ~55  | ✅     |
-| `src/components/templates/main-app/feedback/FeedbackQrDownload.tsx` | QR download                             | ~125 | ✅     |
+This matrix is source-verified evidence for the Guest Feedback feature, not standalone production deployment approval. Release still requires target Firestore rules and Functions deployment evidence, Turnstile and provider configuration, authenticated owner/public browser and mobile QA, retention-job observation, and production-host smoke.
 
-**Total New Code:** ~2,195 lines
+## Codebase-Truth Matrix
 
----
-
-## Files Modified (6 existing files)
-
-| File                                                                    | Change                                   | Status |
-| ----------------------------------------------------------------------- | ---------------------------------------- | ------ |
-| `src/constants/database.ts:75`                                          | Added `GUEST_FEEDBACK` collection        | ✅     |
-| `src/config/features.ts:696`                                            | Added `ENABLE_GUEST_FEEDBACK` flag       | ✅     |
-| `src/lib/rateLimit/configs.ts:168`                                      | Added `FEEDBACK_SUBMISSION` config       | ✅     |
-| `src/lib/validation/apiSchemas.ts:286`                                  | Added feedback schemas                   | ✅     |
-| `src/components/templates/main-app/projects/types/project.types.ts:145` | Added `feedback` to MenuSettings         | ✅     |
-| `src/types/platform/store.ts:157`                                       | Added `feedbackDefaults` and `reviewUrl` | ✅     |
-| `firestore.rules:98`                                                    | Added guestFeedback collection rules     | ✅     |
-| `firestore.indexes.json:184`                                            | Added 3 composite indexes                | ✅     |
+| Flow | Source evidence | Current state |
+| --- | --- | --- |
+| Public page admission | `src/app/feedback/[projectId]/page.tsx` | Project ID/path and project activity/toggle validated |
+| Public store/tenant eligibility | `getPublicStoreById()` plus project tenant match | Active; request/cross-request cached and invalidation-tagged |
+| Browser data minimization | `projectPublicClientStore()` | Canonical owner/internal store fields excluded |
+| Public request controls | submit route, rate-limit config, bounded body, schema, honeypot, Turnstile | Active |
+| Duplicate retry protection | form `submissionId`; server deterministic create/fingerprint replay | Active |
+| Compact event retry protection | deterministic `feedback_submitted_{feedbackId}` event create | Active and non-blocking |
+| Store field-default enforcement | submit route `resolveFeedbackDefaults()` | Active server-side |
+| Review URL safety | shared normalizer in settings UI/save/API/form | Active; HTTPS Google allowlist only |
+| Desktop list/filter/pagination | owner DAL plus Feedback inbox | Active, 50-item cursor pages |
+| Mobile list/filter/pagination | same DAL plus Mobile Feedback screen | Active, one read per filter transition and Load more |
+| Resolve/reopen | transactional DAL plus acknowledgement guards | Active; store-scoped |
+| Reply drafts | deterministic helper, copy/WhatsApp | Browser-local; no send provider |
+| Retention | `guestFeedbackRetention.ts` in `decisionBlocksScoring.ts` | Active behind function flag; any partial batch failure fails the task and remains retryable |
+| Firestore boundary | rules and indexes | Client create/delete denied; matching store read/update only |
+| HQ aggregate inbox | no source implementation | Not implemented; do not claim |
+| Google review ingestion/posting | no source implementation; flags false | Disabled/incomplete; do not claim |
 
 ---
 
-## Security Checklist
+## Automated Gates
 
-| #   | Requirement             | Implementation                           | Status |
-| --- | ----------------------- | ---------------------------------------- | ------ |
-| 1   | Input validation        | Zod schema (`guestFeedbackSubmitSchema`) | ✅     |
-| 2   | XSS prevention          | `sanitizeString()` in publicApi.ts       | ✅     |
-| 3   | Rate limiting           | IP-based, 10/10min (`publicLimiter.ts`)  | ✅     |
-| 4   | Bot detection           | Honeypot field (`website` must be empty) | ✅     |
-| 5   | Tenant isolation        | `tId` + `sId` required on all queries; owner updates enforce tenant and store | ✅     |
-| 6   | Auth for owner routes   | NextAuth session check                   | ✅     |
-| 7   | RBAC for multi-outlet   | Manager sees own store, HQ sees all      | ✅     |
-| 8   | No contact data in logs | Not logged in console.error              | ✅     |
-| 9   | Firestore rules         | API-only creates, auth tenant/store read, status-only update | ✅     |
-| 10  | HTTPS only              | Vercel default                           | ✅     |
-
----
-
-## Spec Compliance Matrix
-
-### User Stories
-
-| Story | Description                      | Status                                |
-| ----- | -------------------------------- | ------------------------------------- |
-| US-1  | Guest submits private feedback   | ✅ Implemented                        |
-| US-2  | Owner views feedback inbox       | ✅ Implemented                        |
-| US-3  | Owner receives Google CTA        | ✅ Implemented (shown to ALL ratings) |
-| US-4  | Owner downloads Feedback QR Code | ✅ Implemented                        |
-| US-5  | Multi-outlet filtering           | ✅ Implemented                        |
-
-### Functional Requirements
-
-| FR    | Requirement                          | Status                                                |
-| ----- | ------------------------------------ | ----------------------------------------------------- |
-| FR-1  | Star rating 1-5, required            | ✅                                                    |
-| FR-2  | Message optional, 300 char max       | ✅                                                    |
-| FR-3  | Contact fields configurable          | ✅                                                    |
-| FR-4  | Google CTA to ALL ratings            | ✅ (FTC compliant)                                    |
-| FR-5  | Filter: All/Needs Attention/Resolved | ✅                                                    |
-| FR-6  | Mark resolved/new toggle             | ✅                                                    |
-| FR-7  | 90-day retention                     | ✅ (`guestFeedbackRetention.ts` in nightly scheduler) |
-| FR-8  | Contact indicator badge              | ✅                                                    |
-| FR-9  | WhatsApp deep link                   | ✅                                                    |
-| FR-10 | Feedback QR code download            | ✅                                                    |
-
----
-
-## Outstanding Items
-
-All originally outstanding items have been completed:
-
-| Task                      | Status  | Notes                                                      |
-| ------------------------- | ------- | ---------------------------------------------------------- |
-| Menu footer feedback link | ✅ Done | Integrated in `MenuFooter.tsx`                             |
-| Navigation menu item      | ✅ Done | `/feedback` route with `LuTicket` icon in `navigations.ts` |
-| Feedback settings UI      | ✅ Done | `FeedbackSettingsTab.tsx` in business settings             |
-| Google Review URL input   | ✅ Done | In `FeedbackSettingsTab.tsx`                               |
-| MOL event logging         | ✅ Done | `logFeedbackMOLEvent` in DAL                               |
-| Retention Cloud Function  | ✅ Done | `guestFeedbackRetention.ts` in nightly scheduler           |
-
----
-
-## Integration Points
-
-### Menu Footer Integration
-
-The `GuestFeedbackForm` component is ready. Integration point:
-
-```tsx
-// In menu template footer
-import { GuestFeedbackForm } from "@components/atoms/GuestFeedbackForm";
-
-// Conditionally render based on project.menuSettings.feedback !== false
-```
-
-### Sidebar Navigation Integration
-
-The `FeedbackInbox` component is ready. Add to sidebar config:
-
-```typescript
-{
-  key: 'feedback',
-  path: '/feedback',
-  label: 'Guest Feedback',
-  icon: <MessageOutlined />,
-}
-```
-
----
-
-## Testing Checklist
-
-### Ready for Manual Testing
-
-- [x] Submit feedback with valid rating (1-5)
-- [x] Submit feedback without rating (validation error expected)
-- [x] Submit feedback with 301+ char message (validation error expected)
-- [x] Rate limit testing (11 requests in 10 min)
-- [x] Honeypot detection (fill `website` field)
-- [x] Disabled project feedback (400 error expected)
-- [x] View inbox with filters
-- [x] Mark feedback resolved/new
-- [x] Download QR code
-- [x] WhatsApp link generation
-
-### Integration Tests (All integrated)
-
-- [x] Menu footer link visibility
-- [x] Sidebar navigation
-- [x] Settings UI
-- [x] Mobile screens (MobileFeedbackScreen + MobileFeedbackDetail)
-
----
-
-## Dependencies Added
-
-The implementation requires the `qrcode` package for QR code generation:
+The final verification report records the latest command results. Required gates for this feature are:
 
 ```bash
-npm install qrcode
-npm install -D @types/qrcode
+npm run verify:guest-feedback-boundary
+env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:guest-feedback:rules
+npm run verify:communication-kit-boundary
+npm run verify:reviews-reputation-boundary
+npm run test:reviews:rules
+npx tsc --noEmit
 ```
 
----
-
-## Deployment Notes
-
-1. **Firestore Indexes** - Deploy indexes before launch:
-
-   ```bash
-   npm run verify:env-targets
-   firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json
-   ```
-
-   Production index deploy requires QA evidence and explicit production approval.
-
-2. **Firestore Rules** - Deploy updated security rules:
-
-   ```bash
-   firebase deploy --only firestore:rules --project menulist-qa --config firebase.json
-   ```
-
-   Production rules deploy requires QA evidence and explicit production approval.
-
-3. **Feature Flag** - `ENABLE_GUEST_FEEDBACK` is set to `true` by default.
+The reviews gates prove that the adjacent Google-review scaffolding stays disabled, unmounted, source-bounded, and tenant/store isolated. They do not certify a live Reviews product.
 
 ---
 
-## Summary
+## Required Manual Matrix
 
-The Guest Feedback System is **fully implemented** across all phases.
+### Public
 
-**Implemented:**
+- Valid direct/menu-footer/QR source submits once.
+- A retry with the same `submissionId` returns the same `feedbackId` and creates no duplicate event.
+- A changed payload with a reused ID cannot overwrite the original.
+- Non-Latin guest names accepted by the browser and server.
+- Disabled/deleted/blocked project, store, or tenant is rejected.
+- Hidden fields posted manually are discarded; configured required fields are enforced.
+- Turnstile success/failure and rate-limit behavior work in the target environment.
+- Invalid review URL is omitted; valid URL appears for every rating.
+- Public page HTML/client payload contains no owner email/contact-person/role/internal fields.
 
-- ✅ Public feedback submission with Upstash rate limiting
-- ✅ Bot detection via honeypot field
-- ✅ FTC-compliant Google Review CTA (shown to ALL ratings)
-- ✅ Owner inbox with filtering (All / Needs Attention / Resolved)
-- ✅ Contact indicator and WhatsApp recovery deep link
-- ✅ QR code download for table tents (high-res 1024px)
-- ✅ Multi-outlet RBAC support (HQ sees all, manager sees own)
-- ✅ Full security (Zod, sanitization, tenant isolation, Firestore rules)
-- ✅ 90-day retention via Cloud Function in nightly scheduler
-- ✅ Mobile screens (MobileFeedbackScreen + MobileFeedbackDetail)
+### Owner desktop
 
-## June 11, 2026 Audit Addendum
+- All, Needs attention, and Resolved filters load the correct store only.
+- Load more preserves order and does not duplicate items.
+- Resolve/reopen removes a card when it no longer matches the active filter.
+- Failed writes show one error message and do not advance status.
+- Copy and WhatsApp draft handoffs never claim a provider send.
 
-- Public feedback API now writes through `src/database/guestFeedback/server.ts` with Firebase Admin SDK.
-- Direct unauthenticated `guestFeedback` Firestore creates are denied.
-- Store contact-field defaults are enforced server-side; hidden fields are dropped and required fields are validated.
-- Manager/store-scoped status updates cannot cross store boundaries inside the same tenant.
-- Phone input has server-side format validation.
-- ✅ Business settings tab with feedback defaults and Google Review URL
-- ✅ Sidebar navigation (`/feedback` with LuTicket icon)
-- ✅ Menu footer feedback link integration
+### Owner mobile
 
-**Feature flag:** `ENABLE_GUEST_FEEDBACK: true`
+- Filter changes perform one list fetch.
+- Records after the first 50 are reachable through Load more.
+- Selected detail state updates after resolve.
+- Copy and WhatsApp are manual; resolve is separate and double-tap guarded.
+- Shell/back/public-link behavior remains inside the mobile architecture contract.
 
-_Updated: March 14, 2026_
+### Settings
+
+- `evilgoogle.com`, HTTP, malformed, oversized, and unrelated URLs show invalid state and cannot save.
+- Accepted HTTPS Google review/maps shapes save normalized trimmed values.
+- Clearing the URL removes it.
+- Store setting saves invalidate the public store/menu/OBP cache through the existing mutation contract.
+
+---
+
+## Pending External Evidence
+
+Keep these pending until the owner/release operator completes them for the target environment:
+
+- authenticated desktop browser QA
+- physical mobile-device QA
+- Turnstile and Upstash target configuration smoke
+- custom-domain and tenant-host feedback-link smoke
+- Firebase deployment evidence when rules/index/function source changes
+- Vercel deployment and production-host smoke only after explicit deploy approval
+
+---
+
+_Document owner: QA and Engineering_
+_Last updated: July 16, 2026_

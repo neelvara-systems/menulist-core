@@ -4,6 +4,7 @@ import useMenuCardExportController, {
     resolveMenuCardProjectName,
     type MenuCardExportNotice,
 } from '@hook/useMenuCardExportController';
+import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useState } from 'react';
@@ -26,14 +27,8 @@ function notifyMobile(notice: MenuCardExportNotice) {
 }
 
 function formatGeneratedAt(value: string) {
-    const date = new Date(value);
-    if (!Number.isFinite(date.getTime())) return '';
-    return new Intl.DateTimeFormat('en', {
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        month: 'short',
-    }).format(date);
+    const label = formatDateTime(value, 'datetime');
+    return label === 'N/A' ? '' : label;
 }
 
 function WarningRow({ message, severity }: { message: string; severity: string }) {

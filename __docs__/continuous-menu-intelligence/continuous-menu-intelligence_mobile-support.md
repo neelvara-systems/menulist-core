@@ -1,23 +1,20 @@
-# Continuous Menu Intelligence (CMI) — Mobile Support
+# Continuous Menu Intelligence — Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ❌ NO UI — Backend-only feature (nightly batch job)
+**Last verified:** July 16, 2026
+**Decision:** No CMI mobile UI.
 
----
+## Assessment
 
-## Feature Admission Test
+CMI is a private scheduler-owned read model. It has no direct mobile admission because owners do not need to inspect, explain, or control private confidence and priority metadata.
 
-Not applicable — CMI is a server-side background process with no owner-facing UI on desktop or mobile.
+## Current mobile boundary
 
----
+- No CMI route, tab, sheet, card, score, notification, or toggle.
+- Mobile menu truth continues to come from the shared project/menu DAL.
+- CMI never hides, shows, or reorders a mobile menu item.
+- Expired or disabled CMI reads fail neutral in the DAL.
+- Mobile Featured section controls belong to Decision Intelligence and write only `project.menuSettings.decisionBlocks` through the shared project mutation boundary.
 
-## What CMI Does
+Any future mobile use of CMI requires its own owner-value, privacy, cost, store-timezone, and public-truth review.
 
-- Runs nightly at 02:30 UTC as a Cloud Function
-- Evaluates menu item performance automatically
-- Adjusts confidence scores
-- Takes reversible autonomous actions within safety gates
-
-## Mobile Relevance
-
-None. CMI has no dashboard UI — it's invisible infrastructure. Menu item scores and adjustments flow through the same Firestore project data that mobile reads. When CMI adjusts an item's visibility, the change appears automatically on the owner's MobileMenuScreen on next refresh.
+Historical mobile note is retained at `_archive/pre-2026-07-16/continuous-menu-intelligence_mobile-support.md`.

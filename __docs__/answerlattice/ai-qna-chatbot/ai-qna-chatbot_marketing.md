@@ -1,69 +1,51 @@
 # AI QnA Chatbot — Marketing & Sales Collateral
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Sales, Marketing (Internal)
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
+> **Audience:** Sales and marketing
+> **Status:** Internal claim boundary
 
 ---
 
-## 1. Elevator Pitch
+## Product Story
 
-**One-liner:** "Source-backed answers from your knowledge base — instant, cited, and contextual."
+**One line:** Answerlattice serves approved support truth first, uses source-backed knowledge when needed, and refuses unsupported answers.
 
-**30 seconds:** MenuList's AI chatbot searches your entire knowledge base using semantic understanding (not keyword matching) and generates clear answers with source citations. Upload a screenshot if words aren't enough. Switch to conversation mode for multi-turn troubleshooting. Every answer cites its source. Every repeated question gets faster. Built directly into the dashboard — no external chatbot tools needed.
+**Short explanation:** A SaaS team can use the same governed answer pipeline in its authenticated help center and embeddable support widget. Answerlattice checks canonical answers and approved FAQs before knowledge-base retrieval. For eligible technical questions, a default-off exact evidence lane can combine resolved product entities with error codes, API paths, versions, and command options without changing source authority.
 
----
+## Claims We Can Support
 
-## 2. Key Differentiators
+- Approved canonical answers and published FAQs have priority over generated knowledge-base answers.
+- Knowledge-base generation is restricted to active published content in the exact Answerlattice workspace.
+- A generated non-refusal answer is blocked when it does not resolve to a valid supporting article.
+- Exact-only evidence does not receive an invented vector-similarity score.
+- Screenshots are treated as untrusted question context, not as an authority source.
+- Unknown or weakly supported questions can return a safe fallback instead of a plausible guess.
+- Answer Tests can exercise the retrieval pipeline without creating customer-facing search history.
 
-| Traditional Search | MenuList AI QnA |
-|-------------------|-----------------|
-| Keyword matching | Semantic vector search (understands meaning) |
-| Returns article links | Generates a direct answer with source citations |
-| Text-only queries | Text + image queries (screenshot analysis) |
-| No context | Assistant mode carries conversation history |
-| Manual article browsing | AI suggests 3 follow-up questions per answer |
-| No quality tracking | Similarity scores + quality-based admin filtering |
-| Cold start every time | 40-60% cache hit rate — instant repeated answers |
+## Claims That Require Measured Proof
 
----
+Do not publish accuracy, deflection, containment, cache-hit, latency, cost-saving, or resolution percentages until they are measured with representative customer questions and verified outcomes. Do not compare current competitor pricing or capabilities without a dated primary-source review.
 
-## 3. Technical Selling Points
+## Commercial Differentiation
 
-- **768-dimension embeddings** — Semantic understanding, not keyword matching
-- **Dual threshold** — High confidence (0.6) with fallback (0.4) for broader coverage
-- **Source citations** — Every answer shows which KB article it came from
-- **Image analysis** — Gemini 2.5 Flash extracts bounded visual search context from screenshots
-- **Response caching** — ~60% of queries return instant cached results
-- **Embedding caching** — 40-60% fewer API calls, faster response times
-- **Streaming ready** — SSE streaming for real-time ChatGPT-like experience (feature-flagged)
-- **Race condition prevention** — Sequential request queue prevents duplicate messages
-- **Graceful failures** — AI suggests alternative topics instead of "I don't know"
+| Generic support search | Answerlattice |
+|---|---|
+| Retrieves likely text | Checks governed answers before generated fallback |
+| Treats sources as equally authoritative | Preserves canonical and approved FAQ priority |
+| Reports answer volume | Evaluates citations, unsupported claims, abstention, and resolution |
+| Hides weak retrieval behind fluent output | Blocks unsupported generated answers |
+| Learns opaquely from conversations | Routes interaction evidence into human-reviewed improvement |
 
----
+## Proof Metrics
 
-## 4. Competitive Comparison
+- priority-question canonical coverage;
+- citation correctness and completeness;
+- unsupported-claim rate;
+- stale-answer and source-conflict rate;
+- safe-abstention and escalation correctness;
+- verified task or support resolution;
+- recontact after an answer;
+- time from a knowledge change to reviewed answer propagation.
 
-| Feature | MenuList AI QnA | Intercom Fin | Zendesk AI | Freshdesk Freddy |
-|---------|:--------------:|:------------:|:----------:|:----------------:|
-| Built into product | ✅ | ❌ External | ❌ External | ❌ External |
-| Source citations | ✅ | ✅ | ⚠️ Limited | ❌ |
-| Image queries | ✅ | ❌ | ❌ | ❌ |
-| Conversation mode | ✅ | ✅ | ✅ | ⚠️ |
-| Response caching | ✅ | Unknown | Unknown | Unknown |
-| Quality scoring | ✅ | ❌ | ❌ | ❌ |
-| Suggested questions | ✅ | ⚠️ | ❌ | ❌ |
-| Streaming responses | ✅ (flagged) | ✅ | ❌ | ❌ |
-| Cost | Firestore-light; AI cost depends on current provider pricing and cache hit rate | $0.99/resolution | $1/automated resolution | $0.50/session |
-
----
-
-## 5. Metrics That Matter
-
-| Metric | What It Proves |
-|--------|---------------|
-| **Cache hit rate (~60%)** | System gets faster with usage — answers cached for repeat queries |
-| **Satisfaction rate** | % of positive thumbs-up feedback on AI answers |
-| **Regeneration rate** | Low = AI gets it right the first time |
-| **Knowledge gap count** | Declining = KB coverage is improving |
-| **Average response time** | Cached: ~100ms, Uncached: ~3s |
+Cache use, request volume, tokens, and answer count are operating metrics, not customer-value claims.

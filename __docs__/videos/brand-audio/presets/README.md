@@ -16,9 +16,9 @@ Use a small set of presets organized by narrative job. Do not keep creating near
 | 2 | MenuList Quiet Product Walkthrough | 180s | Product demo, onboarding, sales calls |
 | 3 | MenuList Owner Relief | 60s | Photo/PDF setup, old-file pain, owner-ease stories |
 | 4 | MenuList Approval First | 45s | Owner approval and AI Menu Manager videos |
-| 5 | MenuList One Link Motion | 30s | Launch cut, one-link reel, paid social |
+| 5 | MenuList One Link Motion | 30s | Primary default: launch cut, one-link reel, feature reveal, paid social |
 | 6 | MenuList Founder Plainspoken | 90s | Founder POV and talking-head edits |
-| 7 | MenuList Outlet Control | 60s | Multi-location and premium-plan explainers |
+| 7 | MenuList Outlet Control | 60s | Approved alternate: multi-location and premium-plan explainers |
 
 ## Shared Generation Rules
 
@@ -141,6 +141,8 @@ Automation: prepare from `0-10s`, establish the review rhythm from `10-25s`, cre
 
 **Job:** Give short launch cuts and reels immediate movement without becoming noisy or hyperactive.
 
+**Founder status:** Primary default generation direction for new MenuList videos as of July 14, 2026.
+
 - Duration: `30s`
 - Seed: `260719`
 - BPM: `112`
@@ -192,6 +194,8 @@ Automation: no percussion during the first `20s`; introduce sparse pluck between
 ## Preset 7: MenuList Outlet Control
 
 **Job:** Communicate consistency, governance, and controlled local flexibility for multi-location operators.
+
+**Founder status:** Approved operational alternate as of July 14, 2026.
 
 - Duration: `60s`
 - Seed: `260721`

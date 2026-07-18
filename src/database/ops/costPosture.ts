@@ -28,6 +28,24 @@ function isFiniteNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isNonNegativeFiniteNumber(value: unknown): value is number {
+  return isFiniteNumber(value) && value >= 0 && value <= Number.MAX_SAFE_INTEGER;
+}
+
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+}
+
+function isValidIsoTimestamp(value: unknown): value is string {
+  if (typeof value !== 'string' || value.length === 0) return false;
+  const timestampMs = Date.parse(value);
+  return Number.isFinite(timestampMs) && new Date(timestampMs).toISOString() === value;
+}
+
+function isNullableIsoTimestamp(value: unknown): value is string | null {
+  return value === null || isValidIsoTimestamp(value);
+}
+
 function isNullableString(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
@@ -50,15 +68,15 @@ function isSafeModeStatus(value: unknown): boolean {
     && typeof value.active === 'boolean'
     && isNullableString(value.reason)
     && typeof value.alertsMuted === 'boolean'
-    && isNullableString(value.alertsMutedUntil);
+    && isNullableIsoTimestamp(value.alertsMutedUntil);
 }
 
 function isCostTotals(value: unknown): boolean {
   return isRecord(value)
-    && isFiniteNumber(value.knownInternalCostPaise)
-    && isFiniteNumber(value.knownOwnerChargePaise)
-    && isFiniteNumber(value.providerCalls)
-    && isFiniteNumber(value.firestoreReadsObserved);
+    && isNonNegativeFiniteNumber(value.knownInternalCostPaise)
+    && isNonNegativeFiniteNumber(value.knownOwnerChargePaise)
+    && isNonNegativeSafeInteger(value.providerCalls)
+    && isNonNegativeSafeInteger(value.firestoreReadsObserved);
 }
 
 function isCostSignal(value: unknown): boolean {
@@ -68,12 +86,12 @@ function isCostSignal(value: unknown): boolean {
     && typeof value.description === 'string'
     && typeof value.coverage === 'string'
     && typeof value.periodLabel === 'string'
-    && isFiniteNumber(value.count)
-    && isFiniteNumber(value.realCostPaise)
-    && isFiniteNumber(value.ownerChargePaise)
-    && isFiniteNumber(value.providerCalls)
-    && isFiniteNumber(value.firestoreReadsObserved)
-    && isNullableString(value.latestAt)
+    && isNonNegativeSafeInteger(value.count)
+    && isNonNegativeFiniteNumber(value.realCostPaise)
+    && isNonNegativeFiniteNumber(value.ownerChargePaise)
+    && isNonNegativeSafeInteger(value.providerCalls)
+    && isNonNegativeSafeInteger(value.firestoreReadsObserved)
+    && isNullableIsoTimestamp(value.latestAt)
     && typeof value.source === 'string'
     && typeof value.linkHref === 'string';
 }
@@ -85,7 +103,7 @@ function isCostAlert(value: unknown): boolean {
     && typeof value.severity === 'string'
     && typeof value.type === 'string'
     && typeof value.message === 'string'
-    && isNullableString(value.timestamp);
+    && isNullableIsoTimestamp(value.timestamp);
 }
 
 function isCostGuardrail(value: unknown): boolean {
@@ -102,16 +120,24 @@ function isSourceCoverage(value: unknown): boolean {
     && typeof value.id === 'string'
     && typeof value.label === 'string'
     && isAllowedString(value.status, SOURCE_STATUSES)
-    && isFiniteNumber(value.readLimit)
-    && isFiniteNumber(value.documentsConsidered)
+    && isNonNegativeSafeInteger(value.readLimit)
+    && isNonNegativeSafeInteger(value.documentsConsidered)
     && typeof value.detail === 'string';
 }
 
 function isPlatformCostPostureData(value: unknown): value is PlatformCostPostureData {
-  return isRecord(value)
-    && typeof value.generatedAt === 'string'
-    && isFiniteNumber(value.periodDays)
-    && typeof value.periodStart === 'string'
+  if (!isRecord(value)) return false;
+
+  const generatedAtMs = isValidIsoTimestamp(value.generatedAt) ? Date.parse(value.generatedAt) : Number.NaN;
+  const periodStartMs = isValidIsoTimestamp(value.periodStart) ? Date.parse(value.periodStart) : Number.NaN;
+
+  return Number.isFinite(generatedAtMs)
+    && Number.isFinite(periodStartMs)
+    && periodStartMs <= generatedAtMs
+    && isNonNegativeSafeInteger(value.periodDays)
+    && value.periodDays >= 1
+    && value.periodDays <= 90
+    && isValidIsoTimestamp(value.periodStart)
     && isAllowedString(value.status, COST_POSTURE_STATUSES)
     && isBillingExportStatus(value.billingExport)
     && isSafeModeStatus(value.safeMode)
@@ -158,12 +184,20 @@ async function readPlatformCostPostureResponseJson(
   }
 }
 
-export async function getPlatformCostPosture(days = 30): Promise<PlatformCostPostureData> {
+export async function getPlatformCostPosture(
+  days = 30,
+  options: { signal?: AbortSignal } = {},
+): Promise<PlatformCostPostureData> {
+  if (!Number.isSafeInteger(days) || days < 1 || days > 90) {
+    throw createPlatformCostPostureLoadError();
+  }
+
   const params = new URLSearchParams({ days: String(days) });
   const response = await fetch(`/api/platform/cost-posture?${params.toString()}`, {
     cache: 'no-store',
     credentials: 'same-origin',
     redirect: 'manual',
+    signal: options.signal,
   });
   const payload = await readPlatformCostPostureResponseJson(response, days);
 
@@ -178,6 +212,16 @@ export async function getPlatformCostPosture(days = 30): Promise<PlatformCostPos
   }
 
   if (!isPlatformCostPostureApiResponse(payload)) {
+    const error = createPlatformCostPostureLoadError(response.status);
+    logRuntimeFailure(
+      PLATFORM_COST_POSTURE_RESPONSE_INVALID,
+      error,
+      getPlatformCostPostureResponseContext(response, days),
+    );
+    throw error;
+  }
+
+  if (payload.data.periodDays !== days) {
     const error = createPlatformCostPostureLoadError(response.status);
     logRuntimeFailure(
       PLATFORM_COST_POSTURE_RESPONSE_INVALID,

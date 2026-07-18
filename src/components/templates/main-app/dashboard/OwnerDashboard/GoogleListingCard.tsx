@@ -152,7 +152,10 @@ export default function GoogleListingCard({ storeDetails, onStoreUpdate }: Googl
             };
             const updates = {
                 storeId: storeDetails.storeId,
-                publicPresence: nextPublicPresence,
+                publicPresence: {
+                    googleLinkUpdated: true,
+                    googleLinkUpdatedAt,
+                },
             };
             const writeResult = await updateStore(updates);
             assertStoreUpdateSucceeded(

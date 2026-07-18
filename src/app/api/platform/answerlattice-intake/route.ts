@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { PRODUCT_IDS } from '@constant/product';
 import {
     getAnswerlatticeSecurityLogContext,
@@ -426,6 +427,7 @@ async function checkAnswerlatticeIntakeMonitorReadRateLimit(request: NextRequest
     const rateLimit = await checkRateLimit({
         key: buildAnswerlatticeRateLimitKey(ANSWERLATTICE_INTAKE_MONITOR_RATE_LIMIT_KEY, userId),
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
     if (rateLimit.allowed) return null;
@@ -442,7 +444,9 @@ async function checkAnswerlatticeIntakeMonitorReadRateLimit(request: NextRequest
 
     return NextResponse.json(
         {
-            error: 'Too many requests. Please try again later.',
+            error: rateLimit.reason === 'provider_unavailable'
+                ? 'Answerlattice intake monitor is temporarily unavailable.'
+                : 'Too many requests. Please try again later.',
             retryAfter: waitSeconds,
             resetAt: rateLimit.resetAt,
         },
@@ -454,7 +458,7 @@ async function checkAnswerlatticeIntakeMonitorReadRateLimit(request: NextRequest
                 'X-RateLimit-Remaining': String(rateLimit.remaining),
                 'X-RateLimit-Reset': String(rateLimit.resetAt),
             },
-            status: 429,
+            status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
         },
     );
 }
@@ -472,6 +476,7 @@ async function checkAnswerlatticeManualTriggerRateLimit(
             `${userId}:${scope.tId}:${scope.sId}`,
         ),
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
     if (rateLimit.allowed) return null;
 
@@ -488,7 +493,11 @@ async function checkAnswerlatticeManualTriggerRateLimit(
     }, 'high');
 
     return NextResponse.json(
-        { error: 'Manual retry limit reached. Please wait before running it again.' },
+        {
+            error: rateLimit.reason === 'provider_unavailable'
+                ? 'Manual retry is temporarily unavailable.'
+                : 'Manual retry limit reached. Please wait before running it again.',
+        },
         {
             headers: {
                 'Cache-Control': 'private, no-store',
@@ -497,7 +506,7 @@ async function checkAnswerlatticeManualTriggerRateLimit(
                 'X-RateLimit-Remaining': String(rateLimit.remaining),
                 'X-RateLimit-Reset': String(rateLimit.resetAt),
             },
-            status: 429,
+            status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
         },
     );
 }
@@ -570,6 +579,11 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     try {
         const rateLimitResponse = await checkAnswerlatticeIntakeMonitorReadRateLimit(request, session);
         if (rateLimitResponse) return rateLimitResponse;
+
+        const currentPlatformUser = await getCurrentPlatformUser(session);
+        if (!currentPlatformUser) {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
 
         const [tenantSummary, schedulerSnap] = await Promise.all([
             loadTenantOptions(db),
@@ -677,6 +691,11 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 export const POST = withPlatformAuth(async (request: NextRequest, session: any) => {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR) {
         return NextResponse.json({ error: 'Answerlattice intake monitor is disabled.' }, { status: 404 });
+    }
+
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const bodyResult = await readBoundedJsonBody(request, ANSWERLATTICE_INTAKE_TRIGGER_MAX_BODY_BYTES, {

@@ -1,9 +1,12 @@
 "use client";
 
 import { LuArrowRight } from "react-icons/lu";
+import { useTranslations } from 'next-intl';
 import SectionWrapper from '../../shared/SectionWrapper';
 
 const EnterpriseCtaSection = () => {
+    const t = useTranslations('Website');
+
     return (
         <SectionWrapper variant="subtle">
             <div style={{ textAlign: 'center', maxWidth: '560px', margin: '0 auto' }}>
@@ -16,7 +19,7 @@ const EnterpriseCtaSection = () => {
                         letterSpacing: 0,
                     }}
                 >
-                    Control your entire brand from one place
+                    {t('Pricing.enterpriseTitle')}
                 </h2>
                 <p
                     style={{
@@ -26,7 +29,7 @@ const EnterpriseCtaSection = () => {
                         lineHeight: 1.6,
                     }}
                 >
-                    For larger chains with custom multi-location needs. No enterprise contract required.
+                    {t('Pricing.enterpriseBody')}
                 </p>
                 <a
                     href="mailto:sales@menulist.ai"
@@ -47,7 +50,7 @@ const EnterpriseCtaSection = () => {
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--ws-brand-primary)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'var(--ws-brand-secondary)'; }}
                 >
-                    Contact us <LuArrowRight size={16} />
+                    {t('Pricing.enterpriseCta')} <LuArrowRight size={16} />
                 </a>
             </div>
         </SectionWrapper>

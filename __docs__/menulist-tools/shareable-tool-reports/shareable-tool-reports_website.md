@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Website Copy Rules
 
 **Status:** Public copy guidance
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -39,6 +39,8 @@ Each report must include:
 - no external update claim
 
 If the report came from owner-entered fields, say that directly.
+
+Always show: "Browser-local self-report, not a digitally verified MenuList record. Confirm facts with the owner."
 
 ---
 

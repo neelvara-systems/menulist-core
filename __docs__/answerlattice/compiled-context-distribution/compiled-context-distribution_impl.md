@@ -64,16 +64,16 @@ Private MCP:
 The builder:
 
 1. Validates `tId/sId`.
-2. Acquires `bundleBuildLock_{tId}_{sId}`.
+2. Transactionally acquires `bundleBuildLock_{tId}_{sId}` and reserves a unique bundle version. A live lease is refused; an expired/failed lease's reserved version is never reused.
 3. Reads current source versions.
 4. Exits early if manifest source versions are already current.
 5. Reads bounded approved/published source collections.
 6. Removes private/unapproved fields.
 7. Writes immutable versioned Storage files.
-8. Writes the Firestore manifest and a Storage manifest copy.
+8. Writes version-local Storage manifest copies, then transactionally publishes the Firestore manifest only if the same lease still owns the lock.
 9. Rechecks source versions.
 10. Marks superseded if source versions changed during the build.
-11. Releases the lock.
+11. Releases the lock in the same transaction that publishes the Firestore manifest. A superseded worker whose lease was replaced cannot publish or mark the newer build failed.
 
 ## Owner Flow
 
@@ -83,9 +83,9 @@ Answerlattice Compiled Context Bundle Entity ID Boundary: manual/server bundle b
 
 ## Backend Repair Flow
 
-Source changes mark the manifest stale by updating `sourceVersions_*` and `bundleManifest_*`. The centralized Answerlattice scheduler runs hourly, filters workspaces by local timezone/support-day end time, and calls `runAnswerlatticeNightly()` only for due workspaces. That batch runs `repairCompiledContextBundle` per due tenant/store and exits early when source versions already match the ready manifest.
+Source changes mark the manifest stale by atomically updating `sourceVersions_*` and `bundleManifest_*`. KB/canonical cache invalidation commits the matching `answerlattice_cacheVersions` increment in the same batch or domain transaction, so instant-cache freshness and compiled-context rebuild state cannot diverge through a partial invalidation request. The centralized Answerlattice scheduler runs hourly, filters workspaces by local timezone/support-day end time, and calls `runAnswerlatticeNightly()` only for due workspaces. That batch runs `repairCompiledContextBundle` per due tenant/store and exits early when source versions already match the ready manifest.
 
-The repair builder keeps the same immutable Storage paths as the manual rebuild API, preserves the last ready bundle on failure, and records status/bytes/routes in the scheduler run log.
+The repair builder keeps the same immutable Storage paths as the manual rebuild API, preserves the last ready bundle on failure, and records status/bytes/routes in the scheduler run log. Both builders use the same claim decision: live leases skip/refuse duplicate work, abandoned reserved versions create a gap rather than an overwrite, UUID lease identities prevent same-millisecond collisions, and ready/failure finalization rechecks exact lease ownership in a transaction.
 
 Manual and Functions-side repair diagnostics use fixed context-bundle failure codes. Changelog-load fallback logs use source error name/code/status and scope booleans only. Best-effort Storage manifest copy failures now log bounded manifest-upload diagnostics while preserving the Firestore manifest write and active-version behavior. Failed repairs preserve the existing manifest `build_failed` status, write the fixed repair code plus source error metadata to the build lock, and return the fixed repair code to the scheduler so raw Storage/Admin exception text cannot enter run logs.
 

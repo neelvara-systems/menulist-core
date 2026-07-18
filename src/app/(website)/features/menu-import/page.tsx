@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -9,7 +10,7 @@ import { Metadata } from 'next';
 const title = 'Menu Import - MenuList | Upload the Menu You Already Have';
 const description = 'Upload a menu photo, PDF, typed menu, or permission-confirmed public menu link. MenuList prepares a review-ready draft before anything becomes public.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description,
     url: '/features/menu-import',
   },
-};
+});
 
 export default function Page() {
   return (

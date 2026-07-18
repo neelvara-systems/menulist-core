@@ -14,6 +14,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { logPosSyncSecretRotationAudit } from "@lib/posSync/secretAudit";
 import { formatWebhookSecretPreview } from "@lib/posSync/secretDisplay";
+import { requestPosSyncSecret } from "@lib/posSync/secretResponse";
 import {
     isPosSyncTestResponse,
     isSuccessfulPosSyncTestResponse,
@@ -73,6 +74,7 @@ const DESKTOP_POS_SYNC_COPY_FALLBACK_FAILED = 'desktop_pos_sync_copy_fallback_fa
 interface PosSyncTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
     storeDetails?: any;
+    onStoreStateUpdate?: (updates: Record<string, any>) => void;
     onStoreUpdate?: (updates: Record<string, any>) => void | Promise<void>;
 }
 
@@ -201,6 +203,7 @@ async function readDesktopPosSyncTestResponse(
 const PosSyncTab: React.FC<PosSyncTabProps> = ({
     scrollRef,
     storeDetails,
+    onStoreStateUpdate,
     onStoreUpdate,
 }) => {
     const t = useTranslations('PosSync');
@@ -213,7 +216,8 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
 
     const [enabled, setEnabled] = useState(posSync?.enabled ?? false);
     const [webhookUrl, setWebhookUrl] = useState(posSync?.webhookUrl ?? '');
-    const [webhookSecret, setWebhookSecret] = useState(posSync?.webhookSecret ?? '');
+    const [webhookSecret, setWebhookSecret] = useState('');
+    const [secretLoading, setSecretLoading] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [deliveryEntries, setDeliveryEntries] = useState<DeliveryLogEntry[]>([]);
@@ -287,10 +291,43 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         }
     }, [enabled, storeId, fetchDeliveryHistory]);
 
+    useEffect(() => {
+        let active = true;
+        setWebhookSecret('');
+        setSecretVisible(false);
+        if (!storeId || !tenantId) return () => { active = false; };
+
+        setSecretLoading(true);
+        requestPosSyncSecret({ action: 'read', storeId, tenantId })
+            .then((result) => {
+                if (active) {
+                    setWebhookSecret(result.secret);
+                    onStoreStateUpdate?.({
+                        'posSync.secretVersion': result.version,
+                        'posSync.webhookSecret': undefined,
+                    });
+                }
+            })
+            .catch((error: unknown) => {
+                if (!active) return;
+                if ((error as { status?: unknown })?.status === 404) return;
+                logBusinessSettingsFailure(
+                    'desktop_pos_sync_secret_load_failed',
+                    error,
+                    buildPosSyncLogContext('load_secret', storeId, tenantId),
+                );
+            })
+            .finally(() => {
+                if (active) setSecretLoading(false);
+            });
+
+        return () => { active = false; };
+    }, [onStoreStateUpdate, storeId, tenantId]);
+
     const handleToggle = useCallback(async (checked: boolean) => {
         const previousEnabled = enabled;
         const previousWebhookSecret = webhookSecret;
-        let generatedSecret = '';
+        let ensuredSecret = webhookSecret;
         setEnabled(checked);
 
         const updates: Record<string, any> = {
@@ -300,12 +337,27 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         };
 
         if (checked && !webhookSecret) {
-            const bytes = new Uint8Array(32);
-            crypto.getRandomValues(bytes);
-            const newSecret = 'whsec_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
-            generatedSecret = newSecret;
-            setWebhookSecret(newSecret);
-            updates['posSync.webhookSecret'] = newSecret;
+            setSecretLoading(true);
+            try {
+                const result = await requestPosSyncSecret({ action: 'ensure', storeId, tenantId });
+                ensuredSecret = result.secret;
+                setWebhookSecret(result.secret);
+                onStoreStateUpdate?.({
+                    'posSync.secretVersion': result.version,
+                    'posSync.webhookSecret': undefined,
+                });
+            } catch (error) {
+                setEnabled(previousEnabled);
+                logBusinessSettingsFailure(
+                    'desktop_pos_sync_secret_ensure_failed',
+                    error,
+                    buildPosSyncLogContext('ensure_secret', storeId, tenantId),
+                );
+                message.error('Could not prepare the verification secret. Try again.');
+                return;
+            } finally {
+                setSecretLoading(false);
+            }
             updates['posSync.menuVersion'] = 0;
             updates['posSync.lastStatus'] = 'never_sent';
             updates['posSync.lastError'] = '';
@@ -320,15 +372,15 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             await Promise.resolve(onStoreUpdate(updates));
         } catch (error) {
             setEnabled(previousEnabled);
-            setWebhookSecret(previousWebhookSecret);
+            if (!ensuredSecret) setWebhookSecret(previousWebhookSecret);
             logBusinessSettingsFailure(
                 'desktop_pos_sync_toggle_save_failed',
                 error,
                 buildPosSyncLogContext('toggle_sync', storeId, tenantId, {
                     enabled: checked,
                     previousEnabled,
-                    generatedSecret: Boolean(generatedSecret),
-                    generatedSecretLength: generatedSecret.length,
+                    generatedSecret: !previousWebhookSecret && Boolean(ensuredSecret),
+                    generatedSecretLength: !previousWebhookSecret ? ensuredSecret.length : 0,
                     previousWebhookSecretLength: previousWebhookSecret.length,
                 }),
             );
@@ -432,11 +484,6 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             actorEmail,
             actorUserId,
             rotatedAt,
-            storeUpdates: {
-                'posSync.secretRotatedAt': rotatedAt,
-                'posSync.secretRotatedByEmail': actorEmail,
-                'posSync.secretRotatedByUserId': actorUserId,
-            },
         };
     }, [session]);
 
@@ -446,38 +493,31 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
             return;
         }
 
-        const previousSecret = webhookSecret;
-        const bytes = new Uint8Array(32);
-        crypto.getRandomValues(bytes);
-        const newSecret = 'whsec_' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
         const secretRotationAudit = buildSecretRotationAudit();
 
-        setWebhookSecret(newSecret);
         setSecretVisible(false);
         setRegeneratingSecret(true);
 
         try {
-            if (!onStoreUpdate) {
-                throw createPosSyncStatusError('desktop_pos_sync_secret_rotation_missing_store_update_handler');
-            }
-
-            await Promise.resolve(onStoreUpdate({
-                'posSync.webhookSecret': newSecret,
-                'posSync.status': enabled ? 'healthy' : 'disabled',
-                'posSync.lastError': '',
+            const result = await requestPosSyncSecret({ action: 'rotate', storeId, tenantId });
+            setWebhookSecret(result.secret);
+            onStoreStateUpdate?.({
                 'posSync.consecutiveFailures': 0,
-                ...secretRotationAudit.storeUpdates,
-            }));
+                'posSync.lastError': '',
+                'posSync.secretRotatedAt': secretRotationAudit.rotatedAt,
+                'posSync.secretRotatedByEmail': secretRotationAudit.actorEmail,
+                'posSync.secretRotatedByUserId': secretRotationAudit.actorUserId,
+                'posSync.secretVersion': result.version,
+                'posSync.status': enabled ? 'healthy' : 'disabled',
+                'posSync.webhookSecret': undefined,
+            });
         } catch (error) {
-            setWebhookSecret(previousSecret);
             logBusinessSettingsFailure(
                 'desktop_pos_sync_secret_rotation_save_failed',
                 error,
                 buildPosSyncLogContext('secret_rotation_save', storeId, tenantId, {
-                    hasPreviousWebhookSecret: Boolean(previousSecret),
-                    previousWebhookSecretLength: previousSecret.length,
-                    nextWebhookSecretLength: newSecret.length,
-                    hasStoreUpdateHandler: Boolean(onStoreUpdate),
+                    hasPreviousWebhookSecret: Boolean(webhookSecret),
+                    previousWebhookSecretLength: webhookSecret.length,
                     hasActorEmail: Boolean(secretRotationAudit.actorEmail),
                     hasActorUserId: Boolean(secretRotationAudit.actorUserId),
                 }),
@@ -498,7 +538,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
         setRegenerateSecretModalOpen(false);
         setRegenerateSecretConfirmationText('');
         message.success('New secret generated. Use Copy to share it with your provider.');
-    }, [buildSecretRotationAudit, enabled, onStoreUpdate, regenerateSecretConfirmationText, storeId, tenantId, webhookSecret]);
+    }, [buildSecretRotationAudit, enabled, onStoreStateUpdate, regenerateSecretConfirmationText, storeId, tenantId, webhookSecret]);
 
     const handleCopySecret = useCallback(async () => {
         if (!webhookSecret) return;
@@ -848,7 +888,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                             {t('enablePosSyncDesc')}
                         </Text>
                     </Flex>
-                    <Switch checked={enabled} onChange={handleToggle} />
+                    <Switch checked={enabled} disabled={secretLoading} onChange={(checked) => void handleToggle(checked)} />
                 </Flex>
 
                 {enabled && (
@@ -876,6 +916,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                 <Space>
                                     <Tooltip title={t('copySecret')}>
                                         <Button
+                                            disabled={!webhookSecret || secretLoading}
                                             size="small"
                                             icon={<LuCopy size={14} />}
                                             onClick={() => void handleCopySecret()}
@@ -883,6 +924,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     </Tooltip>
                                     <Tooltip title={t('regenerateSecret')}>
                                         <Button
+                                            disabled={secretLoading}
                                             size="small"
                                             icon={<LuRefreshCw size={14} />}
                                             onClick={handleRegenerateSecret}
@@ -891,12 +933,14 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                 </Space>
                             </Flex>
                             <Input
+                                disabled={secretLoading}
+                                placeholder={secretLoading ? 'Loading secure secret…' : 'Secret not configured'}
                                 value={secretVisible ? webhookSecret : formatWebhookSecretPreview(webhookSecret)}
                                 readOnly
                                 suffix={(
                                     <Tooltip title={secretVisible ? 'Hide secret' : 'Reveal secret'}>
                                         <Button
-                                            disabled={!webhookSecret}
+                                            disabled={!webhookSecret || secretLoading}
                                             icon={secretVisible ? <LuEyeOff size={14} /> : <LuEye size={14} />}
                                             onClick={() => setSecretVisible((current) => !current)}
                                             size="small"
@@ -919,7 +963,7 @@ const PosSyncTab: React.FC<PosSyncTabProps> = ({
                                     icon={<LuWifi size={14} />}
                                     onClick={handleTest}
                                     loading={isTesting}
-                                    disabled={!webhookUrl}
+                                    disabled={!webhookUrl.trim() || !webhookSecret || secretLoading}
                                 >
                                     {t('sendTest')}
                                 </Button>

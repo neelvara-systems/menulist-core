@@ -1,6 +1,6 @@
 # MenuList Marketing Distribution - Demo Placeholder Assets
 
-**Status:** Temporary placeholder asset inventory  
+**Status:** Three industry placeholders retired; launch-video planning placeholder retained
 **Created:** June 23, 2026  
 **Owner:** Codex creates placeholders, founder replaces with approved assets  
 **Related actions:** MLD-A012  
@@ -10,7 +10,7 @@
 
 ## Purpose
 
-These files unblock service-list, salon/spa, and local-service SEO page work while the final routed screenshots and videos are still pending.
+The three industry placeholders previously unblocked service-list, salon/spa, and local-service SEO page work. They were removed from the public routes on July 18, 2026 because internal replacement instructions are not customer proof. Their historical SVGs remain inside AssetOS, outside `public/`.
 
 They are not customer proof. They are labelled sample/demo placeholders and must be replaced before Product Hunt gallery use, paid traffic, broad partner outreach, or final public campaign assets.
 
@@ -18,20 +18,20 @@ They are not customer proof. They are labelled sample/demo placeholders and must
 
 | Asset | Path | Intended replacement |
 | --- | --- | --- |
-| Glow & Blade service-list placeholder | `public/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg` | Approved mobile screenshot or short clip of the Glow & Blade Studio demo public service-list page |
-| Multi-category service-list proof grid | `public/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg` | Approved gallery frame using real routed demo screenshots across cafe, salon, local service, retail/catalog, and package-list demos |
-| Spark Auto Detailing rate-card placeholder | `public/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg` | Approved mobile screenshot or clip of the Spark Auto Detailing package/rate-card demo public page |
+| Glow & Blade service-list placeholder | `packages/asset-factory/published/placeholders/glow-blade-service-list-placeholder.svg` (retired) | Approved mobile screenshot or short clip of the Glow & Blade Studio demo public service-list page |
+| Multi-category service-list proof grid | `packages/asset-factory/published/placeholders/service-list-proof-grid-placeholder.svg` (retired) | Approved gallery frame using real routed demo screenshots across cafe, salon, local service, retail/catalog, and package-list demos |
+| Spark Auto Detailing rate-card placeholder | `packages/asset-factory/published/placeholders/spark-detailing-rate-card-placeholder.svg` (retired) | Approved mobile screenshot or clip of the Spark Auto Detailing package/rate-card demo public page |
 | Launch video poster placeholder | `public/images/website/demo-placeholders/launch-video-poster-placeholder.svg` | Approved 60-90 second walkthrough poster or final hosted video thumbnail |
 
 ## Current Code Use
 
-The placeholders are visible on:
+The three industry placeholders are no longer mounted on:
 
 - `/industries/salons-spas`
 - `/industries/service-list-businesses`
 - `/industries/local-service-businesses`
 
-Each page uses the existing industry-page shell, page metadata, `WebsitePageStructuredData`, platform discovery registry, static sitemap, and LLM context.
+The routes remain text-first through the existing industry-page shell, page metadata, `WebsitePageStructuredData`, platform discovery registry, sitemap, and LLM context. Proof may return only after the replacement is permissioned, current, and routed through AssetOS. The launch-video poster remains an unmounted planning placeholder.
 
 ## Replacement Rules
 

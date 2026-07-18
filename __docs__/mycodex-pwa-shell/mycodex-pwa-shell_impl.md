@@ -19,6 +19,7 @@
 | `src/app/sites/mycodex/offline/page.tsx` | Adds `mycodex-safe-page`. |
 | `public/mycodex-icon.svg`, `public/mycodex-icon-maskable.svg`, `public/mycodex-*.png` | Keep MyCodex install icons padded inside the square canvas so iPhone home-screen icons do not appear oversized. |
 | `scripts/verification/verify-mycodex-pwa-assets.js` | Verifies the padded icon dimensions, transparent corners, manifest links, service-worker privacy scope, and launch images. |
+| `src/middleware.ts` | Rewrites approved MyCodex host/local routes and returns a private 404 for direct `/sites/mycodex` namespace requests. |
 
 ## CSS Contract
 
@@ -74,5 +75,12 @@ The approved `public/mycodex-logo.svg` mark remains the source logo. Square PWA 
 All safe-area styles are MyCodex-scoped with `mycodex-*` classes. They do not modify global MenuList or Answerlattice shells.
 
 MyCodex is static/private documentation. It has no Firebase project, no Firestore collections, no Storage bucket, no product `pId` writes, and no billing plans or credit packs. The only Vercel-specific env vars are `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, and `MYCODEX_SESSION_SECRET`.
+
+`/sites/mycodex` is an internal rewrite destination, not a public route. The
+middleware rejects that path and all descendants with a no-store, noindex 404
+before product-host rewriting. This keeps the private namespace closed on
+non-Vercel/self-hosted deployments as well as the intended host setup, while
+`/__mycodex` local development and approved MyCodex-host routes continue through
+the authenticated reader boundary.
 
 The login form posts only `username`, `password`, and `returnTo`. `src/app/sites/mycodex/api/session/route.ts` applies the `AUTH_LOGIN` rate limit before reading form data, then parses the form through `readBoundedFormDataBody()` with `MYCODEX_LOGIN_FORM_MAX_BODY_BYTES = 8 * 1024`. Oversized or malformed submissions redirect back to login with the fixed `input` error state.

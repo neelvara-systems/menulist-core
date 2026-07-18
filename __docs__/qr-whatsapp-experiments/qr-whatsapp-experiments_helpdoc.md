@@ -1,7 +1,9 @@
 # QR WhatsApp Experiments Help Doc Draft
 
-**Status:** Draft
-**Last Updated:** June 25, 2026
+**Status:** NOT AN ACTIVE HELP ARTICLE
+**Last Updated:** July 17, 2026
+
+> Planning copy only. Owners cannot use this flow in the current product. Do not publish this article until the runtime, consent, privacy, provider, desktop/mobile, and production checks are complete.
 
 ## What It Does
 

@@ -1,6 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { ECOMSAI_PLATFORM_USER_ROLE } from "@constant/user";
-import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -14,22 +13,12 @@ import { hasAnyPermission } from "./permissionRequirements";
 import type { PermissionKey } from "@constant/permissions";
 import { getPermissionsForRole } from "./hasPermission";
 import type { StoreRoleDataType } from "@type/platform/roles";
+import { normalizeStorePermissionScopeDocumentId } from "./scopeDocumentId";
 
-export type StorePermissionScopeDocumentId = {
-    numericId: number;
-    documentId: string;
-};
-
-export function normalizeStorePermissionScopeDocumentId(value: unknown): StorePermissionScopeDocumentId | null {
-    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
-    const documentId = raw.trim();
-    if (documentId !== raw || !isValidFirestoreDocumentId(documentId)) return null;
-
-    const numericId = Number(documentId);
-    return Number.isSafeInteger(numericId) && numericId > 0 && String(numericId) === documentId
-        ? { numericId, documentId }
-        : null;
-}
+export {
+    normalizeStorePermissionScopeDocumentId,
+    type StorePermissionScopeDocumentId,
+} from "./scopeDocumentId";
 
 const getRawSessionStoreId = (session: any) => session?.sId ?? session?.user?.storeId;
 const getRawSessionTenantId = (session: any) => session?.tId ?? session?.user?.tenantId;

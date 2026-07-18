@@ -18,6 +18,7 @@ import styles from "./CampaignCueWorkspaceApp.module.scss";
 
 interface PackTemplatePickerProps {
     businessCategory: string;
+    busy: boolean;
     canSaveCurrent: boolean;
     error?: string;
     loading: boolean;
@@ -32,6 +33,7 @@ interface PackTemplatePickerProps {
 
 export default function PackTemplatePicker({
     businessCategory,
+    busy,
     canSaveCurrent,
     error,
     loading,
@@ -73,18 +75,16 @@ export default function PackTemplatePicker({
                 <div>
                     <span className={styles.eyebrow}>Reusable campaign bases</span>
                     <h2>Pack templates for this business category</h2>
-                    <p>
-                        Loaded from the {businessCategory} catalog. Search is local, so typing here does not create more Firebase reads.
-                    </p>
+                    <p>A small, curated set for {businessCategory} businesses. Choose one only when it fits today&apos;s campaign.</p>
                 </div>
                 <div className={styles.topActions}>
-                    <button className={styles.ghostButton} onClick={onRefresh} type="button">
+                    <button className={styles.ghostButton} disabled={busy || loading} onClick={onRefresh} type="button">
                         <LuRefreshCw size={16} />
                         Refresh
                     </button>
                     <button
                         className={styles.button}
-                        disabled={!canSaveCurrent || saving}
+                        disabled={busy || !canSaveCurrent || saving}
                         onClick={onSaveCurrent}
                         title={canSaveCurrent ? undefined : CAMPAIGNCUE_PACK_TEMPLATE_OWNER_COPY.saveBlocked}
                         type="button"
@@ -104,7 +104,7 @@ export default function PackTemplatePicker({
                             <p>These are business-use outputs, not a generic design-format library.</p>
                         </div>
                         {selectedOutputHasAction ? (
-                            <button className={styles.ghostButton} onClick={() => onCreateFromOutputIntent(selectedOutput)} type="button">
+                            <button className={styles.ghostButton} disabled={busy} onClick={() => onCreateFromOutputIntent(selectedOutput)} type="button">
                                 <LuPackageCheck size={16} />
                                 {selectedOutput.actionLabel}
                             </button>
@@ -124,6 +124,7 @@ export default function PackTemplatePicker({
                                             <button
                                                 aria-pressed={selected}
                                                 className={selected ? styles.outputChoiceSelected : styles.outputChoice}
+                                                disabled={busy}
                                                 key={item.id}
                                                 onClick={() => setSelectedOutputId(item.id)}
                                                 type="button"
@@ -185,7 +186,7 @@ export default function PackTemplatePicker({
                             : CAMPAIGNCUE_PACK_TEMPLATE_OWNER_COPY.empty}
                     </p>
                     {selectedOutputHasAction ? (
-                        <button className={styles.ghostButton} onClick={() => onCreateFromOutputIntent(selectedOutput)} type="button">
+                        <button className={styles.ghostButton} disabled={busy} onClick={() => onCreateFromOutputIntent(selectedOutput)} type="button">
                             <LuPackageCheck size={16} />
                             {selectedOutput.actionLabel}
                         </button>
@@ -220,7 +221,7 @@ export default function PackTemplatePicker({
                                 {template.channels.slice(0, 4).join(", ")}
                                 {template.channels.length > 4 ? "..." : ""}
                             </p>
-                            <button className={styles.ghostButton} onClick={() => onOpenTemplate(template, selectedOutput)} type="button">
+                            <button className={styles.ghostButton} disabled={busy} onClick={() => onOpenTemplate(template, selectedOutput)} type="button">
                                 <LuPackageCheck size={16} />
                                 Use pack base
                             </button>

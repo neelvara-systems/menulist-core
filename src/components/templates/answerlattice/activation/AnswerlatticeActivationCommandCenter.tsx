@@ -8,7 +8,7 @@ import {
     isAnswerlatticeNotificationTestResponse,
     readAnswerlatticeActivationDashboardResponse,
 } from '@lib/answerlattice/activationDashboardResponseClient';
-import type { AnswerlatticeActivationStep, AnswerlatticeActivationSummary } from '@type/answerlattice';
+import type { AnswerlatticeActivationStep, AnswerlatticeActivationStepStatus, AnswerlatticeActivationSummary } from '@type/answerlattice';
 import AnswerlatticeCustomerFlowChecklist from '@template/answerlattice/content/AnswerlatticeCustomerFlowChecklist';
 import AnswerlatticeContentWorkbench from '@template/answerlattice/content/AnswerlatticeContentWorkbench';
 import AnswerlatticeOperationsPanel from './AnswerlatticeOperationsPanel';
@@ -25,6 +25,7 @@ import {
     Skeleton,
     Space,
     Statistic,
+    Steps,
     Tag,
     Typography,
     message,
@@ -37,6 +38,7 @@ import {
     LuBookOpen,
     LuBoxes,
     LuCheckCircle2,
+    LuClipboardCheck,
     LuHelpCircle,
     LuCircle,
     LuCode,
@@ -110,6 +112,19 @@ const getLaunchProofIcon = (key: string) => {
     return <LuCircle />;
 };
 
+const combineActivationStepStatus = (
+    steps: AnswerlatticeActivationStep[],
+    keys: string[],
+): AnswerlatticeActivationStepStatus => {
+    const statuses = keys
+        .map(key => steps.find(step => step.key === key)?.status)
+        .filter((status): status is AnswerlatticeActivationStepStatus => Boolean(status));
+    if (!statuses.length) return 'pending';
+    if (statuses.every(status => status === 'complete')) return 'complete';
+    if (statuses.some(status => status === 'complete' || status === 'attention')) return 'attention';
+    return 'pending';
+};
+
 export default function AnswerlatticeActivationCommandCenter() {
     const screens = Grid.useBreakpoint();
     const router = useRouter();
@@ -158,6 +173,66 @@ export default function AnswerlatticeActivationCommandCenter() {
     const completeRequired = requiredSteps.filter(step => step.status === 'complete').length;
     const needsReview = summary?.steps?.filter(step => step.status === 'attention') || [];
     const nextStep = summary?.steps?.find(step => step.required && step.status !== 'complete') || null;
+    const launchJourney = useMemo(() => {
+        if (!summary) return [];
+        const steps = summary.steps || [];
+        return [
+            {
+                key: 'product-details',
+                title: 'Product details',
+                description: 'Confirm the product URL, support email, and workspace details.',
+                status: combineActivationStepStatus(steps, ['product-profile']),
+                route: ANSWERLATTICE_ROUTES.SETTINGS,
+            },
+            {
+                key: 'product-knowledge',
+                title: 'Product knowledge',
+                description: 'Add reviewed product sources and publish initial help content.',
+                status: combineActivationStepStatus(steps, ['knowledge', 'help-center']),
+                route: ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE,
+            },
+            {
+                key: 'first-ten',
+                title: 'First 10 answers',
+                description: 'Define and test the questions most likely to interrupt launch.',
+                status: combineActivationStepStatus(steps, ['answer-tests']),
+                route: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS,
+            },
+            {
+                key: 'approved-truth',
+                title: 'Approved support truth',
+                description: 'Review product entities and approve canonical answers.',
+                status: combineActivationStepStatus(steps, ['entities', 'canonical-answers']),
+                route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
+            },
+            {
+                key: 'product-surfaces',
+                title: 'Product surfaces',
+                description: 'Map product pages and workflows to the right support context.',
+                status: combineActivationStepStatus(steps, ['product-surfaces']),
+                route: ANSWERLATTICE_ROUTES.PRODUCT_SURFACES,
+            },
+            {
+                key: 'secure-install',
+                title: 'Secure install',
+                description: 'Verify the key, origins, widget runtime, and safe page context.',
+                status: combineActivationStepStatus(steps, ['widget-key', 'allowed-origins', 'widget-install', 'page-context']),
+                route: ANSWERLATTICE_ROUTES.INSTALL_CENTER,
+            },
+            {
+                key: 'launch-verification',
+                title: 'Launch verification',
+                description: 'Complete every factual proof check before relying on customer-facing support.',
+                status: summary.launchProof.ready
+                    ? 'complete' as const
+                    : summary.launchProof.completeCount > 0
+                        ? 'attention' as const
+                        : 'pending' as const,
+                route: ANSWERLATTICE_ROUTES.ACTIVATION,
+            },
+        ];
+    }, [summary]);
+    const currentJourneyStep = launchJourney.findIndex(step => step.status !== 'complete');
     const modeCards = [
         {
             key: 'launch',
@@ -296,6 +371,13 @@ export default function AnswerlatticeActivationCommandCenter() {
                     >
                         Today&apos;s Brief
                     </Button>
+                    <Button
+                        icon={<LuClipboardCheck />}
+                        onClick={() => openRoute(ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS)}
+                        style={{ minHeight: 44 }}
+                    >
+                        First 10 Answers
+                    </Button>
                     {nextStep?.route && (
                         <Button
                             type="primary"
@@ -310,13 +392,48 @@ export default function AnswerlatticeActivationCommandCenter() {
             </Flex>
 
             <Alert
-                type={needsReview.length ? 'warning' : summary.readinessScore >= 85 ? 'success' : 'info'}
+                type={summary.launchProof.ready ? 'success' : needsReview.length ? 'warning' : 'info'}
                 showIcon
-                message={stageLabel[summary.stage] || 'Activation in progress'}
-                description={needsReview.length
-                    ? `${needsReview.length} launch setting needs review before customer traffic is enabled.`
-                    : 'Your launch status is generated from saved setup checkpoints.'}
+                message={summary.launchProof.ready
+                    ? 'Ready to serve users'
+                    : `${summary.launchProof.blockers.length} launch check${summary.launchProof.blockers.length === 1 ? '' : 's'} remain`}
+                description={summary.launchProof.ready
+                    ? 'The latest factual launch verification is complete. Daily Brief is now the normal operating home.'
+                    : summary.launchProof.blockers[0]
+                        ? `Start with ${summary.launchProof.blockers[0].toLowerCase()}. The ordered launch path keeps the remaining work in one flow.`
+                        : 'Follow the ordered launch path before customer traffic depends on support.'}
             />
+
+            <Card title="Founder launch path">
+                <Flex vertical gap={14}>
+                    <Steps
+                        current={currentJourneyStep < 0 ? launchJourney.length : currentJourneyStep}
+                        direction={isMobile ? 'vertical' : 'horizontal'}
+                        items={launchJourney.map(step => ({
+                            key: step.key,
+                            title: step.title,
+                            description: isMobile ? step.description : undefined,
+                            status: step.status === 'complete'
+                                ? 'finish'
+                                : step.status === 'attention'
+                                    ? 'process'
+                                    : 'wait',
+                        }))}
+                    />
+                    {currentJourneyStep >= 0 ? (
+                        <Flex justify={isMobile ? 'stretch' : 'end'}>
+                            <Button
+                                type="primary"
+                                icon={<LuExternalLink />}
+                                onClick={() => openRoute(launchJourney[currentJourneyStep]?.route)}
+                                style={{ minHeight: 44 }}
+                            >
+                                Continue: {launchJourney[currentJourneyStep]?.title}
+                            </Button>
+                        </Flex>
+                    ) : null}
+                </Flex>
+            </Card>
 
             {summary.launchProof && (
                 <Card>
@@ -324,13 +441,13 @@ export default function AnswerlatticeActivationCommandCenter() {
                         <Flex align={isMobile ? 'stretch' : 'center'} justify="space-between" gap={12} vertical={isMobile}>
                             <div>
                                 <Flex align="center" gap={8} wrap="wrap">
-                                    <Text strong>First-client launch proof</Text>
+                                    <Text strong>Launch verification</Text>
                                     <Tag color={launchProofStatus.color} icon={<LaunchProofStatusIcon />}>
                                         {summary.launchProof.ready ? 'Ready' : launchProofStatus.label}
                                     </Tag>
                                 </Flex>
                                 <Text type="secondary">
-                                    {summary.launchProof.completeCount}/{summary.launchProof.totalCount} proof checks complete before connector rollout.
+                                    {summary.launchProof.completeCount}/{summary.launchProof.totalCount} factual checks complete. Verified {formatDateTime(summary.computedAtIso)}.
                                 </Text>
                             </div>
                             {nextProofItem?.route && (

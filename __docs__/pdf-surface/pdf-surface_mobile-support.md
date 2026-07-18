@@ -1,8 +1,8 @@
 # PDF Surface — Mobile Support Assessment
 
 **Feature:** PDF Surface (Enhanced Menu PDF Generation)
-**Version:** 2.2
-**Last Updated:** 2026-05-21
+**Version:** Compatibility bridge
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -42,7 +42,7 @@
 
 ## Verdict: ✅ All 4 Gates Pass
 
-Mobile PDF generation is OPERATIONAL. The mobile path uses the same `generateMenuPdf()` and `downloadPdf()` functions as desktop.
+Mobile print output is operational inside MobileShell. With Menu Card Export enabled, the normal action opens the shared Print Menu screen. The older quick-PDF path remains only as a flag-off compatibility bridge and delegates to the same renderer.
 
 ---
 
@@ -54,13 +54,17 @@ Mobile PDF generation is OPERATIONAL. The mobile path uses the same `generateMen
 Current mobile path:
 ```typescript
 MobileShareScreen
+  -> Print Menu (normal enabled path)
+  -> MobileMenuCardExportScreen
+  -> shared useMenuCardExportController
+
+Flag-off compatibility only
   -> selected project cache / refreshCachedProject(projectId)
-  -> generateMenuPdf()
+  -> generateMenuPdf() -> shared Menu Card Export renderer
   -> downloadPdf()
 ```
 
-### v2.2 Status
-The mobile screen uses the same `generateMenuPdf()` and `downloadPdf()` functions as desktop. It reads the selected project's `extractedData` only when the owner taps Menu PDF, then generates the PDF client-side.
+The compatibility path reads the selected project only when needed, passes current project/store context into the shared renderer, and records tenant/store/project-scoped freshness markers on a best-effort basis after delivery.
 
 ### Known Mobile Behavior
 - iOS Safari: PDF opens in browser viewer (then share/save)
@@ -71,4 +75,4 @@ The mobile screen uses the same `generateMenuPdf()` and `downloadPdf()` function
 
 ## No Further Mobile Layout Work Required
 
-The PDF generation library (`jsPDF`) runs in-browser on mobile without modification. The v2.2 layout applies automatically through the shared generator; no separate mobile PDF renderer is needed.
+The PDF generation library (`jsPDF`) runs in-browser on mobile. No separate mobile renderer is permitted; desktop and mobile share Menu Card Export ownership.

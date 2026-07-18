@@ -3,7 +3,7 @@
 **Feature:** OCR & Menu Extraction with Gemini AI
 **Parent Feature:** Projects (Menu Digitization)
 **Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
-**Last Updated:** June 11, 2026
+**Last Updated:** July 15, 2026
 
 **Launch boundary:** This spec is AI extraction source evidence, not current production certification. Current launch approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, resolved QA Firebase Functions/Storage deploy blockers, provider smoke, authenticated browser/mobile QA, and production-host smoke for the target release.
 
@@ -21,7 +21,7 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
 - **Multi-Language Detection** → Identifies languages present in the menu
 - **Quality Scoring** → Rates extraction quality (0-100 score)
 - **Job Queue Processing** → Reliable async processing via Firebase Cloud Functions
-- **Review Safety** → Re-extraction applies only from an owned `preview_ready` job; linked outlets use the validated server outlet-save path
+- **Review Safety** → Authenticated desktop/mobile uploads—first upload and later uploads—enter the owned `preview_ready` review path before project mutation; linked outlets use the validated server outlet-save path
 
 ### What It Does NOT Do
 
@@ -57,8 +57,9 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
 │      d. Calculate quality score                                 │
 │   3. Combine all file results                                   │
 │   4. Apply deterministic category icon defaults                 │
-│   5. Save to project document                                   │
-│   6. Update status → "completed"                                │
+│   5. Authenticated owner upload → "preview_ready"               │
+│   6. Owner reviews and applies or discards the draft             │
+│   7. Apply approved changes through the existing project path    │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -85,6 +86,7 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
 **Acceptance Criteria:**
 
 - Upload menu image → See extracted categories and items
+- Review the extracted draft before it changes the project
 - Items have names, prices, descriptions where visible
 - Can edit any extraction errors in the Editor
 - Processing completes within reasonable time
@@ -133,10 +135,11 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ COMPLETION                                                       │
-│   • Results saved to project.files[].extractedData              │
-│   • Status: "completed"                                         │
-│   • Client navigates to Editor (View 2)                         │
+│ OWNER REVIEW                                                     │
+│   • Authenticated owner job status: "preview_ready"             │
+│   • Client shows extracted additions/changes                    │
+│   • Owner applies or discards the draft                         │
+│   • Only approved changes are written to the project            │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -157,6 +160,7 @@ AI Data Extraction transforms owner-provided menu, service, or catalog images in
 | FR-07 | Calculate and display quality score  | P1       | ✅     |
 | FR-08 | Handle failed extractions gracefully | P1       | ✅     |
 | FR-09 | Assign category icons after extraction when there is a clear deterministic match | P2 | ✅ |
+| FR-10 | Require authenticated desktop/mobile owner review before applying extracted changes | P0 | ✅ |
 
 ### Non-Functional Requirements
 

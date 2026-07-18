@@ -89,6 +89,8 @@ The rhythm view includes the next action, due/scheduled task counts, a manual-us
 - One deterministic approval document is reused per campaign; repeated requests do not create an unbounded approval-document trail.
 - Used, archived, and already-approved packs cannot start another approval request. Rejected active packs may be corrected and requested again.
 - Approval resolution is transactional; the first valid approve/reject decision wins.
+- Every campaign action binds its retry key to the authenticated actor and the canonical request payload. Reusing a key for another campaign, action, result, schedule, note, or actor fails closed.
+- Ordinary actions also re-read the current campaign inside their final transaction. Concurrent result, schedule, export, download, and manual-use actions cannot overwrite each other's counters or result memory from an older snapshot.
 - Re-requesting a rejected pack updates the request time but preserves the approval document's original creation time.
 - Event records preserve the audit trail.
 - Only owner, admin, reviewer, or local-manager workspace roles may approve or reject.
@@ -127,7 +129,7 @@ Every newly created pack stores:
 - expiry time bounded by recipe validity, current Owner Pulse validity, and current dated source inputs
 - actions requiring recheck: download, export, mark used, and schedule
 
-The server re-reads only `sourceSnapshots/current` for those public-use actions. A different hash or expired window returns a safe conflict and records the blocked action. Legacy packs without a freshness receipt stay `unknown` and require visible review rather than being silently treated as current.
+The server re-reads the current campaign and workspace inside the final action transaction, and reads `sourceSnapshots/current` only when the current pack has a freshness hash. A different hash or expired window returns a safe conflict and records the blocked action in that transaction. Legacy packs without a freshness receipt stay `unknown` and require visible review rather than being silently treated as current.
 
 Fact hashes sort facts by stable ID before hashing. Query order must never create a false stale result.
 

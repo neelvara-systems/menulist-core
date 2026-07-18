@@ -2,7 +2,6 @@ import {
     ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
     ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
     ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY,
-    ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG,
 } from '@constant/answerlattice/ai';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
@@ -114,10 +113,6 @@ export async function embedAnswerlatticeArticle(params: {
         const article = parseArticle(snapshot, scope);
         const { text, sourceHash } = buildEmbeddingInput(article);
         const activeVector = article[ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.vectorField];
-        const legacySourceHash = article.embeddingV1SourceHash
-            || (article.embeddingVersion === 'v2' ? null : article.embeddingSourceHash);
-        const includeLegacy = !isExpectedEmbeddingVector(article.embedding)
-            || legacySourceHash !== sourceHash;
         if (
             article.embeddingStatus === 'embedded'
             && article.embeddingSourceHash === sourceHash
@@ -145,7 +140,7 @@ export async function embedAnswerlatticeArticle(params: {
             },
             modifiedOn: startedAt,
         }, { merge: true });
-        return { article, includeLegacy, text, reused: false, sourceHash, vectorDimensions: 0 };
+        return { article, text, reused: false, sourceHash, vectorDimensions: 0 };
     });
 
     if (claim.reused) {
@@ -158,19 +153,6 @@ export async function embedAnswerlatticeArticle(params: {
             purpose: 'document',
             title: claim.article.title,
         });
-        const legacyEmbeddingResult = claim.includeLegacy
-            ? await callGeminiEmbeddingWithMetadata(claim.text, {
-                purpose: 'document',
-                title: claim.article.title,
-                version: ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.version,
-            }).catch((legacyError) => {
-                logAnswerlatticeFailure('answerlattice_legacy_embedding_dual_write_failed', legacyError, {
-                    ...getAnswerlatticeScopeLogContext(scope),
-                    ...getBoundedAnswerlatticeStringContext('articleId', articleId),
-                });
-                return null;
-            })
-            : null;
         const values = embeddingResult.vector.values || embeddingResult.vector._values || [];
         if (!Array.isArray(values) || values.length === 0) throw new Error('Embedding provider returned an empty vector.');
         const completedAt = Timestamp.now();
@@ -188,21 +170,9 @@ export async function embedAnswerlatticeArticle(params: {
             }
             transaction.set(articleRef, {
                 [embeddingResult.vectorField]: embeddingResult.vector,
-                ...(legacyEmbeddingResult ? {
-                    [legacyEmbeddingResult.vectorField]: legacyEmbeddingResult.vector,
-                    embeddingV1CacheVersion: legacyEmbeddingResult.cacheVersion,
-                    embeddingV1SourceHash: claim.sourceHash,
-                } : {}),
                 embeddingStatus: 'embedded',
                 embeddingCacheVersion: embeddingResult.cacheVersion,
                 embeddingSourceHash: claim.sourceHash,
-                embeddingV2CacheVersion: embeddingResult.cacheVersion,
-                embeddingV2SourceHash: claim.sourceHash,
-                embeddingVersion: embeddingResult.version,
-                ...(current.embedding && !current.embeddingV1CacheVersion && !legacyEmbeddingResult ? {
-                    embeddingV1CacheVersion: ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.cacheVersion,
-                    embeddingV1SourceHash: claim.sourceHash,
-                } : {}),
                 embeddingRun: {
                     id: runId,
                     status: 'completed',
@@ -239,26 +209,6 @@ export async function embedAnswerlatticeArticle(params: {
                 ...getBoundedAnswerlatticeStringContext('articleId', articleId),
             });
         });
-        if (legacyEmbeddingResult) {
-            await recordAnswerlatticeAiOperation(scope, {
-                action: AI_ACTIONS_TYPES.ANSWERLATTICE_KB_EMBEDDING,
-                articleId,
-                billingMode: 'internal',
-                clientResponse: { migrationLegacyDualWrite: true, textLength: claim.text.length },
-                model: legacyEmbeddingResult.model,
-                processingTime: Date.now() - operationStart,
-                promptTokenCount: legacyEmbeddingResult.usageMetadata.promptTokenCount || 0,
-                candidatesTokenCount: legacyEmbeddingResult.usageMetadata.candidatesTokenCount || 0,
-                totalTokenCount: legacyEmbeddingResult.usageMetadata.totalTokenCount || 0,
-                tokenCountSource: legacyEmbeddingResult.usageMetadata.tokenCountSource || 'none',
-                source: cleanText(params.source, 120) || 'answerlattice_article_embedding',
-            }, params.actor).catch((error) => {
-                logAnswerlatticeFailure('answerlattice_legacy_embedding_operation_log_failed', error, {
-                    ...getAnswerlatticeScopeLogContext(scope),
-                    ...getBoundedAnswerlatticeStringContext('articleId', articleId),
-                });
-            });
-        }
         return { articleId, reused: false, vectorDimensions: values.length };
     } catch (error) {
         const failedAt = Timestamp.now();

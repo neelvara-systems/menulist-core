@@ -4,6 +4,7 @@ import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
 import { assertStoreUpdateSucceeded, checkCustomDomainAvailability, updateStore } from '@database/stores';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { Alert, Input as AntInput, List as AntList, Steps, Typography, theme } from 'antd';
@@ -33,15 +34,30 @@ type SubdomainAvailabilityResponse = {
     preview?: string;
 };
 type DomainStatusResponse = {
-    verified?: boolean;
+    hasDomain?: unknown;
+    domain?: unknown;
+    verified?: unknown;
+    config?: unknown;
+    projectDomain?: unknown;
+    providerStatusPending?: unknown;
+    refreshPending?: unknown;
 };
 type DomainAddResponse = {
     domain?: unknown;
+    success?: unknown;
+    verified?: unknown;
     verification?: unknown;
+    projectDomain?: unknown;
+    claimReleasePending?: unknown;
+    providerCleanupPending?: unknown;
+    refreshPending?: unknown;
 };
 type DomainRemoveResponse = {
     removed?: unknown;
     success?: unknown;
+    claimReleasePending?: unknown;
+    providerCleanupPending?: unknown;
+    refreshPending?: unknown;
 };
 type MobileDomainSettingsResponsePhase = 'status' | 'add' | 'remove';
 
@@ -157,42 +173,6 @@ async function readMobileDomainSettingsDomainResponseJson<T>(
     return payload as T;
 }
 
-function normalizeDnsRecords(config: any, domain: string) {
-    const records: { type: string; name: string; value: string }[] = [];
-
-    if (!config) return records;
-
-    if (Array.isArray(config?.verificationRecords)) {
-        config.verificationRecords.forEach((record: any) => {
-            records.push({
-                type: record.type || 'TXT',
-                name: record.domain || record.name || '_vercel',
-                value: record.value || record.reason || '',
-            });
-        });
-    }
-
-    if (Array.isArray(config?.configuredBy)) {
-        config.configuredBy.forEach((record: any) => {
-            records.push({
-                type: record.type || 'CNAME',
-                name: record.name || (domain.startsWith('www.') ? 'www' : '@'),
-                value: record.value || '',
-            });
-        });
-    }
-
-    if (records.length === 0 && domain) {
-        records.push({
-            type: 'CNAME',
-            name: domain.startsWith('www.') ? 'www' : '@',
-            value: 'cname.vercel-dns.com',
-        });
-    }
-
-    return records;
-}
-
 export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSettingsScreenProps) {
     const t = useTranslations('BusinessSettings');
     const common = useTranslations('Common');
@@ -228,7 +208,9 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         && availability?.normalized === normalizedInputSubdomain
         && (!storeDetails?.subdomain || hasSubdomainChanged)
     );
-    const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
+    const activeDomain = domainStatus
+        ? (domainStatus.hasDomain === true && isNonEmptyString(domainStatus.domain) ? domainStatus.domain : undefined)
+        : storeDetails?.customDomain;
     const normalizedDomainInput = domainInput.trim().toLowerCase();
     const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
     const canConnectDomain = Boolean(
@@ -236,11 +218,17 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
         && domainAvailability?.available
         && domainAvailability?.normalized === normalizedDomainInput
     );
-    const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
+    const customDomainVerified = typeof domainStatus?.verified === 'boolean'
+        ? domainStatus.verified
+        : Boolean(storeDetails?.domainVerified);
     const domainDnsConfig = domainStatus?.config || domainStatus?.verification;
     const dnsRecords = useMemo(
-        () => normalizeDnsRecords(domainDnsConfig, activeDomain || domainInput),
-        [activeDomain, domainDnsConfig, domainInput],
+        () => normalizeVercelDomainDnsRecords(
+            domainDnsConfig,
+            domainStatus?.projectDomain,
+            activeDomain || domainInput,
+        ),
+        [activeDomain, domainDnsConfig, domainInput, domainStatus?.projectDomain],
     );
     const subdomainState = storeDetails?.subdomain ? 'active' : 'not_set';
     const customDomainState = !activeDomain ? 'not_set' : customDomainVerified ? 'live' : 'pending';
@@ -274,14 +262,25 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 'status',
                 buildMobileDomainSettingsLogContext('refresh_domain_status_response'),
             );
-            if (!data) {
+            if (
+                !data
+                || typeof data.hasDomain !== 'boolean'
+                || (data.hasDomain && (!isNonEmptyString(data.domain) || typeof data.verified !== 'boolean'))
+            ) {
                 const statusError = new Error('mobile_domain_settings_status_response_invalid') as Error & { status?: number };
                 statusError.status = response.status;
                 throw statusError;
             }
             setDomainStatus(data);
-            if (data?.verified) {
-                setStoreDetails({ ...storeDetails, domainVerified: true });
+            if (data.hasDomain) {
+                setStoreDetails({
+                    ...storeDetails,
+                    customDomain: data.domain,
+                    domainVerified: data.verified === true,
+                });
+            } else {
+                setDomainInput('');
+                setStoreDetails({ ...storeDetails, customDomain: undefined, domainVerified: undefined });
             }
         } catch (error) {
             logStoreDataFailure('mobile_domain_settings_status_load_failed', error, buildMobileDomainSettingsLogContext('refresh_domain_status'));
@@ -402,22 +401,33 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                 'add',
                 buildMobileDomainSettingsLogContext('add_domain_response'),
             );
-            if (!isNonEmptyString(data?.domain)) {
+            if (data?.success !== true || !isNonEmptyString(data.domain)) {
                 logStoreDataFailure(
                     'mobile_domain_settings_add_response_invalid',
                     createMobileDomainSettingsStatusError('mobile_domain_settings_add_response_invalid', response.status),
                     {
                         ...buildMobileDomainSettingsLogContext('add_domain_response_shape'),
                         hasDomain: isNonEmptyString(data?.domain),
+                        success: data?.success === true,
                     },
                 );
                 throw createMobileDomainSettingsStatusError('mobile_domain_settings_add_response_invalid', response.status);
             }
-            setStoreDetails({ ...storeDetails, customDomain: data.domain, domainVerified: false });
+            const verified = data.verified === true;
+            setStoreDetails({ ...storeDetails, customDomain: data.domain, domainVerified: verified });
             setDomainInput(data.domain);
             setDomainAvailability({ available: true, normalized: data.domain });
-            setDomainStatus({ hasDomain: true, domain: data.domain, verified: false, config: data.verification });
+            setDomainStatus({
+                hasDomain: true,
+                domain: data.domain,
+                verified,
+                config: data.verification,
+                projectDomain: data.projectDomain,
+            });
             Toast.show({ content: t('domainAdded'), duration: 1200 });
+            if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
+                Toast.show({ content: 'Domain saved. Background refresh is still finishing.', duration: 2200 });
+            }
         } catch (error) {
             logStoreDataFailure('mobile_domain_settings_add_failed', error, buildMobileDomainSettingsLogContext('add_domain'));
             Toast.show({ content: common('error'), duration: 1800 });
@@ -476,6 +486,9 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
             setDomainInput('');
             setDomainStatus(null);
             Toast.show({ content: tMobile('saved'), duration: 1200 });
+            if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
+                Toast.show({ content: 'Domain removed. Background cleanup is still finishing.', duration: 2200 });
+            }
         } catch (error) {
             logStoreDataFailure('mobile_domain_settings_remove_failed', error, buildMobileDomainSettingsLogContext('remove_domain'));
             Toast.show({ content: common('error'), duration: 1500 });
@@ -753,6 +766,13 @@ export default function MobileDomainSettingsScreen({ onBack }: MobileDomainSetti
                         <Flex gap={8} vertical>
                             <Text strong>{t('configureDnsRecords')}</Text>
                             <Text type="secondary">{t('configureDnsRecordsDesc')}</Text>
+                            {dnsRecords.length === 0 ? (
+                                <Alert
+                                    message="DNS records are not available yet. Check verification again in a moment."
+                                    showIcon
+                                    type="info"
+                                />
+                            ) : null}
                             <AntList
                                 bordered
                                 dataSource={dnsRecords}

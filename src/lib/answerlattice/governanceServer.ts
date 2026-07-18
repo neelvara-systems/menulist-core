@@ -15,19 +15,23 @@ import {
     normalizeAnswerlatticeMutationProposalId,
     normalizeAnswerlatticeResolvedEntityId,
     normalizeAnswerlatticeResolvedEntityIds,
+    replaceAnswerlatticeResolvedEntityReference,
 } from '@lib/answerlattice/governanceIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
 import { normalizeStepOrder, validateProcedure } from '@lib/answerlattice/procedureValidation';
+import { parseAnswerlatticeRetrievalCanonicalAnswer } from '@lib/answerlattice/retrievalContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import type {
+    AnswerlatticeCanonicalAnswer,
     AnswerlatticeEntity,
     AnswerlatticeEntityRelation,
     AnswerlatticeProcedure,
 } from '@type/answerlattice';
-import { FieldValue, type Transaction } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp, type Transaction } from 'firebase-admin/firestore';
 
 import type {
     AnswerlatticeCanonicalProposalAnswer,
+    AnswerlatticeGovernanceEditedContent,
     AnswerlatticeGovernanceAction,
     AnswerlatticeGovernanceActionResult,
 } from './governanceContracts';
@@ -35,6 +39,7 @@ import {
     AnswerlatticeCanonicalProposalAnswerSchema,
     AnswerlatticeStoredMutationProposalSchema,
 } from './governanceContracts';
+import { buildAnswerlatticeProposalImpactAffectedEntityIds } from './proposalImpactContracts';
 
 const CANONICAL_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_CANONICAL_ANSWERS;
 const PROPOSAL_COLLECTION = DB_COLLECTIONS.ANSWERLATTICE_MUTATION_PROPOSALS;
@@ -47,6 +52,7 @@ const MAX_GOVERNANCE_QUERY_DOCUMENTS = 500;
 const MAX_ENTITY_MERGE_WRITES = 450;
 const MAX_ENTITY_MERGE_REFERENCES = 200;
 const MAX_ENTITY_SEARCH_INDEX_RECORDS = 10;
+const MAX_KB_ARTICLE_ENTITY_IDS = 10;
 const DEFAULT_VERSION = 1_000_000;
 
 type GovernanceScope = {
@@ -59,7 +65,7 @@ type GovernanceActor = {
     label: string;
 };
 
-type GovernanceAccess = {
+export type AnswerlatticeGovernanceAccess = {
     scope: {
         tenantId: number;
         storeId: number;
@@ -94,7 +100,7 @@ const getDb = () => {
     return answerlatticeFirestoreAdmin;
 };
 
-const getScopeAndActor = (access: GovernanceAccess): { scope: GovernanceScope; actor: GovernanceActor } => {
+const getScopeAndActor = (access: AnswerlatticeGovernanceAccess): { scope: GovernanceScope; actor: GovernanceActor } => {
     const tId = Number(access.scope.tenantId);
     const sId = Number(access.scope.storeId);
     if (!Number.isFinite(tId) || tId <= 0 || !Number.isFinite(sId) || sId <= 0) {
@@ -245,6 +251,7 @@ const addInvalidationWrites = (
         canonical?: boolean;
         entities?: boolean;
         entityRelations?: boolean;
+        kb?: boolean;
     },
 ) => {
     const db = getDb();
@@ -262,6 +269,7 @@ const addInvalidationWrites = (
     if (options.canonical) sourceVersionChanges.canonical = FieldValue.increment(1);
     if (options.entities) sourceVersionChanges.entities = FieldValue.increment(1);
     if (options.entityRelations) sourceVersionChanges.entityRelations = FieldValue.increment(1);
+    if (options.kb) sourceVersionChanges.kb = FieldValue.increment(1);
 
     if (options.canonical) {
         transaction.set(
@@ -277,6 +285,24 @@ const addInvalidationWrites = (
                 lastReason: options.reason.slice(0, 80),
                 lastSourceId: options.sourceId.slice(0, 160),
                 lastSourceType: CANONICAL_COLLECTION,
+            },
+            { merge: true },
+        );
+    }
+    if (options.kb) {
+        transaction.set(
+            db.collection(DB_COLLECTIONS.ANSWERLATTICE_CACHE_VERSIONS)
+                .doc(getAnswerlatticeCacheVersionDocId(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId)),
+            {
+                pId: PRODUCT_IDS.ANSWERLATTICE,
+                tId: scope.tId,
+                sId: scope.sId,
+                source: ANSWERLATTICE_CACHE_SOURCES.KB,
+                version: FieldValue.increment(1),
+                modifiedOn: now,
+                lastReason: options.reason.slice(0, 80),
+                lastSourceId: options.sourceId.slice(0, 160),
+                lastSourceType: DB_COLLECTIONS.KB_ARTICLES,
             },
             { merge: true },
         );
@@ -397,18 +423,19 @@ const proposalHasApplicableChange = (proposal: Record<string, any>) => {
     );
 };
 
-const buildCandidateFromProposal = (
+export const buildAnswerlatticeCandidateFromProposal = (
     proposal: Record<string, any>,
     currentAnswer: Record<string, any> | null,
     latestVersion: number,
     actor: GovernanceActor,
-    editedContent?: Extract<AnswerlatticeGovernanceAction, { action: 'approve_proposal' }>['editedContent'],
+    editedContent?: AnswerlatticeGovernanceEditedContent,
+    validationTimestamp: unknown = FieldValue.serverTimestamp(),
 ) => {
     const suggested = proposal.suggestedChange || {};
     const proposedContent = suggested.proposedContent || null;
     const currentContent = currentAnswer?.content || {};
     const title = editedContent?.title || suggested.draftTitle || currentAnswer?.title;
-    const content = proposedContent || {
+    const contentCandidate = proposedContent ? { ...proposedContent } : {
         structuredSummary: editedContent?.structuredSummary
             ?? suggested.structuredSummary
             ?? currentContent.structuredSummary,
@@ -423,6 +450,18 @@ const buildCandidateFromProposal = (
             : {}),
         ...((suggested.procedure || currentContent.procedure) ? { procedure: suggested.procedure || currentContent.procedure } : {}),
     };
+    const answerType = suggested.proposedAnswerType
+        || ((contentCandidate.procedure || suggested.procedure) ? 'procedure' : undefined)
+        || currentAnswer?.answerType
+        || 'explanation';
+    const {
+        procedure: candidateProcedure,
+        ...contentWithoutProcedure
+    } = contentCandidate;
+    const procedure = candidateProcedure || suggested.procedure || currentContent.procedure;
+    const content = answerType === 'procedure' && procedure
+        ? { ...contentWithoutProcedure, procedure }
+        : contentWithoutProcedure;
     if (!title || !content.structuredSummary || !content.detailedExplanation) {
         throw new AnswerlatticeGovernanceError('canonical_proposal_incomplete', 409, 'The proposal does not contain a complete answer.');
     }
@@ -439,9 +478,6 @@ const buildCandidateFromProposal = (
     const scope = suggested.proposedScope || currentAnswer?.scope || {
         entityIds: normalizeAnswerlatticeResolvedEntityIds(proposal.relatedEntityIds, 25),
     };
-    const answerType = suggested.proposedAnswerType
-        || currentAnswer?.answerType
-        || (content.procedure ? 'procedure' : 'explanation');
     const status = suggested.proposedStatus || currentAnswer?.status || 'active';
     const validationSource = suggested.draftSource === 'manual_authoring' ? 'manual' : 'signal_cluster';
 
@@ -461,7 +497,7 @@ const buildCandidateFromProposal = (
             ...(currentAnswer?.validation || {}),
             confidenceScore: Math.max(0, Math.min(1, Number(proposal.confidenceScore ?? currentAnswer?.validation?.confidenceScore ?? 1))),
             validationSource,
-            lastValidatedOn: FieldValue.serverTimestamp(),
+            lastValidatedOn: validationTimestamp,
             validatedBy: actor.label,
         },
         signalMetrics: currentAnswer?.signalMetrics || {
@@ -475,6 +511,157 @@ const buildCandidateFromProposal = (
         },
     };
 };
+
+type AnswerlatticeProposalImpactAnswerSummary = {
+    answerId: string;
+    title: string;
+    status: 'active' | 'needs_review' | 'deprecated' | 'archived';
+    answerType: 'explanation' | 'navigation' | 'procedure';
+    entityIds: string[];
+    versionFrom: number;
+    versionTo: number | null;
+    structuredSummary: string;
+};
+
+export type AnswerlatticePreparedProposalImpact = {
+    proposalId: string;
+    targetAnswerId: string | null;
+    relatedEntityIds: string[];
+    candidate: AnswerlatticeCanonicalAnswer;
+    candidateSummary: AnswerlatticeProposalImpactAnswerSummary;
+    currentAnswerSummary: AnswerlatticeProposalImpactAnswerSummary | null;
+    currentVersion: number;
+};
+
+const buildProposalImpactAnswerSummary = (
+    answerId: string,
+    answer: Record<string, any>,
+): AnswerlatticeProposalImpactAnswerSummary => ({
+    answerId,
+    title: String(answer.title),
+    status: answer.status,
+    answerType: answer.answerType || 'explanation',
+    entityIds: normalizeAnswerlatticeResolvedEntityIds(answer.scope?.entityIds, 25),
+    versionFrom: Number(answer.productBinding?.applicableVersions?.from),
+    versionTo: answer.productBinding?.applicableVersions?.to == null
+        ? null
+        : Number(answer.productBinding.applicableVersions.to),
+    structuredSummary: String(answer.content?.structuredSummary || ''),
+});
+
+/**
+ * Builds the exact in-memory canonical candidate used by approval without
+ * performing approval's entity/overlap scans or any write.
+ */
+export async function prepareAnswerlatticeProposalImpact({
+    access,
+    editedContent,
+    proposalId: rawProposalId,
+}: {
+    access: AnswerlatticeGovernanceAccess;
+    editedContent?: AnswerlatticeGovernanceEditedContent;
+    proposalId: string;
+}): Promise<AnswerlatticePreparedProposalImpact> {
+    const db = getDb();
+    const { scope, actor } = getScopeAndActor(access);
+    const proposalId = normalizeAnswerlatticeMutationProposalId(rawProposalId);
+    if (!proposalId) throw new AnswerlatticeGovernanceError('proposal_id_invalid', 400, 'The proposal identifier is invalid.');
+
+    const proposalSnapshot = await db.collection(PROPOSAL_COLLECTION).doc(proposalId).get();
+    if (!proposalSnapshot.exists || !documentIsInScope(proposalSnapshot.data() || {}, scope)) {
+        throw new AnswerlatticeGovernanceError('proposal_not_found', 404, 'The proposal is no longer available.');
+    }
+    const parsedProposal = AnswerlatticeStoredMutationProposalSchema.safeParse({
+        ...proposalSnapshot.data(),
+        id: proposalSnapshot.id,
+    });
+    if (!parsedProposal.success) {
+        throw new AnswerlatticeGovernanceError(
+            'proposal_document_invalid',
+            409,
+            'This proposal contains invalid stored data and cannot be checked safely.',
+        );
+    }
+    const proposal = parsedProposal.data;
+    if (proposal.status !== 'pending_review') {
+        throw new AnswerlatticeGovernanceError(
+            'proposal_state_invalid',
+            409,
+            'Only pending proposals can be checked before approval.',
+        );
+    }
+    if (!proposalHasApplicableChange(proposal)) {
+        throw new AnswerlatticeGovernanceError(
+            'proposal_change_missing',
+            409,
+            'This proposal does not contain an answer change to check.',
+        );
+    }
+
+    const targetAnswerId = normalizeAnswerlatticeCanonicalAnswerId(proposal.targetAnswerId);
+    const currentAnswerPromise = targetAnswerId
+        ? db.collection(CANONICAL_COLLECTION).doc(targetAnswerId).get()
+        : Promise.resolve(null);
+    const latestReleasePromise = db.collection(RELEASE_COLLECTION)
+        .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+        .where('tId', '==', scope.tId)
+        .where('sId', '==', scope.sId)
+        .where('status', '==', 'active')
+        .orderBy('versionNormalized', 'desc')
+        .limit(1)
+        .get();
+    const [currentSnapshot, latestReleaseSnapshot] = await Promise.all([
+        currentAnswerPromise,
+        latestReleasePromise,
+    ]);
+
+    let currentAnswer: Record<string, any> | null = null;
+    if (targetAnswerId) {
+        if (!currentSnapshot || !currentSnapshot.exists || !documentIsInScope(currentSnapshot.data() || {}, scope)) {
+            throw new AnswerlatticeGovernanceError('canonical_answer_not_found', 404, 'The target answer is no longer available.');
+        }
+        currentAnswer = { ...currentSnapshot.data(), id: currentSnapshot.id };
+        parseAnswerlatticeRetrievalCanonicalAnswer(currentAnswer, scope);
+    }
+
+    const rawLatestVersion = latestReleaseSnapshot.empty
+        ? DEFAULT_VERSION
+        : Number(latestReleaseSnapshot.docs[0].data().versionNormalized);
+    const currentVersion = Number.isInteger(rawLatestVersion) && rawLatestVersion > 0
+        ? rawLatestVersion
+        : DEFAULT_VERSION;
+    const candidateRecord = buildAnswerlatticeCandidateFromProposal(
+        proposal,
+        currentAnswer,
+        currentVersion,
+        actor,
+        editedContent,
+        Timestamp.now(),
+    );
+    assertCanonicalCandidate(candidateRecord);
+    const answerId = targetAnswerId || `canonical_${hashValue(proposalId)}`;
+    const candidate = parseAnswerlatticeRetrievalCanonicalAnswer(
+        { ...candidateRecord, id: answerId },
+        scope,
+    );
+    const affectedEntityIds = buildAnswerlatticeProposalImpactAffectedEntityIds(
+        proposal.relatedEntityIds,
+        currentAnswer?.scope?.entityIds || [],
+        candidate.scope.entityIds,
+    );
+
+    return {
+        proposalId,
+        targetAnswerId: targetAnswerId || null,
+        relatedEntityIds: affectedEntityIds,
+        candidate,
+        candidateSummary: buildProposalImpactAnswerSummary(answerId, candidate),
+        currentAnswerSummary: currentAnswer && targetAnswerId
+            ? buildProposalImpactAnswerSummary(targetAnswerId, currentAnswer)
+            : null,
+        currentVersion,
+    };
+}
 
 async function proposeCanonicalAnswer(
     action: Extract<AnswerlatticeGovernanceAction, { action: 'propose_create' | 'propose_update' }>,
@@ -677,7 +864,13 @@ async function approveProposal(
         }
 
         const latestVersion = await getLatestActiveVersion(transaction, scope);
-        const candidate = buildCandidateFromProposal(proposal, currentAnswer, latestVersion, actor, action.editedContent);
+        const candidate = buildAnswerlatticeCandidateFromProposal(
+            proposal,
+            currentAnswer,
+            latestVersion,
+            actor,
+            action.editedContent,
+        );
         const entityIds = normalizeAnswerlatticeResolvedEntityIds(candidate.scope?.entityIds, 25);
         await assertEntityBindings(transaction, scope, entityIds, candidate.status === 'active');
         const answerId = targetAnswerId || `canonical_${hashValue(proposalId)}`;
@@ -978,6 +1171,7 @@ async function mergeEntities(
             if (!documentIsInScope(data, scope)) throw new AnswerlatticeGovernanceError('entity_merge_scope_conflict', 409);
             return {
                 transferredAnswers: Number(data.newState?.transferredAnswers || 0),
+                transferredArticles: Number(data.newState?.transferredArticles || 0),
                 transferredRelations: Number(data.newState?.transferredRelations || 0),
             };
         }
@@ -1017,6 +1211,14 @@ async function mergeEntities(
                 .where('status', '==', 'active')
                 .limit(MAX_ENTITY_MERGE_REFERENCES + 1),
         );
+        const articlesSnapshot = await transaction.get(
+            db.collection(DB_COLLECTIONS.KB_ARTICLES)
+                .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+                .where('tId', '==', scope.tId)
+                .where('sId', '==', scope.sId)
+                .where('entityIds', 'array-contains', mergedId)
+                .limit(MAX_ENTITY_MERGE_REFERENCES + 1),
+        );
         const fromRelations = await transaction.get(
             db.collection(RELATION_COLLECTION)
                 .where('tId', '==', scope.tId)
@@ -1049,6 +1251,7 @@ async function mergeEntities(
         if (
             answersSnapshot.size > MAX_ENTITY_MERGE_REFERENCES
             || survivorActiveAnswersSnapshot.size > MAX_ENTITY_MERGE_REFERENCES
+            || articlesSnapshot.size > MAX_ENTITY_MERGE_REFERENCES
             || fromRelations.size > MAX_ENTITY_MERGE_REFERENCES
             || toRelations.size > MAX_ENTITY_MERGE_REFERENCES
             || survivorIndexes.size > MAX_ENTITY_SEARCH_INDEX_RECORDS
@@ -1094,6 +1297,25 @@ async function mergeEntities(
                     },
                 },
             }));
+        const changedArticles = articlesSnapshot.docs.map(document => {
+            const article: Record<string, any> & { id: string } = {
+                ...document.data(),
+                id: document.id,
+            };
+            const nextEntityIds = replaceAnswerlatticeResolvedEntityReference(
+                article.entityIds,
+                mergedId,
+                survivorId,
+                MAX_KB_ARTICLE_ENTITY_IDS,
+            );
+            if (!documentIsInScope(article, scope) || !nextEntityIds) {
+                throw new AnswerlatticeGovernanceError('entity_merge_article_scope_invalid', 409);
+            }
+            return {
+                ref: document.ref,
+                entityIds: nextEntityIds,
+            };
+        });
         const activeAnswersAfterMerge = new Map<string, Record<string, any> & { id: string }>();
         survivorActiveAnswersSnapshot.docs.forEach(document => {
             activeAnswersAfterMerge.set(document.id, { ...document.data(), id: document.id });
@@ -1125,10 +1347,11 @@ async function mergeEntities(
         });
         const relationWrites = Array.from(relationsById.values());
         const estimatedWrites = (changedAnswers.length * 2)
+            + changedArticles.length
             + relationWrites.length
             + survivorIndexes.size
             + mergedIndexes.size
-            + 6;
+            + 8;
         if (estimatedWrites > MAX_ENTITY_MERGE_WRITES) {
             throw new AnswerlatticeGovernanceError(
                 'entity_merge_write_limit',
@@ -1163,6 +1386,12 @@ async function mergeEntities(
                 timestamp: now,
                 createdOn: now,
             }, { merge: false });
+        }
+        for (const article of changedArticles) {
+            transaction.update(article.ref, {
+                entityIds: article.entityIds,
+                modifiedOn: now,
+            });
         }
 
         for (const relation of relationWrites) {
@@ -1216,6 +1445,7 @@ async function mergeEntities(
                 survivorId,
                 combinedAliases,
                 transferredAnswers: changedAnswers.length,
+                transferredArticles: changedArticles.length,
                 transferredRelations: relationWrites.length,
             },
             performedBy: actor.label,
@@ -1228,9 +1458,11 @@ async function mergeEntities(
             canonical: changedAnswers.length > 0,
             entities: true,
             entityRelations: relationWrites.length > 0,
+            kb: changedArticles.length > 0,
         });
         return {
             transferredAnswers: changedAnswers.length,
+            transferredArticles: changedArticles.length,
             transferredRelations: relationWrites.length,
         };
     });
@@ -1239,13 +1471,14 @@ async function mergeEntities(
         success: true,
         action: action.action,
         transferredAnswers: result.transferredAnswers,
+        transferredArticles: result.transferredArticles,
         transferredRelations: result.transferredRelations,
     };
 }
 
 export async function executeAnswerlatticeGovernanceAction(
     action: AnswerlatticeGovernanceAction,
-    access: GovernanceAccess,
+    access: AnswerlatticeGovernanceAccess,
 ): Promise<AnswerlatticeGovernanceActionResult> {
     const { scope, actor } = getScopeAndActor(access);
     switch (action.action) {

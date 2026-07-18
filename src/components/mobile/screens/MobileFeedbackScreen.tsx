@@ -105,6 +105,9 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     const { projectsList, selectedProjectId, selectedProjectSummary, selectProject } = useMobileProjects();
     const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [lastDocId, setLastDocId] = useState<string | null>(null);
     const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
     const [filter, setFilter] = useState<'all' | 'needs_attention' | 'resolved'>(DEFAULT_FEEDBACK_FILTER);
     const [isQrOpen, setIsQrOpen] = useState(false);
@@ -115,10 +118,15 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
         storeDetails?.customDomain
     );
 
-    const fetchFeedback = useCallback(async (targetFilter = filter) => {
+    const fetchFeedback = useCallback(async (
+        targetFilter = filter,
+        loadMore = false,
+        cursorId?: string | null,
+    ) => {
         try {
-            setIsLoading(true);
-            const result = await getFeedbackList(targetFilter, 50);
+            if (loadMore) setIsLoadingMore(true);
+            else setIsLoading(true);
+            const result = await getFeedbackList(targetFilter, 50, cursorId || undefined);
             assertFeedbackListLoadSucceeded(
                 result,
                 'mobile_feedback_list_load_rejected',
@@ -134,21 +142,26 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                 rating: fb.rating || 0,
                 status: fb.status || 'new',
             }));
-            setFeedbackList(items);
+            setFeedbackList((previous) => loadMore ? [...previous, ...items] : items);
+            setHasMore(result.hasMore);
+            setLastDocId(result.lastDocId);
         } catch (err) {
             logMobileOwnerFailure('mobile_feedback_load_failed', err, {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
                 ...getBoundedMobileOwnerStringContext('filter', targetFilter),
-                hasSelectedProject: Boolean(selectedProjectId),
+                ...getBoundedMobileOwnerStringContext('cursorId', cursorId),
+                loadMore,
             });
+            Toast.show({ content: t('failedToLoad'), duration: 2000 });
         } finally {
-            setIsLoading(false);
+            if (loadMore) setIsLoadingMore(false);
+            else setIsLoading(false);
         }
-    }, [filter, selectedProjectId, storeDetails?.storeId, storeDetails?.tenantId]);
+    }, [filter, storeDetails?.storeId, storeDetails?.tenantId, t]);
 
     useEffect(() => {
         if (storeDetails?.storeId) {
-            void fetchFeedback();
+            void fetchFeedback(filter, false, null);
         }
     }, [fetchFeedback, storeDetails?.storeId]);
 
@@ -157,12 +170,19 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
     }, []);
 
     const handleStatusUpdate = useCallback((feedbackId: string, newStatus: 'new' | 'resolved') => {
-        setFeedbackList((previous) => previous.map((item) => item.id === feedbackId
-            ? { ...item, needsAttention: newStatus === 'new' ? item.rating <= 3 : false, status: newStatus }
-            : item
-        ));
-        Toast.show({ content: newStatus === 'resolved' ? t('resolved') : t('new'), duration: 1000 });
-    }, [t]);
+        const updateItem = (item: FeedbackItem): FeedbackItem => ({
+            ...item,
+            needsAttention: newStatus === 'new' ? item.rating <= 3 : false,
+            status: newStatus,
+        });
+        setFeedbackList((previous) => previous.flatMap((item) => {
+            if (item.id !== feedbackId) return [item];
+            if (filter === 'needs_attention' && newStatus === 'resolved') return [];
+            if (filter === 'resolved' && newStatus === 'new') return [];
+            return [updateItem(item)];
+        }));
+        setSelectedFeedback((previous) => previous?.id === feedbackId ? updateItem(previous) : previous);
+    }, [filter]);
 
     const handleOpenQr = () => {
         if (!selectedProjectId) {
@@ -345,12 +365,12 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
 
                 <Card style={FEEDBACK_LIST_CARD_STYLE}>
                     <Flex gap={12} vertical>
-                        <Tabs activeKey={filter} onChange={(key) => { setFilter(key as any); void fetchFeedback(key as any); }}>
+                        <Tabs activeKey={filter} onChange={(key) => setFilter(key as typeof filter)}>
                             <Tabs.Tab key="all" title={t('all')} />
                             <Tabs.Tab key="needs_attention" title={t('needsAttention')} />
                             <Tabs.Tab key="resolved" title={t('resolved')} />
                         </Tabs>
-                        <PullToRefresh onRefresh={() => fetchFeedback()}>
+                        <PullToRefresh onRefresh={() => fetchFeedback(filter, false, null)}>
                             {feedbackList.length === 0 ? (
                                 <Empty description={t('noFeedback')} />
                             ) : (
@@ -408,6 +428,17 @@ export default function MobileFeedbackScreen({ onBack }: MobileFeedbackScreenPro
                                 </List>
                             )}
                         </PullToRefresh>
+                        {hasMore ? (
+                            <Button
+                                block
+                                disabled={isLoadingMore || !lastDocId}
+                                loading={isLoadingMore}
+                                onClick={() => void fetchFeedback(filter, true, lastDocId)}
+                                style={{ minHeight: 44 }}
+                            >
+                                Load more
+                            </Button>
+                        ) : null}
                     </Flex>
                 </Card>
             </Flex>

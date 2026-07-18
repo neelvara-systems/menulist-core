@@ -8,11 +8,11 @@ import type { ExtractedDataItem } from '../templates/main-app/projects/types';
 export type MobileMenuItemType = {
     id: string;
     name: string;
-    price: number;
+    price: string | number;
     attributes?: {
         id: string;
         name: string;
-        price: number;
+        price: string | number;
         active?: boolean;
     }[];
     available: boolean;

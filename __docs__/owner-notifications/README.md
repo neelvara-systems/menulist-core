@@ -1,7 +1,7 @@
 # Owner Notifications
 
-**Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
-**Date:** 2026-07-13
+**Status:** Local source complete for strict-order item 6; provider, target deploy, authenticated browser/device, and production-host evidence remain pending
+**Date:** 2026-07-16
 **Products:** MenuList primary, Answerlattice reusable architecture
 **Owner:** Platform / product engineering
 
@@ -22,7 +22,15 @@ Implemented on June 2, 2026:
 - Internal platform dashboard added at `/ops/owner-notifications` with bounded tracking, detail inspection, retry, prefilled Email/WhatsApp Web recovery, manual system send support, and manual handoff recording.
 - July 13 platform-ops hardening requires current persisted platform authority after a fail-closed limiter, derives rows/counts from one product-scoped recent window, reports exact scope reads, filters delivery detail by product, and commits manual-handoff audit writes atomically.
 - The independent clean-room follow-up rejects non-claimable retries, preserves malformed persisted enum fields as explicit `invalid` operational state, orders delivery detail newest-first through the declared composite index, and requires stable manual-action IDs so response retries do not duplicate sends or handoff rows.
-- Firebase Functions deployed to `menulist-qa`: `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, `triggerStoreNightlyScheduler`.
+- Historical June deployment evidence exists, but it does not certify the current source. Current app and Functions changes remain pending an isolated approved QA release and provider smoke.
+
+July 16 end-to-end hardening:
+
+- Removed the desktop header's hard-coded “New Order Placed” examples. MenuList has no owner activity-feed/order-notification contract; lifecycle messages remain email/WhatsApp and delivery recovery remains platform-only.
+- App and Functions provider calls now fail closed on redirects and use bounded network/SMTP timeouts. Provider message IDs are control-free and capped before delivery persistence.
+- Explicit WhatsApp consent revocation overrides stale legacy consent booleans.
+- Owner-notification event documents fail closed above 128KB, before Firestore creation or provider work.
+- Repeated publish-verification failures use one store/day reference instead of a unique timestamp per retry.
 
 ## Scope
 
@@ -30,7 +38,6 @@ This system handles owner/account-critical messages only:
 
 - Billing state and payment risk
 - Menu or public output publish state
-- WhatsApp onboarding progress that the owner started
 - Credit balance and account capacity
 - Account access and claim links
 - Required support-readiness notices for Answerlattice
@@ -46,22 +53,24 @@ This system does not handle:
 - Customer menu action deep links
 - Manual owner copy/share tools
 
+WhatsApp messaging onboarding is an adjacent but separately tracked owner-started flow. Its preview/live-link replies remain in the messaging session and outbound-delivery state; they are not copied into `ownerNotificationEvents` or `ownerNotificationDeliveries`.
+
 The internal platform dashboard is a recovery surface for the platform team only. It is not an owner dashboard, workflow automation product, or customer-facing notification center.
 
 ## Current Source Evidence
 
 | Area | Current source |
 | --- | --- |
-| MenuList lifecycle email engine | `functions/src/messaging/messagingEngine.ts:157`, `src/lib/messaging/index.ts:171` |
+| MenuList lifecycle email engine | `functions/src/messaging/messagingEngine.ts:326`, `src/lib/messaging/index.ts:339` |
 | Current MenuList lifecycle events | `__docs__/lifecycle-messaging/lifecycle-messaging_impl.md:104` |
-| MenuList WhatsApp onboarding templates | `functions/src/messagingOnboarding/constants.ts:254` |
-| WhatsApp inbound queue processing | `functions/src/messagingOnboarding/inboundQueue.ts:142` |
-| Answerlattice notification sender | `src/lib/notifications/index.ts:248` |
-| Answerlattice ticket notification triggers | `src/database/tickets/index.ts:179` |
+| MenuList WhatsApp onboarding templates | `functions/src/messagingOnboarding/constants.ts:291` |
+| WhatsApp inbound queue processing | `functions/src/messagingOnboarding/inboundQueue.ts:403` |
+| Answerlattice notification sender | `src/lib/notifications/index.ts:262` |
+| Answerlattice ticket notification triggers | `src/database/tickets/index.ts:693` |
 | Answerlattice workflow integrations boundary | `__docs__/answerlattice/workflow-integrations/workflow-integrations_impl.md:1` |
-| Desktop locale/currency settings | `src/components/templates/main-app/businessSettings/tabs/LocaleSettingsTab.tsx:90` |
-| Mobile locale/currency settings | `src/components/mobile/screens/MobileLocaleSettingsScreen.tsx:135` |
-| Shared date/time utility layer | `src/utils/dateTime/index.tsx:131` |
+| Desktop locale/currency settings | `src/components/templates/main-app/businessSettings/tabs/LocaleSettingsTab.tsx:29` |
+| Mobile locale/currency settings | `src/components/mobile/screens/MobileLocaleSettingsScreen.tsx:58` |
+| Shared date/time utility layer | `src/utils/dateTime/index.tsx:100` |
 
 ## Document Set
 
@@ -75,6 +84,7 @@ The internal platform dashboard is a recovery surface for the platform team only
 | [owner-notifications_marketing.md](./owner-notifications_marketing.md) | Internal positioning and product narrative |
 | [owner-notifications_website.md](./owner-notifications_website.md) | Public content guidance if this appears on product pages |
 | [owner-notifications_helpdoc.md](./owner-notifications_helpdoc.md) | Owner help documentation draft |
+| [owner-notifications-messaging-onboarding_verification.md](./owner-notifications-messaging-onboarding_verification.md) | Strict-order item 6 end-to-end code/docs verification and external boundary |
 
 ## Maintenance Gates
 
@@ -90,9 +100,10 @@ Any owner-notification change must recheck:
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.2 | July 16, 2026 | Removed fake owner-header notification data; bounded event/provider behavior; reconciled the messaging-onboarding boundary; added item 6 verification evidence |
 | 1.1 | July 13, 2026 | Hardened the internal recovery surface with current persisted platform authorization, bounded recent counts, product-filtered detail, exact cost reporting, and atomic manual handoff |
 | 1.0 | June 2, 2026 | Implemented the shared owner-notification architecture and platform recovery monitor |
 
 ## Changelog
 
-This documentation package is tracked in [../changelog.md](../changelog.md). The July 13 ops-route audit changed internal recovery authorization/cost semantics only; owner delivery triggers, templates, channels, preferences, and public behavior are unchanged.
+This documentation package is tracked in [../changelog.md](../changelog.md). The July 16 verification reconciles owner lifecycle delivery with the separate provider-disabled messaging-onboarding tunnel; it does not introduce an owner activity feed or notification settings surface.

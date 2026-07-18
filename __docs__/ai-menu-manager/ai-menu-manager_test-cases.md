@@ -2,7 +2,7 @@
 
 **Status:** Current QA plan
 **Audience:** Engineering, QA, product review
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -16,6 +16,8 @@ Every passing test should confirm four things:
 2. The card shows the owner what will change before risky work applies.
 3. Approved work reuses the correct MenuList mutation path.
 4. Firebase writes remain compact and bounded.
+
+Current concurrency/scale gates also prove that browser and Admin timestamps canonicalize to one project version, a stale standard or linked-outlet approval is rejected inside the existing save transaction, incomplete compound groups fail before a project save, server fallback preserves all compact counters, and both AMM collections retain explicit native TTL configuration.
 
 ### AMM-IDEMPOTENCY-001: Server-backed proposal retry identity
 
@@ -305,7 +307,7 @@ Current executable write boundary: QA treats `AI_MENU_MANAGER_EXECUTABLE_ACTIONS
 
 ### AMM-PLAN-005: Planner Route Is Guarded Before Provider Work
 
-**Then** the planner route requires authentication, selected-store `MANAGE_MENU`, hashed rate limiting, SAFE_MODE, capacity admission, a 48KB body cap, and Zod validation before Gemini.
+**Then** the planner route requires authentication and hashed rate limiting, admits only a bounded 48KB Zod-valid body with selected-store `MANAGE_MENU` and an executable action, and checks SAFE_MODE plus capacity before Gemini.
 **And** a valid provider result is recorded through existing bounded AI operation accounting without raw provider payload storage.
 
 ### AMM-PLAN-006: Structured Planner Contract And Native-Language Context
@@ -721,7 +723,11 @@ When a cap is exceeded, old detail must move to Storage or remain on proposal de
 ### AMM-COST-007: Active Inbox Does Not Scan Old Sessions
 
 Opening AMM with unresolved cards from a previous day must not scan historical daily session docs.
-The unresolved cards must be available through the current compact summary, deterministic active-inbox summary, or direct bounded proposal reads.
+When the current-day selected-project session is absent, the protected inbox must query exact tenant/store/project scope, filter `hasPendingOperations == true`, order newest first, and return at most one normalized session. It must validate proposal pointers against that recovered session ID, and desktop/mobile must continue using the returned session ID until its pending count reaches zero.
+
+### AMM-COST-007A: Compact Session Payload Budget
+
+Every browser and Admin compact-session mutation must pass the shared 700 KB write preparation boundary. When history makes the payload too large, the boundary removes artifact references, older receipt summaries, and oldest compact messages in that order. It must not remove pending operations or pending proposal summaries. If the payload still exceeds the budget, a new preparation fails with fixed owner-safe guidance; completion/cancel may proceed only when it reduces an already oversized retained document.
 
 ### AMM-COST-008: Retry Does Not Duplicate Proposals
 
@@ -823,7 +829,7 @@ Proposal, clarification, answer, unsupported, local export, or receipt cards mus
 
 ### AMM-SEC-008: Server Fallback Payload Stays Minimal
 
-The direct-DAL permission fallback command request must include only selected context and command fields: `storeId`, `projectId`, `inputType`, owner text/upload refs, `composerContext`, `clientContextVersion`, `replaceOperationId`, `idempotencyKey`, and `sessionId`.
+The direct-DAL permission fallback command request must include only selected context and command fields: `storeId`, `projectId`, `inputType`, owner text/upload refs, `composerContext`, `clientContextVersion`, `replaceOperationId`, `idempotencyKey`, `sessionId`, and the validated `sessionDate` only when continuing recovered pending work.
 The test fails if the fallback spreads the full request/session/project object into the API body.
 
 ---

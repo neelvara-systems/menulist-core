@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import PrintShareToolPage from '@/components/website/printShareTools/PrintShareToolPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Feedback QR Card Maker - MenuList | Free Feedback Card';
 const description = 'Make a free ethical feedback QR card from an owner-provided feedback or review link. No review text is generated.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/feedback-qr-card-maker',
   },
-};
+});
 
 export default function Page() {
   if (

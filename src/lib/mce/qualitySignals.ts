@@ -19,6 +19,7 @@ import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-ap
 import type { ProjectFileType } from '@template/main-app/projects/types/project.types';
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
 import { getMissingProjectPublicContentGaps } from '@lib/localization/projectContent';
+import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
 
 export interface QualitySignal {
     id: string;
@@ -211,9 +212,7 @@ function getAllLanguageCodes(files: ProjectFileType[] | undefined, projectLangua
 }
 
 function parsePrice(price: string | undefined): number {
-    const cleaned = normalizePriceForReview(price);
-    if (!cleaned) return NaN;
-    return parseFloat(cleaned);
+    return parseSingleMenuPrice(price) ?? NaN;
 }
 
 function median(values: number[]): number {
@@ -274,7 +273,9 @@ export function computeQualitySignals(
     const signals: QualitySignal[] = [];
 
     // Signal 1: Description coverage
-    const missingDesc = activeItems.filter(item => isDescriptionMissing(item, allLanguages)).length;
+    // Secondary-language gaps have their own translation signal. Keeping this
+    // check primary-language-only avoids showing the same issue twice.
+    const missingDesc = activeItems.filter(item => isDescriptionMissing(item, [lang])).length;
     signals.push({
         id: 'descriptions',
         label: missingDesc > 0

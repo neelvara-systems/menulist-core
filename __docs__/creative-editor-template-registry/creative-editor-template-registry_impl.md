@@ -1,7 +1,7 @@
 # Creative Editor Template Registry Implementation
 
 **Status:** Implemented
-**Last Updated:** June 16, 2026
+**Last Updated:** July 13, 2026
 
 ## Files
 
@@ -12,6 +12,8 @@
 | Shared editor callback UI | `src/modules/creative-editor/CreativeEditor.tsx` |
 | DAL schemas | `src/lib/validation/creativeEditorTemplateSchemas.ts` |
 | Client registry DAL | `src/lib/creative-editor/templateRegistryDal.ts` |
+| Transaction/index boundary | `src/lib/creative-editor/templateRegistryIndexBoundary.ts` |
+| Storage ownership boundary | `src/lib/creative-editor/templateRegistryStorageBoundary.ts` |
 | Platform manager route | `src/app/(main)/platform/asset-templates/page.tsx` |
 | Platform manager UI | `src/components/templates/platform/assetTemplates/index.tsx` |
 | Platform settings navigation | `src/components/templates/platform/settings/index.tsx` |
@@ -65,7 +67,7 @@ Platform asset templates live in one metadata document per business category:
 platformAssetTemplates/{businessCategory}
 ```
 
-`businessCategory` follows `src/data/shared/businessTypes.ts`; `generic` is used only as the fallback/default category when no owner category can be resolved. Each category document holds the platform template summaries for all printable asset types in that category. Common templates that should appear for every owner are duplicated or seeded into each category document's `data` array. The route requests one resolved owner category catalog, then filters the in-document templates by `assetTypeId` for the selected asset in UI state.
+`businessCategory` follows `src/data/shared/businessTypes.ts`; `generic` is used only as the fallback/default category when no owner category can be resolved. Each category document holds the platform template summaries for all printable asset types in that category. Common templates that should appear for every owner are mirrored into each category document's `data` array by one multi-document transaction. The route requests one resolved owner category catalog, then filters the in-document templates by `assetTypeId` for the selected asset in UI state.
 
 User template indexes live in one metadata document per tenant/store:
 
@@ -73,13 +75,13 @@ User template indexes live in one metadata document per tenant/store:
 storeAssetTemplates/{tenantId}/{storeId}/default
 ```
 
-The index document stores `id: "default"` and `data: []`. Each template summary inside `data` carries its own `productId`, `sourceSurface`, `assetTypeId`, and normal MenuList write metadata from `requestBodyComposer`, including `tId`, `sId`, `uId`, `createdBy`, `createdOn`, `modifiedBy`, and `modifiedOn`. User identity is metadata, not part of the document path, so saved templates are store-level assets. Product/source/asset filtering happens in UI after this one store document is loaded.
+The index document stores `id: "default"` and `data: []`. Each template summary inside `data` carries its own `productId`, `sourceSurface`, `assetTypeId`, and normal MenuList write metadata from pure `composeRequestBody` using one session captured before the retryable transaction, including `tId`, `sId`, `uId`, `createdBy`, `createdOn`, `modifiedBy`, and `modifiedOn`. User identity is metadata, not part of the document path, so saved templates are store-level assets. Product/source/asset filtering happens in UI after this one store document is loaded.
 
 Full documents live in Storage by `documentPath` and are read only when a template is opened:
 
 ```text
-creative-editor/templates/platform/{businessCategory}/{templateId}/document.json
-creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/document.json
+creative-editor/templates/platform/{businessCategory}/{templateId}/document-{versionId}.json
+creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/document-{versionId}.json
 ```
 
 Template document saves and opens both enforce `MAX_DOCUMENT_BYTES` in `src/lib/creative-editor/templateRegistryDal.ts`. If a stored document blob exceeds the cap, the DAL throws the fixed `TEMPLATE_DOCUMENT_TOO_LARGE` local error before decoding JSON.
@@ -87,12 +89,12 @@ Template document saves and opens both enforce `MAX_DOCUMENT_BYTES` in `src/lib/
 User template previews use the same Storage store scope:
 
 ```text
-creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/preview.{png|jpg|webp}
+creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/preview-{versionId}.{png|jpg|webp}
 ```
 
 ## DAL
 
-The registry is a client-side DAL because it does not need AI, server-only credentials, or transaction-only logic. Firebase security is enforced by Firestore and Storage rules.
+The registry is a client-side DAL because it does not need AI or server-only credentials. Firestore transactions prevent concurrent store-index loss and make generic platform-catalog mirrors atomic; Firebase security is enforced by Firestore and Storage rules.
 
 ### `listCreativeEditorTemplates`
 
@@ -124,19 +126,20 @@ Platform manager helper for `/platform/asset-templates`.
 Platform manager helper that creates or replaces a platform template document.
 
 - validates the neutral editor document,
-- uploads `document.json` to `creative-editor/templates/platform/{businessCategory}/{templateId}/`,
+- uploads an immutable `document-{versionId}.json` attempt to `creative-editor/templates/platform/{businessCategory}/{templateId}/`,
 - uploads an optional bounded preview to the same Storage folder,
-- updates the selected category catalog document,
+- transactionally updates the selected category catalog document,
 - preserves existing `sortIndex` and increments `version`.
-- when `businessCategory` is `generic`, stores one shared Storage payload under `platform/generic/{templateId}` and copies summary metadata into `generic` plus every shared business-category catalog. This keeps owner browsing to one category read.
+- when `businessCategory` is `generic`, stores one shared immutable Storage payload under `platform/generic/{templateId}` and atomically mirrors summary metadata into `generic` plus every shared business-category catalog. This keeps owner browsing to one category read.
+- after commit, deletes only prior or cap-evicted paths that are no longer referenced by any committed target catalog. A failed acknowledgement triggers one authoritative catalog probe; a failed probe preserves the new attempt for reconciliation.
 
 ### `updateCreativeEditorPlatformTemplateMetadata`
 
-Updates title, description, template family, and status without uploading the full editor document. This is the low-cost path for draft/publish/archive changes. The mutation target is derived from the stored template record, not only the currently selected catalog, so generic templates update every category copy even when the platform user edits the template from a category view.
+Updates title, description, template family, and status without uploading the full editor document. This is the low-cost path for draft/publish/archive changes. The mutation target is derived from the stored template record, and all generic mirrors update in one transaction even when the platform user edits from a category view. If a category mirror is stale, the canonical stored business-category record wins.
 
 ### `deleteCreativeEditorPlatformTemplate`
 
-Removes the template summary from the category catalog, then best-effort deletes its Storage document and preview. Generic template deletes fan out across every category catalog where the copied summary exists and clean up the shared Storage payload once. Platform delete is not exposed through owner Assets. Missing Storage objects are treated as an expected cleanup no-op; other Storage cleanup failures log the stable `creative_editor_template_storage_cleanup_failed` diagnostic with bounded path, template, product, source, asset-type, business-category, origin, and cleanup-target metadata.
+Removes the template summary transactionally, then best-effort deletes every removed mirror's owned Storage document and preview. Generic template deletes fan out atomically only across catalogs that actually contain the summary, avoiding no-op writes. Ambiguous acknowledgements are probed before cleanup. Platform delete is not exposed through owner Assets. Missing Storage objects are treated as an expected cleanup no-op; other Storage cleanup failures log the stable `creative_editor_template_storage_cleanup_failed` diagnostic with bounded path, template, product, source, asset-type, business-category, origin, and cleanup-target metadata.
 
 ### `saveCreativeEditorTemplate`
 
@@ -151,7 +154,7 @@ Body:
 - `thumbnailDataUrl` optional; when present and bounded, it is stored as a private Storage preview object, never in Firestore metadata
 - `scope` required
 
-Creates or replaces a user template. The DAL writes the full document JSON to Storage, writes an optional Storage preview when provided, then updates the bounded Firestore index doc.
+Creates or replaces a user template. The DAL uploads attempt-unique document/preview paths, then transactionally updates the bounded Firestore index doc. The requested upsert is retained even when the index is already at its cap; replaced and evicted objects are cleaned only after commit and only when no committed summary still references them.
 
 ### `getCreativeEditorTemplate`
 
@@ -159,14 +162,14 @@ Returns metadata summary and full `CreativeEditorDocument`. `templateType=platfo
 
 ### `deleteCreativeEditorTemplate`
 
-Deletes the current store's matching index entry, then cleans up Storage document/preview objects. The match uses template id, `productId`, `sourceSurface`, and optional `assetTypeId`; metadata removal happens before best-effort Storage cleanup so a failed write cannot leave a broken visible template. Missing Storage objects are treated as an expected cleanup no-op; other cleanup failures log `creative_editor_template_storage_cleanup_failed` with bounded context and do not restore deleted metadata. Platform templates cannot be deleted from the owner DAL.
+Transactionally deletes the current store's matching index entry, then cleans up Storage document/preview objects after acknowledgement or an authoritative absence probe. The match uses template id, `productId`, `sourceSurface`, and optional `assetTypeId`; metadata removal happens before best-effort Storage cleanup so a failed write cannot leave a broken visible template. Missing Storage objects are treated as an expected cleanup no-op; other cleanup failures log `creative_editor_template_storage_cleanup_failed` with bounded context and do not restore deleted metadata. Platform templates cannot be deleted from the owner DAL.
 
 ## Security
 
 - Tenant/store scope is derived from the authenticated session and current store context.
 - Firestore rules restrict store template indexes to the matching `{tenantId, storeId}` path.
 - Storage rules restrict user document/preview files to the matching `{tenantId, storeId}` path.
-- Logged-in user metadata is stored in the template/index documents through `requestBodyComposer`.
+- Logged-in user metadata is composed once outside transaction retries through `composeRequestBody`; creation metadata is preserved on updates.
 - Inputs are validated with Zod before Firestore/Storage access.
 - Template IDs and path parts are sanitized.
 - Owner can only list/read/delete templates in their own `{tenant, store}` scope.
@@ -199,4 +202,5 @@ The flow is enabled by feature flags. Turning off `ENABLE_PRINTABLE_ASSET_USER_T
 - If save fails, the editor stays open and shows a message.
 - If a saved template document is missing, the owner sees a failure message; generated templates still work.
 - If Storage cleanup fails after a successful template metadata delete, the delete remains successful and the cleanup failure is logged with bounded diagnostics for operational follow-up.
+- If a Firestore save/delete acknowledgement is ambiguous, the DAL performs one authoritative metadata probe. It deletes attempt-owned objects only when absence is proven and retains uncertain objects if the probe itself fails.
 - Template previews are stored in Storage only when the editor provides a bounded preview data URL; no preview base64 is written into Firestore metadata.

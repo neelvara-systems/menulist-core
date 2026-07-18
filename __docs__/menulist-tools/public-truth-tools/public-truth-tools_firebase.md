@@ -1,7 +1,7 @@
 # Public Truth Tools - Firebase Cost Tracking
 
 **Status:** Active family; sixteen V0 tools, five public asset makers, a public shareable report layer, and eighteen V1 owner readiness modules implemented
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
@@ -24,7 +24,13 @@ July 5 public URL parse diagnostics note: malformed owner-entered public/custome
 
 July 5 owner readiness menu URL diagnostics note: failed owner menu URL generation now logs bounded `public_truth_owner_menu_url_generation_failed` diagnostics and keeps the existing `menuUrl` omission fallback. Diagnostics are runtime observability only and include domain/project shape metadata; they do not add Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, external URL fetches, DNS lookups, provider calls, report storage, or owner-visible tasks.
 
-| Resource | Current cost |
+July 16 hardening note: shared URL/phone validation, report summary consistency, derived setup jobs, internal-link guards, and the static unsigned-report notice are browser-local and add zero Firebase operations. Report Lead Ops performs one current-user authorization read plus a bounded report-lead enquiry query and zero writes; when the query cap is reached, the response visibly marks the result incomplete. Production rate-limit-provider failure blocks the read instead of bypassing it.
+
+July 17 scale note: Report Lead Ops now filters `sourceKind = shareable_tool_report` in Firestore and orders by `createdOn DESC` through one scoped composite. The route keeps the same manual-refresh and 120-row ceiling but no longer reads unrelated public-contact enquiries into memory. The public tools, hash reports, consented contact write, and zero-report-storage boundary are unchanged.
+
+Public Truth Monitor manual refresh still reads the current store, project summary, optional selected project, subscription when needed, and current saved summary, then writes one capped summary document. The current-summary read and write now occur in one Firestore transaction so concurrent refreshes cannot overwrite each other's history. Firestore may retry a contended transaction; history remains capped at six entries. This is Next.js server logic and does not change Firestore rules, indexes, Storage, or Cloud Functions.
+
+| Resource | Current V0 public report/asset cost |
 | --- | --- |
 | Firestore reads | 0 |
 | Firestore writes | 0 during check/report; 1 existing contact enquiry write per accepted optional follow-up |
@@ -35,7 +41,7 @@ July 5 owner readiness menu URL diagnostics note: failed owner menu URL generati
 | Google/Maps/Holiday API calls | 0 |
 | Image uploads/analysis calls | 0 |
 
-Estimated current monthly cost: `0`.
+Estimated V0 report/asset execution cost: `0`, excluding the one existing contact enquiry write when a visitor explicitly submits follow-up. V1 owner readiness reuses the documented owner context/project reads. V2 manual saved history uses the separate bounded monitor read/write shape documented below and in `../public-truth-monitor-addon/`.
 
 ---
 
@@ -45,7 +51,7 @@ Estimated current monthly cost: `0`.
 | --- | --- | --- | --- |
 | V0 public free tool | Public acquisition check, basic report, export, and optional handoff | Prefer static/browser-local behavior with no provider calls; consented handoff may reuse an existing bounded contact/setup flow | Do not store leads unless there is explicit consent and an approved capped contact/setup flow |
 | V1 logged-in owner check | Included owner check from current MenuList truth | Current V1 readiness modules reuse owner store context, project summary read, mobile project cache, and at most one selected/default project read; writes nothing | Store at most latest/capped status only if a future Business Health/Public Discovery persistence need is approved |
-| V2 paid add-on behavior | Saved history, monthly/partner text report, later scheduler/multi-location when explicitly enabled | Paid entitlement covers current Firestore reads/writes; scheduler/external adapter/provider cost remains zero while off | Current capped history lives in `platformSummary/publicTruthMonitor_{storeId}` |
+| V2 paid add-on behavior | Manual saved history and text report now; later scheduler/multi-location only when explicitly enabled | Paid entitlement covers current Firestore reads/writes; atomic refresh may retry under contention; scheduler/external adapter/provider cost remains zero while off | Current capped history lives in `platformSummary/publicTruthMonitor_{storeId}` |
 
 Do not charge for a better one-time check. Paid value must come from recurrence, saved history, multi-location reporting, agency/client export, partner/reseller reporting, or owner-approved repair work.
 

@@ -30,7 +30,7 @@ This is an internal response target, not a customer SLA or legal notification pr
 | Feature flags | Bound compiled capabilities | Most source flags require a deployment; they are not immediate remote switches unless the runtime explicitly reads remote state |
 | Vercel rollback | Restores a previous application deployment | It does not roll back Firebase rules, indexes, Functions, provider state, or Firestore data |
 | Scoped Firebase deploy | Restores selected rules, indexes, or Function targets from reviewed source | It requires target access and must not be widened into a broad deploy without an incident record and explicit approval |
-| Public cache invalidation / force republish | Refreshes already-correct canonical public truth | It must not be used to publish unverified or corrupted source data |
+| Public cache invalidation / force republish | Refreshes already-correct canonical public truth; recovery is complete only after cache acknowledgement and canonical public-host verification | It must not be used to publish unverified or corrupted source data; a temporary-unavailable refresh result remains unresolved |
 
 Do not mute alerts during active P0 or P1 response. Alert mute is for bounded controlled-deploy noise only.
 

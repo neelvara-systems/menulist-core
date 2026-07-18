@@ -18,7 +18,7 @@ import { Popover, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useSession } from 'next-auth/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { MdDarkMode, MdLightMode, MdOutlineSettingsSuggest } from 'react-icons/md';
 import { TbPhoneCalling } from 'react-icons/tb';
 
@@ -29,6 +29,8 @@ interface SidebarComponentProps {
 const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const tNav = useTranslations('Navigation');
     const tSupport = useTranslations('SupportMenu');
+    const tAppSettings = useTranslations('AppSettings');
+    const tSettings = useTranslations('Settings');
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
     const router = useRouter()
@@ -43,7 +45,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
     const pathname = usePathname()
 
     const ACTION_MENUS: NavItemType[] = [
-        { label: 'App Appearance', route: 'dashboard-settings', icon: <MdOutlineSettingsSuggest /> },
+        { label: 'App settings', route: 'dashboard-settings', icon: <MdOutlineSettingsSuggest /> },
         { label: 'Dark Mode', route: 'darkMode', icon: <MdDarkMode /> },
         { label: 'Support', route: 'dashboard-help', icon: <TbPhoneCalling /> },
     ]
@@ -198,6 +200,15 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
         }
     }
 
+    const getActionLabel = useCallback((navItem: NavItemType) => {
+        if (navItem.route === 'dashboard-settings') return tAppSettings('title');
+        if (navItem.route === 'darkMode') {
+            return isDarkMode ? tSettings('lightMode') : tSettings('darkMode');
+        }
+        if (navItem.route === 'dashboard-help') return tSupport('title');
+        return tNav(navItem.label as any);
+    }, [isDarkMode, tAppSettings, tNav, tSettings, tSupport]);
+
     const SupportPopoverContent = () => (
         <div style={{ width: 280, padding: '8px 0' }}>
             <div style={{
@@ -290,7 +301,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
             const isSupportMenu = nav.route === 'dashboard-help';
             const item: DashboardSidebarShellItem = {
                 key: nav.route,
-                label: tNav(nav.label as any),
+                label: getActionLabel(nav),
                 icon: nav.route === 'darkMode' ? (isDarkMode ? <MdLightMode /> : <MdDarkMode />) : nav.icon,
                 active: nav.route === activeNav.route,
                 iconActive: nav.route === 'darkMode' && isDarkMode,
@@ -313,7 +324,7 @@ const SidebarComponent = ({ onExpandedChange }: SidebarComponentProps) => {
 
             return item;
         })
-    ), [activeNav.route, isDarkMode, supportPopoverOpen, tNav]);
+    ), [activeNav.route, getActionLabel, isDarkMode, supportPopoverOpen]);
 
     return (
         <ClientOnlyProvider>

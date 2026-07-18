@@ -64,6 +64,7 @@ import {
 } from "@lib/pwa/customerAppAssets";
 import { buildMobileAppSchema } from "@lib/pwa/schemaJsonLd";
 import { normalizePublicOutletSlug, normalizePublicProjectSlug } from "@lib/publicRouting/pathSegments";
+import { projectPublicClientStore } from "@lib/publicTruth/clientStoreProjection";
 import { DEFAULT_PUBLIC_PREVIEW_IMAGE } from "@lib/seo/publicMetadata";
 import { buildPublicTruthRobots, evaluatePublicTruthIndexability } from "@lib/seo/publicTruthIndexing";
 import {
@@ -156,6 +157,7 @@ const serializeClientValue = (value: any): any => {
 type PublicMenuResolutionFailureType =
     | 'canonical_url_parse_failed'
     | 'linked_master_missing'
+    | 'linked_master_scope_invalid'
     | 'linked_master_unresolved'
     | 'linked_resolution_failed'
     | 'metadata_outlet_lookup_failed'
@@ -349,7 +351,12 @@ async function getProjectBySlugOrDefault(
     // Use projectsSummary — has slug data + is 1 read instead of N
     // Filter out special menu projects — they are resolved separately via resolveSpecialMenuOverride
     projects = Object.entries(summaryProjects)
-        .filter(([, data]) => isActiveRegularSummaryProject(data))
+        .filter(([projectId, data]) => {
+            const projectScope = normalizePublicMenuProjectDocumentScope(projectId);
+            return isActiveRegularSummaryProject(data)
+                && projectScope?.tenantDocumentId === String(tenantId)
+                && projectScope.storeDocumentId === String(storeId);
+        })
         .map(([projectId, data]) => ({
             ...withAuthoritativeSummaryProjectId(projectId, data),
             id: projectId,
@@ -391,6 +398,13 @@ async function getProjectBySlugOrDefault(
                     || (oldSlugMatch.name ? normalizePublicProjectSlug(slugify(oldSlugMatch.name)) : null);
             }
         }
+
+        // A supplied customer path may only resolve to the project it names.
+        // The sole compatibility exception is the literal `/menu` alias below;
+        // an unknown slug must never silently display a different default menu.
+        if (!targetProject && normalizedSlug !== 'menu') {
+            return null;
+        }
     }
 
     // G-05 / R5 Layer 2 detection (§9 + D-14 PUBLIC-ROUTING-DOCTRINE):
@@ -406,8 +420,9 @@ async function getProjectBySlugOrDefault(
         targetProject = projects.find((p) => p.isDefault === true) || null;
     }
 
-    if (!targetProject && projects.length > 0) {
-        // Still no match - use first project
+    if (!targetProject && !slug && projects.length > 0) {
+        // Compatibility fallback for the no-slug route when OBP is disabled.
+        // `/menu` remains default-only and unknown supplied slugs fail closed.
         targetProject = projects[0];
     }
 
@@ -424,10 +439,29 @@ async function getProjectBySlugOrDefault(
     // This ensures customers see the complete menu with inherited items + local overrides
     if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && projectData.masterProjectId) {
         try {
+            const outletProjectId = String(targetProject.projectId || targetProject.id || '');
+            const outletProjectScope = normalizePublicMenuProjectDocumentScope(outletProjectId);
+            const masterProjectScope = normalizePublicMenuProjectDocumentScope(projectData.masterProjectId);
+            if (
+                !outletProjectScope
+                || !masterProjectScope
+                || outletProjectScope.tenantDocumentId !== masterProjectScope.tenantDocumentId
+                || outletProjectScope.storeDocumentId === masterProjectScope.storeDocumentId
+            ) {
+                logPublicMenuResolutionFailure('linked_master_scope_invalid', {
+                    projectId: outletProjectId,
+                    masterProjectId: projectData.masterProjectId,
+                });
+                return null;
+            }
             const masterProjectData = await getProjectData(projectData.masterProjectId);
-            if (!masterProjectData?.files?.length) {
+            if (
+                !masterProjectData?.files?.length
+                || masterProjectData.active === false
+                || masterProjectData.deleted === true
+            ) {
                 logPublicMenuResolutionFailure('linked_master_missing', {
-                    projectId: targetProject.projectId || targetProject.id,
+                    projectId: outletProjectId,
                     masterProjectId: projectData.masterProjectId,
                 });
                 return null;
@@ -1156,8 +1190,6 @@ export async function generateViewport(): Promise<Viewport> {
         themeColor: storeData?.publicPresence?.accentColor || APP_THEME_COLOR,
         width: 'device-width',
         initialScale: 1,
-        maximumScale: 1,
-        userScalable: false,
         viewportFit: 'cover',
     };
 }
@@ -1196,7 +1228,7 @@ function generateSchemaOrgJsonLd(
         phone: storeData?.phone,
     });
     const priceRange = buildSchemaPriceRange(storeData?.priceRange);
-    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus);
+    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus, storeData?.timeZone);
     const effectiveBusinessType = resolvePublicBusinessType(
         storeData?.businessType,
         storeData?.businessIndustry,
@@ -2023,10 +2055,13 @@ async function MenuContent({
     // descriptions from other owner-enabled menu languages.
     const initialProjectLanguage = resolveProjectPublicLanguage(searchReadyProjectData, storeDetails, requestedLanguage);
     const projectData = optimizeLanguagePayload(searchReadyProjectData, initialProjectLanguage);
-    const clientStoreDetails = serializeClientValue({
+    const clientStoreDetails = serializeClientValue(projectPublicClientStore({
         ...storeDetails,
         ...(effectiveBusinessType && { businessType: effectiveBusinessType }),
-    });
+    }));
+    if (!clientStoreDetails) {
+        notFound();
+    }
 
     const projectId = projectMetadata.projectId || projectMetadata.id;
 

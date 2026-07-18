@@ -11,4 +11,5 @@ Asset Library covers campaign assets, source files, generated variants, usage ri
 | [asset-library_helpdoc.md](./asset-library_helpdoc.md) | Customers | How to manage campaign assets. |
 | [asset-library_firebase.md](./asset-library_firebase.md) | Engineering, finance | Storage and Firestore cost posture. |
 | [asset-library_mobile-support.md](./asset-library_mobile-support.md) | Product, mobile | Mobile asset review requirements. |
-
+| [asset-library_test-cases.md](./asset-library_test-cases.md) | Engineering, QA | Runtime, tenant, persistence, and download boundary cases. |
+| [asset-library_validation.md](./asset-library_validation.md) | Engineering, release | Current implementation evidence and residual risks. |

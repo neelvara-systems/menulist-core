@@ -1,6 +1,6 @@
 import { getProjectManagedLanguages } from '@lib/localization/projectContent';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
-import { getLocalizedText, getPrimaryLocalizedLanguage, type LocalizedText } from '@lib/localization/text';
+import { type LocalizedText } from '@lib/localization/text';
 import { clampValue, getBatchTranslations, mergeLocalizedField, resolveLanguage } from '@services/ai/businessCopy/localizeBusinessCopyResult';
 import type { LanguageType } from '../../../components/templates/main-app/projects/types/common.types';
 
@@ -35,7 +35,7 @@ const FIELD_CONFIGS: ProjectPublicFieldConfig[] = [
     },
 ];
 
-const getExactLocalizedValue = (value: unknown, languageCode: string): string => {
+export const getExactLocalizedValue = (value: unknown, languageCode: string): string => {
     if (typeof value === 'string') {
         return languageCode === CANONICAL_SOURCE_LANGUAGE ? value.trim() : '';
     }
@@ -85,12 +85,7 @@ export default async function translateProjectPublicContent({
         FIELD_CONFIGS
             .map((field) => {
                 const currentValue = field.readValue(projectDetails);
-                const sourceValue = getLocalizedText(
-                    currentValue as any,
-                    sourceLanguage,
-                    getPrimaryLocalizedLanguage(currentValue as any, sourceLanguage),
-                    '',
-                );
+                const sourceValue = getExactLocalizedValue(currentValue, sourceLanguage);
                 return [field.key, clampValue(sourceValue, field.maxLength)];
             })
             .filter(([, value]) => Boolean(value)),

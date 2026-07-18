@@ -27,6 +27,7 @@ export interface VisualProfileCompletionTask {
 
 export interface VisualProfileCompletionResult {
     completedCount: number;
+    coverage: 'business-only' | 'full';
     headline: string;
     helperText: string;
     missingCount: number;
@@ -71,7 +72,11 @@ export function buildVisualProfileCompletion(input: VisualProfileCompletionInput
         input.businessCategory || undefined,
     );
     const requiredPhotoCount = REQUIRED_GALLERY_PHOTOS_BY_CATEGORY[category] || REQUIRED_GALLERY_PHOTOS_BY_CATEGORY.specialty;
-    const photoCount = (input.photos || []).filter(hasValue).length;
+    const photoCount = new Set(
+        (input.photos || [])
+            .filter(hasValue)
+            .map((photo) => photo!.trim()),
+    ).size;
     const hasBusinessCover = hasValue(input.businessCover);
     const tasks: VisualProfileCompletionTask[] = [
         {
@@ -92,7 +97,8 @@ export function buildVisualProfileCompletion(input: VisualProfileCompletionInput
         },
     ];
 
-    if (Array.isArray(input.projects)) {
+    const hasProjectCoverage = Array.isArray(input.projects);
+    if (hasProjectCoverage) {
         const hasOfferingPhoto = input.projects.some((project) => (
             project?.active !== false
             && project?.deleted !== true
@@ -116,11 +122,16 @@ export function buildVisualProfileCompletion(input: VisualProfileCompletionInput
 
     return {
         completedCount,
+        coverage: hasProjectCoverage ? 'full' : 'business-only',
         headline: status === 'complete'
-            ? 'Visual profile is complete'
+            ? hasProjectCoverage
+                ? 'Visual profile is complete'
+                : 'Business photos are ready'
             : `${missingCount} visual ${missingCount === 1 ? 'detail' : 'details'} missing`,
         helperText: status === 'complete'
-            ? 'Customers can see the key photos for this business.'
+            ? hasProjectCoverage
+                ? 'Customers can see the key photos for this business.'
+                : 'Menu or service page photos are checked when that menu data is available.'
             : 'Add the missing photos from the controls below.',
         missingCount,
         photoCount,

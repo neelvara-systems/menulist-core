@@ -28,6 +28,7 @@ export const ANSWERLATTICE_RESOURCE_GROUPS: AnswerlatticeResourceGroup[] = [
         title: 'Plan the rollout',
         description: 'Check install, hosted help, runtime safety, and cost boundaries before implementation.',
         items: [
+            { label: 'Founder support launch kit', href: '/resources/founder-launch-kit', description: 'Prepare sources, test ten priority questions, verify the widget, and measure explicit resolution.', eventName: 'resource_founder_launch_kit_clicked' },
             { label: 'Pre-Onboarding Kit', href: '/pre-onboarding', description: 'Use your AI coding agent to prepare AnswerLattice-ready source inputs before setup.', eventName: 'resource_pre_onboarding_clicked' },
             { label: 'Pre-Onboarding Guide', href: '/pre-onboarding/guide', description: 'Follow the owner and agent runbook before uploading prepared sources.', eventName: 'resource_pre_onboarding_guide_clicked' },
             { label: 'Starter surface templates', href: '/resources/launch-support-checklist', description: 'Use the launch support checklist to prepare billing, onboarding, settings, release, integration, and error-support pages.', eventName: 'resource_launch_checklist_clicked' },

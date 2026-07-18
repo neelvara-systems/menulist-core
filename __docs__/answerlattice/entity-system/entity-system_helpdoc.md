@@ -1,7 +1,7 @@
 # Entity System — Help Documentation
 
 > **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-18
 > **Audience:** Answerlattice customers (SaaS founders/support teams)
 > **Language Governance:** Zero jargon, step-by-step instructions
 
@@ -11,17 +11,17 @@
 
 Entities are the product concepts that your knowledge base covers. When you write an article about "How to generate an API key," the entity is **API Keys** — the product concept the article explains.
 
-Answerlattice automatically detects entities in your articles and uses them to find the right documentation when users ask questions.
+When ontology is enabled, Answerlattice runs a best-effort extraction after article save. It links known entities and sends new product concepts to review.
 
 ---
 
 ## How Entities Work
 
 1. You write a knowledge base article
-2. Answerlattice detects the product concepts (entities) in your article
+2. Answerlattice attempts to match the product concepts (entities) in your article
 3. When a user asks a question, Answerlattice identifies which product concept they're asking about
 4. Answerlattice retrieves articles that cover that concept
-5. The user gets a relevant, accurate answer
+5. The user gets the applicable governed answer or a bounded fallback
 
 **Example:**
 - Your article: "Webhook Retry Policy"
@@ -83,7 +83,7 @@ Over time, similar entities may appear. You can merge them.
 1. Select the two entities you want to merge
 2. Choose which entity name to keep
 3. Click **Merge**
-4. All article references are automatically transferred
+4. The governed merge transfers bounded article, approved-answer, relationship, and search-index references together
 5. The merged entity's name becomes an alias
 
 ### Deprecating an Entity
@@ -113,7 +113,7 @@ This helps you prioritize which articles to write next.
 ## Frequently Asked Questions
 
 **Do I need to tag entities manually?**
-No. Answerlattice detects entities automatically when you create or update articles. You only need to review suggestions for new concepts.
+Usually not. With ontology enabled, post-save extraction attempts to match active known entities. Review new candidates and check unmapped articles when an extraction request fails.
 
 **What if Answerlattice suggests a wrong entity?**
 Reject it. You can also edit entity suggestions before approving them.
@@ -122,7 +122,7 @@ Reject it. You can also edit entity suggestions before approving them.
 Yes. In the entity management section, click "Create Entity" and fill in the name, type, and description.
 
 **How many entities should I have?**
-A typical knowledge base with 100 articles has 40-70 entities. If you have significantly more, some may need to be merged.
+Keep one governed entity per real product concept. Merge duplicates when two entities represent the same feature, plan, role, workflow, integration, state, or error.
 
 **What happens when I rename an entity?**
-The old name automatically becomes an alias. All existing references continue to work.
+Existing references keep the same entity ID. Add the old name as an alias when users may continue to search for it.

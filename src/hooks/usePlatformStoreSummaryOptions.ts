@@ -2,6 +2,8 @@
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { assertCurrentPlatformAccess } from '@lib/auth/currentPlatformAccessClient';
+import { logOpsFailure } from '@lib/ops/opsDiagnostics';
 import { buildPlatformStoreSummaryOptions } from '@lib/platform/storeSummaryOptions';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -20,6 +22,7 @@ export function usePlatformStoreSummaryOptions(enabled = true) {
         setPlatformStoreSummaryOptions,
     } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const [selectedStoreId, setSelectedStoreId] = useState<string>();
+    const [loadError, setLoadError] = useState(false);
 
     const loadStores = useCallback(async (force = false) => {
         if (!enabled) return;
@@ -27,7 +30,9 @@ export function usePlatformStoreSummaryOptions(enabled = true) {
         if (!force && platformStoreSummaryLoading) return;
 
         setPlatformStoreSummaryLoading(true);
+        setLoadError(false);
         try {
+            await assertCurrentPlatformAccess();
             const summarySnap = await getDoc(doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary'));
             const summary = summarySnap.exists() ? summarySnap.data() : null;
             const nextStores = buildPlatformStoreSummaryOptions(summary);
@@ -36,6 +41,11 @@ export function usePlatformStoreSummaryOptions(enabled = true) {
             setSelectedStoreId((current) => {
                 if (current && nextStores.some((store) => store.sId === current)) return current;
                 return nextStores[0]?.sId;
+            });
+        } catch (error) {
+            setLoadError(true);
+            logOpsFailure('platform_store_summary_options_load_failed', error, {
+                force,
             });
         } finally {
             setPlatformStoreSummaryLoading(false);
@@ -70,6 +80,7 @@ export function usePlatformStoreSummaryOptions(enabled = true) {
 
     return {
         loading: platformStoreSummaryLoading,
+        error: loadError,
         loadStores,
         selectedStore,
         selectedStoreId,

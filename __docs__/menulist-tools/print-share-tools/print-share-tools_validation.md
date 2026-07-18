@@ -1,6 +1,6 @@
 # Print & Share Tools - Validation
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -29,7 +29,7 @@ npm run typecheck
 - no file upload is exposed in V0
 - creative-editor document contract is used without exposing the full editor
 - reports preserve evidence text
-- customer-link validation requires public HTTPS and rejects local, private, insecure, raw-IP, and credentialed QR targets
+- customer-link validation reuses the family public HTTPS helper and rejects local, private, insecure, raw IPv4/IPv6, IPv4-mapped IPv6, empty-label, and credentialed QR targets
 - shareable report links use the existing hash-based report viewer
 - generated reports expose a visible readonly public report URL for manual copy/open fallback
 - Tools Hub, discovery policy, sitemap, LLM files, and locales include every route

@@ -1,17 +1,17 @@
 # Menu Trust Signals — Implementation Plan
 
-> **Version:** 2.0
-> **Last Updated:** March 17, 2026
+> **Version:** 2.1
+> **Last Updated:** July 16, 2026
 > **Audience:** Developers
 
 ---
 
 ## 1. Architecture Overview
 
-Menu Trust Signals is a **pure SSR UI component** on the customer-facing client page. It displays 4 factual signals (location, operational status, offering label, freshness date) using data already loaded by the SSR page. Zero new reads, zero new API routes, zero client JS.
+Menu Trust Signals is a pure render component in the existing customer-menu client bundle. It displays four factual signals using the store/project payload already loaded by the public route. It adds zero reads and zero API routes.
 
 ```
-Client Menu Page (page.tsx — SSR)
+Public route payload → customer menu renderer
   ↓
 storeDetails (area, city, workingHours, timeZone, businessType)
 + rawProjectData.lastPublishedAt
@@ -22,7 +22,7 @@ TrustSignals.tsx
   ├── getOfferingLabels(businessType, businessCategory).offeringTitle
   └── getFreshnessText(lastPublishedAt)
   ↓
-Rendered above ClientMenuRenderer
+Rendered in the bottom menu metadata section
 ```
 
 ---
@@ -31,10 +31,10 @@ Rendered above ClientMenuRenderer
 
 ```
 src/components/atoms/
-└── TrustSignals.tsx             # ~157 lines — Business truth header (SSR, zero JS)
+└── TrustSignals.tsx             # Factual public metadata + freshness boundary
 
-src/app/_client/[[...slug]]/
-└── page.tsx                     # Modified — embed TrustSignals with all props
+src/components/templates/main-app/projects/b2cView/menuPage/
+└── menuPageNew.tsx              # Current customer-menu placement
 
 src/config/features.ts           # Modified — ENABLE_MENU_TRUST_SIGNALS flag
 ```
@@ -80,9 +80,9 @@ const offeringLabel = getOfferingLabels(businessType, businessCategory).offering
 ### 3.4 Freshness (Exact Dates)
 
 ```typescript
-function getFreshnessText(lastPublishedAt: any): string | null {
+function getTrustSignalFreshnessText(lastPublishedAt: any): string | null {
   const date = normalizeDate(lastPublishedAt);
-  if (!date) return null;
+  if (!date || isMateriallyFuture(date, now)) return null;
 
   const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
 
@@ -156,9 +156,9 @@ Styling: 11px, slate-500 (#64748b), system-ui font, flexbox centered, no icons, 
 ## 7. Security
 
 - **No auth required** — customer-facing public page
-- **No new reads** — uses data already fetched by SSR page
+- **No new reads** — uses data already supplied to the customer renderer
 - **No PII** — only displays area, city, hours status, business type, publish date
-- **No client JS** — pure SSR render
+- **No new network work** — the existing client bundle performs pure local computation
 
 ---
 
@@ -191,4 +191,4 @@ Styling: 11px, slate-500 (#64748b), system-ui font, flexbox centered, no icons, 
 
 **Document Signature:** Technical Implementation Plan v2.0
 **Created:** March 15, 2026
-**Updated:** March 17, 2026
+**Updated:** July 16, 2026

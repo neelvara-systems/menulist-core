@@ -4,7 +4,7 @@
  * Public Menu Entry — Upload Client Component
  * 
  * Handles image upload, menu-link import, API call, and redirect to preview.
- * Mobile-first design with camera capture support.
+ * Mobile-first design with the device's image picker (camera or saved photo).
  * 
  * @see __docs__/public-menu-entry/public-menu-entry_impl.md §6.1
  */
@@ -12,11 +12,12 @@
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { signIn, useSession } from 'next-auth/react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { LuAlertCircle, LuCamera, LuCheck, LuLink, LuLoader, LuUpload } from 'react-icons/lu';
 import WebsiteHeadline from '@/components/website/shared/WebsiteHeadline';
 import AnimateOnScroll, { AnimateStaggerChild } from '@/components/website/shared/AnimateOnScroll';
+import { useWebsitePath } from '@/components/website/shared/WebsiteProductPathProvider';
 import PhoneOtpAuthPanel from '@/components/auth/PhoneOtpAuthPanel';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
@@ -81,7 +82,6 @@ export default function CreateMenuClient({
     const t = useTranslations('Website');
     const router = useRouter();
     const { status: sessionStatus, update: updateSession } = useSession();
-    const fileInputRef = useRef<HTMLInputElement>(null);
     const [state, setState] = useState<UploadState>('idle');
     const [error, setError] = useState<string | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
@@ -90,7 +90,8 @@ export default function CreateMenuClient({
     const [permissionConfirmed, setPermissionConfirmed] = useState(false);
     const isAuthenticated = sessionStatus === 'authenticated';
     const isSessionLoading = sessionStatus === 'loading';
-    const createMenuPath = buildCreateMenuPath(growthAcquisition);
+    const createMenuPath = useWebsitePath(buildCreateMenuPath(growthAcquisition));
+    const createMenuPreviewPath = useWebsitePath('/create-menu/preview');
     const signInPath = `/signin?callbackUrl=${encodeURIComponent(createMenuPath)}`;
 
     const redirectToSignIn = useCallback(() => {
@@ -191,13 +192,13 @@ export default function CreateMenuClient({
 
             // Step 3: Redirect to preview page
             setState('success');
-            router.push(`/create-menu/preview/${payload.draftId}`);
+            router.push(`${createMenuPreviewPath}/${payload.draftId}`);
 
         } catch (err) {
             setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [growthAcquisition, isAuthenticated, redirectToSignIn, router, t]);
+    }, [createMenuPreviewPath, growthAcquisition, isAuthenticated, redirectToSignIn, router, t]);
 
     const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -213,14 +214,6 @@ export default function CreateMenuClient({
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
     }, []);
-
-    const triggerFileInput = () => {
-        if (!isAuthenticated) {
-            redirectToSignIn();
-            return;
-        }
-        fileInputRef.current?.click();
-    };
 
     const selectInputMode = (mode: InputMode) => {
         if (isProcessing) return;
@@ -297,54 +290,51 @@ export default function CreateMenuClient({
             }
 
             setState('success');
-            router.push(`/create-menu/preview/${payload.draftId}`);
+            router.push(`${createMenuPreviewPath}/${payload.draftId}`);
         } catch {
             setError(t('CreateMenu.genericError'));
             setState('error');
         }
-    }, [growthAcquisition, isAuthenticated, menuLink, permissionConfirmed, redirectToSignIn, router, t]);
+    }, [createMenuPreviewPath, growthAcquisition, isAuthenticated, menuLink, permissionConfirmed, redirectToSignIn, router, t]);
 
     const isProcessing = state === 'optimizing' || state === 'uploading' || state === 'processing';
+    const processSteps = [
+        { step: '1', title: t('CreateMenu.step0Title'), desc: t('CreateMenu.step0Desc') },
+        { step: '2', title: t('CreateMenu.step1Title'), desc: t('CreateMenu.step1Desc') },
+        { step: '3', title: t('CreateMenu.step2Title'), desc: t('CreateMenu.step2Desc') },
+    ];
+    const proofItems = [
+        t('CreateMenu.proof0'),
+        t('CreateMenu.proof1'),
+        t('CreateMenu.proof2'),
+    ];
 
     return (
-        <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '40px 20px 60px',
-            minHeight: '70vh',
-            maxWidth: '560px',
-            margin: '0 auto',
-        }}>
-            {/* Hero */}
-            <AnimateOnScroll>
-                <WebsiteHeadline
-                    as="h1"
-                    size="compact"
-                    text={t('CreateMenu.title')}
-                    highlightedText={t('CreateMenu.titleHighlight')}
-                    style={{
-                        textAlign: 'center',
-                        marginBottom: '12px',
-                        lineHeight: 1.2,
-                    }}
-                />
-            </AnimateOnScroll>
-            <AnimateOnScroll delay={0.05}>
-                <p style={{
-                    fontSize: '16px',
-                    color: 'var(--ws-text-secondary)',
-                    textAlign: 'center',
-                    marginBottom: '32px',
-                    maxWidth: '420px',
-                    lineHeight: 1.5,
-                }}>
-                    {t('CreateMenu.subtitle')}
-                </p>
-            </AnimateOnScroll>
+        <main className="ws-create-menu-page">
+            <div className="ws-create-menu-layout">
+                <section className="ws-create-menu-copy">
+                    <AnimateOnScroll preset="hero">
+                        <WebsiteHeadline
+                            as="h1"
+                            className="ws-create-menu-title"
+                            size="compact"
+                            text={t('CreateMenu.title')}
+                            highlightedText={t('CreateMenu.titleHighlight')}
+                        />
+                    </AnimateOnScroll>
+                    <AnimateOnScroll delay={0.05}>
+                        <p className="ws-create-menu-subtitle">
+                            {t('CreateMenu.subtitle')}
+                        </p>
+                    </AnimateOnScroll>
+                </section>
 
-            {!isAuthenticated ? (
-                <AnimateOnScroll delay={0.08}>
+                <section
+                    aria-label={isAuthenticated ? t('CreateMenu.inputModeLabel') : t('CreateMenu.authTitle')}
+                    className="ws-create-menu-action"
+                >
+                    {!isAuthenticated ? (
+                        <AnimateOnScroll delay={0.08} preset="card">
                     <div style={authGateStyle}>
                         <div style={{ textAlign: 'center', width: '100%' }}>
                             <h2 style={{ color: 'var(--ws-text-primary)', fontSize: '19px', fontWeight: 700, margin: '0 0 6px' }}>
@@ -353,27 +343,6 @@ export default function CreateMenuClient({
                             <p style={{ color: 'var(--ws-text-secondary)', fontSize: '14px', lineHeight: 1.45, margin: 0 }}>
                                 {t('CreateMenu.authHint')}
                             </p>
-                        </div>
-
-                        <div style={authStepListStyle} aria-label={t('CreateMenu.authStepsLabel')}>
-                            {[
-                                { step: '1', title: t('CreateMenu.authStep0Title'), desc: t('CreateMenu.authStep0Desc') },
-                                { step: '2', title: t('CreateMenu.authStep1Title'), desc: t('CreateMenu.authStep1Desc') },
-                                { step: '3', title: t('CreateMenu.authStep2Title'), desc: t('CreateMenu.authStep2Desc') },
-                            ].map((item) => (
-                                <div key={item.step} style={authStepStyle}>
-                                    <span style={authStepNumberStyle}>{item.step}</span>
-                                    <div>
-                                        <p style={authStepTitleStyle}>{item.title}</p>
-                                        <p style={authStepDescStyle}>{item.desc}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div style={authSupportedStyle}>
-                            <span style={authSupportedLabelStyle}>{t('CreateMenu.authSupportedLabel')}</span>
-                            <p style={authSupportedCopyStyle}>{t('CreateMenu.authSupportedInputs')}</p>
                         </div>
 
                         {isSessionLoading ? (
@@ -423,9 +392,9 @@ export default function CreateMenuClient({
                             </>
                         ) : null}
                     </div>
-                </AnimateOnScroll>
-            ) : (
-                <>
+                        </AnimateOnScroll>
+                    ) : (
+                        <>
                     {/* Input mode */}
                     <AnimateOnScroll delay={0.08}>
                         <div
@@ -487,20 +456,31 @@ export default function CreateMenuClient({
                     <AnimateOnScroll delay={0.1}>
                         {inputMode === 'photo' ? (
                             <div
-                                onClick={!isProcessing ? triggerFileInput : undefined}
+                                className="ws-create-menu-dropzone"
                                 onDrop={!isProcessing ? handleDrop : undefined}
                                 onDragOver={handleDragOver}
                                 style={dropZoneStyle({ error: Boolean(error), isProcessing, state })}
                             >
-                                {/* Hidden file input */}
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    capture="environment"
-                                    onChange={handleInputChange}
-                                    style={{ display: 'none' }}
-                                />
+                                {state === 'idle' ? (
+                                    <input
+                                        aria-label={t('CreateMenu.uploadTitle')}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        onClick={(event) => {
+                                            event.currentTarget.value = '';
+                                        }}
+                                        onChange={handleInputChange}
+                                        style={{
+                                            position: 'absolute',
+                                            inset: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            opacity: 0,
+                                            cursor: 'pointer',
+                                            zIndex: 2,
+                                        }}
+                                    />
+                                ) : null}
 
                                 {/* Preview image background */}
                                 {preview && (
@@ -629,88 +609,45 @@ export default function CreateMenuClient({
                             </form>
                         )}
                     </AnimateOnScroll>
-                </>
-            )}
+                        </>
+                    )}
+                </section>
 
-            {/* Value props */}
-            <AnimateOnScroll delay={0.15}>
-                <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px',
-                    marginTop: '28px',
-                    width: '100%',
-                }}>
-                    {[
-                        { icon: '✓', text: t('CreateMenu.proof0') },
-                        { icon: '✓', text: t('CreateMenu.proof1') },
-                        { icon: '✓', text: t('CreateMenu.proof2') },
-                    ].map((item, i) => (
-                        <AnimateStaggerChild key={item.text} index={i}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                fontSize: '14px',
-                                color: 'var(--ws-text-secondary)',
-                            }}>
-                                <span style={{ color: 'var(--ws-success)', fontWeight: 700, fontSize: '16px' }}>{item.icon}</span>
-                                {item.text}
-                            </div>
-                        </AnimateStaggerChild>
-                    ))}
-                </div>
-            </AnimateOnScroll>
+                <section className="ws-create-menu-context">
+                    <AnimateOnScroll className="ws-create-menu-process" delay={0.12}>
+                        <h2>{t('CreateMenu.howTitle')}</h2>
+                        <div className="ws-create-menu-process__steps">
+                            {processSteps.map((item, i) => (
+                                <AnimateStaggerChild key={item.step} index={i}>
+                                    <div className="ws-create-menu-process__step">
+                                        <span className="ws-create-menu-process__number">{item.step}</span>
+                                        <div>
+                                            <p className="ws-create-menu-process__title">{item.title}</p>
+                                            <p className="ws-create-menu-process__description">{item.desc}</p>
+                                        </div>
+                                    </div>
+                                </AnimateStaggerChild>
+                            ))}
+                        </div>
+                    </AnimateOnScroll>
 
-            {/* How it works */}
-            <AnimateOnScroll delay={0.2}>
-                <div style={{
-                    marginTop: '40px',
-                    width: '100%',
-                    padding: '24px',
-                    backgroundColor: 'var(--ws-bg-subtle)',
-                    borderRadius: 'var(--ws-radius-xl)',
-                }}>
-                    <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '16px' }}>
-                        {t('CreateMenu.howTitle')}
-                    </h2>
-                    {[
-                        { step: '1', title: t('CreateMenu.step0Title'), desc: t('CreateMenu.step0Desc') },
-                        { step: '2', title: t('CreateMenu.step1Title'), desc: t('CreateMenu.step1Desc') },
-                        { step: '3', title: t('CreateMenu.step2Title'), desc: t('CreateMenu.step2Desc') },
-                    ].map((item, i) => (
-                        <AnimateStaggerChild key={item.step} index={i}>
-                            <div style={{
-                                display: 'flex',
-                                gap: '14px',
-                                marginBottom: i < 2 ? '16px' : 0,
-                            }}>
-                                <div style={{
-                                    width: '28px',
-                                    height: '28px',
-                                    borderRadius: '50%',
-                                    backgroundColor: 'var(--ws-brand-secondary)',
-                                    color: '#fff',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '13px',
-                                    fontWeight: 700,
-                                    flexShrink: 0,
-                                }}>
-                                    {item.step}
+                    <AnimateOnScroll className="ws-create-menu-supported" delay={0.16}>
+                        <span>{t('CreateMenu.authSupportedLabel')}</span>
+                        <p>{t('CreateMenu.authSupportedInputs')}</p>
+                    </AnimateOnScroll>
+
+                    <AnimateOnScroll className="ws-create-menu-proof" delay={0.2}>
+                        {proofItems.map((item, i) => (
+                            <AnimateStaggerChild key={item} index={i}>
+                                <div className="ws-create-menu-proof__item">
+                                    <LuCheck aria-hidden="true" size={17} />
+                                    <span>{item}</span>
                                 </div>
-                                <div>
-                                    <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ws-text-primary)', marginBottom: '2px' }}>
-                                        {item.title}
-                                    </p>
-                                    <p style={{ fontSize: '13px', color: 'var(--ws-text-secondary)' }}>{item.desc}</p>
-                                </div>
-                            </div>
-                        </AnimateStaggerChild>
-                    ))}
-                </div>
-            </AnimateOnScroll>
+                            </AnimateStaggerChild>
+                        ))}
+                    </AnimateOnScroll>
+                </section>
+            </div>
 
             {/* Spin animation CSS */}
             <style>{`
@@ -719,7 +656,7 @@ export default function CreateMenuClient({
                     to { transform: rotate(360deg); }
                 }
             `}</style>
-        </div>
+        </main>
     );
 }
 
@@ -817,77 +754,6 @@ const authGateStyle: React.CSSProperties = {
     minHeight: '240px',
     padding: '28px 22px',
     width: '100%',
-};
-
-const authStepListStyle: React.CSSProperties = {
-    display: 'grid',
-    gap: '10px',
-    width: '100%',
-};
-
-const authStepStyle: React.CSSProperties = {
-    alignItems: 'flex-start',
-    backgroundColor: 'var(--ws-bg-subtle)',
-    border: '1px solid var(--ws-border-subtle)',
-    borderRadius: 'var(--ws-radius-lg)',
-    display: 'grid',
-    gap: '10px',
-    gridTemplateColumns: '28px minmax(0, 1fr)',
-    padding: '12px',
-    width: '100%',
-};
-
-const authStepNumberStyle: React.CSSProperties = {
-    alignItems: 'center',
-    backgroundColor: 'var(--ws-brand-secondary)',
-    borderRadius: '999px',
-    color: '#fff',
-    display: 'inline-flex',
-    fontSize: '13px',
-    fontWeight: 800,
-    height: '28px',
-    justifyContent: 'center',
-    lineHeight: 1,
-    width: '28px',
-};
-
-const authStepTitleStyle: React.CSSProperties = {
-    color: 'var(--ws-text-primary)',
-    fontSize: '14px',
-    fontWeight: 800,
-    lineHeight: 1.25,
-    margin: 0,
-};
-
-const authStepDescStyle: React.CSSProperties = {
-    color: 'var(--ws-text-secondary)',
-    fontSize: '13px',
-    lineHeight: 1.45,
-    margin: '3px 0 0',
-};
-
-const authSupportedStyle: React.CSSProperties = {
-    backgroundColor: 'var(--ws-bg-accent)',
-    border: '1px solid color-mix(in srgb, var(--ws-brand-secondary) 18%, var(--ws-border-default))',
-    borderRadius: 'var(--ws-radius-lg)',
-    padding: '12px',
-    width: '100%',
-};
-
-const authSupportedLabelStyle: React.CSSProperties = {
-    color: 'var(--ws-brand-secondary)',
-    display: 'block',
-    fontSize: '13px',
-    fontWeight: 800,
-    lineHeight: 1.2,
-    marginBottom: '4px',
-};
-
-const authSupportedCopyStyle: React.CSSProperties = {
-    color: 'var(--ws-text-secondary)',
-    fontSize: '13px',
-    lineHeight: 1.45,
-    margin: 0,
 };
 
 const authCheckingStyle: React.CSSProperties = {

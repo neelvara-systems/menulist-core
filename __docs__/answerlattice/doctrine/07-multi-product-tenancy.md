@@ -413,15 +413,15 @@ dashboard/
 | `logic/embedArticleWorker.ts`  | KB article vector embedding (task queue)                          |
 | `logic/regenerateEmbedding.ts` | KB embedding regeneration (callable)                              |
 | `logic/publishApprovedJob.ts`  | KB ingestion publish (callable)                                   |
-| `analytics/kbQuality.ts`       | Legacy MenuList chat-monitoring boundary: current runtime remains in `functions/src/analytics/kbQuality.ts` and scans MenuList tenant/store data; future extraction needs a deliberate Answerlattice runtime design |
-| `services/gemini/kbQuality.ts` | Legacy MenuList chat-monitoring boundary: current runtime remains in `functions/src/services/gemini/kbQuality.ts`; future extraction needs a deliberate Answerlattice runtime design |
+| `analytics/kbQuality.ts`       | Dormant MenuList compatibility implementation. It is not scheduled or exported; dedicated deterministic chat intelligence runs in `functions-answerlattice/`. |
+| `services/gemini/kbQuality.ts` | Dormant MenuList compatibility provider helper. It has no active scheduler/export path and is not part of Answerlattice runtime truth. |
 | `types/knowledgeBase.types.ts` | KB types                                                          |
 
 ### MenuList Functions (stay in `functions/`)
 
 Everything else: menu processing, analytics, messaging, billing, monitoring, decision blocks scoring, customer analytics, alert escalation, admin tools.
 
-Legacy MenuList chat-monitoring boundary: Feedback Intelligence, KB Quality, and Weekly Narrative are still MenuList-hosted platform-admin chat intelligence jobs. They run from `functions/src/`, scan MenuList `tenants`, `stores`, `chatAnalytics`, `aiSearchHistory`, and nested `knowledgeBase` collections, and write MenuList `insights/{tId}/stores/{sId}/ai/*` documents. Do not count them as completed `functions-answerlattice/` runtime migrations or move them without a dedicated Answerlattice tenant-shape, scheduler, cost, and deploy plan.
+Dormant MenuList chat-monitoring compatibility boundary: the old Feedback Intelligence, KB Quality, Weekly Narrative, and Health Signals implementations remain as unreferenced recovery/history code in `functions/src/`, but the active MenuList scheduler records those task names as `moved_to_answerlattice_runtime` and performs no related reads, provider calls, or writes. Dedicated Answerlattice nightly aggregation and deterministic `chat_intelligence` now own current feedback/weekly output in the Answerlattice project. Do not reconnect the dormant MenuList workers or describe them as active runtime.
 
 ### Unified Scheduler Split
 

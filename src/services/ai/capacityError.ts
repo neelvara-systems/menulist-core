@@ -24,6 +24,7 @@ export class AICapacityError extends Error {
 
     constructor(message: string, code: string) {
         super(message);
+        Object.setPrototypeOf(this, AICapacityError.prototype);
         this.name = "AICapacityError";
         this.code = code;
     }

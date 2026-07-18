@@ -50,3 +50,4 @@ Mobile expectations:
 - Add/Edit modal must fit the viewport;
 - related article reference controls may scroll inside their own container;
 - Back returns to More -> Answerlattice.
+- The `I shipped a change` deep link opens the same responsive Add/Edit flow and clears the one-time `create` query after opening so refresh does not duplicate the action.

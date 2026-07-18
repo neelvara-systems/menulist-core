@@ -211,9 +211,9 @@ const MenuPageSettingsNew: React.FC<MenuPageSettingsNewProps> = ({
 
     // G06 - Service Charge Note (Constitutional trust disclosure)
     const handlespecialNoteChange = (note: string) => {
-        // HARD ENFORCEMENT: 140 character limit + trim whitespace
-        // Prevents silent whitespace abuse and visually empty disclosures
-        const normalizedNote = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
+        // Keep spaces while the owner types. Public rendering already trims and
+        // collapses whitespace; the editor only owns the hard length boundary.
+        const normalizedNote = note.slice(0, SERVICE_CHARGE_MAX_LENGTH);
         setProjectData({
             ...projectData,
             menuSettings: {

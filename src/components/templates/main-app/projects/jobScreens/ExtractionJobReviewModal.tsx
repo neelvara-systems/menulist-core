@@ -1,6 +1,7 @@
 'use client';
 
 import type { ComparisonEngineOutput } from '@lib/extraction/comparisonEngine.types';
+import { getReviewPreviewIdentity } from '@lib/extraction/reviewPreview';
 import { Modal } from 'antd';
 import ExtractionJobReviewScreen from './ExtractionJobReviewScreen';
 
@@ -55,6 +56,7 @@ export default function ExtractionJobReviewModal({
             title="Review Extracted Changes"
         >
             <ExtractionJobReviewScreen
+                key={getReviewPreviewIdentity(projectId, jobId)}
                 projectId={projectId}
                 jobId={jobId}
                 comparisonResult={comparisonResult}

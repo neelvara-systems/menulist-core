@@ -1,17 +1,41 @@
 import {
     normalizeStorePermissionScopeDocumentId,
     type StorePermissionScopeDocumentId,
-} from '@lib/permissions/server';
+} from '@lib/permissions/scopeDocumentId';
 
 export type SetClaimsWorkspace = {
     storeScope: StorePermissionScopeDocumentId;
     tenantScope: StorePermissionScopeDocumentId;
 };
 
+const SET_CLAIMS_ROLE_MAX_LENGTH = 64;
+
+/**
+ * A store membership must carry its own role before it can become a Firebase
+ * claim. Platform/support sessions retain their separate platformRole claim,
+ * but a missing store role must never default a normal member to owner.
+ */
+export const resolveSetClaimsRole = (params: {
+    hasPlatformAccess: boolean;
+    userRole: unknown;
+}): string | null => {
+    if (typeof params.userRole !== 'string') {
+        return params.hasPlatformAccess ? 'staff' : null;
+    }
+    const role = params.userRole.trim();
+    if (!role || role !== params.userRole || role.length > SET_CLAIMS_ROLE_MAX_LENGTH) {
+        return params.hasPlatformAccess ? 'staff' : null;
+    }
+    if (!params.hasPlatformAccess && role.toUpperCase() === 'PLATFORM') {
+        return null;
+    }
+    return role;
+};
+
 export const resolveSetClaimsWorkspaceFromStore = (params: {
     dbUserTenantId: unknown;
     hasPlatformAccess: boolean;
-    storeData: FirebaseFirestore.DocumentData | undefined;
+    storeData: Record<string, unknown> | undefined;
     storeDocumentId: unknown;
 }): SetClaimsWorkspace | null => {
     const storeScope = normalizeStorePermissionScopeDocumentId(params.storeDocumentId);
@@ -36,24 +60,4 @@ export const resolveSetClaimsWorkspaceFromStore = (params: {
         return null;
     }
     return { storeScope, tenantScope };
-};
-
-export const firebaseClaimsMatchTargetStore = (
-    claims: Record<string, unknown> | undefined,
-    targetStoreId: unknown,
-): boolean => {
-    const targetStoreScope = normalizeStorePermissionScopeDocumentId(targetStoreId);
-    if (
-        !targetStoreScope
-        || typeof claims?.tenantId !== 'string'
-        || typeof claims?.storeId !== 'string'
-        || typeof claims?.admin !== 'boolean'
-        || !Array.isArray(claims?.storeIds)
-        || claims.storeId !== targetStoreScope.documentId
-    ) {
-        return false;
-    }
-    return claims.storeIds.some((storeId) => (
-        normalizeStorePermissionScopeDocumentId(storeId)?.documentId === targetStoreScope.documentId
-    ));
 };

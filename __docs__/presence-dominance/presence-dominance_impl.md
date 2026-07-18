@@ -21,8 +21,8 @@ Existing OBP Infrastructure (DO NOT MODIFY)
   ├── OBPMetricsCard.tsx (analytics card)
   └── Physical surfaces (QR generation)
 
-IMPLEMENTED: Behavioral Adoption Layer (Feb 19, 2026)
-  ├── BehaviorNudgeCard.tsx (dashboard — dismissible adoption card)
+IMPLEMENTED: Behavioral Adoption Layer
+  ├── OwnerDashboard/index.tsx (existing official-source guidance)
   ├── OBPLinkCard.tsx (enhanced — nudge micro-copy added)
   ├── ShareModal/index.tsx (enhanced — behavior-guiding copy)
   ├── MobileShareScreen.tsx (enhanced — behavior-guiding copy)
@@ -36,7 +36,7 @@ Full docs: __docs__/behavior-engineering/
 
 ## Database Schema
 
-**No new collections.** No new Firestore fields. Nudge dismissal tracked via localStorage (zero Firebase cost).
+**No new collections.** No new Firestore fields and no browser dismissal state.
 
 ---
 
@@ -44,26 +44,24 @@ Full docs: __docs__/behavior-engineering/
 
 | File                                                      | Purpose                                                     | Status      |
 | --------------------------------------------------------- | ----------------------------------------------------------- | ----------- |
-| `src/components/.../OwnerDashboard/BehaviorNudgeCard.tsx` | Dismissible "official link" reinforcement card on dashboard | ✅ NEW      |
+| `src/components/.../OwnerDashboard/index.tsx`            | Existing official-source guidance on the dashboard           | ✅ EMBEDDED |
 | `src/components/.../businessSettings/OBPLinkCard.tsx`     | Added nudge micro-copy below link                           | ✅ ENHANCED |
 | `src/components/.../shareModal/index.tsx`                 | Updated header, QR copy, WhatsApp message, staff hint       | ✅ ENHANCED |
 | `src/components/mobile/screens/MobileShareScreen.tsx`     | Updated OBP text, QR text, WhatsApp message                 | ✅ ENHANCED |
 | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx` | Post-publish: adoption tips + copy/WhatsApp buttons         | ✅ ENHANCED |
 
-**Total new code:** ~130 lines (1 new file + 5 enhanced files)
+No standalone dashboard card is part of the current source. Guidance stays in
+the existing owner surfaces so there is no duplicate UI or persistence.
 
 ---
 
 ## Implementation Phases
 
-### Phase 1: BehaviorNudgeCard on Dashboard
+### Phase 1: Dashboard Guidance
 
-Dismissible card on Owner Dashboard reinforcing official link adoption.
-
-**File:** `src/components/.../OwnerDashboard/BehaviorNudgeCard.tsx`  
-**Visibility:** When `ENABLE_BEHAVIOR_NUDGES` AND `ENABLE_OBP` are both true  
-**Dismissal:** localStorage (`behavior_nudge_dismissed_{storeId}`)
-**Diagnostics:** Dismiss-state load/save failures and official-link copy failures log `owner_dashboard_behavior_nudge_dismiss_load_failed`, `owner_dashboard_behavior_nudge_dismiss_save_failed`, and `owner_dashboard_behavior_nudge_copy_failed` with bounded store/link/dismiss-key presence-length metadata only.
+Official-source guidance is embedded in the existing Owner Dashboard surface.
+The current source deliberately has no separate card, dismiss action,
+`localStorage` key, or dashboard-nudge diagnostics.
 
 ### Phase 2: OBPLinkCard Enhancement
 
@@ -113,7 +111,6 @@ Enhanced with "official link" framing, Copy/WhatsApp buttons, adoption tips.
 
 **Zero additional Firebase cost.** All changes are UI micro-copy:
 
-- Nudge dismissal: localStorage (not Firestore)
 - Copy to clipboard: 0 reads/writes
 - WhatsApp share: client-side URL encoding
 - Micro-copy text: Static strings
@@ -123,13 +120,13 @@ Enhanced with "official link" framing, Copy/WhatsApp buttons, adoption tips.
 ## Testing Guide
 
 1. Enable `ENABLE_OBP: true` and `ENABLE_BEHAVIOR_NUDGES: true` in features.ts
-2. Open dashboard → BehaviorNudgeCard should appear
-3. Click dismiss (×) → card disappears permanently (check localStorage)
+2. Open Dashboard and Share surfaces → guidance appears inside the existing UI
+3. Confirm no duplicate nudge card or dismissal state is created
 4. Open Share Modal → verify updated header, QR copy, WhatsApp message
 5. Open MobileShareScreen → verify updated OBP text, QR text, WhatsApp message
 6. Click WhatsApp share -> message should say "Here is our menu link: [link]"
 7. Open msg-preview after publish → verify tips section + Copy/WhatsApp buttons
-8. Set `ENABLE_BEHAVIOR_NUDGES: false` → all nudges revert to original copy
+8. Set `ENABLE_BEHAVIOR_NUDGES: false` → behavior-specific guidance reverts
 
 ---
 
@@ -148,4 +145,4 @@ Enhanced with "official link" framing, Copy/WhatsApp buttons, adoption tips.
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** February 19, 2026
+**Last Updated:** July 17, 2026

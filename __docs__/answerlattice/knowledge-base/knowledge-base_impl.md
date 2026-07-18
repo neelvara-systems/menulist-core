@@ -85,17 +85,22 @@ Answerlattice KB owner content scope boundary (July 6, 2026): category document 
 | Function | Reads | Writes | Notes |
 |----------|:-----:|:------:|-------|
 | `getCategories()` | 1 | 0 | Reads scoped doc `categories_{tId}_{sId}` with platform legacy fallback |
-| `deleteCategory(data)` | 0 | 1 | Overwrites categories map, returns acknowledged categories mutation |
-| `addCategory(category)` | 0 | 1 | `setDoc` merge at `categories.{id}`, returns acknowledged category |
-| `updateCategory(category)` | 0 | 1 | `setDoc` merge at `categories.{id}`, returns acknowledged category |
-| `updateArticleInParent(categoriesData, categoryId, article, sectionId)` | 0 | 1 | Updates article metadata in parent section/category, returns acknowledged categories mutation |
-| `deleteArticleFromParent(categoriesData, categoryId, articleId, sectionId)` | 0 | 1 | Removes article metadata from parent, returns acknowledged categories mutation |
+| `deleteCategory({ categoryId })` | 1 | 1 | Transaction removes only the transaction-current category key and returns the authoritative map |
+| `addCategory(category)` | 1 | 1 | Transaction rejects duplicate IDs, allowlists editable metadata, and returns the authoritative map |
+| `updateCategory(category)` | 1 | 1 | Transaction updates category metadata while preserving transaction-current sections/article links |
+| `upsertSectionInCategory(categoryId, section)` | 1 | 1 | Transaction creates/updates one section while preserving transaction-current article links |
+| `deleteSectionFromCategory(categoryId, sectionId)` | 1 | 1 | Transaction removes one current section and preserves unrelated navigation state |
+| `updateArticleInParent(categoriesData, categoryId, article, sectionId)` | 1 | 1 | Caller snapshot is compatibility-only; transaction upserts bounded article metadata into current navigation |
+| `deleteArticleFromParent(categoriesData, categoryId, articleId, sectionId)` | 1 | 1 | Caller snapshot is compatibility-only; transaction removes the article link from current navigation |
 
 **Key implementation details:**
-- `getDocRef()` resolves the scoped categories document ID from the active Answerlattice tenant/store session.
-- Category mutations use `setDoc(..., { merge: true })` for field-path-like map updates on the scoped categories doc.
-- `_updateSectionArticles()` is a private helper that updates a section's articles array
-- `updateList()` utility handles add-or-update logic for article metadata arrays
+- Each mutation captures the active Answerlattice tenant/store once and uses that scope for cache versioning, the transaction document, and public-cache revalidation.
+- `runTransaction()` reads the current scoped categories document before applying an operation-specific pure mutation. Firestore retries therefore reapply the intended change to the latest map instead of replacing it with a caller-held snapshot.
+- `knowledgeBaseCategoryMutations.ts` rejects malformed IDs, unsafe navigation URLs, non-boolean active flags, invalid indexes, oversized metadata, duplicate category IDs, missing parents, and malformed stored arrays.
+- Category and section metadata updates discard incoming nested arrays. Current article/section links remain owned by their dedicated transactional operations.
+- Mutations enforce at most 500 categories and a 900 KiB serialized document guard before writing, leaving headroom below Firestore's document limit.
+- UI callers consume the authoritative map returned by the transaction instead of reconstructing success state from a pre-write browser snapshot.
+- The categories write, KB cache-version increment, compiled `kb` source-version increment, and bundle-stale marker share the same Firestore transaction. Readers cannot observe a new freshness version with old navigation content, and a rejected navigation mutation performs none of those writes.
 
 ### 2.4 Types
 
@@ -141,24 +146,25 @@ PlatformKnowledgeBase mount
   → Render 3-pane splitter
 
 Add Category:
-  → CategoryModal form → addCategory(category) → setDoc merge
+  → CategoryModal form → bounded metadata normalization
+  → addCategory(category) → transaction read + write
   → assertKnowledgeBaseCategoryWriteSucceeded()
-  → setCategoriesData with updated categories
+  → setCategoriesData with authoritative transaction result
 
 Edit Article:
   → ArticlePane → handleArticleSelect → getArticleById(id) → 1 read
   → ArticleModal with TipTap editor → form submit
   → updateArticle(data) → 1 write to kb_articles
   → assertKnowledgeBaseArticleWriteSucceeded()
-  → updateArticleInParent() → 1 write to kb_categories (metadata sync)
+  → updateArticleInParent() → 1 transaction read + 1 write to kb_categories (metadata sync)
   → assertKnowledgeBaseCategoriesMutationSucceeded()
 
 Delete Category:
   → Modal.confirm → getArticlesByCategoryId(id) → N reads
   → Promise.all(deleteArticle per article) → N writes
-  → deleteCategory(newCategoriesData) → 1 write
+  → deleteCategory({ categoryId }) → 1 transaction read + 1 write
   → assertKnowledgeBaseCategoriesMutationSucceeded()
-  → Update local state
+  → Replace local state with authoritative transaction result
 ```
 
 ### 3.3 Embedding Generation
@@ -168,11 +174,10 @@ Article saved/published
   → Extract plain text from TipTap JSON
   → Normalize category + section + title + content and compute a source hash
   → callGeminiEmbeddingWithMetadata(..., purpose=document) → gemini-embedding-2 → 768-dim vector
-  → Persist the active vector to embeddingV2 with model/cache/source metadata
-  → Preserve or best-effort dual-write the legacy embedding vector during rollback coverage
+  → Persist the canonical vector to embedding with model/cache/source metadata
 ```
 
-The model, vector field, dimensions, request format, and cache version are selected together by `src/data/shared/answerlatticeEmbedding.ts`, mirrored byte-for-byte into both Functions packages. Search reads `embeddingV2`; query-cache keys include the v2 cache version, so v1 query vectors cannot be reused against the v2 index. The existing Answerlattice master scheduler owns the bounded, resumable `embedding_v2_migration` task; no standalone scheduled function is added.
+The model, vector field, dimensions, request format, and cache version are selected together by `src/data/shared/answerlatticeEmbedding.ts`, mirrored byte-for-byte into both Functions packages. Search reads `embedding`; query-cache keys include `gemini-embedding-2:768:v1`, so incompatible cached vectors cannot be admitted. The pre-launch runtime has no embedding migration task or duplicate vector field.
 
 ---
 

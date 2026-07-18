@@ -1,139 +1,79 @@
-# POS Webhook Sync — Website Content
+# External Menu Sync — Website Content Boundary
 
-> **Document Type:** Public-facing website/landing page content
-> **Audience:** Potential customers visiting menulist.ai
-> **Language:** Follows `__docs__/constitution/02-language-governance.md`
-> **Status:** Implemented
-> **Last Updated:** June 11, 2026
-> **Version:** 2.2
+> **Status:** Capability note approved; dedicated public feature page not approved
+> **Last reviewed:** July 16, 2026
 
-> Current website governance note: This page is an older feature-page draft. The active main website should mention POS Sync only as low-prominence operations proof until vendor/customer proof exists. Use "approved menu changes can be sent as a signed full-menu snapshot to a connected store POS webhook" language. Do not use "works with any POS", "real-time sync", "seamless integration", "POS connector", or universal POS support claims on the main website.
+## Current public treatment
 
----
+External Menu Sync may appear as a low-prominence operational capability. It must not be presented as a universal POS integration or a guaranteed automation layer.
 
-## Hero Section
+## Approved short copy
 
-- **Headline:** Your menu updates your POS automatically
-- **Subheadline:** Change a price, add a dish, remove an item — configured POS sync receives the owner-approved update through the integration path. No manual re-entry.
-- **CTA Text:** See How It Works
-- **CTA Link:** #how-it-works
+**Heading:** Connect a compatible external menu system
 
----
+**Body:** If your provider or developer supplies a compatible public HTTPS endpoint, MenuList can send it a signed full-menu snapshot after approved project saves. Each store connection is configured and tested separately.
 
-## Problem Statement
+**Support line:** A successful delivery confirms the endpoint accepted the request; the receiving team remains responsible for applying it.
 
-You update your menu in MenuList. Then you update the same menu in your POS. Different systems, same information, entered twice. When you forget — and you will — customers see one price online and get charged another at the counter. For chains, this happens across every outlet, every day.
+## Approved FAQ
 
----
+### Does MenuList connect to my POS?
 
-## Solution Statement
+MenuList provides a store-level signed webhook. Compatibility depends on your POS provider or developer implementing the MenuList payload and confirming a test. MenuList does not claim support for every POS.
 
-MenuList sends your full updated menu to your POS system automatically whenever you make a change. You edit once. Your POS stays accurate. No integration project needed — just enter a URL and your POS receives menu updates from that moment on.
+### Is the connection automatic?
 
----
+When the connection is enabled and the MenuList app remains open, acknowledged project saves are combined briefly and sent once. There is no automatic retry service.
 
-## Feature Benefits
+### Is it secure?
 
-### Benefit 1: No More Double Entry
+Requests use HTTPS, a store-specific HMAC signing secret, delivery IDs, timestamps, and versions. The destination must verify the signature and protect the secret.
 
-**Title:** Edit once. Updated everywhere.
-**Description:** When you change a price, add an item, or update availability in MenuList, your POS receives the complete updated menu automatically. No copying. No manual entry. No forgetting.
-**Visual:** Split screen — left shows MenuList editor with a price change, right shows POS receiving the update with a green checkmark.
+### Can I connect every outlet?
 
-### Benefit 2: No Price Mismatches
+Yes, one at a time. Each outlet has its own endpoint, secret, test, and status.
 
-**Title:** What customers see is what they pay.
-**Description:** Your online menu and POS menu stay consistent at all times. No more explaining to a customer why the counter price differs from the website price.
-**Visual:** Two receipts side-by-side — online order and counter order — both showing identical prices.
+### Does MenuList send setup email?
 
-### Benefit 3: Works With Any POS
+MenuList can prepare a setup email draft and technical summary. The owner sends the draft from their device.
 
-**Title:** Your POS. Our menu feed.
-**Description:** MenuList uses a standard webhook format that works with any modern POS system — Petpooja, DotPe, Foodics, Square, Toast, or any system that accepts webhooks. No custom integration needed.
-**Visual:** MenuList logo in center with arrows pointing to multiple POS logos arranged around it.
+## CTA
 
-### Benefit 4: Secure and Reliable
+**Primary:** Check compatibility with your provider
+**Secondary:** Read setup guide
 
-**Title:** Enterprise-grade delivery.
-**Description:** Every menu update is signed with a unique security key. If your POS is temporarily unreachable, you see clear status in your settings — fix the issue and click Test to resume. Nothing to manage.
-**Visual:** Lock icon with a green shield badge, showing "Delivered" status.
+Do not use “Connect now” unless the owner already has a compatible endpoint.
 
-### Benefit 5: Each Outlet, Its Own POS
+## Metadata if a support page is published
 
-**Title:** Central menu. Local POS connections.
-**Description:** Each outlet connects to its own POS independently. Mumbai on Petpooja, Pune on DotPe, Dubai on Foodics — all receive the same menu update from MenuList.
-**Visual:** Map with multiple outlet pins, each connected to a different POS icon.
+- **Title:** External Menu Sync Webhook Setup | MenuList
+- **Description:** Configure a store-level signed HTTPS menu snapshot for a compatible provider or developer.
+- **OG title:** Send MenuList menu truth to a compatible system
+- **OG description:** A tested, signed full-menu webhook for one store endpoint.
 
----
+## Prohibited website content
 
-## How It Works
+- named vendor logos without written approval and verified compatibility;
+- “works with any POS”;
+- “real-time” or “instant”;
+- delivery/application guarantees;
+- retry claims;
+- setup-in-two-minutes claims;
+- “no integration required”;
+- “no price mismatches” outcome guarantees;
+- reliability percentages without measured production evidence;
+- “enterprise-grade”, “bank-grade”, or comparison to another provider's security;
+- pricing/free claims not backed by the current pricing source;
+- direct GBP, social, or marketplace integration claims.
 
-1. **Connect** — Go to Business Settings, enter your POS webhook URL, click Test.
-2. **Edit** — Change your menu as usual in MenuList — prices, items, categories.
-3. **Done** — Your POS receives the full updated menu automatically. No action needed.
+## Publication gate
 
----
+A dedicated marketing page remains blocked until the owner can provide:
 
-## Social Proof Slots
+- at least one verified provider implementation;
+- staging and production smoke evidence;
+- accurate support ownership;
+- current pricing posture;
+- approved provider/customer naming.
 
-- **Testimonial 1:** [Restaurant chain, Mumbai] — "We used to spend 30 minutes every day updating POS menus across 5 outlets. Now it happens on its own."
-- **Testimonial 2:** [QSR, Bangalore] — "No more price mismatches. Our counter staff never has to apologize for wrong prices anymore."
-- **Stat:** "Works with any webhook-capable POS system."
-
----
-
-## FAQ
-
-- **Q:** Does this work with my POS system?
-  **A:** If your POS can receive webhooks (most modern POS systems can), it works. We provide complete setup documentation for your POS vendor.
-
-- **Q:** What if my POS is offline temporarily?
-  **A:** MenuList shows you exactly what happened. When your POS comes back online, click "Test" to verify the connection. The next menu change will sync normally.
-
-- **Q:** Do I need a developer to set this up?
-  **A:** You enter a public HTTPS webhook URL and click Test. If you need help, MenuList can prepare an email draft with setup steps, sample data, and documentation for your provider or developer.
-
-- **Q:** Is my menu data secure?
-  **A:** Every update is signed with a unique secret key using the same security standard banks use (HMAC-SHA256). Your POS verifies each update is genuinely from MenuList.
-
-- **Q:** Does this cost extra?
-  **A:** No. POS Sync is included with MenuList. No extra charge.
-
----
-
-## SEO Meta
-
-- **Page Title:** POS Menu Sync — Automatic Menu Updates to Your POS | MenuList
-- **Meta Description:** MenuList automatically sends menu updates to your POS system. No manual sync, no price mismatches. Works with any POS. Set up in 2 minutes.
-- **OG Title:** Your Menu Updates Your POS Automatically
-- **OG Description:** Change a price in MenuList, your POS knows immediately. No integration needed. Works with any POS system.
-- **Target Keywords:** POS menu sync, automatic POS update, menu webhook, restaurant POS integration, menu management POS
-
----
-
-## Approved Language (from Constitution)
-
-### USE
-
-- "Automatically updated"
-- "Handled automatically"
-- "No action needed"
-- "Your POS receives the update"
-- "Works with any POS"
-- "Set up in 2 minutes"
-- "No manual work"
-
-### NEVER USE
-
-- "AI-powered" / "Smart" / "Dynamic" / "Intelligent"
-- "Seamless integration"
-- "Real-time sync" (near-real-time with debounce)
-- "We recommend" / "You should"
-- Exclamation marks in feature descriptions
-- "Revolutionary" / "Game-changing"
-
----
-
-**Document Signature:** Public Website Content
-**Author:** Cascade + Founder
-**Last Updated:** February 14, 2026
+The maintained help document can be published as technical setup guidance without implying vendor certification.

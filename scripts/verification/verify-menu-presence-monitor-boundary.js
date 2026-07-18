@@ -25,6 +25,15 @@ function forbidToken(source, token, label) {
   }
 }
 
+function hasSingleFieldExemption(indexConfig, collectionGroup, fieldPath) {
+  return indexConfig.fieldOverrides?.some((entry) => (
+    entry.collectionGroup === collectionGroup
+    && entry.fieldPath === fieldPath
+    && Array.isArray(entry.indexes)
+    && entry.indexes.length === 0
+  ));
+}
+
 [
   'src/config/features.ts',
   'src/components/templates/main-app/useMenuList/PresenceMonitor.tsx',
@@ -33,8 +42,17 @@ function forbidToken(source, token, label) {
   'src/components/templates/main-app/businessSettings/index.tsx',
   'src/components/mobile/components/PresenceMonitor.tsx',
   'src/components/mobile/screens/MobilePresenceMonitorScreen.tsx',
+  'src/components/mobile/screens/MobileShareScreen.tsx',
+  'src/components/mobile/screens/MobileDesignEditorScreen.tsx',
+  'src/components/templates/main-app/projects/b2cView/index.tsx',
   'src/components/mobile/screens/MobileMoreScreen.tsx',
   'src/database/stores/index.tsx',
+  'src/database/projects/index.ts',
+  'src/app/api/public/create-menu/claim/route.ts',
+  'src/app/api/projects/outlet-save/route.ts',
+  'src/lib/menuPresence/presenceReadiness.ts',
+  'scripts/verification/test-menu-presence-readiness.ts',
+  'scripts/backfill-public-routing-project-summaries.ts',
   'src/lib/onboarding/starterActivation.ts',
   '__docs__/menu-presence-monitor/README.md',
   '__docs__/menu-presence-monitor/menu-presence-monitor_impl.md',
@@ -44,12 +62,23 @@ function forbidToken(source, token, label) {
   'FEATURE_SWEEP_MASTER_REPORT.md',
   '__docs__/audits/menulist-production-readiness-audit.md',
   '__docs__/changelog.md',
+  'firestore.indexes.json',
 ].forEach(read);
+
+const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
+if (!hasSingleFieldExemption(firestoreIndexes, 'stores', 'menuPresence')) {
+  failures.push('stores.menuPresence must be exempt from automatic single-field indexing');
+}
 
 const packageJson = read('package.json');
 requireToken(
   packageJson,
-  '"verify:menu-presence-monitor-boundary": "node scripts/verification/verify-menu-presence-monitor-boundary.js"',
+  '"verify:menu-presence-monitor-boundary": "node scripts/verification/verify-menu-presence-monitor-boundary.js && npm run test:menu-presence-readiness"',
+  'package scripts',
+);
+requireToken(
+  packageJson,
+  '"test:menu-presence-readiness": "ts-node',
   'package scripts',
 );
 
@@ -74,6 +103,8 @@ const desktopPresence = read('src/components/templates/main-app/useMenuList/Pres
   "getBoundedUseMenuListStringContext('obpLink', data.obpLink)",
   "getBoundedUseMenuListStringContext('surfaceKey', surface?.dalKey)",
   'buildStarterActivationSummary',
+  'applyStarterPresenceUpdateToStoreDetails',
+  'setStoreDetails',
   'shouldRecordStarterActivationSignal',
   'STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE',
   "action: 'confirm' | 'copy' | 'open' | 'remove'",
@@ -110,6 +141,8 @@ const mobilePresence = read('src/components/mobile/components/PresenceMonitor.ts
   "getBoundedMobileOwnerStringContext('obpLink', obpLink)",
   "getBoundedMobileOwnerStringContext('surfaceKey', surface?.dalKey)",
   'buildStarterActivationSummary',
+  'applyStarterPresenceUpdateToStoreDetails',
+  'setStoreDetails',
   'shouldRecordStarterActivationSignal',
   'STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE',
   'List.Item',
@@ -140,7 +173,14 @@ const useMenuList = read('src/components/templates/main-app/useMenuList/index.ts
   '<PresenceMonitor',
   'data={data}',
   'storeDetails={storeDetails}',
+  'hasPublishedMenuProject(projects)',
+  'hasFeedbackPresenceReadiness({',
 ].forEach((token) => requireToken(useMenuList, token, 'Use MenuList presence wiring'));
+forbidToken(
+  useMenuList,
+  'projects.some((project: any) => project.deleted !== true && project.active !== false)',
+  'Use MenuList published readiness',
+);
 
 const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
 [
@@ -150,6 +190,8 @@ const businessSettings = read('src/components/templates/main-app/businessSetting
   'business_settings_presence_screen_links_load_failed',
   'FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR',
   'publicTruthFocusRefs.current.presenceMonitor',
+  'hasPublishedStoreMenu(storeDetails)',
+  'hasFeedbackPresenceReadiness({',
 ].forEach((token) => requireToken(businessSettings, token, 'Business Settings presence wiring'));
 [
   'navigator.clipboard.writeText(url)',
@@ -163,11 +205,22 @@ const mobilePresenceScreen = read('src/components/mobile/screens/MobilePresenceM
 [
   'MobilePresenceMonitor',
   'generateOBPUrl',
-  'projectsList.some((project: any) => project.deleted !== true && project.active !== false)',
+  'hasPublishedMenuProject(projectsList)',
+  'hasFeedbackPresenceReadiness({',
   'FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR',
-  'hasFeedbackEnabled={storeDetails.feedbackEnabled !== false}',
   'hidePageSummary',
 ].forEach((token) => requireToken(mobilePresenceScreen, token, 'Mobile Presence Monitor screen'));
+
+const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
+[
+  'hasPublishedMenuProject(projects)',
+  'hasFeedbackPresenceReadiness({',
+].forEach((token) => requireToken(mobileShare, token, 'Mobile Share presence readiness'));
+forbidToken(
+  mobileShare,
+  'projects.some((project: any) => project.deleted !== true && project.active !== false)',
+  'Mobile Share published readiness',
+);
 
 const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
 [
@@ -193,6 +246,8 @@ const storesDal = read('src/database/stores/index.tsx');
   'storeId,',
   'surface,',
   'confirmed,',
+  'recordedAt:',
+  'assertStarterActivationSignalUpdateSucceeded',
   'assertMenuPresenceUpdateSucceeded',
 ].forEach((token) => requireToken(storesDal, token, 'stores DAL presence guard'));
 
@@ -206,22 +261,106 @@ const updateMenuPresenceBlock = storesDal.slice(updateMenuPresenceStart, updateM
   "const session = await assertActiveSessionStore(storeId, 'menu_presence_store_scope_mismatch');",
   'MENU_PRESENCE_SURFACES.has(surface)',
   'isStarterActivationSignal(options.starterSignal)',
+  'options.starterSignal !== canonicalStarterSignal',
   "throw new Error('menu_presence_input_invalid');",
   'const tenantId = Number(sessionTenantId);',
   'Number.isSafeInteger(tenantId)',
   'await runTransaction(firebaseClient, async (transaction) => {',
   'const storeSnapshot = await transaction.get(storeRef);',
+  'shouldRecordStarterActivationSignal(store as StoreDataType)',
+  '[`starterActivationSignals.actions.${canonicalStarterSignal}`] = deleteField();',
   "throw new Error('menu_presence_store_scope_changed');",
+  "throw new Error('menu_presence_store_unavailable');",
+  'isPlatformEntityBlocked(store)',
   'transaction.update(storeRef, storeUpdate);',
   'transaction.set(summaryRef, {',
   'menuPresence: { [surface]: confirmed ? now : null },',
   'tId: tenantId,',
-  "await revalidatePublicClientCache(storeId, 'updateMenuPresence');",
 ].forEach((token) => requireToken(updateMenuPresenceBlock, token, 'stores DAL atomic presence projection'));
 [
   'await updateDoc(',
   'mergeStoreSummaryFields(',
+  "revalidatePublicClientCache(storeId, 'updateMenuPresence')",
 ].forEach((token) => forbidToken(updateMenuPresenceBlock, token, 'stores DAL atomic presence projection'));
+
+const readiness = read('src/lib/menuPresence/presenceReadiness.ts');
+[
+  'isPublishedMenuProject',
+  'hasPublishedMenuProject',
+  'hasPublishedStoreMenu',
+  'hasFeedbackPresenceReadiness',
+  'isMenuPresenceConfirmed',
+  'normalizeStarterActivationTimestamp(project.lastPublishedAt)',
+  "typeof project?.projectId === 'string'",
+  'project?.active !== false',
+  'project?.deleted !== true',
+].forEach((token) => requireToken(readiness, token, 'canonical presence readiness boundary'));
+
+const readinessTest = read('scripts/verification/test-menu-presence-readiness.ts');
+[
+  'isPublishedMenuProject({ ...publishedProject, active: false })',
+  "isPublishedMenuProject({ active: true, deleted: false, projectId: '1-draft-1' })",
+  'hasFeedbackPresenceReadiness({ feedbackEnabled: false, hasPublishedMenu: true })',
+  'isMenuPresenceConfirmed(true)',
+  "throw new Error('bad timestamp')",
+].forEach((token) => requireToken(readinessTest, token, 'presence readiness runtime regression'));
+
+const projectsDal = read('src/database/projects/index.ts');
+[
+  "buildSummaryProjectFieldPayload(operationProjectId, 'lastPublishedAt', publishedAt)",
+  'lastPublishedAt: publishedAt,',
+  'transaction.update(publishStoreRef, {',
+  "throw new Error('Project publish store state changed');",
+  'isPlatformEntityBlocked(freshStoreDoc.data())',
+  'normalized.lastPublishedAt = projectData.lastPublishedAt',
+].forEach((token) => requireToken(projectsDal, token, 'standard publish presence truth'));
+
+const publicClaim = read('src/app/api/public/create-menu/claim/route.ts');
+[
+  'lastPublishedAt: now,',
+  'buildSummaryProjectPayload(projectId, {',
+].forEach((token) => requireToken(publicClaim, token, 'public create-menu publish presence truth'));
+
+const outletSave = read('src/app/api/projects/outlet-save/route.ts');
+[
+  "'lastPublishedAt',",
+  'transaction.update(outletStoreDocumentRef, {',
+  'const outletSummaryUpdate: Record<string, unknown>',
+  'Object.keys(outletSummaryUpdate).length > 1',
+].forEach((token) => requireToken(outletSave, token, 'linked-outlet publish presence truth'));
+
+const publishTruthBackfill = read('scripts/backfill-public-routing-project-summaries.ts');
+[
+  'function normalizeTimestamp(value: unknown)',
+  'const lastPublishedAt = normalizeTimestamp(data.lastPublishedAt);',
+  'projectData.active === false',
+  'batch.set(storeDoc.ref, {',
+  'lastPublishedAt: latestPublishedAt,',
+  'await batch.commit();',
+  "hasFlag('--force')",
+].forEach((token) => requireToken(publishTruthBackfill, token, 'historical publish truth backfill'));
+
+const desktopPublisher = read('src/components/templates/main-app/projects/b2cView/index.tsx');
+const mobilePublisher = read('src/components/mobile/screens/MobileDesignEditorScreen.tsx');
+[
+  'updatedProjectCopy.lastPublishedAt',
+  'setStoreDetails((current: StoreDataType | null)',
+].forEach((token) => requireToken(desktopPublisher, token, 'desktop publish loaded-store refresh'));
+[
+  'updatedCopy.lastPublishedAt',
+  'setStoreDetails((current: any)',
+].forEach((token) => requireToken(mobilePublisher, token, 'mobile publish loaded-store refresh'));
+
+[
+  ['desktop Presence Monitor', desktopPresence],
+  ['mobile Presence Monitor', mobilePresence],
+].forEach(([label, source]) => {
+  [
+    'isMenuPresenceConfirmed',
+    'currentStoreIdRef',
+    'setLocalPresence(storeDetails.menuPresence || {})',
+  ].forEach((token) => requireToken(source, token, `${label} refresh boundary`));
+});
 
 const recordStarterSignalStart = storesDal.indexOf('export const recordStarterActivationSignal');
 const recordStarterSignalEnd = storesDal.indexOf('/**\n * Update a manual presence confirmation', recordStarterSignalStart);
@@ -236,6 +375,8 @@ const recordStarterSignalBlock = storesDal.slice(recordStarterSignalStart, recor
   "throw new Error('starter_activation_signal_input_invalid');",
   "await assertActiveSessionStore(storeId, 'starter_activation_signal_store_scope_mismatch');",
   '[`starterActivationSignals.actions.${signal}`]: now,',
+  'recordedAt: now',
+  'normalizeStarterActivationTimestamp(updateResult.recordedAt)',
 ].forEach((token) => requireToken(recordStarterSignalBlock, token, 'stores DAL starter activation runtime input guard'));
 
 const starterActivation = read('src/lib/onboarding/starterActivation.ts');
@@ -256,8 +397,8 @@ const readme = read('__docs__/menu-presence-monitor/README.md');
   'Source Gate',
   'npm run verify:menu-presence-monitor-boundary',
   'Presence confirmations and starter activation signals are owner-local writes.',
-  'active session store',
-  'canonical `stores` row and its `storesSummary` projection in one transaction',
+  'matches the active session before writing',
+  'transactionally updates the canonical `stores` row and its `storesSummary` projection',
   '`recordStarterActivationSignal()` rejects values outside the shared signal allowlist',
 ].forEach((token) => requireToken(readme, token, 'Menu Presence Monitor README'));
 forbidToken(readme, 'Key Files (Planned)', 'Menu Presence Monitor README');
@@ -266,7 +407,7 @@ const spec = read('__docs__/menu-presence-monitor/menu-presence-monitor_spec.md'
 [
   'source-derived readiness and owner-confirmed external placement status',
   'External platform placement verification by crawling or provider APIs',
-  'MenuList-recorded surfaces (QR, Screens, Feedback) show source-derived readiness status',
+  'valid explicit publish for Table QR, screen-token setup for Screens, and valid publish plus enabled feedback for Feedback QR',
   'No fixed timing claim; release-specific browser/device QA is required before quoting speed',
 ].forEach((token) => requireToken(spec, token, 'Menu Presence Monitor spec'));
 [
@@ -293,7 +434,7 @@ const marketing = read('__docs__/menu-presence-monitor/menu-presence-monitor_mar
 
 const website = read('__docs__/menu-presence-monitor/menu-presence-monitor_website.md');
 [
-  'MenuList-recorded QR/screen/feedback readiness',
+  'publish-backed QR/feedback readiness, screen setup',
   'owner-confirmed external placements',
   'See recorded and confirmed menu placement status in one place.',
 ].forEach((token) => requireToken(website, token, 'Menu Presence Monitor website doc'));
@@ -324,6 +465,8 @@ const impl = read('__docs__/menu-presence-monitor/menu-presence-monitor_impl.md'
   'antd-mobile `List` plus a bottom-sheet `Popup`',
   'transactionally updates the canonical store and current `storesSummary` slot',
   'revalidatePublicClientCache',
+  'Presence confirmation is owner-private distribution evidence',
+  'valid `lastPublishedAt`',
   'starter_activation_signal_input_invalid',
 ].forEach((token) => requireToken(impl, token, 'Menu Presence Monitor implementation doc'));
 [
@@ -337,7 +480,8 @@ const firebase = read('__docs__/menu-presence-monitor/menu-presence-monitor_fire
   'one transactional store read and two transactional document writes',
   'menu_presence_store_scope_mismatch',
   'starter_activation_signal_store_scope_mismatch',
-  'post-commit public client cache invalidation',
+  'do not use public client cache invalidation',
+  'Standard explicit publish adds one transaction-time store point read and two necessary writes',
   'starter_activation_signal_input_invalid',
 ].forEach((token) => requireToken(firebase, token, 'Menu Presence Monitor Firebase doc'));
 
@@ -359,13 +503,16 @@ const mobileDoc = read('__docs__/menu-presence-monitor/menu-presence-monitor_mob
 ].forEach((token) => forbidToken(mobileDoc, token, 'Menu Presence Monitor mobile doc'));
 
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
-requireToken(inventory, 'menu presence boundary source gate passed; browser/manual mutation pending', 'feature sweep inventory');
+requireToken(inventory, 'item 25 local source complete', 'feature sweep inventory');
+requireToken(inventory, 'no presence-only public-cache invalidation', 'feature sweep inventory');
 
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 [
   'Menu Presence Monitor Boundary',
   'npm run verify:menu-presence-monitor-boundary',
   'source/docs verification only',
+  'Item 25 is locally source complete.',
+  'valid explicit publish timestamp',
 ].forEach((token) => requireToken(report, token, 'feature sweep report'));
 
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -374,6 +521,8 @@ const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
   'Menu Presence Monitor copy claim boundary checkpoint',
   'npm run verify:menu-presence-monitor-boundary',
   'No Menu Presence Monitor runtime behavior',
+  'Item 25 is locally source complete.',
+  'Menu Presence and Public-Truth Monitoring Boundary',
 ].forEach((token) => requireToken(audit, token, 'production readiness audit'));
 
 const changelog = read('__docs__/changelog.md');
@@ -382,7 +531,15 @@ const changelog = read('__docs__/changelog.md');
   'Menu Presence Monitor Copy Claim Boundary',
   'verify:menu-presence-monitor-boundary',
   'source/docs verification only',
+  'July 16, 2026 - Menu Presence and Public-Truth Monitoring',
 ].forEach((token) => requireToken(changelog, token, 'changelog'));
+
+const tracker = read('__docs__/audits/menulist-feature-flow-audit-tracker.md');
+[
+  '| 25 | Menu presence and public-truth monitoring | Medium | Local source complete |',
+  '| 26 | Owner referral | Medium | Local source complete; rollout flags off |',
+  '## Completed item 25 source boundary',
+].forEach((token) => requireToken(tracker, token, 'strict feature tracker'));
 
 if (failures.length > 0) {
   console.error('FAIL verify-menu-presence-monitor-boundary');
@@ -391,4 +548,4 @@ if (failures.length > 0) {
 }
 
 console.log('PASS verify-menu-presence-monitor-boundary');
-console.log('Validated Menu Presence Monitor active-store writes, desktop/mobile acknowledgement, route wiring, and docs parity.');
+console.log('Validated canonical publish readiness, active-store presence writes, stale-store UI safety, bounded cost, route wiring, and docs parity.');

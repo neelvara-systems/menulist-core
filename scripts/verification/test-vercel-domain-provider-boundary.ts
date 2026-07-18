@@ -3,12 +3,25 @@
 import assert from 'node:assert/strict';
 import { mock } from 'node:test';
 import { vercelDomainFetch } from '../../src/lib/domains/vercelDomains';
+import { normalizeVercelDomainDnsRecords } from '../../src/lib/domains/vercelDnsRecords';
 
 async function run(): Promise<void> {
     const originalFetch = globalThis.fetch;
     const originalProjectId = process.env.VERCEL_PROJECT_ID;
     const originalToken = process.env.VERCEL_TOKEN;
     let bodyAbortObserved = false;
+
+    assert.deepEqual(normalizeVercelDomainDnsRecords(
+        { recommendedIPv4: [{ rank: 1, value: ['76.76.21.21'] }], recommendedCNAME: [{ rank: 1, value: 'project.vercel-dns-017.com' }] },
+        { apexName: 'example.com', name: 'example.com' },
+        'example.com',
+    ), [{ name: 'example.com', type: 'A', value: '76.76.21.21' }], 'apex domains must use Vercel recommended IPv4 records');
+    assert.deepEqual(normalizeVercelDomainDnsRecords(
+        { recommendedIPv4: [{ rank: 1, value: ['76.76.21.21'] }], recommendedCNAME: [{ rank: 1, value: 'project.vercel-dns-017.com' }] },
+        { apexName: 'example.com', name: 'www.example.com' },
+        'www.example.com',
+    ), [{ name: 'www.example.com', type: 'CNAME', value: 'project.vercel-dns-017.com' }], 'subdomains must use the project-specific Vercel recommended CNAME');
+    assert.deepEqual(normalizeVercelDomainDnsRecords({}, null, 'example.com'), [], 'missing provider guidance must not invent a DNS record');
 
     process.env.VERCEL_PROJECT_ID = 'test-project';
     process.env.VERCEL_TOKEN = 'test-token';

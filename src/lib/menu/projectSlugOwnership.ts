@@ -3,9 +3,50 @@ export type ProjectSlugSummary = {
     previousSlugs?: unknown;
 };
 
+export type DeletedProjectSlugCandidate = ProjectSlugSummary & {
+    deleted?: unknown;
+    deletedAt?: unknown;
+};
+
 const normalizeProjectSlug = (value: unknown): string => (
     typeof value === "string" ? value.trim().toLowerCase() : ""
 );
+
+const projectDeletionTimeMillis = (value: unknown): number | null => {
+    if (value instanceof Date) {
+        const millis = value.getTime();
+        return Number.isFinite(millis) ? millis : null;
+    }
+
+    if (!value || typeof value !== "object") return null;
+    const toMillis = (value as { toMillis?: unknown }).toMillis;
+    if (typeof toMillis !== "function") return null;
+
+    try {
+        const millis = toMillis.call(value);
+        return typeof millis === "number" && Number.isFinite(millis) ? millis : null;
+    } catch {
+        return null;
+    }
+};
+
+export const isRecentlyDeletedProjectSlugReservation = (
+    candidate: DeletedProjectSlugCandidate,
+    proposedSlug: string,
+    cutoffMillis: number,
+): boolean => {
+    if (!candidate || typeof candidate !== "object" || candidate.deleted !== true) return false;
+
+    const deletedAtMillis = projectDeletionTimeMillis(candidate.deletedAt);
+    if (deletedAtMillis === null || deletedAtMillis < cutoffMillis) return false;
+
+    const normalized = normalizeProjectSlug(proposedSlug);
+    if (!normalized) return false;
+    if (normalizeProjectSlug(candidate.slug) === normalized) return true;
+
+    return Array.isArray(candidate.previousSlugs)
+        && candidate.previousSlugs.some((slug) => normalizeProjectSlug(slug) === normalized);
+};
 
 /**
  * Summary entries own both their current slug and redirect history. Inactive

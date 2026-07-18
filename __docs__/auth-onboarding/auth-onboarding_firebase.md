@@ -1,101 +1,71 @@
-# Auth Onboarding — Firebase Cost Tracking
+# Auth and Onboarding Firebase and Cost Contract
 
-**Feature:** Authentication & Onboarding Flow
-**Status:** Firebase cost evidence; not current launch certification
-**Last Updated:** July 1, 2026
-**Priority:** HIGH — Every new user triggers Firebase Auth + Firestore writes.
+**Status:** Current source contract
+**Last updated:** July 16, 2026
 
----
+## Data surfaces
 
-## Summary
+| Surface | Purpose | Client access |
+| --- | --- | --- |
+| `users` | Identity, lifecycle, account role, active store and store mappings | Existing governed user/staff rules |
+| `tenants` | Business ownership and store list | Existing tenant-scoped rules |
+| `stores` | Canonical store, role definitions, public business truth | Existing store-scoped rules |
+| `platformSummary/platform` | Tenant/store counters | Server transaction only for onboarding |
+| `platformSummary/storesSummary` | Compact store lookup/read model | Server transaction for onboarding |
+| `subscriptions` | Durable provider/local billing ledger | Server writes; governed owner reads |
+| `authPhoneOtpChallenges` | OTP challenge, attempts, delivery and verification lease | Server only |
+| `authPhoneOtpLoginTokens` | Short-lived one-time NextAuth bridge | Server only |
+| Claim fields on `users` | Expiring token, reservation, transfer audit | Server claim paths only |
 
-- **Collections Used:** `users`, `tenants`, `stores`, `platformSummary`, `sessions`
-- **Storage Buckets:** None
-- **Cloud Functions:** None (NextAuth handles auth server-side)
-- **Firebase Auth:** Google Sign-In via NextAuth.js → Firebase Admin SDK
-- **Estimated Monthly Cost:** **Low** — Per-signup cost, not per-session
+No new Firestore rules, indexes, Storage rules, or Cloud Function logic are required by the July 16 hardening.
 
-## Current Launch Boundary
+## Website onboarding operations
 
-This cost note documents the source-level Firebase Auth and Firestore cost profile for the implemented onboarding path. It is not current production-launch approval by itself.
+Accepted flow:
 
-Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Firebase Auth custom-claims/token smoke, Firestore rules/deploy evidence where auth/onboarding rules change, Razorpay sandbox onboarding evidence, provider-failure compensation evidence, cost monitoring for signup/payment paths, and target-environment deploy smoke.
+- advisory session check: no Firestore cost;
+- hashed actor rate limit;
+- one subdomain reservation precheck transaction;
+- one allocation transaction reading the exact user, counters, summaries, candidate entity IDs, and subdomain claims, then writing tenant/store/summaries/user/referral state;
+- one public cache invalidation attempt;
+- one or more Razorpay provider calls;
+- one subscription document write;
+- one session refresh read and one canonical store read during Firebase claim sync.
 
-The local source gate does not create Firebase Auth users, mint live custom tokens, write Firestore onboarding documents, call Razorpay, deploy Firebase, deploy Vercel, run browser/device QA, run a production build, or certify production-host behavior.
+Provider failure may add one compensation transaction and one cache invalidation attempt. Ambiguous provider creation may add at most three bounded 100-item provider pages. Ambiguous local persistence adds one exact subscription-document read and verifies provider/user/tenant/store/plan identity before cancellation/compensation.
 
----
+## Identity and compensation admission
 
-## Firestore Operations
+### Onboarding user-ID boundary
 
-### Reads
+First-workspace and reseller helpers normalize user IDs through `src/lib/onboarding/onboardingUserId.ts` before creating user document references. Empty, whitespace-mutated, oversized, slash-containing, and reserved IDs are rejected before Firestore access.
 
-| Operation | Collection | Trigger | Frequency | Docs Read | Notes |
-|-----------|-----------|---------|-----------|-----------|-------|
-| Check existing user | `users` | Login attempt | Per login | 1 | Check if user doc exists by email/UID. |
-| Load user session | `users/{userId}` | Session validation | Per API call (cached) | 0-1 | NextAuth caches session. First call reads, subsequent use cache. |
-| Load tenant/store info | `tenants`, `stores` | After login | Per session | 1-2 | Loaded once, cached in session token. |
+### Onboarding compensation scope boundary
 
-### Writes
+Provider-failure compensation accepts only a normalized user ID and exact positive numeric tenant/store document IDs. The transaction re-reads the exact workspace/user records and removes only matching mappings. These validation helpers add no reads or writes for valid requests; they prevent malformed scope from reaching Firestore and do not create a new collection, index, or retention cost.
 
-| Operation | Collection | Trigger | Frequency | Docs Written | Notes |
-|-----------|-----------|---------|-----------|-------------|-------|
-| Create user doc | `users` | First-time signup | Per new user | 1 | User profile, role, tenant/store assignment. |
-| Create tenant doc | `tenants` | New tenant onboarding | Per new tenant | 1 | Billing entity, subscription info. |
-| Create store doc | `stores` | New store setup | Per new store | 1 | Full store config with defaults. |
-| Provider/persistence-failure compensation | `users`, `tenants`, `stores`, `platformSummary/storesSummary` | Razorpay plan/subscription setup fails, or initial `subscriptions` persistence fails after provider creation | Failure only | 3-4 plus one provider cancellation call for post-provider persistence failure | Marks tenant/store inactive, clears failed user mapping when it matches the just-created scope, removes referral attribution, and hides the store from summary-backed public reads. User document refs pass through the onboarding user-ID boundary first. |
-| Current onboarding authority lock | `users/{userId}` | Every website onboarding transaction | 1 transaction read | 1 | Exact current identity/lifecycle/revocation and empty tenant/store scope are revalidated before counter allocation. The read also serializes concurrent requests so one transaction can win. |
-| Ambiguous provider recovery | Razorpay subscription list; no Firestore write | Only when provider creation throws after a plan ID exists | Failure only | Up to 3 provider pages of 100 in a 15-minute window | Exact UUID attempt/source/plan/user/tenant/store notes prevent a second external subscription after a lost create response. |
-| Update last login | `users/{userId}` | Each login | Per login | 1 | `lastLoginAt` timestamp. |
-| Session management | NextAuth (JWT) | Login/logout | Per session | 0 | JWT-based — no Firestore session writes. |
+## Phone OTP operations
 
-### Deletes
+Send performs fail-closed IP admission, a 1KB body cap, fail-closed normalized-phone admission, one challenge write, one WhatsApp provider call, and one delivery-status write. If either limiter provider is unavailable, the route returns 503 before challenge or WhatsApp work.
 
-| Operation | Collection | Trigger | Frequency | Notes |
-|-----------|-----------|---------|-----------|-------|
-| None | — | — | — | Users are deactivated, never deleted. |
+Verification performs fail-closed IP admission, a 1KB body cap, fail-closed challenge admission, one reservation transaction, bounded existing-user lookup/update or creation, and one final transaction for challenge plus login token. Token consumption is one transaction over the exact token and user.
 
----
+## Claim operations
 
-## Firebase Authentication
+Preview performs fail-closed hashed-IP admission before the indexed token lookup. Mutation performs the same fail-closed admission before its 16KB body, token lookup, reservation, Firebase Auth work, final ownership transaction, cache invalidation, or custom-claim mirror.
 
-| Operation | Trigger | Frequency | Notes |
-|-----------|---------|-----------|-------|
-| Google Sign-In | User clicks "Sign in with Google" | Per login | OAuth flow via NextAuth → Firebase Admin createCustomToken or verifyIdToken. |
-| Token verification | API route access | Per API call | `withAuth()` middleware verifies token. Cached in session. |
+Account claim uses bounded duplicate detection and at most 100 matching subscription relinks. Cache invalidation and custom-claim mirroring are post-commit recovery effects; failures are logged without repeating or rolling back ownership.
 
----
+## Firebase Auth operations
 
-## Cost Optimization Notes
+- Google login may create one Firebase Auth identity during claim sync.
+- Credentials verify the existing Firebase password identity.
+- Phone OTP itself does not create a Firebase password identity; `/api/auth/set-claims` creates/resolves the Firebase user needed for Firestore custom-token access.
+- Email/password and WhatsApp/passcode account claim create or safely update the bound Firebase Auth identity before final ownership transfer.
+- Custom claims use canonical string tenant/store IDs, bounded store IDs, account `platformRole`, and the exact store role. Missing roles are denied instead of being promoted to owner.
 
-### Current Optimizations
-- **JWT sessions**: No Firestore session storage — JWT tokens are stateless
-- **Session caching**: User/tenant/store data loaded once at login, embedded in JWT
-- **Onboarding user-ID boundary**: Normal onboarding user updates, provider-failure compensation, and reseller-created owner user docs normalize user IDs through `src/lib/onboarding/onboardingUserId.ts` before `users/{userId}` refs. This adds no reads or writes for valid requests; malformed, whitespace-mutated, path-shaped, reserved, empty, or oversized user IDs fail before user document path composition.
-- **Current authority and concurrency boundary**: Website onboarding adds one exact user point read inside the creation transaction. It is authorization and a contention lock, not a redundant profile lookup. Current inactive/unverified/blocked/revoked/mismatched users, existing scope, malformed scope collections, and concurrent losers fail before tenant/store writes.
-- **Provider response privacy**: Razorpay notes and the full provider object remain server-private. The browser response contains only the validated subscription ID and numeric tenant/store IDs. Provider checkout URL is normalized to the fixed HTTPS `rzp.io` host before persistence.
-- **Onboarding compensation scope boundary**: Provider-failure compensation requires exact positive numeric tenant/store document IDs before `tenants/{tenantId}`, `stores/{storeId}`, or `platformSummary/storesSummary.stores.{storeId}` compensation writes. This adds no reads or writes for valid requests; malformed, whitespace-mutated, path-shaped, reserved, zero, negative, unsafe, leading-zero, or nonnumeric scope fails before compensation document path composition.
-- **No per-request auth reads**: `getActiveSession()` reads from JWT, not Firestore
+The Google first-user Firestore write now uses the shared canonical value sanitizer instead of an auth-local recursive clone. This is operation-count neutral: it adds no read, write, collection, index, rule, Function, or provider call. It prevents SDK-value flattening and fails closed on cyclic, accessor-backed, unsupported, or unsafe-key payloads before the existing deterministic user transaction.
 
-### Warnings
-- **`lastLoginAt` update**: Every login writes to user doc. High-frequency users = many writes.
+## Deploy boundary
 
----
-
-## Cost Estimate (per 1000 users, 5 logins/user/month)
-
-| Resource | Operations/month | Unit Cost | Monthly Cost |
-|----------|-----------------|-----------|-------------|
-| Firebase Auth (sign-ins) | 5,000 | Free tier (10K/month) | $0.00 |
-| Firestore Reads (user check) | 5,000 | $0.06/100K | $0.00 |
-| Firestore Writes (last login) | 5,000 | $0.18/100K | $0.01 |
-| Firestore Writes (new users) | 50 (5% growth) | $0.18/100K | $0.00 |
-| **Total** | | | **~$0.01/month** |
-
----
-
-## DAL Functions Used
-
-| Function | File | Operation Type |
-|----------|------|---------------|
-| `getActiveSession` | `src/lib/auth/getActiveSession.ts` | Read (JWT cache) |
-| NextAuth callbacks | `src/app/api/auth/[...nextauth]/route.ts` | Read + Write |
+The current changes are Next.js route, UI, helper, verifier, and documentation changes. They do not trigger Firebase infrastructure auto-deploy. A Vercel deploy remains pending until explicitly requested.

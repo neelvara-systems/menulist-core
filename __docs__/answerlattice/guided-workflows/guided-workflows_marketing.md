@@ -1,76 +1,54 @@
-# Answerlattice — Guided Workflows: Marketing & Sales Collateral
+# Answerlattice Guided Workflows Marketing
 
-> **Status:** DESIGNED — Ready for Implementation
-> **Version:** 1.0.0
-> **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
-> **Audience:** Sales, Marketing
+> **Status:** Implementation exists; public performance claims held for customer proof
+> **Last verified:** 2026-07-18
 
----
+## Claim-Safe Position
 
-## §1 — Positioning
+Answerlattice can turn an approved procedure into step-by-step in-product guidance using client-declared targets and verified workflow events.
 
-### One-Liner
-Answerlattice delivers deterministic, step-by-step procedure answers — not AI-generated paragraphs — for "how to" support queries.
+## Supported Claims
 
-### Elevator Pitch (30 seconds)
-Most AI support tools answer procedural questions with paragraphs. Your users ask "how do I invite a teammate?" and get a wall of text. Answerlattice returns numbered, structured steps — like an internal SOP, not a chatbot response. Steps are version-tracked, entity-bound, and governed. When your product UI changes, Answerlattice flags outdated procedures automatically.
+- Approved canonical procedures can be shown as guided steps.
+- The client product can mark stable semantic targets.
+- Answerlattice can highlight the current target without clicking it.
+- A client-verified event can advance the current step.
+- Missing targets and escalations can become governed support signals.
+- Existing human approval remains authoritative.
+- Guided sessions add no listener, scheduler, or AI request.
 
----
+## Claims Held Until Real-Client Evidence
 
-## §2 — Key Differentiators
+Do not yet claim:
 
-| Feature | Typical AI Help Center | Answerlattice |
-|---------|----------------------|----------|
-| Procedure answers | AI-generated text blob | Structured atomic steps |
-| Version tracking | None | Product version-bound with drift detection |
-| Accuracy | Probabilistic (may hallucinate) | Deterministic (human-approved steps) |
-| Warnings | Omitted by AI | Structured severity-based warnings |
-| Prerequisites | Not tracked | Role/plan/state-aware prerequisites |
-| Update governance | Manual review | Mutation pipeline with signal-driven proposals |
+- a specific completion-rate uplift;
+- a specific ticket-deflection rate;
+- automatic task completion;
+- autonomous product control;
+- support cost savings;
+- reliable guidance on every product screen;
+- self-improving procedures.
 
----
+## Differentiation
 
-## §3 — Target Audience Pain Points
+The distinction is controlled resolution, not browser autonomy:
 
-### SaaS Founders
-- "Our AI chatbot gives users long paragraphs for simple how-to questions"
-- "When we change the UI, support articles become outdated silently"
-- "Users follow old instructions and get stuck, then create tickets"
+```text
+approved procedure
++ safe live context
++ explicit semantic targets
++ verified product events
++ human-governed improvement
+```
 
-### Support Teams
-- "We answer the same procedural questions repeatedly"
-- "Our KB articles are paragraphs that users don't read"
-- "When the product changes, we don't know which articles to update"
+## Proof Needed Before Promotion
 
----
+Test 3-5 high-friction workflows for one client and record:
 
-## §4 — Sales Talking Points
-
-1. **Deterministic, not generative** — Procedure answers come from governed, human-approved steps. Not AI generation. Same query = same answer = consistent support.
-
-2. **Version-aware** — Procedures are bound to product versions. When you release a new version, Answerlattice flags potentially outdated procedures for review.
-
-3. **Structured for rendering** — Widget clients receive structured JSON (steps, warnings, prerequisites). Can render as numbered lists, guided walkthroughs, or interactive tutorials.
-
-4. **Zero additional infrastructure cost** — Procedure data is embedded in existing canonical answer documents. No new databases, no additional query costs.
-
-5. **Works with existing governance** — Same drift detection, mutation pipeline, and audit logging that governs text answers also governs procedure answers.
-
----
-
-## §5 — Objection Handling
-
-| Objection | Response |
-|-----------|----------|
-| "We already have documentation" | Documentation is paragraphs. Answerlattice procedures are atomic steps — versioned, governed, and directly served via API. |
-| "AI can generate step-by-step answers" | AI generates plausible steps. Answerlattice serves verified steps. The difference matters when your user follows incorrect AI steps and breaks something. |
-| "Too much effort to create procedures" | Most SaaS products have 50-120 procedures. Once created, they're governed automatically. Future: AI-assisted drafting from existing docs. |
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-03-08 | 1.0.0 | Initial marketing collateral |
+- completion rate;
+- target-missing rate;
+- escalation rate;
+- median completion time;
+- guide abandonment;
+- founder review effort;
+- repeat issue rate after an approved update.

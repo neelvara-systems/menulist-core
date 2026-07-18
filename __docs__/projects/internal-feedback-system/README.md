@@ -1,9 +1,9 @@
 # Guest Feedback System
 
-**Feature Status:** ✅ FULLY IMPLEMENTED
+**Feature Status:** Implemented in source; target-environment certification is separate
 **Priority:** Medium (#5 in Expansion Surfaces)
 **Feature Flag:** `ENABLE_GUEST_FEEDBACK: true`
-**Last Production Audit:** July 2, 2026
+**Last Source Audit:** July 16, 2026
 
 ---
 
@@ -112,9 +112,9 @@ Safe review URL boundary now includes review URL parse diagnostics. Malformed co
 | `src/types/guestFeedback.ts`                                                      | GuestFeedback type + FeedbackDefaults + form types                                | ✅     |
 | `src/database/guestFeedback/index.ts`                                             | Client owner DAL: getFeedbackList, updateFeedbackStatus, getFeedbackCount         | ✅     |
 | `src/database/guestFeedback/guestFeedbackDiagnostics.ts`                          | Bounded client feedback MOL failure diagnostics                                   | ✅     |
-| `src/database/guestFeedback/server.ts`                                            | Admin DAL: public API feedback writes + compact MOL event writes                  | ✅     |
+| `src/database/guestFeedback/server.ts`                                            | Admin DAL: idempotent public feedback + compact event writes                      | ✅     |
 | `src/app/api/public/feedback/submit/route.ts`                                     | Public submit endpoint (no auth, rate limited, Admin SDK write)                   | ✅     |
-| `src/app/feedback/[projectId]/page.tsx`                                           | Standalone feedback page (QR surface, server component)                           | ✅     |
+| `src/app/feedback/[projectId]/page.tsx`                                           | Standalone page with cached public eligibility and allowlisted browser projection | ✅     |
 | `src/lib/feedback/publicFeedbackDiagnostics.ts`                                   | Bounded public feedback page/form failure diagnostics                             | ✅     |
 | `src/lib/feedback/feedbackReplyTemplates.ts`                                      | Browser-local deterministic reply drafts for owner follow-up                      | ✅     |
 | `src/lib/feedback/guestFeedbackSubmitResponse.ts`                                 | Shared public feedback submit response cap and shape guard                        | ✅     |
@@ -129,8 +129,8 @@ Safe review URL boundary now includes review URL parse diagnostics. Malformed co
 | `src/components/templates/main-app/feedback/FeedbackFilters.tsx`                  | All / Needs Attention / Resolved filters                                          | ✅     |
 | `src/components/templates/main-app/feedback/FeedbackQrDownload.tsx`               | QR code preview + download modal                                                  | ✅     |
 | `src/components/templates/main-app/businessSettings/tabs/FeedbackSettingsTab.tsx` | Store-level feedback settings                                                     | ✅     |
-| `src/components/mobile/screens/MobileFeedbackScreen.tsx`                          | Mobile feedback list (antd-mobile)                                                | ✅     |
-| `src/components/mobile/screens/MobileFeedbackDetail.tsx`                          | Mobile feedback detail view with reply draft fill                                 | ✅     |
+| `src/components/mobile/screens/MobileFeedbackScreen.tsx`                          | Mobile shell feedback list with filters and cursor pagination                     | ✅     |
+| `src/components/mobile/screens/MobileFeedbackDetail.tsx`                          | Mobile detail with manual copy/WhatsApp drafts and separate resolve               | ✅     |
 | `src/hooks/useFeedback.ts`                                                        | Generic feedback hook (KB articles/changelog)                                     | ✅     |
 | `functions/src/analytics/guestFeedbackRetention.ts`                               | Nightly 90-day retention cleanup CF                                               | ✅     |
 | `scripts/verification/verify-guest-feedback-boundary.js`                          | Source gate for public submit, safe review URL, owner/mobile parity, docs parity   | ✅     |
@@ -187,12 +187,13 @@ reviewUrl?: string;        // Google Review URL for CTA
 ### Production Boundary Confirmed June 11, 2026
 
 - Public submissions go through `POST /api/public/feedback/submit`; direct unauthenticated Firestore creates are denied. The API applies the public feedback IP rate limit, rejects JSON bodies above 16KB before schema validation, and then verifies Turnstile when `TURNSTILE_SECRET_KEY` is configured. The browser form must send `captchaToken` from `NEXT_PUBLIC_TURNSTILE_SITE_KEY` in that mode.
+- The browser reuses one `submissionId` for retries. The Admin DAL derives a deterministic create-only feedback ID and verifies a sanitized payload fingerprint on replay; the compact submission event is create-only under a deterministic ID too. Lost responses therefore do not duplicate feedback or events.
 - The guest-facing form submits with same-origin credentials, no-store cache policy, and manual redirect handling, then parses acknowledgements through a 16KB bounded JSON response guard before showing the success state. Successful acknowledgements must include an OK HTTP response, `success: true`, a non-empty `feedbackId`, and an optional string/null `reviewUrl`; malformed or oversized responses log bounded form diagnostics and show fixed failure copy.
 - Safe review URL boundary: the public API and browser form normalize returned `reviewUrl` values through `normalizeGuestFeedbackReviewUrl()`. Only HTTPS Google review/maps URLs are accepted; invalid, non-Google, non-HTTPS, or oversized URLs are treated as absent.
-- The public API verifies project existence, project active/deleted status, store tenant match, store active/deleted/blocked state, tenant block state, project feedback toggle, and store feedback toggle before writing.
+- The public page and API verify project existence, project active/deleted status, store tenant match, store active/deleted/blocked state, tenant block state, project feedback toggle, and store feedback toggle. The page reuses the public store lookup/cache and sends only `projectPublicClientStore()` output to the browser.
 - Store-owned field defaults are enforced on the server. Hidden contact fields are dropped even if a caller posts them directly, and required fields are validated by the API.
 - Store-scoped owner/manager sessions can update only feedback from their store. Updates are limited to `status`, `needsAttention`, `modifiedOn`, `modifiedBy`, and `ownerNote`.
-- Owner desktop/mobile list loads require a shaped `{ items, lastDocId, hasMore }` DAL result before state updates. Desktop badge counts require a finite non-negative count before rendering. Composer fallback values route through bounded load diagnostics.
+- Owner desktop/mobile list loads require a shaped `{ items, lastDocId, hasMore }` DAL result before state updates. Both surfaces expose cursor-based Load more; mobile filter changes use one effect-driven read. Desktop badge counts require a finite non-negative count before rendering. Composer fallback values route through bounded load diagnostics.
 - Owner status/reply updates require a shaped feedback record with the expected id and status before success state advances. `updateFeedbackStatus()` also verifies the internal `getFeedbackById()` result shape before writing, so fallback values cannot bypass tenant/store record verification.
 - Guest feedback writes do not invalidate public menu/OBP cache because feedback is private owner workflow data and does not change public truth packets.
 - Source gate: run `npm run verify:guest-feedback-boundary` after any change to public feedback submission, owner feedback inboxes, mobile feedback screens, Firestore feedback rules/indexes, retention wiring, or this feature doc set.
@@ -225,7 +226,7 @@ Never add to this feature:
 
 - Analytics dashboards or trends
 - AI sentiment analysis
-- CRM / response templates
+- CRM, provider sends, or automated response workflows
 - NPS scoring
 - Email campaigns or follow-ups
 - Review gating (rating-conditional CTA)
@@ -237,7 +238,7 @@ Never add to this feature:
 | Decision          | Value                                               | Source               |
 | ----------------- | --------------------------------------------------- | -------------------- |
 | Collection        | Separate `guestFeedback`                            | User + ChatGPT       |
-| Google Review URL | Manual entry + GBP sync (flagged)                   | User                 |
+| Google Review URL | Manual store setting with shared strict allowlist   | Current source truth |
 | Menu Toggle       | Per-project in Advanced Settings                    | User + ChatGPT       |
 | Contact Fields    | Store-level defaults (not per-project)              | User + ChatGPT       |
 | Retention         | 90 days hard deletion                               | Architect            |
@@ -265,4 +266,4 @@ Never add to this feature:
 
 ---
 
-_Last updated: March 14, 2026_
+_Last updated: July 16, 2026_

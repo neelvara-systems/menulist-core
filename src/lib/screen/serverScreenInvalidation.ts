@@ -58,7 +58,6 @@ export async function touchDigitalScreenContentVersionForStoreServer(
                 contentVersion: nextContentVersion,
                 enabled: screen.enabled === true,
                 lastContentChangeAt: now,
-                screenToken: screen.screenToken,
                 storeId: normalizedStoreId,
                 updatedAt: now,
             }, { merge: false });

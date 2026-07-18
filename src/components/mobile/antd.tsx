@@ -199,6 +199,10 @@ function disabledButtonStyles(token: ReturnType<typeof theme.useToken>['token'],
 }
 
 type ButtonProps = {
+    'aria-controls'?: string;
+    'aria-describedby'?: string;
+    'aria-expanded'?: boolean;
+    'aria-haspopup'?: boolean | 'dialog' | 'menu' | 'listbox' | 'tree' | 'grid';
     'aria-label'?: string;
     'aria-pressed'?: boolean;
     ariaLabel?: string;
@@ -217,18 +221,45 @@ type ButtonProps = {
     title?: string;
 };
 
-export function Button({ 'aria-label': ariaLabelAttribute, 'aria-pressed': ariaPressed, ariaLabel, block, children, className, color, disabled, fill = 'solid', htmlType, icon, loading, onClick, size, style, title }: ButtonProps) {
+export function Button({
+    'aria-controls': ariaControls,
+    'aria-describedby': ariaDescribedBy,
+    'aria-expanded': ariaExpanded,
+    'aria-haspopup': ariaHasPopup,
+    'aria-label': ariaLabelAttribute,
+    'aria-pressed': ariaPressed,
+    ariaLabel,
+    block,
+    children,
+    className,
+    color,
+    disabled,
+    fill = 'solid',
+    htmlType,
+    icon,
+    loading,
+    onClick,
+    size,
+    style,
+    title,
+}: ButtonProps) {
     const { token } = theme.useToken();
     const antType = fill === 'solid' ? 'primary' : 'default';
     const antSize = size === 'mini' ? 'small' : size || 'middle';
     const touchMinHeight = antSize === 'large' ? 50 : antSize === 'small' ? 44 : 46;
-    const touchSafeStyle = fill !== 'none'
-        ? { minHeight: touchMinHeight, paddingInline: (block || antSize !== 'small') ? 14 : undefined }
-        : undefined;
+    const touchSafeStyle = {
+        minHeight: touchMinHeight,
+        minWidth: fill === 'none' ? 44 : undefined,
+        paddingInline: fill === 'none' ? undefined : (block || antSize !== 'small') ? 14 : undefined,
+    };
     const visualStyle = disabled ? disabledButtonStyles(token, fill) : buttonStyles(token, fill, color);
 
     return (
         <AntButton
+            aria-controls={ariaControls}
+            aria-describedby={ariaDescribedBy}
+            aria-expanded={ariaExpanded}
+            aria-haspopup={ariaHasPopup}
             aria-label={ariaLabel ?? ariaLabelAttribute}
             aria-pressed={ariaPressed}
             block={block}
@@ -292,11 +323,12 @@ export function DotLoading(_: { color?: string }) {
 
 export const Empty = AntEmpty;
 
-export function FloatingBubble({ children, onClick, style }: { children?: ReactNode; onClick?: () => void; style?: AnyStyle }) {
+export function FloatingBubble({ ariaLabel, children, onClick, style }: { ariaLabel?: string; children?: ReactNode; onClick?: () => void; style?: AnyStyle }) {
     const { token } = theme.useToken();
     const bubbleStyle = style || {};
     return (
         <FloatButton
+            aria-label={ariaLabel}
             icon={(
                 <Flex align="center" justify="center" style={{ color: 'inherit', height: '100%', width: '100%' }}>
                     {children}
@@ -344,6 +376,12 @@ function ListComponent({ children, className, style }: ListProps) {
 
 function ListItem({ arrow, children, description, extra, onClick, prefix, style, title }: ListItemProps) {
     const { token } = theme.useToken();
+    const handleKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (!onClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        onClick();
+    };
+
     return (
         <AntList.Item
             extra={(
@@ -353,11 +391,14 @@ function ListItem({ arrow, children, description, extra, onClick, prefix, style,
                 </Flex>
             )}
             onClick={onClick}
+            onKeyDown={handleKeyDown}
+            role={onClick ? 'button' : undefined}
             style={sanitizeStyle({
                 cursor: onClick ? 'pointer' : undefined,
                 minHeight: onClick ? 56 : undefined,
                 ...style,
             })}
+            tabIndex={onClick ? 0 : undefined}
         >
             <AntList.Item.Meta
                 avatar={prefix}
@@ -830,11 +871,35 @@ export const Toast = {
 };
 
 export function Tag({ children, className, color, onClick, style }: { children?: ReactNode; className?: string; color?: string; fill?: string; onClick?: () => void; style?: AnyStyle }) {
-    return <AntTag bordered className={className} color={color === 'primary' ? 'processing' : color} onClick={onClick} style={sanitizeStyle(style)}>{children}</AntTag>;
+    const handleKeyDown = (event: ReactKeyboardEvent<HTMLSpanElement>) => {
+        if (!onClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        onClick();
+    };
+
+    return (
+        <AntTag
+            bordered
+            className={className}
+            color={color === 'primary' ? 'processing' : color}
+            onClick={onClick}
+            onKeyDown={handleKeyDown}
+            role={onClick ? 'button' : undefined}
+            style={sanitizeStyle({
+                cursor: onClick ? 'pointer' : undefined,
+                minHeight: onClick ? 44 : undefined,
+                ...style,
+            })}
+            tabIndex={onClick ? 0 : undefined}
+        >
+            {children}
+        </AntTag>
+    );
 }
 
 export function NavBar({
     backIcon,
+    backLabel = 'Back',
     children,
     className,
     onBack,
@@ -843,6 +908,7 @@ export function NavBar({
     titleAlign,
 }: {
     backIcon?: ReactNode;
+    backLabel?: string;
     children?: ReactNode;
     className?: string;
     onBack?: () => void;
@@ -881,7 +947,7 @@ export function NavBar({
             }}
         >
             {showBackButton ? (
-                <Button fill="none" onClick={onBack} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                <Button aria-label={backLabel} fill="none" onClick={onBack} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                     {backIcon ?? <LuArrowLeft size={18} />}
                 </Button>
             ) : reserveLeadingSpace ? (

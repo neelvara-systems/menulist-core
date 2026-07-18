@@ -1,4 +1,4 @@
-import { functions } from '@lib/firebase/firebaseClient';
+import { answerlatticeFunctions } from '@lib/firebase/answerlatticeFirebaseClient';
 import { httpsCallable } from 'firebase/functions';
 
 /**
@@ -37,10 +37,67 @@ export const triggerManualAggregation = async (daysToBackfill: number = 1): Prom
     errors?: string[];
     lastAttemptedRun?: string;
 }> => {
-    const triggerFunction = httpsCallable(functions, 'triggerAggregationManual');
-    const response = await triggerFunction({ daysToBackfill });
-    return response.data as any;
+    void daysToBackfill;
+    throw new Error('Answerlattice chat analytics uses the dedicated backfill runtime.');
 };
+
+type ChatAnalyticsBackfillResult = {
+    date: string;
+    chats: number;
+    status: 'success' | 'skipped';
+    partial: boolean;
+};
+
+type ChatAnalyticsBackfillResponse = {
+    tenantId: number;
+    storeId: number;
+    days: number;
+    results: ChatAnalyticsBackfillResult[];
+};
+
+function parseBackfillResponse(value: unknown): ChatAnalyticsBackfillResponse {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('chat_analytics_backfill_response_invalid');
+    const response = value as Record<string, unknown>;
+    if (
+        typeof response.tId !== 'number'
+        || !Number.isSafeInteger(response.tId)
+        || response.tId <= 0
+        || typeof response.sId !== 'number'
+        || !Number.isSafeInteger(response.sId)
+        || response.sId <= 0
+        || typeof response.days !== 'number'
+        || !Number.isSafeInteger(response.days)
+        || response.days < 1
+        || response.days > 90
+        || !Array.isArray(response.results)
+        || response.results.length !== response.days
+    ) throw new Error('chat_analytics_backfill_response_invalid');
+    const results = response.results.map((entry): ChatAnalyticsBackfillResult => {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw new Error('chat_analytics_backfill_response_invalid');
+        const result = entry as Record<string, unknown>;
+        if (
+            typeof result.date !== 'string'
+            || !/^\d{4}-\d{2}-\d{2}$/.test(result.date)
+            || typeof result.chats !== 'number'
+            || !Number.isSafeInteger(result.chats)
+            || result.chats < 0
+            || (result.status !== 'success' && result.status !== 'skipped')
+            || typeof result.partial !== 'boolean'
+        ) throw new Error('chat_analytics_backfill_response_invalid');
+        return {
+            date: result.date,
+            chats: result.chats,
+            status: result.status,
+            partial: result.partial,
+        };
+    });
+    return {
+        tenantId: response.tId,
+        storeId: response.sId,
+        days: response.days,
+        results,
+    };
+}
 
 /**
  * Backfill historical analytics data
@@ -62,17 +119,22 @@ export const backfillAggregates = async (
     storeId: string | number,   // Accept both, but prefer number
     days: number = 30
 ): Promise<{
-    tenantId: string | number;
-    storeId: string | number;
+    tenantId: number;
+    storeId: number;
     days: number;
     results: Array<{
         date: string;
-        chats?: number;
-        status: 'success' | 'skipped' | 'error';
-        error?: string;
+        chats: number;
+        status: 'success' | 'skipped';
+        partial: boolean;
     }>;
 }> => {
-    const backfillFunction = httpsCallable(functions, 'backfillAggregates');
-    const response = await backfillFunction({ tenantId, storeId, days });
-    return response.data as any;
+    const tId = Number(tenantId);
+    const sId = Number(storeId);
+    if (!answerlatticeFunctions || !Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0 || !Number.isSafeInteger(days) || days < 1 || days > 90) {
+        throw new Error('chat_analytics_backfill_request_invalid');
+    }
+    const backfillFunction = httpsCallable(answerlatticeFunctions, 'backfillChatAnalytics');
+    const response = await backfillFunction({ tId, sId, days });
+    return parseBackfillResponse(response.data);
 };

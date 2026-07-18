@@ -235,9 +235,10 @@ async function main() {
 
     [
         [pdfSurfaceDocs.spec, 'current project data at download time', 'PDF Surface spec generation-time boundary'],
-        [pdfSurfaceDocs.spec, 'version ID and generation timestamp', 'PDF Surface spec version evidence'],
+        [pdfSurfaceDocs.spec, 'generated-file metadata plus a source reference', 'PDF Surface spec source-reference evidence'],
         [pdfSurfaceDocs.marketing, 'Generated from the current project data at download time', 'PDF Surface marketing generation-time boundary'],
-        [pdfSurfaceDocs.marketing, 'The version is clear', 'PDF Surface marketing versioned talking point'],
+        [pdfSurfaceDocs.marketing, 'The source reference is clear', 'PDF Surface marketing source-reference talking point'],
+        [pdfSurfaceDocs.marketing, 'short source reference in its filename', 'PDF Surface marketing current filename boundary'],
         [pdfSurfaceDocs.marketing, 'Do not use fixed generation-speed, every-item, print-shop-quality, no-review, or stale-artifact freshness claims without release-specific evidence.', 'PDF Surface marketing claim boundary'],
         [pdfSurfaceDocs.marketing, 'review the file before printing or sharing it', 'PDF Surface marketing review-before-use boundary'],
         [pdfSurfaceDocs.helpdoc, 'Download a fresh PDF after menu changes', 'PDF Surface helpdoc freshness boundary'],

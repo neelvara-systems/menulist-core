@@ -9,6 +9,7 @@ import { z } from 'zod';
  * POST /api/reseller/onboard — Create store + subscription
  */
 export const ResellerOnboardSchema = z.object({
+    operationId: z.string().uuid(),
     businessName: z.string().min(2, 'Business name must be at least 2 characters').max(100, 'Business name too long'),
     businessType: z.string().min(2).max(50),
     ownerCountryCode: z.string().trim().max(8).optional(),
@@ -40,6 +41,7 @@ export type ResellerConfirmPaymentInput = z.infer<typeof ResellerConfirmPaymentS
  * POST /api/reseller/renew — Renew offline license
  */
 export const ResellerRenewSchema = z.object({
+    operationId: z.string().uuid(),
     storeId: z.coerce.number().int().positive(),
     tenantId: z.coerce.number().int().positive(),
     pricingTier: z.enum(['FOUNDER_400', 'FOUNDER_500', 'STANDARD']),
@@ -54,6 +56,7 @@ export type ResellerRenewInput = z.infer<typeof ResellerRenewSchema>;
  * before a manual/reseller client creates another outlet.
  */
 export const ResellerAddLocationCapacitySchema = z.object({
+    operationId: z.string().uuid(),
     storeId: z.coerce.number().int().positive(),
     tenantId: z.coerce.number().int().positive(),
     locationCount: z.coerce.number().int().min(1).max(30).default(1),

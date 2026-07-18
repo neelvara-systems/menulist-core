@@ -3,16 +3,10 @@
 **Feature:** Business Health
 **Internal Slug:** owner-business-assistant
 **Product:** MenuList
-**Status:** Draft for post-enable owner help
-**Last Updated:** June 7, 2026
+**Status:** Implemented owner-help source; screenshots and publication remain owner-controlled
+**Last Updated:** July 16, 2026
 
 ---
-
-## Publish Status
-
-Do not publish this help article until Business Health is implemented, screenshots are captured, and mobile behavior is verified.
-
-## Draft Article
 
 # Business Health
 
@@ -54,20 +48,13 @@ Answers use the latest MenuList check. If MenuList does not have enough data, it
 
 ## Actions
 
-Business Health may open the right screen or prepare a draft for you.
+Business Health is read-only. It explains the latest grounded check and can show the existing screen that owns a fix. It does not prepare a price, description, image, publish, store, outlet, staff, or public-information change.
 
-Changes that affect public business information still need confirmation. MenuList will not silently publish public changes from a message.
-
-Examples:
-
-- Prepare a price change.
-- Prepare a rewritten item description.
-- Open the image update screen.
-- Open the publish screen.
+Use Menu Manager, Business Settings, Share, Feedback, or the other named MenuList screen to make a change. Existing confirmation and permission checks still apply there.
 
 ## If the Latest Check Is Delayed
 
-If Business Health says the latest check is delayed, it means MenuList is showing the last available check. Try again after the next MenuList check, or open the related screen if an action is shown.
+If Business Health says the latest check is delayed, MenuList is showing the last available grounded check. Try again after the next MenuList check, or open the named MenuList screen when a fix link is available.
 
 ## Data Limitations
 
@@ -94,4 +81,4 @@ If Business Health does not load:
 
 ## Owner Safety Note
 
-Public menu and business changes remain under your control. Business Health can guide you, but important public changes still require confirmation.
+Public menu and business changes remain under your control. Business Health can explain what to check, but it cannot make or draft those changes.

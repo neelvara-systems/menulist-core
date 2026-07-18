@@ -5,6 +5,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
 import {
     buildBrandPropagationValues,
     buildStoreSummaryBrandPropagationValues,
@@ -33,6 +34,7 @@ import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
 
 const BRAND_PROPAGATION_MAX_BODY_BYTES = 8 * 1024;
 const MAX_BRAND_PROPAGATION_OUTLETS = 200;
+const BRAND_PROPAGATION_EFFECT_CHUNK_SIZE = 20;
 const BRAND_PROPAGATION_SCOPE_CHANGED_CODE = 'BRAND_PROPAGATION_SCOPE_CHANGED';
 
 class BrandPropagationScopeChangedError extends Error {
@@ -149,6 +151,7 @@ export const POST = withAuth(async (request, session) => {
             || Number(masterStore?.tenantId) !== tenantScope.numericId
             || masterStore?.isMaster !== true
             || masterStore?.active === false
+            || masterStore?.deleted === true
             || isPlatformEntityBlocked(masterStore)
         ) {
             return NextResponse.json({ error: 'Master store not found' }, { status: 404 });
@@ -171,21 +174,29 @@ export const POST = withAuth(async (request, session) => {
         }
         const propagatedValues = buildBrandPropagationValues(validation.data.values, fields);
         const summaryValues = buildStoreSummaryBrandPropagationValues(propagatedValues);
+        const tenantRef = db.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);
         const outletQuery = db.collection(DB_COLLECTIONS.STORES)
             .where('tenantId', '==', tenantScope.numericId)
             .limit(MAX_BRAND_PROPAGATION_OUTLETS + 2);
         const propagationResult = await db.runTransaction(async (transaction) => {
-            const [freshMasterSnap, outletSnapshot] = await Promise.all([
+            const [freshMasterSnap, freshTenantSnap, outletSnapshot] = await Promise.all([
                 transaction.get(masterStoreRef),
+                transaction.get(tenantRef),
                 transaction.get(outletQuery),
             ]);
             const freshMaster = freshMasterSnap.exists ? freshMasterSnap.data() || {} : {};
+            const freshTenant = freshTenantSnap.exists ? freshTenantSnap.data() || {} : {};
             if (
                 !freshMasterSnap.exists
+                || !freshTenantSnap.exists
                 || Number(freshMaster.tenantId) !== tenantScope.numericId
                 || freshMaster.isMaster !== true
                 || freshMaster.active === false
+                || freshMaster.deleted === true
                 || isPlatformEntityBlocked(freshMaster)
+                || freshTenant.active === false
+                || freshTenant.deleted === true
+                || isPlatformEntityBlocked(freshTenant)
             ) {
                 throw new BrandPropagationScopeChangedError();
             }
@@ -202,13 +213,45 @@ export const POST = withAuth(async (request, session) => {
             if (outletSnapshot.size > MAX_BRAND_PROPAGATION_OUTLETS + 1) {
                 throw new Error('brand_propagation_outlet_limit_exceeded');
             }
-            const activeOutlets = outletSnapshot.docs.filter((storeDoc) => (
-                storeDoc.id !== masterStoreScope.documentId
-                && storeDoc.data()?.isMaster !== true
-                && storeDoc.data()?.active !== false
-                && storeDoc.data()?.deleted !== true
-                && !isPlatformEntityBlocked(storeDoc.data())
+            const storesList = Array.isArray(freshTenant.storesList) ? freshTenant.storesList : [];
+            const masterSummary = storesList.find((store: any) => (
+                String(store?.storeId) === masterStoreScope.documentId
             ));
+            if (
+                !masterSummary
+                || masterSummary.isMaster !== true
+                || masterSummary.active === false
+            ) {
+                throw new BrandPropagationScopeChangedError();
+            }
+            const canonicalOutletIds = storesList
+                .filter((store: any) => (
+                    String(store?.storeId) !== masterStoreScope.documentId
+                    && store?.isMaster !== true
+                    && store?.active !== false
+                    && store?.deleted !== true
+                    && store?.blocked !== true
+                ))
+                .map((store: any) => String(store.storeId));
+            if (canonicalOutletIds.length > MAX_BRAND_PROPAGATION_OUTLETS) {
+                throw new Error('brand_propagation_outlet_limit_exceeded');
+            }
+            const queriedStores = new Map(outletSnapshot.docs.map((storeDoc) => [storeDoc.id, storeDoc]));
+            const activeOutlets = canonicalOutletIds.map((outletId) => {
+                const storeDoc = queriedStores.get(outletId);
+                const storeData = storeDoc?.data();
+                if (
+                    !storeDoc
+                    || Number(storeData?.tenantId) !== tenantScope.numericId
+                    || storeData?.isMaster === true
+                    || storeData?.active === false
+                    || storeData?.deleted === true
+                    || isPlatformEntityBlocked(storeData)
+                ) {
+                    throw new BrandPropagationScopeChangedError();
+                }
+                return storeDoc;
+            });
             const outletPolicy = freshMaster.outletPolicy as Record<string, unknown> | undefined;
             const overrideAllowed = outletPolicy?.canOverrideBrandIdentity === true
                 || outletPolicy?.allowBrandingOverride === true;
@@ -239,33 +282,32 @@ export const POST = withAuth(async (request, session) => {
         });
 
         const refreshScreens = hasDigitalScreenBrandPropagationFields(fields);
-        revalidateTag(`menu-store-${masterStoreScope.documentId}`);
-        revalidateTag(`store-${masterStoreScope.documentId}`);
-        if (refreshScreens) {
-            await touchDigitalScreenContentVersionForStoreServer(
-                masterStoreScope.documentId,
-                'brandPropagation',
-            );
-        }
-        await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantScope.documentId,
-            sId: masterStoreScope.documentId,
+        const postCommit = await runStorePublicTruthPostCommitEffects({
+            chunkSize: BRAND_PROPAGATION_EFFECT_CHUNK_SIZE,
+            includeScreenDataTag: refreshScreens,
+            storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds],
+            tenantId: tenantScope.documentId,
+            deps: {
+                invalidateAssistant: (storeId, tenantId) => (
+                    invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })
+                ),
+                revalidate: (tag) => revalidateTag(tag),
+                touchScreen: refreshScreens
+                    ? (storeId) => touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')
+                    : async () => undefined,
+            },
         });
-        for (const outletId of propagationResult.targetOutletIds) {
-            revalidateTag(`menu-store-${outletId}`);
-            revalidateTag(`store-${outletId}`);
-            if (refreshScreens) {
-                await touchDigitalScreenContentVersionForStoreServer(outletId, 'brandPropagation');
-            }
-            await invalidateOwnerBusinessAssistantPacketCache({
-                tId: tenantScope.documentId,
-                sId: outletId,
+        if (postCommit.effectsPending) {
+            logMultiOutletFailure('multi_outlet_brand_propagation_post_commit_effect_failed', postCommit.firstError, {
+                ...failureContext,
+                failedEffectCount: postCommit.failedEffectCount,
+                storeCount: propagationResult.targetOutletIds.length + 1,
             });
         }
-        revalidateTag('client-stores');
-        if (refreshScreens) revalidateTag('screen-data');
 
         return NextResponse.json({
+            effectsPending: postCommit.effectsPending,
+            failedEffectCount: postCommit.failedEffectCount,
             failed: 0,
             propagated: propagationResult.targetOutletIds.length,
             skipped: propagationResult.overrideAllowed ? propagationResult.activeOutletCount : 0,

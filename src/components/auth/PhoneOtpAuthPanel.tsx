@@ -421,7 +421,7 @@ export default function PhoneOtpAuthPanel({
                 {loading ? (
                     <LuLoader className={styles.spin} size={17} />
                 ) : (
-                    <PrimaryIcon className={primaryIcon === 'whatsapp' ? styles.brandWhatsAppIcon : undefined} size={17} />
+                    <PrimaryIcon aria-hidden="true" className={primaryIcon === 'whatsapp' ? styles.brandWhatsAppIcon : undefined} size={17} />
                 )}
                 {buttonLabel}
             </button>

@@ -9,6 +9,12 @@
  * Common scoring utilities and weights.
  */
 
+import {
+    DECISION_BLOCK_DURATION_CONFIGS,
+    DECISION_BLOCK_ENABLED_BLOCKS,
+    DEFAULT_DECISION_BLOCK_CATEGORY,
+} from '../../sharedData/decisionBlockConfig';
+
 export const WEIGHTS = {
     popular: {
         views: 0.4,
@@ -28,27 +34,20 @@ export const WEIGHTS = {
     }
 };
 
-export const QUICK_PICK_THRESHOLDS: Record<string, number> = {
-    'food': 10,
-    'service': 20,
-    'health': 30,
-    'retail': 0,
-    'professional': 30,
-    'creative': 45,
-    'specialty': 30,
-    'default': 15
-};
+const QUICK_PICK_THRESHOLDS: Record<string, number> = Object.fromEntries(
+    Object.entries(DECISION_BLOCK_DURATION_CONFIGS).map(([category, config]) => [category, config.quickThreshold])
+);
 
-export const DEFAULT_DURATIONS: Record<string, number> = {
-    'food': 15,
-    'service': 30,
-    'health': 45,
-    'retail': 0,
-    'professional': 60,
-    'creative': 60,
-    'specialty': 30,
-    'default': 15
-};
+export function isQuickPickEnabledForCategory(category: string): boolean {
+    const enabledBlocks = DECISION_BLOCK_ENABLED_BLOCKS[category]
+        || DECISION_BLOCK_ENABLED_BLOCKS[DEFAULT_DECISION_BLOCK_CATEGORY];
+    return enabledBlocks.includes('quickPick');
+}
+
+export function getQuickPickThreshold(category: string): number {
+    return QUICK_PICK_THRESHOLDS[category]
+        ?? QUICK_PICK_THRESHOLDS[DEFAULT_DECISION_BLOCK_CATEGORY];
+}
 
 /**
  * Normalize a value to 0-100 scale

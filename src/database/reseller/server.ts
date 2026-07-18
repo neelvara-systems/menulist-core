@@ -1,10 +1,31 @@
 import { DB_COLLECTIONS } from "@constant/database";
+import { RESELLER_CAPS } from "@config/resellerPricing";
+import { composeInitialSubscriptionPayloadServer } from "@database/subscriptions/server";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { ResellerProfile, ResellerTransaction } from "@type/reseller";
+import { FirestoreSubscriptionDoc } from "@type/razorpay";
 
 const TRANSACTIONS_COLLECTION = DB_COLLECTIONS.RESELLER_TRANSACTIONS;
 const PROFILES_COLLECTION = DB_COLLECTIONS.RESELLER_PROFILES;
+
+export class ResellerOfflineCapExceededError extends Error {
+    readonly cap: number;
+
+    constructor(cap: number) {
+        super(`reseller_offline_cap_exceeded:${cap}`);
+        this.name = 'ResellerOfflineCapExceededError';
+        this.cap = cap;
+    }
+}
+
+export const getResellerOfflineCapFromError = (error: unknown): number | null => {
+    const message = error instanceof Error ? error.message : '';
+    const match = message.match(/^reseller_offline_cap_exceeded:(\d{1,3})$/);
+    if (!match) return null;
+    const cap = Number(match[1]);
+    return Number.isSafeInteger(cap) && cap > 0 ? cap : null;
+};
 
 type TimestampLike = {
     toDate: () => Date;
@@ -31,18 +52,6 @@ const toResellerProfile = (docSnap: admin.firestore.DocumentSnapshot): ResellerP
     const { password: _password, ...data } = docSnap.data() || {};
     return { ...data, id: docSnap.id } as ResellerProfile;
 };
-
-const timestampMillis = (value: any) => {
-    if (!value) return 0;
-    if (typeof value.toMillis === "function") return value.toMillis();
-    if (typeof value.toDate === "function") return value.toDate().getTime();
-    const parsed = new Date(value).getTime();
-    return Number.isFinite(parsed) ? parsed : 0;
-};
-
-const newestFirst = (a: ResellerTransaction, b: ResellerTransaction) => (
-    timestampMillis(b.createdOn) - timestampMillis(a.createdOn)
-);
 
 export const getResellerProfileServer = async (
     userId: string,
@@ -84,74 +93,119 @@ export const getResellerProfileByIdServer = async (
     return toResellerProfile(docSnap);
 };
 
-export const updateResellerStatsOnOnboardingServer = async (
-    profileId: string,
-    paymentMode: "online" | "offline",
-    amountPaise: number,
-): Promise<void> => {
-    const updates: Record<string, any> = {
-        totalStoresOnboarded: admin.firestore.FieldValue.increment(1),
-        totalTransactions: admin.firestore.FieldValue.increment(1),
-        totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(amountPaise),
-        modifiedOn: admin.firestore.Timestamp.now(),
-    };
-
-    if (paymentMode === "offline") {
-        updates.currentActiveOfflineStores = admin.firestore.FieldValue.increment(1);
-        updates.totalOfflineStores = admin.firestore.FieldValue.increment(1);
-    } else {
-        updates.totalOnlineStores = admin.firestore.FieldValue.increment(1);
-    }
-
-    await firestoreAdmin.collection(PROFILES_COLLECTION).doc(profileId).update(updates);
+type ResellerOnboardingTransactionInput = Omit<
+    ResellerTransaction,
+    "createdOn" | "id" | "modifiedOn"
+> & {
+    operationFingerprint: string;
+    operationId: string;
+    profileRevenueRecognized?: boolean;
 };
 
-export const updateResellerStatsOnRenewalServer = async (
-    profileId: string,
-    amountPaise: number,
-): Promise<void> => {
-    await firestoreAdmin.collection(PROFILES_COLLECTION).doc(profileId).update({
-        totalTransactions: admin.firestore.FieldValue.increment(1),
-        totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(amountPaise),
-        modifiedOn: admin.firestore.Timestamp.now(),
-    });
-};
-
-export const createResellerTransactionServer = async (
-    transaction: Omit<ResellerTransaction, "id" | "createdOn" | "modifiedOn">,
-): Promise<string> => {
-    const docRef = firestoreAdmin.collection(TRANSACTIONS_COLLECTION).doc();
-    const now = admin.firestore.Timestamp.now();
-
-    await docRef.set(sanitizeForAdminFirestore({
-        ...transaction,
-        id: docRef.id,
-        createdOn: now,
-        modifiedOn: now,
-    }));
-
-    return docRef.id;
-};
-
-export const getResellerTransactionsServer = async (
-    resellerId: string,
-    maxResults: number = 50,
-): Promise<ResellerTransaction[]> => {
-    const snapshot = await firestoreAdmin
+/**
+ * Commits reseller subscription truth, the immutable onboarding ledger, the
+ * offline-cap reservation, and profile counters as one Firestore transaction.
+ */
+export const createResellerOnboardingBillingServer = async (params: {
+    profileId?: string | null;
+    subscription: Omit<FirestoreSubscriptionDoc, "id">;
+    subscriptionId: string;
+    transaction: ResellerOnboardingTransactionInput;
+}): Promise<{ replayed: boolean; transactionId: string }> => {
+    const subscriptionRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+        .doc(params.subscriptionId);
+    const transactionRef = firestoreAdmin
         .collection(TRANSACTIONS_COLLECTION)
-        .where("resellerId", "==", resellerId)
-        .limit(maxResults)
-        .get();
+        .doc(params.transaction.operationId);
+    const profileRef = params.profileId
+        ? firestoreAdmin.collection(PROFILES_COLLECTION).doc(params.profileId)
+        : null;
 
-    return snapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as ResellerTransaction))
-        .sort(newestFirst);
+    return firestoreAdmin.runTransaction(async (firestoreTransaction) => {
+        const [operationSnapshot, subscriptionSnapshot, profileSnapshot] = await Promise.all([
+            firestoreTransaction.get(transactionRef),
+            firestoreTransaction.get(subscriptionRef),
+            profileRef ? firestoreTransaction.get(profileRef) : Promise.resolve(null),
+        ]);
+
+        if (operationSnapshot.exists) {
+            const operation = operationSnapshot.data() || {};
+            if (
+                operation.operationId !== params.transaction.operationId
+                || operation.operationFingerprint !== params.transaction.operationFingerprint
+                || operation.action !== 'ONBOARD'
+                || operation.resellerId !== params.transaction.resellerId
+                || operation.subscriptionId !== params.subscriptionId
+                || !subscriptionSnapshot.exists
+            ) {
+                throw new Error('Reseller onboarding operation id is already used by another action.');
+            }
+            return { replayed: true, transactionId: transactionRef.id };
+        }
+
+        if (subscriptionSnapshot.exists) {
+            throw new Error('Reseller onboarding subscription already exists without its operation ledger.');
+        }
+
+        if (profileRef) {
+            if (!profileSnapshot?.exists) {
+                throw new Error('Reseller profile disappeared during onboarding.');
+            }
+            const profile = profileSnapshot.data() || {};
+            if (profile.active !== true) {
+                throw new Error('Reseller profile is no longer active.');
+            }
+            if (params.transaction.paymentMode === 'offline') {
+                const capValue = Number(profile.maxOfflineActivations);
+                const cap = Number.isSafeInteger(capValue) && capValue > 0
+                    ? capValue
+                    : RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER;
+                const currentValue = Number(profile.currentActiveOfflineStores);
+                const current = Number.isSafeInteger(currentValue) && currentValue > 0
+                    ? currentValue
+                    : 0;
+                if (current >= cap) throw new ResellerOfflineCapExceededError(cap);
+            }
+        }
+
+        const now = admin.firestore.Timestamp.now();
+        firestoreTransaction.create(
+            subscriptionRef,
+            composeInitialSubscriptionPayloadServer(params.subscription),
+        );
+        firestoreTransaction.create(transactionRef, sanitizeForAdminFirestore({
+            ...params.transaction,
+            createdOn: now,
+            id: transactionRef.id,
+            modifiedOn: now,
+        }));
+
+        if (profileRef) {
+            const updates: Record<string, unknown> = {
+                modifiedOn: now,
+                totalStoresOnboarded: admin.firestore.FieldValue.increment(1),
+                totalTransactions: admin.firestore.FieldValue.increment(1),
+                totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(
+                    params.transaction.paymentMode === 'offline'
+                        ? params.transaction.amountExpected
+                        : 0,
+                ),
+            };
+            if (params.transaction.paymentMode === 'offline') {
+                updates.currentActiveOfflineStores = admin.firestore.FieldValue.increment(1);
+                updates.totalOfflineStores = admin.firestore.FieldValue.increment(1);
+            } else {
+                updates.totalOnlineStores = admin.firestore.FieldValue.increment(1);
+            }
+            firestoreTransaction.update(profileRef, updates);
+        }
+
+        return { replayed: false, transactionId: transactionRef.id };
+    });
 };
 
 export const getResellerProfile = getResellerProfileServer;
 export const getAllResellerProfiles = getAllResellerProfilesServer;
 export const getResellerProfileById = getResellerProfileByIdServer;
-export const updateResellerStatsOnOnboarding = updateResellerStatsOnOnboardingServer;
-export const updateResellerStatsOnRenewal = updateResellerStatsOnRenewalServer;
-export const createResellerTransaction = createResellerTransactionServer;
-export const getResellerTransactions = getResellerTransactionsServer;
+export const createResellerOnboardingBilling = createResellerOnboardingBillingServer;

@@ -1,7 +1,7 @@
 # Booking Inquiry Readiness Check
 
-> **Status:** V0 source-gated evidence; not current launch certification
-> **Last Updated:** July 4, 2026
+> **Status:** Implemented V0 public tool and V1 owner readiness module
+> **Last Updated:** July 16, 2026
 > **Local Source Gate:** `npm run verify:booking-inquiry-readiness-check`
 
 ---
@@ -34,7 +34,7 @@ It is not a booking-provider integration, calendar checker, inbox reader, paymen
 
 ## Hard Boundaries
 
-- Action links, public URLs, phone numbers, WhatsApp links, email links, and customer links are format-checked only.
+- Action links and customer links require public HTTPS. Raw/formatted phones allow digits and normal separators only. `tel:` must hold a valid phone, `mailto:` a bounded email, and the custom WhatsApp scheme only `whatsapp://send` with an international phone shape.
 - Booking providers, calendars, inboxes, payment systems, and external pages are not opened or inspected.
 - No message is sent.
 - No report document is stored.

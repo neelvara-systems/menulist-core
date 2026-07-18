@@ -1,7 +1,7 @@
 # Help Center — Technical Implementation Blueprint
 
-> **Version:** 1.0.9
-> **Last Updated:** 2026-07-13
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-16
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -17,6 +17,12 @@ The Help Center is a **multi-layered feature** spanning frontend components, API
 - **AI:** Gemini 2.5 Flash (chat), Gemini 2.5 Pro (image analysis), `gemini-embedding-2` (active embeddings)
 - **Cloud Functions:** Nightly aggregation, article embedding, AI intelligence
 - **Caching:** Firestore-based embedding cache + response cache
+
+### 1.1 MenuList client boundary
+
+The owner route is MenuList UI, but search/content/ticket work uses only an explicit active Answerlattice product-account scope. `getActiveSession()` maps `/help-center/*` to that scope on the browser; the protected search route independently resolves the same scope from the authenticated server session and does not trust `Referer`. Invalid scope fails closed.
+
+The July 16 item-28 pass adds no alternate support backend. Browser search response parsing now normalizes bounded related-content projections and related article buttons build internal `/help-center/kb/articles/{encodedId}` routes. Ticket attachment admission is centralized in `supportTicketAttachmentBoundary.ts`; signed download URLs must match the configured Answerlattice bucket plus selected ticket tenant/store path before opening and are never logged. Firestore rules preserve prior message/status arrays exactly, validate one appended entry, bind the actor to Firebase Auth, and make satisfaction write-once after resolution/closure.
 
 ---
 
@@ -313,11 +319,13 @@ Answerlattice KB owner content scope boundary: Help Center KB categories, articl
 | Function                       | Reads    | Writes | Notes                                               |
 | ------------------------------ | -------- | ------ | --------------------------------------------------- |
 | `getCategories()`              | 1        | 0      | Reads scoped categories doc with platform legacy fallback |
-| `deleteCategory(data)`         | 0        | 1      | Overwrites categories map; returns acknowledged categories mutation |
-| `addCategory(category)`        | 0        | 1      | Merge update `categories.{id}`; returns acknowledged category |
-| `updateCategory(category)`     | 0        | 1      | Merge update; returns acknowledged category         |
-| `updateArticleInParent(...)`   | 0        | 1      | Updates article metadata in parent category/section; returns acknowledged categories mutation |
-| `deleteArticleFromParent(...)` | 0        | 1      | Removes article from parent; returns acknowledged categories mutation |
+| `deleteCategory({ categoryId })` | 1      | 1      | Transaction removes only the current category key and returns authoritative navigation |
+| `addCategory(category)`        | 1        | 1      | Transaction rejects duplicates and returns authoritative navigation |
+| `updateCategory(category)`     | 1        | 1      | Updates metadata while preserving current sections/article links |
+| `upsertSectionInCategory(...)` | 1        | 1      | Creates/updates one section while preserving current article links |
+| `deleteSectionFromCategory(...)` | 1      | 1      | Removes one section from transaction-current navigation |
+| `updateArticleInParent(...)`   | 1        | 1      | Transactionally upserts bounded article metadata in current navigation |
+| `deleteArticleFromParent(...)` | 1        | 1      | Transactionally removes an article link from current navigation |
 
 **Architecture:** Categories are stored in a scoped document (`kb_categories/categories_{tId}_{sId}`) as a nested map, with a legacy platform fallback. Sections are arrays within categories. Articles have metadata references in their parent.
 
@@ -328,7 +336,7 @@ Answerlattice KB owner content scope boundary: Help Center KB categories, articl
 | `uploadChatImage(image, session)`                         | 0     | 1 (storage) | Tenant-scoped storage path                    |
 | `saveChatSession(data)`                                   | 0     | 1           | `apiCallComposerClientWithoutLoader`; new-session UI requires persisted session acknowledgement before selecting it |
 | `updateChatSession(sessionId, updates)`                   | 1     | 0-1         | Transactionally validates current scope/schema before a changed-field update; returns explicit `{ success, sessionId, updatedFields }` acknowledgement |
-| `deleteChatSession(sessionId)`                            | 1     | 1 delete + N storage cleanup | Transactionally validates and deletes authoritative truth before best-effort image cleanup; returns the acknowledged cleanup count |
+| `deleteChatSession(sessionId)`                            | 1     | 1 delete | Transactionally validates and deletes authoritative truth; returns `storageFilesDeleted: 0` because tenant/store-scoped images are retained until cross-session non-reference can be proved |
 | `getUserChatSessions(session)`                            | N     | 0           | `tId + uId` scoped, ordered by modifiedOn     |
 | `getChatSessionById(sessionId)`                           | 1     | 0           | Active workspace scope and persisted runtime shape are required |
 | `updateMessageFeedback(sessionId, messageId, searchHistoryId, feedback)` | 2 | 2 transaction | Atomically updates the exactly linked chat message and search-history row; same feedback retries are idempotent |
@@ -345,6 +353,8 @@ New-session saves require `assertChatSessionSaveSucceeded()` before HelpChat ins
 HelpChat answer feedback updates the `aiSearchHistory` feedback row and the exactly linked chat-session message in one Firestore transaction before changing local feedback state or showing thank-you copy. The transaction validates exact product/tenant/store ownership for both rows, requires the message's stored `searchHistoryId` to match the requested source row, refuses a conflicting repeat, and treats the same already-persisted feedback as idempotent. `submitSearchFeedback()` requires `assertChatMessageFeedbackUpdateSucceeded()`; malformed or rejected results route through the existing `help_chat_feedback_up_submit_failed` / `help_chat_feedback_down_submit_failed` bounded diagnostics. Negative-feedback signal emission runs only after the coupled transaction is acknowledged.
 
 Answerlattice chat session scope boundary: chat image uploads, user chat history, single-record reads, deletes, message/branch/feedback mutations, internal notes, batch metadata, admin conversation lists, chat statistics, top questions, knowledge gaps, and chat-volume reads use the shared exact Answerlattice session scope. Single-record operations normalize the document ID and revalidate persisted `pId/tId/sId` plus the bounded runtime chat shape before returning or mutating data. Cursor rows and query results re-enter the same contract; malformed timestamps, message IDs, references, feedback, or cross-workspace rows fail closed. Aggregations use `Map` for user-controlled question keys, and quality metrics accept the compact reference contract. Valid sessions keep the existing scoped query caps and storage paths; writes add only the reads required for transaction-local ownership/schema validation.
+
+Persisted chat images use a tenant/store path and may be referenced by more than one session. Append compaction, branch replacement, and hard delete therefore retain removed image objects and emit only a bounded deferred-cleanup diagnostic; a single-session transaction is not deletion authority for the shared scope. Immediate Storage cleanup remains limited to a newly uploaded image that failed before any session persistence. A future retention worker may delete persisted chat images only after a bounded cross-session reference inventory proves they are unreferenced.
 
 ### 3.4 Chat Analytics (`src/database/chatAnalytics/index.ts`)
 
@@ -370,10 +380,10 @@ The article embedding route keeps its failure logs bounded as well. `src/app/api
 
 | Function                                                                      | Reads    | Writes                | Notes                                      |
 | ----------------------------------------------------------------------------- | -------- | --------------------- | ------------------------------------------ |
-| `addTicket(data)`                                                             | 0        | 1+N (files)           | Captures browser logs, uploads attachments; returns explicit `{ success, id, displayId }` acknowledgement |
+| `addTicket(data)`                                                             | 0        | 1+N Storage uploads   | Captures bounded browser context, accepts at most four 10 MB supported files, then creates one ticket; returns explicit `{ success, id, displayId }` acknowledgement |
 | `updateTicket(data)`                                                          | 0        | 1+N (files)           | Merge update with file uploads. Non-platform callers pass selected ticket `tId/sId`; platform partial updates without explicit ticket scope strip composer-injected `tId/sId` before merge |
-| `addTicketMessage(ticketId, currentMessages, message, attachments, scope)`    | 0        | 1+N (files)           | Appends to messages array; returns explicit acknowledgement required before reply success UI advances. Owner/client callers pass selected ticket `tId/sId` in `scope` |
-| `updateTicketStatus(ticketId, currentStatuses, newStatus, remark, changedBy, scope)` | 0        | 1                     | Appends to statuses audit trail; returns explicit acknowledgement for future direct callers. Owner/client direct callers pass selected ticket `tId/sId` in `scope` |
+| `addTicketMessage(ticketId, currentMessages, message, attachments, scope)`    | 1        | 1+N Storage uploads   | Reads transaction-current truth, preserves the prior message array, appends one validated message, and returns explicit acknowledgement. Current owner reply UI sends text only; the DAL attachment capability stays capped at four files |
+| `updateTicketStatus(ticketId, currentStatuses, newStatus, remark, changedBy, scope)` | 1        | 1                     | Reads transaction-current truth and appends one status plus one system message; returns explicit acknowledgement. Owner/client direct callers pass selected ticket `tId/sId` in `scope` |
 | `deleteTicket(data)`                                                          | 0        | 1+N (storage deletes) | Hard delete + file cleanup                 |
 | `restoreTicket(data)`                                                         | 0        | 1                     | Sets deleted=false                         |
 | `getTicketById(id)`                                                           | 1        | 0                     | Single doc get                             |
@@ -437,7 +447,8 @@ Answerlattice changelog runtime boundary: browser page reads require exact `AL` 
 | ----------------------------------- | ----- | ------ | --------------------------------------------------------------- |
 | `getIngestionJobs()`                | N     | 0      | Deprecated compatibility helper; non-platform callers are tenant/store scoped |
 | `getPreviousIngestionJobs(session)` | N     | 0      | Completed/failed/cancelled for tenant                           |
-| `updateJob(jobId, data)`            | 0     | 1      | Merge update                                                    |
+| `updateJob(jobId, data)`            | 1     | 1      | Transactional article-ID/reconciliation update; category snapshots rejected |
+| `updateReviewJobNavigation(...)`    | 1     | 1      | Transaction-current category/section/article navigation mutation |
 | `deleteIngestionJob(jobId)`         | 1+N   | 1+N    | Transaction: delete job + articles + categories + storage files |
 | `addIngestionJob(data)`             | 0     | 1      | Creates job, triggers CF in dev                                 |
 
@@ -456,7 +467,7 @@ Answerlattice changelog runtime boundary: browser page reads require exact `AL` 
 4. **Session** — `getActiveSession()` from `@lib/auth/getActiveSession`
 5. **Image processing** (optional):
    - Validate URL (HTTPS, Firebase Storage host, bucket path)
-   - Fetch with 10s timeout, 10MB max
+   - Fetch with 10s timeout, 5 MB max
    - Convert to base64
    - `generateSearchQueryFromImage()` → Gemini 2.5 Pro generates search query
 6. **Cache key construction** — `normalizeQuery()` + optional image hash
@@ -464,7 +475,7 @@ Answerlattice changelog runtime boundary: browser page reads require exact `AL` 
 8. **Embedding cache check** — `getCachedEmbedding()`
 9. **Embedding generation** — `callGeminiEmbeddingWithMetadata()` → version-locked `gemini-embedding-2`
 10. **Save embedding to cache** — `saveCachedEmbedding()`
-11. **Vector search** — exact `pId+tId+sId+status+active` scope followed by `findNearest({vectorField:'embeddingV2', queryVector, limit:12, distanceMeasure:'COSINE'})`
+11. **Vector search** — exact `pId+tId+sId+status+active` scope followed by `findNearest({vectorField:'embedding', queryVector, limit:12, distanceMeasure:'COSINE'})`
 12. **Similarity filtering** — Primary threshold 0.6, fallback 0.4
 13. **Answer generation** — `callGeminiChat()` → Gemini 2.5 Flash
 14. **Reference enrichment** — Map referenced doc IDs to full article data
@@ -475,12 +486,11 @@ Answerlattice changelog runtime boundary: browser page reads require exact `AL` 
 
 **Models:**
 
-- `gemini-embedding-2` — Active query and article embeddings (768 dimensions)
+- `gemini-embedding-2` — Canonical query and article embeddings (768 dimensions)
 - Query format: `task: question answering | query: {query}`
 - Document format: `title: {title} | text: {normalized category/section/title/content}`
-- Legacy `gemini-embedding-001` vectors remain only in `embedding` for rollback.
 
-**Storage:** Active embeddings are stored on article documents as `embeddingV2` (Firestore Vector type); query-cache keys include the v2 cache version.
+**Storage:** Embeddings are stored on article documents as `embedding` (Firestore Vector type); query-cache keys include `gemini-embedding-2:768:v1`. No legacy field, dual-write, or migration scheduler is present in the pre-launch runtime.
 
 ### 4.3 Gemini Chat Configuration
 

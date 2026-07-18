@@ -31,9 +31,11 @@ An early warning signal that combines trust, loyalty, and engagement trends to d
 
 Businesses rarely collapse suddenly. They decline slowly over 3-6 months: repeat visits drop, engagement weakens, trust erodes. Owners notice too late — after revenue has already fallen. MenuList can detect the pattern earlier by combining signals from Pillars 4 and 5 with engagement data.
 
-## Current Runtime Truth — July 13, 2026
+## Current Runtime Truth — July 17, 2026
 
 The risk helper is retained but not exported or scheduled, its desktop component is unmounted, no mobile consumer exists, and `ENABLE_RISK_DECLINE_DETECTION` is intentionally `false`. Trust and loyalty are also dormant, so no current risk read/write pipeline exists. The diagram below is a target design only.
+
+Risk cannot become owner-facing truth while trust or loyalty is derived from an unvalidated visitor proxy. The shared processor now rejects before store discovery; activation must prove both prerequisite inputs, freshness, retry idempotency, and the owner-safe meaning of every state.
 
 ## Target Architecture (Not Active Runtime)
 
@@ -72,4 +74,4 @@ This pillar REQUIRES Pillars 4 and 5 to be active first. It is a meta-signal com
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026

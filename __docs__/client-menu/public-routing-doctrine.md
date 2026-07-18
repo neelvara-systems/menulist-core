@@ -57,7 +57,7 @@ Evidence in code:
 | **Tenant URL**           | Root of the subdomain or custom domain                                                                         | `@/src/lib/obp/generateOBPUrl.ts:16-21`                                                |
 | **Store URL**            | `/{outletSlug}` under the tenant                                                                               | `getStoreByOutletSlug` @ `@/src/lib/firestore/clientStoreLookup.ts:77-94`              |
 | **Project URL**          | `/{projectSlug}` (single-store) or `/{outletSlug}/{projectSlug}` (multi-store)                                 | `getProjectBySlugOrDefault` @ `@/src/app/client/[[...slug]]/page.tsx:121-245`          |
-| **Reserved slug `menu`** | Alias for "default project" — resolves via the default-project resolver, not as a literal project named "menu" | `@/src/app/client/[[...slug]]/page.tsx:988-989`; `@/src/constants/reservedSlugs.ts:16` |
+| **Project slug / alias `menu`** | Claimable canonical project slug (Layer 1), otherwise alias for the explicit default project (Layer 2) | `@/src/app/client/[[...slug]]/page.tsx`; `@/src/constants/reservedSlugs.ts` |
 
 ### 3.2 Canonical resolution matrix — locked
 
@@ -75,11 +75,11 @@ Evidence in code:
 `/menu` under the **R5 model** (§9) has two-layer resolution:
 
 - **Layer 1 — owner claim:** if a project on this store has slug `menu`, `/menu` resolves to that project via normal slug lookup. Canonical URL _is_ `/menu`. Owner-controlled.
-- **Layer 2 — universal alias fallback:** if no project has slug `menu`, `/menu` returns 200 serving the default project (`isDefault: true`), with `<link rel="canonical" href="/{defaultProjectSlug}">` pointing at the real canonical URL. Universal invariant preserved.
+- **Layer 2 — default alias fallback:** if no project has slug `menu`, `/menu` returns 200 only when an explicit default project (`isDefault: true`) exists, with `<link rel="canonical" href="/{defaultProjectSlug}">` pointing at the real canonical URL. With no default it uses the not-available ladder.
 
 Practical consequences:
 
-- Owner naming "Menu" → `/menu` is their canonical URL. Owner naming "Food Menu" → `/food-menu` is canonical, `/menu` still works as alias. Every store has `/menu` working regardless of naming choices.
+- Owner naming "Menu" → `/menu` is their canonical URL. Owner naming "Food Menu" → `/food-menu` is canonical; `/menu` works as an alias only when that or another project is explicitly default.
 - `menu` is **not reserved** in `RESERVED_PROJECT_SLUGS`. Owners can claim it via project naming.
 - OBP's "View Menu" CTA links to the default project's **real canonical slug URL** — preserving canonical URL cleanliness. `/menu` alias exists for customer-typed URLs, printed QRs, voice ("go to mybrand.menulist.ai slash menu"), and protocol-level muscle memory — not as the emitted URL.
 - Subdomain `menu.menulist.ai` stays blocked in `RESERVED_SUBDOMAINS` (platform-level infrastructure concern, unrelated to per-store project slugs).
@@ -183,9 +183,9 @@ Any of these quietly destroys QR permanence.
 2. If no path segments (`/`) — render OBP (brand OBP if multi-store, store OBP if single-store). Stop.
 3. If master store `isMaster` AND multi-outlet enabled AND first segment matches an `outletSlug` (current or `previousSlugs[]`) on the tenant — switch context to that outlet store. Continue with remaining segments.
 4. If one segment remains and it matches a project slug (current or `previousSlugs[]`) on the current store — resolve that project. Under R5, this includes the literal slug `menu`: if the owner has authored a project with slug `menu`, step 4 resolves it here directly (owner-claimed canonical URL).
-5. **`/menu` universal-alias fallback:** if the segment is exactly `menu` AND step 4 did not resolve (no project on this store has slug `menu` or its alias in `previousSlugs[]`) — serve the project flagged `isDefault: true` as an alias. The response returns 200 with the default project's content and a `<link rel="canonical" href="/{defaultProjectSlug}">` pointing at the real canonical URL. This is an explicit, deterministic fallback — not a heuristic — and is intentional per R5 (§9).
+5. **`/menu` default-alias fallback:** if the segment is exactly `menu` AND step 4 did not resolve (no project on this store has slug `menu` or its alias in `previousSlugs[]`) — serve the project flagged `isDefault: true` as an alias. The response returns 200 with the default project's content and a `<link rel="canonical" href="/{defaultProjectSlug}">` pointing at the real canonical URL. If no default exists, resolution fails closed to step 7; the resolver never substitutes the first active project.
 6. If segment is empty after outlet switch — render outlet OBP. Stop.
-7. Otherwise — fall back: store OBP with a "menu not available" hint (not a hard 404) per A-12. The `/menu` alias in step 5 must never reach this step; if no `isDefault` project exists on a store, `/menu` falls through to step 7 like any other unresolvable path.
+7. Otherwise — fall back: store OBP with a "menu not available" hint (not a hard 404) per A-12. Unknown supplied slugs and `/menu` without either a Layer 1 owner claim or an `isDefault` Layer 2 target reach this step; neither may silently display the first or default project for an unrelated path.
 
 **No step may be added, re-ordered, or made conditional on store configuration without a doctrine amendment.** Feature flags that change ordering are forbidden; feature flags that disable a whole branch (e.g. the outlet-switch branch when multi-outlet is off for a tenant) are acceptable. Step 5 is the only resolver step that applies to a specific literal slug (`menu`); no other slug-specific resolver steps may be added without a doctrine amendment.
 
@@ -197,16 +197,19 @@ Any of these quietly destroys QR permanence.
 
 **Lock — hard ceilings on public routing resolution:**
 
-1. **Read budget per cold resolver fill:** at most 5 canonical Firestore reads for the maximum outlet path (subsequent requests use the 60-second helper caches):
+1. **Read budget per cold resolver fill:** at most 8 canonical Firestore query/document reads for the maximum outlet + linked-master + active-special path (subsequent requests use the 60-second helper caches):
    - 1 for store (via `getStoreBySubdomain` / `getStoreByCustomDomain`)
    - 1 for that store's canonical tenant eligibility
    - 1 for outlet switch when applicable (via `getStoreByOutletSlug`)
    - 1 for the outlet's canonical tenant eligibility when the outlet helper is used
-   - 1 for project (via `getProjectBySlugOrDefault`)
-     The `/menu` alias fallback (D-14 step 5) is served from the same project read that would have returned the default project — **it does not add a read.**
-2. **No sequential multi-entity iteration.** Resolution steps must use indexed lookup by key, never scan-and-match (e.g., "iterate all projects on this store looking for slug match" is forbidden; "index on slug and look up directly" is required).
+   - 1 direct `platformSummary/projects_{storeId}` read for project route metadata
+   - 1 full project document read for the selected immutable project ID
+   - up to 1 linked-master project read when the outlet project inherits master truth
+   - up to 1 active-special project read when special-menu switching is active
+     The `/menu` alias fallback (D-14 step 5) is selected from the same summary packet and full project read as a canonical slug — **it does not add a read.** Normal single-store, unlinked, non-special menu resolution is 4 cold reads.
+2. **No sequential Firestore multi-entity iteration.** Resolution may scan the already-loaded bounded project-summary map in memory, but it must not issue one Firestore read per candidate project or outlet.
 3. **No fanout beyond the locked resolver order.** A step may not spawn parallel queries across entities to find a match. The resolver walks one path.
-4. **Cache invariance.** All three reads above are served from `unstable_cache` with `revalidate: 60` and per-resource tags. A cache miss path must not exceed the above budget either.
+4. **Cache invariance.** Store/tenant and project resolution is served through the shared 60-second caches and `client-stores` / `menu-store-{storeId}` invalidation tags. A cache miss path must not exceed the above budget either.
 5. **No middleware-level Firestore access.** Edge middleware (`src/middleware.ts`) must resolve hostname context using only the request headers and constants — never a Firestore read. This is already how the code behaves (`domainResolver.ts` is Edge-safe); doctrine locks it.
 
 **Enforcement checkpoint:** Any PR that adds or modifies a step in D-14 must either demonstrate it fits inside these ceilings or attach an explicit doctrine-amendment note lifting them. No silent drift.
@@ -264,7 +267,7 @@ This collapses the "Store vs OBP" false choice. Store surface ≡ outlet OBP.
 1. The manifest is linked as `/manifest.webmanifest` from all customer pages. It does not consume `?start=` for identity.
 2. The manifest `id` is stable per store, e.g. `/?store={storeId}`.
 3. `scope` remains `/` so the installed app can navigate across the full tenant origin.
-4. `start_url` is the store-level customer entry: `/menu` when the store has an active customer menu, otherwise `/`.
+4. `start_url` is the store-level customer entry: `/menu` only when the scoped summary has a resolvable Layer 1 `menu` owner or Layer 2 explicit default; otherwise `/`.
 5. Analytics may record the page where install/open happened as source context, but source context must never alter manifest identity.
 
 **Deleted-project behavior:** Deleted project paths remain normal public-routing fallback/not-found behavior. They do not participate in PWA manifest identity and no longer trigger manifest start-url degradation.
@@ -351,21 +354,21 @@ See D-10 for the core decision. Additional rules:
 
 ## 9. `/menu` — two-layer resolution (R5, final)
 
-**Corrected one final time (user+ChatGPT R5 synthesis, agreed after cross-challenge).** R4 was right that owners should be able to claim `/menu`. R3 was right that every business should have a working `/menu` endpoint. Neither position alone was correct because they were treated as exclusive. **R5 is the synthesis: owner-claim layer on top, universal-alias layer underneath.**
+**Corrected one final time (user+ChatGPT R5 synthesis, agreed after cross-challenge).** R4 was right that owners should be able to claim `/menu`. R3 was right that every business with an explicitly promoted default menu should have a predictable `/menu` endpoint. Neither position alone was correct because they were treated as exclusive. **R5 is the synthesis: owner-claim layer on top, default-alias layer underneath.**
 
 ### The R5 model
 
 1. **Layer 1 — owner claim (canonical):** `menu` is NOT reserved. If an owner creates a project named "Menu" (slug `menu`), it is theirs. `/menu` resolves to that project via normal slug lookup — `/menu` is the canonical URL for that project, indexed normally, no aliasing involved.
-2. **Layer 2 — universal alias (fallback):** if no project on the store has slug `menu` (and no `previousSlugs[]` match for `menu` either), `/menu` returns 200 serving the project flagged `isDefault: true` as an alias. The response emits `<link rel="canonical" href="/{defaultProjectSlug}">`, so the real project slug (e.g., `/food-menu`, `/services`, `/carta`) is what Google indexes — not `/menu`.
-3. **No reservation.** `menu` is removed from `RESERVED_PROJECT_SLUGS`. Owners who want `/menu` to be their canonical URL name their project "Menu". Owners who don't still get `/menu` as a working fallback.
+2. **Layer 2 — default alias (fallback):** if no project on the store has slug `menu` (and no `previousSlugs[]` match for `menu` either), `/menu` returns 200 serving the project flagged `isDefault: true` as an alias. The response emits `<link rel="canonical" href="/{defaultProjectSlug}">`, so the real project slug (e.g., `/food-menu`, `/services`, `/carta`) is what Google indexes — not `/menu`. If no default exists, `/menu` uses the not-available fallback ladder rather than choosing an arbitrary first project.
+3. **No reservation.** `menu` is removed from `RESERVED_PROJECT_SLUGS`. Owners who want `/menu` to be their canonical URL name their project "Menu". Otherwise `/menu` works only when the store has an explicit `isDefault: true` project.
 4. **No ambiguity.** The resolver precedence is fixed in D-14 step 5: owner claim always wins over alias fallback. If both would match, Layer 1 takes precedence by construction (it's checked first).
 
 ### Why R5 is the correct final answer
 
 **From R3, R5 keeps:**
 
-- Universal `/menu` endpoint works on every MenuList business. Muscle memory, protocol-level predictability, voice affordance ("go to `mybrand.menulist.ai/menu`"), QR fallback, PWA fallback ladder (A-12).
-- ChatGPT's principle — **do not make invariants depend on user-authored content** — is respected. `/menu` works regardless of whether the owner thought to name their project "Menu."
+- Predictable `/menu` endpoint works for every MenuList business with either an owner-claimed `menu` slug or an explicitly promoted default project. Muscle memory, voice affordance, QR fallback, and the PWA fallback ladder remain intact without inventing a default when summary truth has none.
+- The compatibility rule does not depend on a particular user-authored name, but it does depend on explicit promotion truth (`isDefault`) rather than arbitrary project ordering.
 
 **From R4, R5 keeps:**
 
@@ -376,7 +379,7 @@ See D-10 for the core decision. Additional rules:
 **What R5 does not inherit from either R3 or R4:**
 
 - From R3: it drops the reservation. Owners can claim `menu`.
-- From R4: it drops the "no fallback" rigidity. `/menu` works even for stores that didn't name anything "Menu."
+- From R4: it drops the "no fallback" rigidity. `/menu` works for stores that did not name anything "Menu" when an explicit default exists.
 
 ### Addressing the earlier objections
 
@@ -420,7 +423,7 @@ The real UX concern — an owner who creates a `menu`-slug project while a diffe
 | R2 (ChatGPT second review)               | `/menu` is a transitional deprecation redirect, retire after usage drops                                                                                                                      | Wrong — correctly identified alias implementation issues, but overcorrected by removing universal value                              |
 | R3 (user third review)                   | `/menu` is a permanent universal alias, 200 + canonical tag, `menu` reserved                                                                                                                  | Partially correct — restored universal value, but blocked owner control                                                              |
 | R4 (user fourth review)                  | `/menu` is just a regular project slug. No reservation, no alias, no special case                                                                                                             | Partially correct — restored owner control, but lost universal invariant. Principle violation: made invariant depend on owner naming |
-| **R5 (user+ChatGPT synthesis, current)** | **Two-layer resolution: owner claim (Layer 1) + universal alias fallback (Layer 2). `menu` unreserved. No `previousSlugs[]` migration needed because Layer 2 handles the fallback natively.** | **Final lock.**                                                                                                                      |
+| **R5 (user+ChatGPT synthesis, current)** | **Two-layer resolution: owner claim (Layer 1) + explicit-default alias fallback (Layer 2). `menu` unreserved. No `previousSlugs[]` migration needed because Layer 2 handles the fallback natively.** | **Final lock.**                                                                                                                      |
 
 The iteration converged. Each round corrected a real flaw in the previous. R5 synthesizes the two legitimate concerns (owner control + universal invariant) that exclusive positions R3 and R4 had to trade against each other.
 
@@ -538,13 +541,15 @@ OBP click tracking exists (`trackOBPMenuClick` @ `@/src/app/client/obp/OBPMenuCT
 
 ### A-08. Sitemap implications
 
-Current client sitemap (`@/src/app/client/sitemap.ts`) predates this doctrine. It must:
+Current client sitemap (`@/src/app/client/sitemap.ts`) implements this doctrine. It:
 
 - Include the canonical project URL for each active project (not `/menu`).
 - Include `/{outletSlug}` for each outlet on multi-store tenants.
-- Include `/` (OBP) for every tenant.
+- Includes `/` only when the shared public-truth indexability gate admits the OBP.
 - **Not** include `previousSlugs` (they 301 to the canonical slug; they must not self-index).
-  (Already partly done; double-check after G-05 lands. Note: under R4, `/menu` is only in the sitemap if the store actually has a project with slug `menu` — no special-case inclusion or exclusion.)
+- Reuses the same canonical store/tenant eligibility lookup as page rendering, validates outlet and project embedded identity against their authoritative document path, and tags each project-summary sitemap cache with `menu-store-{storeId}` / `store-{storeId}`.
+- Emits no sitemap on a previous-subdomain host; that lookup is reserved for the page-level 301 to the current canonical host, so legacy hostname URLs cannot re-enter discovery output.
+- Reads the bounded (maximum 30-outlet) tenant set once and resolves outlet summary packets in parallel; it does not serialize one summary latency after another.
 
 ### A-09. In-menu "View Business" CTA
 
@@ -650,8 +655,8 @@ The owner editor uses the same `HomePageNew`/`MenuPageNew` pair inside device-fr
 11. Customer App install identity is store-level: OBP, `/menu`, and project pages install the same store app; route surface is source attribution only.
 12. Browser back is sacred — never intercepted. In-app "up" navigation is an additional path, not a replacement.
 13. **Cross-surface state (language, currency, filters, scroll) persists by the scope defined in A-16 — never broader, never narrower.**
-14. **`/menu` uses two-layer resolution.** Layer 1: if a project has slug `menu`, it resolves directly (owner-claimed canonical). Layer 2: otherwise, serves the `isDefault: true` project as an alias with `<link rel="canonical">` pointing at that project's real slug URL. Universal invariant preserved; owner control preserved; canonical URL cleanliness preserved. `menu` is not reserved.
-15. **Public routing is performance-bounded.** Maximum 3 cached Firestore reads per request; no sequential scan-and-match; no fanout; no middleware-level Firestore access. (D-15)
+14. **`/menu` uses two-layer resolution.** Layer 1: if a project has slug `menu`, it resolves directly (owner-claimed canonical). Layer 2: otherwise, serves the `isDefault: true` project as an alias with `<link rel="canonical">` pointing at that project's real slug URL. Without either target it fails to the not-available ladder; it never chooses the first project. `menu` is not reserved.
+15. **Public routing is performance-bounded.** Normal single-store resolution is 4 cold reads; the maximum outlet + linked-master + active-special path is 8, with shared caches, no sequential Firestore candidate scan, no unbounded fanout, and no middleware-level Firestore access. (D-15)
 16. **Owner sovereignty over URL identity and promotion flags is independent.** The slug a project owns (e.g., `menu`) and whether it is `isDefault: true` are two separate owner choices that never force each other. Divergence between them is legal (a legitimate owner pattern) and surfaced only as a dashboard advisory at creation/rename time (G-13) — never enforced at the resolver layer. (§9 R5-round-2 lock)
 
 ---
@@ -678,7 +683,7 @@ The owner editor uses the same `HomePageNew`/`MenuPageNew` pair inside device-fr
 | Slug governance                                                           | §7                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | Reserved namespace                                                        | §7 table                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | Must have store-level URL page                                            | §3, D-07, G-01                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Don't need `/menu` at all?                                                | §9 R4 — correct, we don't. `/menu` is not an alias; it resolves only if the owner named a project with slug `menu`                                                                                                                                                                                                                                                                                                        |
+| Don't need `/menu` at all?                                                | §9 R5 — retained as a two-layer compatibility route: owner-claimed slug first, explicit default alias second; no arbitrary first-project fallback                                                                                                                                                                                                                                                                          |
 | If single-store, should we still show store slug?                         | D-02 — hide externally                                                                                                                                                                                                                                                                                                                                                                                                    |
 | ChatGPT's "Option A vs Option B" (always show vs hide)                    | D-02 picks "hide"                                                                                                                                                                                                                                                                                                                                                                                                         |
 | Tenant URL always OBP                                                     | D-06                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -720,9 +725,9 @@ The owner editor uses the same `HomePageNew`/`MenuPageNew` pair inside device-fr
 | Deterministic resolver order (ChatGPT R2)                                 | D-14                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Cross-surface state persistence (ChatGPT R2)                              | A-16                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | Subdomain immutability strengthened (ChatGPT R2)                          | A-03                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `/menu` status (R1 → R2 → R3 → R4 → R5)                                   | **Final: R5 lock** — two-layer resolution. Owner claim (Layer 1) + universal alias fallback (Layer 2). `menu` unreserved. See §9 R5 history table for the full five-round arc                                                                                                                                                                                                                                             |
+| `/menu` status (R1 → R2 → R3 → R4 → R5)                                   | **Final: R5 lock** — two-layer resolution. Owner claim (Layer 1) + explicit-default alias fallback (Layer 2). `menu` unreserved. See §9 R5 history table for the full five-round arc                                                                                                                                                                                                                                      |
 | `/menu` as a real project slug (user proposal)                            | **Accepted in R4, retained in R5 as Layer 1.** Owner can claim `/menu` by naming their project "Menu."                                                                                                                                                                                                                                                                                                                    |
-| Universal `/menu` invariant (ChatGPT R5 principle)                        | **Accepted in R5 as Layer 2.** Every business has a working `/menu` regardless of naming. Respects "do not make invariants depend on user-authored content."                                                                                                                                                                                                                                                              |
+| Universal `/menu` invariant (ChatGPT R5 principle)                        | **Narrowed to code truth.** Every business with a `menu` slug or explicit `isDefault` target has a working `/menu`; stores with neither fail to the not-available ladder rather than inventing a target.                                                                                                                                                                                                                    |
 | Remove `isDefault` flag (user R3 proposal)                                | **Still rejected.** Flag drives OBP CTA, brand OBP auto-selection, sitemap, schema.org, special menu override, share modal, and now also Layer 2 alias fallback under R5. Every replacement heuristic is worse than the explicit flag                                                                                                                                                                                     |
 | Performance doctrine (ChatGPT R5)                                         | D-15                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ChatGPT R5-round-2: force `menu` slug → `isDefault=true` (hard invariant) | **Rejected.** Would break the stable-URL + rotating-feature owner pattern (Scenario 1 in §9), contradicts R5's owner-sovereignty principle, and re-imposes platform semantics on top of owner choice. The real UX concern (unintentional Layer-1-vs-default divergence) is addressed by G-13 (dashboard advisory) at the correct layer. See §9 "Layer 1 and `isDefault` are independent by design" for the full reasoning |
@@ -842,7 +847,7 @@ Severity scale:
 | T1-N-01 | A-08 sitemap R5-violating ✅ done        | `@/src/app/client/sitemap.ts` emits `/` + each active project's canonical slug URL; adds `/{outletSlug}` + outlet project URLs for multi-outlet tenants; indexes `/menu` only when an owner has claimed slug `menu`. `previousSlugs[]` excluded. Project selection uses the safe project-summary parser; outlet tenant membership and store identity use canonical tenant-filtered `stores` documents, never client-writable `storesSummary`. Cached for 5 minutes. |
 | T1-N-02 | A-09 footer brand link ✅ done           | `@/src/components/templates/main-app/projects/b2cView/output/MenuFooter.tsx:134-153` — footer brand now renders as `<a href="/">` with an `aria-label` for screen readers. Preserves visual treatment; adds the "back to OBP" affordance required after G-02 made the header logo decorative.                                                                                                                                                                                                                                                               |
 | T1-N-03 | A-12 render-side fallback ladder ✅ done | New client component `@/src/app/client/[[...slug]]/MenuNotFoundFallback.tsx` implements the ladder with standalone-mode detection + 2s countdown + explicit "Go to …" links. Wired at `@/src/app/client/[[...slug]]/page.tsx:1003-1018` replacing the prior terminal `<h1>Menu Not Found</h1>`. Offline PWA launches now degrade to outlet OBP (if inside one) or brand OBP instead of dead-ending.                                                                                                                                                         |
-| T1-N-04 | A-12 slug reservation window ✅ done     | Helper `isSlugReservedByRecentlyDeleted` in `@/src/database/projects/index.ts:303-373` queries the projects subcollection for `deleted: true` + `deletedAt > now - 90d` + matching `slug` or `previousSlugs[]`. Wired into `addProject` (silent suffix) and `updateProjectMetadata` (explicit owner-facing error). 90-day window locked as `SLUG_RESERVATION_WINDOW_MS`.                                                                                                                                                                                    |
+| T1-N-04 | A-12 slug reservation window ✅ done     | Helper `isSlugReservedByRecentlyDeleted` in `@/src/database/projects/index.ts` queries only exact current `slug` and exact `previousSlugs` membership, caps each result set at 25, then requires `deleted: true` plus `deletedAt > now - 90d`. Query failure or a full matching page fails closed. It is wired into `addProject` (silent suffix), duplicate, and `updateProjectMetadata` (explicit owner-facing error). The 90-day window is locked as `SLUG_RESERVATION_WINDOW_MS`; no composite index or new reservation document is required. |
 | T1-N-05 | A-03 subdomain admin rename ✅ done      | New admin-only endpoint `@/src/app/api/admin/subdomains/rename/route.ts` (`requiredPlatformRole: 'PLATFORM'`) performs atomic rename + appends to `previousSubdomains[]` with 12-month `expiresAt` + writes `subdomainRenameLog` audit record. Resolver consumer at `@/src/lib/firestore/clientStoreLookup.ts:36-88` adds chain-fallback via denormalized `previousSubdomainSlugs[]` shadow index. 301 redirect at `@/src/app/client/[[...slug]]/page.tsx:897-910`. New `StoreDataType.previousSubdomains` type at `@/src/types/platform/store.ts:116-137`. |
 
 ### Tier 2 — Doctrine shipped but thin UX — ✅ all shipped

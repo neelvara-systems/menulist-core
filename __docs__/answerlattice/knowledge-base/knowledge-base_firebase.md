@@ -1,7 +1,7 @@
 # Knowledge Base — Firebase Cost & Operations Tracking
 
-> **Version:** 1.2.0
-> **Last Updated:** 2026-07-13
+> **Version:** 1.3.0
+> **Last Updated:** 2026-07-17
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -17,9 +17,9 @@
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.KB_ARTICLES`                       |
 | **Doc ID**                  | Auto-generated                                     |
 | **Scoping**                 | `tId + sId` for current Answerlattice workspaces; legacy global data only via filtered fallback |
-| **Avg Doc Size**            | 5-55 KB during migration (content plus v1/v2 vectors) |
+| **Avg Doc Size**            | 5-50 KB (content plus one 768-dimension vector)       |
 | **Growth Rate**             | Slow (manual creation + AI generation)             |
-| **Vector Index**            | Active `embeddingV2`, 768 dimensions, COSINE; legacy `embedding` retained for rollback |
+| **Vector Index**            | Canonical `embedding`, 768 dimensions, COSINE        |
 
 ### 1.2 kb_categories
 
@@ -80,17 +80,17 @@
 
 | Step                                | Reads | Writes | Notes                                         |
 | ----------------------------------- | :---: | :----: | --------------------------------------------- |
-| `addCategory()` — field path update |   0   |   1    | `updateDoc(ref, { 'categories.{id}': data })` |
-| **Total**                           | **0** | **1**  |                                               |
+| `addCategory()` — scoped transaction |   1   |   1    | Rejects duplicate IDs against the current map |
+| **Direct categories-doc total**      | **1** | **1**  | Cache/source-version writes are listed below  |
 
 ### 2.7 Admin: Add/Edit Article
 
 | Step                   | Reads | Writes |      Gemini Calls      |
 | ---------------------- | :---: | :----: | :--------------------: |
 | Save article content   |   0   |   1    |           0            |
-| Generate active embedding |   0   |   1    | 1 (`gemini-embedding-2`); a legacy call occurs only when rollback coverage is missing/stale during migration |
-| Update parent metadata |   0   |   1    |           0            |
-| **Total**              | **0** | **3**  |         **1**          |
+| Generate active embedding |   0   |   1    | 1 (`gemini-embedding-2`) |
+| Update parent metadata |   1   |   1    |           0            |
+| **Direct content total** | **1** | **3**  |         **1**          |
 
 The Article Modal FAQ suggestion and embedding browser POSTs use no-store cache, same-origin credentials, and manual redirect handling before the existing 64 KB bounded response reader. This changes no Firestore, Gemini, cache-version, or write count; it only prevents cached or followed-redirect responses from being accepted before the documented acknowledgement shape is validated.
 
@@ -99,24 +99,28 @@ The Article Modal FAQ suggestion and embedding browser POSTs use no-store cache,
 | Step                         | Reads | Writes  | Notes                                    |
 | ---------------------------- | :---: | :-----: | ---------------------------------------- |
 | Get all articles in category | up to 500 | 0 | `getArticlesByCategoryId()` scoped by `tId+sId` when session exists |
-| Delete each article          |   0   |    N    | `deleteArticle()` per article            |
-| Delete category from doc     |   0   |    1    | `deleteCategory()` overwrites categories |
-| **Total**                    | **N** | **N+1** | N = articles in category                 |
+| Delete each article          | at least `2N` plus linked FAQ reads | `N` deletes plus linked FAQ archive writes | Each delete pre-reads and transaction-rechecks the article; linked FAQs are bounded |
+| Delete category from doc     |   1   |    1    | Transaction removes only the current category key |
+| **Direct content minimum**   | **3N+1** | **N+1** | Excludes bounded linked FAQ reads/writes and cache/source-version invalidation |
 
 ### 2.9 Admin: Delete Section (Cascade)
 
 | Step                             | Reads | Writes  | Notes                         |
 | -------------------------------- | :---: | :-----: | ----------------------------- |
 | Get all articles in section      | up to 500 | 0 | `getArticlesBySectionId()` scoped by `tId+sId` when session exists |
-| Delete each article              |   0   |    N    | `deleteArticle()` per article |
-| Update category (remove section) |   0   |    1    | `updateCategory()`            |
-| **Total**                        | **N** | **N+1** | N = articles in section       |
+| Delete each article              | at least `2N` plus linked FAQ reads | `N` deletes plus linked FAQ archive writes | Each delete pre-reads and transaction-rechecks the article; linked FAQs are bounded |
+| Remove section from category     |   1   |    1    | `deleteSectionFromCategory()` transaction |
+| **Direct content minimum**       | **3N+1** | **N+1** | Excludes bounded linked FAQ reads/writes and cache/source-version invalidation |
 
 Article acknowledgement hardening is cost-neutral. `addArticle()`, `updateArticle()`, and `deleteArticle()` still use the same existing writes and cache revalidation paths, but UI callers now require explicit article write/delete acknowledgements before local article, category, or ingestion-job state advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
 Bulk article status acknowledgement hardening is cost-neutral. `bulkUpdateArticleStatus()` still uses the existing `writeBatch` status update and cache revalidation path, but `ArticlePane` now requires `assertKnowledgeBaseArticleBulkStatusUpdateSucceeded()` before success copy, selected-id clearing, or bulk-mode exit. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 
-Category navigation acknowledgement hardening is cost-neutral. `addCategory()`, `updateCategory()`, `deleteCategory()`, `updateArticleInParent()`, and `deleteArticleFromParent()` still use the same existing scoped categories-doc writes and cache revalidation paths, but platform KB category, section, article-parent, and delete callers now require explicit category/categories mutation acknowledgements before local navigation state or success copy advances. This adds no reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
+July 13 category navigation concurrency hardening adds one scoped categories-document read to each category, section, or article-navigation mutation. The existing one categories-document write remains. The read lets a Firestore transaction apply an operation-specific mutation to the latest map and retry without dropping another editor's category, section, or article-link change. No collection, Storage object, route, rule, index, schema field, Cloud Function, owner setting, Firebase deployment, or Vercel deployment is added.
+
+The same transaction now owns the categories/article content write plus the three established freshness writes: `answerlattice_cacheVersions`, `platformSummary/sourceVersions_*`, and `platformSummary/bundleManifest_*`. Operation counts are unchanged, but the previous separate pre-write invalidation request is removed. A transaction rollback leaves both content and all freshness markers unchanged; a successful commit exposes them together. Article create/update/delete/bulk-status and FAQ save/archive use the same atomic content-plus-invalidation rule, including their bounded linked-FAQ/article writes.
+
+Each successful navigation mutation also performs the existing cache/source-version invalidation: one `answerlattice_cache_versions` write plus two batched `platform_summary` writes. A typical navigation mutation is therefore **1 Firestore read + 4 Firestore writes total**, of which one read and one write belong to `kb_categories`. Public Next.js cache revalidation is an HTTP request, not a Firestore operation. The single-document pattern remains the lower-cost owner read model: browsing the complete bounded hierarchy costs one document read; splitting navigation into category/section/article-reference collections would multiply common browse reads without improving the expected scale posture.
 
 July 5 session lookup diagnostics update: KB article and category session lookup failures now log bounded diagnostics instead of disappearing into anonymous/global fallback behavior. This adds no Firestore reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment. A failed category session lookup stops before the legacy categories doc read, so the degraded path can reduce reads instead of adding cost.
 
@@ -130,9 +134,7 @@ July 6 article AI route scope hardening is cost-neutral. FAQ generation, article
 
 | Collection    | Fields                                          | Purpose                          |
 | ------------- | ----------------------------------------------- | -------------------------------- |
-| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embeddingV2`, 768, COSINE) | **Active v2 vector search** |
-| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embedding`, 768, COSINE) | **Legacy rollback search** |
-| `kb_articles` | `pId+status+active` | Bounded v2 migration scan |
+| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embedding`, 768, COSINE) | **Canonical vector search** |
 | `kb_articles` | `categoryId ASC`                                | Get articles by category         |
 | `kb_articles` | `sectionId ASC`                                 | Get articles by section          |
 | `kb_articles` | `jobId ASC`                                     | Get articles by generation job   |
@@ -162,14 +164,14 @@ July 6 article AI route scope hardening is cost-neutral. FAQ generation, article
 | Firestore reads                             | ~18,400  | $0.007            |
 | Firestore writes                            | ~115     | $0.0001           |
 | Firestore storage (200 articles × 20KB avg) | ~4 MB    | ~$0.0004          |
-| Gemini v2 embeddings (20 articles/mo)       | 20 calls | Provider list price at execution time; operation accounting records actual model/tokens |
+| Gemini embeddings (20 articles/mo)          | 20 calls | Provider list price at execution time; operation accounting records actual model/tokens |
 | **Total**                                   |          | **~$0.008/month** |
 
 **At 1,000 stores:** Vector search reads dominate → ~$0.70/month
 
-### Embedding v2 migration operations
+### Pre-launch embedding cost boundary
 
-`answerlatticeNightly` runs `embedding_v2_migration` inside the existing scheduler. Each run scans at most 101 published active article documents, processes at most 100 with provider concurrency 3, and writes each missing/stale v2 vector once. It also writes one durable migration-state document per batch. Existing exact v2 vectors are reused without a provider call or article write. During rollback coverage, new/changed articles may make one additional v1 embedding call; v1 failure is non-blocking once the required v2 vector succeeds.
+The runtime writes one `gemini-embedding-2` vector to `embedding` and maintains one matching vector index. It performs no nightly corpus scan, migration-state write, legacy provider call, or duplicate vector write. Existing vectors are reused only when the canonical cache version, dimensions, source hash, and finite non-zero vector all match.
 
 ---
 
@@ -181,18 +183,19 @@ July 6 article AI route scope hardening is cost-neutral. FAQ generation, article
 | `addArticle`              | `kb_articles`   | addDoc                 |
 | `updateArticle`           | `kb_articles`   | setDoc merge           |
 | `deleteArticle`           | `kb_articles`   | deleteDoc              |
-| `deleteMultipleArticles`  | `kb_articles`   | writeBatch delete      |
 | `getArticlesByCategoryId` | `kb_articles`   | getDocs (query)        |
 | `getArticlesBySectionId`  | `kb_articles`   | getDocs (query)        |
 | `getArticlesByIds`        | `kb_articles`   | getDocs (query)        |
 | `getArticleById`          | `kb_articles`   | getDoc                 |
 | `updateArticleFeedback`   | `kb_articles`   | getDoc + setDoc        |
-| `getCategories`           | `kb_categories` | getDocs                |
-| `deleteCategory`          | `kb_categories` | setDoc (overwrite)     |
-| `addCategory`             | `kb_categories` | updateDoc (field path) |
-| `updateCategory`          | `kb_categories` | updateDoc (field path) |
-| `updateArticleInParent`   | `kb_categories` | updateDoc (field path) |
-| `deleteArticleFromParent` | `kb_categories` | updateDoc (field path) |
+| `getCategories`           | `kb_categories` | getDoc                 |
+| `deleteCategory`          | `kb_categories` | transaction read + update |
+| `addCategory`             | `kb_categories` | transaction read + set/update |
+| `updateCategory`          | `kb_categories` | transaction read + update |
+| `upsertSectionInCategory` | `kb_categories` | transaction read + update |
+| `deleteSectionFromCategory` | `kb_categories` | transaction read + update |
+| `updateArticleInParent`   | `kb_categories` | transaction read + update |
+| `deleteArticleFromParent` | `kb_categories` | transaction read + update |
 
 ---
 

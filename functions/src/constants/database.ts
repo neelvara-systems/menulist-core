@@ -79,6 +79,9 @@ export const DB_COLLECTIONS = {
     PAYMENT_TRANSACTIONS: 'payment_transactions',
     FOUNDER_REVENUE_MOVEMENTS: 'founderRevenueMovements',
     FOUNDER_ONBOARDING_TRANSITIONS: 'founderOnboardingTransitions',
+    RAZORPAY_WEBHOOK_EVENTS: 'razorpayWebhookEvents',
+    BILLING_CHECKOUT_LEASES: 'billingCheckoutLeases',
+    BILLING_PROVIDER_PLANS: 'billingProviderPlans',
 
     // Support
     SUPPORT_TICKETS: 'supportTickets',

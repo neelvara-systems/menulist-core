@@ -3,48 +3,18 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 
 import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary } from '@lib/ai/operationPresentation';
-import { getFormatedDateAndTime, type DateLike } from '@util/dateTime';
-import { formatInrPaise, formatProcessingTime } from '@util/formatters';
+import type { AiOperationHistoryRow } from '@lib/ai/operationHistoryClientContract';
+import { getFormatedDateAndTime } from '@util/dateTime';
+import { formatInrPaise, formatNumber, formatProcessingTime } from '@util/formatters';
 import { Button, Collapse, Descriptions, Divider, Modal, Tag } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter, useTranslations } from 'next-intl';
 import React from 'react';
-import { LanguageType } from '../projects/types';
 import DescriptionDetailsView from './transaction-details/DescriptionDetailsView';
 import ImageProcessingDetailsView from './transaction-details/ImageProcessingDetailsView';
 import LanguageDetailsView from './transaction-details/LanguageDetailsView';
 
-export interface TransactionDetails {
-    id: string;
-    action: string;
-    processingTime: number;
-    totalCharge?: number;
-    totalCredits?: number;
-    unitsConsumed?: number;
-    realCostPaise?: number;
-    ourChargePaise?: number;
-    marginPaise?: number;
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-    totalTokenCount?: number;
-    model?: string;
-    fileId?: string;
-    projectId?: string;
-    geminiResponse?: string;
-    createdOn: DateLike;
-    contentLength?: "Small" | "Medium" | "Large"; // Add contentLength
-    // Fields for language operations
-    inputStrings?: Record<string, string>;
-    targetLang?: LanguageType | LanguageType[]; // Can be single object or array
-    sourceLang?: LanguageType;
-    // Fields for image processing
-    files?: Array<{ uid: string; name: string; type: string; url: string }>;
-    targetLanguages?: LanguageType[];
-    clientResponse?: any;
-    // Fields for AI generation operations
-    generationConfig?: any;
-    itemsList?: any[];
-}
+export type TransactionDetails = AiOperationHistoryRow;
 
 interface TransactionDetailsModalProps {
     isOpen: boolean;
@@ -61,7 +31,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
     const formatter = useFormatter();
     const t = useTranslations('Transactions');
     const { data: session } = useSession();
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
     const formatOptionalPaise = (value?: number) => (
         value === undefined || value === null ? t('notRecorded') : formatInrPaise(value)
@@ -70,13 +40,19 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
     const renderModalContent = () => {
         if (!transaction) return null;
 
-        const { action, processingTime, createdOn, unitsConsumed } = transaction;
+        const { action, processingTime = 0, createdOn, unitsConsumed } = transaction;
         const consumedUnits = Number(unitsConsumed || 0);
 
         const basicInfo = (
             <Descriptions title="" column={1}>
                 <Descriptions.Item label={t('action')}>
-                    <Tag color={action === 'image_processing' ? 'blue' : action === 'language_addition' ? 'green' : 'purple'}>
+                    <Tag color={action === AI_ACTIONS_TYPES.IMAGE_PROCESSING
+                        ? 'blue'
+                        : action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION
+                            || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION
+                            || action === AI_ACTIONS_TYPES.ITEM_TRANSLATION
+                            ? 'green'
+                            : 'purple'}>
                         {formatAiOperationActionLabel(action, t)}
                     </Tag>
                 </Descriptions.Item>
@@ -103,7 +79,7 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                                     <Descriptions column={1}>
                                         <Descriptions.Item label={t('model')}>{transaction.model || t('notRecorded')}</Descriptions.Item>
                                         <Descriptions.Item label={t('tokenCreditsAudit')}>
-                                            {Number(transaction.totalCredits || 0).toLocaleString()}
+                                            {formatNumber(Number(transaction.totalCredits || 0))}
                                         </Descriptions.Item>
                                         <Descriptions.Item label={t('ownerChargeRecorded')}>
                                             {formatOptionalPaise(transaction.totalCharge)}
@@ -118,13 +94,13 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                                             {formatOptionalPaise(transaction.marginPaise)}
                                         </Descriptions.Item>
                                         <Descriptions.Item label={t('totalTokens')}>
-                                            {Number(transaction.totalTokenCount || 0).toLocaleString()}
+                                            {formatNumber(Number(transaction.totalTokenCount || 0))}
                                         </Descriptions.Item>
                                         <Descriptions.Item label={t('promptTokens')}>
-                                            {Number(transaction.promptTokenCount || 0).toLocaleString()}
+                                            {formatNumber(Number(transaction.promptTokenCount || 0))}
                                         </Descriptions.Item>
                                         <Descriptions.Item label={t('outputTokens')}>
-                                            {Number(transaction.candidatesTokenCount || 0).toLocaleString()}
+                                            {formatNumber(Number(transaction.candidatesTokenCount || 0))}
                                         </Descriptions.Item>
                                         <Descriptions.Item label={t('projectId')}>{transaction.projectId || t('notRecorded')}</Descriptions.Item>
                                         <Descriptions.Item label={t('fileId')}>{transaction.fileId || t('notRecorded')}</Descriptions.Item>
@@ -148,7 +124,11 @@ const TransactionDetailsModal: React.FC<TransactionDetailsModalProps> = ({
                     {platformDebugInfo}
                 </>
             );
-        } else if (action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION) {
+        } else if (
+            action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION
+            || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION
+            || action === AI_ACTIONS_TYPES.ITEM_TRANSLATION
+        ) {
             // Language operations
             return (
                 <>

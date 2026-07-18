@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Help Doc
 
-**Status:** Help article draft
-**Last Updated:** July 5, 2026
+**Status:** Active help guidance for implemented public report links
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -36,3 +36,5 @@ If you submit a follow-up form from a source tool or from the shared report page
 Only if the specific tool says it did.
 
 Most V0 public tools use owner-entered fields only. If a tool did not open or fetch an external profile, the report will say that.
+
+The public link is a browser-local self-report, not a digitally verified MenuList record. Confirm the entered facts with the owner before changing business truth.

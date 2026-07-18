@@ -13,6 +13,7 @@
  */
 
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
+import { formatNumber } from '@util/formatters';
 import { Alert, Card, Col, Empty, Row, Spin, Statistic, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
@@ -217,7 +218,7 @@ const CustomerAppMetrics: React.FC<Props> = ({ dateRange }) => {
                 message={t('customerApp.iosInferredTitle')}
                 description={
                     iosManualInstalls > 0
-                        ? t('customerApp.iosInferredWithCount', { count: iosManualInstalls.toLocaleString() })
+                        ? t('customerApp.iosInferredWithCount', { count: formatNumber(iosManualInstalls) })
                         : t('customerApp.iosInferredNoCount')
                 }
             />

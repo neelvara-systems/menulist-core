@@ -50,8 +50,10 @@ export interface ExtractionResult {
     candidates: ExtractedEntityRaw[];
     articlesProcessed: number;
     extractionTimestamp: Date;
+    failedBatchCount: number;
     matchedEntityIds?: string[];   // E3: IDs of existing entities that matched extraction output
     newCandidateCount?: number;    // E3: Count of genuinely new candidates created
+    successfulBatchCount: number;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -141,14 +143,33 @@ const REJECTED_PATTERNS = [
 /**
  * Validate extracted entity against strict rules
  */
-function isValidEntity(entity: ExtractedEntityRaw): boolean {
-    if (!entity.name || entity.name.length < 2) return false;
-    if (!entity.type || !Object.values(ANSWERLATTICE_ENTITY_TYPES).includes(entity.type)) return false;
-    if (entity.name.split(' ').length > 5) return false;
-    if (entity.confidence < 0.3) return false;
+function isValidEntity(entity: unknown): entity is ExtractedEntityRaw {
+    if (!entity || typeof entity !== 'object' || Array.isArray(entity)) return false;
+    const candidate = entity as Partial<ExtractedEntityRaw>;
+    if (typeof candidate.name !== 'string' || candidate.name.trim().length < 2 || candidate.name.length > 120) {
+        return false;
+    }
+    if (
+        typeof candidate.description !== 'string'
+        || candidate.description.trim().length < 1
+        || candidate.description.length > 600
+    ) {
+        return false;
+    }
+    if (!candidate.type || !Object.values(ANSWERLATTICE_ENTITY_TYPES).includes(candidate.type)) return false;
+    if (candidate.name.trim().split(/\s+/).length > 5) return false;
+    if (
+        typeof candidate.confidence !== 'number'
+        || !Number.isFinite(candidate.confidence)
+        || candidate.confidence < 0.3
+        || candidate.confidence > 1
+    ) {
+        return false;
+    }
+    if (candidate.source !== undefined && candidate.source !== 'existing' && candidate.source !== 'new') return false;
 
     for (const pattern of REJECTED_PATTERNS) {
-        if (pattern.test(entity.name)) return false;
+        if (pattern.test(candidate.name)) return false;
     }
 
     return true;
@@ -210,12 +231,20 @@ export async function extractEntitiesFromArticles(
     persistCandidate: (candidate: Omit<AnswerlatticeEntityCandidate, 'id'>) => Promise<unknown> = addEntityCandidate,
 ): Promise<ExtractionResult> {
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) {
-        return { candidates: [], articlesProcessed: 0, extractionTimestamp: new Date() };
+        return {
+            candidates: [],
+            articlesProcessed: 0,
+            extractionTimestamp: new Date(),
+            failedBatchCount: 0,
+            successfulBatchCount: 0,
+        };
     }
 
     // Process articles in batches of 5 (to stay within token limits)
     const BATCH_SIZE = 5;
     const allExtracted: ExtractedEntityRaw[] = [];
+    let failedBatchCount = 0;
+    let successfulBatchCount = 0;
 
     for (let i = 0; i < articles.length; i += BATCH_SIZE) {
         const batch = articles.slice(i, i + BATCH_SIZE);
@@ -223,13 +252,23 @@ export async function extractEntitiesFromArticles(
 
         try {
             const response = await callGemini(ENTITY_EXTRACTION_SYSTEM_PROMPT, prompt);
-            if (response) {
-                const parsed = JSON.parse(response);
-                if (parsed.entities && Array.isArray(parsed.entities)) {
-                    allExtracted.push(...parsed.entities);
-                }
+            if (!response) {
+                failedBatchCount += 1;
+                continue;
             }
+            const parsed = JSON.parse(response);
+            if (!Array.isArray(parsed.entities)) {
+                failedBatchCount += 1;
+                continue;
+            }
+            if (!parsed.entities.every(isValidEntity)) {
+                failedBatchCount += 1;
+                continue;
+            }
+            allExtracted.push(...parsed.entities);
+            successfulBatchCount += 1;
         } catch (error) {
+            failedBatchCount += 1;
             // Continue with next batch on extraction failure (graceful degradation)
             logAnswerlatticeFailure('answerlattice_entity_extraction_batch_failed', error, {
                 ...getAnswerlatticeScopeLogContext({ sId, tId }),
@@ -240,8 +279,7 @@ export async function extractEntitiesFromArticles(
     }
 
     // Validate and deduplicate
-    const validated = allExtracted.filter(isValidEntity);
-    const deduplicated = deduplicateEntities(validated);
+    const deduplicated = deduplicateEntities(allExtracted);
 
     // E3: Post-extraction matching against existing entities
     const matchedEntityIds: string[] = [];
@@ -286,8 +324,10 @@ export async function extractEntitiesFromArticles(
         candidates: deduplicated,
         articlesProcessed: articles.length,
         extractionTimestamp: new Date(),
+        failedBatchCount,
         matchedEntityIds,
         newCandidateCount: newCandidates.length,
+        successfulBatchCount,
     };
 }
 
@@ -346,8 +386,8 @@ function matchToExistingEntity(
 }
 
 // ═══════════════════════════════════════════════════════════════
-// E4: AUTO-EXTRACT ON ARTICLE SAVE
-// Async entity extraction triggered when KB article is saved.
+// E4: ARTICLE EXTRACTION HELPER
+// Standalone helper; the live article-save path calls the protected API route directly.
 // ═══════════════════════════════════════════════════════════════
 
 const EXTRACTION_COOLDOWN_MS = 5 * 60 * 1000; // 5-minute debounce per article
@@ -382,8 +422,8 @@ export function extractPlainTextFromTipTap(content: any): string {
 }
 
 /**
- * E4: Auto-extract entities from a KB article and return matched entity IDs.
- * Called asynchronously after article save (fire-and-forget).
+ * Extract entities from one KB article and return matched entity IDs.
+ * This helper is not used by the live article-save route and does not persist results.
  * 
  * Returns entityIds that should be set on the article document.
  * Does NOT update the article itself — caller is responsible for that.

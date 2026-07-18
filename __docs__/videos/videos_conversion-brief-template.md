@@ -75,6 +75,21 @@ Use a new `utm_content` when the hook, edit, duration, aspect ratio, voice, CTA,
 - [ ] Ranking, traffic, conversion, revenue, and AI recommendation guarantees are absent.
 - [ ] Demo data is fictional, permissioned, or clearly labeled.
 
+### Retention Contract
+
+| Field | Required value |
+| --- | --- |
+| Distribution promise | Exact thumbnail/post-copy promise this opening must fulfill |
+| Frame-zero promise | Exact owner-facing message readable in the first encoded frame |
+| Product-visible deadline | Target at or before `1.5s` |
+| First aha moment | Exact product transformation and target time at or before approximately `5s` |
+| Opening event map | Meaningful information changes planned for `0-1.5s`, `1.5-3s`, and `3-5s` |
+| Longest static proof hold | Duration and reason; normally `2-4s` when UI reading is required |
+| Test variable | One declared variable or `Not an A/B test` |
+| Frozen variables | Body, proof order, voice, music, CTA, destination, audience, and placement values held constant |
+
+The retention contract does not require a hard cut every `1.7s`, uninterrupted motion, a universal completion target, or a speed increase. It requires continuous meaningful progress and enough reading time for a non-technical owner.
+
 ### Distribution Package
 
 | Field | Required value |
@@ -94,6 +109,8 @@ The brief passes only when:
 - the asset id is unique;
 - the funnel stage and belief change are singular;
 - the proof moment can be shown truthfully;
+- the frame-zero promise, product-visible deadline, and first aha are explicit;
+- every opening motion event carries new information rather than decoration;
 - the linked action and destination are final;
 - the primary metric is deeper than views where the product flow supports it;
 - paid eligibility is explicit;
@@ -111,4 +128,3 @@ Record:
 - private-preview, claim, and approved-publish progress where available;
 - owner questions or misunderstandings;
 - decision: keep, iterate one variable, scale, or retire.
-

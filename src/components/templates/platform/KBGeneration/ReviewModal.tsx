@@ -1,14 +1,23 @@
 'use client';
 
-import { assertIngestionJobWriteSucceeded, updateJob } from "@database/kb-generation/jobs";
+import { assertIngestionJobWriteSucceeded, updateReviewJobNavigation } from "@database/kb-generation/jobs";
 import { rebuildProductSurfaceContentSummaryWithDiagnostics } from "@database/answerlattice/productSurfaces";
 import { FEATURE_FLAGS } from "@config/features";
 import { assertKnowledgeBaseArticleWriteSucceeded, getArticleById, updateArticle } from "@database/knowledgeBase/articles";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { getBoundedAnswerlatticeStringContext } from '@lib/answerlattice/diagnostics';
+import {
+    deleteKnowledgeBaseReviewArticle,
+    deleteKnowledgeBaseReviewCategory,
+    deleteKnowledgeBaseReviewSection,
+    updateKnowledgeBaseReviewCategory,
+    updateKnowledgeBaseReviewSection,
+    upsertKnowledgeBaseReviewArticle,
+    toKnowledgeBaseReviewNavigation,
+} from '@lib/answerlattice/knowledgeBaseReviewMutations';
 import { publishApprovedJob, PublishApprovedJobPayload, regenerateEmbedding } from '@lib/firebase/functions';
 import { startLoader, stopLoader } from "@reduxSlices/loader";
-import { IngestionJob, IngestionJobArticle, IngestionJobCategoriesMap, IngestionJobSection, KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
+import { IngestionJob, IngestionJobCategoriesMap, KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
 import { Button, Form, Layout, message, Modal, Splitter } from "antd";
 import { useEffect, useState } from "react";
 import ArticleModal from "../knowledgeBase/ArticleModal";
@@ -40,7 +49,7 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
 
     useEffect(() => {
         if (job) {
-            setCategoriesData({ categories: job.categories as any });
+            setCategoriesData({ categories: toKnowledgeBaseReviewNavigation(job.categories || {}) });
         }
     }, [job]);
 
@@ -70,14 +79,17 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
             onOk: async () => {
                 dispatch(startLoader('Deleting category...'));
                 try {
-                    const updatedCategories = { ...categoriesData.categories };
-                    delete updatedCategories[categoryId];
-                    const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                    const updateResult = await updateReviewJobNavigation(
+                        job.id,
+                        'category_delete',
+                        (current) => deleteKnowledgeBaseReviewCategory(current, categoryId),
+                    );
                     assertIngestionJobWriteSucceeded(
                         updateResult,
                         job.id,
                         'kb_generation_review_category_delete_rejected',
                     );
+                    const updatedCategories = toKnowledgeBaseReviewNavigation(updateResult.categories);
                     setCategoriesData({ categories: updatedCategories });
                     if (selectedCategory?.id === categoryId) {
                         setSelectedCategory(null);
@@ -104,18 +116,19 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
             onOk: async () => {
                 dispatch(startLoader('Deleting section...'));
                 try {
-                    const updatedCategories: any = { ...categoriesData.categories };
-                    const cat = updatedCategories[selectedCategory.id];
-                    if (cat?.sections) {
-                        cat.sections = cat.sections.filter((s: IngestionJobSection) => s.id !== sectionId);
-                    }
-                    const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                    const updateResult = await updateReviewJobNavigation(
+                        job.id,
+                        'section_delete',
+                        (current) => deleteKnowledgeBaseReviewSection(current, selectedCategory.id, sectionId),
+                    );
                     assertIngestionJobWriteSucceeded(
                         updateResult,
                         job.id,
                         'kb_generation_review_section_delete_rejected',
                     );
+                    const updatedCategories = toKnowledgeBaseReviewNavigation(updateResult.categories);
                     setCategoriesData({ categories: updatedCategories });
+                    setSelectedCategory(updatedCategories[selectedCategory.id]);
                     if (selectedSection?.id === sectionId) {
                         setSelectedSection(null);
                         setSelectedArticle(null);
@@ -140,23 +153,29 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
             onOk: async () => {
                 dispatch(startLoader('Deleting article...'));
                 try {
-                    const updatedCategories: any = JSON.parse(JSON.stringify(categoriesData.categories));
-                    const cat = updatedCategories[selectedCategory.id];
-                    if (selectedSection && cat?.sections) {
-                        const sec = cat.sections.find((s: IngestionJobSection) => s.id === selectedSection.id);
-                        if (sec?.articles) {
-                            sec.articles = sec.articles.filter((a: IngestionJobArticle) => a.id !== articleId);
-                        }
-                    } else if (cat?.articles) {
-                        cat.articles = cat.articles.filter((a: IngestionJobArticle) => a.id !== articleId);
-                    }
-                    const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                    const updateResult = await updateReviewJobNavigation(
+                        job.id,
+                        'article_delete',
+                        (current) => deleteKnowledgeBaseReviewArticle(
+                            current,
+                            selectedCategory.id,
+                            articleId,
+                            selectedSection?.id,
+                        ),
+                    );
                     assertIngestionJobWriteSucceeded(
                         updateResult,
                         job.id,
                         'kb_generation_review_article_delete_rejected',
                     );
+                    const updatedCategories = toKnowledgeBaseReviewNavigation(updateResult.categories);
                     setCategoriesData({ categories: updatedCategories });
+                    const updatedCategory = updatedCategories[selectedCategory.id];
+                    setSelectedCategory(updatedCategory);
+                    if (selectedSection) {
+                        const updatedSection = updatedCategory.sections?.find((section) => section.id === selectedSection.id);
+                        setSelectedSection(updatedSection || null);
+                    }
                     setSelectedArticle(null);
                     message.success('Article deleted');
                 } catch {
@@ -235,31 +254,30 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
         });
     };
 
-    const handleCategorySuccess = async (updatedCategory: any) => {
+    const handleCategorySuccess = async (updatedCategory: KnowledgeBaseCategory) => {
         dispatch(startLoader('Updating category...'));
         try {
-            const updatedCategories = { ...categoriesData?.categories };
-            if (Boolean(updatedCategory.sections?.length)) {
-                updatedCategory.sections.map((section: IngestionJobSection) => {
-                    if (Boolean(section.articles?.length)) {
-                        section.articles.map((article: IngestionJobArticle) => {
-                            article.reEmbedding = true;
-                        })
-                    }
-                })
-            } else if (Boolean(updatedCategory.articles?.length)) {
-                updatedCategory.articles.map((article: IngestionJobArticle) => {
-                    article.reEmbedding = true;
-                })
-            }
-            updatedCategories[updatedCategory.id] = updatedCategory;
-            const updateResult = await updateJob(job?.id, { categories: updatedCategories as any });
+            if (!job || !categoriesData) throw new Error('answerlattice_kb_generation_review_state_missing');
+            const updateResult = await updateReviewJobNavigation(
+                job.id,
+                'category_update',
+                (current) => updateKnowledgeBaseReviewCategory(current, updatedCategory),
+            );
             assertIngestionJobWriteSucceeded(
                 updateResult,
-                job?.id,
+                job.id,
                 'kb_generation_review_category_update_rejected',
             );
+            const updatedCategories = toKnowledgeBaseReviewNavigation(updateResult.categories);
             setCategoriesData({ categories: updatedCategories });
+            if (selectedCategory?.id === updatedCategory.id) {
+                const categoryForReview = updatedCategories[updatedCategory.id];
+                setSelectedCategory(categoryForReview);
+                if (selectedSection) {
+                    const refreshedSection = categoryForReview.sections?.find((section) => section.id === selectedSection.id);
+                    setSelectedSection(refreshedSection || null);
+                }
+            }
             setActiveModal({ type: "", data: null });
         } catch {
             message.error('Failed to update category.');
@@ -268,26 +286,34 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
         }
     };
 
-    const handleSectionSuccess = async (updatedSection: any) => {
+    const handleSectionSuccess = async (updatedSection: KnowledgeBaseSection) => {
         dispatch(startLoader('Updating section...'));
         try {
-            const updatedCategories: any = { ...categoriesData?.categories };
-            let secIndex = updatedCategories[selectedCategory.id].sections.findIndex((section: IngestionJobSection) => section.id === updatedSection.id);
-
-            if (Boolean(updatedSection.articles?.length)) {
-                updatedSection.articles.map((article: IngestionJobArticle) => {
-                    article.reEmbedding = true;
-                })
+            if (!job || !categoriesData || !selectedCategory) {
+                throw new Error('answerlattice_kb_generation_review_state_missing');
             }
-
-            updatedCategories[selectedCategory.id].sections[secIndex] = updatedSection;
-            const updateResult = await updateJob(job?.id, { categories: updatedCategories as any });
+            const updateResult = await updateReviewJobNavigation(
+                job.id,
+                'section_update',
+                (current) => updateKnowledgeBaseReviewSection(current, selectedCategory.id, updatedSection),
+            );
+            const updatedCategories = toKnowledgeBaseReviewNavigation(updateResult.categories);
+            const category = updatedCategories[selectedCategory.id];
+            const sections = category.sections || [];
+            const storedSection = sections.find((section) => section.id === updatedSection.id);
+            if (!storedSection) throw new Error('answerlattice_kb_generation_section_not_found');
+            const sectionForReview = {
+                ...storedSection,
+                articles: storedSection.articles?.map((article) => ({ ...article, reEmbedding: true })),
+            };
             assertIngestionJobWriteSucceeded(
                 updateResult,
-                job?.id,
+                job.id,
                 'kb_generation_review_section_update_rejected',
             );
             setCategoriesData({ categories: updatedCategories });
+            setSelectedCategory(category);
+            setSelectedSection(sectionForReview);
             setActiveModal({ type: "", data: null });
         } catch {
             message.error('Failed to update section.');
@@ -308,8 +334,6 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
             );
 
             if (job && categoriesData && selectedCategory) {
-                const updatedCategories: any = JSON.parse(JSON.stringify(categoriesData.categories));
-                const category = updatedCategories[selectedCategory.id];
                 const articleMeta = {
                     id: savedArticle.id,
                     title: savedArticle.title,
@@ -319,27 +343,29 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                     reEmbedding: true,
                 };
 
-                if (selectedSection?.id && category?.sections) {
-                    const section = category.sections.find((item: IngestionJobSection) => item.id === selectedSection.id);
-                    const articles = section?.articles || [];
-                    const articleIndex = articles.findIndex((item: IngestionJobArticle) => item.id === savedArticle.id);
-                    if (articleIndex >= 0) {
-                        articles[articleIndex] = { ...articles[articleIndex], ...articleMeta };
-                    }
-                } else if (category?.articles) {
-                    const articleIndex = category.articles.findIndex((item: IngestionJobArticle) => item.id === savedArticle.id);
-                    if (articleIndex >= 0) {
-                        category.articles[articleIndex] = { ...category.articles[articleIndex], ...articleMeta };
-                    }
-                }
-
-                const updateResult = await updateJob(job.id, { categories: updatedCategories as any });
+                const updateResult = await updateReviewJobNavigation(
+                    job.id,
+                    'article_upsert',
+                    (current) => upsertKnowledgeBaseReviewArticle(
+                        current,
+                        selectedCategory.id,
+                        articleMeta,
+                        selectedSection?.id,
+                    ),
+                );
                 assertIngestionJobWriteSucceeded(
                     updateResult,
                     job.id,
                     'kb_generation_review_article_job_update_rejected',
                 );
+                const updatedCategories = toKnowledgeBaseReviewNavigation(updateResult.categories);
                 setCategoriesData({ categories: updatedCategories });
+                const updatedCategory = updatedCategories[selectedCategory.id];
+                setSelectedCategory(updatedCategory);
+                if (selectedSection) {
+                    const updatedSection = updatedCategory.sections?.find((section) => section.id === selectedSection.id);
+                    setSelectedSection(updatedSection || null);
+                }
             }
 
             await regenerateEmbedding(savedArticle.id);
@@ -418,7 +444,7 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                     form={categoryForm}
                     onOk={() => categoryForm.submit()}
                     onCancel={() => setActiveModal({ type: "", data: null })}
-                    onSuccess={handleCategorySuccess}
+                    onReviewSuccess={handleCategorySuccess}
                     from="review"
                 />
                 <SectionModal
@@ -427,7 +453,7 @@ function ReviewModal({ open, onClose, job, articlesToReview, onReconciliationReq
                     form={sectionForm}
                     onOk={() => sectionForm.submit()}
                     onCancel={() => setActiveModal({ type: "", data: null })}
-                    onSuccess={handleSectionSuccess}
+                    onReviewSuccess={handleSectionSuccess}
                     categoriesData={categoriesData}
                     selectedCategory={selectedCategory}
                     from="review"

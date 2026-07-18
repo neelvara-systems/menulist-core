@@ -1,6 +1,7 @@
 'use client'
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { AICapacityError } from '@services/ai/capacityError';
 import { theme } from 'antd';
@@ -12,12 +13,13 @@ import type { Project } from '../../templates/main-app/projects/types';
 import {
     DESCRIPTION_LENGTH_OPTIONS,
     DESCRIPTION_TONE_OPTIONS,
+    getDescriptionGenerationRequestCount,
     getDescriptionGenerationStats,
     runDescriptionGeneration,
     type DescriptionContentLength,
     type DescriptionTone,
 } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
-import { Button, Card, Flex, NavBar, Popup, Text, Toast } from '../antd';
+import { Button, Card, Dialog, Flex, NavBar, Popup, Text, Toast } from '../antd';
 import AiActionProgressPanel from '../components/AiActionProgressPanel';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
@@ -69,10 +71,18 @@ export default function GenerateDescriptionsSheet({
             : undefined
     ), [allowInheritedDescriptionOverride, isMasterLinked, itemStates]);
 
-    const { itemsCount, itemsWithDescriptions, itemsWithoutDescriptions } = useMemo(
+    const { aiDescriptionCount, itemsCount, itemsWithDescriptions, itemsWithoutDescriptions } = useMemo(
         () => getDescriptionGenerationStats(projectData, null, governance),
         [governance, projectData]
     );
+    const refreshCreditCount = useMemo(() => (
+        getDescriptionGenerationRequestCount(
+            projectData,
+            null,
+            AI_ACTIONS_TYPES.REWRITE_DESCRIPTION,
+            governance,
+        ) * CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE
+    ), [governance, projectData]);
 
     const handleDescriptionRequest = async (action: string) => {
         setIsProcessing(true);
@@ -85,7 +95,7 @@ export default function GenerateDescriptionsSheet({
                     tone: descriptionTone,
                 },
             });
-            const updatedProject = await runDescriptionGeneration({
+            await runDescriptionGeneration({
                 action,
                 contentLength,
                 tone: descriptionTone,
@@ -98,13 +108,11 @@ export default function GenerateDescriptionsSheet({
                 projectData: projectWithPreferences,
                 governance,
             });
-
-            onSaved(updatedProject);
             Toast.show({ content: t('descriptionsUpdated'), duration: 1500 });
             onClose();
         } catch (error) {
             if (error instanceof AICapacityError) {
-                Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
+                Toast.show({ content: t('enhancementPackRequired'), duration: 2200 });
             } else {
                 Toast.show({ content: t('descriptionGenerationFailed'), duration: 2000 });
             }
@@ -113,6 +121,17 @@ export default function GenerateDescriptionsSheet({
             setProcessedCount(0);
             setTotalFiles(0);
         }
+    };
+
+    const handleRefreshRequest = async () => {
+        const confirmed = await Dialog.confirm({
+            cancelText: t('cancel'),
+            confirmText: t('refreshDescriptionsCta'),
+            content: t('refreshDescriptionsConfirm', { credits: refreshCreditCount }),
+            title: t('refreshDescriptionsTitle'),
+        });
+        if (!confirmed) return;
+        await handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION);
     };
 
     if (!visible) return null;
@@ -303,7 +322,7 @@ export default function GenerateDescriptionsSheet({
 
                 </Flex>
 
-                {itemsWithoutDescriptions > 0 || itemsWithDescriptions > 0 ? (
+                {itemsWithoutDescriptions > 0 || aiDescriptionCount > 0 ? (
                     <div
                         style={{
                             backdropFilter: 'blur(10px)',
@@ -334,13 +353,13 @@ export default function GenerateDescriptionsSheet({
                                 </Button>
                             ) : null}
 
-                            {itemsWithDescriptions > 0 ? (
+                            {aiDescriptionCount > 0 ? (
                                 <Button
                                     block
                                     disabled={isProcessing}
                                     fill="outline"
                                     onClick={() => {
-                                        void handleDescriptionRequest(AI_ACTIONS_TYPES.REWRITE_DESCRIPTION);
+                                        void handleRefreshRequest();
                                     }}
                                     size="large"
                                     style={{ flex: 1 }}

@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const assert = require('node:assert/strict');
 
 const root = process.cwd();
 
@@ -11,6 +12,19 @@ function read(relativePath) {
     throw new Error(`Missing required file: ${relativePath}`);
   }
   return fs.readFileSync(fullPath, 'utf8');
+}
+
+function readJson(relativePath) {
+  return JSON.parse(read(relativePath));
+}
+
+function hasSingleFieldExemption(indexConfig, collectionGroup, fieldPath) {
+  return indexConfig.fieldOverrides?.some((entry) => (
+    entry.collectionGroup === collectionGroup
+    && entry.fieldPath === fieldPath
+    && Array.isArray(entry.indexes)
+    && entry.indexes.length === 0
+  ));
 }
 
 function assertIncludes(relativePath, expected, label = expected) {
@@ -47,11 +61,18 @@ const docs = [
 ];
 
 docs.forEach(read);
+docs.forEach((docPath) => assertIncludes(docPath, 'Local source complete', 'local source status'));
 
 assertIncludes('src/config/features.ts', 'ENABLE_MENU_SETUP_PROGRESS');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'buildMenuSetupProgress');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'lastPublishedAt');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'buildStarterActivationSummary');
+assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'normalizeStarterActivationTimestamp');
+assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'const hasProjectSource = hasText(project?.projectId);', 'loaded project source boundary');
+assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'const files = Array.isArray(project?.files) ? project.files : [];', 'malformed project files boundary');
+assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', '!starterActivation.appliesToStarterActivation', 'non-starter placement compatibility');
+assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', '|| starterActivation.activated', 'starter activation target contract');
+assertNotIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'starterActivation.signalCount > 0', 'single-signal starter completion fallback');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "id: 'translations_ready'", 'conditional translations progress step');
 assertIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', "translationSignals.length > 0", 'translation step only when language signals exist');
 assertNotIncludes('src/lib/menuSetupProgress/buildMenuSetupProgress.ts', 'activeCategories.length > 0', 'category-only import completion');
@@ -67,6 +88,7 @@ assertIncludes('src/components/mobile/screens/MobileShareScreen.tsx', 'MobileMen
 assertIncludes('src/components/mobile/MobileShell.tsx', 'onOpenOfficialPage');
 assertIncludes('src/components/mobile/MobileShell.tsx', "'main',", 'More root selected-project provider cache');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'buildMenuSetupProgress', 'More shortcut uses shared setup computation');
+assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'if (projectsLoading) return null;', 'More shortcut waits for project truth');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', "key: 'menuSetup'", 'More shortcut item');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'onOpenMenuTab?.()', 'More shortcut menu shell callback');
 assertIncludes('src/components/mobile/screens/MobileMoreScreen.tsx', 'onOpenShareTab?.()', 'More shortcut share shell callback');
@@ -75,6 +97,159 @@ assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_spec.md', 'acti
 assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_spec.md', 'Translations ready', 'translations optional contract');
 assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_test-cases.md', 'categories exist but zero active items', 'category-only test case');
 assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_test-cases.md', 'Mobile More root while setup is incomplete', 'More shortcut test case');
+assertIncludes('__docs__/menu-setup-progress/menu-setup-progress_test-cases.md', 'exactly one recorded placement action', 'single-action starter test case');
+assertIncludes('FEATURE_SWEEP_MASTER_INVENTORY.md', 'Menu Setup Progress and Activation Concierge Boundary', 'feature inventory boundary');
+assertIncludes('FEATURE_SWEEP_MASTER_REPORT.md', 'Menu Setup Progress and Activation Concierge Boundary', 'feature report boundary');
+assertIncludes('__docs__/audits/menulist-production-readiness-audit.md', 'Menu Setup Progress and Activation Concierge Boundary', 'production audit boundary');
+assertIncludes('__docs__/changelog.md', 'Menu Setup Progress and Activation Concierge Boundary', 'changelog boundary');
+assertIncludes('__docs__/audits/menulist-feature-flow-audit-tracker.md', '| 24 | Menu setup progress and activation concierge | Medium | Local source complete |', 'strict item 24 completion');
+assertIncludes('__docs__/audits/menulist-feature-flow-audit-tracker.md', '| 25 | Menu presence and public-truth monitoring | Medium | Local source complete |', 'strict item 25 completion');
+
+const firestoreIndexes = readJson('firestore.indexes.json');
+assert.equal(
+  hasSingleFieldExemption(firestoreIndexes, 'stores', 'starterActivationSignals'),
+  true,
+  'starter activation evidence must not pay automatic nested-map index fanout',
+);
+
+require('ts-node').register({
+  compilerOptions: { module: 'CommonJS', target: 'ES2022' },
+  transpileOnly: true,
+});
+require('tsconfig-paths/register');
+
+const { buildMenuSetupProgress } = require('../../src/lib/menuSetupProgress/buildMenuSetupProgress');
+const {
+  STARTER_ACTIVATION_SIGNALS,
+  applyStarterActivationSignalToStoreDetails,
+  applyStarterPresenceUpdateToStoreDetails,
+  buildStarterActivationSummary,
+} = require('../../src/lib/onboarding/starterActivation');
+
+const projectWithPublishedMenu = {
+  projectId: 'menu-setup-progress-test',
+  lastPublishedAt: '2026-07-15T00:00:00.000Z',
+  files: [{
+    uid: 'menu-file',
+    extractedData: {
+      data: {
+        categories: [],
+        items: [{ id: 'item-1', active: true, name: { en: 'Tea' }, price: '100' }],
+        languages: [],
+      },
+    },
+  }],
+};
+
+function buildProgress({ published = true, starter = true, signals = [] } = {}) {
+  const actions = Object.fromEntries(signals.map((signal) => [signal, '2026-07-15T00:00:00.000Z']));
+  return buildMenuSetupProgress({
+    project: published ? projectWithPublishedMenu : { ...projectWithPublishedMenu, lastPublishedAt: undefined },
+    qualitySignals: [],
+    storeDetails: {
+      ...(starter ? { onboardingSource: 'PUBLIC_MENU_ENTRY' } : {}),
+      ...(signals.length ? { starterActivationSignals: { actions } } : {}),
+    },
+  });
+}
+
+function linkPlacementStep(summary) {
+  const step = summary.requiredSteps.find(({ id }) => id === 'link_placed');
+  assert.ok(step, 'link placement step must exist');
+  return step;
+}
+
+const starterWithNoSignals = buildProgress();
+assert.equal(linkPlacementStep(starterWithNoSignals).done, false, 'starter with no placement actions must remain incomplete');
+
+const starterWithOneSignal = buildProgress({ signals: ['menu_link_copied'] });
+assert.equal(linkPlacementStep(starterWithOneSignal).done, false, 'one starter placement action must not meet the two-action target');
+assert.equal(starterWithOneSignal.phase, 'place', 'one starter placement action must keep setup in the placement phase');
+assert.match(linkPlacementStep(starterWithOneSignal).description, /1 of 2/, 'one starter placement action must show truthful progress');
+
+const starterWithTwoSignals = buildProgress({ signals: ['menu_link_copied', 'qr_downloaded'] });
+assert.equal(linkPlacementStep(starterWithTwoSignals).done, true, 'two distinct starter placement actions must meet the target');
+assert.equal(starterWithTwoSignals.shouldShow, false, 'optional improvements must not keep completed required setup visible');
+assert.equal(starterWithTwoSignals.nextStep, undefined, 'completed required setup must not promote an optional step as required next action');
+
+const unpublishedStarter = buildProgress({ published: false, signals: ['menu_link_copied', 'qr_downloaded'] });
+assert.equal(linkPlacementStep(unpublishedStarter).done, false, 'placement must remain blocked until the menu is published');
+
+const publishedNonStarter = buildProgress({ starter: false });
+assert.equal(linkPlacementStep(publishedNonStarter).done, true, 'published non-starter flow must preserve Link ready completion');
+
+const nonStarterWithLegacySignal = buildProgress({ starter: false, signals: ['menu_link_copied'] });
+assert.equal(linkPlacementStep(nonStarterWithLegacySignal).done, true, 'non-starter legacy signal state must remain compatible');
+
+const starterWithoutLoadedProject = buildMenuSetupProgress({
+  project: null,
+  storeDetails: { onboardingSource: 'PUBLIC_MENU_ENTRY' },
+});
+assert.equal(starterWithoutLoadedProject.requiredSteps[0].done, false, 'onboarding source alone must not impersonate a loaded project source');
+assert.equal(starterWithoutLoadedProject.phase, 'start', 'missing project truth must route to setup start');
+
+const malformedPublishedProject = buildMenuSetupProgress({
+  project: { ...projectWithPublishedMenu, lastPublishedAt: 'not-a-date' },
+  qualitySignals: [],
+  storeDetails: {},
+});
+assert.equal(
+  malformedPublishedProject.requiredSteps.find(({ id }) => id === 'menu_published').done,
+  false,
+  'malformed publication timestamps must not mark a menu published',
+);
+
+const throwingTimestampProject = buildMenuSetupProgress({
+  project: { ...projectWithPublishedMenu, lastPublishedAt: { toMillis: () => { throw new Error('bad timestamp'); } } },
+  qualitySignals: [],
+  storeDetails: {},
+});
+assert.equal(
+  throwingTimestampProject.requiredSteps.find(({ id }) => id === 'menu_published').done,
+  false,
+  'throwing timestamp adapters must fail closed without breaking setup UI',
+);
+
+const invalidEvidenceSummary = buildStarterActivationSummary({
+  onboardingSource: 'PUBLIC_MENU_ENTRY',
+  starterActivationSignals: { actions: { menu_link_copied: true, qr_downloaded: 'not-a-date' } },
+  menuPresence: { googleBusiness: true },
+});
+assert.equal(invalidEvidenceSummary.signalCount, 0, 'malformed action/presence evidence must not count toward activation');
+
+const baseStarterStore = { storeId: 10, onboardingSource: 'PUBLIC_MENU_ENTRY' };
+const wrongStoreMerge = applyStarterActivationSignalToStoreDetails(
+  baseStarterStore,
+  STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+  '2026-07-16T00:00:00.000Z',
+  11,
+);
+assert.equal(wrongStoreMerge, baseStarterStore, 'late acknowledgement must not mutate a newly selected store');
+const signalMergedStore = applyStarterActivationSignalToStoreDetails(
+  baseStarterStore,
+  STARTER_ACTIVATION_SIGNALS.MENU_LINK_COPIED,
+  '2026-07-16T00:00:00.000Z',
+  10,
+);
+assert.equal(buildStarterActivationSummary(signalMergedStore).signalCount, 1, 'acknowledged owner action must update loaded activation truth');
+const presenceMergedStore = applyStarterPresenceUpdateToStoreDetails(
+  signalMergedStore,
+  'googleBusiness',
+  true,
+  '2026-07-16T00:01:00.000Z',
+  STARTER_ACTIVATION_SIGNALS.GOOGLE_BUSINESS_MARKED,
+  10,
+);
+assert.equal(buildStarterActivationSummary(presenceMergedStore).signalCount, 2, 'acknowledged external confirmation must update loaded activation truth');
+const presenceRemovedStore = applyStarterPresenceUpdateToStoreDetails(
+  presenceMergedStore,
+  'googleBusiness',
+  false,
+  '2026-07-16T00:02:00.000Z',
+  STARTER_ACTIVATION_SIGNALS.GOOGLE_BUSINESS_MARKED,
+  10,
+);
+assert.equal(buildStarterActivationSummary(presenceRemovedStore).signalCount, 1, 'removed external confirmation must stop counting as activation evidence');
 
 assertNotExists('src/app/api/menu-setup-progress');
 assertNotExists('src/app/api/menuSetupProgress');

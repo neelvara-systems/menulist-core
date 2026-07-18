@@ -19,6 +19,7 @@
  *   window.AnswerlatticeWidget.identify({ id: 'customer_123', name: 'Jane Customer', email: 'jane@example.com' })
  *   window.AnswerlatticeWidget.identifySigned(shortLivedToken)
  *   window.AnswerlatticeWidget.setEvidenceLinks([{ url: 'https://errors.example.com/event/123', label: 'Error event' }])
+ *   window.AnswerlatticeWidget.emitWorkflowEvent('slack.oauth.started')
  *   window.AnswerlatticeWidget.open()
  *   window.AnswerlatticeWidget.close()
  *   window.AnswerlatticeWidget.hide()
@@ -88,6 +89,7 @@
         poweredByVisible: true,
         blockedRoutes: [],
         predictiveEnabled: false,
+        guidedResolutionEnabled: false,
     };
     var explicitConfig = {};
     var position = defaultConfig.position;
@@ -107,6 +109,7 @@
     var poweredByVisible = defaultConfig.poweredByVisible;
     var blockedRoutes = defaultConfig.blockedRoutes;
     var predictiveEnabled = defaultConfig.predictiveEnabled;
+    var guidedResolutionEnabled = defaultConfig.guidedResolutionEnabled;
     var useRemoteConfig = script.getAttribute('data-use-remote-config') !== 'false';
     var widgetHost = new URL(script.src).origin;
     var maxContextPayloadBytes = 2048;
@@ -146,6 +149,9 @@
     var remoteConfigRefreshTimer = null;
     var remoteConfigRequestInFlight = false;
     var remoteConfigRetryCount = 0;
+    var activeGuidance = null;
+    var activeGuidanceTarget = null;
+    var guidanceOverlay = null;
 
     function isValidChoice(value, allowed) {
         return allowed.indexOf(value) !== -1;
@@ -299,6 +305,7 @@
         if (typeof input.poweredByVisible === 'boolean') config.poweredByVisible = input.poweredByVisible;
         if (Array.isArray(input.blockedRoutes)) config.blockedRoutes = normalizeBlockedRoutes(input.blockedRoutes);
         if (typeof input.predictiveEnabled === 'boolean') config.predictiveEnabled = input.predictiveEnabled;
+        if (typeof input.guidedResolutionEnabled === 'boolean') config.guidedResolutionEnabled = input.guidedResolutionEnabled;
         return config;
     }
 
@@ -348,6 +355,7 @@
         poweredByVisible = merged.poweredByVisible;
         blockedRoutes = normalizeBlockedRoutes(merged.blockedRoutes);
         predictiveEnabled = Boolean(merged.predictiveEnabled);
+        guidedResolutionEnabled = Boolean(merged.guidedResolutionEnabled);
         s = sizes[size] || sizes.medium;
 
         updateWidgetChrome();
@@ -502,6 +510,191 @@
         if (iframe && iframe.contentWindow) {
             iframe.contentWindow.postMessage(message, widgetHost);
         }
+    }
+
+    function normalizeGuidanceSemanticId(value) {
+        if (typeof value !== 'string') return null;
+        var normalized = value.trim().toLowerCase();
+        if (!normalized || normalized.length > 120) return null;
+        return /^[a-z0-9]+(?:[._:-][a-z0-9]+)*$/.test(normalized) ? normalized : null;
+    }
+
+    function normalizeGuidanceSessionId(value) {
+        if (typeof value !== 'string') return null;
+        var normalized = value.trim();
+        if (normalized.length < 8 || normalized.length > 120) return null;
+        return /^[A-Za-z0-9_-]+$/.test(normalized) ? normalized : null;
+    }
+
+    function isGuidanceTargetVisible(target) {
+        if (!target || !target.isConnected) return false;
+        var rect = target.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return false;
+        try {
+            var style = window.getComputedStyle(target);
+            if (
+                style.display === 'none'
+                || style.visibility === 'hidden'
+                || style.visibility === 'collapse'
+                || style.opacity === '0'
+            ) {
+                return false;
+            }
+        } catch (_) {}
+        return true;
+    }
+
+    function findGuidanceTarget(targetId) {
+        var candidates = document.querySelectorAll('[data-answerlattice-target]');
+        var maxCandidates = Math.min(candidates.length, 500);
+        for (var i = 0; i < maxCandidates; i++) {
+            if (
+                candidates[i].getAttribute('data-answerlattice-target') === targetId
+                && isGuidanceTargetVisible(candidates[i])
+            ) {
+                return candidates[i];
+            }
+        }
+        return null;
+    }
+
+    function removeGuidanceOverlayListeners() {
+        window.removeEventListener('resize', updateGuidanceOverlay);
+        window.removeEventListener('scroll', updateGuidanceOverlay, true);
+    }
+
+    function updateGuidanceOverlay() {
+        if (!guidanceOverlay || !isGuidanceTargetVisible(activeGuidanceTarget)) {
+            if (guidanceOverlay) guidanceOverlay.style.display = 'none';
+            return;
+        }
+        var rect = activeGuidanceTarget.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) {
+            guidanceOverlay.style.display = 'none';
+            return;
+        }
+        guidanceOverlay.style.display = 'block';
+        guidanceOverlay.style.left = Math.max(0, rect.left - 5) + 'px';
+        guidanceOverlay.style.top = Math.max(0, rect.top - 5) + 'px';
+        guidanceOverlay.style.width = Math.max(0, rect.width + 10) + 'px';
+        guidanceOverlay.style.height = Math.max(0, rect.height + 10) + 'px';
+    }
+
+    function clearGuidanceHighlight() {
+        removeGuidanceOverlayListeners();
+        activeGuidanceTarget = null;
+        if (guidanceOverlay && guidanceOverlay.parentNode) {
+            guidanceOverlay.parentNode.removeChild(guidanceOverlay);
+        }
+        guidanceOverlay = null;
+    }
+
+    function showGuidanceHighlight(target) {
+        clearGuidanceHighlight();
+        activeGuidanceTarget = target;
+        guidanceOverlay = document.createElement('div');
+        guidanceOverlay.id = 'answerlattice-guidance-highlight';
+        guidanceOverlay.setAttribute('aria-hidden', 'true');
+        Object.assign(guidanceOverlay.style, {
+            position: 'fixed',
+            pointerEvents: 'none',
+            border: '3px solid ' + accentColor,
+            borderRadius: '8px',
+            boxShadow: '0 0 0 4px rgba(255,255,255,0.92), 0 0 0 8px ' + accentColor + '33',
+            zIndex: String(Math.max(1000, Math.min(zIndex - 1, 2147483645))),
+            boxSizing: 'border-box',
+        });
+        document.body.appendChild(guidanceOverlay);
+        window.addEventListener('resize', updateGuidanceOverlay);
+        window.addEventListener('scroll', updateGuidanceOverlay, true);
+        updateGuidanceOverlay();
+
+        var reducedMotion = false;
+        try {
+            reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        } catch (_) {}
+        try {
+            target.scrollIntoView({
+                behavior: reducedMotion ? 'auto' : 'smooth',
+                block: 'center',
+                inline: 'nearest',
+            });
+        } catch (_) {
+            target.scrollIntoView();
+        }
+        window.setTimeout(updateGuidanceOverlay, reducedMotion ? 0 : 250);
+    }
+
+    function clearGuidance() {
+        clearGuidanceHighlight();
+        activeGuidance = null;
+    }
+
+    function resetGuidanceFromHost(reason) {
+        if (!activeGuidance) return;
+        clearGuidance();
+        postToIframe({
+            type: 'answerlattice-guidance-host-reset',
+            reason: typeof reason === 'string' ? reason.slice(0, 40) : 'host_reset',
+        });
+    }
+
+    function activateGuidanceStep(payload) {
+        if (!guidedResolutionEnabled || !payload || typeof payload !== 'object') return;
+        var sessionId = normalizeGuidanceSessionId(payload.sessionId);
+        var step = payload.step && typeof payload.step === 'object' ? payload.step : null;
+        var stepOrder = step ? Number(step.stepOrder) : 0;
+        if (!sessionId || !Number.isInteger(stepOrder) || stepOrder < 1 || stepOrder > 12) return;
+
+        var targetId = step.target ? normalizeGuidanceSemanticId(step.target) : null;
+        var expectedEvent = step.expectedEvent ? normalizeGuidanceSemanticId(step.expectedEvent) : null;
+        if ((step.target && !targetId) || (step.expectedEvent && !expectedEvent)) return;
+
+        clearGuidanceHighlight();
+        activeGuidance = {
+            sessionId: sessionId,
+            stepOrder: stepOrder,
+            targetId: targetId,
+            expectedEvent: expectedEvent,
+            routePath: getCurrentRoutePath(),
+        };
+
+        var target = targetId ? findGuidanceTarget(targetId) : null;
+        if (target) showGuidanceHighlight(target);
+        postToIframe({
+            type: 'answerlattice-guidance-step-result',
+            sessionId: sessionId,
+            stepOrder: stepOrder,
+            targetId: targetId,
+            targetFound: Boolean(target),
+            waitingForEvent: Boolean(expectedEvent),
+        });
+        emitEvent('guidance:step', {
+            stepOrder: stepOrder,
+            targetId: targetId,
+            targetFound: Boolean(target),
+            waitingForEvent: Boolean(expectedEvent),
+        });
+    }
+
+    function emitWorkflowEvent(eventName) {
+        var normalizedEvent = normalizeGuidanceSemanticId(eventName);
+        if (!normalizedEvent) return false;
+        emitEvent('workflow:event', { eventName: normalizedEvent });
+        if (
+            !guidedResolutionEnabled
+            || !activeGuidance
+            || activeGuidance.expectedEvent !== normalizedEvent
+        ) {
+            return false;
+        }
+        postToIframe({
+            type: 'answerlattice-guidance-event',
+            sessionId: activeGuidance.sessionId,
+            stepOrder: activeGuidance.stepOrder,
+            eventName: normalizedEvent,
+        });
+        return true;
     }
 
     // ===== POSITION HELPERS =====
@@ -727,6 +920,7 @@
                 headerTitle: headerTitle,
                 greeting: greeting,
                 poweredByVisible: poweredByVisible,
+                guidedResolutionEnabled: guidedResolutionEnabled,
             },
         });
     }
@@ -750,6 +944,7 @@
 
     function closeWidget() {
         isOpen = false;
+        clearGuidance();
         if (!container) return;
         container.style.opacity = '0';
         container.style.transform = 'translateY(10px) scale(0.95)';
@@ -768,8 +963,14 @@
     }
 
     function syncRouteAvailability() {
+        if (activeGuidance && activeGuidance.routePath !== getCurrentRoutePath()) {
+            resetGuidanceFromHost('route_changed');
+        }
         if ((forceHidden || isCurrentRouteBlocked()) && isOpen) {
             closeWidget();
+        }
+        if (forceHidden || isCurrentRouteBlocked()) {
+            clearGuidance();
         }
         updateWidgetChrome();
     }
@@ -811,14 +1012,18 @@
     // ===== MESSAGE LISTENER =====
     window.addEventListener('message', function (e) {
         if (e.origin !== widgetHost) return;
+        if (!iframe || e.source !== iframe.contentWindow) return;
         if (e.data && e.data.type === 'answerlattice-widget-close') { closeWidget(); }
         if (e.data && e.data.type === 'answerlattice-widget-ready') { scheduleIframeSync(); }
+        if (e.data && e.data.type === 'answerlattice-guidance-step') { activateGuidanceStep(e.data); }
+        if (e.data && e.data.type === 'answerlattice-guidance-clear') { clearGuidance(); }
     });
 
     // ===== PUBLIC API =====
     window.AnswerlatticeWidget = {
         setContext: function (ctx) {
             var sanitizedContext = sanitizeContextPayload(ctx);
+            if (activeGuidance) resetGuidanceFromHost('context_changed');
             productContext = sanitizedContext;
             pendingSuggestion = null;
             if (launcher) {
@@ -875,6 +1080,7 @@
         show: function () { showWidget(); },
         clearHistory: function () { clearHistory(); },
         reset: function () { clearHistory(); },
+        emitWorkflowEvent: function (eventName) { return emitWorkflowEvent(eventName); },
         on: function (eventName, callback) {
             if (typeof eventName !== 'string' || typeof callback !== 'function') return function () {};
             eventListeners[eventName] = eventListeners[eventName] || [];
@@ -888,6 +1094,14 @@
         getContext: function () { return productContext; },
         getVisitor: function () { return visitorContext; },
         hasVerifiedIdentity: function () { return Boolean(verifiedContextToken); },
+        getGuidanceState: function () {
+            if (!activeGuidance) return null;
+            return {
+                stepOrder: activeGuidance.stepOrder,
+                targetId: activeGuidance.targetId,
+                expectedEvent: activeGuidance.expectedEvent,
+            };
+        },
     };
 
     function requestPredictiveHelp(ctx) {
@@ -1086,6 +1300,7 @@
             }
             var remoteConfig = sanitizeRemoteConfig(data.config);
             remoteConfig.predictiveEnabled = Boolean(data.capabilities && data.capabilities.predictiveSupport);
+            remoteConfig.guidedResolutionEnabled = Boolean(data.capabilities && data.capabilities.guidedResolution);
             contextBundleConfig = sanitizeBundleConfig(data.bundles);
             writeCachedRemoteConfig(
                 remoteConfig,

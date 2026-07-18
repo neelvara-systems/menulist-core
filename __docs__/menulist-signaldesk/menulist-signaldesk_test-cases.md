@@ -1,5 +1,31 @@
 # MenuList SignalDesk - Test Cases
 
+## Enrichment Waterfall Settlement
+
+| Case | Expected |
+| --- | --- |
+| Concurrent exact run | One actor/key claim owns one enrichment result, vendor row, timeline, audit, and cost effect set; both callers receive the same result ID. |
+| Changed-input key reuse | Fails with `ENRICHMENT_WATERFALL_IDEMPOTENCY_CONFLICT`. |
+| Existing approved field | Reuses a masked preview through the manual provider state with no external spend. |
+| Source-provider pause active | Transaction-current admission fails before any result or vendor write. |
+| Prior contact/outcome or stale policy/waterfall/budget | Current transaction state fails closed before writes. |
+
+## Default Seed Convergence
+
+| Case | Expected |
+| --- | --- |
+| Empty registry | Creates exactly 18 provider account/use rows and 17 provider-scoped budgets; owned-email sender remains disabled, unapproved, credential-missing, and zero-budget. |
+| Two concurrent calls with one missing default | One transaction creates the row and one seed audit/timeline/cost effect set; the retry re-reads current truth and returns clean. |
+| Concurrent clean replay | No business row, audit, timeline timestamp, or daily write estimate changes. |
+| Valid existing provider or budget with current spend/caps/status/reason | Strictly validates and preserves the complete row and ownership timestamp. |
+| Wrong-product or malformed existing seed identity | Fails closed with a bounded product/shape error and does not replace the row. |
+| Exact historical score/evidence route | Migrates to fast Gemini plus same-provider escalation while preserving `createdAt`. |
+| Near-match route or market pod with a founder marker | Preserved byte-for-byte; it is not treated as a legacy seed. |
+| Exact historical Mumbai pod or active current-list Offer CTA | Migrates to the held, zero-budget current authority while preserving `createdAt`. |
+| Distribution paused with missing default source | Source remains missing. |
+| Malformed active pod or malformed/foreign existing default source | Fails closed; no source is created or activated. |
+| Ambiguous preview CTA identity | Canonical authority remains held with `operator-review-required`; only an explicit current CTA resolution marks it `migrated` and records resolver/time. |
+
 **Status:** Initial test matrix
 **Created:** June 23, 2026
 **Scope:** Product boundary, source policy, compliance, AI, cost, operator workflow, mobile, and MenuList bridge.
@@ -194,6 +220,44 @@
 | Operator closes complaint without admin review | Blocked. |
 | Operator changes source policy | Blocked unless role allows. |
 | Operator exports contact after DNC | Fails. |
+
+## Source-Policy And Transactional Import Tests
+
+| Test | Expected |
+| --- | --- |
+| Create a complete source policy | Stores all six explicit use flags, bounded contact-channel authority, strict review/expiry truth, and one deterministic idempotency claim. |
+| Retry exact policy creation | Returns the same policy ID and creates no second policy or side effect. |
+| Reuse policy idempotency key with changed facts | Fails as an idempotency conflict. |
+| Create a policy with past/over-retention expiry, credential-bearing URL, provider mismatch, or channel/field mismatch | Rejected at the shared runtime schema before Firestore work. |
+| Read policy with missing use flag, wrong `pId`, wrong document ID, malformed Firestore timestamp, future review authority, or provider/refresh mismatch | Excluded from workspace lists and rejected by operational reads. A malformed leading page cannot starve later valid rows. |
+| Parse manual CSV containing quoted commas, escaped quotes, quoted newlines, CRLF, or an exact optional header | Produces the canonical ten-column row without shifting fields. Unclosed quotes, missing/extra columns, delimiter-only rows, overlong values, and more than 50 rows fail before the request. |
+| Import a row retaining contact data without `permissionEvidenceRef` | Rejected before any write. |
+| Import two exact duplicate rows | Collapsed to one target lineage and counted as duplicate. |
+| Import two divergent rows with one computed identity | Entire import is rejected. |
+| Retry an exact manual import, including two concurrent calls | Returns the same source run and target IDs with one durable write set. Reusing the key with changed facts fails as an idempotency conflict. |
+| Import through a foreign/missing/orphan identity, target, contact, candidate, policy, or provider-retention record | Entire import is rejected before any write. |
+| Re-import target under a different source policy | Rejected as a source-policy rebind. |
+| Import two same-name provider rows with different stable provider record IDs | Produces two targets. A later exact record reuses its target, and a different policy cannot rebind it. |
+| Direct import selects a provider-only policy or supplies provider record fields | Rejected before source-run, target, identity, candidate, idempotency-claim, or daily-cost writes. Only the trusted provider-run path can bind provider lineage. |
+| Encounter a pre-contract provider identity | Reuses it only when strict detail or provider-retention lineage proves the same external record; otherwise creates the new stable identity without overwriting the legacy target. |
+| Re-import a scored/contacted/converted target | Mature lifecycle, scores, derived state, and existing contact permission state are preserved. A current suppression may still force held/blocked state. |
+| Import a retained phone with modern or legacy digits-only suppression | Target is suppressed in either case. |
+| Read target/source-run/research-run/research-row workspace DTOs containing extra internal/contact fields | Explicit projectors omit private fields and validate `pId` plus document identity. |
+| Compare a new target import with its exact provider/manual replay | Both responses have the same strict target-summary keyset and omit persistence/private fields. |
+| Parse identity-index, contact-identity, or source-candidate truth containing an unknown private field or whitespace-wrapped document identity | The private field is absent from the projected contract, and non-exact raw document identity is rejected. |
+| Run Google Places, Apify, or FHRS with malformed/oversized/slow input | Unknown payload fields are bounded or dropped, responses stay capped, timeout is aborted, and the public failure is stable. |
+| Provider returns an overlong record ID, display name, email, or record URL | The field or row is dropped; no truncated identity, contact, or provenance truth is created. |
+| Provider returns only a Maps/listing URL | The URL remains `providerRecordUrl`, `currentListUrl` stays absent, and the target remains `missing-current-list`. An explicit `menuUrl` becomes current-list truth. |
+| Provider returns one malformed optional email, phone, website, or Instagram URL | The invalid optional field is dropped independently; a valid business row remains, and an Instagram profile URL normalizes to its canonical handle. |
+| Read target detail with noncanonical contact, credential URL, unknown provider, or incompatible identity version/record fields | The strict projector rejects the document. A harmless legacy HTTP(S) URL is canonicalized at the read boundary. |
+| Read a persisted target/research row with a score outside 0-100 or a malformed-present timestamp | The strict projector rejects the document and it cannot reach workspace DTOs. |
+| Score a malformed/foreign target or replay a malformed/foreign/out-of-range score | Rejected before target, score, snapshot, ledger, audit, or cost mutation. |
+| Read a source run whose status contradicts its counts or whose duplicate/suppressed/blocked count exceeds imported count | The strict projector rejects the document. |
+| Read a research run whose verdict totals do not equal row count, or a queued/running run with terminal rows/counts/provider-run IDs | The strict projector rejects the document. |
+| Run research without one explicit source policy, or read a pass/unsure/fail row whose score/safe-route state disagrees | Rejected. Research never auto-selects authority from a provider policy scan, and a failed row cannot expose outreach. |
+| Place more than one old list page of malformed/foreign rows before a valid recent target by document ID | Descending-`updatedAt` pagination still finds the recent valid target; a bounded ceiling emits a diagnostic rather than silently claiming completeness. |
+| Record an activation outcome, then capture another reply | `ownerQualifiedAt` and `latestVerifiedActivationAt` remain Firestore `Timestamp` values and the strict target remains visible. |
+| Select a provider in the workspace | Only an active, unexpired, matching-provider policy with evidence/import/provider-run authority is usable. Retry keeps one stable request identity. |
 
 ## First Build Acceptance Test
 

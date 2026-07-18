@@ -53,6 +53,8 @@ const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDa
 const ownerDashboardHook = read('src/hooks/useOwnerDashboard.ts');
 const obpDashboardHook = read('src/hooks/useOBPDashboard.ts');
 const ownerDashboardDb = read('src/database/ownerDashboard/index.ts');
+const ownerActionMarkDoneRoute = read('src/app/api/analytics/owner-action/mark-done/route.ts');
+const ownerActionReceiptTransaction = read('src/lib/analytics/ownerActionReceiptTransaction.ts');
 const ownerDashboardTypes = read('src/components/templates/main-app/projects/types/ownerDashboard.types.ts');
 const ownerDashboardGraph = read('src/components/templates/main-app/dashboard/OwnerDashboard/OwnerDashboardGraphMode.tsx');
 const dashboardSummaryAggregation = read('functions/src/analytics/dashboardSummaryAggregation.ts');
@@ -151,6 +153,23 @@ forbidToken(ownerDashboardHook, 'Fetches overview + overall on initial load', 'o
   'logOBPDashboardSummaryReadFailure(error, { tId, sId, summaryDocId });',
 ].forEach((token) => requireToken(ownerDashboardDb, token, 'owner dashboard DAL'));
 forbidToken(ownerDashboardDb, '} catch {\n                // Non-critical\n            }', 'owner dashboard OBP summary read silent catch');
+
+[
+  'export function getOwnerActionReceiptIdsToPrune(',
+  'const incomingAlreadyExists = entries.some(([receiptId]) => receiptId === incomingReceiptId);',
+  'const nextReceiptCount = entries.length + (incomingAlreadyExists ? 0 : 1);',
+  '.filter(([receiptId]) => receiptId !== incomingReceiptId)',
+  'return firestore.runTransaction(async (transaction) => {',
+  'const dashboardSnap = await transaction.get(params.dashboardRef);',
+  'getOwnerActionReceiptIdsToPrune(dashboardData, params.receiptId).forEach((receiptIdToPrune) => {',
+  'transaction.update(params.dashboardRef, updates);',
+].forEach((token) => requireToken(ownerActionReceiptTransaction, token, 'owner action receipt transaction'));
+[
+  "import { markOwnerActionDoneTransaction } from '@lib/analytics/ownerActionReceiptTransaction';",
+  'const outcome = await markOwnerActionDoneTransaction(admin.firestore(), {',
+].forEach((token) => requireToken(ownerActionMarkDoneRoute, token, 'owner action receipt route delegation'));
+forbidToken(ownerActionMarkDoneRoute, 'await dashboardRef.get();', 'owner action receipt route non-transactional read');
+forbidToken(ownerActionMarkDoneRoute, 'await dashboardRef.update(updates);', 'owner action receipt route non-transactional write');
 
 [
   'OwnerDashboardTrendSummary',
@@ -259,6 +278,9 @@ forbidToken(desktopToday, 'if (result?.today)', 'desktop Today optional success 
   "todayScreen === 'dashboard'",
   'canViewAnalytics',
   "if (canViewAnalytics) setTodayScreen('dashboard');",
+  "if (todayScreen === 'dashboard' && !canViewAnalytics)",
+  '!userPermissions',
+  ': canViewAnalytics ? (',
   "todayScreen === 'history' && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY",
   '<MobileTodayHistoryScreen',
   '<MobileHoursScreen',
@@ -363,7 +385,7 @@ forbidToken(ownerDashboardDoc, 'Overview data (fetched on initial load)', 'owner
 
 [
   ['inventory', inventory, 'owner_dashboard_today'],
-  ['inventory', inventory, 'owner-dashboard-today boundary source gate passed'],
+  ['inventory', inventory, 'owner-dashboard-today boundary and receipt transaction emulator passed'],
   ['report', report, '## Owner Dashboard Today Boundary'],
   ['report', report, '`npm run verify:owner-dashboard-today-boundary`'],
   ['audit', audit, 'Owner Dashboard Today boundary checkpoint'],

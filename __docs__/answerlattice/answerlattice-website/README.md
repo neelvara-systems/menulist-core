@@ -60,6 +60,7 @@
 | `/demo` | Demo | Deterministic six-stage governance simulation from source conflict through approval, release drift, safe fallback, correction, and audit evidence, with no Firebase or AI calls |
 | `/pre-onboarding` | Pre-Onboarding Kit | Public preparation page for customers using AI coding agents to create AnswerLattice-ready source packages before Knowledge Intake |
 | `/pre-onboarding.md` | Pre-Onboarding Prompt | Machine-readable master prompt for Codex, Cursor, Windsurf, Antigravity, Claude Code, and other AI agents using repo, multi-product repo, docs, website, or owner-note sources |
+| `/pre-onboarding/{codex,cursor,claude-code,replit,lovable}.md` | Builder Start Packages | Tool-specific start instructions wrapped around the same pre-onboarding master prompt; not product integrations or endorsements |
 | `/pre-onboarding/guide` | Pre-Onboarding Guide | End-to-end public runbook for owners and AI agents before AnswerLattice Knowledge Intake |
 | `/pre-onboarding/owner-guide.md` | Owner Guide | Machine-readable owner checklist for source preparation, review, upload, and live-support gates |
 | `/pre-onboarding/agent-guide.md` | Agent Guide | Machine-readable operating rules for AI coding agents preparing AnswerLattice input packages |
@@ -72,6 +73,7 @@
 | `/integrations` | Integrations | Slack and email workflow notifications for support governance, including test delivery, compact health, bounded delivery, and controlled adapter boundaries |
 | `/pricing` | Pricing | INR and USD Starter/Growth/Studio packaging, paid setup, and support-credit top-up explanation |
 | `/resources` | Resources | AnswerLattice learning hub for pre-onboarding, product evaluation, setup, feedback review, widget install, governance, and safety |
+| `/resources/founder-launch-kit` | Founder Launch Kit | Seven-step source, first-ten question, approval, test, install, outcome, and weekly-review workflow for founders and studios |
 | `/resources/launch-support-checklist` | Resource Article | Launch setup checklist for page-aware support, approved answers, fallback, and support-gap review |
 | `/resources/pre-onboarding-source-package` | Resource Article | Source-preparation guide for repo, website, docs, owner notes, policies, screenshots, and product exclusions |
 | `/resources/safe-page-context` | Resource Article | Public explanation of safe widget context and blocked private data |

@@ -4,6 +4,7 @@ import { getMenuUrl, normalizeBaseUrl, PLATFORM_DOMAIN } from '@constant/urls';
 import { checkCustomDomainAvailability } from '@database/stores';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { normalizeVercelDomainDnsRecords } from '@lib/domains/vercelDnsRecords';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Alert, Button, Card, Divider, Input, List, message, Space, Steps, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -36,16 +37,26 @@ type DesktopDomainSettingsAddResponse = {
     domain?: unknown;
     verified?: unknown;
     verification?: unknown;
+    projectDomain?: unknown;
+    claimReleasePending?: unknown;
+    providerCleanupPending?: unknown;
+    refreshPending?: unknown;
 };
 type DesktopDomainSettingsStatusResponse = {
     hasDomain?: unknown;
     domain?: unknown;
     verified?: unknown;
     config?: unknown;
+    projectDomain?: unknown;
+    providerStatusPending?: unknown;
+    refreshPending?: unknown;
 };
 type DesktopDomainSettingsRemoveResponse = {
     removed?: unknown;
     success?: unknown;
+    claimReleasePending?: unknown;
+    providerCleanupPending?: unknown;
+    refreshPending?: unknown;
 };
 
 const DESKTOP_DOMAIN_SETTINGS_SUBDOMAIN_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
@@ -100,42 +111,6 @@ const copyDesktopDomainSettingsText = async (value: string): Promise<void> => {
         document.body.removeChild(textarea);
     }
 };
-
-function normalizeDnsRecords(config: any, domain: string) {
-    const records: { type: string; name: string; value: string }[] = [];
-
-    if (!config) return records;
-
-    if (Array.isArray(config?.verificationRecords)) {
-        config.verificationRecords.forEach((record: any) => {
-            records.push({
-                type: record.type || 'TXT',
-                name: record.domain || record.name || '_vercel',
-                value: record.value || record.reason || '',
-            });
-        });
-    }
-
-    if (Array.isArray(config?.configuredBy)) {
-        config.configuredBy.forEach((record: any) => {
-            records.push({
-                type: record.type || 'CNAME',
-                name: record.name || (domain.startsWith('www.') ? 'www' : '@'),
-                value: record.value || '',
-            });
-        });
-    }
-
-    if (records.length === 0) {
-        records.push({
-            type: 'CNAME',
-            name: domain.startsWith('www.') ? 'www' : '@',
-            value: 'cname.vercel-dns.com',
-        });
-    }
-
-    return records;
-}
 
 function getAxiosStatus(error: any): number | undefined {
     const status = Number(error?.status ?? error?.response?.status);
@@ -262,7 +237,9 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
         && availability?.normalized === normalizedInputSubdomain
         && (!storeDetails?.subdomain || hasSubdomainChanged)
     );
-    const activeDomain = storeDetails?.customDomain || domainStatus?.domain;
+    const activeDomain = domainStatus
+        ? (domainStatus.hasDomain === true && isNonEmptyString(domainStatus.domain) ? domainStatus.domain : undefined)
+        : storeDetails?.customDomain;
     const normalizedDomainInput = domainInput.trim().toLowerCase();
     const canCheckDomain = !activeDomain && normalizedDomainInput.length >= 4;
     const canConnectDomain = Boolean(
@@ -270,9 +247,15 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
         && domainAvailability?.available
         && domainAvailability?.normalized === normalizedDomainInput
     );
-    const customDomainVerified = Boolean(domainStatus?.verified || storeDetails?.domainVerified);
+    const customDomainVerified = typeof domainStatus?.verified === 'boolean'
+        ? domainStatus.verified
+        : Boolean(storeDetails?.domainVerified);
     const dnsRecords = useMemo(
-        () => normalizeDnsRecords(domainStatus?.config || domainStatus?.verification, activeDomain || domainInput),
+        () => normalizeVercelDomainDnsRecords(
+            domainStatus?.config || domainStatus?.verification,
+            domainStatus?.projectDomain,
+            activeDomain || domainInput,
+        ),
         [activeDomain, domainInput, domainStatus]
     );
 
@@ -379,7 +362,10 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             if (!response.ok) {
                 throw createDomainSettingsError('desktop_domain_settings_status_load_rejected', response.status);
             }
-            if (typeof data?.hasDomain !== 'boolean' || (data.hasDomain && !isNonEmptyString(data.domain))) {
+            if (
+                typeof data?.hasDomain !== 'boolean'
+                || (data.hasDomain && (!isNonEmptyString(data.domain) || typeof data.verified !== 'boolean'))
+            ) {
                 logStoreDataFailure(
                     'desktop_domain_settings_status_response_invalid',
                     createDomainSettingsError('desktop_domain_settings_status_response_invalid', response.status),
@@ -392,8 +378,14 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 throw createDomainSettingsError('desktop_domain_settings_status_response_invalid', response.status);
             }
             setDomainStatus(data);
-            if (data.hasDomain && data.verified === true) {
-                onStoreStateUpdate?.({ domainVerified: true });
+            if (data.hasDomain) {
+                onStoreStateUpdate?.({
+                    customDomain: data.domain,
+                    domainVerified: data.verified === true,
+                });
+            } else {
+                setDomainInput('');
+                onStoreStateUpdate?.({ customDomain: undefined, domainVerified: undefined });
             }
         } catch (error) {
             logStoreDataFailure('desktop_domain_settings_status_load_failed', error, buildDomainSettingsLogContext(
@@ -451,8 +443,12 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
                 domain: nextDomain,
                 verified: data.verified === true,
                 config: data.verification,
+                projectDomain: data.projectDomain,
             });
             onStoreStateUpdate?.({ customDomain: nextDomain, domainVerified: data.verified === true });
+            if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
+                message.warning('Domain saved. Background refresh is still finishing.');
+            }
         } catch (err: any) {
             logStoreDataFailure(
                 'desktop_domain_settings_add_failed',
@@ -518,6 +514,9 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
             setDomainStatus(null);
             setDomainInput('');
             onStoreStateUpdate?.({ customDomain: undefined, domainVerified: undefined });
+            if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
+                message.warning('Domain removed. Background cleanup is still finishing.');
+            }
         } catch (error) {
             logStoreDataFailure('desktop_domain_settings_remove_failed', error, buildDomainSettingsLogContext(
                 storeDetails,
@@ -790,6 +789,13 @@ function DomainSettingsTab({ scrollRef, storeDetails, onStoreStateUpdate, onStor
 
                         {!customDomainVerified ? (
                             <>
+                                {dnsRecords.length === 0 ? (
+                                    <Alert
+                                        message="DNS records are not available yet. Check verification again in a moment."
+                                        showIcon
+                                        type="info"
+                                    />
+                                ) : null}
                                 <List
                                     bordered
                                     dataSource={dnsRecords}

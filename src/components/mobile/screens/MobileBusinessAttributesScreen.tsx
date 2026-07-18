@@ -4,7 +4,8 @@ import IconPicker from '@atoms/IconPicker';
 import { FEATURE_FLAGS } from '@config/features';
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { normalizeCategoryIconValue } from '@lib/categoryIcons';
-import { getBusinessAttributeGroupsForType, normalizeCustomBusinessAttributes } from '@lib/obp/businessAttributes';
+import { getBusinessAttributeGroupsForType, normalizeBusinessAttributes, normalizeCustomBusinessAttributes } from '@lib/obp/businessAttributes';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useMemo, useState } from 'react';
@@ -26,9 +27,9 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
     const tMobile = useTranslations('MobileSettings');
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-    const [attributes, setAttributes] = useState<Record<string, boolean>>(storeDetails?.businessAttributes || {});
+    const [attributes, setAttributes] = useState<Record<string, boolean>>(() => normalizeBusinessAttributes(storeDetails?.businessAttributes));
     const [customAttributes, setCustomAttributes] = useState(() => normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes));
-    const [originalAttributes, setOriginalAttributes] = useState<Record<string, boolean>>(storeDetails?.businessAttributes || {});
+    const [originalAttributes, setOriginalAttributes] = useState<Record<string, boolean>>(() => normalizeBusinessAttributes(storeDetails?.businessAttributes));
     const [originalCustomAttributes, setOriginalCustomAttributes] = useState(() => normalizeCustomBusinessAttributes(storeDetails?.publicPresence?.customAttributes));
     const attributeGroups = useMemo(
         () => getBusinessAttributeGroupsForType(storeDetails?.businessType, storeDetails?.businessCategory),
@@ -41,19 +42,25 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
     const saveAttributes = useCallback(async () => {
         if (!storeDetails?.storeId) return;
         setIsSaving(true);
+        const normalizedCustomAttributes = normalizeCustomBusinessAttributes(customAttributes);
         const payload = {
             storeId: storeDetails.storeId,
-            businessAttributes: attributes,
+            tenantId: storeDetails.tenantId,
+            businessAttributes: getStoreDeepDifference(attributes, originalAttributes, {
+                detectRemovedRootKeys: true,
+            }),
             publicPresence: {
-                ...(storeDetails.publicPresence || {}),
-                customAttributes: normalizeCustomBusinessAttributes(customAttributes),
+                customAttributes: normalizedCustomAttributes,
             },
         };
 
         setStoreDetails((previous: any) => ({
             ...previous,
             businessAttributes: attributes,
-            publicPresence: payload.publicPresence,
+            publicPresence: {
+                ...(previous?.publicPresence || {}),
+                customAttributes: normalizedCustomAttributes,
+            },
         }));
 
         try {
@@ -64,8 +71,8 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                 'mobile_business_attributes_store_update_rejected',
             );
             setOriginalAttributes(attributes);
-            setCustomAttributes(payload.publicPresence.customAttributes);
-            setOriginalCustomAttributes(payload.publicPresence.customAttributes);
+            setCustomAttributes(normalizedCustomAttributes);
+            setOriginalCustomAttributes(normalizedCustomAttributes);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
         } catch (error) {
             logMobileOwnerFailure('mobile_business_attributes_save_failed', error, {
@@ -73,19 +80,19 @@ export default function MobileBusinessAttributesScreen({ onBack }: MobileBusines
                 ...getBoundedMobileOwnerStringContext('businessType', storeDetails.businessType),
                 attributeCount: Object.keys(attributes).length,
                 enabledAttributeCount: Object.values(attributes).filter(Boolean).length,
-                customAttributeCount: payload.publicPresence.customAttributes.length,
+                customAttributeCount: normalizedCustomAttributes.length,
                 hadPreviousCustomAttributes: originalCustomAttributes.length > 0,
             });
             setStoreDetails((previous: any) => ({
                 ...previous,
-                businessAttributes: storeDetails.businessAttributes,
+                businessAttributes: originalAttributes,
                 publicPresence: storeDetails.publicPresence,
             }));
             Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
         } finally {
             setIsSaving(false);
         }
-    }, [attributes, customAttributes, setStoreDetails, storeDetails, tMobile]);
+    }, [attributes, customAttributes, originalAttributes, originalCustomAttributes.length, setStoreDetails, storeDetails, tMobile]);
 
     const resetAttributes = useCallback(() => {
         setAttributes(originalAttributes);

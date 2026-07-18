@@ -6,15 +6,17 @@
 2. If the identity looks like a phone number, the form embeds `PhoneOtpAuthPanel` as the active phone row, with country dial code and number aligned together, and offers WhatsApp OTP as the primary action.
 3. If the owner chooses passcode instead, or if the identity is email/staff ID, the same form shows the password/passcode field.
 4. `PhoneOtpAuthPanel` sends `phone`, `countryCode`, and `dialCode`; dashboard embedded mode syncs phone-row edits back to the identity value and defaults to India unless the owner entered an international `+...` number.
-5. `POST /api/auth/phone-otp/start` rate-limits by IP before reading the body, rejects bodies above 1KB, validates, then rate-limits by normalized phone hash.
+5. `POST /api/auth/phone-otp/start` applies a fail-closed IP limit before reading the body, rejects bodies above 1KB, validates, then applies a fail-closed normalized phone-hash limit.
 6. `createPhoneOtpChallenge()` normalizes to E.164, stores a server-only challenge with country metadata, and sends WhatsApp OTP.
 7. Owner submits code to `POST /api/auth/phone-otp/verify`.
-8. The verify route rate-limits by IP before reading the body, rejects bodies above 1KB, validates, then rate-limits by challenge hash.
+8. The verify route applies a fail-closed IP limit before reading the body, rejects bodies above 1KB, validates, then applies a fail-closed challenge-hash limit.
 9. `verifyPhoneOtpChallenge()` checks TTL, attempts, and HMAC hash in a transaction that returns an outcome; invalid/expired/too-many errors are thrown only after the transaction commits its status and attempt writes.
 10. A valid code reserves the challenge with a one-minute operation lease before user resolution. The helper then reuses or creates a `users` profile and atomically creates the one-time login token with challenge finalization. A failed side effect releases only its own live reservation back to `pending` (or records expiry).
 11. Browser calls `signIn('credentials', { phoneOtpLoginToken })`.
 12. NextAuth `CredentialsProvider.authorize()` consumes the token only after the same transaction reads the exact `users/{userId}` document and confirms the token email binding, then applies block-state inheritance and returns the existing minimal session user shape.
 13. Dashboard login continues to sync Firebase Auth through `/api/auth/set-claims`.
+
+If the shared limiter provider is unavailable, either limiter returns 503 with fixed temporary-unavailable copy. Start stops before challenge creation or WhatsApp delivery; verify stops before challenge verification, user resolution, or token creation. A working but exhausted limiter returns 429. This is intentionally fail-closed because these are public paid/identity boundaries; Google and existing password/passcode login remain available.
 
 Start-route custom errors are mapped through a client-safe response helper. Invalid phone input can return "Enter a valid phone number."; delivery and unexpected custom failures return "Could not send code. Please try again." while the internal code is logged with secure logging. The route does not return raw `PhoneOtpError.message` text to the browser.
 

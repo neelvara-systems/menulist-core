@@ -20,7 +20,7 @@
 
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { DB_COLLECTIONS } from "@constant/database";
-import { formatScreenPrice, getScreenDietType, normalizeScreenCategoryName, truncateScreenText } from "@lib/screen/screenContent";
+import { formatScreenPrice, getScreenDietType, hasScreenPrice, normalizeScreenCategoryName, truncateScreenText } from "@lib/screen/screenContent";
 import { getBoundedScreenStringContext, logScreenDisplayFailure } from "@lib/screen/screenDiagnostics";
 import { getPublicScreenStateDocId } from "@lib/screen/publicScreenState";
 import { guardedReload as _guardedReload, guardedReloadWithJitter as _guardedReloadWithJitter } from "@lib/screen/utils";
@@ -225,6 +225,10 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
         const unsubscribe = onSnapshot(docRef, (snapshot) => {
             if (snapshot.exists()) {
                 const data = snapshot.data();
+                if (data?.enabled !== true) {
+                    guardedReload();
+                    return;
+                }
                 const newVersion = data?.contentVersion || 0;
 
                 if (newVersion > contentVersionRef.current) {
@@ -468,7 +472,7 @@ export default function MenuBoardDisplay({ initialData }: MenuBoardProps) {
                                                     </div>
 
                                                     <div className="item-price-area">
-                                                        <span className={`item-price ${item.price != null && item.price > 0 ? "" : "muted"}`}>
+                                                        <span className={`item-price ${hasScreenPrice(item.price) ? "" : "muted"}`}>
                                                             {formatScreenPrice(item.price, storeInfo.currencySymbol)}
                                                         </span>
                                                     </div>

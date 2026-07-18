@@ -3,7 +3,7 @@
 **Feature:** Owner Referral
 **Owner-facing label:** Invite a business owner you know
 **Status:** Internal source aligned to implemented disabled runtime; promotion not approved
-**Last updated:** July 11, 2026
+**Last updated:** July 16, 2026
 **Audience:** Founder, marketing, sales, support
 
 ---

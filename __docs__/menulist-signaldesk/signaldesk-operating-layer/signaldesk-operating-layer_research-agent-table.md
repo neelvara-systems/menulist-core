@@ -39,7 +39,8 @@ The same output also feeds the Dashboard `Today's Lead Batch` panel. That is the
 | UI | Dashboard `Market Search` and `Today's Lead Batch`; Mission `Research Agent Table` panel |
 | Provider options | `google-places`, `apify`, `fhrs-fhis` |
 | Collections | `signaldeskResearchRuns`, `signaldeskResearchTableRows` |
-| Idempotency | Optional idempotency key stored in `signaldeskIdempotencyKeys`; duplicate retries return the existing run and rows. |
+| Idempotency | Required bounded actor- and resolved-request-bound key stored in `signaldeskIdempotencyKeys`. The browser retains one key for unchanged prompt/provider/type/policy/result-cap input after failure and clears it after success. New run identity derives from actor plus key hash, so independent keys cannot share a run/row namespace; legacy exact claims replay their stored entity ID. One transaction creates the key, run, and initial timeline before provider use; concurrent exact retries return the existing run with its persisted lifecycle status unchanged, changed input conflicts, and ambiguous claim acknowledgement probes exact durable truth. Replay disposition stays in the separate response `duplicate` flag. The nested provider call derives a second stable key from the research run, reserves any estimated cost against transaction-current account/policy caps before external execution, and atomically commits target/source/provider/retention/claim/audit/cost truth after provider success. An unresolved provider/import outcome becomes review-required with a stable code and no automatic repeat. |
+| Completion and founder authority | Final rows/run/pod/timeline/audit/cost settle in one transaction that reads current market-pod review authority. A founder decision committed during provider work cannot be overwritten by stale completion fields. A final transaction error re-reads the deterministic run plus at most 100 matching rows; durable `completed` truth returns directly and blocked compensation applies only when completion is not present. |
 
 ## Table Columns
 
@@ -146,4 +147,4 @@ npm run test:signaldesk:e2e:local
 npx tsc --noEmit --incremental false --pretty false
 ```
 
-The local E2E mocks the FHRS/FHIS provider, creates a research run, verifies two table rows, checks source transparency, verifies the dashboard workspace receives the research rows, verifies idempotency, updates a market pod, and confirms no contact identities are created from source-only data.
+The local E2E mocks the FHRS/FHIS provider, creates a research run, verifies two table rows, checks source transparency, verifies the dashboard workspace receives the research rows, rejects changed-input key reuse, proves two concurrent exact requests invoke the provider once, updates a market pod, and confirms no contact identities are created from source-only data.

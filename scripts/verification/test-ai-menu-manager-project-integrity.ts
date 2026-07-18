@@ -11,6 +11,11 @@ import {
     AI_MENU_MANAGER_PROJECT_LIMITS,
     normalizeAiMenuManagerProjectSnapshot,
 } from '../../src/lib/ai-menu-manager/projectIntegrity';
+import {
+    projectDocumentMutationVersionMillis,
+    projectMutationVersionIso,
+    projectMutationVersionMillis,
+} from '../../src/lib/menu/projectMutationVersion';
 import type { Project } from '../../src/components/templates/main-app/projects/types';
 
 const projectId = 'project-integrity-menu';
@@ -61,6 +66,15 @@ function validProject(): Record<string, unknown> {
 }
 
 function run(): void {
+    const versionMillis = 1_700_000_000_123;
+    assert.equal(projectMutationVersionMillis({ seconds: 1_700_000_000, nanoseconds: 123_000_000 }), versionMillis);
+    assert.equal(projectMutationVersionMillis({ _seconds: 1_700_000_000, _nanoseconds: 123_000_000 }), versionMillis);
+    assert.equal(projectMutationVersionMillis('Timestamp(seconds=1700000000, nanoseconds=123000000)'), versionMillis);
+    assert.equal(projectMutationVersionMillis({ toMillis: () => versionMillis }), versionMillis);
+    assert.equal(projectMutationVersionIso({ _seconds: 1_700_000_000, _nanoseconds: 123_000_000 }), '2023-11-14T22:13:20.123Z');
+    assert.equal(projectDocumentMutationVersionMillis({ modifiedOn: { seconds: 1_700_000_000, nanoseconds: 123_000_000 } }), versionMillis);
+    assert.equal(projectMutationVersionMillis({ seconds: 1, nanoseconds: 1_000_000_000 }), null);
+
     const normalized = normalizeAiMenuManagerProjectSnapshot(validProject(), projectId);
     assert.ok(normalized, 'valid project snapshots must normalize');
     assert.equal(normalized?.projectId, projectId, 'document identity must be projected as project identity');
@@ -175,6 +189,15 @@ function run(): void {
         project: { ...validProject(), projectId } as unknown as Project,
         storeName: 'Integrity Store',
     }), /Invalid project data/, 'direct context construction must reject project/request identity mismatches');
+    assert.equal(buildAiMenuManagerContextPacket({
+        expectedProjectId: projectId,
+        project: {
+            ...validProject(),
+            projectId,
+            modifiedOn: { _seconds: 1_700_000_000, _nanoseconds: 123_000_000 },
+        } as unknown as Project,
+        storeName: 'Integrity Store',
+    }).projectUpdatedAt, '2023-11-14T22:13:20.123Z', 'Admin and browser timestamps must produce one canonical AMM project version');
     assert.equal(projectContainsAiMenuManagerPatch(malformedDirectProject, {
         kind: 'menu_settings_update',
         menuSettings: { specialNote: 'Weekend only' },

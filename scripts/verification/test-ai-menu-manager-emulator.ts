@@ -13,6 +13,7 @@ import {
 import { firestoreAdmin } from '../../src/lib/firebase/firebaseAdmin';
 import { buildAiMenuManagerContextBaseHash, buildAiMenuManagerContextPacket } from '../../src/lib/ai-menu-manager/contextPacket';
 import { buildDailySessionId, buildProposalId, hashStableValue } from '../../src/lib/ai-menu-manager/idempotency';
+import { normalizeAiMenuManagerSessionSnapshot } from '../../src/lib/ai-menu-manager/sessionIntegrity';
 import type { Project } from '../../src/components/templates/main-app/projects/types';
 import type {
     AiMenuManagerCardPayload,
@@ -131,8 +132,8 @@ function proposal(params: {
 async function seedSession(proposalIds: string[]): Promise<void> {
     await sessionRef.set({
         sessionId,
-        tId,
-        sId,
+        tId: String(tId),
+        sId: String(sId),
         projectId,
         sessionDate,
         storageMode: 'daily_compact',
@@ -147,8 +148,21 @@ async function seedSession(proposalIds: string[]): Promise<void> {
             projectId,
             updatedAt: new Date().toISOString(),
         })),
+        hasPendingOperations: proposalIds.length > 0,
+        pendingCount: new Set(proposalIds).size,
         recentReceiptSummaries: [],
-        counters: { commands: 1, proposalsCreated: proposalIds.length, approvals: 0, executions: 0 },
+        counters: {
+            commands: 1,
+            proposalsCreated: proposalIds.length,
+            approvals: 0,
+            executions: 0,
+            compoundCommands: 2,
+            deterministicRoutes: 3,
+            plannerAttempts: 4,
+            plannerAccepted: 1,
+            plannerFallbacks: 3,
+            clarifications: 2,
+        },
         createdAt: new Date(),
         updatedAt: new Date(),
     });
@@ -157,7 +171,7 @@ async function seedSession(proposalIds: string[]): Promise<void> {
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
 
-    const baseProject = project('base-v1');
+    const baseProject = project('2026-07-13T00:00:01.000Z');
     await projectRef.set(baseProject);
 
     await projectRef.set({
@@ -324,6 +338,38 @@ async function run(): Promise<void> {
         [ownProposal.proposalId],
         'inbox hydration must deduplicate refs and reject foreign or malformed proposal truth',
     );
+    const nextDaySessionId = buildDailySessionId({
+        tId,
+        sId,
+        projectId,
+        sessionDate: '2026-07-14',
+    });
+    const pendingQuery = await firestoreAdmin
+        .collection(DB_COLLECTIONS.AI_MENU_MANAGER_SESSIONS)
+        .where('tId', '==', String(tId))
+        .where('sId', '==', String(sId))
+        .where('projectId', '==', projectId)
+        .where('hasPendingOperations', '==', true)
+        .orderBy('updatedAt', 'desc')
+        .limit(1)
+        .get();
+    assert.equal(pendingQuery.size, 1, 'latest-pending query must return the scoped unresolved session');
+    assert.ok(
+        normalizeAiMenuManagerSessionSnapshot(pendingQuery.docs[0].data()),
+        'latest-pending query result must pass compact-session normalization',
+    );
+    const recoveredInbox = await getAiMenuManagerInbox({
+        sessionId: nextDaySessionId,
+        tId,
+        sId,
+        projectId,
+    });
+    assert.equal(recoveredInbox.sessionId, sessionId, 'a new day must recover the latest scoped unresolved session');
+    assert.deepEqual(
+        recoveredInbox.cards.map((entry) => entry.cardId),
+        [ownProposal.proposalId],
+        'cross-day recovery must preserve normal proposal integrity filtering',
+    );
     await assert.rejects(
         approveAiMenuManagerProposal({
             proposalId: malformedProposal.proposalId,
@@ -342,7 +388,7 @@ async function run(): Promise<void> {
 
     const staleProposal = proposal({ idempotencyKey: 'stale-approval', projectValue: baseProject });
     await firestoreAdmin.collection(DB_COLLECTIONS.AI_MENU_MANAGER_PROPOSALS).doc(staleProposal.proposalId).set(staleProposal);
-    await projectRef.set(project('base-v2'));
+    await projectRef.set(project('2026-07-13T00:00:02.000Z'));
     await assert.rejects(
         approveAiMenuManagerProposal({
             proposalId: staleProposal.proposalId,
@@ -359,7 +405,7 @@ async function run(): Promise<void> {
         'stale approval must not lock a directive',
     );
 
-    const executableProject = project('base-v3');
+    const executableProject = project('2026-07-13T00:00:03.000Z');
     await projectRef.set(executableProject);
     const executableProposal = proposal({ idempotencyKey: 'concurrent-completion', projectValue: executableProject });
     const executableProposalRef = firestoreAdmin
@@ -374,7 +420,7 @@ async function run(): Promise<void> {
         idempotencyKey: 'approve-current',
         userId: 'owner-1',
     });
-    await projectRef.set(project('base-v4', 'Weekend service only'));
+    await projectRef.set(project('2026-07-13T00:00:04.000Z', 'Weekend service only'));
 
     const completionInput = {
         proposalId: executableProposal.proposalId,
@@ -410,6 +456,13 @@ async function run(): Promise<void> {
         1,
         'concurrent completion must append one compact receipt',
     );
+    assert.equal(
+        (await sessionRef.get()).data()?.counters?.plannerAttempts,
+        4,
+        'server approval/completion must preserve route-quality counters',
+    );
+    assert.equal((await sessionRef.get()).data()?.hasPendingOperations, false);
+    assert.equal((await sessionRef.get()).data()?.pendingCount, 0);
 
     await assert.rejects(
         completeAiMenuManagerProposal({

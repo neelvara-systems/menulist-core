@@ -636,6 +636,21 @@ assertCheck(growthOSServerDal.includes('const kitId = requireGrowthOSDocumentId(
 assertCheck(growthOSServerDal.includes('const tenantDocumentId = requireGrowthOSScopeDocumentId(kit.tId, "tenant");'), "GrowthOS kit writes require tenant scope IDs before Firestore writes");
 assertCheck(growthOSServerDal.includes('const storeDocumentId = requireGrowthOSScopeDocumentId(kit.sId, "store");'), "GrowthOS kit writes require store scope IDs before Firestore writes");
 assertCheck(growthOSServerDal.includes('sanitizeForAdminFirestore({ ...kit, id: kitId })'), "GrowthOS kit writes persist the normalized kit ID");
+assertCheck(growthOSServerDal.includes('return `growthos_${tId}_${sId}_${randomUUID()}`;'), "GrowthOS kit IDs remain collision-resistant under concurrent generation");
+assertCheck(
+    growthOSServerDal.includes('summaryTenantDocumentId !== tenantDocumentId')
+        && growthOSServerDal.includes('summaryStoreDocumentId !== storeDocumentId')
+        && growthOSServerDal.includes('summaryKitId !== kitId')
+        && growthOSServerDal.includes('throw new Error("GrowthOS kit and summary scope mismatch")'),
+    "GrowthOS atomic kit and summary writes reject mismatched persisted scope",
+);
+assertCheck(
+    growthOSServerDal.includes("export async function writeGrowthOSKitAndSummaryServer")
+        && growthOSServerDal.includes("batch.set(kitRef")
+        && growthOSServerDal.includes("batch.set(summaryRef")
+        && growthOSServerDal.includes("await batch.commit();"),
+    "GrowthOS kit and summary writes commit atomically",
+);
 assertCheck(growthOSServerDal.includes('const kitId = normalizeGrowthOSDocumentId(params.kitId);'), "GrowthOS kit reads normalize kit IDs before Firestore reads");
 assertTextOrder(
     growthOSKitReadBlock,

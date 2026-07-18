@@ -1,8 +1,8 @@
 # PDF Surface — Firebase Cost Analysis
 
 **Feature:** PDF Surface (Enhanced Menu PDF Generation)
-**Version:** 2.2
-**Last Updated:** 2026-05-21
+**Version:** Compatibility bridge
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -20,10 +20,10 @@ PDF generation is entirely client-side using `jsPDF`. No Firestore reads, writes
 Owner clicks "Download PDF"
   ├── Desktop ShareModal reads items/categories from React state (already loaded)
   └── Mobile Share tab reads selected project data on tap if not already cached
-        └── generateMenuPdf() — runs in browser
-              └── jsPDF renders PDF in memory
+        └── generateMenuPdf() — adapts to Menu Card Export in browser
+              └── shared jsPDF renderer creates PDF in memory
                     └── Blob URL → browser download trigger
-                          └── localStorage.setItem() — browser storage, not Firebase
+                          └── best-effort scoped freshness marker — browser storage, not Firebase
 ```
 
 ---
@@ -39,14 +39,14 @@ On desktop, the `items` and `categories` arrays passed to `generateMenuPdf()` co
 
 ---
 
-## localStorage Operations (Not Firebase)
+## Device-local freshness operations (Not Firebase)
 
-| Key | Value | When |
+| Key shape | Value | When |
 |-----|-------|------|
-| `menulist_last_pdf_download_{projectId}` | `Date.now()` string | Every PDF download |
-| `menulist_last_pdf_version_{projectId}` | `snapshotHash` string | Every PDF download |
+| `menulist_last_pdf_download_{tenant:store}_{projectId}` (segments encoded) | `Date.now()` string | Delivered legacy/flag-off PDF when tenant/store scope is available |
+| `menulist_last_pdf_version_{tenant:store}_{projectId}` (segments encoded) | `sourceHash` string | Same delivery when a source hash exists |
 
-These are browser `localStorage` writes — zero Firebase cost.
+These are browser `localStorage` writes — zero Firebase cost. Project-only legacy keys are not read. Storage/quota rejection is ignored after delivery so it cannot produce a false download failure.
 
 ---
 
@@ -56,7 +56,7 @@ These are browser `localStorage` writes — zero Firebase cost.
 |---------|------------------|---------------|
 | `jspdf` | ✅ Yes (used since v1.0) | 0 bytes |
 
-No new dependencies. No bundle size increase from v2.1 to v2.2.
+No new dependency is added by the compatibility bridge.
 
 ---
 

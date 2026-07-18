@@ -35,6 +35,12 @@ import {
 import type { GeminiUsageMetadata } from '@lib/vectorEmbeddings';
 import { extractPlainTextFromEditorContent } from '@lib/vectorEmbeddings/articleEmbeddings';
 import { getAnswerlatticeTimestampMillis, isCachedSearchResultFresh } from '@lib/answerlattice/cacheFreshness';
+import {
+    ANSWERLATTICE_HYBRID_EVIDENCE_QUERY_LIMIT,
+    fuseAnswerlatticeEvidenceRanks,
+    prepareAnswerlatticeHybridEvidenceQuery,
+    rankAnswerlatticeExactEntityEvidence,
+} from '@lib/answerlattice/hybridEvidenceRetrieval';
 import { normalizeAnswerlatticeProductSurfaceScopeId } from '@lib/answerlattice/productSurfaceContent';
 import {
     parseAnswerlatticeRetrievalRelease,
@@ -317,7 +323,11 @@ const getPublishedKnowledgeBaseState = async (
     return value;
 };
 
-const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<KnowledgeBaseCacheState> => {
+const getKnowledgeBaseCacheState = async (
+    tId: number,
+    sId: number,
+    searchCacheVersion = SEARCH_CACHE_VERSION,
+): Promise<KnowledgeBaseCacheState> => {
     let canonicalSourceVersion: number | undefined;
     try {
         const [manifestVersion, canonicalVersion] = await Promise.all([
@@ -335,7 +345,7 @@ const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<Kno
         if (manifestVersion) {
             const publishedState = await getPublishedKnowledgeBaseState(tId, sId, `kbv${manifestVersion}`);
             return {
-                version: `${SEARCH_CACHE_VERSION}:kbv${manifestVersion}:cv${canonicalVersionToken}`,
+                version: `${searchCacheVersion}:kbv${manifestVersion}:cv${canonicalVersionToken}`,
                 hasPublishedArticles: publishedState.hasPublishedArticles,
                 sourceVersion: manifestVersion,
                 canonicalSourceVersion,
@@ -345,14 +355,14 @@ const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<Kno
         const publishedState = await getPublishedKnowledgeBaseState(tId, sId, 'legacy');
         if (!publishedState.hasPublishedArticles) {
             return {
-                version: `${SEARCH_CACHE_VERSION}:empty:cv${canonicalVersionToken}`,
+                version: `${searchCacheVersion}:empty:cv${canonicalVersionToken}`,
                 hasPublishedArticles: false,
                 canonicalSourceVersion,
             };
         }
 
         return {
-            version: `${SEARCH_CACHE_VERSION}:${publishedState.latestModified || 'unknown'}:cv${canonicalVersionToken}`,
+            version: `${searchCacheVersion}:${publishedState.latestModified || 'unknown'}:cv${canonicalVersionToken}`,
             hasPublishedArticles: true,
             sourceVersion: publishedState.latestModified || undefined,
             canonicalSourceVersion,
@@ -360,7 +370,7 @@ const getKnowledgeBaseCacheState = async (tId: number, sId: number): Promise<Kno
     } catch {
         // Do not spend on RAG when knowledge availability cannot be verified.
         return {
-            version: `${SEARCH_CACHE_VERSION}:cv${canonicalSourceVersion || 0}`,
+            version: `${searchCacheVersion}:cv${canonicalSourceVersion || 0}`,
             hasPublishedArticles: false,
             canonicalSourceVersion,
         };
@@ -428,7 +438,7 @@ const isKnowledgeBaseRefusal = (answer: string): boolean => {
 const buildPublicKnowledgeBaseReference = (
     documentId: string,
     data: Record<string, unknown>,
-    similarityScore: number,
+    similarityScore?: number,
 ) => ({
     id: documentId,
     title: cleanSearchContextText(data.title, 240) || 'Help article',
@@ -441,7 +451,9 @@ const buildPublicKnowledgeBaseReference = (
     tags: Array.isArray(data.tags)
         ? data.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 20)
         : [],
-    similarityScore,
+    ...(typeof similarityScore === 'number' && Number.isFinite(similarityScore)
+        ? { similarityScore }
+        : {}),
 });
 
 const EMPTY_RESULT: CoreSearchResult = {
@@ -549,7 +561,7 @@ const buildSearchHistoryRequestFields = (requestMetadata: CoreSearchInput['reque
  * 4. Canonical-first retrieval (deterministic, zero LLM cost)
  *    → On canonical HIT: write to instant cache
  * 5. Owner FAQ/custom answer retrieval (deterministic, zero LLM cost)
- * 6. RAG fallback (embedding → vector search → Gemini answer generation)
+ * 6. RAG fallback (embedding → vector search → optional exact/entity lane → Gemini answer generation)
  * 7. Entity-enriched RAG context (if canonical miss had entity matches)
  * 8. Search history logging + performance metrics
  */
@@ -948,7 +960,10 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
     const contextCacheToken = buildProductContextCacheToken(effectiveProductContext);
     const modeCacheToken = hasConversationHistory ? 'assistant' : 'qna';
     const scopedCacheLookupKeyBase = `${cacheLookupKeyBase}::CTX::${contextCacheToken}::MODE::${modeCacheToken}`;
-    const kbCacheState = await getKnowledgeBaseCacheState(tId, sId);
+    const searchCacheVersion = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL
+        ? `${SEARCH_CACHE_VERSION}:hybrid-evidence-v1`
+        : SEARCH_CACHE_VERSION;
+    const kbCacheState = await getKnowledgeBaseCacheState(tId, sId, searchCacheVersion);
     const cacheLookupKey = `${tId}:${sId}:${kbCacheState.version}:${scopedCacheLookupKeyBase}`;
 
     const cacheStart = Date.now();
@@ -1446,7 +1461,7 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     if (!queryVector) {
         await ensureAiProviderAllowed();
-        const embeddingResult = await callGeminiEmbeddingWithMetadata(queryForEmbedding, { taskType: 'RETRIEVAL_QUERY' });
+        const embeddingResult = await callGeminiEmbeddingWithMetadata(queryForEmbedding, { purpose: 'query' });
         queryVector = embeddingResult.vector;
         aiProviderOperations.add('embedding_generation');
         addAiProviderTokenUsage(embeddingResult.usageMetadata);
@@ -1505,10 +1520,6 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
 
     perfMetrics.vectorSearch = Date.now() - vectorSearchStart;
 
-    if (snapshot.empty) {
-        return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
-    }
-
     const documentsFound = snapshot.docs.map(doc => {
         const distance = Number(doc.get('distance'));
         const similarityScore = Number.isFinite(distance)
@@ -1517,14 +1528,80 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
         return buildPublicKnowledgeBaseReference(doc.id, doc.data(), similarityScore);
     });
 
-    let documentsMatched = documentsFound.filter(doc => doc.similarityScore > SIMILARITY_THRESHOLD);
+    let vectorDocumentsMatched = documentsFound.filter(doc => doc.similarityScore > SIMILARITY_THRESHOLD);
 
-    if (documentsFound.length && !documentsMatched.length) {
-        documentsMatched = documentsFound.filter(doc => doc.similarityScore > SIMILARITY_THRESHOLD_LOW);
+    if (documentsFound.length && !vectorDocumentsMatched.length) {
+        vectorDocumentsMatched = documentsFound.filter(doc => doc.similarityScore > SIMILARITY_THRESHOLD_LOW);
     }
 
-    if (!documentsFound.length) {
-        return saveWithCanonicalMissContext({ ...EMPTY_RESULT, escalation: await buildEmptyEscalation(), imageProcessed });
+    const preparedHybridEvidenceQuery = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL
+        ? prepareAnswerlatticeHybridEvidenceQuery(queryForEmbedding, canonicalResult.matchedEntityIds)
+        : { eligible: false, entityIds: [], technicalLiterals: [] };
+    let exactEntityCandidateCount = 0;
+    let exactEntityMatches: ReturnType<typeof rankAnswerlatticeExactEntityEvidence> = [];
+    const exactEntityReferences = new Map<string, ReturnType<typeof buildPublicKnowledgeBaseReference>>();
+
+    if (preparedHybridEvidenceQuery.eligible) {
+        const entityEvidenceStart = Date.now();
+        try {
+            const entitySnapshot = await articleQuery
+                .where('entityIds', 'array-contains-any', preparedHybridEvidenceQuery.entityIds)
+                .limit(ANSWERLATTICE_HYBRID_EVIDENCE_QUERY_LIMIT)
+                .get();
+            exactEntityCandidateCount = entitySnapshot.size;
+
+            const exactEntityCandidates = entitySnapshot.docs.map(doc => {
+                const data = doc.data();
+                exactEntityReferences.set(doc.id, buildPublicKnowledgeBaseReference(doc.id, data));
+                return {
+                    id: doc.id,
+                    title: typeof data.title === 'string' ? data.title : '',
+                    tags: Array.isArray(data.tags)
+                        ? data.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 20)
+                        : [],
+                    contentText: extractPlainTextFromEditorContent(data.content),
+                    entityIds: data.entityIds,
+                    modifiedOnMs: getAnswerlatticeTimestampMillis(data.modifiedOn),
+                };
+            });
+            exactEntityMatches = rankAnswerlatticeExactEntityEvidence(
+                preparedHybridEvidenceQuery,
+                exactEntityCandidates,
+            );
+        } catch (error) {
+            await writeSearchPerfLogEntry({
+                logFileName: PERF_LOG,
+                userId: uId,
+                logType: 'HYBRID_EVIDENCE_RETRIEVAL_ERROR',
+                data: {
+                    ...getSearchCoreFailureLogData('hybrid_evidence_retrieval_error', error),
+                    entityCount: preparedHybridEvidenceQuery.entityIds.length,
+                    technicalLiteralCount: preparedHybridEvidenceQuery.technicalLiterals.length,
+                    mountContext,
+                },
+            });
+        } finally {
+            perfMetrics.entityEvidenceRetrieval = Date.now() - entityEvidenceStart;
+        }
+    }
+
+    let documentsMatched = vectorDocumentsMatched;
+    if (exactEntityMatches.length > 0) {
+        const documentById = new Map(
+            vectorDocumentsMatched.map(document => [document.id, document]),
+        );
+        for (const match of exactEntityMatches) {
+            const reference = exactEntityReferences.get(match.id);
+            if (reference && !documentById.has(match.id)) documentById.set(match.id, reference);
+        }
+        const fusedRanks = fuseAnswerlatticeEvidenceRanks({
+            vectorDocumentIds: vectorDocumentsMatched.map(document => document.id),
+            exactEntityMatches,
+            limit: VECTOR_SEARCH_LIMIT,
+        });
+        documentsMatched = fusedRanks
+            .map(rank => documentById.get(rank.id))
+            .filter((document): document is ReturnType<typeof buildPublicKnowledgeBaseReference> => Boolean(document));
     }
 
     if (!documentsMatched.length) {
@@ -1537,6 +1614,9 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 ...getSearchTextLogContext(searchQuery),
                 topScore: documentsFound[0]?.similarityScore || 0,
                 threshold: SIMILARITY_THRESHOLD_LOW,
+                hybridEvidenceEligible: preparedHybridEvidenceQuery.eligible,
+                exactEntityCandidateCount,
+                exactEntityMatchCount: exactEntityMatches.length,
                 totalMs: perfMetrics.total,
                 mountContext,
             }
@@ -1709,9 +1789,13 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 cacheLookupMs: perfMetrics.cacheLookup,
                 embeddingGenerationMs: perfMetrics.embeddingGeneration,
                 vectorSearchMs: perfMetrics.vectorSearch,
+                entityEvidenceRetrievalMs: perfMetrics.entityEvidenceRetrieval || 0,
                 answerGenerationMs: perfMetrics.answerGeneration,
                 answerLength: craftedAnswer.length,
                 promptDocumentCount: documentsForPrompt.length,
+                hybridEvidenceEligible: preparedHybridEvidenceQuery.eligible,
+                exactEntityCandidateCount,
+                exactEntityMatchCount: exactEntityMatches.length,
                 mountContext,
             }
         });
@@ -1723,11 +1807,14 @@ export async function coreSearch(input: CoreSearchInput): Promise<CoreSearchResu
                 const { evaluateEscalation } = await import('@lib/answerlattice/escalationEvaluator');
                 escalation = evaluateEscalation({
                     canonicalResult,
-                    ragDocuments: documentsMatched.slice(0, 5).map(d => ({
-                        id: d.id,
-                        title: d.title || 'Untitled',
-                        similarityScore: d.similarityScore,
-                    })),
+                    ragDocuments: documentsMatched
+                        .filter(d => typeof d.similarityScore === 'number')
+                        .slice(0, 5)
+                        .map(d => ({
+                            id: d.id,
+                            title: d.title || 'Untitled',
+                            similarityScore: d.similarityScore as number,
+                        })),
                     searchQuery,
                     sessionFailureCount: input.sessionFailureCount,
                     productContext: effectiveProductContext,

@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Mobile Support
 
 **Status:** Supported public mobile web route
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -31,6 +31,8 @@ Mobile report page must:
 Do not add a MobileShell sub-screen for V0 shareable reports.
 
 V1 owner readiness modules remain inside Business Health, Share, Public Discovery, OBP readiness, and existing mobile shell surfaces. Public report links stay on the website route.
+
+The unsigned self-report notice and safe next-action fallback render on the same responsive public route. No mobile-only report decoder, contact DAL, or shell bypass is introduced.
 
 ## Internal Ops Boundary
 

@@ -8,6 +8,7 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { shareBrowserFile, type BrowserFileShareResult } from '@lib/export/browserFileShare';
 import JSZip from 'jszip';
 import { loadLogo, PreloadedLogo } from './imageLoader';
 import { generateCounterSticker } from './templates/counterStickerTemplate';
@@ -281,22 +282,12 @@ export function downloadBlob(blob: Blob, filename: string): void {
 
 /**
  * Share a blob using Web Share API (mobile)
- * Returns true if shared successfully, false if not supported
+ * Distinguishes unsupported sharing from an owner-cancelled share.
  */
-export async function shareBlob(blob: Blob, filename: string, title: string): Promise<boolean> {
-    if (!navigator.share || !navigator.canShare) return false;
-
-    try {
-        const file = new File([blob], filename, { type: blob.type });
-        const shareData: ShareData = { files: [file], title };
-
-        if (navigator.canShare(shareData)) {
-            await navigator.share(shareData);
-            return true;
-        }
-    } catch {
-        // User cancelled or share failed — not an error
-    }
-
-    return false;
+export async function shareBlob(
+    blob: Blob,
+    filename: string,
+    title: string,
+): Promise<BrowserFileShareResult> {
+    return shareBrowserFile({ blob, filename, title });
 }

@@ -1,40 +1,36 @@
 # Pricing Integrity System
 
 **Status:** Current source-boundary documentation, not current launch certification
-**Last Updated:** July 2, 2026
+**Last updated:** July 16, 2026
 
----
+## Current runtime boundary
 
-## Current Source Boundary
+MenuList has one persisted menu-price contract across owner mutation and customer output:
 
-Current MenuList price consistency is provided by the existing project save and public-output paths:
+- An item or option price may be a single number, currency value, range, multilingual label, or text such as `Market Price`, up to 40 characters.
+- Desktop, MobileShell, extraction review, linked-outlet save, AI Menu Manager, and shared project persistence use the same validation/normalization boundary.
+- The normal project update and publish DAL normalizes item, option, and linked-override prices before the existing write. Invalid price input fails before persistence.
+- Text/range prices remain display truth. Only a true single numeric price enters percentage/flat arithmetic, analytics, outlier checks, or numeric range filters.
+- Active priced options count as item price truth and appear in owner cards, the public list/PDP, Digital Screens, and PDF preflight/output.
+- Existing project save/publish paths revalidate public menu/OBP cache and touch configured Digital Screens through the existing content-version path.
+- Share PDFs are generated on demand from the current project snapshot. No old downloaded file can be changed after it leaves MenuList.
 
-- `src/database/projects/index.ts` persists menu edits through `updateProject()`.
-- `updateProject()` calls `revalidatePublicClientCacheForProject()` after project saves.
-- `src/lib/cache/publicClientCache.ts` revalidates public menu/OBP cache and calls `touchDigitalScreenContentVersion()`.
-- `src/lib/screen/screenInvalidation.ts` increments Digital Screens `screen.contentVersion` when screen output is enabled and a screen token exists.
-- Project share PDF generation runs on demand from the currently loaded project data through `src/lib/export/menuPdfGenerator.ts`.
-- `src/lib/pricing/integrityEngine.ts` and `src/lib/pricing/pdfQueue.ts` are source scaffold only. `runPricingIntegrity()` has no current caller, and `ENABLE_BACKGROUND_PDF_REGEN` is hard-disabled.
+`src/lib/pricing/integrityEngine.ts`, `molLogger.ts`, and `pdfQueue.ts` remain reserved scaffold. `runPricingIntegrity()` has no current caller, `ENABLE_BACKGROUND_PDF_REGEN` is false, and the active `src/lib/pricing/index.ts` barrel does not export that dormant path.
 
-Current public/support/sales copy must not claim background PDF regeneration, a wired Pricing Integrity engine, or release certification.
+## Maintained documents
 
-## Current Safe Claim
-
-Owners should edit prices in MenuList. QR/menu pages and staff-facing reads use the saved project truth, public cache is revalidated after project saves, Digital Screens receive a content-version touch when configured, and PDF downloads are generated from the current menu data on demand.
-
-## Documentation
-
-| File | Purpose |
+| Document | Purpose |
 | --- | --- |
-| `pricing-integrity-system_spec.md` | Product boundary and release gates |
-| `pricing-integrity-system_impl.md` | Current implementation evidence and dormant scaffold |
-| `pricing-integrity-system_firebase.md` | Current cost boundary and reserved costs |
-| `pricing-integrity-system_mobile-support.md` | Mobile price-save impact |
-| `pricing-integrity-system_marketing.md` | Internal sales-safe copy |
-| `pricing-integrity-system_website.md` | Website copy boundary |
-| `pricing-integrity-system_helpdoc.md` | Owner support copy boundary |
-| `pricing-integrity-system_validation.md` | Historical validation evidence and current launch boundary |
+| `pricing-integrity-system_spec.md` | Product and failure boundaries |
+| `pricing-integrity-system_impl.md` | Active code paths and dormant isolation |
+| `pricing-integrity-system_firebase.md` | Reads, writes, cache, and cost |
+| `pricing-integrity-system_mobile-support.md` | MobileShell/editor parity |
+| `pricing-integrity-system_helpdoc.md` | Owner support guidance |
+| `pricing-integrity-system_marketing.md` | Safe internal claims |
+| `pricing-integrity-system_website.md` | Public-copy boundary |
+| `pricing-integrity-system_validation.md` | Current local verification and pending evidence |
+| `pricing-integrity-system_verification-2026-07-16.md` | Evidence ledger for this audit |
 
-## Release Gates
+## Release boundary
 
-Pricing Integrity is not release-certified by this doc set. Current release approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile editor price-change QA, public menu and PDF artifact QA, Digital Screens refresh QA where applicable, target deploy evidence, and production-host smoke.
+This source-complete audit is not current launch certification. Release approval still needs the active production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/MobileShell mutation checks, public menu and PDF artifact QA, configured-screen QA, target deployment evidence, and production-host smoke.

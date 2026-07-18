@@ -115,7 +115,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         businessType: store?.businessType || store?.businessCategory,
     });
 
-    const sessionDate = todaySessionDate();
+    const sessionDate = parsed.data.sessionId && parsed.data.sessionDate
+        ? parsed.data.sessionDate
+        : todaySessionDate();
     let sessionId: string;
     try {
         sessionId = resolveDailySessionId({

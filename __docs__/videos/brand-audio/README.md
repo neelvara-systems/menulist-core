@@ -1,19 +1,33 @@
 # MenuList Brand Audio
 
-**Status:** Midnight Lo-Fi frozen for Owner Ease 30s V4; two-minute future-asset library available  
-**Updated:** July 13, 2026
+**Status:** Three founder-approved MenuList tracks; One Link Motion v2 is the primary default
+**Updated:** July 14, 2026
 
 ## Purpose
 
 This folder contains the reusable audio identity for the current MenuList video workflow:
 
-- one 30-second production edit of the founder-selected `Midnight Lo-Fi Focus` Lyria take;
+- one primary default track: `MenuList One Link Motion v2`;
+- one approved operational alternate: `MenuList Outlet Control v2`;
+- one calm baseline and frozen Owner Ease v1.0 track: `Midnight Lo-Fi Focus`;
 - one original approval sting;
 - no third-party song, paid music library, attribution-dependent track, or subscription music.
 
-The active bed is assembled locally by `scripts/build_audio_lyria_midnight_lofi_v1.sh` from the 68-second `Midnight Lo-Fi Focus` Lyria Realtime take generated on July 12, 2026. Its opening 30 seconds are cleaned and shaped with a wider gain curve because the source is spectrally dense and almost constant in level. Source audio and generation metadata are stored under `source-tracks/lyria-realtime-midnight-lo-fi-focus-auto-20260712-124940/`.
+The retained calm baseline is assembled locally by `scripts/build_audio_lyria_midnight_lofi_v1.sh` from the 68-second `Midnight Lo-Fi Focus` Lyria Realtime take generated on July 12, 2026. Its opening 30 seconds are cleaned and shaped with a wider gain curve because the source is spectrally dense and almost constant in level. Source audio and generation metadata are stored under `source-tracks/lyria-realtime-midnight-lo-fi-focus-auto-20260712-124940/`.
+
+The primary default and operational alternate are stored under `source-tracks/lyria-realtime-menulist-one-link-motion-v2-seed-260719-20260714-112840/` and `source-tracks/lyria-realtime-menulist-outlet-control-v2-seed-260721-20260714-113810/`. Their applied voice-reactive production mixes remain with v1.8 and v1.9 respectively.
 
 This exact source, production edit, ducking profile, and approval sting are frozen for the Owner Ease 30s V4 video. Do not swap its music during later visual, caption, format, or export work unless the founder explicitly reopens audio selection for this named asset. Other MenuList videos may use a purpose-fit track while inheriting the same rights, narration-space, ducking, and QA rules.
+
+## Founder-Approved Track Policy
+
+The machine-readable policy lives in [`track-policy.json`](./track-policy.json).
+
+1. **Primary default:** `MenuList One Link Motion v2`, seed `260719`. Start here for new MenuList launch, one-link, feature, and short-form conversion videos.
+2. **Operational alternate:** `MenuList Outlet Control v2`, seed `260721`. Prefer it for multi-location, outlet governance, and controlled operational stories.
+3. **Calm baseline:** `Midnight Lo-Fi Focus`. Keep it for deliberately calm owner-ease work and preserve its frozen assignment to Owner Ease `v1.0`.
+
+Default means first audition choice, not forced reuse. Match the track to the narrative and duration. If an asset is longer than the approved source, generate a structured extension from the approved preset or use the two-minute library; do not carelessly loop a short source.
 
 ## Two-Minute Future-Asset Library
 
@@ -35,7 +49,9 @@ Do not add generic AI, cinematic-vocal, or near-duplicate technology presets. Ne
 
 | Asset | File | Use |
 | --- | --- | --- |
-| Lyria Midnight Lo-Fi 30s bed | `mix/menulist-brand-bed-30s-lyria-midnight-lofi-v1.wav` | Current owner-focused BGM bed |
+| One Link Motion v2 source | `source-tracks/lyria-realtime-menulist-one-link-motion-v2-seed-260719-20260714-112840/menulist-one-link-motion-v2-seed-260719-20260714-112840.wav` | Primary default for new MenuList videos |
+| Outlet Control v2 source | `source-tracks/lyria-realtime-menulist-outlet-control-v2-seed-260721-20260714-113810/menulist-outlet-control-v2-seed-260721-20260714-113810.wav` | Approved multi-location and operational alternate |
+| Lyria Midnight Lo-Fi 30s bed | `mix/menulist-brand-bed-30s-lyria-midnight-lofi-v1.wav` | Calm baseline; frozen for Owner Ease v1.0 |
 | Original approval sting | `sfx/menulist-approval-sting-original-v1.wav` | Final lockup or approved-state cue |
 | Product Demo 120s source bed | `library/menulist-bgm-120s-product-demo-seed-260714-v1.wav` | Demonstrations, onboarding, sales |
 | Owner Humanistic 120s source bed | `library/menulist-bgm-120s-owner-humanistic-seed-190430-v1.wav` | Owner-focused and founder-led explainers |
@@ -52,7 +68,7 @@ Do not add generic AI, cinematic-vocal, or near-duplicate technology presets. Ne
 
 ## Rights Boundary
 
-The active bed is generated output rather than a third-party catalog song. Google states that Lyria Realtime output is watermarked and that Google does not claim ownership of generated output under the Gemini API terms. MenuList remains responsible for reviewing the generated material and complying with the current service terms at generation and publication time. Keep the WAV, preset, seed, timestamp, manifest, and hashes with the project. The approval sting remains an original local procedural asset.
+The approved tracks are generated output rather than third-party catalog songs. Google states that Lyria Realtime output is watermarked and that Google does not claim ownership of generated output under the Gemini API terms. MenuList remains responsible for reviewing the generated material and complying with the current service terms at generation and publication time. Keep the WAV, preset, seed, timestamp, manifest, and hashes with the project. The approval sting remains an original local procedural asset.
 
 Rejected third-party and exploratory generation binaries were removed after the founder decision was frozen. Their decision hashes remain below; they are not production dependencies.
 
@@ -60,6 +76,8 @@ Rejected third-party and exploratory generation binaries were removed after the 
 
 | File | SHA-256 |
 | --- | --- |
+| `source-tracks/lyria-realtime-menulist-one-link-motion-v2-seed-260719-20260714-112840/menulist-one-link-motion-v2-seed-260719-20260714-112840.wav` | `ea6d0e959feea758593fd5865c30b2475937e8ea4207b8bc39ad6291d09355e3` |
+| `source-tracks/lyria-realtime-menulist-outlet-control-v2-seed-260721-20260714-113810/menulist-outlet-control-v2-seed-260721-20260714-113810.wav` | `828b6c8fe35bbc5a980c9ff5ebe0f4e9f0ed46362ce559e1b4865c92bc4febf2` |
 | `source-tracks/lyria-realtime-midnight-lo-fi-focus-auto-20260712-124940/midnight-lo-fi-focus-seed-auto-20260712-124940.wav` | `88d3b595dee25aa9c8d7117407439722df3192bd64ac892a2c331a476c9dde71` |
 | `mix/menulist-brand-bed-30s-lyria-midnight-lofi-v1.wav` | `4206408c441bdf5e5e60338df8653f9431acb7fa1ee7d88aead31b762815c434` |
 | `sfx/menulist-approval-sting-original-v1.wav` | `2066c78fcc9ccf86d50ab7c44bc5b4722e014b8b6cf6ff344cf497d4125978ea` |
@@ -67,11 +85,13 @@ Rejected third-party and exploratory generation binaries were removed after the 
 | `library/menulist-bgm-120s-owner-humanistic-seed-190430-v1.wav` | `47a72c320859785bc1b316e5b54d74c650cb0eb920725061ffa453d54eb86d36` |
 | `library/menulist-bgm-120s-launch-momentum-seed-260713-v1.wav` | `8679a5539ee6935d3c74f985f2cba66ddea8a2b81971773e993b74fdda813df9` |
 
-## Current Applied Video
+## Current Applied Videos
 
-[Owner Ease 30s Midnight Lo-Fi MP4](../hyperframes/menulist-owner-ease-30s-v4-landscape-brand-type/deliverables/menulist-owner-ease-30s-lyria-midnight-lofi-v1.mp4)
+- [v1.8 One Link Motion primary-default MP4](../hyperframes/menulist-owner-ease-30s-v1.8/deliverables/menulist-owner-ease-30s-v1.8.mp4)
+- [v1.9 Outlet Control approved-alternate MP4](../hyperframes/menulist-owner-ease-30s-v1.9/deliverables/menulist-owner-ease-30s-v1.9.mp4)
+- [v1.0 Midnight Lo-Fi frozen-baseline MP4](../hyperframes/menulist-owner-ease-30s-v4-landscape-brand-type/deliverables/menulist-owner-ease-30s-lyria-midnight-lofi-v1.mp4)
 
-Current encoded audio: `-15.6 LUFS` integrated, `1.3 LU` range, and `-2.6 dBFS` true peak.
+The v1.8 and v1.9 comparison encodes are each `-15.5 LUFS` integrated and `-2.0 dBFS` true peak. The retained v1.0 baseline is `-15.6 LUFS` integrated, `1.3 LU` range, and `-2.6 dBFS` true peak.
 
 ## Removed Experiment Record
 
@@ -82,4 +102,4 @@ Current encoded audio: `-15.6 LUFS` integrated, `1.3 LU` range, and `-2.6 dBFS` 
 | Pixabay Digital Platforms | Removed third-party comparison; not part of the active generated-source workflow. |
 | Potassium CC0 stems | Removed exploratory stem mix; not part of the active sound. |
 
-The binaries above are intentionally absent. The frozen Midnight Lo-Fi source and the three current two-minute library sources are the only retained generated music inputs.
+The rejected binaries above are intentionally absent. The three founder-approved sources, their applied production masters, and the current two-minute library are retained generated music inputs.

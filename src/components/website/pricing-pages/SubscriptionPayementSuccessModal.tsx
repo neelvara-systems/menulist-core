@@ -1,13 +1,12 @@
-import Confetti from '@atoms/Confetti';
+'use client';
+
 import { PurchaseIntent } from '@data/common';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import { Button } from '@shadcncomponents/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@shadcncomponents/dialog';
-import SectionHeading from '@shadcncomponents/SectionHeading';
-import { motion } from 'framer-motion';
-import React, { useEffect, useState } from 'react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@shadcncomponents/dialog';
+import { useTranslations } from 'next-intl';
+import React from 'react';
 import { LuCheckCircle } from 'react-icons/lu';
-import SVGBg from './shared/data/SVGBg';
 
 const DASHBOARD_URL = 'https://dashboard.menulist.ai';
 
@@ -15,20 +14,16 @@ interface SubscriptionPayementSuccessModalProps {
     isOpen: boolean;
     onClose: () => void;
     purchaseIntent: PurchaseIntent | null;
-    paymentDetails: any; // Consider creating a specific type for this
+    paymentDetails: unknown;
 }
 
-const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModalProps> = ({ isOpen, onClose, purchaseIntent, paymentDetails }) => {
-    // if (!isOpen || !purchaseIntent) return null;
-    const [showConfetti, setShowConfetti] = useState(false);
-
-    useEffect(() => {
-        if (isOpen) {
-            setTimeout(() => setShowConfetti(true), 2000);
-        } else {
-            setShowConfetti(false);
-        }
-    }, [isOpen]);
+const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModalProps> = ({
+    isOpen,
+    onClose,
+    purchaseIntent,
+    paymentDetails,
+}) => {
+    const t = useTranslations('Website');
 
     const handleDashboardRedirect = () => {
         const diagnosticContext = {
@@ -42,87 +37,42 @@ const SubscriptionPayementSuccessModal: React.FC<SubscriptionPayementSuccessModa
         try {
             const opened = window.open(DASHBOARD_URL, '_blank', 'noopener,noreferrer');
             if (!opened) {
-                throw new Error('website_pricing_dashboard_open_blocked');
+                window.location.assign(DASHBOARD_URL);
+                return;
             }
             onClose();
         } catch (error) {
-            logPaymentFailure('website_pricing_dashboard_open_failed', error, diagnosticContext);
-            try {
-                window.location.assign(DASHBOARD_URL);
-                onClose();
-            } catch (redirectError) {
-                logPaymentFailure('website_pricing_dashboard_redirect_failed', redirectError, diagnosticContext);
-            }
+            logPaymentFailure('website_pricing_dashboard_redirect_failed', error, diagnosticContext);
         }
     };
 
-    const itemVariants = {
-        hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0 },
-    };
-
-    const pathVariants = {
-        hidden: {
-            pathLength: 0,
-            opacity: 0,
-        },
-        visible: {
-            pathLength: 1,
-            opacity: 1,
-            transition: {
-                duration: 0.8, // Controls the speed of the drawing
-                ease: "easeInOut",
-            },
-        },
-    };
+    const planName = purchaseIntent?.plan?.name
+        ?.replace(' (Yearly)', '')
+        .replace(' (Monthly)', '') || t('Pricing.successPlanFallback');
 
     return (
-        <Dialog open={isOpen}>
-            <DialogContent className="sm:max-w-md w-full" hideCloseButton
-                style={{
-                    minWidth: '100vw',
-                    height: '100%',
-                    display: 'flex',
-                    // justifyContent: 'center',
-                    // alignItems: 'center',
-                    flexDirection: 'column',
-                    border: 'unset',
-                }}
-            >
-                <DialogHeader className="items-center text-center p-[10%]">
-                    <DialogTitle></DialogTitle>
-                    <motion.div variants={pathVariants}>
-                        <LuCheckCircle className="h-20 w-20 text-green-500 mb-4" />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                        <SectionHeading
-                            text='Welcome Aboard! You’re All Set'
-                            highlightedText='You’re All Set'
-                        />
-                    </motion.div>
-                    <motion.div variants={itemVariants}>
-                        <DialogDescription className="mb-5" style={{ textAlign: 'center' }}>
-                            → Your payment for the Pro Plan was successful. You&apos;ve just
-                            unlocked a powerful suite of tools designed to save you time,
-                            eliminate manual work, and make your business look brilliant
-                            online. We&apos;re thrilled to have you with us.
-                            <br />
-                            → You will receive an email confirmation with your invoice details shortly.
-                            {/* <br /> */}
-                            {/* → If you have any questions about your subscription, please contact our support team. */}
-                        </DialogDescription>
-                    </motion.div>
-                    <motion.div variants={itemVariants} className="pt-10 w-full mt-5 flex justify-center items-center gap-5 flex-col sm:flex-row">
-                        <Button size="lg" className="flex items-center gap-2 z-999 " style={{ zIndex: 999 }} onClick={handleDashboardRedirect}>
-                            Go to My Dashboard →
-                        </Button>
-                    </motion.div>
+        <Dialog
+            open={isOpen}
+            onOpenChange={(open) => {
+                if (!open) onClose();
+            }}
+        >
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader className="items-center text-center">
+                    <LuCheckCircle aria-hidden="true" className="mb-3 h-16 w-16 text-green-600" />
+                    <DialogTitle>{t('Pricing.successPaymentTitle')}</DialogTitle>
+                    <DialogDescription className="text-center">
+                        {t('Pricing.successPaymentBody', { plan: planName })}
+                    </DialogDescription>
                 </DialogHeader>
-                <SVGBg />
-                {showConfetti && (<>
-                    <Confetti totalHeight={window.innerHeight} totalWidth={window.innerWidth} />
-                    <Confetti totalHeight={window.innerHeight} totalWidth={window.innerWidth} />
-                </>)}
+                <DialogFooter className="mt-4 gap-2 sm:justify-center">
+                    <Button onClick={handleDashboardRedirect}>
+                        {t('Pricing.successDashboardCta')}
+                    </Button>
+                    <Button variant="outline" onClick={onClose}>
+                        {t('Pricing.successStayCta')}
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );

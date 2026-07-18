@@ -5,6 +5,8 @@
 **Generated:** January 8, 2026  
 **Last Updated:** January 8, 2026 (Post Code Review)  
 **Status:** Historical validation evidence
+
+> **Superseded runtime authority (July 16, 2026):** Use `continuous-menu-intelligence_spec.md`, `continuous-menu-intelligence_impl.md`, and `../decision-intelligence/decision-intelligence_verification-2026-07-16.md`. The old Decision Blocks collection, hiding behavior, 02:30 UTC schedule, and validation claims below are historical only.
 **Implementation:** Historical implementation evidence (All Parts 1-5)
 **Code Review:** ✅ **COMPLETED** (3 issues found and fixed)
 

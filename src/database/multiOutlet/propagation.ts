@@ -4,7 +4,7 @@
  * Auto-creates linked outlet projects when a master store creates a new project.
  * Called from addProject() propagation hook (Feature #4C).
  *
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §9
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §9
  */
 
 import { FEATURE_FLAGS } from "@config/features";
@@ -14,8 +14,10 @@ import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { parseSummaryProjects } from "@lib/firestore/parseSummaryProjects";
 import { buildSummaryProjectPayload } from "@lib/firestore/summaryProjectsWriter";
 import { getBoundedMultiOutletStringContext, getMultiOutletProjectLogContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
+import { buildDeterministicOutletProjectId, normalizeProjectPropagationPlan } from "@lib/multiOutlet/projectPropagationBoundary";
+import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
 import { slugify } from "@lib/utils/slugify";
-import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import { doc, getDoc, runTransaction, serverTimestamp } from "firebase/firestore";
 
 const resolveSummaryNameForSlug = (value: unknown, fallback: string): string => {
     if (typeof value === "string" && value.trim()) return value.trim();
@@ -57,8 +59,8 @@ const buildOutletProjectSummary = (
  * Propagate a newly created master project to all outlet stores.
  * Creates a linked outlet project (with masterProjectId) in each outlet.
  *
- * Non-blocking by design — caller catches errors.
- * Safety job verifyAllOutletsHaveAllMasterProjects() catches any misses.
+ * Non-blocking by design — caller records per-outlet failures. Each outlet's
+ * project and summary commit atomically under a deterministic retry identity.
  */
 export async function propagateNewProjectToOutlets(
     tenantId: number,
@@ -71,66 +73,176 @@ export async function propagateNewProjectToOutlets(
     }
 
     // Get tenant to find all outlet stores
-    const tenantRef = doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId));
-    const tenantSnap = await getDoc(tenantRef);
-    if (!tenantSnap.exists()) return { propagated: 0, failed: 0 };
+    const [tenantSnap, sourceStoreSnap] = await Promise.all([
+        getDoc(doc(firebaseClient, DB_COLLECTIONS.TENANTS, String(tenantId))),
+        getDoc(doc(firebaseClient, DB_COLLECTIONS.STORES, String(masterStoreId))),
+    ]);
+    if (!tenantSnap.exists()) {
+        logMultiOutletFailure("multi_outlet_project_propagation_tenant_missing", new Error("PROJECT_PROPAGATION_TENANT_MISSING"), {
+            ...getMultiOutletProjectLogContext(masterProjectId),
+            ...getBoundedMultiOutletStringContext("tenantId", tenantId),
+        });
+        return { propagated: 0, failed: 1 };
+    }
 
-    const storesList = tenantSnap.data()?.storesList || [];
-    // Filter to non-master stores only
-    const outletStores = storesList.filter(
-        (s: any) => s.storeId !== masterStoreId && s.isMaster !== true && s.active !== false,
+    const plan = normalizeProjectPropagationPlan(
+        tenantSnap.data()?.storesList,
+        masterStoreId,
+        sourceStoreSnap.exists() ? sourceStoreSnap.data() : null,
+        tenantId,
     );
-
-    if (outletStores.length === 0) return { propagated: 0, failed: 0 };
+    if (!plan) {
+        logMultiOutletFailure("multi_outlet_project_propagation_scope_invalid", new Error("PROJECT_PROPAGATION_SCOPE_INVALID"), {
+            ...getMultiOutletProjectLogContext(masterProjectId),
+            ...getBoundedMultiOutletStringContext("tenantId", tenantId),
+            ...getBoundedMultiOutletStringContext("masterStoreId", masterStoreId),
+        });
+        return { propagated: 0, failed: 1 };
+    }
+    if (plan.outletStoreIds.length === 0) return { propagated: 0, failed: 0 };
 
     let propagated = 0;
     let failed = 0;
-    const masterSummarySnap = await getDoc(doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `projects_${masterStoreId}`));
+    const masterProjectScope = normalizeMultiOutletProjectId(masterProjectId);
+    if (
+        !masterProjectScope
+        || masterProjectScope.tenantDocumentId !== String(tenantId)
+        || masterProjectScope.storeDocumentId !== plan.sourceStoreId
+    ) {
+        logMultiOutletFailure("multi_outlet_project_propagation_source_project_invalid", new Error("PROJECT_PROPAGATION_SOURCE_PROJECT_INVALID"), {
+            ...getMultiOutletProjectLogContext(masterProjectId),
+            ...getBoundedMultiOutletStringContext("tenantId", tenantId),
+            ...getBoundedMultiOutletStringContext("masterStoreId", masterStoreId),
+        });
+        return { propagated: 0, failed: 1 };
+    }
+    const [masterProjectSnap, masterSummarySnap] = await Promise.all([
+        getDoc(doc(firebaseClient, `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${masterStoreId}`, masterProjectId)),
+        getDoc(doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `projects_${masterStoreId}`)),
+    ]);
+    const masterProject = masterProjectSnap.exists() ? masterProjectSnap.data() : null;
     const masterSummary = masterSummarySnap.exists()
         ? parseSummaryProjects(masterSummarySnap.data())[masterProjectId]
         : undefined;
+    if (
+        !masterProject
+        || masterProject.projectId !== masterProjectId
+        || String(masterProject.tId) !== String(tenantId)
+        || String(masterProject.sId) !== plan.sourceStoreId
+        || masterProject.deleted === true
+        || masterProject.masterProjectId
+        || masterProject.projectType === "localOnly"
+        || !masterSummary
+    ) {
+        logMultiOutletFailure("multi_outlet_project_propagation_source_project_invalid", new Error("PROJECT_PROPAGATION_SOURCE_PROJECT_INVALID"), {
+            ...getMultiOutletProjectLogContext(masterProjectId),
+            ...getBoundedMultiOutletStringContext("tenantId", tenantId),
+            ...getBoundedMultiOutletStringContext("masterStoreId", masterStoreId),
+        });
+        return { propagated: 0, failed: 1 };
+    }
 
-    for (let i = 0; i < outletStores.length; i++) {
-        const outlet = outletStores[i];
-        const timestamp = Date.now().toString(36);
-        const outletProjectId = `${tenantId}-${timestamp}${i > 0 ? i : ''}-${outlet.storeId}`;
-        try {
-            const outletSummaryData = buildOutletProjectSummary(masterProjectId, outletProjectId, masterSummary, projectName);
-
-            const outletProjectRef = doc(
-                firebaseClient,
-                `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${outlet.storeId}`,
-                outletProjectId,
-            );
-
-            await setDoc(outletProjectRef, {
-                projectId: outletProjectId,
-                masterProjectId,
-                projectType: 'inherited',
-                outletStatus: 'active',
-                files: [],
-                active: true,
-                deleted: false,
-                overrides: { items: {}, categories: {}, attributes: {} },
+    for (const outletStoreId of plan.outletStoreIds) {
+        let outletProjectId = buildDeterministicOutletProjectId({
+            masterProjectId,
+            outletStoreId,
+            tenantId: String(tenantId),
+        });
+        if (!outletProjectId) {
+            logMultiOutletFailure("multi_outlet_project_propagation_target_identity_invalid", new Error("PROJECT_PROPAGATION_TARGET_IDENTITY_INVALID"), {
+                ...getMultiOutletProjectLogContext(masterProjectId),
+                ...getBoundedMultiOutletStringContext("outletStoreId", outletStoreId),
             });
-
-            // Sync to outlet's projectsSummary
+            failed++;
+            continue;
+        }
+        try {
             const summaryRef = doc(
                 firebaseClient,
                 DB_COLLECTIONS.PLATFORM_SUMMARY,
-                `projects_${outlet.storeId}`,
+                `projects_${outletStoreId}`,
             );
-            await setDoc(summaryRef, {
-                lastUpdated: serverTimestamp(),
-                ...buildSummaryProjectPayload(outletProjectId, outletSummaryData),
-            }, { merge: true });
+            outletProjectId = await runTransaction(firebaseClient, async (transaction) => {
+                const targetStoreRef = doc(firebaseClient, DB_COLLECTIONS.STORES, outletStoreId);
+                const [targetStoreSnapshot, summarySnapshot] = await Promise.all([
+                    transaction.get(targetStoreRef),
+                    transaction.get(summaryRef),
+                ]);
+                const targetStore = targetStoreSnapshot.exists() ? targetStoreSnapshot.data() : null;
+                if (
+                    !targetStore
+                    || String(targetStore.storeId) !== outletStoreId
+                    || String(targetStore.tenantId) !== String(tenantId)
+                    || targetStore.isMaster === true
+                    || targetStore.active === false
+                    || targetStore.blocked === true
+                    || targetStore.deleted === true
+                ) {
+                    throw new Error("project_propagation_target_scope_changed");
+                }
+                const existingLinkedIds = summarySnapshot.exists()
+                    ? Object.entries(parseSummaryProjects(summarySnapshot.data()))
+                        .filter(([, summary]) => summary.masterProjectId === masterProjectId)
+                        .map(([projectId]) => projectId)
+                    : [];
+                if (existingLinkedIds.length > 1) throw new Error("project_propagation_duplicate_summary_links");
+                const effectiveProjectId = existingLinkedIds[0] || outletProjectId;
+                const effectiveScope = normalizeMultiOutletProjectId(effectiveProjectId);
+                if (
+                    !effectiveScope
+                    || effectiveScope.tenantDocumentId !== String(tenantId)
+                    || effectiveScope.storeDocumentId !== outletStoreId
+                ) {
+                    throw new Error("project_propagation_existing_identity_invalid");
+                }
+
+                const outletProjectRef = doc(
+                    firebaseClient,
+                    `${DB_COLLECTIONS.PROJECTS}/${tenantId}/${outletStoreId}`,
+                    effectiveProjectId,
+                );
+                const outletProjectSnapshot = await transaction.get(outletProjectRef);
+                if (outletProjectSnapshot.exists()) {
+                    const existingProject = outletProjectSnapshot.data();
+                    if (
+                        existingProject.projectId !== effectiveProjectId
+                        || existingProject.masterProjectId !== masterProjectId
+                        || existingProject.deleted === true
+                    ) {
+                        throw new Error("project_propagation_existing_project_conflict");
+                    }
+                } else {
+                    transaction.set(outletProjectRef, {
+                        projectId: effectiveProjectId,
+                        masterProjectId,
+                        projectType: "inherited",
+                        outletStatus: "active",
+                        files: [],
+                        active: true,
+                        deleted: false,
+                        overrides: { items: {}, categories: {}, attributes: {} },
+                    });
+                }
+
+                const outletSummaryData = buildOutletProjectSummary(
+                    masterProjectId,
+                    effectiveProjectId,
+                    masterSummary,
+                    projectName,
+                );
+                transaction.set(summaryRef, {
+                    lastUpdated: serverTimestamp(),
+                    ...buildSummaryProjectPayload(effectiveProjectId, outletSummaryData),
+                }, { merge: true });
+                return effectiveProjectId;
+            });
             await revalidatePublicClientCacheForProject(outletProjectId, "propagateNewProjectToOutlets");
 
             propagated++;
         } catch (e) {
             logMultiOutletFailure('multi_outlet_project_propagation_failed', e, {
                 ...getMultiOutletProjectLogContext(outletProjectId, masterProjectId),
-                ...getBoundedMultiOutletStringContext('outletStoreId', outlet.storeId),
+                ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
             });
             failed++;
         }

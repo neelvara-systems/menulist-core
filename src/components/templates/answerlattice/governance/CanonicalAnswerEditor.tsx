@@ -168,7 +168,10 @@ export default function CanonicalAnswerEditor() {
             const values = await form.validateFields();
             const procedure: AnswerlatticeProcedure | undefined =
                 editAnswerType === 'procedure' && editSteps.length > 0
-                    ? { steps: editSteps }
+                    ? {
+                        ...selectedAnswer.content.procedure,
+                        steps: editSteps,
+                    }
                     : undefined;
             const submitted = await update({
                 id: selectedAnswer.id,
@@ -204,9 +207,17 @@ export default function CanonicalAnswerEditor() {
         try {
             const values = await createForm.validateFields();
             const versionNorm = normalizeVersion(values.versionFrom || '1.0.0');
+            const procedureSlug = String(values.title || '')
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '_')
+                .replace(/^_+|_+$/g, '')
+                .slice(0, ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_PROCEDURE_SLUG_LENGTH);
             const procedure: AnswerlatticeProcedure | undefined =
                 createAnswerType === 'procedure' && createSteps.length > 0
-                    ? { steps: createSteps }
+                    ? {
+                        ...(procedureSlug ? { procedureSlug } : {}),
+                        steps: createSteps,
+                    }
                     : undefined;
             const submitted = await create({
                 tId, sId,
@@ -259,10 +270,16 @@ export default function CanonicalAnswerEditor() {
     }, [creatingProposal, tId, sId, createForm, create, createAnswerType, createSteps]);
 
     // Step editor helpers
-    const updateStep = useCallback((steps: AnswerlatticeProcedureStep[], setSteps: (s: AnswerlatticeProcedureStep[]) => void, index: number, field: keyof AnswerlatticeProcedureStep, value: any) => {
-        const updated = [...steps];
-        (updated[index] as any)[field] = value;
-        setSteps(updated);
+    const updateStep = useCallback((
+        steps: AnswerlatticeProcedureStep[],
+        setSteps: (s: AnswerlatticeProcedureStep[]) => void,
+        index: number,
+        field: keyof AnswerlatticeProcedureStep,
+        value: AnswerlatticeProcedureStep[keyof AnswerlatticeProcedureStep],
+    ) => {
+        setSteps(steps.map((step, stepIndex) => (
+            stepIndex === index ? { ...step, [field]: value } as AnswerlatticeProcedureStep : step
+        )));
     }, []);
 
     const addStep = useCallback((steps: AnswerlatticeProcedureStep[], setSteps: (s: AnswerlatticeProcedureStep[]) => void) => {
@@ -280,36 +297,75 @@ export default function CanonicalAnswerEditor() {
         <Card size="small" title={<Space><LuListOrdered /> Procedure Steps ({steps.length}/{ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_STEPS})</Space>}>
             <Flex vertical gap={8}>
                 {steps.map((step, idx) => (
-                    <Flex key={idx} gap={8} align="start">
-                        <InputNumber
-                            value={step.stepOrder}
-                            disabled
-                            style={{ width: 50 }}
-                            size="small"
-                        />
-                        <Select
-                            value={step.action}
-                            onChange={(v) => updateStep(steps, setSteps, idx, 'action', v)}
-                            options={ACTION_OPTIONS}
-                            style={{ width: 120 }}
-                            size="small"
-                        />
-                        <Input
-                            value={step.instruction}
-                            onChange={(e) => updateStep(steps, setSteps, idx, 'instruction', e.target.value)}
-                            placeholder="Instruction (e.g., Click Team Members)"
-                            maxLength={ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_INSTRUCTION_LENGTH}
-                            size="small"
-                            style={{ flex: 1 }}
-                        />
-                        <Button
-                            type="text"
-                            icon={<LuMinus />}
-                            onClick={() => removeStep(steps, setSteps, idx)}
-                            disabled={steps.length <= 1}
-                            size="small"
-                            danger
-                        />
+                    <Flex
+                        key={step.stepOrder}
+                        vertical
+                        gap={8}
+                        style={{ paddingBottom: 10, borderBottom: idx < steps.length - 1 ? `1px solid ${token.colorBorderSecondary}` : undefined }}
+                    >
+                        <Flex gap={8} align="start" wrap="wrap">
+                            <InputNumber value={step.stepOrder} disabled style={{ width: 50 }} size="small" />
+                            <Select
+                                value={step.action}
+                                onChange={(value) => updateStep(steps, setSteps, idx, 'action', value)}
+                                options={ACTION_OPTIONS}
+                                style={{ width: 120 }}
+                                size="small"
+                            />
+                            <Input
+                                value={step.instruction}
+                                onChange={(event) => updateStep(steps, setSteps, idx, 'instruction', event.target.value)}
+                                placeholder="Instruction, for example: Select Connect Slack"
+                                maxLength={ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_INSTRUCTION_LENGTH}
+                                size="small"
+                                style={{ flex: '1 1 240px' }}
+                            />
+                            <Button
+                                type="text"
+                                icon={<LuMinus />}
+                                onClick={() => removeStep(steps, setSteps, idx)}
+                                disabled={steps.length <= 1}
+                                size="small"
+                                danger
+                                aria-label={`Remove step ${step.stepOrder}`}
+                            />
+                        </Flex>
+                        <Flex gap={8} wrap="wrap">
+                            <Input
+                                value={step.target}
+                                onChange={(event) => updateStep(steps, setSteps, idx, 'target', event.target.value.trim().toLowerCase())}
+                                placeholder="Target ID, for example: slack.connect"
+                                maxLength={ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_TARGET_LENGTH}
+                                size="small"
+                                style={{ flex: '1 1 220px' }}
+                            />
+                            <Input
+                                value={step.expectedEvent}
+                                onChange={(event) => updateStep(steps, setSteps, idx, 'expectedEvent', event.target.value.trim().toLowerCase())}
+                                placeholder="Completion event, for example: slack.oauth.started"
+                                maxLength={ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_EXPECTED_EVENT_LENGTH}
+                                size="small"
+                                style={{ flex: '1 1 240px' }}
+                            />
+                        </Flex>
+                        <Flex gap={8} wrap="wrap">
+                            <Input
+                                value={step.expectedResult}
+                                onChange={(event) => updateStep(steps, setSteps, idx, 'expectedResult', event.target.value)}
+                                placeholder="Expected result"
+                                maxLength={ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_EXPECTED_RESULT_LENGTH}
+                                size="small"
+                                style={{ flex: '1 1 220px' }}
+                            />
+                            <Input
+                                value={step.troubleshootingHint}
+                                onChange={(event) => updateStep(steps, setSteps, idx, 'troubleshootingHint', event.target.value)}
+                                placeholder="Fallback if this step fails"
+                                maxLength={ANSWERLATTICE_PROCEDURE_CONSTRAINTS.MAX_TROUBLESHOOTING_HINT_LENGTH}
+                                size="small"
+                                style={{ flex: '1 1 240px' }}
+                            />
+                        </Flex>
                     </Flex>
                 ))}
                 <Button
@@ -554,7 +610,13 @@ export default function CanonicalAnswerEditor() {
                                     <Steps direction="vertical" size="small" current={-1} items={
                                         selectedAnswer.content.procedure.steps.map(step => ({
                                             title: <Text><Tag color="purple">{step.action}</Tag> {step.instruction}</Text>,
-                                            description: step.expectedResult ? <Text type="secondary">{step.expectedResult}</Text> : undefined,
+                                            description: (
+                                                <Flex vertical gap={2}>
+                                                    {step.target && <Text type="secondary">Target: {step.target}</Text>}
+                                                    {step.expectedEvent && <Text type="secondary">Wait for: {step.expectedEvent}</Text>}
+                                                    {step.expectedResult && <Text type="secondary">{step.expectedResult}</Text>}
+                                                </Flex>
+                                            ),
                                         }))
                                     } />
                                 </Card>

@@ -3,6 +3,7 @@ import { storageAdmin } from "@lib/firebase/firebaseAdmin";
 import { getMediaImageProfile, type MediaImageType } from "@lib/media/imageProfiles";
 import { prepareMediaImageAdmin } from "@lib/media/prepareMediaImageAdmin";
 import { buildMediaStoragePath, getMediaFileExtension } from "@lib/media/mediaStorage";
+import { createOrReuseAdminImmutableObject } from "@lib/storage/adminImmutableObject";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 
 interface UploadBase64MediaImageAdminInput {
@@ -16,6 +17,7 @@ interface UploadBase64MediaImageAdminInput {
 }
 
 export type UploadedMediaImageAdminResult = {
+    created: boolean;
     mimeType: string;
     path: string;
     sizeBytes: number;
@@ -48,39 +50,41 @@ export async function uploadBase64MediaImageAdminWithMetadata({
     const token = randomUUID();
     const bucket = storageAdmin.bucket();
     const file = bucket.file(path);
-
-    await file.save(prepared.buffer, {
-        metadata: {
-            cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
-            contentType: prepared.mimeType,
-            metadata: {
-                checksum: prepared.checksum,
-                compressionRatio: prepared.compressionRatio.toFixed(4),
-                firebaseStorageDownloadTokens: token,
-                height: String(prepared.height),
-                mediaId: uploadMediaId,
-                originalHeight: String(prepared.originalHeight),
-                originalMimeType: prepared.originalMimeType,
-                originalSizeBytes: String(prepared.originalSize),
-                originalWidth: String(prepared.originalWidth),
-                preparedSizeBytes: String(prepared.sizeBytes),
-                preparedVersion: String(prepared.version),
-                profile,
-                retentionPolicy: 'public_asset_until_replaced_or_deleted',
-                source: 'batch-image-generation-worker',
-                variant,
-                version: '1',
-                width: String(prepared.width),
-            },
-        },
-        resumable: false,
+    const customMetadata = {
+        checksum: prepared.checksum,
+        compressionRatio: prepared.compressionRatio.toFixed(4),
+        height: String(prepared.height),
+        mediaId: uploadMediaId,
+        originalHeight: String(prepared.originalHeight),
+        originalMimeType: prepared.originalMimeType,
+        originalSizeBytes: String(prepared.originalSize),
+        originalWidth: String(prepared.originalWidth),
+        preparedSizeBytes: String(prepared.sizeBytes),
+        preparedVersion: String(prepared.version),
+        profile,
+        retentionPolicy: 'public_asset_until_replaced_or_deleted',
+        source: 'batch-image-generation-worker',
+        variant,
+        version: '1',
+        width: String(prepared.width),
+    };
+    const upload = await createOrReuseAdminImmutableObject({
+        bucketName: bucket.name,
+        buffer: prepared.buffer,
+        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
+        contentType: prepared.mimeType,
+        customMetadata,
+        file,
+        path,
+        token,
     });
 
     return {
+        created: upload.created,
         mimeType: prepared.mimeType,
         path,
         sizeBytes: prepared.sizeBytes,
-        url: `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`,
+        url: upload.url,
     };
 }
 

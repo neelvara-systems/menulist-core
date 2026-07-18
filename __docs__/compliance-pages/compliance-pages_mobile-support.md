@@ -1,7 +1,7 @@
 # Compliance Pages — Mobile Support Assessment
 
-**Version:** 1.3
-**Date:** July 10, 2026
+**Version:** 1.4
+**Date:** July 16, 2026
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
 > **Launch boundary:** Not current launch certification or deploy approval. This assessment is source-gated mobile owner-editor and public-page parity evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
@@ -24,7 +24,7 @@
 ## Mobile Relevance
 
 ### Public Page (customer-facing)
-The compliance pages themselves are SSR HTML and render correctly on mobile browsers.
+The compliance pages themselves are SSR HTML and render correctly on mobile browsers. Their optional owner override uses the same tagged 60-second server cache as desktop/public traffic; there is no mobile cache or mobile persistence path.
 
 ### Owner Dashboard (editing)
 `src/components/mobile/components/MobileCompliancePagesEditor.tsx` is embedded from `MobileOfficialPageScreen` for Privacy Policy, Terms & Conditions, and Refund & Cancellation Policy review/edit/reset cards. It uses the existing guarded `/api/compliance` route and does not introduce a mobile-only data path.
@@ -39,6 +39,7 @@ Failure boundary:
 - Reset failures log `mobile_compliance_page_reset_failed`; rejected reset responses use `mobile_compliance_page_reset_rejected` with status only.
 - Save/reset response parse failures log `mobile_compliance_page_response_parse_failed` with bounded compliance type/action/status metadata only.
 - Successful save/reset HTTP responses must include `success: true`, the requested compliance page type, and the expected API action (`override` for save, `reset` for reset). Missing or mismatched acknowledgement fields log `mobile_compliance_page_response_invalid` with `mobile_compliance_page_save_response_invalid` or `mobile_compliance_page_reset_response_invalid`.
+- Successful save/reset invalidates `compliance-store-{sId}`. A post-commit cache failure is acknowledged by `refreshPending: true` and remains bounded by the tagged 60-second fallback; the mobile editor still reloads the authoritative owner API state.
 - Owner-facing failure copy stays fixed; raw public compliance URLs, API response text, and raw exception messages must not be shown.
 
 ---

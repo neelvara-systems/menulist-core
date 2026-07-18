@@ -1,0 +1,9 @@
+# Local maintainer tooling only. Do not add these packages to the MenuList runtime.
+ctranslate2==4.6.0
+huggingface-hub==0.36.2
+IndicTransToolkit==1.1.1
+opencc-python-reimplemented==0.1.7
+sacremoses==0.1.1
+sentencepiece==0.2.0
+torch==2.7.1
+transformers==4.51.3

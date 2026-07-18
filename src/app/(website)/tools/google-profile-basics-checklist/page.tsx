@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import GoogleProfileBasicsChecklistPage from '@/components/website/googleProfileBasicsChecklist/GoogleProfileBasicsChecklistPage';
 import Header from '@/components/website/Header';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Google Profile Basics Checklist - MenuList | Check Public Profile Facts';
 const description = 'Check whether the Google Business Profile facts you maintain are ready for customers and connected to one current customer link.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/google-profile-basics-checklist',
   },
-};
+});
 
 export default function Page() {
   if (

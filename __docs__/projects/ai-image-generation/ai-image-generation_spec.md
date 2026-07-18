@@ -1,268 +1,142 @@
 # AI Image Generation — Specification
 
 **Feature:** Menu Image Generation & Editing
-**Status:** Controlled owner testing ready after June 2026 worker/auth/logging hardening
-**Last Updated:** June 11, 2026
-**Audience:** CEO, PM, Clients, Non-developers
-
----
-
-## Executive Summary
-
-### What Is It?
-
-AI Image Generation is an automated system that creates professional-quality images for menu items using artificial intelligence. Business owners can generate images for individual items or process entire menus in bulk, eliminating the need for expensive professional photography.
-
-### Why Does It Matter?
-
-- **Cost Savings:** Professional food photography costs $50-200+ per dish
-- **Speed:** Generate images in seconds vs. days/weeks with photographers
-- **Consistency:** Uniform style across all menu items
-- **Accessibility:** Any business can have professional-looking menus
-
-### Who Is It For?
-
-- Restaurant owners who need menu images
-- Cafe owners updating seasonal offerings
-- Food delivery businesses requiring product photos
-- Any business using MenuList who lacks professional photography
-
----
-
-## Goals & Success Metrics
-
-### Primary Goals
-
-| Goal | Metric | Target |
-|------|--------|--------|
-| Enable image generation | Users can generate images | ✅ Achieved |
-| Support bulk operations | Process 50+ items at once | ✅ Achieved |
-| Maintain quality | User satisfaction with output | Ongoing |
-| Ensure safety | Block inappropriate content | ✅ Achieved |
-
-### Success Indicators
-
-- Users generate images instead of leaving items without photos
-- Reduced time from menu creation to completion
-- Positive feedback on image quality
-- Zero inappropriate content incidents
-
----
-
-## Target Customers (ICP)
-
-### Primary Users
-
-1. **Small Restaurant Owners**
-   - Limited budget for photography
-   - Need quick menu updates
-   - Value simplicity over advanced features
-
-2. **Multi-Outlet Chains**
-   - Need consistent branding across locations
-   - Bulk generation for large menus
-   - Centralized image management
-
-3. **Food Delivery Businesses**
-   - High volume of items needing images
-   - Quick turnaround requirements
-   - Integration with delivery platforms
-
-### User Personas
-
-**Maria — Small Cafe Owner**
-> "I change my menu weekly but can't afford a photographer every time. I need something quick that looks professional enough for my customers."
-
-**Raj — Restaurant Chain Manager**
-> "We have 200+ items across 5 locations. I need to generate images in bulk and ensure they all look consistent with our brand."
-
----
-
-## Scope
-
-### In-Scope (What This Feature Does)
-
-| Capability | Description |
-|------------|-------------|
-| **Single Image Generation** | Generate image for one item at a time with real-time preview |
-| **Bulk Image Generation** | Process multiple items asynchronously with progress tracking |
-| **Style Customization** | Choose photography style, lighting, background, composition |
-| **Reference Image Support** | Use existing image as style reference |
-| **Image Editing** | Enhance, change background, add effects to existing images |
-| **Review & Selection** | Preview generated images before adding to menu |
-| **Progress Tracking** | Real-time updates during bulk generation |
-
-### Out-of-Scope (What This Feature Does NOT Do)
-
-| Excluded | Reason |
-|----------|--------|
-| Video generation | Different technology, future consideration |
-| 3D model creation | Outside current AI capabilities |
-| Print-ready exports | Focus on digital menu use |
-| Custom training on user images | Privacy and complexity concerns |
-| Real-time generation streaming | Technical limitations |
-
----
-
-## User Stories & Flows
-
-### User Story 1: Single Image Generation
-
-**As a** restaurant owner  
-**I want to** generate an AI image for a specific menu item  
-**So that** I can add a professional photo without hiring a photographer
-
-**Flow:**
-1. User opens image upload modal for an item
-2. Selects "Generate with AI" tab
-3. Configures style preferences (optional)
-4. Clicks "Generate Image"
-5. Reviews generated image(s)
-6. Selects preferred image
-7. Clicks "Upload" to add to item
-
-**Acceptance Criteria:**
-- ✅ Image generated in under 30 seconds
-- ✅ User can preview before committing
-- ✅ Multiple style options available
-- ✅ Reference image can be provided
-
-### User Story 2: Bulk Image Generation
-
-**As a** restaurant manager with many items  
-**I want to** generate images for multiple items at once  
-**So that** I can efficiently populate my entire menu
-
-**Flow:**
-1. User opens image modal and selects "For Multiple Items"
-2. Searches/filters items needing images
-3. Selects items for generation
-4. Configures generation settings
-5. Accepts content policy
-6. Starts batch generation
-7. Monitors progress in real-time
-8. Reviews generated images per item
-9. Selects images to keep
-10. Uploads selected images
-
-**Acceptance Criteria:**
-- ✅ Can select 50+ items at once
-- ✅ Real-time progress updates
-- ✅ Can cancel mid-process
-- ✅ Can retry failed items
-- ✅ Images persist until user decision
-
-### User Story 3: Image Editing
-
-**As a** user with existing images  
-**I want to** enhance or modify my current menu photos  
-**So that** I can improve quality without re-shooting
-
-**Flow:**
-1. User clicks edit on existing image
-2. Selects editing feature (enhance, background, etc.)
-3. Provides instructions if required
-4. Generates edited version
-5. Compares original vs edited
-6. Uploads preferred version
-
-**Acceptance Criteria:**
-- ✅ Multiple editing features available
-- ✅ Original image preserved
-- ✅ Can iterate with multiple edits
-- ✅ Business-specific features available
-
----
-
-## Requirements
-
-### Functional Requirements
-
-| ID | Requirement | Priority | Status |
-|----|-------------|----------|--------|
-| FR1 | Generate images from text descriptions | P0 | ✅ |
-| FR2 | Support reference image input | P0 | ✅ |
-| FR3 | Batch processing for multiple items | P0 | ✅ |
-| FR4 | Real-time progress tracking | P0 | ✅ |
-| FR5 | Style customization options | P1 | ✅ |
-| FR6 | Image editing capabilities | P1 | ✅ |
-| FR7 | Content safety filtering | P0 | ✅ |
-| FR8 | Cancel/retry batch jobs | P1 | ✅ |
-
-### Non-Functional Requirements
-
-| ID | Requirement | Target | Status |
-|----|-------------|--------|--------|
-| NFR1 | Single generation time | < 30 seconds | ✅ |
-| NFR2 | Batch job reliability | 99% completion | ✅ |
-| NFR3 | Concurrent batch support | Per project isolation | ✅ |
-| NFR4 | Rate limiting | 5 req/min single, 3/5min batch | ✅ |
-
----
-
-## Business-Specific Features
-
-Different business types get tailored image generation options:
-
-| Business Type | Special Features |
-|---------------|------------------|
-| **Restaurant** | Food vibrancy enhancement, steam effects, plating views |
-| **Cafe** | Cozy ambiance, coffee art, pastry styling |
-| **Spa** | Relaxation atmosphere, treatment visualization |
-| **Salon** | Hair style transformations, before/after |
-| **Tattoo** | Design preview on skin, placement visualization |
-
----
-
-## Content Safety
-
-### What We Block
-
-- Explicit or violent imagery
-- Hate symbols or discriminatory content
-- Illegal activities or dangerous behavior
-- Offensive or vulgar text
-- Misleading or deceptive content
-
-### How We Ensure Safety
-
-1. **System Instructions:** AI model receives explicit safety rules
-2. **Safety Settings:** Gemini API configured to block harmful content
-3. **Prompt Sanitization:** User input cleaned of injection attempts
-4. **Content Policy Agreement:** Users must accept terms for batch generation
-
----
-
-## Risks & Open Questions
-
-### Known Risks
-
-| Risk | Mitigation |
-|------|------------|
-| AI generates inappropriate content | Multi-layer safety filtering |
-| Batch jobs fail mid-process | Graceful failure handling, retry capability |
-| High API costs | Rate limiting, token tracking |
-| User dissatisfaction with quality | Multiple generation options, editing tools |
-
-### Open Questions
-
-1. Should we add cost estimation before generation?
-2. Should users be able to save generation presets?
-3. Should we support image variations (generate 3, pick best)?
-
----
-
-## Glossary
-
-| Term | Definition |
-|------|------------|
-| **Single Generation** | Creating one image at a time with immediate preview |
-| **Batch Generation** | Processing multiple items asynchronously |
-| **Reference Image** | Existing image used as style guide for generation |
-| **Cloud Task** | Google service for background job processing |
-| **Gemini** | Google's AI model used for image generation |
-| **Gemini Image** | Google's Gemini image-generation model family used for MenuList image generation and editing |
-
----
-
-_Document follows `IDE_PROMPTS/6. DOCUMENTATION STRUCTURE PROMPT.md` spec template._
+**Status:** Source-gate verified; release evidence remains pending
+**Last Updated:** July 16, 2026
+**Audience:** Product, engineering, QA, support
+
+## Purpose
+
+MenuList prepares image drafts when an owner has no suitable image or wants to revise an existing one. Generated output is not presumed accurate. Item images stay drafts until the owner selects and saves them; cover flows use the existing media preview/save authority.
+
+Do not describe this feature as professional-photography replacement, guaranteed quality, fixed-speed generation, unlimited full-menu processing, or unchecked publishing.
+
+## Runtime scope
+
+| Flow | Admission | Output authority |
+| --- | --- | --- |
+| Single item generation | Auth, master flag, Safe Mode, rate limit, schema, permission, outlet policy, capacity reservation | Base64 draft; owner must choose/upload before project truth changes |
+| Reference-image generation | Same as single plus tenant/store-scoped bounded reference fetch | Same as single |
+| Existing-image editing | Auth, master flag, Safe Mode, rate limit, schema, permission, outlet policy, capacity reservation | Edited draft; original stays unchanged until owner saves a result |
+| Batch item generation | Owner job creation, master flag, trigger validation, permission, outlet policy, capacity precheck, Cloud Tasks readiness | 1–50 item job; owner reviews accepted results before project association |
+| Project/menu cover | Master flag and the single-generation route; manual owner action or missing-cover preparation after accepted extraction truth | Prepared media upload plus transaction-current `projectImage` authority |
+| Official Business Page cover | Master flag and the single-generation route from desktop/mobile owner settings | Prepared preview and explicit owner save to business-cover Storage/project truth |
+
+Active provider/model truth is `GEMINI_MODELS.IMAGE_GEN` (`gemini-2.5-flash-image`) through `src/app/api/image-generation/generators.ts`. There is no active Imagen branch.
+
+## Owner outcomes
+
+- Owners can keep an existing image, upload their own photo, generate a draft, edit an existing photo, or discard generated output.
+- Batch selection is limited to 50 items in the owner UI and independently enforced by request/server/job boundaries.
+- The UI shows the shared content-credit estimate. Final consumption follows actual successful output accounting.
+- Desktop and mobile use the same responsive item-image modal, same project persistence helpers, and same batch listener/DAL.
+- AI Menu Manager image task definitions and image-gap suggestions require the same master flag; it cannot advertise or admit a disabled generation action.
+- Linked outlets can act only where the current image-override policy allows it.
+- Public menu/Official Business Page output changes only through existing project/store persistence and public-cache invalidation paths.
+
+## End-to-end flows
+
+### 1. Single item or reference-image generation
+
+1. Owner opens the item image modal and selects **Generate Photo**.
+2. The client builds a bounded request from the selected item and visual settings.
+3. `/api/image-generation` authenticates and applies the master flag, Safe Mode, rate limit, body cap, schema validation, store permission, outlet policy, and capacity checks.
+4. Prompt construction normalizes owner/item input. Reference URLs must belong to the current tenant/store media scope and pass bounded download checks.
+5. The route reserves the estimated credit units, calls the shared Gemini generator, and finalizes only successful output quantity.
+6. The browser receives bounded image data and shows drafts.
+7. Only the owner-selected draft is prepared, uploaded, associated with the item, and persisted. Public cache invalidation follows the existing project save path.
+8. Failure before final accounting refunds the reservation safely.
+
+### 2. Image editing
+
+1. Owner chooses **Edit** for an existing item image.
+2. `/api/image-editing` applies the same master flag, auth, Safe Mode, rate, validation, permission, outlet-policy, capacity, and scoped-image-fetch boundaries.
+3. The prompt router sanitizes the selected edit intent and item context.
+4. Gemini returns an edited draft; the original remains the current project image.
+5. The owner selects a draft and saves it through the same item-image persistence path.
+
+### 3. Batch generation
+
+1. Owner selects 1–50 eligible items. UI bulk/category/quick-select paths all enforce the same maximum.
+2. The browser creates one visible `imageBatchProcessingJobs/{tId}/{sId}/{jobId}` document and requires its acknowledgement.
+3. `/api/image-generation/batch-trigger` revalidates exact session/project/job/config/item truth, permission, outlet policy, prompt capacity, and Cloud Tasks configuration.
+4. One deterministic Cloud Task is enqueued per item. Partial enqueue is recorded and shown without duplicating admitted work.
+5. The authenticated worker validates project header/secret before body work, then applies the master flag, schema/scope checks, worker rate limit, job/item registration, lease, capacity reservation, prompt cache/provider call, prepared Storage upload, idempotent accounting, and transactional result append.
+6. Duplicate or retried deliveries reuse deterministic operation/media identifiers and do not double-charge or duplicate output.
+7. The listener projects bounded job truth into desktop/mobile review state.
+8. Owner can accept selected images, discard all, cancel, cancel with accepted images, or resolve a failed job and start a new retry job.
+9. Exact lost-ack terminal retries converge without duplicate status history.
+10. Browser review never deletes public generated media from selection/job state. The maintenance scheduler prunes job payload/row metadata only; physical media deletion waits for global cross-project/outlet exclusive-reference proof.
+
+### 4. Project and business covers
+
+- Manual project and business-cover buttons are hidden when the master flag is disabled.
+- `src/lib/image/projectImageGeneration.ts` independently returns without provider work when disabled, protecting programmatic/automatic callers.
+- A generated project cover cannot overwrite an owner image that wins while generation/upload is in flight; transaction-current metadata authority decides.
+- Business-cover generation remains an explicit owner action and uses the same media preparation/preview/upload path as a manual cover.
+
+## Failure and recovery contract
+
+| Failure | Required behavior |
+| --- | --- |
+| Feature disabled | Hide new generation/edit controls; server routes reject new work; admitted worker tasks return retryable `503`; existing job review remains accessible |
+| Safe Mode/provider unavailable/rate limited | No new provider work; owner receives generic recovery copy; worker response remains retryable where applicable |
+| Insufficient credits | No provider call; show the existing enhancement-pack guidance |
+| Invalid tenant/project/outlet scope | Fail before provider, Storage, or accounting work |
+| Provider returns no image | Return failure; refund any unsettled reservation |
+| Batch duplicate delivery | Skip completed/terminal work or retry the same leased/deterministic operation safely |
+| Browser acknowledgement or cleanup interrupted | Preserve generated Storage objects; project/job retries converge without risking a URL already committed elsewhere |
+| Public save fails | Do not report success; keep owner recovery available and preserve current public truth |
+
+## Security, cost, and scale requirements
+
+- All owner routes use `withAuth()` and store permission enforcement.
+- Worker admission uses the configured GCP project header and timing-safe shared-secret comparison.
+- Request/response bodies, prompt fields, reference downloads, generated media, logs, and stored errors are bounded.
+- Provider/accounting logs store shapes and counts, not image bytes, prompts, secrets, or raw owner payloads.
+- Batch work uses deterministic IDs, item leases, maximum attempts, bounded prompt/upload concurrency, and capped per-store worker rate limiting.
+- Prompt-cache hits are zero-unit operations; non-cache successful images consume the shared generated-image credit rate.
+- Batch item payloads are pruned after 7 days and terminal job documents after 30 days. Public generated-media deletion is disabled until global exclusive-reference proof exists.
+- No new standalone scheduled function is permitted; cleanup belongs to `menulistMaintenanceScheduler`.
+
+## Non-goals
+
+- No automatic claim that generated output depicts the real item.
+- No direct publishing to third-party delivery/social platforms.
+- No custom model training, video generation, 3D generation, or real-time generation streaming.
+- No owner-facing provider/model selector.
+- No unbounded batch size or unbounded concurrency.
+
+## Acceptance gates
+
+Codebase/source completion requires:
+
+- `npm run verify:ai-accounting`
+- `npm run verify:storage-paths`
+- `npm run test:media-storage-boundary`
+- `npm run verify:menu-project-editor-boundary`
+- `npm run verify:public-business-truth`
+- scoped lint and `npx tsc --noEmit`
+- Functions type/build/preflight checks when scheduler cleanup changes
+- touched-diff and docs parity review
+
+Release completion additionally requires target deployment, configured Cloud Tasks worker secrets/URL/queue, provider smoke, authenticated desktop/mobile owner QA, and public-render/cache smoke. These external steps remain pending until performed in the target environment.
+
+## Primary code evidence
+
+- `src/app/api/image-generation/route.ts`
+- `src/app/api/image-generation/generators.ts`
+- `src/app/api/image-generation/batch-trigger/route.ts`
+- `src/app/api/image-generation/batch-generation/route.ts`
+- `src/app/api/image-editing/route.ts`
+- `src/components/templates/main-app/projects/editorView/ImageUploadModal.tsx`
+- `src/components/templates/main-app/projects/editorView/AiImageGenerator/`
+- `src/components/mobile/screens/MobileMenuScreen.tsx`
+- `src/lib/image/projectImageGeneration.ts`
+- `src/lib/ai-menu-manager/actionTypes.ts`
+- `src/lib/ai-menu-manager/projectPromptHints.ts`
+- `src/lib/ai-menu-manager/domainConversationRouter.ts`
+- `src/database/imageBatchProcessing/`
+- `src/lib/ai/imageBatchProjectSelection.ts`
+- `functions/src/schedulers/imageBatchRetentionBoundary.ts`
+- `functions/src/schedulers/menulistMaintenanceScheduler.ts`

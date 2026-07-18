@@ -54,19 +54,19 @@ FAQ save:
 
 - One FAQ doc set.
 - Optional article mirror update using `arrayUnion` or `arrayRemove`.
-- One KB cache version bump.
+- Three compact freshness writes in the same transaction: KB cache version, compiled `kb` source version, and bundle-stale manifest.
 - One Answerlattice public cache tag revalidation for FAQ/KB/context output.
 - Product surface summary rebuild only when the FAQ was or becomes published.
-- Returns `{ success: true, operation: "create" | "update", id }` after the batch commit, cache-version bump, and public cache revalidation. The UI must reject fallback/malformed results before local state or success copy advances.
+- Returns `{ success: true, operation: "create" | "update", id }` after the atomic content/freshness transaction and public cache revalidation. The UI must reject fallback/malformed results before local state or success copy advances.
 
 FAQ archive:
 
 - One FAQ doc update.
 - Optional article mirror removal.
-- One KB cache version bump.
+- Three compact freshness writes in the same transaction: KB cache version, compiled `kb` source version, and bundle-stale manifest.
 - One Answerlattice public cache tag revalidation for FAQ/KB/context output.
 - Product surface summary rebuild only when the archived FAQ was published.
-- Returns `{ success: true, operation: "archive", id, status: "archived", active: false }` after the batch commit, cache-version bump, and public cache revalidation. The UI must reject fallback/malformed results before local archive state or success copy advances.
+- Returns `{ success: true, operation: "archive", id, status: "archived", active: false }` after the atomic content/freshness transaction and public cache revalidation. The UI must reject fallback/malformed results before local archive state or success copy advances.
 
 Import publish:
 
@@ -107,6 +107,8 @@ FAQ generation completion breadcrumbs, route failures, and best-effort AI-operat
 FAQ generation uses the app-side Answerlattice Gemini gateway and the `ANSWERLATTICE_GEMINI_AI_KEY*` pool only. It does not import the default MenuList Gemini client or fall back to `GEMINI_AI_KEY*`; missing Answerlattice provider configuration fails before provider work and FAQ writes.
 
 FAQ/article consistency hardening intentionally adds transaction reads. FAQ save/archive reads the stored FAQ and linked article documents, proves exact `AL` tenant/store ownership, and changes the FAQ plus existing `faqIds` mirrors atomically. Article title/content update or delete reads the bounded linked FAQ set (maximum 25), rechecks those rows and the article in one transaction, and moves active FAQs to `needs_review` or `archived` with the article mutation. This prevents acknowledged stale public FAQs and prevents missing article links from creating skeletal `kb_articles` documents.
+
+Cache/source invalidation is part of those same transactions. The three existing compact invalidation writes are not additional writes; they previously ran in a separate request before or after content persistence. Atomic grouping removes both the old-content/new-version race and the committed-content/missing-invalidation failure window without adding collections, indexes, listeners, or reads.
 
 FAQ-from-article route scope hardening is cost-neutral. The protected FAQ generation route now compares persisted article scope to the authenticated Answerlattice route scope only after both pass the shared exact positive numeric Firestore document-ID scope helper. Valid FAQ suggestion generation keeps the same one article read, existing linked-FAQ cap query, provider call, batch write shape, AI accounting, and cache behavior; malformed article scope returns the existing not-found response before provider work.
 

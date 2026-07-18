@@ -47,7 +47,7 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 
 ### How to view and manage all locations
 
-1. Go to **Locations** (desktop sidebar or mobile **More** → **Locations**, visible only for HQ accounts)
+1. Go to **Locations** (desktop sidebar or mobile **More** → **Locations**; available in HQ context to users who can manage outlets)
 2. You'll see the **Chain Control Panel** with:
    - Billing summary (cost per store, total chain cost)
    - A table of all your stores with status
@@ -55,7 +55,7 @@ Multi-outlet lets you run multiple store locations from one master menu. Update 
 
 ### How to switch between stores
 
-1. Use the **store switcher dropdown** in the header on desktop, or open **Locations** on mobile (visible for HQ accounts)
+1. Use the **store switcher dropdown** in the header on desktop, or open **Locations** on mobile (available in HQ context to users who can manage outlets)
 2. Select the store you want to view
 3. A yellow banner will appear: "You are viewing [outlet name]"
 4. Any changes you make only affect that outlet

@@ -12,6 +12,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { normalizeStoreSummaryNumericDocumentId } from "@data/shared/storeSummaryBoundary";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
     getBoundedMultiOutletStringContext,
     logMultiOutletFailure,
@@ -56,6 +57,7 @@ const schema = z.object({
     policy: outletPolicySchema,
 });
 const OUTLET_POLICY_MAX_BODY_BYTES = 8 * 1024;
+const OUTLET_POLICY_EFFECT_CHUNK_SIZE = 1;
 const OUTLET_POLICY_SCOPE_CHANGED_CODE = "OUTLET_POLICY_SCOPE_CHANGED";
 
 class OutletPolicyScopeChangedError extends Error {
@@ -150,12 +152,28 @@ export const POST = withAuth(async (request, session) => {
                 || freshStore.active === false
                 || freshStore.deleted === true
                 || isPlatformEntityBlocked(freshStore)
+                || freshTenantSnap.data()?.active === false
+                || freshTenantSnap.data()?.deleted === true
+                || isPlatformEntityBlocked(freshTenantSnap.data())
             ) {
                 throw new OutletPolicyScopeChangedError();
             }
+            const freshPermissionError = requireAnyStorePermissionForStoreData(
+                request,
+                session,
+                freshStore,
+                [PERMISSIONS.MANAGE_OUTLETS],
+                "Outlet policy",
+                Number(storeId),
+                Number(tenantId),
+            );
+            if (freshPermissionError) throw new OutletPolicyScopeChangedError();
             const storesList = Array.isArray(freshTenantSnap.data()?.storesList)
                 ? freshTenantSnap.data()?.storesList
                 : [];
+            const currentStoreSummary = storesList.find((store: any) => (
+                Number(store?.storeId) === Number(storeId)
+            ));
             const hasMasterStore = storesList.some((store: any) => store?.isMaster === true);
             const masterListRepairNeeded = freshStore.isMaster === true && !hasMasterStore;
             const masterPromoted = (
@@ -165,6 +183,17 @@ export const POST = withAuth(async (request, session) => {
                 && Number(storesList[0]?.storeId) === Number(storeId)
             );
             if (freshStore.isMaster !== true && !masterPromoted) {
+                throw new OutletPolicyScopeChangedError();
+            }
+            if (
+                !currentStoreSummary
+                || currentStoreSummary.active === false
+                || (
+                    hasMasterStore
+                    && freshStore.isMaster === true
+                    && currentStoreSummary.isMaster !== true
+                )
+            ) {
                 throw new OutletPolicyScopeChangedError();
             }
             const mergedPolicy = {
@@ -199,17 +228,28 @@ export const POST = withAuth(async (request, session) => {
             return { masterPromoted, mergedPolicy };
         });
 
-        revalidateTag(`menu-store-${storeDocumentId}`);
-        revalidateTag(`store-${storeDocumentId}`);
-        revalidateTag("client-stores");
-        revalidateTag("screen-data");
-        await touchDigitalScreenContentVersionForStoreServer(storeDocumentId, "outletPolicy");
-        await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantDocumentId,
-            sId: storeDocumentId,
+        const postCommit = await runStorePublicTruthPostCommitEffects({
+            chunkSize: OUTLET_POLICY_EFFECT_CHUNK_SIZE,
+            storeIds: [storeDocumentId],
+            tenantId: tenantDocumentId,
+            deps: {
+                invalidateAssistant: (storeId, tenantId) => (
+                    invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })
+                ),
+                revalidate: (tag) => revalidateTag(tag),
+                touchScreen: (storeId) => touchDigitalScreenContentVersionForStoreServer(storeId, "outletPolicy"),
+            },
         });
+        if (postCommit.effectsPending) {
+            logMultiOutletFailure("outlet_policy_post_commit_effect_failed", postCommit.firstError, {
+                ...failureContext,
+                failedEffectCount: postCommit.failedEffectCount,
+            });
+        }
 
         return NextResponse.json({
+            effectsPending: postCommit.effectsPending,
+            failedEffectCount: postCommit.failedEffectCount,
             success: true,
             masterPromoted: policyResult.masterPromoted,
             outletPolicy: policyResult.mergedPolicy,

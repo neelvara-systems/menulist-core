@@ -1,7 +1,7 @@
 # WhatsApp Reply Pack - Firebase and Cost
 
 **Status:** Implemented V0 public browser-local tool  
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -18,6 +18,8 @@
 | WhatsApp API calls | 0 |
 | AI/provider calls | 0 |
 | Report storage | 0 |
+
+Strict phone validation and preview gating are browser-local and add no Firebase, Storage, Function, provider, DNS, or network operation.
 
 ## Boundary
 

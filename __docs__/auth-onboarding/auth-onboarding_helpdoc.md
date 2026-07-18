@@ -1,72 +1,43 @@
-# Auth & Onboarding — Help Documentation
+# Sign in and Set Up Your MenuList Account
 
-## Quick Summary
-Sign up and sign in to MenuList using your Google account. One click to get started — no passwords to remember.
+**Last updated:** July 16, 2026
 
----
+## Sign in
 
-## Getting Started
+You can use any sign-in method already connected to your account:
 
-### How to sign up
-1. Go to **menulist.ai** and click **Sign In**
-2. Click **Continue with Google**
-3. Select your Google account
-4. You're in! Your account is created automatically.
+- Continue with Google.
+- Enter your email and password.
+- Enter your WhatsApp number and request a one-time code.
+- Enter your phone/Staff ID and passcode when your account was set up that way.
 
-### What happens after signup
-1. Your account is created
-2. A default store is set up for you
-3. You can immediately start creating your first menu project
-4. Go to **Projects** → **Create New Project** to begin
+Use the same phone number or email used when the business was created. MenuList opens the business and location already linked to that identity.
 
----
+## Set up a new business
 
-## How-To Guides
+1. Choose a plan on Pricing.
+2. Enter the business name, business type, and business-day time.
+3. Sign in if needed.
+4. MenuList prepares the workspace and opens Razorpay.
+5. Complete payment to activate the plan.
 
-### How to sign in
-1. Go to **menulist.ai**
-2. Click **Sign In**
-3. Click **Continue with Google**
-4. Select the same Google account you used to sign up
+If you close Razorpay before paying, your workspace is not lost. Return to Pricing or Billing and choose **Complete payment** or **Pay now**.
 
-### How to sign out
-1. Click your profile icon (top right)
-2. Click **Sign Out**
+## Claim a business created through WhatsApp
 
-### How to switch between stores (if you have multiple)
-1. Click the store selector (usually in the header or sidebar)
-2. Select the store you want to manage
-3. The dashboard updates to show that store's data
+Open the claim link from the MenuList message. After the business name is shown, choose one option:
 
----
+- Sign in with Google.
+- Set up an email and password.
+- Use the shown WhatsApp number and create a passcode.
 
-## Troubleshooting
+Claim links expire and work once. If the link is expired or was already used, request a fresh link from MenuList support. Do not forward the link to another person.
 
-### I can't sign in
-**Fix:**
-1. Make sure you're using the same Google account you signed up with
-2. Clear your browser cache and try again
-3. Try a different browser
-4. Contact support if the issue persists
+## If a sign-in or code does not work
 
-### I'm signed in but see an empty dashboard
-**Why:** Your store may not be fully set up yet.
-**Fix:** Go to **Projects** and create your first menu project.
+- Check that you entered the same email or phone number used for the business.
+- For WhatsApp codes, wait for the resend timer before asking for another code.
+- If payment is pending, open Billing and use the existing payment link instead of creating another account.
+- If MenuList says the operation is temporarily unavailable, wait briefly and try again. No new claim, OTP charge, or account transfer is started while that protection is unavailable.
 
-### "Access Denied" error
-**Why:** Your user account may not have the right permissions for this store.
-**Fix:** Contact your account owner to check your role assignment.
-
----
-
-## Tips
-- 💡 Use the same Google account every time — your data is linked to it
-- 💡 Bookmark **menulist.ai** for quick access
-- 💡 You stay signed in across browser sessions (unless you explicitly sign out)
-
-## Related Features
-- **[Roles & Permissions]** — What you can do depends on your assigned role
-- **[Stores Management]** — Your store settings and configuration
-
-## Need More Help?
-- **Email:** support@menulist.ai
+Contact support when the account is blocked, the claim link expired, the business opens under the wrong identity, or a payment was deducted but the plan did not activate. Do not send passwords, passcodes, OTPs, or claim links to support.

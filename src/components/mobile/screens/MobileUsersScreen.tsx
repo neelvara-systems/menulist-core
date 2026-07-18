@@ -1,7 +1,10 @@
 'use client'
 
 import { createStaffUser, fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset, updateStaffUser } from '@lib/staffManagement/client';
+import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
 import { getBoundedStaffStringContext, logStaffClientFailure } from '@lib/staffManagement/diagnostics';
+import { canManageStaffTarget } from '@lib/staffManagement/scopeBoundary';
+import { OWNER_ACCESS_NOT_TRANSFER_COPY } from '@lib/staffManagement/ownershipTransferBoundary';
 import {
     buildStaffLoginDetailsText,
     copyTextToClipboard,
@@ -36,6 +39,13 @@ const userHasCurrentStore = (user: any, storeId: number | string | undefined) =>
         user?.storeIds?.some((id: any) => Number(id) === Number(storeId))
         || user?.stores?.some((store: any) => Number(store?.storeId) === Number(storeId))
     )
+);
+
+const getMobileStaffTargetFailureCopy = (error: unknown, fallback: string) => (
+    error && typeof error === 'object' && 'code' in error
+        && (error as { code?: unknown }).code === 'OWNER_MANAGEMENT_FORBIDDEN'
+        ? 'Only an Owner can change an Owner account'
+        : fallback
 );
 
 function StaffLoginCopyRow({
@@ -202,6 +212,15 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     const roles = staffStores.find((store) => store.storeId === storeDetails?.storeId)?.roles || storeDetails?.roles || [];
     const canManageUsers = userPermissions?.canManageUsers === true;
     const canAssignRoles = userPermissions?.canAssignRoles === true;
+    const canManageTarget = (target: unknown) => canManageStaffTarget({
+        canAssignRoles,
+        canManageUsers,
+        target,
+    });
+    const selectedTargetCanBeManaged = selectedUser ? canManageTarget(selectedUser) : false;
+    const assignableRoles = canAssignRoles
+        ? roles
+        : roles.filter((role: any) => role.id === DEFAULT_ROLE_IDS.STAFF);
     const defaultStaffCountryCode = (storeDetails as any)?.countryCode || '';
     const defaultStaffDialCode = (storeDetails as any)?.dialCode || '';
     const buildMobileStaffLogContext = (flow: string, metadata: MobileStaffLogContext = {}): MobileStaffLogContext => ({
@@ -295,10 +314,12 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
         } catch (err) {
             const knownStaffCreateCopy: Record<string, string> = {
                 ALREADY_ASSIGNED: 'User already assigned to this store',
+                AUTH_BINDING_INVALID: 'This account needs MenuList support before it can be added',
                 EMAIL_EXISTS: 'Email already used',
                 EMAIL_OTHER_TENANT: 'This email belongs to another business',
                 INVALID_EMAIL: 'Invalid email address',
                 ROLE_ASSIGNMENT_FORBIDDEN: 'You cannot assign this role',
+                STAFF_LOGIN_COLLISION: 'Could not reserve a Staff ID. Try again.',
             };
             const errorCode = err && typeof err === 'object' && 'code' in err ? String((err as { code?: unknown }).code || '') : '';
             logStaffClientFailure('mobile_staff_create_user_failed', err, buildMobileStaffLogContext('create_staff', {
@@ -314,6 +335,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
     };
 
     const handleToggleActive = async (user: UserDataType) => {
+        if (!canManageTarget(user)) return;
         setIsUpdatingUser(true);
         try {
             const response = await updateStaffUser({
@@ -328,7 +350,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 nextActive: !user.active,
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+            Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -355,13 +377,14 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                 ...getBoundedStaffStringContext('userId', user.id),
                 ...getBoundedStaffStringContext('roleId', roleId),
             }));
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+            Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
     };
 
     const handleRemoveUser = async (user: UserDataType) => {
+        if (!canManageTarget(user)) return;
         setIsUpdatingUser(true);
         try {
             const response = await removeStaffFromStore({
@@ -378,13 +401,14 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             logStaffClientFailure('mobile_staff_remove_failed', err, buildMobileStaffLogContext('remove_staff', {
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+            Toast.show({ content: getMobileStaffTargetFailureCopy(err, t('failedToUpdate')), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
     };
 
     const handleResetPassword = async (user: UserDataType) => {
+        if (!canManageTarget(user)) return;
         setIsUpdatingUser(true);
         try {
             const data = await requestStaffPasswordReset({
@@ -413,13 +437,14 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             logStaffClientFailure('mobile_staff_password_reset_failed', err, buildMobileStaffLogContext('reset_staff_access', {
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: 'Could not reset staff access', duration: 2000 });
+            Toast.show({ content: getMobileStaffTargetFailureCopy(err, 'Could not reset staff access'), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
     };
 
     const handleForceSignOut = async (user: UserDataType) => {
+        if (!canManageTarget(user)) return;
         setIsUpdatingUser(true);
         try {
             const data = await forceSignOutStaffUser({
@@ -436,7 +461,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
             logStaffClientFailure('mobile_staff_force_signout_failed', err, buildMobileStaffLogContext('force_signout_staff', {
                 ...getBoundedStaffStringContext('userId', user.id),
             }));
-            Toast.show({ content: 'Could not sign out staff member', duration: 2000 });
+            Toast.show({ content: getMobileStaffTargetFailureCopy(err, 'Could not sign out staff member'), duration: 2000 });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -561,10 +586,21 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                         </Button>
                                     ))}
                                 </Flex>
+                                {(selectedUser as any)?.stores?.some((store: any) => (
+                                    Number(store?.storeId) === Number(storeDetails?.storeId)
+                                    && store?.role === DEFAULT_ROLE_IDS.OWNER
+                                )) ? (
+                                    <Text type="secondary">{OWNER_ACCESS_NOT_TRANSFER_COPY}</Text>
+                                ) : null}
                             </Card>
+
+                            {!selectedTargetCanBeManaged && (selectedUser as any).ownerProtected ? (
+                                <Text type="secondary">Owner accounts can only be changed by someone who can assign roles.</Text>
+                            ) : null}
 
                             <Button
                                 block
+                                disabled={!selectedTargetCanBeManaged}
                                 color={(selectedUser as any).active ? 'danger' : undefined}
                                 fill="outline"
                                 loading={isUpdatingUser}
@@ -589,7 +625,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
                             <Button
                                 block
-                                disabled={(selectedUser as any).active === false}
+                                disabled={!selectedTargetCanBeManaged || (selectedUser as any).active === false}
                                 fill="outline"
                                 loading={isUpdatingUser}
                                 onClick={() => {
@@ -613,6 +649,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
 
                             <Button
                                 block
+                                disabled={!selectedTargetCanBeManaged}
                                 fill="outline"
                                 loading={isUpdatingUser}
                                 onClick={() => {
@@ -637,6 +674,7 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                             <Button
                                 block
                                 color="danger"
+                                disabled={!selectedTargetCanBeManaged}
                                 fill="outline"
                                 loading={isUpdatingUser}
                                 onClick={() => {
@@ -723,16 +761,19 @@ export default function MobileUsersScreen({ onBack }: MobileUsersScreenProps) {
                                 <Input onChange={setNewUserPhone} placeholder={t('phonePlaceholder')} type="tel" value={newUserPhone} />
                             </Flex>
                         </Card>
-                        {roles.length > 0 ? (
+                        {assignableRoles.length > 0 ? (
                             <Card title={t('role')}>
                                 <Text type="secondary">Choose the permission set this staff member should start with.</Text>
                                 <Flex gap={8} wrap>
-                                    {roles.map((role: any) => (
+                                    {assignableRoles.map((role: any) => (
                                         <Button key={role.id} fill={newUserRole === role.id ? 'solid' : 'outline'} onClick={() => setNewUserRole(role.id)} size="small">
                                             {role.name}
                                         </Button>
                                     ))}
                                 </Flex>
+                                {newUserRole === DEFAULT_ROLE_IDS.OWNER ? (
+                                    <Text type="secondary">{OWNER_ACCESS_NOT_TRANSFER_COPY}</Text>
+                                ) : null}
                             </Card>
                         ) : null}
                         <Flex gap={8}>

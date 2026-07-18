@@ -7,8 +7,7 @@ service cloud.firestore {
     }
 
     match /signaldeskTeamMembers/{memberId} {
-      allow read: if isSignalDeskPlatformAdmin()
-        || (isAuthenticated() && memberId == request.auth.uid);
+      allow read: if canReadSignalDesk();
       allow write: if false;
     }
 
@@ -133,7 +132,7 @@ service cloud.firestore {
     }
 
     match /signaldeskAuditEvents/{docId} {
-      allow read: if isSignalDeskPlatformAdmin();
+      allow read: if canReadSignalDesk();
       allow write: if false;
     }
 
@@ -142,7 +141,7 @@ service cloud.firestore {
     }
 
     match /signaldeskAiOperationLedger/{docId} {
-      allow read: if isSignalDeskPlatformAdmin();
+      allow read: if canReadSignalDesk();
       allow write: if false;
     }
 
@@ -383,11 +382,30 @@ service cloud.firestore {
     function isSignedInSignalDeskMember() {
       return isAuthenticated()
         && exists(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid))
-        && get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.active == true;
+        && get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.pId == 'SD'
+        && get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.teamMemberId == request.auth.uid
+        && get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.userId == request.auth.uid
+        && get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.active == true
+        && get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.status == 'active'
+        && isSignalDeskHumanRole(
+          get(/databases/$(database)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.role
+        );
+    }
+
+    function isSignalDeskHumanRole(role) {
+      return role == 'founder-admin'
+        || role == 'growth-manager'
+        || role == 'operator'
+        || role == 'compliance-reviewer'
+        || role == 'readonly-analyst';
+    }
+
+    function isSignalDeskResource() {
+      return resource.data.pId == 'SD';
     }
 
     function canReadSignalDesk() {
-      return isSignalDeskPlatformAdmin() || isSignedInSignalDeskMember();
+      return isSignalDeskPlatformAdmin() && isSignalDeskResource();
     }
   }
 }

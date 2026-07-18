@@ -8,7 +8,7 @@
 
 ## Architecture Overview
 
-> **July 11, 2026 tenant-name propagation boundary:** `updateTenant()` delegates changed tenant names to authenticated `POST /api/tenants/name`. The route transactionally reads the canonical tenant and a bounded tenant store query, rechecks owner/platform authority, and writes tenant `name/storesList`, every canonical store `tenantName`, and one nested `storesSummary` merge together. Browser DAL code requires a bounded shaped acknowledgement and removes server-owned `name/storesList` from the follow-up direct update. Public menu/store/client-store/screen and Owner Business Assistant effects run in bounded chunks after commit.
+> **July 11, 2026 tenant-name propagation boundary:** `updateTenant()` delegates changed tenant names to authenticated `POST /api/tenants/name`. The route transactionally reads the canonical tenant and a bounded tenant store query, rechecks owner/platform authority, and writes tenant `name/storesList`, every canonical store `tenantName`, and one nested `storesSummary` merge together. Browser DAL code requires a bounded shaped acknowledgement and removes server-owned `name/storesList` from the follow-up direct update. Public menu/store/client-store/screen and Owner Business Assistant effects run in bounded chunks after commit. Each derived effect is isolated with all-settled execution: one failure cannot stop later stores/global tags or turn the committed rename into HTTP 500. The response reports `effectsPending` and `failedEffectCount`, while bounded diagnostics preserve recovery visibility.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐

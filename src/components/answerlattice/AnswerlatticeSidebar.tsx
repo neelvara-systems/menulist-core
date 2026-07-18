@@ -116,7 +116,7 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
         return FEATURE_FLAGS[nav.featureFlag as keyof typeof FEATURE_FLAGS] === true;
     }, [access?.isPlatformAdmin, access?.permissions, canUseManagementSurfaces]);
 
-    const visibleNav = useMemo(() => (
+    const authorizedNav = useMemo(() => (
         ANSWERLATTICE_SIDEBAR_NAV
             .map((nav: AnswerlatticeNavItem) => ({
                 ...nav,
@@ -125,6 +125,13 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
             .filter((nav: AnswerlatticeNavItem) => canShowNavItem(nav) || Boolean(nav.subNav?.length))
     ), [canShowNavItem]);
 
+    const visibleNav = useMemo(() => (
+        authorizedNav.map((nav) => ({
+            ...nav,
+            subNav: nav.subNav?.filter(subItem => subItem.advanced !== true),
+        }))
+    ), [authorizedNav]);
+
     useEffect(() => {
         setExpandedParents((prev) => {
             const next = { ...prev };
@@ -132,7 +139,8 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
             visibleNav.forEach((nav) => {
                 if (!nav.subNav?.length) return;
 
-                const hasActiveChild = nav.subNav.some((subItem) => selectedKey === subItem.route);
+                const authorizedParent = authorizedNav.find(item => item.route === nav.route);
+                const hasActiveChild = authorizedParent?.subNav?.some((subItem) => selectedKey === subItem.route) === true;
                 const isParentRoute = selectedKey === nav.route;
 
                 if (hasActiveChild || isParentRoute) {
@@ -142,7 +150,7 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
 
             return next;
         });
-    }, [selectedKey, visibleNav]);
+    }, [authorizedNav, selectedKey, visibleNav]);
 
     const navItems = useMemo<DashboardSidebarShellItem[]>(() => (
         visibleNav.map((nav: AnswerlatticeNavItem) => {
@@ -156,7 +164,9 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
                     onNavigate?.();
                 },
             })) || [];
-            const subNavActive = subNav.some((subItem) => subItem.active);
+            const authorizedParent = authorizedNav.find(item => item.route === nav.route);
+            const subNavActive = subNav.some((subItem) => subItem.active)
+                || authorizedParent?.subNav?.some(subItem => subItem.advanced === true && selectedKey === subItem.route) === true;
             const clickRoute = nav.route;
             const hasSubNav = Boolean(subNav.length);
             const active = !hasSubNav && selectedKey === nav.route;
@@ -185,7 +195,7 @@ export default function AnswerlatticeSidebar({ mobile = false, onNavigate, onOpe
                 },
             };
         })
-    ), [currentHostname, expandedParents, onNavigate, router, selectedKey, visibleNav]);
+    ), [authorizedNav, currentHostname, expandedParents, onNavigate, router, selectedKey, visibleNav]);
 
     const openAppAppearance = () => {
         if (mobile && onOpenAppSettings) {

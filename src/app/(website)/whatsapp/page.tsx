@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -9,7 +10,7 @@ import { Metadata } from 'next';
 const title = 'WhatsApp Menu and Service List Onboarding | MenuList';
 const description = 'See how WhatsApp-first onboarding will prepare an owner-reviewed preview and official customer link. Start now with a photo or public menu link.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description,
     url: '/whatsapp',
   },
-};
+});
 
 export default function Page() {
   return (

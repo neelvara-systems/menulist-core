@@ -7,6 +7,7 @@ import {
 import {
     findOnboardingProviderSubscriptionForAttempt,
     isOnboardingProviderSubscription,
+    isMatchingPersistedOnboardingSubscription,
     resolveOnboardingPlanPrice,
 } from '../../src/lib/onboarding/onboardingSubscriptionBoundary';
 
@@ -114,5 +115,40 @@ assert.equal(findOnboardingProviderSubscriptionForAttempt({
     tenantId: 11,
     userId: 'owner-1',
 }), null, 'provider recovery must require the exact deterministic attempt identity');
+
+const persistedSubscription = {
+    id: 'sub_Recovered123',
+    paymentProvider: 'razorpay',
+    planId: 'starter',
+    providerSubscriptionId: 'sub_Recovered123',
+    status: 'active',
+    storeId: 22,
+    tenantId: 11,
+    userId: 'owner-1',
+};
+assert.equal(isMatchingPersistedOnboardingSubscription({
+    planId: 'starter',
+    providerSubscriptionId: 'sub_Recovered123',
+    storeId: 22,
+    subscription: persistedSubscription,
+    tenantId: 11,
+    userId: 'owner-1',
+}), true, 'an exact persisted record remains authoritative even if a webhook already changed status');
+for (const subscription of [
+    { ...persistedSubscription, providerSubscriptionId: 'sub_Other123' },
+    { ...persistedSubscription, tenantId: 12 },
+    { ...persistedSubscription, storeId: 23 },
+    { ...persistedSubscription, userId: 'owner-2' },
+    { ...persistedSubscription, planId: 'growth' },
+]) {
+    assert.equal(isMatchingPersistedOnboardingSubscription({
+        planId: 'starter',
+        providerSubscriptionId: 'sub_Recovered123',
+        storeId: 22,
+        subscription,
+        tenantId: 11,
+        userId: 'owner-1',
+    }), false, 'ambiguous persistence recovery must require exact local subscription identity');
+}
 
 process.stdout.write('Onboarding subscription boundary tests passed.\n');

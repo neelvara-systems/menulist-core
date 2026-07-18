@@ -944,6 +944,8 @@ export function renderAnswerlatticeLlmsTxt() {
 - [Pre-Onboarding Kit](${ANSWERLATTICE_SITE_URL}/pre-onboarding.md): Master prompt for preparing available product sources, multi-product repo boundaries, website links, docs, owner notes, policies, support questions, and screenshot rules before AnswerLattice onboarding.
 - [Pre-Onboarding Owner Guide](${ANSWERLATTICE_SITE_URL}/pre-onboarding/owner-guide.md): End-to-end owner checklist for using the prompt and reviewing generated inputs.
 - [Pre-Onboarding Agent Guide](${ANSWERLATTICE_SITE_URL}/pre-onboarding/agent-guide.md): Operating rules for AI coding agents preparing AnswerLattice input packages.
+- [Founder Support Launch Kit](${ANSWERLATTICE_SITE_URL}/resources/founder-launch-kit): Seven-step path from source preparation through ten priority questions, governed tests, widget verification, and explicit resolution evidence.
+- Tool-specific pre-onboarding wrappers are available for Codex, Cursor, Claude Code, Replit, and Lovable under "/pre-onboarding/{tool}.md". They embed the same master safety and owner-review contract and are not product integrations.
 - [AnswerLattice Widget Contract v1](${ANSWERLATTICE_SITE_URL}/install/contracts.md): Stable script URL, browser API, safe context schema, and dashboard-owned route settings.
 - [Resources](${ANSWERLATTICE_SITE_URL}/resources): Launch setup, pre-onboarding, widget verification, support control, pricing, and runtime-safety guides.
 - [Developers](${ANSWERLATTICE_SITE_URL}/developers): Widget install, safe page context, optional signed visitor context, bounded evidence links, verification, framework quickstarts, and agent install packets.
@@ -997,6 +999,12 @@ export function renderAnswerlatticeLlmsFullTxt() {
 - ${ANSWERLATTICE_SITE_URL}/pre-onboarding/guide
 - ${ANSWERLATTICE_SITE_URL}/pre-onboarding/owner-guide.md
 - ${ANSWERLATTICE_SITE_URL}/pre-onboarding/agent-guide.md
+- ${ANSWERLATTICE_SITE_URL}/pre-onboarding/codex.md
+- ${ANSWERLATTICE_SITE_URL}/pre-onboarding/cursor.md
+- ${ANSWERLATTICE_SITE_URL}/pre-onboarding/claude-code.md
+- ${ANSWERLATTICE_SITE_URL}/pre-onboarding/replit.md
+- ${ANSWERLATTICE_SITE_URL}/pre-onboarding/lovable.md
+- ${ANSWERLATTICE_SITE_URL}/resources/founder-launch-kit
 - ${ANSWERLATTICE_SITE_URL}/install
 - ${ANSWERLATTICE_SITE_URL}/install/ai-agent
 - ${ANSWERLATTICE_SITE_URL}/install/contracts.md

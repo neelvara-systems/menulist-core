@@ -25,7 +25,7 @@ import {
     getAuthUserByEmail,
     getUniqueAuthUserByEmailFromCollection,
 } from '@lib/auth/serverUserContext';
-import { resolveSetClaimsWorkspaceFromStore } from '@lib/auth/setClaimsWorkspace';
+import { resolveSetClaimsRole, resolveSetClaimsWorkspaceFromStore } from '@lib/auth/setClaimsWorkspace';
 import { shouldUseSharedAnswerlatticeFirebase } from '@lib/firebase/answerlatticeConfig';
 import { answerlatticeAdminApp, answerlatticeAuthAdmin, answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { authAdmin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
@@ -183,7 +183,7 @@ const buildAnswerlatticeScopedFallbackUser = (
 ): any => {
     if (!fallbackDbUser || !scope) return fallbackDbUser;
 
-    const role = scope.role || fallbackDbUser.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.OWNER;
+    const role = scope.role || DEFAULT_ANSWERLATTICE_ROLE_IDS.STAFF;
     const stores = [{
         role,
         storeId: scope.storeId,
@@ -479,8 +479,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
         const claimTenantScope = canonicalWorkspace.tenantScope;
 
-        // Get user's current-store role. Older/platform records may still carry
-        // a top-level role, so keep that as the compatibility fallback.
+        // A Firebase store claim must come from the exact current membership.
+        // Account-level role/platformRole fields cannot supply store authority.
         const storeRole = shouldUseAnswerlatticeUserContext
             ? getAnswerlatticeStaffClaimMembership(answerlatticeClaimState, claimStoreScope.numericId)?.role
             : Array.isArray(dbUser.stores)
@@ -488,7 +488,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     normalizeStorePermissionScopeDocumentId(store?.storeId)?.numericId === claimStoreScope.numericId
                 ))?.role
                 : undefined;
-        const userRole = storeRole || dbUser.role;
+        const userRole = resolveSetClaimsRole({
+            hasPlatformAccess: hasDefaultPlatformAccess,
+            userRole: storeRole,
+        });
+        if (!userRole) {
+            logAuthDiagnostic('set_claims_missing_or_privileged_store_role_rejected', {
+                ...getSetClaimsEmailLogContext(session.user.email),
+                ...getSetClaimsStoreLogContext(claimStoreScope.documentId),
+                ...getSetClaimsUserLogContext(dbUser.id),
+            });
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+        }
         const productId = shouldUseAnswerlatticeUserContext
             ? PRODUCT_IDS.ANSWERLATTICE
             : normalizeProductId(dbUser.pId || dbUser.productId);
@@ -506,7 +517,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 accessRevision: answerlatticeClaimState?.accessRevision || 0,
             } : {}),
             pId: productId,
-            role: userRole || 'OWNER',
+            role: userRole,
             platformRole: dbUser.platformRole || 'USER',
             tenantId: claimTenantScope.documentId,
             storeId: claimStoreScope.documentId,

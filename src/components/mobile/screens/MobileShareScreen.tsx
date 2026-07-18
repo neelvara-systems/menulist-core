@@ -3,14 +3,22 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { PERMISSIONS } from '@constant/permissions';
 import { getScreenState } from '@database/campaigns';
-import { recordStarterActivationSignal } from '@database/stores';
+import {
+    assertStarterActivationSignalUpdateSucceeded,
+    recordStarterActivationSignal,
+} from '@database/stores';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { trackMenuKitDownload } from '@lib/analytics/unified';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import {
+    hasFeedbackPresenceReadiness,
+    hasPublishedMenuProject,
+} from '@lib/menuPresence/presenceReadiness';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset, type MenuKitAssetKey, shareBlob } from '@lib/menu-kit/menuKitGenerator';
+import { recordLocalPdfDownload, resolveLocalExportStorageScope } from '@lib/export/localExportHistory';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { PRINTABLE_ASSET_TYPES, getPrintableAssetPreviewCopy, getPrintableAssetType } from '@lib/printable-asset-templates/assetTypes';
 import { renderPrintableAsset, renderPrintableAssetDownloadFiles } from '@lib/printable-asset-templates/renderPrintableAsset';
@@ -29,6 +37,7 @@ import {
 } from '@lib/print-assets/ownerPrintGuidance';
 import {
     STARTER_ACTIVATION_SIGNALS,
+    applyStarterActivationSignalToStoreDetails,
     isStarterActivationSignal,
     shouldRecordStarterActivationSignal,
     type StarterActivationSignal,
@@ -256,7 +265,7 @@ export default function MobileShareScreen({
     const { token } = theme.useToken();
     const router = useRouter();
     const { isCompactHandheld } = useViewportInfo();
-    const { isMasterUser, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const { isMasterUser, setStoreDetails, storeDetails, tenantDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const t = useTranslations('MobileShare');
     const referralT = useTranslations('OwnerReferral');
     const tProjectSelector = useTranslations('MobileProjectSelector');
@@ -305,6 +314,7 @@ export default function MobileShareScreen({
     );
     const canManageSharing = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_MENU_SHARING, PERMISSIONS.PUBLISH_MENU]);
     const canManageIntegrations = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_INTEGRATIONS]);
+    const canManageDigitalScreens = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
 
     const data = useMemo<ShareData | null>(() => {
         if (!storeDetails) return null;
@@ -345,14 +355,17 @@ export default function MobileShareScreen({
 
         const posSync = storeDetails.posSync;
         const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
-        const hasPublishedMenu = projects.some((project: any) => project.deleted !== true && project.active !== false);
+        const hasPublishedMenu = hasPublishedMenuProject(projects);
 
         return {
             allProjects,
             businessType: storeDetails.businessType || '',
             feedbackLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'direct_link', obpLink) : '',
             feedbackQrLink: defaultProject.projectId ? getFeedbackUrl(defaultProject.projectId, 'feedback_qr', obpLink) : '',
-            hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+            hasFeedbackEnabled: hasFeedbackPresenceReadiness({
+                feedbackEnabled: storeDetails.feedbackEnabled,
+                hasPublishedMenu,
+            }),
             hasPosSync,
             hasPublishedMenu,
             installAppLink,
@@ -416,7 +429,12 @@ export default function MobileShareScreen({
     ]);
 
     useEffect(() => {
-        if (!storeDetails?.storeId || !data?.obpLink) {
+        if (
+            !FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
+            || !canManageDigitalScreens
+            || !storeDetails?.storeId
+            || !data?.obpLink
+        ) {
             setScreenLinks({ highlightsLink: null, isLoading: false, menuBoardLink: null });
             return;
         }
@@ -447,7 +465,7 @@ export default function MobileShareScreen({
         return () => {
             cancelled = true;
         };
-    }, [buildMobileShareLogContext, data?.obpLink, storeDetails?.storeId]);
+    }, [buildMobileShareLogContext, canManageDigitalScreens, data?.obpLink, storeDetails?.storeId]);
 
     useEffect(() => {
         setSupportsNativeShare(typeof navigator !== 'undefined' && typeof navigator.share === 'function');
@@ -561,13 +579,20 @@ export default function MobileShareScreen({
         if (recordedStarterSignalsRef.current.has(signal)) return;
 
         recordedStarterSignalsRef.current.add(signal);
-        recordStarterActivationSignal(storeDetails.storeId, signal).catch((error) => {
-            logMobileOwnerFailure('mobile_share_starter_signal_record_failed', error, buildMobileShareLogContext('starter_signal_record', {
-                ...getBoundedMobileOwnerStringContext('starterSignal', signal),
-            }));
-            recordedStarterSignalsRef.current.delete(signal);
-        });
-    }, [buildMobileShareLogContext, storeDetails]);
+        recordStarterActivationSignal(storeDetails.storeId, signal)
+            .then((result) => {
+                assertStarterActivationSignalUpdateSucceeded(result, storeDetails.storeId, signal);
+                setStoreDetails((current: any) => (
+                    applyStarterActivationSignalToStoreDetails(current, signal, result.recordedAt, result.storeId)
+                ));
+            })
+            .catch((error) => {
+                logMobileOwnerFailure('mobile_share_starter_signal_record_failed', error, buildMobileShareLogContext('starter_signal_record', {
+                    ...getBoundedMobileOwnerStringContext('starterSignal', signal),
+                }));
+                recordedStarterSignalsRef.current.delete(signal);
+            });
+    }, [buildMobileShareLogContext, setStoreDetails, storeDetails]);
 
     const handleCopy = async (value: string, label: string, starterSignal?: StarterActivationSignal) => {
         try {
@@ -890,10 +915,11 @@ export default function MobileShareScreen({
             });
 
             downloadPdf(pdfResult);
-            localStorage.setItem(`menulist_last_pdf_download_${data.projectId}`, Date.now().toString());
-            if (pdfResult.snapshotHash) {
-                localStorage.setItem(`menulist_last_pdf_version_${data.projectId}`, pdfResult.snapshotHash);
-            }
+            recordLocalPdfDownload(
+                resolveLocalExportStorageScope(storeDetails as any),
+                data.projectId,
+                pdfResult.snapshotHash,
+            );
             Toast.show({ content: t('pdfDownloaded'), duration: 1400, icon: 'success' });
         } catch (error) {
             logMobileOwnerFailure('mobile_share_pdf_download_failed', error, buildMobileShareLogContext('pdf_download'));
@@ -967,9 +993,12 @@ export default function MobileShareScreen({
         setGeneratingDownload(key);
         try {
             const asset = await generateMenuKitAsset(input, assetKey);
-            const shared = trackingAction ? await shareBlob(asset.blob, asset.filename, label) : false;
-            if (shared) {
-                void trackMenuKitDownload(trackingAction);
+            const shareResult = trackingAction
+                ? await shareBlob(asset.blob, asset.filename, label)
+                : 'unsupported';
+            if (shareResult === 'cancelled') return;
+            if (trackingAction) void trackMenuKitDownload(trackingAction);
+            if (shareResult === 'shared') {
                 Toast.show({ content: t('assetShared', { label }), duration: 1400, icon: 'success' });
             } else {
                 downloadBlob(asset.blob, asset.filename);
@@ -1360,6 +1389,10 @@ export default function MobileShareScreen({
         );
     }
 
+    const officialBusinessLinkHint = FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES
+        ? t('obpNudgeHint')
+        : t('obpShareHint');
+
     return (
         <Flex gap={isCompactHandheld ? 14 : 18} style={{ padding: isCompactHandheld ? 12 : 16 }} vertical>
             {activeProject && data.allProjects.length > 1 ? (
@@ -1398,7 +1431,7 @@ export default function MobileShareScreen({
 
             <MobileLinkCard
                 compact={isCompactHandheld}
-                description={t('obpShareHint')}
+                description={officialBusinessLinkHint}
                 icon={<LuExternalLink color={token.colorText} size={18} />}
                 isPrimary
                 label={t('officialBusinessLink')}
@@ -1410,12 +1443,12 @@ export default function MobileShareScreen({
                 onOpen={() => openInternalLink(withSource(data.obpLink, 'direct'))}
                 onShare={supportsNativeShare ? () => void handleNativeShare({
                     label: t('officialBusinessLink'),
-                    text: t('obpShareHint'),
+                    text: officialBusinessLinkHint,
                     url: withSource(data.obpLink, 'share'),
                 }) : undefined}
                 onShowQr={() => handleOpenQr({
                     filename: buildQrCodeFilename(`${data.storeName}-official-page`, 'qr'),
-                    helperText: t('obpShareHint'),
+                    helperText: officialBusinessLinkHint,
                     starterSignal: STARTER_ACTIVATION_SIGNALS.QR_DOWNLOADED,
                     title: t('officialBusinessLink'),
                     url: withSource(data.obpLink, 'qr'),
@@ -1775,6 +1808,7 @@ export default function MobileShareScreen({
                 </Flex>
             ) : null}
 
+            {FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED && canManageDigitalScreens ? (
             <Card style={{ borderRadius: 24 }}>
                 <Flex gap={12} vertical>
                     <SectionHeader
@@ -1842,6 +1876,7 @@ export default function MobileShareScreen({
                     )}
                 </Flex>
             </Card>
+            ) : null}
 
             {data.hasPosSync ? (
                 <Card style={{ borderRadius: 24 }}>

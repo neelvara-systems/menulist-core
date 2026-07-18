@@ -9,7 +9,6 @@
 import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import * as functions from 'firebase-functions';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { aggregateDailyChatStatsLogic } from '../aggregateDailyChatStats';
 import {
     normalizeScopeDocumentId,
     normalizeSubscriptionDocumentId,
@@ -18,20 +17,23 @@ import {
 } from '../billing/reconcileSubscriptions';
 import { SECRET_GROUPS } from '../config/secrets';
 import { DB_COLLECTIONS } from '../constants/database';
-import { FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from '../constants/features';
+import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from '../constants/features';
 import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import { createAlert } from '../monitoring/alerts';
 import { isAlertsMuted } from '../monitoring/deployMute';
 import { sendPlatformAlertDelivery } from '../monitoring/platformNotificationDelivery';
 import { sendTelegramAlert } from '../monitoring/telegramAlert';
+import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
 import { intakeProcessorLogic } from '../messagingOnboarding';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
+import { resolveNextSpecialMenuTransitionAt } from '../sharedData/specialMenuSchedule';
 import { parsePlatformStoreSummary } from '../sharedData/storeSummaryBoundary';
 import { runAiProviderHealthCheckLogic } from './aiProviderHealth';
 import { recoverAiCapacityReservationsInCollectionRef } from './aiCapacityReservationRecovery';
 import { rebuildFounderMonitorSnapshotLogic } from './founderMonitorSnapshot';
 import {
     cleanupExpiredPreviewJobsLogic,
+    cleanupOldMenuLinkImportArtifactsLogic,
     cleanupOldJobsLogic,
     pruneCompletedProjectJobPayloadsLogic,
     cleanupStuckCancellingJobsLogic,
@@ -40,15 +42,31 @@ import {
 } from './menuJobCleanup';
 import { messagingSessionCleanupLogic } from './messagingSessionCleanup';
 import {
+    parseSpecialMenuSummaryProjects,
+    transitionScheduledSpecialMenu,
+} from './specialMenuLifecycle';
+import {
     filterProjectReferencedImageBatchUrls,
     getImageBatchImageUrls,
     getImageBatchStorageCleanupUrls,
+    selectImageBatchRetentionStorePage,
     shouldDeleteImageBatchStorage,
 } from './imageBatchRetentionBoundary';
+import {
+    isImagePromptCacheSourcePath,
+    shouldDeleteCurrentImagePromptCacheDocument,
+} from './imagePromptCacheRetentionBoundary';
+import { selectDeterministicRetentionStorePage } from './retentionStorePageBoundary';
 
 const logger = functions.logger;
 
 const MINUTE_MS = 60 * 1000;
+const BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT = 100;
+
+function appendBoundedBillingStatusHistory(current: unknown, entry: Record<string, unknown>): unknown[] {
+    const existing = Array.isArray(current) ? current : [];
+    return [...existing, entry].slice(-BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT);
+}
 const DAY_MS = 24 * 60 * MINUTE_MS;
 const SCHEDULER_NAME = 'menulistMaintenanceScheduler';
 const STATE_DOC_ID = 'menulistMaintenanceScheduler';
@@ -63,6 +81,7 @@ const IMAGE_BATCH_STORAGE_DELETE_FAILED_CODE = 'IMAGE_BATCH_STORAGE_DELETE_FAILE
 const IMAGE_BATCH_PROJECT_REFERENCE_CHECK_FAILED_CODE = 'IMAGE_BATCH_PROJECT_REFERENCE_CHECK_FAILED';
 const IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED_CODE = 'IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED';
 const AI_OPERATION_STORE_CLEANUP_FAILED_CODE = 'AI_OPERATION_STORE_CLEANUP_FAILED';
+const SUBSCRIPTION_ACCESS_EXPIRY_FAILED_CODE = 'SUBSCRIPTION_ACCESS_EXPIRY_FAILED';
 const UNRESOLVED_CRITICAL_ALERT_TITLE = 'Still unresolved: Critical system alert';
 const UNRESOLVED_CRITICAL_ALERT_MESSAGE =
     'A critical platform alert has been unacknowledged for 30+ minutes. Review the alert record in the ops console; outbound escalation includes bounded metadata only.';
@@ -70,8 +89,10 @@ const IMAGE_BATCH_TERMINAL_STATUSES = ['completed', 'failed', 'cancelled', 'fini
 const IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT = 200;
 const IMAGE_BATCH_RETENTION_LIMIT_PER_STORE = 10;
 const IMAGE_BATCH_LEGACY_RETENTION_LIMIT_PER_STORE = 5;
-const IMAGE_PROMPT_CACHE_STORAGE_PREFIX = 'system/aiImagePromptCache/';
+const MENU_SNAPSHOT_RETENTION_STORE_SCAN_LIMIT = 200;
+const MENU_SNAPSHOT_RETENTION_LIMIT_PER_STORE = 25;
 const IMAGE_PROMPT_CACHE_CLEANUP_LIMIT = 25;
+const SPECIAL_MENU_DUE_SUMMARY_LIMIT = 50;
 
 type TaskStatus = 'success' | 'failed' | 'skipped';
 
@@ -544,7 +565,7 @@ async function runTask(task: MaintenanceTask, runId: string, dueAt: Date): Promi
 async function runMessagingIntake(): Promise<MaintenanceTaskResult> {
     const result = await intakeProcessorLogic();
     return {
-        activity: result.inboundProcessed > 0 || result.processed > 0 || result.errors > 0,
+        activity: result.inboundProcessed > 0 || result.outboundSent > 0 || result.processed > 0 || result.errors > 0,
         details: result,
     };
 }
@@ -588,12 +609,17 @@ async function runMenuStuckCleanup(): Promise<MaintenanceTaskResult> {
 }
 
 async function runMenuOldCleanup(): Promise<MaintenanceTaskResult> {
+    const artifactResult = await cleanupOldMenuLinkImportArtifactsLogic();
     const pruneResult = await pruneCompletedProjectJobPayloadsLogic();
     const result = await cleanupOldJobsLogic();
+    if (artifactResult.errors > 0) {
+        throw new Error(`Menu-link artifact cleanup completed with ${artifactResult.errors} error(s)`);
+    }
     return {
-        activity: pruneResult.pruned > 0 || result.deleted > 0,
+        activity: artifactResult.scanned > 0 || pruneResult.pruned > 0 || result.deleted > 0,
         details: {
             ...result,
+            ...artifactResult,
             prunedProjectPayloads: pruneResult.pruned,
         },
     };
@@ -618,13 +644,12 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
     if (!isFunctionFeatureEnabled('ENABLE_PUBLIC_MENU_ENTRY')) {
         return {
             activity: false,
-            details: { enabled: false, deletedDrafts: 0, deletedFiles: 0, errors: 0 },
+            details: { enabled: false, deletedDrafts: 0, deletedFiles: 0, preservedClaimedFiles: 0, errors: 0 },
         };
     }
 
     const snapshot = await db
         .collection(DB_COLLECTIONS.PUBLIC_MENU_DRAFTS)
-        .where('claimed', '==', false)
         .where('expiresAt', '<', Timestamp.now())
         .limit(100)
         .get();
@@ -632,13 +657,14 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
     if (snapshot.empty) {
         return {
             activity: false,
-            details: { enabled: true, deletedDrafts: 0, deletedFiles: 0, errors: 0 },
+            details: { enabled: true, deletedDrafts: 0, deletedFiles: 0, preservedClaimedFiles: 0, errors: 0 },
         };
     }
 
     const batch = db.batch();
     let deletedDrafts = 0;
     let deletedFiles = 0;
+    let preservedClaimedFiles = 0;
     let errors = 0;
     let sampleDraftCount = 0;
     let sampleDraftIdLengthTotal = 0;
@@ -647,7 +673,12 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
     for (const doc of snapshot.docs) {
         const data = doc.data();
         const imagePath = typeof data.imagePath === 'string' ? data.imagePath : '';
-        if (imagePath) {
+        const claimed = data.claimed === true;
+        if (claimed && imagePath) {
+            // The claimed project now owns this source URL. Delete the expired
+            // draft receipt but preserve the promoted source object.
+            preservedClaimedFiles += 1;
+        } else if (imagePath) {
             if (!imagePath.startsWith(`publicMenuDrafts/${doc.id}/`)) {
                 errors += 1;
                 logger.warn('[public_menu_draft_cleanup] Rejected invalid draft image path', {
@@ -691,6 +722,7 @@ async function runPublicMenuDraftCleanup(): Promise<MaintenanceTaskResult> {
             enabled: true,
             deletedDrafts,
             deletedFiles,
+            preservedClaimedFiles,
             errors,
             sampleDraftCount,
             sampleDraftIdLengthTotal,
@@ -787,6 +819,41 @@ async function deleteLegacySchedulerRunLogs(params: {
     }
 
     return { scanned: snapshot.size, deleted, skipped };
+}
+
+async function runSystemAlertRetentionCleanup(): Promise<MaintenanceTaskResult> {
+    const cutoff = Timestamp.fromMillis(
+        Date.now() - FUNCTION_RETENTION_CONFIG.SYSTEM_ALERT_RETENTION_DAYS * DAY_MS,
+    );
+    const snapshot = await db
+        .collection(DB_COLLECTIONS.SYSTEM_ALERTS)
+        .where('timestamp', '<=', cutoff)
+        .limit(100)
+        .get();
+
+    if (snapshot.empty) {
+        return {
+            activity: false,
+            details: {
+                deleted: 0,
+                retentionDays: FUNCTION_RETENTION_CONFIG.SYSTEM_ALERT_RETENTION_DAYS,
+                scanned: 0,
+            },
+        };
+    }
+
+    const batch = db.batch();
+    snapshot.docs.forEach((document) => batch.delete(document.ref));
+    await batch.commit();
+
+    return {
+        activity: true,
+        details: {
+            deleted: snapshot.size,
+            retentionDays: FUNCTION_RETENTION_CONFIG.SYSTEM_ALERT_RETENTION_DAYS,
+            scanned: snapshot.size,
+        },
+    };
 }
 
 async function deleteExpiredDocsInCollectionRef(params: {
@@ -984,17 +1051,16 @@ function isStorageObjectNotFound(error: unknown): boolean {
         || statusCode === 404;
 }
 
-function isImagePromptCacheSourcePath(value: unknown): value is string {
-    return typeof value === 'string' && value.startsWith(IMAGE_PROMPT_CACHE_STORAGE_PREFIX);
-}
-
 async function runImagePromptCacheCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const snapshot = await db
         .collection(DB_COLLECTIONS.AI_IMAGE_PROMPT_CACHE)
         .where('expiresAt', '<=', now)
-        .limit(IMAGE_PROMPT_CACHE_CLEANUP_LIMIT)
+        .orderBy('expiresAt', 'asc')
+        .limit(IMAGE_PROMPT_CACHE_CLEANUP_LIMIT + 1)
         .get();
+    const cleanupDocs = snapshot.docs.slice(0, IMAGE_PROMPT_CACHE_CLEANUP_LIMIT);
+    const hasMoreExpired = snapshot.size > cleanupDocs.length;
 
     if (snapshot.empty) {
         return {
@@ -1003,6 +1069,8 @@ async function runImagePromptCacheCleanup(): Promise<MaintenanceTaskResult> {
                 deletedDocs: 0,
                 deletedSources: 0,
                 errors: 0,
+                hasMoreExpired: false,
+                limit: IMAGE_PROMPT_CACHE_CLEANUP_LIMIT,
                 scanned: 0,
                 skippedSources: 0,
             },
@@ -1010,19 +1078,20 @@ async function runImagePromptCacheCleanup(): Promise<MaintenanceTaskResult> {
     }
 
     const bucket = storageAdmin.bucket();
-    const batch = db.batch();
     let deletedDocs = 0;
     let deletedSources = 0;
     let errors = 0;
     let skippedSources = 0;
 
-    for (const doc of snapshot.docs) {
+    for (const doc of cleanupDocs) {
         const sourcePath = doc.data().sourcePath;
-        if (isImagePromptCacheSourcePath(sourcePath)) {
+        let sourceCleanupSucceeded = true;
+        if (isImagePromptCacheSourcePath(sourcePath, doc.id)) {
             try {
                 await bucket.file(sourcePath).delete({ ignoreNotFound: true });
                 deletedSources += 1;
             } catch (error) {
+                sourceCleanupSucceeded = false;
                 errors += 1;
                 logger.warn('[ai_image_prompt_cache_cleanup] Failed to delete expired cache source', {
                     failureCode: IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED_CODE,
@@ -1030,18 +1099,36 @@ async function runImagePromptCacheCleanup(): Promise<MaintenanceTaskResult> {
                     ...getSchedulerStringContext('cacheDocId', doc.id),
                     ...getSchedulerErrorContext(error),
                 });
-                continue;
             }
         } else {
             skippedSources += 1;
         }
+        if (!sourceCleanupSucceeded) continue;
 
-        batch.delete(doc.ref);
-        deletedDocs += 1;
-    }
-
-    if (deletedDocs > 0) {
-        await batch.commit();
+        let deletedCurrentDoc = false;
+        try {
+            await db.runTransaction(async (transaction) => {
+                const current = await transaction.get(doc.ref);
+                if (!current.exists) return;
+                const currentData = current.data();
+                if (!currentData) return;
+                if (!shouldDeleteCurrentImagePromptCacheDocument({
+                    claimedSourcePath: sourcePath,
+                    currentData,
+                    nowMillis: now.toMillis(),
+                })) return;
+                transaction.delete(doc.ref);
+                deletedCurrentDoc = true;
+            });
+        } catch (error) {
+            errors += 1;
+            logger.warn('[ai_image_prompt_cache_cleanup] Failed to finalize expired cache document', {
+                failureCode: IMAGE_PROMPT_CACHE_SOURCE_DELETE_FAILED_CODE,
+                ...getSchedulerStringContext('cacheDocId', doc.id),
+                ...getSchedulerErrorContext(error),
+            });
+        }
+        if (deletedCurrentDoc) deletedDocs += 1;
     }
 
     return {
@@ -1050,8 +1137,9 @@ async function runImagePromptCacheCleanup(): Promise<MaintenanceTaskResult> {
             deletedDocs,
             deletedSources,
             errors,
+            hasMoreExpired,
             limit: IMAGE_PROMPT_CACHE_CLEANUP_LIMIT,
-            scanned: snapshot.size,
+            scanned: cleanupDocs.length,
             skippedSources,
         },
     };
@@ -1411,9 +1499,11 @@ async function runImageBatchJobRetentionCleanup(): Promise<MaintenanceTaskResult
     const now = Timestamp.now();
     const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
     const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
-    const storeEntries = Object.entries(storesSummary)
-        .filter(([, storeInfo]) => storeInfo.active !== false)
-        .slice(0, IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT);
+    const storePage = selectImageBatchRetentionStorePage(
+        storesSummary,
+        now.toMillis(),
+        IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT,
+    );
 
     let storesScanned = 0;
     let scanned = 0;
@@ -1422,7 +1512,7 @@ async function runImageBatchJobRetentionCleanup(): Promise<MaintenanceTaskResult
     let skipped = 0;
     const storage = { attempted: 0, deleted: 0, skipped: 0, errors: 0 };
 
-    for (const [sId, storeInfo] of storeEntries) {
+    for (const [sId, storeInfo] of storePage.entries) {
         const tId = storeInfo.tId;
         const collectionRef = db.collection(DB_COLLECTIONS.IMAGE_BATCH_PROCESSING_JOBS).doc(tId).collection(String(sId));
         const expired = await deleteExpiredImageBatchJobsInCollectionRef({
@@ -1466,8 +1556,12 @@ async function runImageBatchJobRetentionCleanup(): Promise<MaintenanceTaskResult
             deleted,
             skipped,
             storage,
+            storePageCount: storePage.pageCount,
+            storePageIndex: storePage.pageIndex,
+            storeScanLimit: IMAGE_BATCH_RETENTION_STORE_SCAN_LIMIT,
             itemsRetentionDays: FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_ITEMS_RETENTION_DAYS,
             jobRetentionDays: FUNCTION_RETENTION_CONFIG.IMAGE_BATCH_JOB_RETENTION_DAYS,
+            totalActiveStores: storePage.totalActiveStores,
         },
     };
 }
@@ -1476,20 +1570,25 @@ async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
     const now = Timestamp.now();
     const storesSummaryDoc = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc('storesSummary').get();
     const storesSummary = parsePlatformStoreSummary(storesSummaryDoc.exists ? storesSummaryDoc.data() : undefined);
-    const storeEntries = Object.entries(storesSummary)
-        .filter(([, storeInfo]) => storeInfo.active !== false)
-        .slice(0, 200);
+    // Snapshot subcollections use dynamic store IDs, so Firestore collection-
+    // group TTL cannot target them. Rotate a bounded page across every known
+    // store, including inactive stores whose old snapshots still need expiry.
+    const storePage = selectDeterministicRetentionStorePage(
+        storesSummary,
+        now.toMillis(),
+        MENU_SNAPSHOT_RETENTION_STORE_SCAN_LIMIT,
+    );
 
     let scanned = 0;
     let deleted = 0;
     let storesScanned = 0;
 
-    for (const [sId, storeInfo] of storeEntries) {
+    for (const [sId, storeInfo] of storePage.entries) {
         const tId = storeInfo.tId;
         const result = await deleteExpiredDocsInCollectionRef({
             collectionRef: db.collection(DB_COLLECTIONS.MENU_SNAPSHOTS).doc(tId).collection(String(sId)),
             now,
-            limit: 10,
+            limit: MENU_SNAPSHOT_RETENTION_LIMIT_PER_STORE,
         });
         scanned += result.scanned;
         deleted += result.deleted;
@@ -1503,6 +1602,11 @@ async function runMenuSnapshotCleanup(): Promise<MaintenanceTaskResult> {
             storesScanned,
             scanned,
             deleted,
+            storePageCount: storePage.pageCount,
+            storePageIndex: storePage.pageIndex,
+            storeScanLimit: MENU_SNAPSHOT_RETENTION_STORE_SCAN_LIMIT,
+            perStoreDeleteLimit: MENU_SNAPSHOT_RETENTION_LIMIT_PER_STORE,
+            totalKnownStores: storePage.totalStores,
         },
     };
 }
@@ -1564,6 +1668,156 @@ async function runSchedulerRunLogRetentionCleanup(): Promise<MaintenanceTaskResu
             deleted,
             expired,
             legacy,
+        },
+    };
+}
+
+function resolveSpecialMenuTenantId(projectId: string, storeId: string): string | null {
+    const parts = projectId.split('-');
+    const tenantId = parts[0];
+    if (
+        parts.length < 3
+        || parts[parts.length - 1] !== storeId
+        || !/^[1-9]\d*$/.test(tenantId)
+    ) {
+        return null;
+    }
+    return tenantId;
+}
+
+async function runSpecialMenuLifecycleTransitions(): Promise<MaintenanceTaskResult> {
+    if (!isFunctionFeatureEnabled('ENABLE_SPECIAL_MENU_SWITCHING')) {
+        return { activity: false, details: { enabled: false } };
+    }
+    const now = new Date();
+    const dueSummaries = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .where('specialMenuNextTransitionAt', '<=', now.toISOString())
+        .orderBy('specialMenuNextTransitionAt')
+        .limit(SPECIAL_MENU_DUE_SUMMARY_LIMIT)
+        .get();
+    let checked = 0;
+    let activated = 0;
+    let expired = 0;
+    let repaired = 0;
+    let blocked = 0;
+    let errors = 0;
+
+    for (const summaryDoc of dueSummaries.docs) {
+        const match = /^projects_([1-9]\d*)$/.exec(summaryDoc.id);
+        if (!match) {
+            errors++;
+            logger.error(`[${SCHEDULER_NAME}] Special-menu summary identity rejected`, {
+                failureCode: 'SPECIAL_MENU_SUMMARY_IDENTITY_INVALID',
+                summaryDocumentIdLength: summaryDoc.id.length,
+            });
+            continue;
+        }
+
+        const storeId = match[1];
+        const projects = parseSpecialMenuSummaryProjects(summaryDoc.data());
+        const specialMenus = Object.entries(projects)
+            .filter(([, project]) => project.isSpecialMenu === true)
+            .map(([projectId, project]) => ({
+                projectId,
+                startsAt: typeof project.specialMenuStartsAt === 'string'
+                    ? Date.parse(project.specialMenuStartsAt)
+                    : Number.NaN,
+                endsAt: typeof project.specialMenuEndsAt === 'string'
+                    ? Date.parse(project.specialMenuEndsAt)
+                    : Number.NaN,
+                status: project.specialMenuStatus,
+            }));
+        checked += specialMenus.length;
+
+        const transitions = [
+            ...specialMenus
+                .filter((menu) => (
+                    (menu.status === 'active' || menu.status === 'scheduled')
+                    && Number.isFinite(menu.endsAt)
+                    && menu.endsAt <= now.getTime()
+                ))
+                .sort((a, b) => a.endsAt - b.endsAt)
+                .map((menu) => ({ action: 'expire' as const, ...menu })),
+            ...specialMenus
+                .filter((menu) => (
+                    menu.status === 'scheduled'
+                    && Number.isFinite(menu.startsAt)
+                    && Number.isFinite(menu.endsAt)
+                    && menu.startsAt <= now.getTime()
+                    && menu.endsAt > now.getTime()
+                ))
+                .sort((a, b) => a.startsAt - b.startsAt || a.projectId.localeCompare(b.projectId))
+                .map((menu) => ({ action: 'activate' as const, ...menu })),
+        ];
+
+        if (transitions.length === 0) {
+            const nextTransitionAt = resolveNextSpecialMenuTransitionAt(projects);
+            await summaryDoc.ref.set({
+                specialMenuNextTransitionAt: nextTransitionAt || FieldValue.delete(),
+                lastUpdated: FieldValue.serverTimestamp(),
+            }, { merge: true });
+            continue;
+        }
+
+        for (const transition of transitions) {
+            const tenantId = resolveSpecialMenuTenantId(transition.projectId, storeId);
+            if (!tenantId) {
+                errors++;
+                logger.error(`[${SCHEDULER_NAME}] Special-menu project identity rejected`, {
+                    failureCode: 'SPECIAL_MENU_PROJECT_IDENTITY_INVALID',
+                    storeId,
+                    projectIdLength: transition.projectId.length,
+                });
+                continue;
+            }
+
+            try {
+                const result = await transitionScheduledSpecialMenu({
+                    action: transition.action,
+                    db,
+                    enableTempStatus: FUNCTION_FLAGS.ENABLE_TEMP_STATUS,
+                    now,
+                    projectId: transition.projectId,
+                    sId: storeId,
+                    tId: tenantId,
+                });
+                if (result.outcome === 'blocked') {
+                    blocked++;
+                    continue;
+                }
+                if (result.outcome === 'noop') continue;
+
+                await revalidatePublicClientCacheForStore(
+                    storeId,
+                    `specialMenuLifecycle:${result.outcome}`,
+                    { touchDigitalScreen: true },
+                );
+                if (result.outcome === 'activated') activated++;
+                if (result.outcome === 'expired') expired++;
+                if (result.outcome === 'repaired') repaired++;
+            } catch (error) {
+                errors++;
+                logger.error(`[${SCHEDULER_NAME}] Special-menu transition failed`, {
+                    failureCode: 'SPECIAL_MENU_TRANSITION_FAILED',
+                    action: transition.action,
+                    storeId,
+                    ...getSchedulerErrorContext(error),
+                });
+            }
+        }
+    }
+
+    return {
+        activity: activated > 0 || expired > 0 || repaired > 0 || blocked > 0 || errors > 0,
+        details: {
+            summaries: dueSummaries.size,
+            checked,
+            activated,
+            expired,
+            repaired,
+            blocked,
+            errors,
+            limited: dueSummaries.size === SPECIAL_MENU_DUE_SUMMARY_LIMIT,
         },
     };
 }
@@ -1657,18 +1911,11 @@ async function runAlertEscalation(): Promise<MaintenanceTaskResult> {
 }
 
 async function runChatStatsAggregation(): Promise<MaintenanceTaskResult> {
-    const result = await aggregateDailyChatStatsLogic();
-    if (result.failedCount > 0) {
-        throw new Error(`Chat stats aggregation failed for ${result.failedCount} store(s)`);
-    }
     return {
-        activity: true,
+        activity: false,
         details: {
-            totalStores: result.totalStores,
-            successCount: result.successCount,
-            failedCount: result.failedCount,
-            skippedCount: result.skippedCount,
-            errors: result.errors.length,
+            skipped: true,
+            reason: 'migrated_to_answerlattice_runtime',
         },
     };
 }
@@ -1678,6 +1925,129 @@ async function runAiProviderHealthCheck(): Promise<MaintenanceTaskResult> {
     return {
         activity: false,
         details: result,
+    };
+}
+
+async function runSubscriptionAccessExpiry(): Promise<MaintenanceTaskResult> {
+    const pageSize = 100;
+    const maxPages = 5;
+    const expiryStatuses = ['cancelled', 'paused'];
+    let checked = 0;
+    let expired = 0;
+    let errors = 0;
+    let entitlementSyncErrors = 0;
+    let limited = false;
+
+    for (let page = 0; page < maxPages; page += 1) {
+        const now = Timestamp.now();
+        const snapshot = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('status', 'in', expiryStatuses)
+            .where('cycleEndDate', '<=', now)
+            .orderBy('cycleEndDate', 'asc')
+            .limit(pageSize)
+            .get();
+        if (snapshot.empty) break;
+        checked += snapshot.size;
+
+        for (const subscriptionDoc of snapshot.docs) {
+            try {
+                const application = await db.runTransaction(async (transaction) => {
+                    const currentSnapshot = await transaction.get(subscriptionDoc.ref);
+                    if (!currentSnapshot.exists) return null;
+                    const current = {
+                        ...(currentSnapshot.data() || {}),
+                        id: currentSnapshot.id,
+                    } as Record<string, any>;
+                    const subscriptionId = normalizeSubscriptionDocumentId(currentSnapshot.id);
+                    const tenantScope = normalizeScopeDocumentId(current.tenantId ?? current.tId);
+                    const storeScope = normalizeScopeDocumentId(current.storeId ?? current.sId);
+                    const cycleEndMillis = timestampMillis(current.cycleEndDate);
+                    if (
+                        !subscriptionId
+                        || !tenantScope
+                        || !storeScope
+                        || !expiryStatuses.includes(String(current.status))
+                        || cycleEndMillis === null
+                        || cycleEndMillis > Date.now()
+                    ) return null;
+
+                    const expiredAt = Timestamp.now();
+                    const amount = Number(current.amount);
+                    const update = {
+                        billingEntitlementSyncPending: true,
+                        status: 'expired',
+                        subscriptionEndDate: current.cycleEndDate,
+                        modifiedOn: expiredAt,
+                        lastWebhook: {
+                            event: 'subscription.access_expired',
+                            timestamp: expiredAt,
+                        },
+                        statuses: appendBoundedBillingStatusHistory(current.statuses, {
+                            status: 'expired',
+                            timestamp: expiredAt,
+                            amount: Number.isFinite(amount) && amount >= 0 ? amount : 0,
+                            currency: current.currency || 'INR',
+                            remark: `${String(current.status)} subscription reached its paid cycle end`,
+                        }),
+                    };
+                    transaction.update(subscriptionDoc.ref, update);
+                    return {
+                        subscription: {
+                            ...current,
+                            ...update,
+                            id: subscriptionId,
+                        },
+                    };
+                });
+                if (!application) continue;
+                expired += 1;
+
+                try {
+                    const entitlementSynced = await syncStorePlanEntitlement(
+                        db,
+                        application.subscription,
+                        'menulistMaintenanceScheduler:subscriptionAccessExpiry',
+                    );
+                    if (!entitlementSynced) throw new Error('Subscription entitlement scope is invalid.');
+                    await subscriptionDoc.ref.set({
+                        billingEntitlementSyncPending: FieldValue.delete(),
+                        modifiedOn: FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                } catch (entitlementError) {
+                    entitlementSyncErrors += 1;
+                    logger.warn('[subscription_access_expiry] Failed to sync ended entitlement', {
+                        failureCode: SUBSCRIPTION_ACCESS_EXPIRY_FAILED_CODE,
+                        ...getSchedulerStringContext('subscriptionId', subscriptionDoc.id),
+                        ...getSchedulerErrorContext(entitlementError),
+                    });
+                }
+            } catch (error) {
+                errors += 1;
+                logger.error('[subscription_access_expiry] Failed to expire subscription access', {
+                    failureCode: SUBSCRIPTION_ACCESS_EXPIRY_FAILED_CODE,
+                    ...getSchedulerStringContext('subscriptionId', subscriptionDoc.id),
+                    ...getSchedulerErrorContext(error),
+                });
+            }
+        }
+
+        if (snapshot.size < pageSize) break;
+        if (page === maxPages - 1) limited = true;
+    }
+
+    if (errors > 0 || entitlementSyncErrors > 0) {
+        throw new Error(`Subscription access expiry failed for ${errors + entitlementSyncErrors} subscription operation(s)`);
+    }
+
+    return {
+        activity: expired > 0,
+        details: {
+            checked,
+            expired,
+            errors,
+            entitlementSyncErrors,
+            limited,
+        },
     };
 }
 
@@ -1696,40 +2066,139 @@ async function runSubscriptionReconciliation(): Promise<MaintenanceTaskResult> {
             processed: result.processed,
             synced: result.synced,
             errors: result.errors,
+            checkpointed: Boolean(result.checkpointed),
+            cycleCompleted: Boolean(result.cycleCompleted),
         },
     };
 }
 
-async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
-    if (!isFunctionFeatureEnabled('ENABLE_RESELLER_DASHBOARD')) {
-        return {
-            activity: false,
-            details: { enabled: false, checked: 0, expired: 0, errors: 0 },
-        };
+async function runBillingHealthSnapshot(): Promise<MaintenanceTaskResult> {
+    const now = Timestamp.now();
+    const sampleLimit = 101;
+    const webhookRetentionCutoff = Timestamp.fromMillis(Date.now() - 90 * DAY_MS);
+    const [expiredProcessingCheckoutLeases, orphanedProviderCheckouts, failedWebhookEvents, staleWebhookClaims, oldWebhookEvents] = await Promise.all([
+        db.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES)
+            .where('status', '==', 'processing')
+            .where('expiresAt', '<=', now)
+            .limit(sampleLimit)
+            .get(),
+        db.collection(DB_COLLECTIONS.BILLING_CHECKOUT_LEASES)
+            .where('status', '==', 'provider_created')
+            .where('expiresAt', '<=', now)
+            .limit(sampleLimit)
+            .get(),
+        db.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS)
+            .where('status', '==', 'failed')
+            .limit(sampleLimit)
+            .get(),
+        db.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS)
+            .where('status', '==', 'processing')
+            .where('processingExpiresAt', '<=', now)
+            .limit(sampleLimit)
+            .get(),
+        db.collection(DB_COLLECTIONS.RAZORPAY_WEBHOOK_EVENTS)
+            .where('updatedAt', '<=', webhookRetentionCutoff)
+            .limit(201)
+            .get(),
+    ]);
+    const expiredProcessingCheckoutCount = Math.min(expiredProcessingCheckoutLeases.size, sampleLimit - 1);
+    const orphanedProviderCheckoutCount = Math.min(orphanedProviderCheckouts.size, sampleLimit - 1);
+    const failedWebhookEventCount = Math.min(failedWebhookEvents.size, sampleLimit - 1);
+    const staleWebhookClaimCount = Math.min(staleWebhookClaims.size, sampleLimit - 1);
+    const retainedWebhookEvents = oldWebhookEvents.docs
+        .filter((snapshot) => ['processed', 'failed', 'processing'].includes(String(snapshot.data()?.status || '')))
+        .slice(0, 200);
+    let webhookEventsDeleted = 0;
+    if (retainedWebhookEvents.length > 0) {
+        const batch = db.batch();
+        retainedWebhookEvents.forEach((snapshot) => batch.delete(snapshot.ref));
+        await batch.commit();
+        webhookEventsDeleted = retainedWebhookEvents.length;
+    }
+    const hasLimitedCount = [
+        expiredProcessingCheckoutLeases,
+        orphanedProviderCheckouts,
+        failedWebhookEvents,
+        staleWebhookClaims,
+    ]
+        .some((snapshot) => snapshot.size >= sampleLimit)
+        || oldWebhookEvents.size >= 201;
+    const status = (
+        expiredProcessingCheckoutCount > 0
+        || orphanedProviderCheckoutCount > 0
+        || failedWebhookEventCount > 0
+        || staleWebhookClaimCount > 0
+    ) ? 'attention' : 'healthy';
+
+    await db.collection(DB_COLLECTIONS.SYSTEM_HEALTH).doc('billing').set({
+        checkedAt: now,
+        expiredProcessingCheckoutCount,
+        failedWebhookEventCount,
+        hasLimitedCount,
+        orphanedProviderCheckoutCount,
+        staleWebhookClaimCount,
+        status,
+        updatedAt: FieldValue.serverTimestamp(),
+        webhookEventsDeleted,
+    }, { merge: true });
+
+    if (status === 'attention') {
+        await createAlert({
+            tId: 'system',
+            sId: 'billing',
+            type: 'health',
+            severity: orphanedProviderCheckoutCount > 0 || failedWebhookEventCount > 0
+                ? 'critical'
+                : 'warning',
+            title: 'Billing Recovery Attention',
+            message: 'Billing recovery state requires platform review. See the bounded billing health summary.',
+            metadata: {
+                expiredProcessingCheckoutCount,
+                failedWebhookEventCount,
+                hasLimitedCount,
+                orphanedProviderCheckoutCount,
+                staleWebhookClaimCount,
+                webhookEventsDeleted,
+            },
+            productId: 'PLATFORM',
+            category: 'billing',
+            actionRequired: true,
+        });
     }
 
-    const graceDate = new Date(Date.now() - 7 * DAY_MS);
-    const graceCutoff = Timestamp.fromDate(graceDate);
-    const pageSize = 100;
-    const maxPages = 5;
-    let checked = 0;
-    let expired = 0;
-    let errors = 0;
-    let entitlementSyncErrors = 0;
-    let pendingEntitlementsChecked = 0;
-    let pendingEntitlementsRepaired = 0;
-    let limited = false;
+    return {
+        activity: status === 'attention',
+        details: {
+            expiredProcessingCheckoutCount,
+            failedWebhookEventCount,
+            hasLimitedCount,
+            orphanedProviderCheckoutCount,
+            staleWebhookClaimCount,
+            status,
+            webhookEventsDeleted,
+        },
+    };
+}
 
+async function repairPendingStorePlanEntitlements(params: {
+    maxPages: number;
+    pageSize: number;
+}): Promise<{ checked: number; repaired: number; errors: number; limited: boolean }> {
+    let checked = 0;
+    let repaired = 0;
+    let errors = 0;
+    let limited = false;
     let pendingCursor: FirebaseFirestore.QueryDocumentSnapshot | null = null;
-    for (let page = 0; page < maxPages; page += 1) {
+
+    for (let page = 0; page < params.maxPages; page += 1) {
         let pendingQuery = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
             .where('billingEntitlementSyncPending', '==', true)
             .orderBy(FieldPath.documentId())
-            .limit(pageSize);
+            .limit(params.pageSize);
         if (pendingCursor) pendingQuery = pendingQuery.startAfter(pendingCursor);
         const pendingSnapshot = await pendingQuery.get();
         if (pendingSnapshot.empty) break;
-        pendingEntitlementsChecked += pendingSnapshot.size;
+        checked += pendingSnapshot.size;
 
         for (const pendingDoc of pendingSnapshot.docs) {
             const subscription = {
@@ -1740,17 +2209,17 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
                 const entitlementSynced = await syncStorePlanEntitlement(
                     db,
                     subscription,
-                    'menulistMaintenanceScheduler:resellerLicenseExpiryRetry',
+                    'menulistMaintenanceScheduler:pendingEntitlementRepair',
                 );
                 if (!entitlementSynced) throw new Error('Subscription entitlement scope is invalid.');
                 await pendingDoc.ref.set({
                     billingEntitlementSyncPending: FieldValue.delete(),
                     modifiedOn: FieldValue.serverTimestamp(),
                 }, { merge: true });
-                pendingEntitlementsRepaired += 1;
+                repaired += 1;
             } catch (entitlementError) {
-                entitlementSyncErrors += 1;
-                logger.warn('[reseller_license_expiry] Failed to retry pending entitlement sync', {
+                errors += 1;
+                logger.warn('[billing_entitlement_repair] Failed to retry pending entitlement sync', {
                     failureCode: RESELLER_LICENSE_EXPIRE_FAILED_CODE,
                     ...getSchedulerStringContext('subscriptionId', pendingDoc.id),
                     ...getSchedulerErrorContext(entitlementError),
@@ -1759,9 +2228,44 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
         }
 
         pendingCursor = pendingSnapshot.docs[pendingSnapshot.docs.length - 1] || null;
-        if (pendingSnapshot.size < pageSize || !pendingCursor) break;
-        if (page === maxPages - 1) limited = true;
+        if (pendingSnapshot.size < params.pageSize || !pendingCursor) break;
+        if (page === params.maxPages - 1) limited = true;
     }
+
+    return { checked, repaired, errors, limited };
+}
+
+async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
+    const pageSize = 100;
+    const maxPages = 5;
+    // This marker is shared by every billing mode. Repair it even when the
+    // reseller feature is disabled so a post-commit mirror/cache failure from
+    // ordinary Razorpay access expiry cannot become permanent.
+    const pendingEntitlements = await repairPendingStorePlanEntitlements({ maxPages, pageSize });
+
+    if (!isFunctionFeatureEnabled('ENABLE_RESELLER_DASHBOARD')) {
+        return {
+            activity: pendingEntitlements.repaired > 0 || pendingEntitlements.errors > 0,
+            details: {
+                enabled: false,
+                checked: 0,
+                expired: 0,
+                errors: 0,
+                pendingEntitlementsChecked: pendingEntitlements.checked,
+                pendingEntitlementsRepaired: pendingEntitlements.repaired,
+                entitlementSyncErrors: pendingEntitlements.errors,
+                limited: pendingEntitlements.limited,
+            },
+        };
+    }
+
+    const graceDate = new Date(Date.now() - 7 * DAY_MS);
+    const graceCutoff = Timestamp.fromDate(graceDate);
+    let checked = 0;
+    let expired = 0;
+    let errors = 0;
+    let entitlementSyncErrors = pendingEntitlements.errors;
+    let limited = pendingEntitlements.limited;
 
     for (let page = 0; page < maxPages; page += 1) {
         const expiredSubs = await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
@@ -1819,16 +2323,13 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
                             event: 'manual_license.expired',
                             timestamp: now,
                         },
-                        statuses: [
-                            ...(Array.isArray(current.statuses) ? current.statuses : []),
-                            {
+                        statuses: appendBoundedBillingStatusHistory(current.statuses, {
                                 status: 'expired',
                                 timestamp: now,
                                 amount: Number.isFinite(amount) && amount >= 0 ? amount : 0,
                                 currency: current.currency || 'INR',
                                 remark: 'Manual license expired after grace period',
-                            },
-                        ],
+                        }),
                     };
                     transaction.update(subDoc.ref, subscriptionUpdate);
                     if (resellerProfileRef && resellerProfileSnapshot?.exists) {
@@ -1896,15 +2397,15 @@ async function runResellerLicenseExpiry(): Promise<MaintenanceTaskResult> {
     }
 
     return {
-        activity: expired > 0 || errors > 0 || entitlementSyncErrors > 0 || pendingEntitlementsRepaired > 0,
+        activity: expired > 0 || errors > 0 || entitlementSyncErrors > 0 || pendingEntitlements.repaired > 0,
         details: {
             enabled: true,
             checked,
             expired,
             errors,
             entitlementSyncErrors,
-            pendingEntitlementsChecked,
-            pendingEntitlementsRepaired,
+            pendingEntitlementsChecked: pendingEntitlements.checked,
+            pendingEntitlementsRepaired: pendingEntitlements.repaired,
             limited,
         },
     };
@@ -1922,6 +2423,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'every', minutes: 15 },
         lockTtlMs: 5 * MINUTE_MS,
         run: runMenuStuckCleanup,
+    },
+    {
+        name: 'special_menu_lifecycle',
+        cadence: { type: 'every', minutes: 2 },
+        lockTtlMs: 2 * MINUTE_MS,
+        run: runSpecialMenuLifecycleTransitions,
     },
     {
         name: 'alert_escalation',
@@ -1948,6 +2455,12 @@ const TASKS: MaintenanceTask[] = [
         run: runAiProviderHealthCheck,
     },
     {
+        name: 'subscription_access_expiry',
+        cadence: { type: 'every', minutes: 60 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runSubscriptionAccessExpiry,
+    },
+    {
         name: 'subscription_reconciliation',
         cadence: { type: 'daily', hourUtc: 2, minuteUtc: 20, retryAfterMinutes: 120 },
         lockTtlMs: 10 * MINUTE_MS,
@@ -1958,6 +2471,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 2, minuteUtc: 30, retryAfterMinutes: 120 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runResellerLicenseExpiry,
+    },
+    {
+        name: 'billing_health_snapshot',
+        cadence: { type: 'daily', hourUtc: 2, minuteUtc: 40, retryAfterMinutes: 120 },
+        lockTtlMs: 5 * MINUTE_MS,
+        run: runBillingHealthSnapshot,
     },
     {
         name: 'menu_old_cleanup',
@@ -1997,7 +2516,7 @@ const TASKS: MaintenanceTask[] = [
     },
     {
         name: 'ai_image_prompt_cache_cleanup',
-        cadence: { type: 'daily', hourUtc: 4, minuteUtc: 57, retryAfterMinutes: 120 },
+        cadence: { type: 'every', minutes: 60 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runImagePromptCacheCleanup,
     },
@@ -2024,6 +2543,12 @@ const TASKS: MaintenanceTask[] = [
         cadence: { type: 'daily', hourUtc: 6, minuteUtc: 0, retryAfterMinutes: 120 },
         lockTtlMs: 10 * MINUTE_MS,
         run: runSchedulerRunLogRetentionCleanup,
+    },
+    {
+        name: 'system_alert_retention_cleanup',
+        cadence: { type: 'daily', hourUtc: 6, minuteUtc: 15, retryAfterMinutes: 120 },
+        lockTtlMs: 10 * MINUTE_MS,
+        run: runSystemAlertRetentionCleanup,
     },
 ];
 

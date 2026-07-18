@@ -167,6 +167,7 @@ export async function checkAICapacity(
 }
 
 export interface RemainingBalance {
+    billingStoreId?: number;
     monthlyCredits: number;
     topUpCredits: number;
 }
@@ -175,6 +176,7 @@ export type AiCapacityReservationRecoveryMode = "automatic_refund" | "durable_re
 
 export interface AiCapacityReservation {
     action: string;
+    billingStoreId: string;
     id: string;
     recoveryMode: AiCapacityReservationRecoveryMode;
     remainingBalance: RemainingBalance;
@@ -220,9 +222,14 @@ function getReservationOperationRef(tId: string, sId: string, id: string) {
         .doc(id);
 }
 
+function getPersistedBillingStoreId(data: Record<string, any>): string | null {
+    return normalizeAccountingScope(data.accountingBillingStoreId)
+        ?? normalizeAccountingScope(data.sId ?? data.storeId);
+}
+
 function assertReservationContract(
     data: Record<string, any>,
-    expected: Pick<AiCapacityReservation, "action" | "id" | "sId" | "subscriptionId" | "tId" | "unitsReserved">,
+    expected: Pick<AiCapacityReservation, "action" | "billingStoreId" | "id" | "sId" | "subscriptionId" | "tId" | "unitsReserved">,
 ): void {
     if (
         data.accountingIdempotencyKey !== expected.id
@@ -230,6 +237,7 @@ function assertReservationContract(
         || Number(data.accountingUnits) !== expected.unitsReserved
         || normalizeAccountingScope(data.tId ?? data.tenantId) !== expected.tId
         || normalizeAccountingScope(data.sId ?? data.storeId) !== expected.sId
+        || getPersistedBillingStoreId(data) !== expected.billingStoreId
         || data.accountingSubscriptionId !== expected.subscriptionId
     ) {
         throw new Error("AI capacity reservation idempotency conflict.");
@@ -238,7 +246,7 @@ function assertReservationContract(
 
 function readPersistedReservation(
     data: Record<string, any>,
-    expected: Pick<AiCapacityReservation, "action" | "id" | "sId" | "subscriptionId" | "tId" | "unitsReserved">,
+    expected: Pick<AiCapacityReservation, "action" | "billingStoreId" | "id" | "sId" | "subscriptionId" | "tId" | "unitsReserved">,
 ): AiCapacityReservation {
     assertReservationContract(data, expected);
     if (data.accountingStatus !== "reserved" && data.accountingStatus !== "consumed") {
@@ -252,7 +260,7 @@ function readPersistedReservation(
     return {
         ...expected,
         recoveryMode: data.accountingRecoveryMode === "durable_retry" ? "durable_retry" : "automatic_refund",
-        remainingBalance: { monthlyCredits, topUpCredits },
+        remainingBalance: { billingStoreId: Number(expected.billingStoreId), monthlyCredits, topUpCredits },
         state: data.accountingStatus,
     };
 }
@@ -375,8 +383,8 @@ export async function reserveAiCapacity({
     if (
         !expectedTenantId
         || !expectedStoreId
+        || !subscriptionStoreId
         || subscriptionTenantId !== expectedTenantId
-        || subscriptionStoreId !== expectedStoreId
     ) {
         throw new Error("AI capacity reservation subscription scope mismatch.");
     }
@@ -394,6 +402,7 @@ export async function reserveAiCapacity({
     const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
     const expected = {
         action,
+        billingStoreId: subscriptionStoreId,
         id: operationId,
         sId: expectedStoreId,
         subscriptionId,
@@ -416,7 +425,7 @@ export async function reserveAiCapacity({
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
         if (
             normalizeAccountingScope(current.tenantId ?? current.tId) !== expectedTenantId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== expectedStoreId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== expected.billingStoreId
         ) {
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
@@ -434,6 +443,7 @@ export async function reserveAiCapacity({
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
         transaction.set(operationRef, {
+            accountingBillingStoreId: Number(expected.billingStoreId),
             accountingChargedMonthlyCredits: chargedBalance.monthlyCredits,
             accountingChargedTopUpCredits: chargedBalance.topUpCredits,
             accountingIdempotencyKey: operationId,
@@ -466,7 +476,7 @@ export async function reserveAiCapacity({
         return {
             ...expected,
             recoveryMode,
-            remainingBalance: balance,
+            remainingBalance: { billingStoreId: Number(expected.billingStoreId), ...balance },
             state: "reserved" as const,
         };
     });
@@ -503,7 +513,7 @@ export async function finalizeAiCapacityReservation({
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
         if (
             normalizeAccountingScope(current.tenantId ?? current.tId) !== reservation.tId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.sId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.billingStoreId
         ) {
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
@@ -518,6 +528,7 @@ export async function finalizeAiCapacityReservation({
 
         transaction.set(operationRef, {
             ...operationData,
+            accountingBillingStoreId: Number(reservation.billingStoreId),
             accountingChargedMonthlyCredits: existing.accountingChargedMonthlyCredits,
             accountingChargedTopUpCredits: existing.accountingChargedTopUpCredits,
             accountingIdempotencyKey: reservation.id,
@@ -563,7 +574,7 @@ export async function refundAiCapacityReservation(
             return {
                 alreadyTerminal: true,
                 remainingBalance: Number.isFinite(monthlyCredits) && Number.isFinite(topUpCredits)
-                    ? { monthlyCredits, topUpCredits }
+                    ? { billingStoreId: Number(reservation.billingStoreId), monthlyCredits, topUpCredits }
                     : null,
             };
         }
@@ -573,7 +584,7 @@ export async function refundAiCapacityReservation(
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
         if (
             normalizeAccountingScope(current.tenantId ?? current.tId) !== reservation.tId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.sId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== reservation.billingStoreId
         ) {
             throw new Error("AI capacity reservation persisted subscription scope mismatch.");
         }
@@ -600,6 +611,7 @@ export async function refundAiCapacityReservation(
             ? Math.min(chargedMonthlyCredits, Math.max(0, monthlyCreditCeiling - currentMonthlyCredits))
             : 0;
         const nextBalance = {
+            billingStoreId: Number(reservation.billingStoreId),
             monthlyCredits: currentMonthlyCredits + refundedMonthlyCredits,
             topUpCredits: currentTopUpCredits + chargedTopUpCredits,
         };
@@ -683,12 +695,14 @@ export async function refundDurableAiCapacityReservationByIdSafely({
         const operation = operationSnap.data() || {};
         if (operation.accountingStatus === "consumed" || operation.accountingStatus === "refunded") return;
         const subscriptionId = normalizeBillingSubscriptionDocumentId(operation.accountingSubscriptionId);
+        const billingStoreId = getPersistedBillingStoreId(operation);
         const unitsReserved = Number(operation.accountingUnits);
         if (
             operation.accountingStatus !== "reserved"
             || operation.accountingRecoveryMode !== "durable_retry"
             || operation.action !== action
             || !subscriptionId
+            || !billingStoreId
             || !Number.isSafeInteger(unitsReserved)
             || unitsReserved <= 0
         ) {
@@ -696,6 +710,7 @@ export async function refundDurableAiCapacityReservationByIdSafely({
         }
         const reservation = readPersistedReservation(operation, {
             action,
+            billingStoreId,
             id: normalizedOperationId,
             sId: storeId,
             subscriptionId,
@@ -751,6 +766,8 @@ export async function consumeAICapacity(
         if (!subscriptionSnap.exists) return null;
 
         const current = subscriptionSnap.data() as FirestoreSubscriptionDoc;
+        const billingStoreId = normalizeAccountingScope(current.storeId ?? current.sId);
+        if (!billingStoreId) throw new Error('Billing subscription scope is invalid.');
         const { balance, billingPeriod } = calculateConsumedBalance(current, unitsToConsume);
 
         tx.set(subscriptionRef, {
@@ -761,6 +778,7 @@ export async function consumeAICapacity(
         }, { merge: true });
 
         return {
+            billingStoreId: Number(billingStoreId),
             monthlyCredits: balance.monthlyCredits,
             topUpCredits: balance.topUpCredits,
             subscription: current,
@@ -772,6 +790,7 @@ export async function consumeAICapacity(
     await sendCreditsExhaustedLifecycleMessage(updatedBalance.subscription, unitsToConsume, updatedBalance);
 
     return {
+        billingStoreId: updatedBalance.billingStoreId,
         monthlyCredits: updatedBalance.monthlyCredits,
         topUpCredits: updatedBalance.topUpCredits,
     };
@@ -800,8 +819,8 @@ export async function consumeAICapacityIdempotently({
     if (
         !expectedTenantId
         || !expectedStoreId
+        || !subscriptionStoreId
         || subscriptionTenantId !== expectedTenantId
-        || subscriptionStoreId !== expectedStoreId
     ) {
         throw new Error('AI accounting subscription scope mismatch.');
     }
@@ -831,7 +850,7 @@ export async function consumeAICapacityIdempotently({
                 }
                 return {
                     alreadyConsumed: true,
-                    balance: { monthlyCredits, topUpCredits },
+                    balance: { billingStoreId: Number(subscriptionStoreId), monthlyCredits, topUpCredits },
                     subscription: subscriptionSnap.exists
                         ? { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id }
                         : subscription,
@@ -842,7 +861,7 @@ export async function consumeAICapacityIdempotently({
         const current = { ...(subscriptionSnap.data() as FirestoreSubscriptionDoc), id: subscriptionSnap.id };
         if (
             normalizeAccountingScope(current.tenantId ?? current.tId) !== expectedTenantId
-            || normalizeAccountingScope(current.storeId ?? current.sId) !== expectedStoreId
+            || normalizeAccountingScope(current.storeId ?? current.sId) !== subscriptionStoreId
         ) {
             throw new Error('AI accounting persisted subscription scope mismatch.');
         }
@@ -855,6 +874,7 @@ export async function consumeAICapacityIdempotently({
         }, { merge: true });
         transaction.set(operationRef, {
             ...operationData,
+            accountingBillingStoreId: Number(subscriptionStoreId),
             accountingIdempotencyKey: idempotencyKey,
             accountingStatus: 'consumed',
             accountingUnits: unitsToConsume,
@@ -862,7 +882,11 @@ export async function consumeAICapacityIdempotently({
             remainingTopUpCredits: balance.topUpCredits,
             modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: false });
-        return { alreadyConsumed: false, balance, subscription: current };
+        return {
+            alreadyConsumed: false,
+            balance: { billingStoreId: Number(subscriptionStoreId), ...balance },
+            subscription: current,
+        };
     });
 
     if (!result.alreadyConsumed) {

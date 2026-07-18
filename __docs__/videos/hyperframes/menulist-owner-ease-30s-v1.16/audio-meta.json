@@ -1,0 +1,36 @@
+{
+  "mode": "founder-review-native-vertical-hook-test",
+  "selectionStatus": "primary-default",
+  "durationSeconds": 30,
+  "voice": {
+    "provider": "macos-local",
+    "id": "Tara",
+    "language": "en-IN",
+    "source": "assets/audio/voice-macos-en-in-tara-192-selected-processed.wav",
+    "durationSeconds": 26.7
+  },
+  "master": {
+    "source": "assets/mix/owner-ease-30s-v1.16-master.wav",
+    "music": "MenuList One Link Motion v2, seed 260719",
+    "musicSource": "assets/music/source/menulist-one-link-motion-v2-seed-260719.wav",
+    "canonicalMusicSource": "../../brand-audio/source-tracks/lyria-realtime-menulist-one-link-motion-v2-seed-260719-20260714-112840/menulist-one-link-motion-v2-seed-260719-20260714-112840.wav",
+    "musicSourceSha256": "ea6d0e959feea758593fd5865c30b2475937e8ea4207b8bc39ad6291d09355e3",
+    "ducking": "voice-reactive comparison mix with gradual final lift",
+    "integratedLufs": -15.5,
+    "truePeakDbfs": -2.0,
+    "masterSha256": "9fc233acd23cd29b62836325c07244ef360af50fea1d0b2c93e8ecc32500a282",
+    "regenerationAllowed": false,
+    "visualSource": "v1.14 retained visual system, natively recomposed to 9:16 with an immediate owner-benefit hook"
+  },
+  "captionSegments": [
+    { "start": 0.0, "end": 2.92 },
+    { "start": 3.31, "end": 6.65 },
+    { "start": 7.01, "end": 9.51 },
+    { "start": 9.85, "end": 11.53 },
+    { "start": 11.81, "end": 14.35 },
+    { "start": 14.68, "end": 16.38 },
+    { "start": 16.67, "end": 22.39 },
+    { "start": 22.74, "end": 24.52 },
+    { "start": 24.86, "end": 26.7 }
+  ]
+}

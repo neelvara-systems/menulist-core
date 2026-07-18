@@ -1,7 +1,7 @@
-# Help Center — Product Specification
+# MenuList Help Center — Product Specification
 
-> **Version:** 1.1.1
-> **Last Updated:** 2026-05-25
+> **Version:** 1.2.0
+> **Last Updated:** 2026-07-16
 > **Audience:** CEO, PM, Clients, Strategy
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -11,7 +11,17 @@
 
 The Help Center is MenuList's **integrated support infrastructure** — a dual-sided system serving both **SMB owners** (who use the MenuList dashboard) and **platform administrators** (who manage KB content, tickets, and monitor chat quality).
 
-It is NOT a standalone support tool. It is deeply integrated with MenuList's auth, tenancy, permissions, and Firestore architecture.
+It is not a standalone helpdesk. MenuList owns the owner-facing route and shell; the support workspace, content, tickets and provider operations use the explicit Answerlattice product-account scope.
+
+### Current source boundary
+
+- `/help-center` requires the normal signed-in MenuList shell.
+- Search and client DAL work fail closed when the session has no valid active Answerlattice product account.
+- Search is canonical-first, then published FAQ/custom-answer fallback, then bounded knowledge-base RAG.
+- Search failure leaves documentation, tickets, feedback, FAQ, contact and changelog paths available.
+- Ticket messages/statuses are append-only in DAL transactions and Firestore rules; satisfaction can be added once after resolution/closure.
+- Initial ticket attachments share a four-file, 10 MB and supported-type boundary. Opening additionally verifies the configured Answerlattice bucket and selected ticket scope.
+- Source gates do not prove deployment, provider availability, email delivery or browser/device certification.
 
 ---
 
@@ -43,11 +53,11 @@ It is NOT a standalone support tool. It is deeply integrated with MenuList's aut
 - Knowledge Base management (category/section/article CRUD, article editing)
 - KB generation pipeline (upload files → AI generates articles → review → publish → embed)
 
-### 2.3 End User (Indirect)
+### 2.3 Signed-in owner using support search
 
-End users interact with the **AI chatbot** through the search modal or help chat panel. They see:
+Owners interact with the support search through the search modal or Help Chat panel. They may see:
 
-- AI-generated answers with source citations
+- source-backed answers with article references when the retrieval path returns references
 - Suggested follow-up questions
 - Ability to provide feedback (thumbs up/down with reasons)
 - Chat history persistence across sessions
@@ -119,7 +129,7 @@ End users interact with the **AI chatbot** through the search modal or help chat
 - 3 priority levels: Low, Normal, High
 - SLA configuration per priority (response: 2-24h, resolution: 24-168h)
 - SLA status calculation: on_time, at_risk, breached
-- File attachments (tenant-scoped storage)
+- Up to four initial file attachments, each at most 10 MB (tenant/store-scoped Storage)
 - Conversation messages (separate from status changes)
 - Status audit trail with timestamps and changedBy
 - Platform notes and tags
@@ -279,7 +289,7 @@ End users interact with the **AI chatbot** through the search modal or help chat
 | **API Rate Limiting**    | Upstash sliding window (30 req/min per user)                                |
 | **SAFE_MODE**            | Kill switch for all AI routes during maintenance                            |
 | **Input Validation**     | Zod schemas on search API (XSS prevention, buffer overflow prevention)      |
-| **Image Validation**     | HTTPS-only, Firebase Storage host-only, 10MB max, path traversal prevention |
+| **Image Validation**     | HTTPS-only, Firebase Storage host-only, 5 MB max, path traversal prevention |
 | **Content Sanitization** | `sanitizeFeedbackComment()` for user-submitted text                         |
 | **Tenant Isolation**     | Every DAL query includes `tId` filter                                       |
 | **Store Isolation**      | Critical queries include `sId` filter                                       |
@@ -327,7 +337,7 @@ See `help-center_firebase.md` for detailed cost breakdown.
 
 ### Industry Comparison (Sources: Userpilot, Zendesk, Intercom, Beamer, Featurebase)
 
-All standard SaaS help center patterns covered: prominent search, category navigation, AI chatbot, KB, tickets with SLA, changelog, feedback, recently viewed, trending topics, mobile support, tab navigation.
+This historical audit confirmed the implemented interface inventory at that date. It does not certify current deployment, provider availability, response-time guarantees or production browser/device behavior.
 
 ---
 
@@ -336,3 +346,11 @@ All standard SaaS help center patterns covered: prominent search, category navig
 - Removed Answerlattice governance work queues from the Help Center landing.
 - Removed the Governance tab from the Help Center tab config.
 - Kept Signal-to-Knowledge Queue, Entity Candidates, Canonical Coverage KPI, and drift/answer governance scoped to Answerlattice owner/admin routes.
+
+## 9. Item 28 End-to-End Hardening (2026-07-16)
+
+- Normalized browser search responses now require bounded related-content structure; public related-content projections remove stored article URLs, and related article actions build internal Help Center routes from validated document IDs.
+- Ticket attachments use one shared UI/DAL admission policy and a configured-bucket/workspace path check before browser opening. Failure diagnostics record URL presence only, never signed URLs.
+- Dedicated and shared Firestore rules preserve existing message/status history, validate the one appended entry, reject forged actors, require a single valid initial status, and prevent satisfaction rewrites.
+- The owner footer no longer asserts operational status without a status provider, uses current MenuList branding/year, and links only to implemented MenuList legal routes.
+- Desktop and MobileShell continue to reuse the same Help Center component and Answerlattice-scoped DALs.

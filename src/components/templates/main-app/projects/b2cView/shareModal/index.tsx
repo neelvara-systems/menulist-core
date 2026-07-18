@@ -9,11 +9,18 @@ import {
     hasExportCopyFallback,
     logExportFailure,
 } from '@lib/export/exportDiagnostics';
+import { readLocalPdfDownloadAt, recordLocalPdfDownload, resolveLocalExportStorageScope } from '@lib/export/localExportHistory';
 import { resolveMenuKitBrandTokens } from '@lib/menu-kit/brandTokens';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
 import type { ExtractedDataCategory, ExtractedDataItem } from '@template/main-app/projects/types/extractedData.types';
 import { downloadMenuData } from '@template/main-app/projects/utils/excelUtils';
 import { generateProjectUrl } from '@lib/utils/slugify';
+import {
+    MENULIST_ANSWERLATTICE_EVENTS,
+    MENULIST_ANSWERLATTICE_TARGETS,
+    emitMenuListAnswerlatticeWorkflowEvent,
+    getMenuListAnswerlatticeTargetProps,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { Alert, Button, Card, Checkbox, ColorPicker, Divider, Flex, message, Modal, QRCode, theme, Tooltip, Typography } from 'antd';
 import { Timestamp } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -101,19 +108,25 @@ function ShareModal({
     const labels = useOfferingLabels();
     const brandTokens = useMemo(() => resolveMenuKitBrandTokens(brandColor), [brandColor]);
     const activePlanType = storeData?.activePlanType || storeData?.publicPresence?.activePlanType || null;
+    const pdfHistoryScope = useMemo(
+        () => resolveLocalExportStorageScope(storeData),
+        [storeData?.sId, storeData?.storeId, storeData?.tId, storeData?.tenantId],
+    );
+    const [lastPdfDownloadAt, setLastPdfDownloadAt] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (!open) return;
+        setLastPdfDownloadAt(readLocalPdfDownloadAt(pdfHistoryScope, projectId));
+    }, [open, pdfHistoryScope, projectId]);
 
     // PDF freshness: Check if menu was modified since last PDF download
-    const PDF_DOWNLOAD_KEY = `menulist_last_pdf_download_${projectId}`;
     const isMenuUpdatedSincePdf = useMemo(() => {
-        if (!menuModifiedOn || typeof window === 'undefined') return false;
-        const lastDownload = localStorage.getItem(PDF_DOWNLOAD_KEY);
-        if (!lastDownload) return false; // First download — no warning needed
-        const lastDownloadMs = parseInt(lastDownload, 10);
+        if (!menuModifiedOn || !lastPdfDownloadAt) return false;
         const modifiedMs = menuModifiedOn instanceof Timestamp
             ? menuModifiedOn.toMillis()
             : (menuModifiedOn as any)?.seconds ? (menuModifiedOn as any).seconds * 1000 : 0;
-        return modifiedMs > lastDownloadMs;
-    }, [menuModifiedOn, PDF_DOWNLOAD_KEY]);
+        return modifiedMs > lastPdfDownloadAt;
+    }, [lastPdfDownloadAt, menuModifiedOn]);
 
     const shareUrl = useMemo(() => {
         const normalizedSubdomain = subdomain?.trim();
@@ -242,6 +255,7 @@ function ShareModal({
         if (!hasPublicShareUrl) return;
         const directUrl = withEntrySource(shareUrl, 'direct');
         try {
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLIC_LINK_OPENED);
             window.location.assign(directUrl);
         } catch (error) {
             logExportFailure('project_share_direct_open_failed', error, getShareModalLogContext('direct_open', {
@@ -337,12 +351,8 @@ function ShareModal({
                 categories,
             });
             downloadPdf(pdfResult);
-            // Track PDF download time for freshness detection (Pricing Integrity FR-7.3)
-            localStorage.setItem(PDF_DOWNLOAD_KEY, Date.now().toString());
-            // Store version hash for pricing audit trail
-            if (pdfResult.snapshotHash) {
-                localStorage.setItem(`menulist_last_pdf_version_${projectId}`, pdfResult.snapshotHash);
-            }
+            recordLocalPdfDownload(pdfHistoryScope, projectId, pdfResult.snapshotHash);
+            setLastPdfDownloadAt(Date.now());
             message.success(`${labels.offeringTitle} PDF downloaded`);
         } catch (error) {
             logExportFailure('project_share_pdf_generation_failed', error, {
@@ -576,7 +586,14 @@ function ShareModal({
                         We track scans and opens so you can see what works
                     </Text>
                     <Flex gap={8}>
-                        <Button size="small" type="text" icon={<LuExternalLink />} disabled={!hasPublicShareUrl} onClick={handleOpenDirectLink}>
+                        <Button
+                            {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_PUBLIC_LINK)}
+                            size="small"
+                            type="text"
+                            icon={<LuExternalLink />}
+                            disabled={!hasPublicShareUrl}
+                            onClick={handleOpenDirectLink}
+                        >
                             Open
                         </Button>
                         <Button size="small" type="text" icon={<LuCopy />} disabled={!hasPublicShareUrl} onClick={() => void handleCopyDirectLink()}>

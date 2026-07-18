@@ -3,6 +3,10 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { Button, Modal, Result, theme } from 'antd';
 import { LuXCircle } from 'react-icons/lu';
+import {
+    MENULIST_ANSWERLATTICE_TARGETS,
+    getMenuListAnswerlatticeTargetProps,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 
 interface ExtractionJobFailureModalProps {
     open: boolean;
@@ -41,6 +45,7 @@ export default function ExtractionJobFailureModal({
                 subTitle={message || `An error occurred while processing your ${labels.offeringLower} files. Please try again.`}
                 extra={[
                     <Button
+                        {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_RETRY)}
                         key="retry"
                         type="primary"
                         size="large"

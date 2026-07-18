@@ -21,15 +21,19 @@ Open Support Assistant and see:
 ## Requirements
 
 1. Show a `Today's plan` section in Support Assistant.
-2. Rank at most six actions from existing summaries.
+2. Rank at most four actions from existing summaries, with one primary action and no more than three secondary actions.
 3. Always prefer governed review actions over raw operations.
 4. Link to existing screens only: Governance, Support Board, Knowledge Intake, Answer Tests, Known Issues, Tickets, Activation, Widget, Billing.
-5. Add no autonomous writes.
-6. Add no model calls.
-7. Add no raw customer conversation reads.
-8. Explain cost posture per action: no AI cost, support-credit guarded, or review-only.
-9. Keep the assistant read-only.
-10. Preserve existing Support Assistant question flow.
+5. When the action rollout flag is enabled, selected launch/release items may prefill the existing Support Board create form. Opening the form performs no write.
+6. Add no autonomous writes.
+7. Add no model calls.
+8. Add no raw customer conversation reads.
+9. Explain cost posture per action: no AI cost, support-credit guarded, or review-only.
+10. Keep the assistant response and Support Board prefill path read-only until the owner uses the board's existing Create action.
+11. Preserve existing Support Assistant question flow.
+12. Show factual launch verification from the compact activation snapshot.
+13. Show confirmed-resolution and same-session recontact evidence when explicit outcomes exist.
+14. Provide one owner-triggered `I shipped a change` action that opens the existing changelog form; it must not write until the owner saves.
 
 ## Action Categories
 
@@ -42,6 +46,10 @@ Open Support Assistant and see:
 | `support_reply` | Tickets/escalations should use approved knowledge before reply |
 | `launch_safety` | Widget/context/onboarding should be verified before user traffic grows |
 | `cost_guard` | Support-credit or deterministic/no-cost boundary is relevant |
+
+## Operating-Home Rule
+
+Daily Brief is the default management home only after `activation.launchProof.ready === true`. Before that point, Activation remains the home. Daily Brief does not decide launch readiness itself and cannot override launch proof.
 
 ## Non-Goals
 
@@ -61,3 +69,5 @@ The brief uses the same access gate as Support Assistant: `canManageSupport`.
 ## Feature Flag
 
 `ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF`
+
+`ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS` controls the prefilled Support Board handoff and defaults off pending founder validation.

@@ -3,7 +3,7 @@
 > **Feature:** MenuList Print & Share Tools
 > **Route Family:** `/tools/*-maker`
 > **Status:** Implemented public V0 asset makers with V1 owner readiness coverage
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -52,7 +52,7 @@ V0 stays narrow:
 - no Google, WhatsApp, review, search, or social inspection
 - no external platform update
 
-Customer-link readiness is a local format check only: the QR target must be a public HTTPS customer link. Explicit `http://`, localhost, `.local`, private IP, raw IP, and credentialed URLs are treated as missing basics, and the generated QR falls back away from that invalid target.
+Customer-link readiness is a local format check only: the QR target must be a public HTTPS customer link. Print & Share uses the same shared parser as the sixteen truth tools. Explicit `http://`, localhost including trailing-dot forms, `.local`, private/raw IPv4, raw IPv6 including IPv4-mapped IPv6, empty hostname labels, and credentialed URLs are treated as missing basics, and the generated QR falls back away from that invalid target.
 
 The output can be downloaded as PNG/PDF, printed, copied as a text report, downloaded as a text report, or shared through the existing public shareable-report hash link. The generated public report URL is visible in a readonly field so the owner can open or manually copy it even when browser clipboard permissions are blocked.
 

@@ -14,15 +14,18 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { assertMenuPresenceUpdateSucceeded, type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { isMenuPresenceConfirmed } from '@lib/menuPresence/presenceReadiness';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    applyStarterPresenceUpdateToStoreDetails,
     buildStarterActivationSummary,
     shouldRecordStarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreDataType } from '@type/platform/store';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
     LuCheck,
     LuClipboard,
@@ -190,6 +193,7 @@ export default function MobilePresenceMonitor({
     storeDetails,
     obpLink,
 }: MobilePresenceMonitorProps) {
+    const { setStoreDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const t = useTranslations('MobilePresenceMonitor');
     const common = useTranslations('Common');
@@ -198,10 +202,18 @@ export default function MobilePresenceMonitor({
         storeDetails.menuPresence || {}
     );
     const [selectedSurfaceId, setSelectedSurfaceId] = useState<ManualSurfaceId | null>(null);
+    const currentStoreIdRef = useRef(storeDetails.storeId);
+
+    useEffect(() => {
+        currentStoreIdRef.current = storeDetails.storeId;
+        setLocalPresence(storeDetails.menuPresence || {});
+        setUpdating(null);
+        setSelectedSurfaceId(null);
+    }, [storeDetails.storeId, storeDetails.menuPresence]);
 
     if (!FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR) return null;
 
-    const isActive = (id: string) => !!localPresence[id];
+    const isActive = (id: string) => isMenuPresenceConfirmed(localPresence[id]);
 
     const autoSurfaces = [
         {
@@ -214,8 +226,10 @@ export default function MobilePresenceMonitor({
         {
             id: 'feedbackQr',
             label: t('autoSurfaces.feedbackQr.label'),
-            active: hasFeedbackEnabled,
-            desc: hasFeedbackEnabled ? t('autoSurfaces.feedbackQr.ready') : t('autoSurfaces.feedbackQr.pending'),
+            active: hasFeedbackEnabled && hasPublishedMenu,
+            desc: hasFeedbackEnabled && hasPublishedMenu
+                ? t('autoSurfaces.feedbackQr.ready')
+                : t('autoSurfaces.feedbackQr.pending'),
             icon: <LuMessageCircle size={16} />,
         },
     ];
@@ -302,9 +316,19 @@ export default function MobilePresenceMonitor({
                 true,
                 'mobile_presence_confirm_update_rejected',
             );
-            setLocalPresence((previous) => ({ ...previous, [surface.id]: new Date().toISOString() }));
-            Toast.show({ content: t('surfaceUpdated', { surface: t(surface.labelKey) }), duration: 1500 });
-            setSelectedSurfaceId(null);
+            setStoreDetails((current: any) => applyStarterPresenceUpdateToStoreDetails(
+                current,
+                result.surface,
+                result.confirmed,
+                result.recordedAt,
+                result.starterSignal,
+                result.storeId,
+            ));
+            if (String(currentStoreIdRef.current) === String(result.storeId)) {
+                setLocalPresence((previous) => ({ ...previous, [surface.id]: result.recordedAt }));
+                Toast.show({ content: t('surfaceUpdated', { surface: t(surface.labelKey) }), duration: 1500 });
+                setSelectedSurfaceId(null);
+            }
         } catch (error) {
             logMobileOwnerFailure('mobile_presence_confirm_failed', error, buildMobilePresenceLogContext('confirm', surface));
             Toast.show({ content: t('updateFailed'), duration: 1500 });
@@ -324,13 +348,23 @@ export default function MobilePresenceMonitor({
                 false,
                 'mobile_presence_remove_update_rejected',
             );
-            setLocalPresence((previous) => {
-                const next = { ...previous };
-                delete next[surface.id];
-                return next;
-            });
-            Toast.show({ content: t('surfaceRemoved', { surface: t(surface.labelKey) }), duration: 1500 });
-            setSelectedSurfaceId(null);
+            setStoreDetails((current: any) => applyStarterPresenceUpdateToStoreDetails(
+                current,
+                result.surface,
+                result.confirmed,
+                result.recordedAt,
+                result.starterSignal,
+                result.storeId,
+            ));
+            if (String(currentStoreIdRef.current) === String(result.storeId)) {
+                setLocalPresence((previous) => {
+                    const next = { ...previous };
+                    delete next[surface.id];
+                    return next;
+                });
+                Toast.show({ content: t('surfaceRemoved', { surface: t(surface.labelKey) }), duration: 1500 });
+                setSelectedSurfaceId(null);
+            }
         } catch (error) {
             logMobileOwnerFailure('mobile_presence_remove_failed', error, buildMobilePresenceLogContext('remove', surface));
             Toast.show({ content: t('updateFailed'), duration: 1500 });

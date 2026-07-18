@@ -13,6 +13,68 @@ const hasOwn = (value: object, key: string): boolean =>
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
 
+export type TranslationCoverageSummary = {
+    fallbackKeyCount: number;
+    hasPartialCoverage: boolean;
+    translatedKeyCount: number;
+    translationCoverageCount: number;
+};
+
+export type TranslationCoverageExpectations = {
+    inputKeyCount: number;
+    targetLanguageCount: number;
+};
+
+const isNonNegativeSafeInteger = (value: unknown): value is number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+);
+
+export function normalizeTranslationCoverageSummary(
+    value: unknown,
+    expectations?: TranslationCoverageExpectations,
+): TranslationCoverageSummary | null {
+    if (!isRecord(value) || typeof value.hasPartialCoverage !== 'boolean') return null;
+    if (
+        !isNonNegativeSafeInteger(value.fallbackKeyCount)
+        || !isNonNegativeSafeInteger(value.translatedKeyCount)
+        || !isNonNegativeSafeInteger(value.translationCoverageCount)
+        || value.translationCoverageCount === 0
+        || value.hasPartialCoverage !== (value.fallbackKeyCount > 0)
+    ) {
+        return null;
+    }
+
+    if (expectations) {
+        const { inputKeyCount, targetLanguageCount } = expectations;
+        const expectedTranslatedValueCount = inputKeyCount * targetLanguageCount;
+        const actualTranslatedValueCount = value.fallbackKeyCount + value.translatedKeyCount;
+        if (
+            !isNonNegativeSafeInteger(inputKeyCount)
+            || !isNonNegativeSafeInteger(targetLanguageCount)
+            || inputKeyCount === 0
+            || targetLanguageCount === 0
+            || !Number.isSafeInteger(expectedTranslatedValueCount)
+            || !Number.isSafeInteger(actualTranslatedValueCount)
+            || value.translationCoverageCount !== targetLanguageCount
+            || actualTranslatedValueCount !== expectedTranslatedValueCount
+        ) {
+            return null;
+        }
+    }
+
+    return {
+        fallbackKeyCount: value.fallbackKeyCount,
+        hasPartialCoverage: value.hasPartialCoverage,
+        translatedKeyCount: value.translatedKeyCount,
+        translationCoverageCount: value.translationCoverageCount,
+    };
+}
+
+/** The request shape, not target count, determines the provider response shape. */
+export function isBatchTranslationRequest(targetLang: unknown): boolean {
+    return Array.isArray(targetLang);
+}
+
 function isSingleMenuEntityTranslation(inputKeys: string[]): boolean {
     if (inputKeys.length === 1 && inputKeys[0].endsWith('_c')) return true;
     if (inputKeys.some((key) => key.endsWith('_c'))) return false;
@@ -73,5 +135,27 @@ export function normalizeTranslationMap(
         if (!translated) return null;
         normalized[key] = translated;
     }
+    return normalized;
+}
+
+/** Projects a batch response to the exact languages and keys requested. */
+export function normalizeBatchTranslationMaps(
+    value: unknown,
+    targetLanguageCodes: readonly string[],
+    requestedKeys: readonly string[],
+): Record<string, Record<string, string>> | null {
+    if (!isRecord(value) || targetLanguageCodes.length === 0 || requestedKeys.length === 0) return null;
+
+    const seenLanguageCodes = new Set<string>();
+    const normalized: Record<string, Record<string, string>> = {};
+    for (const languageCode of targetLanguageCodes) {
+        if (!languageCode || seenLanguageCodes.has(languageCode)) return null;
+        seenLanguageCodes.add(languageCode);
+
+        const translations = normalizeTranslationMap(value[languageCode], requestedKeys);
+        if (!translations) return null;
+        normalized[languageCode] = translations;
+    }
+
     return normalized;
 }

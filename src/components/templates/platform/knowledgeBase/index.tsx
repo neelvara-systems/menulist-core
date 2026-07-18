@@ -1,7 +1,7 @@
 'use client';
 
 import { assertKnowledgeBaseArticleDeleteSucceeded, deleteArticle, getArticleById, getArticlesByCategoryId, getArticlesBySectionId } from "@database/knowledgeBase/articles";
-import { assertKnowledgeBaseCategoriesMutationSucceeded, assertKnowledgeBaseCategoryWriteSucceeded, deleteArticleFromParent, deleteCategory, getCategories, updateArticleInParent, updateCategory } from "@database/knowledgeBase/categories";
+import { assertKnowledgeBaseCategoriesMutationSucceeded, deleteArticleFromParent, deleteCategory, deleteSectionFromCategory, getCategories, updateArticleInParent } from "@database/knowledgeBase/categories";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import AISearchModal from "@organisms/AISearchModal";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
@@ -215,6 +215,12 @@ function PlatformKnowledgeBase() {
                         );
                         if (updatedCategoriesData) {
                             setCategoriesData(updatedCategoriesData);
+                            const updatedCategory = updatedCategoriesData.categories[selectedCategory.id];
+                            setSelectedCategory(updatedCategory);
+                            if (selectedSection) {
+                                const updatedSection = updatedCategory.sections?.find((section) => section.id === selectedSection.id);
+                                setSelectedSection(updatedSection || null);
+                            }
                         }
 
                         if (selectedArticle?.id === id) setSelectedArticle(null);
@@ -230,18 +236,15 @@ function PlatformKnowledgeBase() {
                                 );
                             }));
                         }
-                        const newCategoriesData = { ...categoriesData.categories };
-                        const updatedSections = newCategoriesData[selectedCategory.id].sections.filter(s => s.id !== id);
-                        newCategoriesData[selectedCategory.id].sections = updatedSections;
-                        const categoryUpdateResult = await updateCategory(newCategoriesData[selectedCategory.id]);
-                        assertKnowledgeBaseCategoryWriteSucceeded(
+                        const categoryUpdateResult = await deleteSectionFromCategory(selectedCategory.id, id);
+                        assertKnowledgeBaseCategoriesMutationSucceeded(
                             categoryUpdateResult,
-                            newCategoriesData[selectedCategory.id].id,
+                            'deleteSection',
                             'platform_kb_section_delete_category_update_rejected',
                         );
 
-                        setCategoriesData({ categories: newCategoriesData });
-                        setSelectedCategory(newCategoriesData[selectedCategory.id]);
+                        setCategoriesData({ categories: categoryUpdateResult.categories });
+                        setSelectedCategory(categoryUpdateResult.categories[selectedCategory.id]);
 
                         if (selectedSection?.id === id) {
                             setSelectedSection(null);
@@ -259,16 +262,14 @@ function PlatformKnowledgeBase() {
                                 );
                             }));
                         }
-                        const newCategoriesData = { ...categoriesData.categories };
-                        delete newCategoriesData[id];
-                        const categoryDeleteResult = await deleteCategory({ categories: newCategoriesData });
+                        const categoryDeleteResult = await deleteCategory({ categoryId: id });
                         assertKnowledgeBaseCategoriesMutationSucceeded(
                             categoryDeleteResult,
                             'deleteCategory',
                             'platform_kb_category_delete_rejected',
                         );
 
-                        setCategoriesData({ categories: newCategoriesData });
+                        setCategoriesData({ categories: categoryDeleteResult.categories });
 
                         if (selectedCategory?.id === id) {
                             setSelectedCategory(null);
@@ -296,6 +297,7 @@ function PlatformKnowledgeBase() {
             onCategorySelect={handleCategorySelect}
             onAddCategory={() => {
                 setEditingCategory(null);
+                categoryForm.setFieldsValue({ active: true });
                 setIsCategoryModalVisible(true);
             }}
             onEditCategory={(cat) => {

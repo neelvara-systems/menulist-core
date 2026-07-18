@@ -96,6 +96,7 @@ function verifyTemplatesRuntime() {
     country: 'India',
     email: 'hello@example.com',
     phoneNumber: '+91 90000 00000',
+    modifiedOn: new Date('2026-07-15T18:00:00.000Z'),
   });
   assert(inputs, 'compliance inputs must resolve from store contact data');
 
@@ -103,12 +104,26 @@ function verifyTemplatesRuntime() {
     const generated = generateComplianceContent(type, inputs);
     assert(generated.includes('Sample Restaurant'), `${type} compliance template must include business name`);
     assert(generated.includes('MenuList provides the underlying technology platform') || generated.includes('powered by MenuList'), `${type} compliance template must include platform disclosure`);
+    assert(generated.includes('July 15, 2026'), `${type} compliance template must use the stable source timestamp`);
   });
+  const refund = generateComplianceContent('refund', inputs);
+  assert(!refund.includes('within 7 days'), 'refund baseline must not invent a customer refund window');
+  assert(!refund.includes('5-7 business days'), 'refund baseline must not invent a processing timeline');
+  assert(refund.includes('MenuList cannot approve or process customer refunds'), 'refund baseline must keep platform responsibility explicit');
 
   const composed = composeComplianceContent('system baseline', 'custom owner text');
   assert(composed.startsWith('custom owner text'), 'custom compliance override must render before baseline content');
   assert(composed.includes('MenuList baseline policy content and platform disclosures'), 'custom compliance override must retain MenuList baseline disclosure');
   assert(composeComplianceContent('system baseline', '') === 'system baseline', 'empty custom compliance override must fall back to system baseline');
+  const malformedTimestampInputs = extractComplianceInputs({
+    name: 'Sample Restaurant',
+    email: 'hello@example.com',
+    modifiedOn: { toDate: () => { throw new Error('malformed_timestamp'); } },
+  });
+  assert(
+    malformedTimestampInputs?.lastUpdated === 'July 16, 2026',
+    'malformed legacy timestamps must use the versioned compliance effective date',
+  );
 }
 
 function verifyApiBoundary() {
@@ -144,6 +159,10 @@ function verifyApiBoundary() {
   assertIncludes(route, 'sanitizeComplianceContent(content)', 'Compliance API sanitizer');
   assertIncludes(route, 'saveComplianceOverrideServer(sId, tId, type, sanitized)', 'Compliance API server-side save DAL');
   assertIncludes(route, 'deleteComplianceOverrideServer(sId, type)', 'Compliance API server-side reset DAL');
+  assertIncludes(route, 'revalidateCompliancePublicCache(sId, tId)', 'Compliance API public cache invalidation');
+  assertIncludes(route, 'refreshPending,', 'Compliance API cache follow-up acknowledgement');
+  assertIncludes(route, 'compliance_store_scope_mismatch', 'Compliance API tenant/store identity mismatch boundary');
+  assertIncludes(route, 'normalizeMenuListPublicEntityIdentityAliases', 'Compliance API canonical tenant/store identity normalization');
   assertIncludes(route, 'type ComplianceStoreLookupResult', 'Compliance API typed store lookup result');
   assertIncludes(route, 'const storeLookup = await getStoreData(sId, tId);', 'Compliance API passes tenant/store context to store lookup');
   assertIncludes(route, 'if (!storeLookup.ok)', 'Compliance API distinguishes store lookup failure from missing inputs');
@@ -171,6 +190,10 @@ function verifyApiBoundary() {
   assertIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(documentId)', 'Compliance server DAL normalized store-scoped doc id');
   assertNotIncludes(serverDal, 'firestoreAdmin.collection(COLLECTION).doc(String(sId))', 'Compliance server DAL must not build refs from raw String(sId)');
   assertIncludes(serverDal, 'admin.firestore.FieldValue.delete()', 'Compliance server DAL reset deletes override field');
+  assertIncludes(serverDal, 'getCachedComplianceOverridesServer', 'Compliance server DAL cached public override reader');
+  assertIncludes(serverDal, 'unstable_cache(', 'Compliance server DAL Next data cache boundary');
+  assertIncludes(serverDal, "['public-compliance-overrides', documentId]", 'Compliance server DAL store-scoped cache key');
+  assertIncludes(serverDal, '{ revalidate: 60, tags: [getComplianceCacheTag(documentId)] }', 'Compliance server DAL tagged 60-second cache');
   assert(
     !fs.existsSync(path.join(ROOT, 'src/database/compliance/index.ts')),
     'Compliance client mutation DAL must stay absent; owner writes are server-owned',
@@ -201,9 +224,8 @@ function verifyPublicRouteBoundary() {
   assertIncludes(renderer, 'const complianceStoreDocumentId = normalizePublicComplianceStoreDocumentId(sId);', 'Compliance renderer normalizes store document ID before override read');
   assertIncludes(renderer, 'extractComplianceInputs(storeData)', 'Compliance renderer input extraction');
   assertIncludes(renderer, 'generateComplianceContent(type, inputs)', 'Compliance renderer template generation');
-  assertIncludes(renderer, 'composeComplianceContent(systemContent, data[overrideField])', 'Compliance renderer override composition');
-  assertIncludes(renderer, '.collection(DB_COLLECTIONS.COMPLIANCE_PAGES)', 'Compliance renderer override doc read');
-  assertIncludes(renderer, '.doc(complianceStoreDocumentId)', 'Compliance renderer uses normalized override document ID');
+  assertIncludes(renderer, 'getCachedComplianceOverridesServer(complianceStoreDocumentId)', 'Compliance renderer cached override read');
+  assertIncludes(renderer, 'composeComplianceContent(systemContent, customContent)', 'Compliance renderer override composition');
   assertIncludes(renderer, 'public_compliance_invalid_store_scope', 'Compliance renderer invalid store scope diagnostic');
   assertIncludes(renderer, 'public_compliance_override_read_failed', 'Compliance renderer bounded override-read diagnostics');
   assertIncludes(renderer, 'logComplianceOverrideReadFailure', 'Compliance renderer override-read diagnostic helper');
@@ -287,8 +309,8 @@ function verifyRulesAndConstantsBoundary() {
   assertIncludes(constants, 'COMPLIANCE_PAGES: "compliancePages"', 'App database constants compliance collection');
   assertIncludes(functionConstants, "COMPLIANCE_PAGES: 'compliancePages'", 'Functions database constants compliance collection');
   assertIncludes(features, 'ENABLE_COMPLIANCE_PAGES: true', 'Compliance feature flag current default');
-  assertIncludes(features, '- /privacy and /terms routes serve auto-generated compliance pages', 'Compliance feature flag docs privacy/terms');
-  assertIncludes(features, '- OBP footer shows Privacy · Terms links', 'Compliance feature flag docs footer links');
+  assertIncludes(features, '- /privacy, /terms, and /refund serve baseline compliance pages', 'Compliance feature flag docs fixed routes');
+  assertIncludes(features, '- OBP/menu footers expose the enabled policy links', 'Compliance feature flag docs footer links');
 
   assertIncludes(rules, 'match /compliancePages/{docId}', 'Firestore compliancePages rule');
   assertIncludes(rules, 'allow read: if true;', 'Firestore compliancePages public read');
@@ -323,7 +345,7 @@ function verifyDocsBoundary() {
     ].forEach((token) => assertIncludes(content, token, `${relativePath} top launch boundary`));
     assertNotIncludes(content, 'src/app/_client', `${relativePath} must not reference retired source route`);
     assertNotIncludes(content, '/_client', `${relativePath} must not reference retired internal route`);
-    assertNotIncludes(content, 'cached 60s by unstable_cache', `${relativePath} must not over-claim compliance override caching`);
+    assertIncludes(content, 'tagged 60-second', `${relativePath} current public override cache contract`);
   });
 
   const readme = docs[0][1];
@@ -337,7 +359,7 @@ function verifyDocsBoundary() {
   assertIncludes(readme, '`ENABLE_COMPLIANCE_PAGES` | `true`', 'Compliance README current flag default');
   assertIncludes(readme, '/refund', 'Compliance README refund route');
   assertIncludes(spec, 'Runtime implemented source evidence; not current launch or legal certification', 'Compliance spec launch/legal boundary status');
-  assertIncludes(spec, 'Current Release Boundary (July 10, 2026)', 'Compliance spec current release boundary heading');
+  assertIncludes(spec, 'Current Release Boundary (July 16, 2026)', 'Compliance spec current release boundary heading');
   assertIncludes(spec, 'browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`', 'Compliance spec custom-domain smoke gate');
   assertIncludes(spec, 'authenticated desktop and mobile owner save/reset QA', 'Compliance spec owner QA gate');
   assertIncludes(spec, 'owner/legal review of final generated or custom policy text', 'Compliance spec legal review boundary');
@@ -351,6 +373,7 @@ function verifyDocsBoundary() {
   assertIncludes(impl, 'owner compliance store lookup failures log `compliance_store_lookup_failed`', 'Compliance impl owner store lookup diagnostics note');
   assertIncludes(impl, '`/api/compliance` validates session tenant/store IDs', 'Compliance impl session document ID boundary note');
   assertIncludes(firebaseDoc, 'direct compliancePages doc read', 'Compliance Firebase current override read cost');
+  assertIncludes(firebaseDoc, 'compliance-store-{sId}', 'Compliance Firebase tagged cache invalidation contract');
   assertIncludes(firebaseDoc, 'July 6 public override document-ID boundary', 'Compliance Firebase public override document ID boundary note');
   assertIncludes(firebaseDoc, 'July 6 session document-ID boundary', 'Compliance Firebase session document ID boundary note');
   assertIncludes(firebaseDoc, 'July 13 server-owned compliance mutation boundary', 'Compliance Firebase server-owned mutation note');

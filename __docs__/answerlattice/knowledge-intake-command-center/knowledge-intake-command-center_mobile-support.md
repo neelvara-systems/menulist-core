@@ -121,3 +121,4 @@ No horizontal overflow.
 | 2026-05-31 | 1.0.0 | Initial mobile support contract for Knowledge Intake Command Center. |
 | 2026-05-31 | 1.1.0 | Added summary-first mobile loading and urgent-review preview rules. |
 | 2026-06-11 | 1.1.1 | Added the mobile-friendly file selection requirement and aligned the implemented intake screen with a visible 44px file chooser plus clearer first-run empty states. |
+| 2026-07-17 | 1.2.0 | Required bounded source evidence and applicability to appear before 44px review decision controls on mobile. |

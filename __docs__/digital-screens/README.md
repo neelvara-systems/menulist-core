@@ -1,7 +1,7 @@
 # Digital Screens — Documentation Hub
 
 **Feature:** In-Store Digital Menu Display (TV/Tablet Screens)
-**Status:** 🔒 v2.3 LOCKED (readability, owner-trust, public-read, listener-isolation, bounded-diagnostics hardening, and dedicated source-gate verification applied July 2026) — Only readability/reliability/scale fixes allowed.
+**Status:** 🔒 v2.3 LOCKED (readability, owner-trust, token-free listener isolation, bounded diagnostics, lifecycle recovery, permission parity, and dedicated source-gate verification applied July 2026) — Only readability/reliability/security/scale fixes allowed.
 **One-liner:** "Your current menu on your shop TV. One link. No separate screen editing."
 
 ## Source Gate
@@ -30,8 +30,14 @@ June 2026 hardening keeps that boundary while making the feature owner-trustwort
 - Highlights no longer overlays management captions on custom poster slides; owner-uploaded artwork is treated as the screen content.
 - Public menu cache invalidation now also touches screen content version when a screen exists, so ordinary menu edits can refresh connected TVs.
 - Public screen cold renders now use a generated available-item menu projection inside the existing screen summary when it matches the current menu/version and base menu slug context, with the old project-read fallback still intact.
+- Projection refresh reads the compact project summary and selected project through the same Firestore transaction that advances the screen version, so a concurrent menu write retries instead of publishing stale items under a current version. Read/write counts are unchanged.
 - Public screen clients now listen to a tiny safe `platformSummary/screen_{storeId}` mirror instead of the internal `campaigns_{storeId}` owner summary document.
+- The public mirror no longer contains the bearer screen token, and Firestore permits anonymous exact-document `get` only—not public `platformSummary` listing. Existing mirrors require the guarded token-removal backfill before the tightened rule is deployed.
 - The daily seen signal rejects oversized anonymous requests, applies the IP rate limit before JSON parsing or Firestore lookup, requires an enabled screen plus public-safe active/non-blocked store eligibility before writing, and public display clients send it as same-origin/no-store/manual-redirect before caching the daily local marker only after an OK response.
+- Unexpected seen-write failures now return a retryable response, so a transient failure is not cached locally as that day's successful signal.
+- The global Digital Screens kill switch now closes both the public display route and the seen endpoint, while desktop/mobile owner entry points require the Digital Screens permission before reading screen state. Desktop and mobile Menu Manager also omit the bearer link unless that permission is present.
+- Expired custom slides no longer consume the three-slide allowance: owner reads hide them and the next screen mutation prunes their Firestore references. Storage retention remains governed by the shared media lifecycle rather than the display-expiry timer.
+- Highlights preserves the last valid cached slide payload when a fresh server render is empty and clamps its active slide index when the refreshed rotation shrinks, preventing a temporary blank frame.
 - Public token resolvers, menu fallback helpers, invalidation, and reload utilities no longer direct-console raw screen tokens, project IDs, slide IDs, settings, or error objects; failures use normalized bounded diagnostics.
 - `npm run verify:digital-screens-boundary` now locks the screen-token route, public-safe `platformSummary/screen_{storeId}` mirror, seen-signal cheap-fail ordering, screen cache invalidation touches, owner copy/open acknowledgement guards, and Digital Screens docs parity as a dedicated source gate.
 
@@ -81,6 +87,7 @@ src/database/campaigns/serverScreen.ts      # Public screen DAL: token lookup, p
 src/database/campaigns/index.ts             # Owner/session DAL: setup, settings, uploads, version bumps
 src/components/.../DigitalScreenSettings/   # Owner settings UI (4 components)
 scripts/verification/verify-digital-screens-boundary.js # Dedicated local source gate for Digital Screens
+scripts/backfill-digital-screen-public-mirrors.ts # Guarded dry-run/write migration for legacy token-bearing listener mirrors
 ```
 
 ---
@@ -89,7 +96,7 @@ scripts/verification/verify-digital-screens-boundary.js # Dedicated local source
 
 **One TV (most common):**
 
-1. Settings → Digital Screen → copy Menu Board link from the TV setup card → open on TV → fullscreen → done. Copied feedback appears only after the browser acknowledges the copy handoff.
+1. Settings → Digital Screen → copy Menu Board link from the TV setup card → open on TV → fullscreen → done. The section is visible only with the Digital Screens permission, and copied feedback appears only after the browser acknowledges the copy handoff.
 
 **Two TVs:**
 
@@ -127,4 +134,4 @@ See `digital-screens_firebase.md` for full breakdown.
 
 ---
 
-**Last Updated:** July 1, 2026
+**Last Updated:** July 16, 2026

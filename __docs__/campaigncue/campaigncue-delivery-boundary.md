@@ -43,6 +43,18 @@ Current platform research confirms that direct provider work is not a small foll
 
 If these preconditions are missing, CampaignCue must continue to produce download/export/manual handoff outputs only.
 
+## July 18, 2026 Meta Ads MCP Decision
+
+Meta now documents a hosted Ads MCP server with reporting, ad management, catalog, signal-health, troubleshooting, experiment/lift, and activity-log capabilities: https://developers.facebook.com/documentation/ads-commerce/ads-ai-connectors/ads-mcp-server/ads-mcp-server-overview
+
+CampaignCue adopts only the architectural option, not the active integration:
+
+- **First candidates:** reporting, activity logs, signal/dataset health, and help/troubleshooting.
+- **Advanced/deferred:** catalog management and A/B test or conversion-lift workflows.
+- **Blocked:** ad/campaign/ad-set creation or editing, budget/spend mutation, catalog mutation, and experiment mutation.
+
+The future connector must be server-only, explicitly owner-authorized, tenant/ad-account scoped, runtime-validated, tool-allowlisted, bounded by timeout/rate/retry controls, and summarized into compact provider evidence. A model cannot choose arbitrary Meta tools or make CampaignCue campaign/spend decisions. If Meta's current scopes or tool controls cannot guarantee the approved read-first boundary, the connector remains disabled.
+
 ## Day-One Non-Goals
 
 - No direct WhatsApp send.
@@ -52,6 +64,7 @@ If these preconditions are missing, CampaignCue must continue to produce downloa
 - No video render/upload provider.
 - No owner-facing social account connection request.
 - No provider-connection write from the owner UI.
+- No Meta Ads MCP call, metric import, activity import, signal-health query, catalog operation, experiment operation, or ad mutation.
 
 ## Repo Contract
 
@@ -67,3 +80,5 @@ If these preconditions are missing, CampaignCue must continue to produce downloa
 ## Firebase Cost Posture
 
 This boundary removes provider setup writes and avoids a provider-connection read on workspace load. Direct provider work must not be added without a new Firebase cost note, idempotency design, rate limits, and explicit owner approval controls.
+
+The approved future Meta read-first shape must remain lazy-loaded and use at most one compact provider summary write per changed normalized refresh. It must not add raw event documents or a provider read to the default workspace overview.

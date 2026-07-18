@@ -184,7 +184,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 <Flex justify="space-between" align="center">
                     {/* Reset link - only show when editing */}
                     <div>
-                        {editingProject && (
+                        {editingProject && !(editingProject as any).isSpecialMenu && (
                             <Button
                                 type="text"
                                 danger
@@ -290,17 +290,25 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         </Form.Item>
                         <div style={panelStyle}>
                             <Flex gap={16} vertical>
-                                <Form.Item
-                                    name="active"
-                                    label="Active"
-                                    valuePropName="checked"
-                                    style={{ marginBottom: 0 }}
-                                >
-                                    <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-                                </Form.Item>
-                                <Typography.Text type="secondary">
-                                    Inactive menus stay hidden until you enable them.
-                                </Typography.Text>
+                                {!(editingProject as any)?.isSpecialMenu ? (
+                                    <>
+                                        <Form.Item
+                                            name="active"
+                                            label="Active"
+                                            valuePropName="checked"
+                                            style={{ marginBottom: 0 }}
+                                        >
+                                            <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
+                                        </Form.Item>
+                                        <Typography.Text type="secondary">
+                                            Inactive menus stay hidden until you enable them.
+                                        </Typography.Text>
+                                    </>
+                                ) : (
+                                    <Typography.Text type="secondary">
+                                        End or cancel this menu from Special Menus. Its schedule controls when customers see it.
+                                    </Typography.Text>
+                                )}
                                 {!(editingProject as any)?.isSpecialMenu ? (
                                     <>
                                         <Form.Item

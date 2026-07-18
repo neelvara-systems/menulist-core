@@ -1,7 +1,8 @@
 # SignalDesk Operating Layer
 
-**Status:** Implementation slice approved
+**Status:** Implemented
 **Created:** June 24, 2026
+**Last Updated:** July 16, 2026
 **Parent:** [MenuList SignalDesk](../README.md)
 **Audience:** Internal only
 
@@ -12,7 +13,7 @@ The operating layer turns SignalDesk from a broad control room into a daily solo
 It gives Danny and the growth team:
 
 - a Daily Growth Mission with at most five ranked actions;
-- lightweight experiment cards for one market pod at a time;
+- lightweight experiment cards for one market pod at a time, with a versioned baseline/candidate readback plan;
 - approved offer/CTA records;
 - reply-to-conversion playbooks;
 - source-quality learning snapshots;
@@ -24,6 +25,7 @@ It gives Danny and the growth team:
 
 - No provider send.
 - No paid campaign automation.
+- No automatic winner promotion, rollback, or metric ingestion.
 - No public SignalDesk pages.
 - No social auto-publish.
 - No new paid provider adapters.
@@ -51,7 +53,8 @@ seed defaults
   -> run research agent table
   -> review up to 30 pass/unsure leads
   -> create daily mission
-  -> create experiment card
+  -> create experiment card with baseline/candidate windows
+  -> record primary metric, confounders, and next readback
   -> upsert offer/CTA
   -> upsert reply playbook
   -> create source-quality snapshot
@@ -59,3 +62,11 @@ seed defaults
 ```
 
 The first route is `/signaldesk/mission`.
+
+## Version History
+
+| Version | Date | Change |
+| --- | --- | --- |
+| 1.2 | July 16, 2026 | Required a fresh bounded result summary for every experiment decision and aligned permission/mobile read-only controls. |
+| 1.1 | July 16, 2026 | Added the enforced closed-loop experiment readback contract while preserving founder decisions and legacy-card visibility. |
+| 1.0 | June 24, 2026 | Created the operating-layer documentation and first runtime slice. |

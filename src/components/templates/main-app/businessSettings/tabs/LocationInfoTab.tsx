@@ -20,7 +20,7 @@ const LocationInfoTab = forwardRef<HTMLDivElement, LocationInfoTabProps>(({ scro
             <Row gutter={[16, 0]}>
                 <Col xs={24}>
                     <Form.Item
-                        name="address"
+                        name="addressLine"
                         label={t('streetAddress')}
                         extra="Enter the real customer-facing address for this location. Do not use internal notes or temporary instructions here."
                         rules={[{ message: t('streetAddressRequired') }]}
@@ -86,7 +86,7 @@ const LocationInfoTab = forwardRef<HTMLDivElement, LocationInfoTabProps>(({ scro
                 </Col>
                 <Col xs={24} md={12}>
                     <Form.Item
-                        name="pincode"
+                        name="postalCode"
                         label={t('postalCode')}
                         rules={[{ message: t('postalCodeRequired') }]}
                     >

@@ -1,12 +1,15 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { resolveNextSpecialMenuTransitionAt } from '@data/shared/specialMenuSchedule';
 import {
     deleteField,
     doc,
     type Firestore,
+    getDoc,
     runTransaction,
     serverTimestamp,
 } from 'firebase/firestore';
 import { buildSummaryProjectFieldPayload } from '@lib/firestore/summaryProjectsWriter';
+import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import {
     normalizeMultiOutletNumericDocumentId,
     normalizeMultiOutletProjectId,
@@ -105,6 +108,39 @@ function normalizeLifecycleScope(params: SpecialMenuLifecycleParams) {
     return { tenant, store, project };
 }
 
+function isLiveCompetingSpecialMenuProject(
+    value: unknown,
+    projectId: string,
+    tenantDocumentId: string,
+    storeDocumentId: string,
+    now: Date,
+): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const projectData = value as Record<string, unknown>;
+    if (
+        (projectData.projectId !== undefined && projectData.projectId !== projectId)
+        || (projectData.tId !== undefined && String(projectData.tId) !== tenantDocumentId)
+        || (projectData.sId !== undefined && String(projectData.sId) !== storeDocumentId)
+        || projectData.deleted === true
+        || projectData.active === false
+    ) {
+        return false;
+    }
+
+    const metadata = normalizeSpecialMenuMetadata(projectData._specialMenu);
+    const baseProjectScope = metadata
+        ? normalizeMultiOutletProjectId(metadata.baseProjectId)
+        : null;
+    return Boolean(
+        metadata
+        && baseProjectScope
+        && baseProjectScope.tenantDocumentId === tenantDocumentId
+        && baseProjectScope.storeDocumentId === storeDocumentId
+        && metadata.status === 'active'
+        && Date.parse(metadata.endsAt) > now.getTime()
+    );
+}
+
 export async function transitionSpecialMenuLifecycle(
     params: SpecialMenuLifecycleParams,
 ): Promise<SpecialMenuLifecycleResult> {
@@ -126,12 +162,22 @@ export async function transitionSpecialMenuLifecycle(
         DB_COLLECTIONS.PLATFORM_SUMMARY,
         `projects_${scope.store.documentId}`,
     );
+    let shouldReadStore = params.action !== 'cancel';
+    if (!shouldReadStore) {
+        try {
+            shouldReadStore = (await getDoc(storeRef)).exists();
+        } catch {
+            // Cancelling the project/summary remains available when a legacy or
+            // partially provisioned store document cannot be read. Store-state
+            // repair is best-effort for this one action.
+            shouldReadStore = false;
+        }
+    }
 
     return runTransaction(params.db, async (transaction) => {
         const projectSnapshot = await transaction.get(projectRef);
-        const storeSnapshot = params.action === 'cancel'
-            ? null
-            : await transaction.get(storeRef);
+        const storeSnapshot = shouldReadStore ? await transaction.get(storeRef) : null;
+        const summarySnapshot = await transaction.get(summaryRef);
         if (!projectSnapshot.exists()) throw new Error('special_menu_project_missing');
 
         const projectData = projectSnapshot.data();
@@ -157,9 +203,84 @@ export async function transitionSpecialMenuLifecycle(
         const activeSpecialMenuId = typeof storeData.activeSpecialMenuId === 'string'
             ? storeData.activeSpecialMenuId
             : null;
+        const summaryProjects = parseSummaryProjects(summarySnapshot.data());
+        let hasLiveCompetingActiveMenu = false;
+        if (
+            params.action === 'activate'
+            && activeSpecialMenuId
+            && activeSpecialMenuId !== scope.project.projectId
+        ) {
+            const competingProjectScope = normalizeMultiOutletProjectId(activeSpecialMenuId);
+            if (
+                competingProjectScope
+                && competingProjectScope.tenantDocumentId === scope.tenant.documentId
+                && competingProjectScope.storeDocumentId === scope.store.documentId
+            ) {
+                const competingProjectSnapshot = await transaction.get(doc(
+                    params.db,
+                    DB_COLLECTIONS.PROJECTS,
+                    scope.tenant.documentId,
+                    scope.store.documentId,
+                    competingProjectScope.projectId,
+                ));
+                hasLiveCompetingActiveMenu = competingProjectSnapshot.exists()
+                    && isLiveCompetingSpecialMenuProject(
+                        competingProjectSnapshot.data(),
+                        competingProjectScope.projectId,
+                        scope.tenant.documentId,
+                        scope.store.documentId,
+                        now,
+                    );
+            }
+        }
+        const buildSummaryUpdate = (
+            metadata: SpecialMenuMetadata,
+            status: SpecialMenuStatus,
+        ): Record<string, unknown> => ({
+            lastUpdated: serverTimestamp(),
+            specialMenuNextTransitionAt: resolveNextSpecialMenuTransitionAt({
+                ...summaryProjects,
+                [scope.project.projectId]: {
+                    ...summaryProjects[scope.project.projectId],
+                    active: true,
+                    deleted: false,
+                    isSpecialMenu: true,
+                    specialMenuEndsAt: metadata.endsAt,
+                    specialMenuStartsAt: metadata.startsAt,
+                    specialMenuStatus: status,
+                },
+            }) || deleteField(),
+            ...buildSummaryProjectFieldPayload(
+                scope.project.projectId,
+                'specialMenuStatus',
+                status,
+            ),
+        });
+        const clearOwnedStoreState = (): Record<string, unknown> => {
+            const storeUpdate: Record<string, unknown> = {};
+            if (activeSpecialMenuId === scope.project.projectId) {
+                storeUpdate.activeSpecialMenuId = deleteField();
+            }
+            const tempStatusSourceProjectId = typeof storeData.tempStatus?.sourceProjectId === 'string'
+                ? storeData.tempStatus.sourceProjectId
+                : null;
+            if (
+                storeData.tempStatus?.type === 'special_menu'
+                && (
+                    tempStatusSourceProjectId === scope.project.projectId
+                    || (
+                        activeSpecialMenuId === scope.project.projectId
+                        && tempStatusSourceProjectId === null
+                    )
+                )
+            ) {
+                storeUpdate.tempStatus = deleteField();
+            }
+            return storeUpdate;
+        };
 
         if (params.action === 'activate' && currentMetadata.status === 'active') {
-            if (activeSpecialMenuId && activeSpecialMenuId !== scope.project.projectId) {
+            if (hasLiveCompetingActiveMenu) {
                 throw new Error('special_menu_active_pointer_conflict');
             }
             const storeUpdate: Record<string, unknown> = {
@@ -177,14 +298,11 @@ export async function transitionSpecialMenuLifecycle(
                 };
             }
             transaction.set(storeRef, storeUpdate, { merge: true });
-            transaction.set(summaryRef, {
-                lastUpdated: serverTimestamp(),
-                ...buildSummaryProjectFieldPayload(
-                    scope.project.projectId,
-                    'specialMenuStatus',
-                    currentMetadata.status,
-                ),
-            }, { merge: true });
+            transaction.set(
+                summaryRef,
+                buildSummaryUpdate(currentMetadata, currentMetadata.status),
+                { merge: true },
+            );
             return {
                 projectId: scope.project.projectId,
                 status: currentMetadata.status,
@@ -206,28 +324,26 @@ export async function transitionSpecialMenuLifecycle(
                 }
                 transaction.set(storeRef, storeUpdate, { merge: true });
             }
-            transaction.set(summaryRef, {
-                lastUpdated: serverTimestamp(),
-                ...buildSummaryProjectFieldPayload(
-                    scope.project.projectId,
-                    'specialMenuStatus',
-                    currentMetadata.status,
-                ),
-            }, { merge: true });
+            transaction.set(
+                summaryRef,
+                buildSummaryUpdate(currentMetadata, currentMetadata.status),
+                { merge: true },
+            );
             return {
                 projectId: scope.project.projectId,
                 status: currentMetadata.status,
             };
         }
         if (params.action === 'cancel' && currentMetadata.status === 'cancelled') {
-            transaction.set(summaryRef, {
-                lastUpdated: serverTimestamp(),
-                ...buildSummaryProjectFieldPayload(
-                    scope.project.projectId,
-                    'specialMenuStatus',
-                    currentMetadata.status,
-                ),
-            }, { merge: true });
+            const storeUpdate = clearOwnedStoreState();
+            if (Object.keys(storeUpdate).length > 0) {
+                transaction.set(storeRef, storeUpdate, { merge: true });
+            }
+            transaction.set(
+                summaryRef,
+                buildSummaryUpdate(currentMetadata, currentMetadata.status),
+                { merge: true },
+            );
             return {
                 projectId: scope.project.projectId,
                 status: currentMetadata.status,
@@ -243,7 +359,7 @@ export async function transitionSpecialMenuLifecycle(
             if (Date.parse(currentMetadata.endsAt) <= now.getTime()) {
                 throw new Error('special_menu_activation_window_expired');
             }
-            if (activeSpecialMenuId && activeSpecialMenuId !== scope.project.projectId) {
+            if (hasLiveCompetingActiveMenu) {
                 throw new Error('special_menu_active_conflict');
             }
             nextStatus = 'active';
@@ -311,17 +427,18 @@ export async function transitionSpecialMenuLifecycle(
                 status: nextStatus,
                 deactivatedAt: nowIso,
             };
+            const storeUpdate = clearOwnedStoreState();
+            if (Object.keys(storeUpdate).length > 0) {
+                transaction.set(storeRef, storeUpdate, { merge: true });
+            }
         }
 
         transaction.set(projectRef, { _specialMenu: nextMetadata }, { merge: true });
-        transaction.set(summaryRef, {
-            lastUpdated: serverTimestamp(),
-            ...buildSummaryProjectFieldPayload(
-                scope.project.projectId,
-                'specialMenuStatus',
-                nextStatus,
-            ),
-        }, { merge: true });
+        transaction.set(
+            summaryRef,
+            buildSummaryUpdate(nextMetadata, nextStatus),
+            { merge: true },
+        );
 
         return { projectId: scope.project.projectId, status: nextStatus };
     });

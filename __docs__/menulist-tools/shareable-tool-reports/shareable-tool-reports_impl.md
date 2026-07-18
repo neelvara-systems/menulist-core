@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Implementation
 
 **Status:** Implemented V0
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Developers
 
 ---
@@ -55,13 +55,19 @@ The shared helper enforces:
 - max setup jobs: `SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS`
 - strict ISO `generatedAt` timestamp guard using the source-tool `new Date().toISOString()` contract
 - control characters are stripped from decoded display strings before rendering
-- safe internal next-action href only
+- summary counts exactly match normalized visible checks
+- primary number is a safe integer within the check count
+- primary label and at least one public boundary are mandatory
+- setup jobs are rebuilt from normalized visible gaps
+- safe same-origin next-action href only; protocol-relative, backslash, encoded-backslash, and external paths fall back to `/create-menu`
 
 If a shared report link is incomplete, too large, or not a valid schema, the viewer shows an invalid-link state.
 
 Decode failures use bounded diagnostics. `shareable_tool_report_payload_decode_failed` records only the failure stage (`payload_oversized`, `base64_decode`, `json_oversized`, `json_parse`, or `payload_invalid`), hash input length, encoded payload length, decoded payload length when available, hash/key shape booleans, max-length booleans, fixed `show_invalid_report_state` fallback policy, and normalized source error metadata. It must not log the hash payload, decoded JSON, business name, business context, evidence text, setup jobs, contact details, or exception text.
 
 July 5 follow-up: Shareable Tool Reports timestamp/display-string payload boundary. The public hash decoder now rejects report payloads whose `generatedAt` value is not the canonical ISO timestamp shape produced by source tools. It also strips control characters from decoded display strings before the viewer renders report titles, business context, status copy, evidence rows, setup jobs, boundaries, and next-action copy. Tampered report links with invalid timestamps keep the existing invalid-report state instead of rendering `Invalid Date` or arbitrary generated-time text.
+
+July 16 follow-up: hash reports remain unsigned browser-local self-reports. `normalizeShareableToolReportPayload(...)` rejects count/check mismatches, unsafe primary numbers, empty primary labels, and missing report limits. It derives setup jobs from normalized checks and resolves next actions against a fixed MenuList sentinel origin. `ToolReportPage` renders a static owner-confirmation notice from the locale bundle, not from the hash.
 
 ---
 
@@ -127,9 +133,12 @@ Runtime rules:
 
 - route is guarded by the existing `/ops` layout and `/api/ops/report-leads` uses `withAuth(..., { requiredPlatformRole: 'PLATFORM' })`
 - after the request rate limit and before the lead query, the API re-reads the exact current `users/{userId}` document and proves document/session identity, normalized email, `platformRole: PLATFORM`, active and verified lifecycle state, non-blocked status, and a valid session issuance/revocation ordering
+- production rate-limit-provider failure blocks the route instead of bypassing admission
 - API is manual-refresh only
-- API reads recent `landingPageEnquiries`, filters `shareable_tool_report` leads in memory, and avoids new Firestore indexes
+- API uses the scoped `landingPageEnquiries` composite (`sourceKind ASC`, `createdOn DESC`) so unrelated contact enquiries are not read into Report Lead Ops
+- API sets `scanMayBeIncomplete` when the 120-report-lead cap is reached; the UI warns that older matching leads may exist
 - legacy `sourcePath` values are projected through the public-contact pathname normalizer so query strings and fragments do not enter the response DTO
+- source paths containing literal/encoded backslashes or resolving away from the fixed MenuList sentinel origin are rejected
 - response is capped and parsed through `readReportLeadOpsSnapshotResponse`
 - UI shows the setup job list and can copy the first-reply template from the playbook
 - no lead mutation

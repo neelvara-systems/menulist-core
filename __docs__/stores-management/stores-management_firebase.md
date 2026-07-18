@@ -1,5 +1,7 @@
 # Stores Management — Firebase Cost Tracking
 
+> **July 14, 2026 platform block post-commit boundary:** tenant/store block transactions remain the authoritative write boundary. Existing menu/store/client/screen cache tags, Digital Screens touches, and assistant-packet invalidations now run through bounded all-settled fanout after commit, so a failed derived effect neither falsely fails saved block truth nor stops later tenant stores. Successful Firestore operation counts and deployment targets are unchanged.
+
 **Feature:** Store CRUD & Configuration  
 **Status:** Firebase cost evidence; not current launch certification
 **Last Updated:** July 1, 2026
@@ -22,7 +24,7 @@
 
 `getStoresSummary()` costs one direct-document read and parses nested/legacy rows through `src/data/shared/storeSummaryBoundary.ts` instead of casting raw Firestore data to `StoresSummary`. The old standalone browser `syncStoreToSummary()` and `mergeStoreSummaryFields()` exports are removed: every active store-summary mutation now writes canonical state and the affected summary slot in its owning transaction. This prevents maintained code or docs from reintroducing a partial canonical-then-summary commit.
 
-Tenant-name propagation now uses `POST /api/tenants/name`. Admission adds one current-store permission read for non-platform owners. The transaction reads one tenant plus a tenant-scoped store query capped at 201, then writes one tenant, up to 200 stores, and at most one `storesSummary` merge. This replaces the prior tenant write + store batch + N independent summary writes, eliminates partial canonical/summary commits, and adds bounded post-commit screen/context effects. No new collection, index, rule, Function, Storage, or Firebase deploy is required; the app route remains under the Vercel opt-in boundary.
+Tenant-name propagation now uses `POST /api/tenants/name`. Admission adds one current-store permission read for non-platform owners. The transaction reads one tenant plus a tenant-scoped store query capped at 201, then writes one tenant, up to 200 stores, and at most one `storesSummary` merge. This replaces the prior tenant write + store batch + N independent summary writes and eliminates partial canonical/summary commits. Post-commit menu/store/client-store tags, screen versions and Owner Business Assistant packets run in bounded all-settled chunks; failures are counted and logged but do not stop later effects or falsely fail committed truth. Successful-path Firebase operation counts are unchanged. No new collection, index, rule, Function, Storage, or Firebase deploy is required; the app route remains under the Vercel opt-in boundary.
 
 Manual `addStore()` now reads the target store and current tenant inside one transaction, then creates the canonical store, summary row, and deduplicated tenant-list entry together. Summary-relevant `updateStore()` reads the current store in its transaction and writes canonical plus summary state together; name changes additionally read/update the tenant list from current state. This replaces split browser writes and stale whole-list replacement. Create costs 2 transaction reads plus 3 entity writes after the separate counter reservation; summary edits cost 1 read/2 writes, or 2 reads/3 writes for name identity. No rule, index, Function, Storage, or Firebase deployment source changed.
 

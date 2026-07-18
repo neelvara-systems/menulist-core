@@ -2,7 +2,7 @@
 
 > **Feature:** Physical Menu Surfaces (Campaign-Based Recommendation Cards)  
 > **Status:** ⚠️ LEGACY — Superseded by [Menu Kit](../menu-kit/README.md) for identity surfaces  
-> **Last Updated:** June 3, 2026
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -27,7 +27,7 @@ In Feb-Mar 2026, **[Menu Kit](../menu-kit/README.md)** was built as the **canoni
 
 **For all new physical surface work, use Menu Kit.**
 
-Maintenance note: the legacy Today/mobile Hours download buttons are still active for campaign recommendation tent cards and counter stickers. Those active downloads now reuse the shared Menu Kit premium output tokens (`src/lib/menu-kit/brandTokens.ts`) and platform attribution helper (`src/lib/menu-kit/platformAttribution.ts`) so they include store logo/color treatment, a scan-safe QR panel, and subtle MenuList logo/name/domain footer instead of plain black-and-white output.
+Maintenance note: the legacy Today/mobile Hours download buttons remain as a read-only compatibility surface for an already-populated `platformSummary/campaigns_{sId}.physicalSurfaces` field. Current source has no active writer that computes or persists that field; `calculatePhysicalSurfaceEligibility()` is not called by the current campaign mutation path. Therefore this legacy UI must not be described as an autonomously generated current feature. When legacy data exists, its downloads reuse the shared Menu Kit premium output tokens (`src/lib/menu-kit/brandTokens.ts`) and platform attribution helper (`src/lib/menu-kit/platformAttribution.ts`) so they include store logo/color treatment, a scan-safe QR panel, and subtle MenuList logo/name/domain footer instead of plain black-and-white output.
 
 ---
 
@@ -52,9 +52,9 @@ Maintenance note: the legacy Today/mobile Hours download buttons are still activ
 | [physical-surfaces_doc-feedback-audit.md](./physical-surfaces_doc-feedback-audit.md) | Documentation feedback audit                                                  |
 | [\_archive/chatgpt-review.md](./_archive/chatgpt-review.md)                          | ChatGPT strategic review (Mar 14, 2026) — identity vs recommendation analysis |
 
-## One-Liner
+## Current Source Boundary
 
-Campaign-based recommendation cards for Today tab. Active downloads are maintenance-only and share Menu Kit's premium output treatment. **For identity infrastructure surfaces (table tents, entrance posters, stickers), see [Menu Kit](../menu-kit/README.md).**
+Campaign-based recommendation cards are a legacy read/download compatibility path, not a currently populated autonomous flow. **For supported identity infrastructure surfaces (table tents, entrance posters, stickers), use [Menu Kit](../menu-kit/README.md) and [Print Menu Surfaces](../print-menu-surfaces/README.md).**
 
 ## Problem Solved
 

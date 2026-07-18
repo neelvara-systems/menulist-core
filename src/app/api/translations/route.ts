@@ -6,7 +6,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { summarizeAiProviderUsage } from "@lib/ai/providerUsage";
-import { normalizeTranslationText, resolveTranslationBillingAction } from "@lib/ai/translationOutput";
+import { isBatchTranslationRequest, normalizeTranslationText, resolveTranslationBillingAction } from "@lib/ai/translationOutput";
 import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
@@ -644,7 +644,7 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const inputKeys = Object.keys(inputJson || {});
-        const isBatchRequest = targetLanguages.length > 1;
+        const isBatchRequest = isBatchTranslationRequest(targetLang);
         const {
             normalizedData,
             translationCoverage,
@@ -829,6 +829,7 @@ export const POST = withAuth(async (request, session) => {
                 transactionId: transactionObject.transactionId
             },
             remainingBalance,
+            translationCoverage: translationCoverageSummary,
         }, { status: 200 });
 
     } catch (error) {

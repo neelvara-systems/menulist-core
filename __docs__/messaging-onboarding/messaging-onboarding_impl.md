@@ -3,9 +3,24 @@
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
 **Status:** Source-implemented, provider-disabled — not a current launch or deploy certification
 **Architecture:** Firebase Cloud Functions + Firestore State Machine + Provider-Agnostic Adapter Layer
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Production use still requires current audit/runbook/local aggregate evidence, a final owned provider account, real Meta secrets, webhook registration, explicit target enablement and scoped deploy evidence, provider smoke, browser/device QA, and production-host smoke.
+
+### July 16, 2026 Provider Network Boundary
+
+All authenticated WhatsApp Graph API requests in `WhatsAppAdapter.ts` set `redirect: "manual"`. Media metadata and outbound sends use a 15-second abort boundary; media binary downloads use a 30-second abort boundary. Redirect responses fail as provider errors instead of forwarding the bearer token to another location, and stalled provider calls release the worker within a bounded interval. `scripts/verification/test-messaging-whatsapp-adapter.ts` exercises the request options and `npm run verify:menu-extraction-pipeline` source-gates them. This is a cost-neutral provider hardening change; the checked-in runtime gate remains disabled.
+
+### July 13, 2026 Platform Monitor Data Contract
+
+- `src/app/api/ops/messaging-onboarding/route.ts` is server-authorized with `requiredPlatformRole: 'PLATFORM'`; the client redirect is only a secondary UX guard.
+- `src/lib/ops/messagingOnboardingOpsBoundary.ts` is the single persisted-to-API and API-to-browser contract. It does not forward Firestore `runMetrics`, `metrics`, `costs`, `retention`, event metadata, event errors, sessions, or alerts as raw stored objects.
+- The health producer intentionally stores fields such as `retention.retainPublishedSourceFiles`; the ops projection omits producer-only fields and returns only the numeric owner-safe monitor fields declared by `MessagingOnboardingOpsHealth`. This prevents the real producer snapshot from failing the browser response guard.
+- Health alerts are capped at 8. Recent events are capped at 12, sessions at 8, and messaging alerts at 8. Stored alert title/message text is represented only as presence/length context.
+- Event counts use one closed `[generatedAt - 24h, generatedAt]` window, so records timestamped later than `generatedAt` cannot enter the current monitor.
+- The browser aborts superseded refreshes, ignores superseded responses, and clears old monitor state when the current request fails validation or transport.
+- The alert query uses `metadata.subsystem == messaging_onboarding`, descending `timestamp`, and limit 8. `firestore.indexes.json` carries the matching composite index.
+- Regression gate: `npm run verify:messaging-onboarding-monitor-boundary` runs both source-contract checks and `test:messaging-onboarding-ops-boundary` adversarial producer/read-model tests.
 
 ---
 
@@ -432,6 +447,8 @@ interface MessagingOnboardingSession {
     sha256: string; // For dedup
     uploadedAt: Timestamp;
   }>;
+
+Each provider download uses an attempt-unique Storage object. Session-create and upload-append compensation does not treat a thrown Firestore transaction as proof that the write failed: it re-reads the exact session, validates both authoritative upload arrays, retains the object when its path is referenced or persisted truth is malformed/unavailable, and deletes only after a successful read proves non-reference. This preserves a committed source across acknowledgement loss while still reclaiming definite rejected attempts.
 
   // Asset Intelligence Results
   validMenuFiles: string[]; // Upload IDs that are valid menu pages
@@ -1261,6 +1278,7 @@ async function sendTextMessage(phone: string, text: string): Promise<void> {
     `https://graph.facebook.com/v21.0/${encodedPhoneNumberId}/messages`,
     {
       method: "POST",
+      redirect: "manual",
       headers: {
         Authorization: `Bearer ${ACCESS_TOKEN}`,
         "Content-Type": "application/json",
@@ -1271,6 +1289,7 @@ async function sendTextMessage(phone: string, text: string): Promise<void> {
         type: "text",
         text: { body: text },
       }),
+      signal: AbortSignal.timeout(WHATSAPP_API_TIMEOUT_MS),
     },
   );
 }
@@ -1285,7 +1304,11 @@ async function downloadMedia(mediaId: string): Promise<Buffer> {
   const encodedMediaId = encodeURIComponent(mediaId);
   const metaResponse = await fetch(
     `https://graph.facebook.com/v21.0/${encodedMediaId}`,
-    { headers: { Authorization: `Bearer ${ACCESS_TOKEN}` } },
+    {
+      redirect: "manual",
+      headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
+      signal: AbortSignal.timeout(WHATSAPP_API_TIMEOUT_MS),
+    },
   );
   const metaPayload = await readJsonResponseWithLimit<{ url?: unknown }>(metaResponse, WHATSAPP_PROVIDER_JSON_MAX_BYTES);
   const url = typeof metaPayload?.url === "string" ? metaPayload.url : "";
@@ -1297,7 +1320,9 @@ async function downloadMedia(mediaId: string): Promise<Buffer> {
   }
 
   const mediaResponse = await fetch(urlValidation.normalizedUrl, {
+    redirect: "manual",
     headers: { Authorization: `Bearer ${ACCESS_TOKEN}` },
+    signal: AbortSignal.timeout(WHATSAPP_MEDIA_DOWNLOAD_TIMEOUT_MS),
   });
   try {
     const mediaBytes = await readResponseUint8ArrayWithLimit(mediaResponse, UPLOAD_LIMITS.MAX_FILE_SIZE_BYTES);
@@ -1309,7 +1334,7 @@ async function downloadMedia(mediaId: string): Promise<Buffer> {
 }
 ```
 
-Provider media download URLs are treated as untrusted even though they come from Meta. `WhatsAppAdapter.ts` reads the Meta media-URL lookup response through a 64KB bounded JSON reader, validates the returned URL through the shared Functions `validateNetworkTargetUrl()` helper, and only then downloads the binary. The target validator requires HTTPS and rejects localhost, private, link-local, multicast, or metadata-style network targets. The adapter then reads the media response through `readResponseUint8ArrayWithLimit()`, which checks `content-length`, cancels the response stream when the byte limit is crossed, and maps oversize media to `WHATSAPP_MEDIA_TOO_LARGE` before returning the media buffer. Rejections use `WHATSAPP_MEDIA_URL_REJECTED`, `WHATSAPP_MEDIA_TOO_LARGE`, or the existing provider download failure code with bounded URL length and validation metadata only.
+Provider media download URLs are treated as untrusted even though they come from Meta. `WhatsAppAdapter.ts` reads the Meta media-URL lookup response through a 64KB bounded JSON reader, validates the returned URL through the shared Functions `validateNetworkTargetUrl()` helper, and only then downloads the binary. The lookup and download both refuse redirects, so the bearer credential is never forwarded through a redirect chain. The target validator requires HTTPS and rejects localhost, private, link-local, multicast, or metadata-style network targets. The adapter then reads the media response through `readResponseUint8ArrayWithLimit()`, which checks `content-length`, cancels the response stream when the byte limit is crossed, and maps oversize media to `WHATSAPP_MEDIA_TOO_LARGE` before returning the media buffer. Provider calls also carry the bounded 15-second API or 30-second media-download abort signal. Rejections use `WHATSAPP_MEDIA_URL_REJECTED`, `WHATSAPP_MEDIA_TOO_LARGE`, or the existing provider download failure code with bounded URL length and validation metadata only.
 
 ### 8.4 Asset Intelligence Gemini Prompt
 
@@ -1920,7 +1945,7 @@ Pending preview, confirmation, and fix deliveries use token-bound five-minute le
 
 `messagingSessionCleanup.ts` uses bounded scheduler diagnostics. Expire, reminder, storage cleanup, cleanup-query, and inbound queue cleanup failures log stable `MESSAGING_*` failure codes with session ID length and source error name/code/status metadata only; they do not log raw session IDs or exception messages. Expired-session upload cleanup ignores true missing Storage objects, but failed deletes for other reasons log `MESSAGING_SESSION_FILE_CLEAN_FAILED` with session ID, upload ID, and Storage path presence/length metadata only before continuing the rest of the cleanup.
 
-`src/lib/messaging-onboarding/publish.ts` uses bounded runtime diagnostics for best-effort active publish cache revalidation and lifecycle-event writes. Cache failures log `messaging_onboarding_publish_cache_revalidation_failed` with tenant/store/project/user presence-length metadata, tag count, owner-assistant packet cache invalidation state, and source error name/code/status only. Lifecycle event write failures log `messaging_onboarding_publish_event_write_failed` with session/provider presence-length metadata, fixed event type/state, metadata key count, and source error name/code/status only; raw IDs and raw exception messages must not be logged.
+`src/lib/messaging-onboarding/publish.ts` uses bounded runtime diagnostics for best-effort active publish cache revalidation and lifecycle-event writes. After the publish transaction commits, the shared store public-truth runner independently settles the two store tags, both global tags, Digital Screens touch, and project-scoped Owner Business Assistant invalidation, so one rejected effect cannot suppress later refresh work or falsify publication success. Aggregate failures log `messaging_onboarding_publish_cache_revalidation_failed` with tenant/store/project/user presence-length metadata, tag count, failed-effect count, and source error name/code/status only. Lifecycle event write failures log `messaging_onboarding_publish_event_write_failed` with session/provider presence-length metadata, fixed event type/state, metadata key count, and source error name/code/status only; raw IDs and raw exception messages must not be logged.
 
 Preview route failures use bounded runtime diagnostics. `route.ts` logs `messaging_preview_get_route_failed`; `approve/route.ts` logs `messaging_preview_publish_retry_failed` and `messaging_preview_approve_route_failed`; `fix/route.ts` logs `messaging_preview_fix_route_failed`. Best-effort preview event write failures log `messaging_preview_event_write_failed` with fixed event type/state, metadata key count, route/session/provider context, and source error name/code/status only. Context is limited to route, session/provider/request-IP presence-length metadata, state/count booleans or counts, and source error name/code/status. The approve transaction maps expected invalid-token, missing-session, in-progress, not-ready, and expired-session states through typed local error codes instead of raw exception-message matching. `PUBLISH_FAILED` event documents and state-history recovery reasons stay code-only and must not persist raw retry exception messages.
 

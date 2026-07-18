@@ -11,7 +11,7 @@ type LayoutProviderProps = {
 };
 
 // Error boundary to catch layout rendering errors
-class LayoutErrorBoundary extends Component<{ children: ReactNode, fallback: ReactNode }> {
+class LayoutErrorBoundary extends Component<{ children: ReactNode }> {
   state = { hasError: false };
   
   static getDerivedStateFromError() {
@@ -27,18 +27,40 @@ class LayoutErrorBoundary extends Component<{ children: ReactNode, fallback: Rea
   
   render() {
     if (this.state.hasError) {
-      return this.props.fallback;
+      return <LayoutFailureFallback />;
     }
     
     return this.props.children;
   }
 }
 
-// Simple fallback component when layout encounters an error
-function SimpleLayout({ children }: { children: ReactNode }) {
+// Do not render the same failed child tree again inside the fallback.
+function LayoutFailureFallback() {
   return (
-    <div style={{ padding: '20px' }}>
-      {children}
+    <div
+      role="alert"
+      style={{
+        alignItems: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: 24,
+        textAlign: 'center',
+      }}
+    >
+      <h1 style={{ fontSize: 22, margin: 0 }}>Page layout unavailable</h1>
+      <p style={{ margin: 0, maxWidth: 420 }}>
+        Refresh the page to restore the owner workspace.
+      </p>
+      <button
+        onClick={() => window.location.reload()}
+        style={{ minHeight: 44, padding: '10px 18px' }}
+        type="button"
+      >
+        Refresh Page
+      </button>
     </div>
   );
 }
@@ -67,7 +89,7 @@ export default function LayoutProvider({ children, skipLayout = false }: LayoutP
   // Note: Redux provider is now provided by ClientProviders, not here
   return (
     <AntdThemeProvider>
-      <LayoutErrorBoundary fallback={<SimpleLayout>{children}</SimpleLayout>}>
+      <LayoutErrorBoundary>
         <AntdLayoutWrapper>{children}</AntdLayoutWrapper>
       </LayoutErrorBoundary>
     </AntdThemeProvider>

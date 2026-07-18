@@ -5,7 +5,6 @@ import { DB_COLLECTIONS } from '../constants/database';
 import { FUNCTION_FLAGS } from '../constants/features';
 import { firestoreAdmin as db } from '../firebaseAdmin';
 import { runAnswerlatticeAiProviderHealthCheck } from './aiProviderHealth';
-import { runAnswerlatticeEmbeddingV2Migration } from './embeddingV2Migration';
 import { discoverActiveTenants, runAnswerlatticeNightly } from './answerlatticeNightly';
 import {
     ANSWERLATTICE_DEFAULT_BUSINESS_DAY_END_TIME,
@@ -392,11 +391,6 @@ const TASKS: AnswerlatticeSchedulerTask[] = [
         run: (context) => runAnswerlatticeAiProviderHealthCheck({
             force: context.trigger === 'manual' && context.forceAllTenants === true,
         }),
-    },
-    {
-        name: 'embedding_v2_migration',
-        lockTtlMs: TASK_LEASE_MS,
-        run: (context) => runAnswerlatticeEmbeddingV2Migration({ runId: context.runId }),
     },
     {
         name: 'governance_nightly',

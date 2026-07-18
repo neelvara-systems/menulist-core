@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Firebase Cost Tracking
 
 **Status:** Implemented V0
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -25,6 +25,8 @@ The report payload is encoded into the URL hash fragment and decoded in the brow
 Decode diagnostics are cost-neutral. Invalid, oversized, malformed, or wrong-shape report hashes log bounded `shareable_tool_report_payload_decode_failed` diagnostics with failure stage and payload shape metadata only. They add no Firestore reads/writes/deletes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, report API routes, or report-history records.
 
 Strict `generatedAt` timestamp and control-character display-string hardening is cost-neutral. The public hash decoder rejects non-canonical generated timestamps and strips control characters from decoded display text before rendering. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, external URL fetches, DNS lookups, provider calls, saved reports, report API routes, report-history records, Firebase deploy requirement, or Vercel deploy action.
+
+Summary/check consistency, derived setup jobs, internal-link normalization, required report limits, and the unsigned self-report notice are also browser-local and cost-neutral.
 
 ---
 
@@ -70,7 +72,9 @@ Source tools can keep their existing optional consented handoff through `/api/pu
 | Cloud Functions | 0 |
 | AI/provider calls | 0 |
 
-The API caps the enquiry scan at 120 returned documents, defaults to a small manual-refresh result set, and filters `shareable_tool_report` leads in memory to avoid a new composite index. A successful refresh therefore performs 1 current-user document read plus the enquiry-query reads (including Firestore's minimum query charge when no documents match). The response cost object reports the exact authorization read separately from the number of enquiry documents returned. It does not mutate lead status, create report history, or write canonical business truth.
+The API uses the scoped `landingPageEnquiries(sourceKind ASC, createdOn DESC)` composite and caps the matching report-lead query at 120 returned documents. A successful refresh therefore performs 1 current-user document read plus only the matching enquiry reads (including Firestore's minimum query charge when no documents match); unrelated website contact enquiries are no longer read and discarded. The response cost object reports the exact authorization read separately from the number of report-lead enquiries returned. `scanMayBeIncomplete` becomes true at the cap and the UI warns about older possible matches. Production rate-limit-provider failure blocks before Firestore PII reads. The route does not mutate lead status, create report history, or write canonical business truth.
+
+The scoped composite in `firestore.indexes.json` must be deployed before the optimized query can serve live traffic.
 
 ---
 

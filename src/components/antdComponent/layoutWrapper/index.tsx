@@ -20,6 +20,7 @@ import NetworkStatusProvider from '@providers/NetworkStatusProvider';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getDarkModeState, getRTLDirectionState, getSidebarLayoutState, getSidebarState } from '@reduxSlices/clientThemeConfig';
 import { hasValidSubscriptionAccess } from '@util/razorpay';
+import SkipToContentLink from '@/components/shared/accessibility/SkipToContentLink';
 import { Layout, theme } from 'antd';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
@@ -120,14 +121,18 @@ export default function AntdLayoutWrapper(props: any) {
             <Fragment>
                 {/* "Return to Mobile" banner — shown when mobile user forced desktop mode */}
                 {hasMounted && isHandheld && forceDesktop && FEATURE_FLAGS.ENABLE_MOBILE_UI && (
-                    <div
+                    <button
+                        type="button"
                         style={{
                             backgroundColor: token.colorPrimary,
+                            border: 0,
                             color: token.colorTextLightSolid,
                             textAlign: 'center',
                             padding: '8px 16px',
                             fontSize: '13px',
                             cursor: 'pointer',
+                            minHeight: 44,
+                            width: '100%',
                             zIndex: 9999
                         }}
                         onClick={() => {
@@ -136,7 +141,7 @@ export default function AntdLayoutWrapper(props: any) {
                         }}
                     >
                         You&apos;re viewing the desktop version. <strong>Tap here to return to mobile.</strong>
-                    </div>
+                    </button>
                 )}
                 <style jsx global>{`
                   .${styles.mainContentWraper} {
@@ -160,7 +165,10 @@ export default function AntdLayoutWrapper(props: any) {
                         <SidebarComponent onExpandedChange={setSidebarShellExpanded} />
                     ) : <HorizontalSidebar />) : null}
                     {!isHandheldDesktopRoute ? <AppSettingsPanel /> : null}
-                    <Content className={styles.mainContentWraper}
+                    <Content
+                        className={styles.mainContentWraper}
+                        id="main-content"
+                        tabIndex={-1}
                         style={{
                             minHeight: isHandheldDesktopRoute ? '100dvh' : isVerticalSidebar ? 'calc(100vh - 52px)' : 'calc(100vh - 98px)',
                             overflowX: isHandheldDesktopRoute ? 'hidden' : undefined,
@@ -183,6 +191,7 @@ export default function AntdLayoutWrapper(props: any) {
             {props.globalOverlays}
             <GlobalKeyboardShortcutsProvider>
                 <NetworkStatusProvider>
+                    <SkipToContentLink />
                     {renderContent()}
                 </NetworkStatusProvider>
             </GlobalKeyboardShortcutsProvider>

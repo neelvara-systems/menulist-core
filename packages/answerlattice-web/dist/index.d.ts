@@ -29,6 +29,12 @@ export type AnswerlatticeWidgetRuntime = {
     identify?: (visitor: AnswerlatticeVisitorIdentity | null) => void;
     identifySigned?: (token: string) => void;
     setEvidenceLinks?: (links: AnswerlatticeEvidenceLink[]) => void;
+    emitWorkflowEvent?: (eventName: string) => boolean;
+    getGuidanceState?: () => {
+        stepOrder: number;
+        targetId: string | null;
+        expectedEvent: string | null;
+    } | null;
     on?: (eventName: string, callback: (payload?: unknown) => void) => void;
     off?: (eventName: string, callback: (payload?: unknown) => void) => void;
 };
@@ -72,6 +78,8 @@ export type AnswerlatticeWebClient = {
     identify: (visitor: AnswerlatticeVisitorIdentity) => void;
     identifySigned: (token: string) => void;
     setEvidenceLinks: (links: AnswerlatticeEvidenceLink[]) => void;
+    emitWorkflowEvent: (eventName: string) => boolean;
+    getGuidanceState: () => ReturnType<NonNullable<AnswerlatticeWidgetRuntime['getGuidanceState']>>;
     on: (eventName: AnswerlatticeWidgetEventName, callback: (payload?: unknown) => void) => () => void;
     off: (eventName: AnswerlatticeWidgetEventName, callback: (payload?: unknown) => void) => void;
     getRuntime: () => AnswerlatticeWidgetRuntime | null;

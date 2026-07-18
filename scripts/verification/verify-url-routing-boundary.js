@@ -14,6 +14,7 @@ const CONTROLLED_ENV_KEYS = [
   'VERCEL',
   'VERCEL_ENV',
   'NEXT_PUBLIC_ENV',
+  'NEXT_PUBLIC_VERCEL_ENV',
   'NODE_ENV',
   'NEXT_PUBLIC_PLATFORM_DOMAIN',
   'NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES',
@@ -247,6 +248,7 @@ function verifyResolverRuntimeBoundary() {
     VERCEL: '1',
     VERCEL_ENV: 'preview',
     NEXT_PUBLIC_ENV: 'preview',
+    NEXT_PUBLIC_VERCEL_ENV: 'preview',
     NODE_ENV: 'production',
   }, ({
     isActiveProductDomain,
@@ -301,6 +303,7 @@ function verifyResolverRuntimeBoundary() {
     VERCEL: '1',
     VERCEL_ENV: 'production',
     NEXT_PUBLIC_ENV: 'production',
+    NEXT_PUBLIC_VERCEL_ENV: 'production',
     NODE_ENV: 'production',
   }, ({
     isActiveProductDomain,
@@ -351,6 +354,7 @@ function verifyResolverRuntimeBoundary() {
 }
 
 function verifyResolverSourceBoundary() {
+  const nextConfig = read('next.config.js');
   const deploymentTargets = read('src/constants/deploymentTargets.ts');
   const productDomains = read('src/constants/productDomains.ts');
   const answerlatticeDomains = read('src/constants/answerlattice/domains.ts');
@@ -382,6 +386,16 @@ function verifyResolverSourceBoundary() {
   assertIncludes(hostAuthority, 'parsed.port', 'shared Host authority parser must preserve valid ports');
   assertIncludes(hostAuthority, "/[\\s,\\\\/@?#]/.test(candidate)", 'shared Host authority parser must reject forwarded lists, paths, credentials, query and fragment characters');
   assertIncludes(deploymentTargets, 'normalizeRequestAuthority(hostname)?.hostname', 'deployment target product-host helpers must use the strict Host authority parser');
+  assertIncludes(deploymentTargets, 'NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV', 'deployment stage snapshot direct legacy public marker capture');
+  assertIncludes(deploymentTargets, 'NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV', 'deployment stage snapshot direct official public marker capture');
+  assertIncludes(deploymentTargets, 'VERCEL_ENV: process.env.VERCEL_ENV', 'deployment stage snapshot direct server marker capture');
+  assertIncludes(deploymentTargets, 'SERVER_PUBLIC_DEPLOYMENT_STAGE_CONFLICT', 'deployment stage server/public conflict fail-closed boundary');
+  assertIncludes(deploymentTargets, 'PUBLIC_DEPLOYMENT_STAGE_CONFLICT', 'deployment stage public marker conflict fail-closed boundary');
+  assertNotIncludes(deploymentTargets, 'env: DeploymentStageEnv = process.env', 'deployment stage must not alias process.env across client compilation');
+  assertIncludes(nextConfig, 'const nextDeploymentStage = resolveNextDeploymentStage();', 'Next config authoritative deployment stage resolution');
+  assertIncludes(nextConfig, "throw new Error('SERVER_PUBLIC_DEPLOYMENT_STAGE_CONFLICT')", 'Next config conflicting deployment marker rejection');
+  assertIncludes(nextConfig, 'NEXT_PUBLIC_ENV: nextDeploymentStage', 'Next config canonical public deployment marker');
+  assertIncludes(nextConfig, 'NEXT_PUBLIC_VERCEL_ENV: isVercelDeployment || process.env.NEXT_PUBLIC_VERCEL_ENV', 'Next config canonical official public Vercel marker');
   assertIncludes(productDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'product domain helper must use the strict Host authority parser');
   assertIncludes(answerlatticeDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'Answerlattice product hostname helper must use the strict Host authority parser');
   assertIncludes(campaignCueDomains, 'normalizeRequestAuthority(hostname)?.hostname', 'CampaignCue product hostname helper must use the strict Host authority parser');
@@ -757,7 +771,11 @@ function verifySubdomainClaimBoundary() {
     'readSubdomainReservationInTransaction({',
     'writeCurrentSubdomainClaim(transaction, reservation, now);',
     'writeReleasedSubdomainClaim({',
-    "touchDigitalScreenContentVersionForStoreServer(scope.storeDocumentId, 'subdomainAssign')",
+    'runStorePublicTruthPostCommitEffects({',
+    'storeIds: [scope.storeDocumentId]',
+    "touchDigitalScreenContentVersionForStoreServer(storeId, 'subdomainAssign')",
+    "logSecurityFailure('subdomain_assign_post_commit_effect_failed'",
+    'effectsPending: postCommit.effectsPending',
   ].forEach((token) => assertIncludes(subdomainRoute, token, 'Owner subdomain assignment boundary'));
   const [subdomainGetRoute, subdomainPostRoute] = subdomainRoute.split('export const POST =');
   for (const [label, route] of [
@@ -784,8 +802,8 @@ function verifySubdomainClaimBoundary() {
   assertOrder(
     storeDal,
     'data.subdomain = await assignStoreSubdomain(String(data.subdomain));',
-    'await updateDoc(getDocRef(data.id)',
-    'Subdomain reservation acknowledgement before client store update',
+    'if (subdomainHandledByServer) delete directStoreUpdate.subdomain;',
+    'Subdomain reservation acknowledgement before excluding the server-owned field from client store updates',
   );
 
   [

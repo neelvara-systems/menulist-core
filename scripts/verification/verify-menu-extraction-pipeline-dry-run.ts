@@ -14,6 +14,7 @@ import {
   PUBLIC_CREATE_MENU_IMAGE_MIME_TYPES,
   SUPPORTED_MENU_EXTRACTION_JOB_MIME_TYPES,
 } from '../../src/data/shared/menuExtractionJob';
+import { MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS } from '../../src/data/shared/menuExtractionProjectSize';
 import {
   getPublicMenuDraftTimestampMillis,
   normalizePublicMenuDraftExtractedData,
@@ -188,6 +189,27 @@ const allJobs = [
   ['messaging onboarding', messagingJob],
 ] as const;
 
+function projectSizeGate(currentBytes: number, incomingFileCount: number) {
+  const maximumReservedHeadroomBytes =
+    MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.SAVE_SAFE_BYTES -
+    MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.WARNING_BYTES;
+  const reservedHeadroomBytes = Math.min(
+    incomingFileCount * MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.PRE_AI_EXTRACTED_DATA_BYTES_PER_FILE,
+    maximumReservedHeadroomBytes,
+  );
+
+  return currentBytes + reservedHeadroomBytes <= MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.SAVE_SAFE_BYTES;
+}
+
+assertCheck(
+  'owner upload: supported 15-file batch is not rejected by an unbounded per-file size projection',
+  projectSizeGate(100_000, MENU_EXTRACTION_JOB_LIMITS.MAX_FILES),
+);
+assertCheck(
+  'owner upload: large existing project still fails the bounded pre-AI headroom gate',
+  !projectSizeGate(750_001, MENU_EXTRACTION_JOB_LIMITS.MAX_FILES),
+);
+
 function isSourceSpecificMimeAllowed(job: DryRunJob): boolean {
   const fileTypes = job.files.map((file) => file.type);
   if (job.destination?.type === MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING) {
@@ -297,6 +319,34 @@ assertCheck(
     && ownerRoute.includes('normalizeProjectJobSource(retryData.source)'),
 );
 
+const ownerUploadClient = read('src/components/templates/main-app/projects/getProcessedFile.ts');
+const desktopProjectEditor = read('src/components/templates/main-app/projects/index.tsx');
+const mobileUploadSheet = read('src/components/mobile/sheets/MenuUploadSheet.tsx');
+assertCheck(
+  'authenticated desktop and mobile uploads use the shared owner-review job boundary',
+  ownerUploadClient.includes('forceReview: true')
+    && desktopProjectEditor.includes('createProcessingJob({')
+    && mobileUploadSheet.includes('createProcessingJob({'),
+);
+
+const extractionReadme = read('__docs__/projects/ai-data-extraction/README.md');
+const extractionSpec = read('__docs__/projects/ai-data-extraction/ai-data-extraction_spec.md');
+const extractionImplementation = read('__docs__/projects/ai-data-extraction/ai-data-extraction_impl.md');
+const extractionFirebase = read('__docs__/projects/ai-data-extraction/ai-data-extraction_firebase.md');
+const extractionHelp = read('__docs__/projects/ai-data-extraction/ai-data-extraction_helpdoc.md');
+const extractionMobile = read('__docs__/projects/ai-data-extraction/ai-data-extraction_mobile-support.md');
+assertCheck(
+  'current extraction docs preserve owner-review and desktop/mobile parity',
+  extractionReadme.includes('before authenticated uploads change a project')
+    && extractionReadme.includes('`_mobile-support.md`')
+    && extractionSpec.includes('first upload and later uploads')
+    && extractionSpec.includes('Only approved changes are written to the project')
+    && extractionImplementation.includes('forceReview: true')
+    && extractionFirebase.includes('Authenticated owner uploads become `preview_ready`')
+    && extractionHelp.includes('Choose **Apply Changes**')
+    && extractionMobile.includes('No new mobile route, tab, provider, API, collection, or Cloud Function is introduced.'),
+);
+
 const firestoreRules = read('firestore.rules');
 assertCheck(
   'Firestore cancellation updates cannot mutate server-owned job fields',
@@ -306,6 +356,12 @@ assertCheck(
 );
 
 const workerSource = read('functions/src/logic/processMenuImagesJob.ts');
+assertCheck(
+  'owner-review flag is preserved by the API and honored at the worker persistence boundary',
+  ownerRoute.includes('forceReview: validation.data.forceReview === true || retryContext?.forceReview === true')
+    && workerSource.includes('const forceReview = job.forceReview === true;')
+    && workerSource.includes('(forceReview || hasExistingItems || isLinkedOutlet || partialResultNeedsReview || hardeningRequiresReview)'),
+);
 assertCheck(
   'public draft completion uses the mirrored allowlist contract and verifies job binding',
   workerSource.includes('function buildPublicDraftExtractedData')
@@ -472,10 +528,14 @@ assertCheck(
     && messagingPublishBoundary.includes('active: source.active !== false')
     && messagingPublishBoundary.includes('deleted: source.deleted === true')
     && messagingPublishBoundary.includes('normalizeProjectFileIndex(source.index, fallbackIndex)')
-    && messagingPublish.includes('revalidateTag(`menu-store-${result.storeId}`)')
-    && messagingPublish.includes('revalidateTag("client-stores")')
-    && messagingPublish.includes('revalidateTag("screen-data")')
-    && messagingPublish.includes('touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish")'),
+    && messagingPublish.includes('runStorePublicTruthPostCommitEffects({')
+    && messagingPublish.includes('invalidateAssistant: () => invalidateOwnerBusinessAssistantPacketCache({')
+    && messagingPublish.includes('revalidate: revalidateTag')
+    && messagingPublish.includes('touchScreen: () => touchDigitalScreenContentVersionForStoreServer(')
+    && messagingPublish.includes('storeIds: [String(result.storeId)]')
+    && messagingPublish.includes('tenantId: String(result.tenantId)')
+    && messagingPublish.includes('if (postCommit.effectsPending)')
+    && messagingPublish.includes('failedEffectCount: postCommit.failedEffectCount'),
 );
 assertCheck(
   'messaging approve transaction failures use typed stable sentinels',

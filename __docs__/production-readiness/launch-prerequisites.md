@@ -2,7 +2,7 @@
 
 **Created:** February 20, 2026  
 **Purpose:** Everything you need to do manually before enabling the monitoring systems.  
-**Estimated Time:** 30-45 minutes total
+**Estimated Time:** 30-45 minutes for account setup; data migrations and device QA are separate
 
 **Launch boundary:** Not current launch certification or deploy approval. This guide is a manual setup inventory; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.
 
@@ -408,6 +408,60 @@ Do not mark platform alert delivery production-ready until dashboard visibility,
 
 ---
 
+## Step 8B: Digital Screens Token-Free Public Mirror Cutover
+
+> **Ordered migration — do not deploy the tightened Firestore rule first.** Existing
+> `platformSummary/screen_{storeId}` documents may still contain the bearer
+> `screenToken`. The new rule accepts only the token-free public projection, so an
+> out-of-order rules deploy can disconnect screens before the writers and stored
+> mirrors are migrated.
+
+Run the following in **QA first**, in this exact order:
+
+1. Deploy the current Next.js app so every app-side screen invalidation writer emits
+   only `contentVersion`, `enabled`, `lastContentChangeAt`, `storeId`, and `updatedAt`.
+   This Vercel deploy requires explicit owner approval and is not performed by the
+   Firebase commands below.
+2. Deploy the affected Firebase Functions writers:
+
+```bash
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:forceRepublish --non-interactive
+```
+
+3. Dry-run the canonical-screen-to-public-mirror migration. Stop if the report has
+   lookup or validation failures:
+
+```bash
+npm run backfill:digital-screen-public-mirrors -- --project-id menulist-qa --all-screens
+```
+
+4. Apply the migration only after the dry run is clean. The project confirmation is
+   intentionally exact:
+
+```bash
+npm run backfill:digital-screen-public-mirrors -- --project-id menulist-qa --all-screens --write --confirm-project menulist-qa
+```
+
+5. Verify sampled and connected QA mirrors contain no `screenToken`, contain only the
+   five public fields above, and that collection listing remains denied.
+6. Only then deploy the tightened Firestore rule:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only firestore:rules --non-interactive
+```
+
+7. On a real screen device, verify initial load, live content-version refresh,
+   disabled-screen refusal, loaded-offline fallback, and recovery after connectivity
+   returns. Record evidence in the production-readiness audit.
+
+Stop the rollout on any Vercel, IAM, Functions, migration, rule, or device failure.
+Do not continue to production until QA is clean. Repeat the same order with project
+`menulist`, using explicit production deploy approval and
+`--confirm-project menulist` for the write step.
+
+---
+
 ## FAQ — Your Questions Answered
 
 ### Q: If Sentry is there, why do we need UptimeRobot?
@@ -515,6 +569,7 @@ Plausible Cloud is the approved public marketing-website analytics layer for `me
 | UptimeRobot setup             | ❌ Manual  | One-time setup (5 min)                         |
 | Deploy Functions blocker set | ❌ Manual  | Gate 1 in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but the latest package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted the current Gate 1 function set, completed predeploy lint/build, and then failed before upload with Cloud Resource Manager HTTP 403 caller permission. The latest Answerlattice `functions:answerlattice` deploy attempt also completed predeploy build against `answerlattice-qa` and failed with Cloud Resource Manager HTTP 403 caller permission. Restore project access, then retry the documented scoped Firebase Functions target set or the exact changed subset being certified. |
 | Deploy Storage rules cutover  | ❌ Manual  | Gate 2A in [External Certification Runbook](./external-certification-runbook.md): local gates pass, but latest `menulist-qa` deploy failed before rules upload with Service Usage HTTP 403 project access/availability blocker. |
+| Digital Screens mirror cutover | ❌ Manual | Step 8B: deploy token-free app/Functions writers, dry-run and apply the mirror migration, verify stored data, then deploy the tightened rule and complete device QA. |
 | Confirm feature flag evidence | ☐ Pre-prod verify | Check current `src/config/features.ts` source state, target secrets/provider setup, scoped deploy evidence, and External Certification Runbook evidence. Do not treat three code lines as launch approval. |
 | SAFE_MODE disable after spike | ❌ Manual  | Must verify stability before re-enabling       |
 | Lifecycle messaging (emails)  | ✅ Auto    | Fires on billing events, renewal reminders     |
@@ -589,3 +644,4 @@ quota monitoring, budget alerts, and quota increase requests.
 | 1.3     | May 24, 2026      | Added Cloud Billing export and SAFE_MODE pre-production verification gates |
 | 1.4     | June 2, 2026      | Added platform alert Email/WhatsApp go-live checklist                      |
 | 1.5     | June 26, 2026     | Reframed Gemini setup around key isolation, quota monitoring, and AI provider health verification |
+| 1.6     | July 16, 2026     | Added the ordered Digital Screens token-free public-mirror migration, rule cutover, and device stop gates |

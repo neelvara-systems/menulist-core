@@ -151,8 +151,8 @@ export default function OBPActions({
         }
     };
     const renderedRealActions = new Set<OBPActionPlaceholder>([
-        ...(showCall && phoneNumber ? ['call' as const] : []),
-        ...(showWhatsApp && whatsappNumber ? ['whatsapp' as const] : []),
+        ...(showCall && callHref ? ['call' as const] : []),
+        ...(showWhatsApp && whatsappHref ? ['whatsapp' as const] : []),
         ...(showDirections && safeDirectionsUrl ? ['directions' as const] : []),
         ...(showReservation && safeReservationUrl ? ['reserve' as const] : []),
         ...(showOrder && safeOrderUrl ? ['order' as const] : []),
@@ -172,7 +172,7 @@ export default function OBPActions({
 
     return (
         <div className={styles.actions}>
-            {showCall && phoneNumber && (
+            {showCall && callHref && (
                 <a
                     href={callHref}
                     className={`${styles.actionButton} ${styles.actionButtonPrimary}`}
@@ -203,7 +203,7 @@ export default function OBPActions({
                     <span>{labels.directions}</span>
                 </a>
             )}
-            {showWhatsApp && whatsappNumber && (
+            {showWhatsApp && whatsappHref && (
                 <a
                     href={whatsappHref}
                     className={`${styles.actionButton} ${styles.actionButtonPrimary}`}

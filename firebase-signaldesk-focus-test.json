@@ -1,0 +1,15 @@
+{
+  "firestore": {
+    "rules": "firestore-signaldesk.rules",
+    "indexes": "firestore-signaldesk.indexes.json"
+  },
+  "emulators": {
+    "firestore": {
+      "port": 9391
+    },
+    "ui": {
+      "enabled": false
+    },
+    "singleProjectMode": true
+  }
+}

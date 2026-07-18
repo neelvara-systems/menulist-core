@@ -100,3 +100,10 @@ Required after changes:
 - `git diff --check`
 
 If Firestore rules or Functions cleanup code changes, validate and deploy the matching Firebase target when credentials allow.
+
+## July 16, 2026 Cross-Check Evidence
+
+- Direct MobileShell dashboard and Business Health entry is source-gated by loaded `VIEW_ANALYTICS` permissions before analytics screens mount.
+- The answer route rate limit precedes body parsing; optional SAFE_MODE follows selected-store and permission admission.
+- AI-operation limiter-provider outages return 503 and stop before model work; ordinary deterministic data reads keep their existing behavior.
+- The shared Business Health source gate checks these boundaries. No Firebase rules, indexes, Storage rules, or Cloud Function logic changed in this pass.

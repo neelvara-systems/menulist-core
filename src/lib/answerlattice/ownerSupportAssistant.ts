@@ -46,6 +46,12 @@ export type AnswerlatticeFounderDailyAction = {
     source: string;
     aiAssist: string;
     costImpact: string;
+    preparedReviewCard?: {
+        title: string;
+        description: string;
+        priority: 'low' | 'medium' | 'high';
+        tags: string[];
+    };
 };
 
 export type AnswerlatticeFounderDailyBrief = {
@@ -56,6 +62,17 @@ export type AnswerlatticeFounderDailyBrief = {
     actions: AnswerlatticeFounderDailyAction[];
     costNote: string;
     sourceNote: string;
+};
+
+export type AnswerlatticeLaunchVerification = {
+    available: boolean;
+    ready: boolean;
+    completeCount: number;
+    totalCount: number;
+    blockers: string[];
+    nextActionLabel: string | null;
+    nextActionRoute: string;
+    verifiedAt: string | null;
 };
 
 export type AnswerlatticeOwnerAssistantAnswer = {
@@ -80,6 +97,9 @@ export type AnswerlatticeOwnerAssistantBrief = {
     metrics: {
         coverageRate: number | null;
         resolutionRate: number | null;
+        confirmedResolutionRate: number | null;
+        recontactEligible: number;
+        recontactedSameSession: number;
         driftedAnswers: number;
         criticalEntities: number;
         openBoardCards: number;
@@ -89,6 +109,7 @@ export type AnswerlatticeOwnerAssistantBrief = {
         escalations7d: number;
     };
     promptChips: string[];
+    launchVerification: AnswerlatticeLaunchVerification;
     dailyBrief?: AnswerlatticeFounderDailyBrief;
     updatedAt: string | null;
     readModel: {
@@ -104,6 +125,7 @@ type SummaryPacket = {
     board: Record<string, any> | null;
     friction: Record<string, any> | null;
     intake: Record<string, any> | null;
+    activation: Record<string, any> | null;
     cacheHit: boolean;
 };
 
@@ -126,6 +148,77 @@ const toIso = (value: unknown): string | null => {
     return null;
 };
 
+const isRecord = (value: unknown): value is Record<string, any> => (
+    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+);
+
+const toBoundedCount = (value: unknown, maximum: number): number => {
+    const normalized = Number(value);
+    if (!Number.isFinite(normalized) || normalized < 0) return 0;
+    return Math.min(maximum, Math.floor(normalized));
+};
+
+const normalizeLaunchRoute = (value: unknown): string => {
+    const route = typeof value === 'string' ? value.trim() : '';
+    return route.startsWith('/answerlattice/') && !route.startsWith('//')
+        ? route.slice(0, 240)
+        : ANSWERLATTICE_ROUTES.ACTIVATION;
+};
+
+const buildLaunchVerification = (activation: Record<string, any> | null): AnswerlatticeLaunchVerification => {
+    const launchProof = isRecord(activation?.launchProof) ? activation.launchProof : null;
+    if (!launchProof) {
+        return {
+            available: false,
+            ready: false,
+            completeCount: 0,
+            totalCount: 0,
+            blockers: [],
+            nextActionLabel: null,
+            nextActionRoute: ANSWERLATTICE_ROUTES.ACTIVATION,
+            verifiedAt: null,
+        };
+    }
+
+    const blockers = Array.isArray(launchProof.blockers)
+        ? launchProof.blockers
+            .flatMap((value: unknown) => typeof value === 'string' ? [value.trim().slice(0, 120)] : [])
+            .filter(Boolean)
+            .slice(0, 6)
+        : [];
+    const completeCount = toBoundedCount(launchProof.completeCount, 20);
+    const totalCount = toBoundedCount(launchProof.totalCount, 20);
+    const currentPriorityProofReady = Array.isArray(launchProof.items)
+        && launchProof.items.slice(0, 20).some((item: unknown) => (
+            isRecord(item)
+            && item.key === 'priority-answer-checks'
+            && item.status === 'complete'
+        ));
+    const proofShapeValid = totalCount > 0 && completeCount <= totalCount;
+    const nextItem = Array.isArray(launchProof.items)
+        ? launchProof.items.slice(0, 20).find((item: unknown) => isRecord(item) && item.status !== 'complete')
+        : null;
+
+    return {
+        available: proofShapeValid,
+        ready: proofShapeValid
+            && launchProof.ready === true
+            && completeCount === totalCount
+            && blockers.length === 0
+            && currentPriorityProofReady,
+        completeCount,
+        totalCount,
+        blockers,
+        nextActionLabel: isRecord(nextItem) && typeof nextItem.actionLabel === 'string'
+            ? nextItem.actionLabel.trim().slice(0, 80) || null
+            : null,
+        nextActionRoute: isRecord(nextItem)
+            ? normalizeLaunchRoute(nextItem.route)
+            : ANSWERLATTICE_ROUTES.ACTIVATION,
+        verifiedAt: toIso(activation?.lastComputedAt || activation?.computedAtIso),
+    };
+};
+
 const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacket> => {
     const key = `${tId}:${sId}`;
     const cached = summaryCache.get(key);
@@ -139,6 +232,7 @@ const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacke
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`supportBoardSummary_${tId}_${sId}`),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`frictionSnapshot_${tId}_${sId}`),
         db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`knowledgeIntakeSummary_${tId}_${sId}`),
+        db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`activation_${tId}_${sId}`),
     ];
     const snapshots = await db.getAll(...refs);
     const value = {
@@ -147,6 +241,12 @@ const loadSummaryPacket = async (tId: number, sId: number): Promise<SummaryPacke
         board: snapshots[2]?.exists ? snapshots[2].data() || null : null,
         friction: snapshots[3]?.exists ? snapshots[3].data() || null : null,
         intake: snapshots[4]?.exists ? snapshots[4].data() || null : null,
+        activation: snapshots[5]?.exists
+            && snapshots[5].data()?.pId === 'AL'
+            && snapshots[5].data()?.tId === tId
+            && snapshots[5].data()?.sId === sId
+            ? snapshots[5].data() || null
+            : null,
     };
     if (summaryCache.size >= SUMMARY_CACHE_MAX_ENTRIES) {
         const firstKey = summaryCache.keys().next().value;
@@ -163,6 +263,11 @@ const buildMetrics = (packet: SummaryPacket): AnswerlatticeOwnerAssistantBrief['
             ? toNumber(packet.coverage.coverage.rate)
             : null,
     resolutionRate: packet.trust?.resolution?.rate !== undefined ? toNumber(packet.trust.resolution.rate) : null,
+    confirmedResolutionRate: toNumber(packet.trust?.confirmedResolution?.explicitOutcomeTotal) > 0
+        ? toNumber(packet.trust.confirmedResolution.rate)
+        : null,
+    recontactEligible: toNumber(packet.trust?.confirmedResolution?.recontactEligible),
+    recontactedSameSession: toNumber(packet.trust?.confirmedResolution?.recontactedSameSession),
     driftedAnswers: toNumber(packet.trust?.drift?.driftedCount),
     criticalEntities: toNumber(packet.trust?.entityHealth?.criticalCount),
     openBoardCards: toNumber(packet.board?.openCards),
@@ -186,7 +291,7 @@ const getStatus = (metrics: AnswerlatticeOwnerAssistantBrief['metrics']): Answer
 };
 
 const getUpdatedAt = (packet: SummaryPacket) => {
-    const candidates = [packet.trust?.lastUpdated, packet.board?.lastUpdated, packet.friction?.lastUpdated, packet.intake?.lastUpdated, packet.coverage?.lastUpdated]
+    const candidates = [packet.trust?.lastUpdated, packet.board?.lastUpdated, packet.friction?.lastUpdated, packet.intake?.lastUpdated, packet.coverage?.lastUpdated, packet.activation?.lastComputedAt, packet.activation?.computedAtIso]
         .map(toIso)
         .filter((value): value is string => Boolean(value))
         .sort()
@@ -194,18 +299,42 @@ const getUpdatedAt = (packet: SummaryPacket) => {
     return candidates[0] || null;
 };
 
-const DAILY_ACTION_LIMIT = 6;
+const DAILY_ACTION_LIMIT = 4;
 
 const createDailyAction = (action: AnswerlatticeFounderDailyAction): AnswerlatticeFounderDailyAction => action;
 
 const buildFounderDailyBrief = (
     status: AnswerlatticeOwnerAssistantStatus,
     metrics: AnswerlatticeOwnerAssistantBrief['metrics'],
+    launchVerification: AnswerlatticeLaunchVerification,
 ): AnswerlatticeFounderDailyBrief => {
     const ranked: Array<AnswerlatticeFounderDailyAction & { rank: number }> = [];
     const add = (rank: number, action: AnswerlatticeFounderDailyAction) => {
         ranked.push({ rank, ...createDailyAction(action) });
     };
+
+    if (launchVerification.available && !launchVerification.ready) {
+        const nextBlocker = launchVerification.blockers[0] || 'Launch verification is incomplete.';
+        add(5, {
+            id: 'launch-proof-review',
+            category: 'launch_safety',
+            severity: 'critical',
+            title: 'Finish launch verification',
+            description: `${launchVerification.completeCount}/${launchVerification.totalCount} launch checks are complete. Next: ${nextBlocker}`,
+            reason: 'Daily support work should not hide an incomplete customer-facing support setup.',
+            href: launchVerification.nextActionRoute,
+            cta: launchVerification.nextActionLabel || 'Continue launch setup',
+            source: 'Activation summary',
+            aiAssist: 'Launch checks are deterministic and owner-controlled.',
+            costImpact: 'No AI cost to review launch verification.',
+            preparedReviewCard: {
+                title: 'Finish live support verification',
+                description: `Complete the remaining launch proof. Next blocker: ${nextBlocker}`,
+                priority: 'high',
+                tags: ['launch', 'verification'],
+            },
+        });
+    }
 
     if (metrics.criticalEntities > 0 || metrics.driftedAnswers > 0) {
         add(10, {
@@ -236,6 +365,30 @@ const buildFounderDailyBrief = (
             source: 'Support Board summary',
             aiAssist: 'Use existing draft/proposal actions, then approve before publishing.',
             costImpact: 'Board review is no-cost; optional AI drafting uses existing support-credit gates.',
+        });
+    }
+
+    const recontactRate = metrics.recontactEligible > 0
+        ? Math.round((metrics.recontactedSameSession / metrics.recontactEligible) * 100)
+        : 0;
+    if (
+        (metrics.confirmedResolutionRate !== null && metrics.confirmedResolutionRate < 70)
+        || (metrics.recontactEligible >= 3 && recontactRate >= 30)
+    ) {
+        add(25, {
+            id: 'answer-outcome-review',
+            category: 'answer_review',
+            severity: 'high',
+            title: 'Review answers users still need help after',
+            description: metrics.confirmedResolutionRate !== null
+                ? `Confirmed resolution is ${metrics.confirmedResolutionRate}%.${metrics.recontactEligible > 0 ? ` ${metrics.recontactedSameSession}/${metrics.recontactEligible} trackable solved sessions asked again in the same session.` : ''}`
+                : `${metrics.recontactedSameSession}/${metrics.recontactEligible} trackable solved sessions asked again in the same session.`,
+            reason: 'A non-escalated answer is not enough when users report failure or immediately ask again.',
+            href: ANSWERLATTICE_ROUTES.ANSWER_TESTS,
+            cta: 'Review Answer Tests',
+            source: 'Explicit widget outcomes',
+            aiAssist: 'Use deterministic checks and source evidence before changing approved support truth.',
+            costImpact: 'Canonical-only checks use no provider credits.',
         });
     }
 
@@ -287,7 +440,7 @@ const buildFounderDailyBrief = (
         });
     }
 
-    if (status === 'insufficient_data') {
+    if (status === 'insufficient_data' && !launchVerification.available) {
         add(60, {
             id: 'launch-verification',
             category: 'launch_safety',
@@ -300,6 +453,12 @@ const buildFounderDailyBrief = (
             source: 'Available summary state',
             aiAssist: 'Install checks are deterministic; no model is needed.',
             costImpact: 'No AI cost.',
+            preparedReviewCard: {
+                title: 'Finish live support verification',
+                description: 'Confirm widget install, allowed origin, blocked routes, safe page context, and first approved answers before users depend on support.',
+                priority: 'high',
+                tags: ['launch', 'widget', 'verification'],
+            },
         });
     }
 
@@ -309,13 +468,19 @@ const buildFounderDailyBrief = (
             category: 'release_safety',
             severity: status === 'healthy' ? 'stable' : 'low',
             title: 'Run release checks before shipping changes',
-            description: 'Use saved answer tests for billing, onboarding, settings, and release-sensitive questions before a product change reaches users.',
+            description: 'Record what changed, link the affected entities and surfaces, then use the existing release and drift checks before users see stale support.',
             reason: 'Fast product changes are where stale support usually appears first.',
-            href: ANSWERLATTICE_ROUTES.ANSWER_TESTS,
-            cta: 'Open Answer Tests',
-            source: 'Answer Test suite',
+            href: `${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`,
+            cta: 'Record product change',
+            source: 'Changelog and release checks',
             aiAssist: 'Release checks select linked cases instead of testing everything.',
             costImpact: 'Deterministic checks avoid provider calls; full-runtime checks are capped.',
+            preparedReviewCard: {
+                title: 'Review support impact for the next release',
+                description: 'Run linked answer tests, review affected product surfaces, and confirm stale or changed answers before the release reaches users.',
+                priority: 'medium',
+                tags: ['release', 'answer-tests', 'drift'],
+            },
         });
     }
 
@@ -340,12 +505,14 @@ const buildFounderDailyBrief = (
         .slice(0, DAILY_ACTION_LIMIT)
         .map(({ rank: _rank, ...action }) => action);
 
-    const focus: AnswerlatticeFounderDailyBrief['focus'] = status === 'at_risk'
+    const focus: AnswerlatticeFounderDailyBrief['focus'] = launchVerification.available && !launchVerification.ready
+        ? 'launch'
+        : status === 'at_risk'
         ? 'stabilize'
         : status === 'needs_review'
             ? 'review'
             : status === 'insufficient_data'
-                ? 'launch'
+                ? (launchVerification.ready ? 'maintain' : 'launch')
                 : 'maintain';
 
     const headline = focus === 'stabilize'
@@ -354,7 +521,9 @@ const buildFounderDailyBrief = (
             ? 'Review prepared support work today.'
             : focus === 'launch'
                 ? 'Finish setup so support can answer correctly.'
-                : 'Support is stable; keep release checks ready.';
+                : status === 'insufficient_data'
+                    ? 'Launch is verified; outcome data will appear after real support activity.'
+                    : 'Support is stable; keep release checks ready.';
 
     return {
         enabled: true,
@@ -365,7 +534,7 @@ const buildFounderDailyBrief = (
         focus,
         actions,
         costNote: 'This brief is computed from existing summaries. It adds no model call, no new Firestore scan, and no support-credit debit.',
-        sourceNote: 'Uses coverage, trust, support-board, friction, and knowledge-intake summaries only.',
+        sourceNote: 'Uses coverage, trust, support-board, friction, knowledge-intake, and activation summaries only.',
     };
 };
 
@@ -376,7 +545,9 @@ export const getAnswerlatticeOwnerAssistantBrief = async (
     const packet = await loadSummaryPacket(tId, sId);
     const metrics = buildMetrics(packet);
     const status = getStatus(metrics);
-    const attentionCount = metrics.driftedAnswers + metrics.criticalEntities + metrics.needsAnswerCards + metrics.reviewItems;
+    const launchVerification = buildLaunchVerification(packet.activation);
+    const attentionCount = metrics.driftedAnswers + metrics.criticalEntities + metrics.needsAnswerCards + metrics.reviewItems
+        + (launchVerification.available && !launchVerification.ready ? 1 : 0);
     const headline = status === 'healthy'
         ? 'Support looks stable. No urgent review is visible in the current summaries.'
         : status === 'insufficient_data'
@@ -401,11 +572,12 @@ export const getAnswerlatticeOwnerAssistantBrief = async (
             'Is support ready for more users?',
             'What knowledge is waiting for review?',
         ],
+        launchVerification,
         ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF
-            ? { dailyBrief: buildFounderDailyBrief(status, metrics) }
+            ? { dailyBrief: buildFounderDailyBrief(status, metrics, launchVerification) }
             : {}),
         updatedAt: getUpdatedAt(packet),
-        readModel: { firestoreReads: packet.cacheHit ? 0 : 5, source: 'summary_only', cacheHit: packet.cacheHit },
+        readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit },
     };
 };
 
@@ -467,10 +639,13 @@ export const answerAnswerlatticeOwnerQuestion = async (
     } else if (intent === 'readiness') {
         directAnswer = metrics.coverageRate === null
             ? 'Coverage is not available yet. Let real users ask questions, then review the next nightly summary.'
-            : `Canonical coverage is ${metrics.coverageRate}% and non-escalated resolution is ${metrics.resolutionRate ?? 0}%. ${status === 'healthy' ? 'The current summary is stable.' : 'Review gaps before increasing support traffic.'}`;
+            : metrics.confirmedResolutionRate === null
+                ? `Canonical coverage is ${metrics.coverageRate}% and ${metrics.resolutionRate ?? 0}% of recent queries did not escalate. Explicit solved/not-solved outcomes are not available yet.`
+                : `Canonical coverage is ${metrics.coverageRate}% and confirmed resolution is ${metrics.confirmedResolutionRate}%. ${metrics.recontactEligible > 0 ? `${metrics.recontactedSameSession} same-session recontacts were observed across ${metrics.recontactEligible} trackable solved outcomes. ` : ''}${status === 'healthy' ? 'The current summary is stable.' : 'Review gaps before increasing support traffic.'}`;
         evidence.push(
             { label: 'Canonical coverage', value: metrics.coverageRate === null ? 'Not available' : `${metrics.coverageRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'coverage summary' },
-            { label: 'Resolution readiness', value: metrics.resolutionRate === null ? 'Not available' : `${metrics.resolutionRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'trust summary' },
+            { label: 'Confirmed resolution', value: metrics.confirmedResolutionRate === null ? 'Not available' : `${metrics.confirmedResolutionRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'explicit widget outcomes' },
+            { label: 'No escalation', value: metrics.resolutionRate === null ? 'Not available' : `${metrics.resolutionRate}%`, href: ANSWERLATTICE_ROUTES.DASHBOARD, source: 'trust summary' },
         );
         nextActions.push({ label: 'Open Readiness', href: ANSWERLATTICE_ROUTES.DASHBOARD });
     } else if (intent === 'intake') {
@@ -525,6 +700,6 @@ export const answerAnswerlatticeOwnerQuestion = async (
             'Does not publish answers, close tickets, or change widget settings.',
             'Open the linked review screen before making a support decision.',
         ],
-        readModel: { firestoreReads: packet.cacheHit ? 0 : 5, source: 'summary_only', cacheHit: packet.cacheHit },
+        readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit },
     };
 };

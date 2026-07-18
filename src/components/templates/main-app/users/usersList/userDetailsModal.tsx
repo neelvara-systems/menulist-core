@@ -6,6 +6,7 @@ import { LuPen, LuX } from "react-icons/lu";
 import UserDetails from "./userDetails/profile";
 
 type UserModalDataType = {
+    canEdit: boolean,
     modalData: {
         active: boolean
         data: UserDataType
@@ -15,7 +16,7 @@ type UserModalDataType = {
 }
 
 
-function UserDetailsModal({ modalData, onCloseModal, onClickEdit }: UserModalDataType) {
+function UserDetailsModal({ canEdit, modalData, onCloseModal, onClickEdit }: UserModalDataType) {
 
     const userDetails: UserDataType = modalData.data;
     const onClose = (data = null) => {
@@ -29,7 +30,7 @@ function UserDetailsModal({ modalData, onCloseModal, onClickEdit }: UserModalDat
             onClose={() => onClose(null)}
             footerActions={[
                 <Button type="default" onClick={() => onClose(null)} key="Cancel" icon={<LuX />}>Close</Button>,
-                <Button type="default" onClick={() => onClickEdit(userDetails)} key="Edit" icon={<LuPen />}>Edit</Button>,
+                <Button disabled={!canEdit} type="default" onClick={() => onClickEdit(userDetails)} key="Edit" icon={<LuPen />}>Edit</Button>,
             ]}
             styles={{
                 content: {
@@ -41,7 +42,7 @@ function UserDetailsModal({ modalData, onCloseModal, onClickEdit }: UserModalDat
             }}
         >
             <Flex style={{ overflow: "auto", maxHeight: "calc(100vh - 130px)", width: "min(720px, calc(100vw - 48px))" }}>
-                <UserDetails userDetails={userDetails} onClickEdit={onClickEdit} />
+                <UserDetails canEdit={canEdit} userDetails={userDetails} onClickEdit={onClickEdit} />
             </Flex>
         </DrawerElement>
     )

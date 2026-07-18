@@ -1,7 +1,7 @@
 # Guide: Adding New Permissions
 
 > **Audience:** Developers  
-> **Last Updated:** May 19, 2026
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -154,7 +154,7 @@ Group permissions logically:
 
 ## Migration Note
 
-For existing stores, new permissions default to `false` for custom roles. Default roles are normalized from `DEFAULT_ROLE_METADATA` during staff/role server flows, so Owner/Manager/Staff receive the new default value without a separate migration script. Use a one-off migration only when custom roles must receive a newly added permission automatically.
+For existing stores, new permissions default to `false` for custom roles. Default roles are normalized from `DEFAULT_ROLE_METADATA` during staff/role server flows, so Owner/Manager/Staff receive the new default value without a separate migration script. The repair recomputes inside `runStaffRoleMutationTransaction()` and must remain there so a concurrent owner role edit is preserved. Use a one-off migration only when custom roles must receive a newly added permission automatically.
 
 ---
 
@@ -183,5 +183,6 @@ if (userPermissions[PERMISSIONS.MANAGE_ORDERS]) { ... }
 | ----------------------------------------- | ---------------------------------------------- |
 | `src/constants/permissions.ts`            | **Single source of truth** for permission keys |
 | `src/types/platform/roles.ts`             | TypeScript types                               |
-| `src/data/defaultRoles.ts`                | Default role definitions                       |
+| `src/data/shared/defaultRoles.ts`         | Canonical default role definitions             |
+| `functions/src/sharedData/defaultRoles.ts` | Byte-identical Functions mirror               |
 | `src/data/rolesPermissionsInitialData.ts` | Legacy UI data (may be deprecated)             |

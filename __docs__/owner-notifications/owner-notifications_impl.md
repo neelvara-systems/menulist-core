@@ -1,8 +1,8 @@
 # Owner Notifications - Implementation Plan
 
 **Status:** Implemented for MenuList lifecycle owner notifications, Answerlattice owner test notification, and internal ops tracking
-**Last Reviewed:** July 13, 2026
-**Date:** 2026-07-13
+**Last Reviewed:** July 16, 2026
+**Date:** 2026-07-16
 **Audience:** Developers
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation plan is source-gated owner-notification runtime evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
@@ -15,11 +15,13 @@ Recipient resolution now treats scope as mandatory delivery authority. MenuList 
 
 The Next.js and Functions legacy lifecycle fallbacks use the same deterministic SHA-256 `messageLogs` claim over store, event, and reference before SMTP. This closes the query-before-send race if the migrated queue path is unavailable. Store daily-rate counters now include tenant and store identity. `npm run test:owner-notification-delivery-boundaries`, `npm run verify:owner-notifications-boundary`, and `npm run verify:menulist-api-tenant-safety` are the local regression gates; provider smoke and target deploy evidence remain required.
 
+July 16 end-to-end correction: the shared delivery boundary now rejects event JSON above 128KB and gives explicit revoked/denied/inactive/withdrawn WhatsApp consent precedence over stale legacy booleans. App and Functions WhatsApp sends use manual redirects plus 15-second aborts; SMTP transports use bounded connection/greeting/socket timeouts and retain only normalized provider message IDs. Repeated publish-verification failures dedupe by store and UTC day. The owner header no longer renders fake order activity; owner notification delivery remains external and platform recovery remains internal.
+
 ## Architecture Summary
 
 Owner Notifications should be queue-first.
 
-Trigger points do not send email or WhatsApp directly. They create an owner notification event with a product ID, trigger type, scope, reference ID, recipient role, and metadata. A central delivery worker resolves recipients, preferences, templates, formatting, channels, idempotency, rate limits, and logs.
+Trigger points do not send email or WhatsApp directly. They create an owner notification event with a product ID, trigger type, scope, reference ID, recipient role, and bounded metadata. A central delivery worker resolves authoritative recipients, existing formatting fields, templates, enabled channels, idempotency, rate limits, and logs. Preferred-channel and quiet-hours fields are registry policy metadata; they are not a current scheduling subsystem.
 
 This removes direct owner-facing SMTP sends from billing routes, schedulers, and product-specific support code for the implemented trigger set. WhatsApp is implemented as a guarded channel adapter and remains disabled by default until approved template/session rollout is configured.
 
@@ -93,7 +95,7 @@ Independent retry/data-integrity follow-up: retry returns `404` for missing/prod
 | MenuList Functions lifecycle engine | `functions/src/messaging/messagingEngine.ts:157` | Replace direct send with enqueue or worker-backed send |
 | MenuList Next lifecycle engine | `src/lib/messaging/index.ts:171` | Replace direct send with enqueue API/server helper |
 | MenuList event docs | `__docs__/lifecycle-messaging/lifecycle-messaging_impl.md:104` | Existing eight events become registry entries |
-| WhatsApp onboarding queue | `functions/src/messagingOnboarding/inboundQueue.ts:142` | Reuse provider model and delivery logging concepts |
+| WhatsApp onboarding queue | `functions/src/messagingOnboarding/inboundQueue.ts:403` | Separate conversational session/outbound-delivery state; do not duplicate it into the owner-notification ledger |
 | WhatsApp templates | `functions/src/messagingOnboarding/constants.ts:254` | Map conversational templates into channel registry |
 | Answerlattice notification sender | `src/lib/notifications/index.ts:248` | Migrate owner/ticket email delivery to shared core where appropriate |
 | Answerlattice workflow integrations | `functions-answerlattice/src/integrations/eventProcessor.ts:89` | Explicitly not part of owner notification core |
@@ -128,7 +130,7 @@ The worker:
 3. Checks feature flags and product rollout state.
 4. Resolves product scope.
 5. Resolves recipients.
-6. Resolves notification preferences and formatting settings.
+6. Resolves existing recipient and formatting settings; no owner preference scheduler is implied.
 7. Builds channel list.
 8. Builds email/WhatsApp templates using formatted metadata.
 9. Checks dedupe and rate limits.
@@ -199,7 +201,7 @@ Capabilities:
 
 - List recent or status-filtered owner notification events for MenuList or Answerlattice.
 - Inspect one event, delivery attempts, and resolved recipient contact.
-- Retry a failed, partial, or skipped event through the central processor.
+- Retry only a claimable failed event through the central processor. Partial, skipped, processing, delivered, malformed, and exhausted-attempt rows fail closed.
 - Open a prefilled email or WhatsApp Web message from the event row or detail drawer.
 - Send a manual system event to an explicitly entered email or WhatsApp number.
 - Record a manual handoff after the platform operator sends email or WhatsApp outside the system.
@@ -414,33 +416,14 @@ Use Meta WhatsApp Cloud provider logic compatible with existing messaging onboar
 
 WhatsApp sends outside the 24-hour conversation window require approved template messages. Conversational WhatsApp onboarding replies can continue to use session context where allowed.
 
-## API Routes
+## API And Runtime Entry Points
 
-### `POST /api/owner-notifications/enqueue`
+There is intentionally no generic `/api/owner-notifications/enqueue` or `/api/owner-notifications/test` route. Arbitrary owner-trigger enqueueing would widen recipient and metadata authority.
 
-Protected route for approved app-side trigger creation.
-
-Security requirements:
-
-- `withAuth()`
-- Zod input validation
-- Tenant/store/workspace access verification
-- Rate limit before writes
-- Metadata max size
-- Allowed trigger registry validation
-- Secure logging without sensitive values
-
-### `POST /api/owner-notifications/test`
-
-Owner/admin test route to verify email and WhatsApp channel readiness.
-
-Security requirements:
-
-- `withAuth()`
-- Role check
-- Tenant/store/workspace access
-- Per-store/workspace test rate limit
-- No arbitrary recipient unless platform admin
+- MenuList Functions lifecycle sources call `sendLifecycleMessage()` and the Functions owner-notification processor.
+- Approved Next.js server sources call `enqueueOwnerNotification()` directly.
+- Answerlattice notification testing remains protected by `POST /api/answerlattice/notifications/test` and its product/tenant authorization.
+- Platform recovery uses `GET|POST /api/ops/owner-notifications`, protected by signed platform admission, current persisted platform authorization, fail-closed rate limits, bounded bodies, product scope, and stable action IDs.
 
 ## Migration Build Order
 
@@ -452,7 +435,7 @@ This build order keeps existing owner messaging working while moving the archite
 4. Add Cloud Functions processor for MenuList project.
 5. Add email channel adapter and migrate current eight MenuList lifecycle events.
 6. Add formatter migration for all date/money metadata.
-7. Add WhatsApp channel adapter and migrate approved WhatsApp onboarding delivery logs.
+7. Add the guarded WhatsApp lifecycle channel adapter. Keep conversational messaging-onboarding telemetry in its own bounded session/event ledger.
 8. Add missing MenuList triggers: publish failed, subscription cancelled/paused/resumed/upgraded, low credits, menu stale.
 9. Add Answerlattice owner trigger registry and migrate notification test/support-readiness owner notices.
 10. Decide whether Answerlattice ticket submitter emails should use shared delivery plumbing while remaining outside owner trigger classification.
@@ -476,15 +459,9 @@ All capabilities should exist in the architecture from the first implementation 
 | WhatsApp publish confirmation | `functions/src/messagingOnboarding/intakeProcessor.ts:171` | `WHATSAPP_PUBLISHED` |
 | Answerlattice notification test | `src/app/api/answerlattice/notifications/test/route.ts:86` | `ANSWERLATTICE_NOTIFICATION_TEST` |
 
-## Missing Trigger Additions
+## Closed Trigger Additions
 
-| Trigger | Current evidence | Required change |
-| --- | --- | --- |
-| `SUBSCRIPTION_CANCELLED` | `src/app/api/razorpay/cancel-subscription/route.ts:155` updates state without lifecycle send | Add owner event after confirmed state update |
-| `SUBSCRIPTION_PAUSED` | `src/app/api/razorpay/pause-subscription/route.ts:141` updates state without lifecycle send | Add owner event when policy allows pause |
-| `SUBSCRIPTION_RESUMED` | `src/app/api/razorpay/resume-subscription/route.ts:140` updates state without lifecycle send | Add owner event when policy allows resume |
-| `SUBSCRIPTION_UPGRADED` | `src/app/api/razorpay/upgrade-subscription/route.ts:150` expires old subscription | Add owner event after replacement activation is confirmed |
-| `MENU_STALE` | `functions/src/analytics/stalenessCheck.ts:114` writes pending log but no sender consumes it | Replace pending log with owner notification enqueue |
+`SUBSCRIPTION_CANCELLED`, `SUBSCRIPTION_PAUSED`, `SUBSCRIPTION_RESUMED`, `SUBSCRIPTION_UPGRADED`, and `MENU_STALE` are wired in the current Razorpay and analytics source paths. `CREDITS_LOW` remains a registry-reserved advisory trigger with no automatic source because MenuList does not introduce low-balance owner nudges; `CREDITS_EXHAUSTED` is the active capacity-stop notice.
 
 ## Security Plan
 

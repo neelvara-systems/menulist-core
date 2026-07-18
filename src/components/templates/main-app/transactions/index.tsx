@@ -3,11 +3,12 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
 import { getExistingProjectsListWithoutLoader } from '@database/projects';
-import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone } from '@lib/ai/operationPresentation';
+import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone, MENULIST_OWNER_AI_ACTIONS } from '@lib/ai/operationPresentation';
+import type { AiOperationHistoryRow } from '@lib/ai/operationHistoryClientContract';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { getFormatedDateAndTime, toDate, type DateLike } from '@util/dateTime';
-import { formatProcessingTime } from '@util/formatters';
+import { getFormatedDateAndTime, toDate } from '@util/dateTime';
+import { formatNumber, formatProcessingTime } from '@util/formatters';
 import { Button, Card, DatePicker, Empty, Flex, Row, Select, Spin, Table, Tag, Tooltip, Typography, message } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter, useTranslations } from 'next-intl';
@@ -38,39 +39,13 @@ const getTransactionsPageLogContext = (input: {
     ...getBoundedRuntimeStringContext('cursorId', input.cursorId),
 });
 
-interface TransactionData {
-    id: string;
-    projectId?: string;
-    fileId?: string;
-    action?: string;
-    clientResponse?: any;
-    geminiResponse?: string;
-    generationConfig?: any;
-    model?: string;
-    promptTokenCount?: number;
-    candidatesTokenCount?: number;
-    totalTokenCount?: number;
-    processingTime?: number;
-    tokenPerCredit?: number;
-    chargePerCredit?: number;
-    totalCredits?: number;
-    totalCharge?: number;
-    unitsConsumed?: number;
-    createdOn: DateLike;
-    storeId?: string;
-    // Fields for language operations
-    inputStrings?: Record<string, string>;
-    targetLang?: { code: string; name: string };
-    sourceLang?: { code: string; name: string };
-    // Fields for image processing
-    files?: Array<{ uid: string; name: string; type: string; url: string }>;
-    targetLanguages?: Array<{ code: string; name: string }>;
-}
+type TransactionData = AiOperationHistoryRow;
 
 interface PaginationState {
     current: number;
     pageSize: number;
     hasMore: boolean;
+    requiresManualContinuation: boolean;
 }
 
 function TransactionPage() {
@@ -83,6 +58,7 @@ function TransactionPage() {
         current: 1,
         pageSize: 15,
         hasMore: false,
+        requiresManualContinuation: false,
     });
 
     const formatter = useFormatter();
@@ -130,6 +106,7 @@ function TransactionPage() {
                     ...previous,
                     current: Math.max(1, page - 1),
                     hasMore: false,
+                    requiresManualContinuation: false,
                 }));
                 return;
             }
@@ -139,6 +116,7 @@ function TransactionPage() {
                 ...previous,
                 current: page,
                 hasMore: response.hasMore,
+                requiresManualContinuation: response.requiresManualContinuation,
             }));
         } catch (error) {
             if (requestId !== requestIdRef.current) return;
@@ -185,7 +163,7 @@ function TransactionPage() {
         }
     }, [fetchProjectsList, projectsLoaded, transactions]);
 
-    const handleDateRangeChange = (dates: any) => {
+    const handleDateRangeChange = (dates: [dayjs.Dayjs | null, dayjs.Dayjs | null] | null) => {
         setDateRange(dates);
     };
 
@@ -273,7 +251,7 @@ function TransactionPage() {
         {
             title: t('result'),
             key: 'result',
-            render: (_: any, record: TransactionData) => (
+            render: (_: unknown, record: TransactionData) => (
                 <Text>{getAiOperationOwnerSummary(record, t)}</Text>
             ),
         },
@@ -300,7 +278,7 @@ function TransactionPage() {
         {
             title: t('details'),
             key: 'details',
-            render: (_: any, record: TransactionData) => (
+            render: (_: unknown, record: TransactionData) => (
                 <Button
                     type="text"
                     icon={<LuArrowRight />}
@@ -313,14 +291,14 @@ function TransactionPage() {
         },
     ];
 
-    const actionOptions = useMemo(() => Object.values(AI_ACTIONS_TYPES as Record<string, string>).map((value) => ({
+    const actionOptions = useMemo(() => MENULIST_OWNER_AI_ACTIONS.map((value) => ({
         value,
         label: formatAiOperationActionLabel(value, t),
     })), [t]);
 
     // Show transaction details in modal
     const showTransactionDetails = (transaction: TransactionData) => {
-        setSelectedTransaction(transaction as unknown as TransactionDetails);
+        setSelectedTransaction(transaction);
         setIsModalOpen(true);
     };
 
@@ -369,15 +347,15 @@ function TransactionPage() {
                 <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', marginBottom: 16 }}>
                     <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
                         <Text type="secondary">{t('shownOnThisPage')}</Text>
-                        <div><Text strong style={{ fontSize: 20 }}>{transactions.length.toLocaleString()}</Text></div>
+                        <div><Text strong style={{ fontSize: 20 }}>{formatNumber(transactions.length)}</Text></div>
                     </div>
                     <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
                         <Text type="secondary">{t('creditsUsedOnPage')}</Text>
-                        <div><Text strong style={{ fontSize: 20 }}>{pageCreditsUsed.toLocaleString()}</Text></div>
+                        <div><Text strong style={{ fontSize: 20 }}>{formatNumber(pageCreditsUsed)}</Text></div>
                     </div>
                     <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 12 }}>
                         <Text type="secondary">{t('noCreditActions')}</Text>
-                        <div><Text strong style={{ fontSize: 20 }}>{freeOperationsOnPage.toLocaleString()}</Text></div>
+                        <div><Text strong style={{ fontSize: 20 }}>{formatNumber(freeOperationsOnPage)}</Text></div>
                     </div>
                 </div>
             ) : null}
@@ -387,7 +365,19 @@ function TransactionPage() {
                     <Spin size="large" />
                 </div>
             ) : transactions.length === 0 ? (
-                <Empty description={t('noTransactions')} />
+                <Flex vertical gap={16}>
+                    <Empty description={pagination.requiresManualContinuation ? t('continueFilteredHistory') : t('noTransactions')} />
+                    {pagination.hasMore ? (
+                        <Flex justify="flex-end" gap={8}>
+                            <Button icon={<LuArrowLeft />} onClick={goToPreviousPage} disabled={loading || pagination.current <= 1}>
+                                {t('previous')}
+                            </Button>
+                            <Button type="primary" icon={<LuArrowRight />} onClick={goToNextPage} disabled={loading || !pagination.hasMore}>
+                                {t('next')}
+                            </Button>
+                        </Flex>
+                    ) : null}
+                </Flex>
             ) : (
                 <>
                     <Table
@@ -403,8 +393,8 @@ function TransactionPage() {
                     <Flex align="center" justify="space-between" style={{ marginTop: 16 }} wrap="wrap" gap={12}>
                         <Text type="secondary">
                             {t('pageSummary', {
-                                page: pagination.current.toLocaleString(),
-                                count: transactions.length.toLocaleString(),
+                                page: formatNumber(pagination.current),
+                                count: formatNumber(transactions.length),
                             })}
                             {pagination.hasMore ? ` ${t('moreAvailable')}` : ''}
                         </Text>

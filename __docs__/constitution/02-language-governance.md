@@ -1,7 +1,7 @@
 # MenuList Language Governance
 
-**Version:** 2.0  
-**Status:** 🔒 LOCKED — NO EXCEPTIONS  
+**Version:** 2.1
+**Status:** 🔒 LOCKED — TRUTH-FIRST INTERPRETATION
 **Applies To:** UI, Support, Sales, Marketing, Docs, Emails, All Teams
 
 ---
@@ -12,6 +12,16 @@
 
 This is not marketing advice — this is **cognitive governance**.  
 If UI, support, docs, emails, or sales violate this, **supervision re-enters**.
+
+## Truth and Safety Precedence
+
+Calm language must never hide a required owner action, payment consequence, public-content approval, security issue, legal condition, or real system limitation.
+
+- Runtime and codebase truth outrank a preferred phrase.
+- Say **review**, **check**, or **confirm** when an owner must approve public truth, correct an exception, understand a charge, or complete a security/legal step.
+- Do not invite routine monitoring after setup. Normal operation should stay quiet.
+- Product names such as **AI Menu Manager** are allowed. Generic hype such as **AI-powered**, “revolutionary,” or unsupported intelligence claims remains forbidden.
+- If a failure needs owner action, name the action plainly. Never say “No action required” when action is required.
 
 ---
 
@@ -42,25 +52,25 @@ If UI, support, docs, emails, or sales violate this, **supervision re-enters**.
 **NEVER:** "Today we changed…", "New update", "Improved performance", "Fresh insights", "We adjusted…"  
 **USE:** "No action today.", "Everything is running normally.", or silence
 
-### Category 6: Invites Monitoring/Review
+### Category 6: Invites Routine Monitoring
 
-**NEVER:** "Review", "Check", "Monitor", "Track", "See how it's doing", "Keep an eye on"  
-**USE:** Nothing, or "No attention needed."
+**NEVER:** "Check this every day", "Keep monitoring", "Keep an eye on it", or language that makes the owner supervise normal operation.
+**USE:** Nothing or "No attention needed" during normal operation. Use "Review before publishing", "Confirm this charge", or "Check this exception" when the action is genuinely required.
 
 ### Category 7: Associates MenuList With Business Outcomes
 
 **NEVER:** "Your sales increased", "Revenue impact", "Conversion improved", "Performance metrics", "Growth"  
 **USE:** "Menu is stable.", "Menu is functioning normally.", "Menu state unchanged."
 
-### Category 8: Apologies That Imply Failure
+### Category 8: Vague Failure Language
 
-**NEVER:** "Sorry for the inconvenience", "We messed up", "An error occurred", "Something went wrong"  
-**USE:** "Temporarily unavailable.", "System reverted to safe state.", "No action required."
+**NEVER:** “Something went wrong” without a safe next step, false reassurance, or technical leakage.
+**USE:** "Temporarily unavailable. Try again." or "The previous version remains live. Review the highlighted item." Match the message to real runtime behavior.
 
-### Category 9: Empowerment Language
+### Category 9: Unnecessary Configuration Language
 
-**NEVER:** "You're in control", "Full control", "Customize", "Tweak", "Fine-tune"  
-**USE:** "Automatic", "Handled", "Default behavior"
+**NEVER:** "Tweak", "Fine-tune", "Full control", or configuration language that adds decisions without owner value.
+**USE:** "Automatic", "Handled", or "Default behavior" when true. Use "Choose", "Edit", or "Approve" for real owner-authority steps.
 
 ### Category 10: Emotional Excitement
 
@@ -111,7 +121,7 @@ Use these everywhere:
 
 ### Approved One-Line Pitch
 
-> **"MenuList runs your menu and in-store decisions automatically. You don't manage it — you just let it work."**
+> **"MenuList keeps one owner-approved customer list connected to the public links and assets your business uses."**
 
 Nothing else.
 
@@ -121,14 +131,12 @@ Nothing else.
 
 ### ❌ Support Must NEVER:
 
-- Explain _why_ an item was shown
-- Explain _how_ the system decides
-- Share internal signals or confidence
-- Compare items
-- Speculate or justify outcomes
-- Educate users on decision logic
+- Invent a reason, confidence level, provider result, or customer outcome
+- Expose sensitive internal signals, secrets, or another tenant's data
+- Shift responsibility to the owner for a failure they could not prevent
+- Hide a known limitation or required correction behind reassurance
 
-**If a ticket asks "why", support must not answer the "why".**
+When an owner asks “why,” explain the confirmed public input or supported rule in plain language when that helps correction. Do not speculate about model reasoning.
 
 ### ✅ Support IS Allowed To:
 
@@ -179,19 +187,19 @@ This applies to:
 - Sales demos
 - Onboarding scripts
 
-**No exceptions.**
+The truth and safety precedence above is part of this enforcement scope.
 
 ---
 
 ## Internal Rule (Most Important)
 
-> **If the owner understands how MenuList works, MenuList is not working.**
+> **If an owner must supervise normal operation, MenuList is not working.**
 
 Silence is the feature.  
 Calm is the interface.  
-Removal of responsibility is the product.
+Removal of routine responsibility is the product. Approval, correction, billing, legal, and security steps remain explicit.
 
 ---
 
 **Document Signature:** Founder Constitution  
-**Last Updated:** January 2026
+**Last Updated:** July 18, 2026

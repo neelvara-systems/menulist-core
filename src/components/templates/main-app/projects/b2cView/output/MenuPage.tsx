@@ -7,6 +7,7 @@
 
 import CategoryIcon from '@atoms/CategoryIcon';
 import { FEATURE_FLAGS } from '@config/features';
+import { normalizePublicMenuBackground } from '@lib/menu/publicMenuBackground';
 import { useMemo, useState } from 'react';
 import {
     DEFAULTS,
@@ -73,14 +74,15 @@ export default function MenuPageOutput({
 
     const isGrid = layout === 'grid';
     const isCard = layout === 'card';
+    const safeBackgroundImage = normalizePublicMenuBackground(backgroundImage);
 
     return (
         <div
             className="min-h-screen"
             style={{
                 minHeight: '100dvh',
-                background: backgroundImage
-                    ? `url(${backgroundImage}) center/cover no-repeat fixed`
+                background: safeBackgroundImage
+                    ? `url("${safeBackgroundImage}") center/cover no-repeat scroll`
                     : moodConfig.background,
             }}
         >

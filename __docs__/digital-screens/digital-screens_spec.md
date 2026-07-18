@@ -5,9 +5,9 @@
 **Author:** Lead Architect (Cascade)  
 **Source:** ChatGPT Brainstorm + Codebase Analysis + Architecture Alignment + Market Research (Feb 2026)  
 **Applies:** 3-Year Architecture Freeze Rule  
-**Last Audit:** July 2, 2026 (dedicated `npm run verify:digital-screens-boundary` source gate plus launch-boundary wording)
+**Last Audit:** July 16, 2026 (token-free get-only listener mirror, kill-switch coverage, permission parity, seen retry, expired-slide recovery, cache preservation, migration guard, and source-gate hardening)
 
-## Current Release Boundary (July 2, 2026)
+## Current Release Boundary (July 16, 2026)
 
 This spec preserves the locked Digital Screens product boundary and source-backed implementation evidence. It is not a current launch certificate.
 
@@ -23,6 +23,8 @@ Current Digital Screens release approval routes through:
 - production-host smoke for the target tenant and screen URL.
 
 The dedicated local source gate does not replace browser TV smoke, physical-device QA, Firebase deploy evidence, Vercel deploy evidence, or production-host runtime verification.
+
+The token-free listener rule has a rollout dependency: deploy the safe app and Functions writers, run `backfill:digital-screen-public-mirrors` for the target project, verify no legacy token-bearing mirror remains, and only then deploy the tightened Firestore rule. This prevents existing connected screens from losing their listener during migration.
 
 ---
 
@@ -120,6 +122,10 @@ That includes project-level screen assignment. Screens follow the active store m
 
 6. **Owner Artwork Boundary:** Custom slide captions are management labels. Owner-uploaded poster artwork displays as the content itself; the system must not force item-title overlays onto custom poster slides.
 
+7. **Bearer Token Isolation:** The canonical `campaigns_{storeId}.screen` state owns the screen token. The anonymous `screen_{storeId}` listener mirror contains only store ID, enabled state, content version, and timestamps; it never contains the bearer token, owner slides, campaigns, or staff data. Anonymous access is exact-document `get` only, never collection listing.
+
+8. **Access And Kill-Switch Parity:** Owner links/settings require `canManageDigitalScreens` on desktop and mobile. `DIGITAL_SCREENS_ENABLED=false` removes owner entry points and closes both `/screen/[token]` and `/api/screen/seen`.
+
 ---
 
 ## Scope
@@ -130,13 +136,13 @@ That includes project-level screen assignment. Screens follow the active store m
 | ------------------------------- | ------------------------------------------------------------------ |
 | **Menu Board Mode** (default)   | Full menu with categories, items, prices — primary ordering screen |
 | **Highlights Mode** (secondary) | Rotating promotional slides — ambiance/waiting area screen         |
-| **Price Display**               | All items show prices in both modes                                |
+| **Price Display**               | Valid prices show in both modes; Menu Board uses `Ask` when price is missing or unclear |
 | **Live Screen URL**             | One URL per store, mode via query parameter                        |
 | **Automatic Content**           | System decides what to show based on menu data + availability      |
 | **Owner Visibility**            | See what's currently showing (read-only)                           |
 | **Owner Setup Trust**           | See two screen types, compact TV links, QR blocks, and last-seen status |
 | **Owner Inserts**               | Upload custom images (optional escape hatch, highlights mode only) |
-| **Offline Resilience**          | Screen continues working during internet outages                   |
+| **Offline Resilience**          | An already-loaded screen keeps its last valid in-memory/local cache during a connection loss; a cold browser boot still needs the route assets |
 | **Availability-Aware**          | Auto-removes sold-out items from both modes                        |
 | **Auto-Pagination**             | Menu Board auto-rotates pages for large menus (no owner config)    |
 
@@ -248,7 +254,7 @@ Restaurant screens operate in:
 | FR-4  | Sold-out items auto-removed                                       | Must Have   | Both       |
 | FR-5  | Owner can view current screen state (read-only)                   | Must Have   | Both       |
 | FR-6  | Owner can upload custom images (highlights only)                  | Should Have | Highlights |
-| FR-7  | Screen works offline (cached content)                             | Must Have   | Both       |
+| FR-7  | Already-loaded screen keeps the last valid cached content during a connection loss | Must Have | Both |
 | FR-8  | Screen auto-recovers after internet restored                      | Must Have   | Both       |
 | FR-9  | One URL per store, mode via `?mode=` query parameter              | Must Have   | Both       |
 | FR-10 | Fullscreen mode (no browser chrome)                               | Must Have   | Both       |
@@ -258,7 +264,7 @@ Restaurant screens operate in:
 | FR-14 | **Menu Board: full menu with categories, items, and prices**      | Must Have   | Menu Board |
 | FR-15 | **Menu Board: auto-paginate for large menus (system-controlled)** | Must Have   | Menu Board |
 | FR-16 | **Menu Board: clean, readable layout (no owner customization)**   | Must Have   | Menu Board |
-| FR-17 | **All items display prices in both modes**                        | Must Have   | Both       |
+| FR-17 | **Valid prices display in both modes; Menu Board shows `Ask` for missing/unclear price** | Must Have | Both |
 | FR-18 | **Default URL (`/screen/token`) renders Menu Board**              | Must Have   | Menu Board |
 | FR-19 | **`?mode=highlights` renders promotional slideshow**              | Must Have   | Highlights |
 | FR-20 | **Menu Board preserves menu/category order where source metadata exists** | Must Have | Menu Board |
@@ -271,7 +277,7 @@ Restaurant screens operate in:
 | ID    | Requirement                | Target                                        |
 | ----- | -------------------------- | --------------------------------------------- |
 | NFR-1 | Screen page load time      | < 3 seconds                                   |
-| NFR-2 | Offline cache duration     | 24 hours minimum                              |
+| NFR-2 | Offline behavior           | Preserve last valid loaded content for the running browser session; do not promise cold-boot offline loading |
 | NFR-3 | Data refresh path          | Public mirror listener reload + 6hr proactive reload, with a 60-second server cache window |
 | NFR-4 | Minimum slides guaranteed  | 2 (never blank)                               |
 | NFR-5 | Maximum slides in rotation | 8                                             |
@@ -354,7 +360,7 @@ Menu Board uses the same server menu data resolver (`screen.menuProjection` when
 | --------------- | ------------------------------- | ------------------------------------------------- |
 | Categories      | Project extracted data          | Displayed as section headers                      |
 | Items           | All available items             | Name + price, grouped by category                 |
-| Prices          | `MenuItemForSlide.price`        | Always shown (minimum 28-32px for 2m readability) |
+| Prices          | `MenuItemForSlide.price`        | Valid amount shown at screen size; `Ask` when missing/unclear |
 | Availability    | `MenuItemForSlide.available`    | Unavailable items hidden automatically            |
 | Best Sellers    | `MenuItemForSlide.isBestSeller` | Subtle visual indicator (no explanation)          |
 | Store Info      | Logo + name + QR                | Header/footer of board                            |
@@ -366,13 +372,13 @@ Menu Board uses the same server menu data resolver (`screen.menuProjection` when
 | ---------------------------------- | ----------------------------------------------------------------------------------- |
 | **No separate sidebar item**       | Digital Screen is an execution surface, not a feature. Lives within Today flow.     |
 | **Read-only owner view**           | Prevents management mindset. Owner observes, doesn't control.                       |
-| **Slides computed, not stored**    | Reduces stale data risk. Always current.                                            |
+| **Slides computed, not stored**    | Reduces stale data risk; freshness still follows save, invalidation, listener, and reload boundaries. |
 | **Client-side rotation**           | Reduces server load. More resilient.                                                |
 | **Minimum 2 slides guaranteed**    | Prevents blank screen embarrassment (highlights mode).                              |
 | **Default = Menu Board**           | 70%+ of restaurant screens serve as menu boards. Primary use case = default.        |
 | **Mode via URL, not settings UI**  | Zero cognitive load. Owner bookmarks the URL they need. No dashboard decisions.     |
 | **No mode selection in dashboard** | The moment we add a dropdown = we created a decision. Decisions are the enemy.      |
-| **Prices always shown**            | Market research: price display is non-negotiable for any restaurant screen.         |
+| **Price position is always present** | Valid price is shown; unclear/missing source renders `Ask` instead of inventing a number. |
 | **Menu Board: no confidence gate** | Full menu is truth, not recommendation. Confidence gate applies to highlights only. |
 | **Auto-pagination, no config**     | System decides page timing. Owner never thinks about this.                          |
 | **No separate screen menu doc**     | Generated screen menu projection stays inside `platformSummary/campaigns_{sId}.screen` and is validity-checked before use. |
@@ -422,9 +428,9 @@ Owner does NOTHING screen-specific.
 
 | Owner Action in MenuList | Menu Board Result     | Highlights Result             |
 | ------------------------ | --------------------- | ----------------------------- |
-| Add new menu item        | Appears automatically | May appear as evergreen slide |
-| Change a price           | Updates automatically | Price shown on slide updates  |
-| Mark item sold out       | Disappears from board | Disappears from rotation      |
+| Add new menu item        | Appears after save and screen refresh | May appear as evergreen slide after refresh |
+| Change a price           | Updates after save and screen refresh | Price shown on slide updates after refresh |
+| Mark item sold out       | Leaves the board after save and screen refresh | Leaves the rotation after refresh |
 | Add new category         | New section appears   | No direct effect              |
 | Delete an item           | Removed from board    | Removed from rotation         |
 | Upload custom image      | No effect             | Appears in rotation           |
@@ -456,7 +462,7 @@ Owner escape hatch (optional):
 
 - Morning: Raju comes to work. Both TVs are already showing the right content.
 - 2 PM: Butter chicken sells out. Raju marks it in MenuList. Both screens update within minutes.
-- 3 PM: Raju adds a new "Summer Special Mango Lassi" in the Editor. It appears on the Menu Board automatically. System may feature it on Highlights if it has a good image.
+- 3 PM: Raju adds a new "Summer Special Mango Lassi" in the Editor and saves. It appears after the screen refresh path completes. The system may feature it on Highlights if it has a valid image.
 - Diwali: Raju's designer makes a poster. Raju uploads it in Settings → it appears on the Highlights screen. After 14 days, it auto-expires.
 
 **What Raju NEVER does:**
@@ -555,12 +561,12 @@ When a campaign targets `digital_screen` surface:
 | Risk                              | Likelihood   | Impact | Mitigation                                                      |
 | --------------------------------- | ------------ | ------ | --------------------------------------------------------------- |
 | **Screen goes blank**             | Low          | High   | Evergreen fallback + brand slide always available               |
-| **Stale content**                 | Medium       | Medium | Auto-refresh every 5 min + availability check                   |
+| **Stale content**                 | Medium       | Medium | 60-second server cache, public cache invalidation, version listener, jittered reload, six-hour health reload, and manual refresh fallback |
 | **Owner expects scheduling**      | Medium       | Low    | Clear messaging: "runs automatically"                           |
-| **Internet outage**               | High (India) | Medium | 24-hour offline cache                                           |
+| **Internet outage**               | High (India) | Medium | Already-loaded screen preserves in-memory/local cached output; cold boot requires route assets |
 | **TV reboots daily**              | High (India) | Low    | URL bookmarkable, no login required                             |
 | **Owner uploads bad content**     | Medium       | Low    | System content continues balancing (highlights only)            |
-| **Stale owner uploads**           | Medium       | Low    | Auto-expire after 14 days (silent fallback)                     |
+| **Stale owner uploads**           | Medium       | Low    | Display expires after the shared retention window; owner reads hide expired slides and the next mutation prunes their Firestore references |
 | **Owner expects customization**   | Medium       | Low    | No customization. System-designed. "This is how it works."      |
 | **Owner confused by two URLs**    | Low          | Low    | Default URL = menu board (most common). Highlights is optional. |
 | **Menu too large for one screen** | Medium       | Medium | Auto-pagination rotates pages every 15-20s                      |

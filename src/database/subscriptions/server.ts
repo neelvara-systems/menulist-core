@@ -19,6 +19,7 @@ import { FirestoreSubscriptionDoc } from "@type/razorpay";
 import { MinimalStoreDataType } from "@type/platform/store";
 import { getGracePeriodInfo } from "@util/razorpay";
 import { admitManualSubscriptionConfirmation } from "@lib/billing/manualSubscriptionConfirmation";
+import { appendBoundedBillingStatusHistory } from "@lib/billing/subscriptionStatusHistory";
 
 const COLLECTION = DB_COLLECTIONS.SUBSCRIPTIONS;
 
@@ -79,12 +80,16 @@ const composeServerSubscriptionPayload = (
     return payload;
 };
 
+export const composeInitialSubscriptionPayloadServer = (
+    data: Omit<FirestoreSubscriptionDoc, "id">,
+) => composeServerSubscriptionPayload(data, { isNew: true });
+
 export const createInitialSubscriptionServer = async (
     providerSubscriptionId: string,
     data: Omit<FirestoreSubscriptionDoc, "id">,
 ): Promise<void> => {
     await getSubscriptionDocRefServer(providerSubscriptionId).set(
-        composeServerSubscriptionPayload(data, { isNew: true }),
+        composeInitialSubscriptionPayloadServer(data),
     );
 };
 
@@ -294,16 +299,13 @@ const expireIfGracePeriodEndedServer = async (
             status: "expired",
             cycleEndDate: expiredAt as any,
             subscriptionEndDate: expiredAt as any,
-            statuses: [
-                ...(Array.isArray(current.statuses) ? current.statuses : []),
-                {
+            statuses: appendBoundedBillingStatusHistory(current.statuses, {
                     status: "expired",
                     timestamp: expiredAt as any,
                     amount: current.amount,
                     currency: current.currency,
                     remark: `Expired after the payment recovery period ended on ${gracePeriod.graceEndsDate?.toLocaleDateString()}`,
-                },
-            ],
+            }),
         };
         transaction.set(subscriptionRef, composeServerSubscriptionPayload(update), { merge: true });
         return {

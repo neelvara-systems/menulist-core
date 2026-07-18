@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Help Documentation
 
-> **Version:** 1.0
-> **Last Updated:** July 10, 2026
+> **Version:** 1.1
+> **Last Updated:** July 16, 2026
 > **Audience:** Business owners (customers)
 
 ---
@@ -48,9 +48,9 @@ If you removed your menu link from a surface:
 | **Bing Places** | You confirm after adding the official page to your Bing business listing |
 | **Instagram Bio** | You confirm after adding your menu link to your Instagram bio |
 | **WhatsApp Profile** | You confirm after adding your menu link to your WhatsApp Business profile |
-| **Table QR** | MenuList has menu/QR readiness for your current menu; printed placement still needs your review |
-| **Digital Screens** | MenuList has recorded screen readiness for the store |
-| **Feedback QR** | Feedback collection is enabled for the store |
+| **Table QR** | Your menu has a recorded publish acknowledgement; printed placement still needs your review |
+| **Digital Screens** | A screen has been set up for the store; this does not prove the screen is currently playing |
+| **Feedback QR** | Your menu has a recorded publish acknowledgement and feedback is enabled |
 
 ## Tips
 
@@ -60,7 +60,7 @@ If you removed your menu link from a surface:
 
 ## Need More Help?
 
-Contact us on WhatsApp or email for assistance.
+Use MenuList Help Center from the owner app for current support options.
 
 ---
 

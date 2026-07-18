@@ -1197,6 +1197,128 @@ service cloud.firestore {
       return data.keys().hasAny(['documents']) && data.documents is list ? data.documents.size() : 0;
     }
 
+    function answerlatticeSupportTicketMessages(data) {
+      return data.keys().hasAny(['messages']) && data.messages is list ? data.messages : [];
+    }
+
+    function answerlatticeSupportTicketStatuses(data) {
+      return data.keys().hasAny(['statuses']) && data.statuses is list ? data.statuses : [];
+    }
+
+    function isValidAnswerlatticeSupportTicketActor(actor) {
+      return actor is map
+        && actor.keys().hasAll(['id', 'name', 'email'])
+        && actor.keys().hasOnly(['id', 'name', 'email'])
+        && actor.id is string
+        && actor.id.size() > 0
+        && actor.id.size() <= 180
+        && (actor.id == request.auth.uid || actor.id == request.auth.token.get('uId', ''))
+        && actor.name is string
+        && actor.name.size() > 0
+        && actor.name.size() <= 200
+        && actor.email is string
+        && actor.email.size() <= 254;
+    }
+
+    function isValidAnswerlatticeSupportTicketAttachment(attachment) {
+      return attachment is map
+        && attachment.keys().hasAll(['url', 'name', 'type', 'size'])
+        && attachment.keys().hasOnly(['url', 'name', 'type', 'size'])
+        && attachment.url is string
+        && attachment.url.size() > 0
+        && attachment.url.size() <= 2000
+        && attachment.name is string
+        && attachment.name.size() > 0
+        && attachment.name.size() <= 300
+        && attachment.type is string
+        && attachment.type.size() > 0
+        && attachment.type.size() <= 120
+        && attachment.size is int
+        && attachment.size >= 0
+        && attachment.size <= 10485760;
+    }
+
+    function isValidAnswerlatticeSupportTicketAttachments(message) {
+      return !message.keys().hasAny(['attachments'])
+        || (
+          message.attachments is list
+          && message.attachments.size() <= 4
+          && (message.attachments.size() < 1 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[0]))
+          && (message.attachments.size() < 2 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[1]))
+          && (message.attachments.size() < 3 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[2]))
+          && (message.attachments.size() < 4 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[3]))
+        );
+    }
+
+    function isValidAnswerlatticeSupportTicketMessage(message, expectedType) {
+      return message is map
+        && message.keys().hasAll(['id', 'text', 'sender', 'timestamp'])
+        && message.keys().hasOnly(['id', 'text', 'type', 'sender', 'timestamp', 'attachments'])
+        && message.id is string
+        && message.id.size() > 0
+        && message.id.size() <= 180
+        && message.text is string
+        && message.text.size() <= 2000
+        && message.type == expectedType
+        && isValidAnswerlatticeSupportTicketActor(message.sender)
+        && message.timestamp is timestamp
+        && isValidAnswerlatticeSupportTicketAttachments(message);
+    }
+
+    function isValidAnswerlatticeSupportTicketStatusEntry(entry, expectedStatus) {
+      return entry is map
+        && entry.keys().hasAll(['status', 'timestamp', 'createdBy', 'remark'])
+        && entry.keys().hasOnly(['status', 'timestamp', 'createdBy', 'remark'])
+        && entry.status == expectedStatus
+        && isAnswerlatticeSupportTicketStatus(entry.status)
+        && entry.timestamp is timestamp
+        && isValidAnswerlatticeSupportTicketActor(entry.createdBy)
+        && entry.remark is string
+        && entry.remark.size() <= 2000;
+    }
+
+    function answerlatticeSupportTicketMessagesAppendOne(before, after, expectedType) {
+      let current = answerlatticeSupportTicketMessages(before);
+      let next = answerlatticeSupportTicketMessages(after);
+      return next.size() == current.size() + 1
+        && next == current.concat([next[next.size() - 1]])
+        && isValidAnswerlatticeSupportTicketMessage(next[next.size() - 1], expectedType);
+    }
+
+    function answerlatticeSupportTicketStatusesAppendOne(before, after) {
+      let current = answerlatticeSupportTicketStatuses(before);
+      let next = answerlatticeSupportTicketStatuses(after);
+      return next.size() == current.size() + 1
+        && next == current.concat([next[next.size() - 1]])
+        && isValidAnswerlatticeSupportTicketStatusEntry(next[next.size() - 1], after.status);
+    }
+
+    function isValidAnswerlatticeSupportTicketSatisfaction(before, after) {
+      return (
+          !before.keys().hasAny(['satisfaction'])
+          && !after.keys().hasAny(['satisfaction'])
+        )
+        || (
+          before.keys().hasAny(['satisfaction'])
+          && after.keys().hasAny(['satisfaction'])
+          && after.satisfaction == before.satisfaction
+        )
+        || (
+          !before.keys().hasAny(['satisfaction'])
+          && after.keys().hasAny(['satisfaction'])
+          && after.status in ['Resolved', 'Closed']
+          && after.satisfaction is map
+          && after.satisfaction.keys().hasAll(['rating', 'comment', 'submittedAt'])
+          && after.satisfaction.keys().hasOnly(['rating', 'comment', 'submittedAt'])
+          && after.satisfaction.rating is int
+          && after.satisfaction.rating >= 1
+          && after.satisfaction.rating <= 5
+          && after.satisfaction.comment is string
+          && after.satisfaction.comment.size() <= 1000
+          && after.satisfaction.submittedAt is timestamp
+        );
+    }
+
     function isValidAnswerlatticeSupportTicketBounds(data) {
       return answerlatticeSupportTicketMessageCount(data) <= 500
         && answerlatticeSupportTicketStatusCount(data) <= 200
@@ -1209,11 +1331,15 @@ service cloud.firestore {
       return data.pId == 'AL'
         && data.keys().hasAll(['tId', 'sId', 'subject', 'status', 'priority', 'category', 'statuses'])
         && data.subject is string
+        && data.subject.size() > 0
         && data.subject.size() <= 300
+        && (!data.keys().hasAny(['message']) || (data.message is string && data.message.size() <= 4000))
         && isAnswerlatticeSupportTicketStatus(data.status)
         && isAnswerlatticeSupportTicketPriority(data.priority)
         && isAnswerlatticeSupportTicketCategory(data.category)
-        && answerlatticeSupportTicketStatusCount(data) >= 1
+        && answerlatticeSupportTicketStatusCount(data) == 1
+        && answerlatticeSupportTicketMessageCount(data) == 0
+        && isValidAnswerlatticeSupportTicketStatusEntry(answerlatticeSupportTicketStatuses(data)[0], data.status)
         && isValidAnswerlatticeSupportTicketBounds(data);
     }
 
@@ -1230,17 +1356,20 @@ service cloud.firestore {
         && (!after.keys().hasAny(['deleted']) || after.deleted is bool)
         && isAnswerlatticeSupportTicketTransition(before.status, after.status)
         && isValidAnswerlatticeSupportTicketBounds(after)
+        && isValidAnswerlatticeSupportTicketSatisfaction(before, after)
         && (
           (
             after.status == before.status
-            && answerlatticeSupportTicketStatusCount(after) == answerlatticeSupportTicketStatusCount(before)
-            && answerlatticeSupportTicketMessageCount(after) >= answerlatticeSupportTicketMessageCount(before)
-            && answerlatticeSupportTicketMessageCount(after) <= answerlatticeSupportTicketMessageCount(before) + 1
+            && answerlatticeSupportTicketStatuses(after) == answerlatticeSupportTicketStatuses(before)
+            && (
+              answerlatticeSupportTicketMessages(after) == answerlatticeSupportTicketMessages(before)
+              || answerlatticeSupportTicketMessagesAppendOne(before, after, 'user')
+            )
           )
           || (
             after.status != before.status
-            && answerlatticeSupportTicketStatusCount(after) == answerlatticeSupportTicketStatusCount(before) + 1
-            && answerlatticeSupportTicketMessageCount(after) == answerlatticeSupportTicketMessageCount(before) + 1
+            && answerlatticeSupportTicketStatusesAppendOne(before, after)
+            && answerlatticeSupportTicketMessagesAppendOne(before, after, 'system')
           )
         );
     }

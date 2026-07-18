@@ -42,7 +42,19 @@ import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi'
 const FeedbackRequestSchema = z.object({
     searchHistoryId: z.string().trim().max(180).refine((value) => normalizeAnswerlatticeSearchHistoryId(value) === value),
     isGood: z.boolean(),
-}).strict();
+    resolutionOutcome: z.enum(['resolved', 'not_resolved']).optional(),
+}).strict().superRefine((value, context) => {
+    if (
+        (value.resolutionOutcome === 'resolved' && value.isGood !== true)
+        || (value.resolutionOutcome === 'not_resolved' && value.isGood !== false)
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Feedback outcome does not match the selected response.',
+            path: ['resolutionOutcome'],
+        });
+    }
+});
 const WIDGET_FEEDBACK_MAX_BODY_BYTES = 2 * 1024;
 const WIDGET_AUTH_CACHE_TTL_MS = 15_000;
 
@@ -222,7 +234,7 @@ export async function POST(request: NextRequest) {
         if (!validation.success) {
             return jsonResponse(request, { error: 'searchHistoryId and isGood are required' }, { status: 400 });
         }
-        const { searchHistoryId, isGood } = validation.data;
+        const { searchHistoryId, isGood, resolutionOutcome } = validation.data;
 
         // Write feedback only to this workspace's own search-history record.
         const historyRef = answerlatticeFirestoreAdmin
@@ -247,6 +259,7 @@ export async function POST(request: NextRequest) {
             const now = admin.firestore.Timestamp.now();
             transaction.set(historyRef, {
                 isGood,
+                ...(resolutionOutcome ? { resolutionOutcome } : {}),
                 reasonsToImprove: [],
                 comments: '',
                 submittedAt: now,

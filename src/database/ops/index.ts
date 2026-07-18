@@ -11,9 +11,10 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { assertCurrentPlatformAccess } from '@lib/auth/currentPlatformAccessClient';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
-import type { AdoptionPulse, IntegritySignals, OpsAlert, OpsConfig, SystemState } from '@lib/ops/types';
+import type { AdoptionPulse, IntegritySignals, OpsAlert, OpsConfig, OpsControlRoomSnapshot, SystemState } from '@lib/ops/types';
 import {
   collection,
   doc,
@@ -32,6 +33,32 @@ function buildOpsStoredTextSummary(displayLabel: string, contextLabel: string, v
   return context[`${contextLabel}Present`]
     ? `${displayLabel} present (${context[`${contextLabel}Length`]} chars).`
     : null;
+}
+
+function cleanOpsField(value: unknown, maximum: number, fallback: string): string {
+  return typeof value === 'string'
+    ? value.replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, maximum) || fallback
+    : fallback;
+}
+
+function normalizeOpsAlert(id: string, raw: unknown): OpsAlert {
+  const data = raw && typeof raw === 'object' && !Array.isArray(raw)
+    ? raw as Record<string, unknown>
+    : {};
+  const severity = data.severity === 'critical' || data.severity === 'warning' || data.severity === 'info'
+    ? data.severity
+    : 'info';
+  return {
+    id,
+    type: cleanOpsField(data.type, 40, 'unknown'),
+    severity,
+    title: buildOpsStoredTextSummary('Alert title', 'alertTitle', data.title) || 'Alert title unavailable.',
+    message: buildOpsStoredTextSummary('Alert message', 'alertMessage', data.message) || 'Alert message unavailable.',
+    timestamp: data.timestamp || null,
+    acknowledged: data.acknowledged === true,
+    tId: cleanOpsField(data.tId, 160, 'system'),
+    sId: cleanOpsField(data.sId, 160, 'system'),
+  };
 }
 
 // ================================================================
@@ -82,11 +109,11 @@ export async function getSystemState(): Promise<SystemState> {
       result.lastAlertTitle = buildOpsStoredTextSummary('Alert title', 'lastAlertTitle', lastAlert.title);
       result.lastAlertTimestamp = lastAlert.timestamp || null;
     }
+    return result;
   } catch (error) {
     logOpsFailure('ops_system_state_load_failed', error);
+    throw new Error('ops_system_state_unavailable');
   }
-
-  return result;
 }
 
 // ================================================================
@@ -127,11 +154,11 @@ export async function getAdoptionPulse(): Promise<AdoptionPulse> {
     );
     const activeSnap = await getCountFromServer(activeQuery);
     result.activeStores7d = activeSnap.data().count;
+    return result;
   } catch (error) {
     logOpsFailure('ops_adoption_pulse_load_failed', error);
+    throw new Error('ops_adoption_pulse_unavailable');
   }
-
-  return result;
 }
 
 // ================================================================
@@ -162,11 +189,11 @@ export async function getIntegritySignals(): Promise<IntegritySignals> {
     );
     const staleSnap = await getCountFromServer(staleQuery);
     result.noPublish60d = staleSnap.data().count;
+    return result;
   } catch (error) {
     logOpsFailure('ops_integrity_signals_load_failed', error);
+    throw new Error('ops_integrity_signals_unavailable');
   }
-
-  return result;
 }
 
 // ================================================================
@@ -179,22 +206,38 @@ export async function getIntegritySignals(): Promise<IntegritySignals> {
  */
 export async function getRecentAlerts(maxResults: number = 10): Promise<OpsAlert[]> {
   try {
+    const boundedMaxResults = Number.isSafeInteger(maxResults)
+      ? Math.min(Math.max(maxResults, 1), 30)
+      : 10;
     const alertsRef = collection(firebaseClient, DB_COLLECTIONS.SYSTEM_ALERTS);
     const alertsQuery = query(
       alertsRef,
       orderBy('timestamp', 'desc'),
-      limit(maxResults)
+      limit(boundedMaxResults)
     );
     const alertsSnap = await getDocs(alertsQuery);
 
-    return alertsSnap.docs.map(d => ({
-      id: d.id,
-      ...d.data(),
-    })) as OpsAlert[];
+    return alertsSnap.docs.map((document) => normalizeOpsAlert(document.id, document.data()));
   } catch (error) {
     logOpsFailure('ops_recent_alerts_load_failed', error, {
       maxResults,
     });
-    return [];
+    throw new Error('ops_recent_alerts_unavailable');
   }
+}
+
+/**
+ * Load one coherent Control Room snapshot after a fresh persisted-platform
+ * authorization check. Any source failure rejects the snapshot instead of
+ * presenting a healthy-looking zero/empty state.
+ */
+export async function getOpsControlRoomSnapshot(): Promise<OpsControlRoomSnapshot> {
+  await assertCurrentPlatformAccess();
+  const [systemState, adoption, integrity, alerts] = await Promise.all([
+    getSystemState(),
+    getAdoptionPulse(),
+    getIntegritySignals(),
+    getRecentAlerts(10),
+  ]);
+  return { systemState, adoption, integrity, alerts };
 }

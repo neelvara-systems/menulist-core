@@ -36,47 +36,72 @@ function assertOrder(content, orderedTokens, label) {
 function verifyPackageScript(packageJson) {
   assertIncludes(
     packageJson,
-    '"verify:working-hours-boundary": "node scripts/verification/verify-working-hours-boundary.js"',
+    'scripts/verification/test-working-hours-boundary.ts',
     'package working-hours verifier script',
+  );
+}
+
+function verifyFirestoreCostBoundary(firestoreIndexesJson) {
+  const firestoreIndexes = JSON.parse(firestoreIndexesJson);
+  assert(
+    (firestoreIndexes.fieldOverrides || []).some((entry) => (
+      entry.collectionGroup === 'stores'
+      && entry.fieldPath === 'timeSlotPresets'
+      && Array.isArray(entry.indexes)
+      && entry.indexes.length === 0
+    )),
+    'stores.timeSlotPresets must stay exempt from unused automatic single-field indexes',
   );
 }
 
 function verifyStoreDal(storesDal) {
   [
     'export const updateStore = async (data: any) => {',
+    'normalizeWorkingHoursUpdate',
+    "throw new Error('store_working_hours_day_invalid')",
+    "throw new Error('store_working_hours_range_invalid')",
     'await revalidatePublicClientCache(data.storeId, "updateStore");',
     'export function assertStoreUpdateSucceeded(',
     "throw new Error(rejectionCode);",
     'export function assertTimeSlotPresetUpdateSucceeded',
     "throw new Error('time_slot_preset_update_rejected');",
     'export const updateTimeSlotPresets = async (storeId: number, timeSlotPresets: TimeSlotPreset[]) => {',
-    'await setDoc(docRef, { modifiedOn: serverTimestamp(), timeSlotPresets }, { merge: true });',
+    "await assertActiveSessionStore(storeId, 'time_slot_preset_store_scope_mismatch');",
+    'const normalizedPresets = normalizeTimeSlotPresets(timeSlotPresets);',
+    'await setDoc(docRef, { modifiedOn: serverTimestamp(), timeSlotPresets: normalizedPresets }, { merge: true });',
     'await revalidatePublicClientCache(storeId, "updateTimeSlotPresets");',
-    'return { success: true, timeSlotPresets } satisfies TimeSlotPresetUpdateResult;',
+    'return { success: true, timeSlotPresets: normalizedPresets } satisfies TimeSlotPresetUpdateResult;',
   ].forEach((token) => assertIncludes(storesDal, token, 'Store working-hours/time-slot DAL boundary'));
 }
 
 function verifyProjectCascade(projectsDal) {
   [
     'export const removePresetFromAllCategories = async (presetId: string) => {',
-    'PROJECT_PRESET_CASCADE_BATCH_LIMIT = 450',
-    'await commitPendingProjectPresetWrites();',
-    'revalidatePublicClientCacheForProject(projectId, "removePresetFromAllCategories")',
+    'PROJECT_PRESET_CASCADE_PAGE_SIZE = 100',
+    'const currentDoc = await transaction.get(projectDoc.ref);',
+    'files: projection.files,',
+    'await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);',
     'export function assertProjectPresetCascadeSucceeded(',
     'export const updatePresetInAllCategories = async (preset: TimeSlotPreset) => {',
-    'if (!presetId) return { success: false, updatedProjects: 0 };',
-    'await revalidatePublicClientCacheForProject(project.projectId, "updatePresetInAllCategories");',
+    'const normalizedPreset = normalizeTimeSlotPreset(preset);',
+    'return await applyPresetMutationToAllProjects(',
   ].forEach((token) => assertIncludes(projectsDal, token, 'Project time-slot cascade boundary'));
 }
 
 function verifyDesktopSettings(businessSettings, timeSlotPresetsTab) {
   [
+    'buildWorkingHourSlots(storeDetails?.workingHours)',
+    'const [workingHoursDirty, setWorkingHoursDirty] = useState(false);',
+    'const [workingHoursDirtyDays, setWorkingHoursDirtyDays] = useState<string[]>([]);',
+    'if (workingHoursDirty) {',
     'changesToUpload.workingHours = getFormatedWorkingHours(workingHours);',
+    'delete changesToUpload.workingHours;',
     'if ("workingHours" in updatedChanges) {',
     'updatedChanges.hoursLastUpdatedAt = new Date().toISOString();',
     'const savedDetails = await updateStore(updatedChanges);',
     'assertStoreUpdateSucceeded(',
     "'desktop_business_settings_store_update_rejected'",
+    'setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: presets }))',
   ].forEach((token) => assertIncludes(businessSettings, token, 'Desktop working-hours save boundary'));
 
   assertOrder(
@@ -106,8 +131,12 @@ function verifyDesktopSettings(businessSettings, timeSlotPresetsTab) {
 function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore) {
   [
     'const hoursLastUpdatedAt = new Date().toISOString();',
+    'const workingHours: Record<string, string> = { ...(storeDetails.workingHours || {}) };',
+    'getStoreDeepDifference(workingHours, storeDetails.workingHours || {}, {',
     'setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours }));',
-    'const writeResult = await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours } as any);',
+    'storeId: storeDetails.storeId,',
+    'tenantId: storeDetails.tenantId,',
+    'workingHours,',
     'assertStoreUpdateSucceeded(',
     "'mobile_working_hours_store_update_rejected'",
     "'mobile_working_hours_save_failed'",
@@ -115,12 +144,21 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'closedDayCount: DAYS.filter',
     'hasPreviousWorkingHours: Boolean(storeDetails.workingHours)',
     'workingHours: storeDetails.workingHours',
+    "Toast.show({ content: t('hoursSaved'), duration: 1000 });",
   ].forEach((token) => assertIncludes(mobileWorkingHours, token, 'Mobile full working-hours save boundary'));
+  assertOrder(
+    mobileWorkingHours,
+    ['assertStoreUpdateSucceeded(', "Toast.show({ content: t('hoursSaved'), duration: 1000 });"],
+    'Mobile full working-hours acknowledgement order',
+  );
+  assertNotIncludes(mobileWorkingHours, 'updateStore({ ...storeDetails', 'Mobile full working-hours save must not overwrite unrelated store truth');
 
   [
     'const previousHours = storeDetails.workingHours || {};',
     'const previousHoursLastUpdatedAt = (storeDetails as any).hoursLastUpdatedAt;',
-    'const writeResult = await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours: nextHours } as any);',
+    'storeId: storeDetails.storeId,',
+    'tenantId: storeDetails.tenantId,',
+    'workingHours: { [todayKey]: nextRange },',
     'assertStoreUpdateSucceeded(',
     "'mobile_today_hours_store_update_rejected'",
     "'mobile_today_hours_update_failed'",
@@ -128,7 +166,11 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     'hasNextHours: Object.keys(nextHours).length > 0',
     'hasPreviousHoursLastUpdatedAt: Boolean(previousHoursLastUpdatedAt)',
     'workingHours: previousHours',
+    'getStoreDayKey(storeDetails?.timeZone, hoursNow)',
+    'getStoreStatus(storeDetails?.workingHours, storeDetails?.timeZone, undefined, hoursNow)',
+    'isValidClockRange(todayOpenTime, todayCloseTime)',
   ].forEach((token) => assertIncludes(mobileHours, token, 'Mobile Today quick-hours save boundary'));
+  assertNotIncludes(mobileHours, 'updateStore({ ...storeDetails', 'Mobile Today quick-hours save must not overwrite unrelated store truth');
 
   [
     'const writeResult = await updateTimeSlotPresets(storeDetails?.storeId, updated);',
@@ -141,7 +183,10 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
     "'mobile_time_slot_preset_delete_failed'",
     "getBoundedMobileOwnerStringContext('presetLabel', label)",
     'remainingPresetCount: Math.max(presets.length - 1, 0)',
+    'setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: updated }))',
+    'isValidClockRange(formStart, formEnd)',
   ].forEach((token) => assertIncludes(mobileTimeSlots, token, 'Mobile time-slot preset boundary'));
+  assertNotIncludes(mobileTimeSlots, 'rangesOverlap(', 'Mobile time-slot presets must allow the same overlap contract as desktop');
 
   [
     "key: 'hoursEdit'",
@@ -152,7 +197,7 @@ function verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, 
   ].forEach((token) => assertIncludes(mobileMore, token, 'Mobile More hours/time-slot route boundary'));
 }
 
-function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals) {
+function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals, decisionBlocks, schema, obpSurface) {
   assertIncludes(features, 'ENABLE_HOURS_STATUS_DISPLAY: true', 'Hours status feature flag');
 
   [
@@ -169,28 +214,32 @@ function verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHou
 
   [
     'export function getStoreStatus(',
-    'statusText: "Hours not available"',
-    'function isWithinWindow(',
-    'if (endMinutes < startMinutes) {',
+    "statusText: 'Hours not available'",
+    'export function getStoreDayKey(',
+    'export function normalizeWorkingHoursValue(',
+    'export function parseWorkingHoursRanges(',
+    'const previousIntervals =',
+    '.filter((range) => range.endMinutes < range.startMinutes)',
+    'interval.start <= currentMinutes && currentMinutes < interval.end',
     'export function getMinutesUntilStoreStatusChange(',
     'return getStoreStatus(workingHours, timeZone, timeFormat);',
-    'logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_day_key", "local_day_key")',
-    'logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_time", "local_time")',
-    'logHoursStatusInvalidTimeRange(currentDay, todayHours, "hours_engine_current_status")',
-    'logHoursStatusInvalidTimeRange(checkDay, hours, "hours_engine_next_open")',
-    'if (!Number.isFinite(currentMinutes))',
-    'if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes))',
+    "logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_day_key', 'local_day_key')",
+    "logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_time', 'local_time')",
+    "getRangesForDay(workingHours, previousDay, 'hours_engine_current_status')",
+    "getRangesForDay(workingHours, currentDay, 'hours_engine_next_change')",
   ].forEach((token) => assertIncludes(hoursEngine, token, 'Hours engine boundary'));
   assertNotIncludes(hoursEngine, '    } catch {\n        // Fallback', 'Hours engine timezone fallback must not be silent');
 
   [
-    "logHoursStatusTimeZoneFallback(error, timeZone, 'obp_hours_status_now', 'browser_local_time')",
-    "logHoursStatusInvalidTimeRange(dayKey, range, 'obp_hours_status_current_status')",
-    'let hasValidRange = false;',
-    "return { isOpen: false, statusText: 'Hours not available' };",
-    'hasValidTimeRange(hours)',
+    "import { getStoreStatus } from '@lib/hours/hoursEngine';",
+    "const status = getStoreStatus(workingHours, timeZone || 'Asia/Kolkata', undefined, now);",
+    "status.statusText === 'Open' ? 'Open now' : status.statusText",
   ].forEach((token) => assertIncludes(obpHoursStatus, token, 'OBP hours status boundary'));
-  assertNotIncludes(obpHoursStatus, '    } catch {\n        now = new Date();\n    }', 'OBP hours status timezone fallback must not be silent');
+
+  assertIncludes(decisionBlocks, 'return isWithinTimeSlot(category.timeSlots, storeTimeZone);', 'Decision Blocks canonical time-slot boundary');
+  assertNotIncludes(decisionBlocks, 'currentMinutes <= slotEnd', 'Decision Blocks must use the canonical exclusive-end time-slot boundary');
+  assertIncludes(schema, 'parseWorkingHoursRanges(hours).map((range)', 'Structured-data hours validation boundary');
+  assertIncludes(obpSurface, 'parseWorkingHoursRanges(todayHours)', 'OBP hours display validation boundary');
 
   [
     'getStoreStatus(workingHours, timezone)',
@@ -283,7 +332,7 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
   ].forEach((token) => assertIncludes(marketingDoc, token, 'Working hours marketing source boundary'));
 
   [
-    'working-hours boundary source gate passed; browser/manual mutation pending',
+    'working-hours boundary and deterministic overnight/time-slot gates passed; browser/manual mutation pending',
   ].forEach((token) => assertIncludes(inventory, token, 'Feature sweep inventory working-hours source gate'));
 
   [
@@ -369,6 +418,7 @@ function verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, help
 
 function main() {
   const packageJson = read('package.json');
+  const firestoreIndexes = read('firestore.indexes.json');
   const storesDal = read('src/database/stores/index.tsx');
   const projectsDal = read('src/database/projects/index.ts');
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
@@ -384,6 +434,9 @@ function main() {
   const storeStatusBadge = read('src/components/atoms/StoreStatusBadge/index.tsx');
   const clientWebsite = read('src/components/templates/website/clientWebsite/index.tsx');
   const trustSignals = read('src/components/atoms/TrustSignals.tsx');
+  const decisionBlocks = read('src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx');
+  const schema = read('src/lib/schema/index.ts');
+  const obpSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
   const readme = read('__docs__/hours-holiday-accuracy/README.md');
   const spec = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_spec.md');
   const impl = read('__docs__/hours-holiday-accuracy/hours-holiday-accuracy_impl.md');
@@ -398,11 +451,12 @@ function main() {
   const changelog = read('__docs__/changelog.md');
 
   verifyPackageScript(packageJson);
+  verifyFirestoreCostBoundary(firestoreIndexes);
   verifyStoreDal(storesDal);
   verifyProjectCascade(projectsDal);
   verifyDesktopSettings(businessSettings, timeSlotPresetsTab);
   verifyMobileSettings(mobileWorkingHours, mobileHours, mobileTimeSlots, mobileMore);
-  verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals);
+  verifyPublicHoursOutput(features, hoursEngine, hoursDiagnostics, obpHoursStatus, storeStatusBadge, clientWebsite, trustSignals, decisionBlocks, schema, obpSurface);
   verifyDocs(readme, spec, impl, firebaseDoc, mobileDoc, websiteDoc, helpDoc, marketingDoc, inventory, report, audit, changelog);
 
   console.log('Working Hours and time-slot boundary verifier passed');

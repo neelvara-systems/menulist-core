@@ -47,7 +47,7 @@ OBP has TWO surfaces — each assessed separately:
 | Copy message action    | ✅ DONE — OBPLinkCard       | Conversation-ready message for WhatsApp/Instagram    |
 | Dual QR (Share + Menu) | ✅ DONE — OBPLinkCard       | Two QR types with Segmented toggle + download        |
 | OBP settings editor    | ✅ Mobile More tab + desktop | Uses same store DAL and compact mobile cards         |
-| Custom attributes      | ✅ Mobile More tab + desktop | Uses the shared category icon/emoji picker and same `publicPresence.customAttributes` save path |
+| Custom attributes      | ✅ Mobile More tab + desktop | Uses the shared category icon/emoji picker and same `publicPresence.customAttributes` save path; shared runtime normalization caps unique entries at six and public output omits disabled entries |
 | Business cover         | ✅ Mobile More tab + desktop | Upload/generate/adjust through shared media system   |
 | Photo upload           | ✅ Mobile More tab + desktop | Shared media card, two-column mobile grid, modal actions |
 | Google review fields   | ❌ Desktop only             | One-time setup, number inputs                        |
@@ -72,11 +72,12 @@ OBP has TWO surfaces — each assessed separately:
 - Business cover image card with upload, replace, adjust, remove, and Generate/Regenerate
 - Descriptor, known for, special note, links, rating fields, action visibility, policy links
 - Business attributes and owner-defined custom attributes with the shared category icon/emoji picker
+- Desktop and mobile initialize controlled attributes through the same known-key/strict-boolean runtime boundary used by public projections, so malformed legacy values cannot appear enabled or be resaved as owner truth.
 - Business photo gallery with shared media upload and per-photo action sheet
 
 ### Failure Boundary
 
-`MobileOfficialPageScreen` uses the same `updateStore()`, `uploadOBPCover()`, `uploadOBPPhoto()`, and `deleteOBPPhotos()` paths as desktop-backed OBP settings. Saves must require `assertStoreUpdateSucceeded()` before photo cleanup, saved baselines, or success copy. Failed saves log `mobile_official_page_save_failed` with bounded store, tenant, localized-language count, photo count, delete-queue count, cover presence, and special-note presence metadata before showing fixed owner-facing copy.
+`MobileOfficialPageScreen` uses the same `updateStore()`, `uploadOBPCover()`, `uploadOBPPhoto()`, and `deleteOBPPhotos()` paths as desktop-backed OBP settings. Standalone mobile, desktop, and the embedded B2C editor use the shared coordinate and public-link validators before persistence. Saves must require `assertStoreUpdateSucceeded()` before photo cleanup, saved baselines, or success copy. New uploads enter the cleanup-candidate queue immediately; cleanup receives the just-saved `publicPresence` references and excludes retained cover/gallery URLs, including duplicate/re-added prepared-media URLs. Reset/unmount removes abandoned uploads, while failed deletes remain queued. Failed saves restore both optimistic `publicPresence` and `businessCopyMeta`, log `mobile_official_page_save_failed` with bounded store, tenant, localized-language count, photo count, delete-queue count, cover presence, and special-note presence metadata, and show fixed owner-facing copy. Mobile Basic Settings likewise rolls back the complete optimistic phone tuple (`countryCode`, `dialCode`, canonical `phone`, and local `phoneNumber`) instead of leaving partially updated contact state after a rejected store write.
 
 `MobileMenuScreen` can apply menu-derived OBP `businessAttributes` defaults after owner-approved extraction review. That path must require `assertStoreUpdateSucceeded()` before local public attribute state changes; rejected writes use `mobile_menu_business_attributes_default_store_update_rejected` through `mobile_menu_business_attributes_default_apply_failed`.
 

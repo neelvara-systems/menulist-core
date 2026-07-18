@@ -1,255 +1,96 @@
-# POS Webhook Sync — Marketing & Sales Collateral
+# External Menu Sync — Approved Positioning
 
-> **Document Type:** Internal Sales/Marketing Strategy
-> **Audience:** Sales team, marketing, founder
-> **Status:** Implemented
-> **Last Updated:** June 11, 2026
-> **Version:** 2.2
+> **Audience:** Founder, sales, support, content
+> **Status:** Internal claim boundary, not a launch proof
+> **Last reviewed:** July 16, 2026
 
-> Current marketing governance note: Use this document for strategic context, not as literal main-website copy. POS Sync should support MenuList's upstream menu-truth positioning. Main website copy must stay conservative: connected store POS webhook, signed full-menu snapshot, approved changes after publish. Avoid universal POS, real-time sync, seamless integration, POS connector-suite, and unsupported "always updated" claims.
+## Approved one-line description
 
----
+MenuList can send a signed full-menu snapshot to a connected store system that provides a compatible public HTTPS endpoint.
 
-## Elevator Pitch (30 seconds)
+## When to mention it
 
-**Hook:** "Your staff updates the POS menu every time something changes in MenuList. That's manual work that shouldn't exist."
+Mention External Menu Sync only when a prospect or customer already has a provider, developer, agency, website, ordering system, or POS team able to receive webhooks. It is supporting operations proof, not the lead MenuList promise.
 
-**Value:** "With POS Sync, every menu change in MenuList automatically reaches your POS system. No manual updates. No price mismatches. No forgotten items."
+## Approved value points
 
-**Close:** "You edit once. Everything updates."
+- MenuList remains the menu source.
+- The receiving team gets one current full snapshot instead of a partial delta.
+- Each request is signed and versioned.
+- Owners can test the destination and see recent attempts.
+- Each outlet controls its own destination.
+- The setup secret is protected behind integration permission.
 
----
+## Accurate explanation
 
-## Feature Narrative (Business Value)
+After an acknowledged project save, the open MenuList app waits briefly and makes one delivery attempt to the configured endpoint. The receiver must verify the signature and apply the payload. MenuList records whether the endpoint accepted the request.
 
-### The Problem
+## Required qualification
 
-Every restaurant using both a digital menu system and a POS faces the same daily friction: when the menu changes, someone has to update it in two places. A price goes up in MenuList but stays old in the POS. A new dish gets added online but isn't in the POS. A seasonal item gets removed from the website but customers can still order it at the counter.
+Before presenting the feature as usable, ask:
 
-For chains with multiple outlets — each potentially using a different POS vendor — this problem multiplies. Manual sync across 10, 20, 50 outlets is operational chaos.
+1. Does the receiving system provide a public HTTPS webhook URL?
+2. Can its technical team implement MenuList's JSON and HMAC headers?
+3. Will they confirm a test and actual application?
+4. Is the owner willing to configure each outlet separately?
 
-### The Solution
+If any answer is unknown, position it as a technical compatibility check, not an available vendor integration.
 
-MenuList POS Sync eliminates this entirely. When you change your menu in MenuList, the full updated menu is automatically sent to your POS system. No manual work. No mismatches. No forgotten updates.
+## Approved sales answers
 
-It works with connected systems that provide a public HTTPS webhook endpoint and can accept MenuList's signed full-menu snapshot. MenuList sends, the connected system receives. That's it.
+**Does this work with my POS?**
+It can work when your POS provider or developer gives you a public HTTPS endpoint and implements MenuList's signed full-menu snapshot. We confirm compatibility through a connection test; we do not claim every POS is supported.
 
-### Why This Matters
+**Is it real-time?**
+No. The open app combines rapid project saves for 25 seconds, then makes one attempt.
 
-- **For single stores:** One less daily task. Menu consistency between online and POS.
-- **For chains:** Central menu control with automatic distribution to every outlet's POS.
-- **For operations:** Zero price mismatches between what customers see online and what they're charged at the counter.
+**Does MenuList retry?**
+No automatic retry is active. The next acknowledged project save sends the latest full snapshot.
 
----
+**Does success mean my POS updated?**
+Success means the endpoint returned a 2xx response. The provider must confirm it applied the menu.
 
-## Competitive Positioning
+**Can one master connection update all outlets?**
+No. Each outlet has its own connection and must be configured/tested separately.
 
-### How We're Different
+**Does MenuList email my provider?**
+MenuList prepares an email draft on the owner's device. The owner sends it.
 
-| Aspect             | Typical POS Integration    | MenuList POS Sync                    |
-| ------------------ | -------------------------- | ------------------------------------ |
-| Direction          | Bidirectional (complex)    | One-way broadcast (simple)           |
-| Maintenance        | Requires mapping, adapters | Standard format, zero maintenance    |
-| POS dependency     | Tied to specific POS       | Works with any webhook-capable POS   |
-| Setup              | Weeks of integration work  | Enter URL, click test, done          |
-| Ongoing cost       | Integration fees, support  | Included in MenuList                 |
-| Who controls menu? | Unclear (sync conflicts)   | MenuList is source of truth. Always. |
+## Forbidden claims
 
-### Positioning Statement
+Do not say:
 
-MenuList is not a POS integration company. MenuList is the place where menu truth lives. POS systems receive that truth automatically. This is infrastructure, not integration.
+- works with any POS;
+- Petpooja, DotPe, Foodics, Square, Toast, or another named vendor is supported without certification;
+- real-time sync;
+- guaranteed delivery;
+- automatic retries;
+- always updated or stays updated forever;
+- no integration work required;
+- enterprise-grade or bank-grade;
+- every outlet updates automatically;
+- no mismatches or errors;
+- bidirectional sync;
+- Google Business Profile sync;
+- the receiver applied a request because it returned 2xx.
 
----
+## Website posture
 
-## Pitch Deck Outline (7 Slides)
+Until a real provider cohort and repeatable production smoke exist, the main website may use only low-prominence copy such as:
 
-### Slide 1: The Problem
+> Need to pass your menu to another system? A compatible provider or developer can receive a signed full-menu snapshot from MenuList through a store-level HTTPS connection.
 
-**Title:** "Two menus. One always wrong."
+Do not create logo walls, vendor compatibility tables, reliability percentages, setup-time claims, savings claims, or customer outcome claims without evidence.
 
-Every restaurant updates their menu in two places: their digital menu and their POS. When they forget (and they always forget), customers see one price online and get charged another at the counter. For chains, multiply this across every outlet.
+## Pricing posture
 
-### Slide 2: The Solution
+The code does not enforce a separate POS add-on price. Do not promise permanent free inclusion. Pricing statements must come from the current billing/pricing source of truth at the time of sale.
 
-**Title:** "Edit once. Updated everywhere."
+## Proof required before stronger positioning
 
-MenuList automatically sends your full menu to your POS whenever you make changes. No manual sync. No integration projects. No IT department needed.
-
-### Slide 3: How It Works
-
-1. You change your menu in MenuList (price, item, availability)
-2. MenuList automatically sends the updated menu to your POS
-3. Your POS menu matches your digital menu. Always.
-
-### Slide 4: Built for Real Businesses
-
-- Works with any POS that accepts webhooks (Petpooja, DotPe, Foodics, Square, Toast, etc.)
-- Secure delivery with signed payloads (enterprise-grade)
-- Clear status indicators if POS is temporarily unreachable
-- Each outlet can connect to its own POS independently
-
-### Slide 5: For Chains
-
-**Title:** "Central menu. Local POS."
-
-Master store edits menu → Every outlet's POS updates automatically.
-No more calling each outlet to update prices. No more spreadsheet-based menu distribution.
-
-### Slide 6: Setup in 2 Minutes
-
-1. Go to Business Settings → POS Sync
-2. Enter your POS webhook URL
-3. Click "Test" → Done
-
-Don't know the URL? Prepare an email draft from MenuList with the setup details, sample payload, and documentation, then send it to your provider or developer.
-
-### Slide 7: CTA
-
-**Title:** "Your menu. One source of truth."
-
-Start using POS Sync today. No extra cost. No integration project. Just enter a URL and your POS stays updated forever.
-
----
-
-## Landing Page Copy Hooks
-
-### Hero
-
-**Headline:** "Your menu updates your POS automatically."
-**Subheadline:** "Change a price, add an item, remove a dish — your POS knows immediately."
-**CTA:** "See How It Works"
-
-### Benefit Bullets
-
-- **No more double entry** — Edit once in MenuList, POS updates on its own
-- **No price mismatches** — What customers see online matches what they pay
-- **Works with any POS** — Standard webhook format, no custom integration needed
-- **Secure delivery** — Every update is signed and verified
-- **Set it and forget it** — Silent, automatic, reliable
-
-### Social Proof Placeholder
-
-"Since connecting POS Sync, we haven't had a single price mismatch between our menu and POS." — [Restaurant Name, City]
-
----
-
-## Go-to-Market Messaging
-
-### India Messaging (WhatsApp-first, daily operations)
-
-- "POS mein menu update karna bhool jaate ho? Ab automatic ho jayega."
-- "MenuList se menu change karo, POS mein apne aap aa jayega."
-- "Har outlet ka POS automatically updated."
-- Focus: daily operational pain, zero manual work
-
-### Non-India Messaging (full platform, automation narrative)
-
-- "Menu changes flow from MenuList to your POS automatically."
-- "One source of truth for your entire menu — digital, POS, and everywhere."
-- Focus: infrastructure positioning, enterprise reliability
-
----
-
-## Sales Talking Points (Objection Handlers)
-
-### "We already update POS manually, it works fine."
-
-**Response:** "How often do prices mismatch between your online menu and POS? Even once a week costs you customer trust. POS Sync eliminates that permanently."
-
-### "Our POS doesn't support this."
-
-**Response:** "MenuList can send approved menu updates to a connected system that accepts a signed HTTPS webhook. If your provider needs help, MenuList prepares a setup email draft with the details they need."
-
-### "What if our POS is offline?"
-
-**Response:** "MenuList shows you exactly what happened — success or failure, with response time. If your POS was down, just click 'Test' when it's back. Everything resumes. You'll see clear status in your settings."
-
-### "We use different POS at different outlets."
-
-**Response:** "Each outlet connects its own POS independently. Mumbai on Petpooja, Pune on DotPe, Dubai on Foodics — all receive the same menu update automatically."
-
-### "Is this safe? We don't want wrong menus in POS."
-
-**Response:** "Every update is signed with a unique secret key and includes a version number. Your POS verifies the signature and can ignore out-of-order updates. It's the same security model Stripe uses."
-
----
-
-## Approved Language
-
-### USE
-
-- "Automatically updated"
-- "Menu is sent to your POS"
-- "No manual sync needed"
-- "Your POS receives the updated menu"
-- "Set it and forget it"
-- "One source of truth"
-- "Handled automatically"
-- "Works with any POS"
-
-### NEVER USE
-
-- "AI-powered sync"
-- "Smart integration"
-- "Real-time sync" (it's near-real-time with debounce, not instant)
-- "POS integration" (we don't integrate, we broadcast)
-- "Seamless" (overused, means nothing)
-- "Revolutionary" / "Game-changing"
-- "We connect to your POS" (we send; they receive)
-
----
-
-## Strategic Framing (from external product review, Feb 14 2026)
-
-### What POS Sync Really Is
-
-This is not a "feature". It is an **infrastructure layer**. MenuList is becoming a **menu control system** — not a POS connector, not middleware, not an integration platform.
-
-The correct mental model:
-
-- **MenuList = upstream menu authority**
-- **POS = downstream executor**
-
-If this positioning holds long-term, MenuList becomes very defensible. If ever reversed (MenuList adapts to POS), MenuList becomes a plugin.
-
-### Where MenuList Now Sits
-
-With POS Sync, MenuList now has:
-
-- Menu authority (editor + AI extraction)
-- Multi-outlet consistency
-- Pricing integrity
-- Screens + QR
-- POS broadcast
-
-This is no longer a small tool. It's a **menu control layer** for businesses. Not full SMB OS — but a strong customer-facing control surface.
-
-### How to Talk About This
-
-**DO say:** "MenuList is where your menu lives. Everything else — POS, screens, QR, website — receives the menu from MenuList."
-
-**DON'T say:** "MenuList integrates with your POS." (We don't integrate. We broadcast.)
-
-### Freeze Recommendation
-
-Treat POS Sync like billing infrastructure:
-
-- Core infrastructure, not iterated unless real-world pressure
-- Only touch if: real customers complain, chains demand reliability changes, or scale forces retry system
-- No feature creep. No POS-specific adapters. No mapping layer. Ever.
-
----
-
-## Pricing/Packaging Story
-
-POS Sync is included in MenuList at no extra cost. It's not a premium add-on.
-
-**Why:** This is infrastructure, not a feature. Charging separately would reduce adoption and hurt the positioning as "calm system businesses depend on." Including it increases perceived value and makes MenuList stickier.
-
-**Sales angle:** "POS Sync is included. No extra charge. It's part of how MenuList works — your menu updates everywhere, including your POS."
-
----
-
-**Document Signature:** Internal Marketing Strategy
-**Author:** Cascade + Founder
-**Last Updated:** February 14, 2026
+- named provider approval;
+- staging and production delivery/application proof;
+- owner/provider support runbook exercised;
+- measured success/failure volume;
+- confirmation of app-open/debounce limitations;
+- legal/security approval for public provider naming.

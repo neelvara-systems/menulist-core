@@ -205,6 +205,7 @@ async function checkReportLeadOpsRateLimit(session: any) {
 
   const rateLimit = await checkRateLimit({
     key: `${REPORT_LEAD_OPS_RATE_LIMIT_KEY}:${operatorRateLimitHash}`,
+    failClosedOnProviderError: process.env.NODE_ENV === 'production',
     ...rateLimitConfig,
   });
 
@@ -268,7 +269,7 @@ export const GET = withAuth(async (request, session) => {
     enquiryReads: 0,
     writes: 0,
     scanLimit,
-    note: 'Manual refresh only. No realtime listener. Uses one current-user authorization read, reads recent landingPageEnquiries, and filters report leads in memory to avoid new indexes.',
+    note: 'Manual refresh only. No realtime listener. Uses one current-user authorization read, then an indexed bounded query for shareable-tool-report enquiries only.',
   };
 
   try {
@@ -283,6 +284,7 @@ export const GET = withAuth(async (request, session) => {
 
     const snapshot = await firestoreAdmin
       .collection(DB_COLLECTIONS.LANDING_PAGE_ENQUIRIES)
+      .where('sourceKind', '==', 'shareable_tool_report')
       .orderBy('createdOn', 'desc')
       .limit(scanLimit)
       .get();
@@ -304,6 +306,7 @@ export const GET = withAuth(async (request, session) => {
         dashboardEnabled: true,
         accessModel: 'platform_role',
         realtimeListeners: false,
+        scanMayBeIncomplete: snapshot.size >= scanLimit,
       },
       filters: {
         reportStatus,

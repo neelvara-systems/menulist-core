@@ -21,6 +21,7 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { getRazorpayManagedSubscriptionId } from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
 import { recordFounderSubscriptionChurn } from "@lib/ops/founderRevenueReadModel";
 import { razorpayClient } from "@lib/razorpay/razorpay";
@@ -131,7 +132,7 @@ export const POST = withAuth(async (request, session) => {
         subscriptionForLog = internalSub;
 
         // 🔒 CRITICAL: Verify subscription belongs to user's tenant/store
-        if (internalSub.tenantId !== Number(tenantId) || internalSub.storeId !== Number(storeId)) {
+        if (Number(internalSub.tenantId) !== Number(tenantId) || Number(internalSub.storeId) !== Number(storeId)) {
             logger.security('Unauthorized Subscription Cancellation Attempt', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/cancel-subscription',
@@ -156,22 +157,30 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Subscription cannot be cancelled in its current state." }, { status: 409 });
         }
 
-        const providerSubscriptionBeforeCancel = await razorpayClient.subscriptions.fetch(internalSub.providerSubscriptionId);
+        const providerSubscriptionId = getRazorpayManagedSubscriptionId(internalSub);
+        if (!providerSubscriptionId) {
+            return NextResponse.json(
+                { error: "Prepaid subscriptions are managed by your reseller or support." },
+                { status: 409 },
+            );
+        }
+
+        const providerSubscriptionBeforeCancel = await razorpayClient.subscriptions.fetch(providerSubscriptionId);
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_PROVIDER_BEFORE_CANCEL',
             data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
         });
 
-        if (providerSubscriptionBeforeCancel.status === "completed") {
+        if (['cancelled', 'completed', 'expired'].includes(String(providerSubscriptionBeforeCancel.status))) {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_CANCEL_SUBSCRIPTION_FLOW_PROVIDER_ALREADY_COMPLETED',
                 data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
             });
         } else {
-            await razorpayClient.subscriptions.cancel(internalSub.providerSubscriptionId); // Immediate cancel
-            const providerSubscriptionAfterCancel = await razorpayClient.subscriptions.fetch(internalSub.providerSubscriptionId);
+            await razorpayClient.subscriptions.cancel(providerSubscriptionId); // Immediate cancel
+            const providerSubscriptionAfterCancel = await razorpayClient.subscriptions.fetch(providerSubscriptionId);
             providerSubscriptionBeforeCancel.status = providerSubscriptionAfterCancel.status;
             await writeLogEntry({
                 logFileName: LOG_FILE,
@@ -181,8 +190,12 @@ export const POST = withAuth(async (request, session) => {
         }
 
         const currentStatus = providerSubscriptionBeforeCancel.status;
-        if (currentStatus === 'cancelled' || currentStatus === 'completed') {
-            const targetStatus = currentStatus === 'completed' ? 'completed' : 'cancelled';
+        if (currentStatus === 'cancelled' || currentStatus === 'completed' || currentStatus === 'expired') {
+            const targetStatus = currentStatus === 'completed'
+                ? 'completed'
+                : currentStatus === 'expired'
+                    ? 'expired'
+                    : 'cancelled';
             if (!validateTransition(internalSub.status, targetStatus, 'api:cancel-subscription:provider-status')) {
                 return NextResponse.json({ error: "Subscription state changed while cancelling. Please refresh and try again." }, { status: 409 });
             }
@@ -195,7 +208,9 @@ export const POST = withAuth(async (request, session) => {
                     currency: internalSub.currency,
                     remark: targetStatus === 'completed'
                         ? "Subscription was already completed at payment gateway"
-                        : `Cancelled by owner, reason code: ${cancellationReasonCode}, consent: ${consent ? "Yes" : "No"}`,
+                        : targetStatus === 'expired'
+                            ? 'Subscription was already expired at payment gateway'
+                            : `Cancelled by owner, reason code: ${cancellationReasonCode}, consent: ${consent ? "Yes" : "No"}`,
                 },
                 subscriptionId: internalSub.id,
                 update: {

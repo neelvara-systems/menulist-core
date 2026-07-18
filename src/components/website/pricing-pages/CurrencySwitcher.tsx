@@ -1,7 +1,7 @@
 "use client";
 
 import { Currency } from '@data/common';
-import { Tabs, TabsList, TabsTrigger } from '@shadcncomponents/tabs';
+import { useTranslations } from 'next-intl';
 import React from 'react';
 
 interface CurrencySwitcherProps {
@@ -10,24 +10,37 @@ interface CurrencySwitcherProps {
 }
 
 const CurrencySwitcher: React.FC<CurrencySwitcherProps> = ({ currency, onCurrencyChange }) => {
+    const t = useTranslations('Website');
+    const currencies: Array<{ code: Currency; flag: string }> = [
+        { code: 'USD', flag: '🇺🇸' },
+        { code: 'INR', flag: '🇮🇳' },
+    ];
+
     return (
-        <div className="flex justify-center items-center mb-10">
-            <Tabs value={currency} onValueChange={(value) => onCurrencyChange(value as Currency)} className="w-full max-w-xs mx-auto">
-                <TabsList className="grid w-full grid-cols-2 p-1 h-auto rounded-lg bg-[var(--ws-bg-subtle)] border border-[var(--ws-border-default)]">
-                    <TabsTrigger value="USD" className="rounded-md text-[var(--ws-text-secondary)] data-[state=active]:bg-[var(--ws-bg-surface)] data-[state=active]:text-[var(--ws-text-primary)] data-[state=active]:shadow-sm">
-                        <div className="flex items-center justify-center gap-2">
-                            <span>🇺🇸</span>
-                            <span>USD</span>
-                        </div>
-                    </TabsTrigger>
-                    <TabsTrigger value="INR" className="rounded-md text-[var(--ws-text-secondary)] data-[state=active]:bg-[var(--ws-bg-surface)] data-[state=active]:text-[var(--ws-text-primary)] data-[state=active]:shadow-sm">
-                        <div className="flex items-center justify-center gap-2">
-                            <span>🇮🇳</span>
-                            <span>INR</span>
-                        </div>
-                    </TabsTrigger>
-                </TabsList>
-            </Tabs>
+        <div
+            role="group"
+            aria-label={t('Pricing.currencyLabel')}
+            className="mx-auto grid w-full max-w-xs grid-cols-2 rounded-lg border border-[var(--ws-border-default)] bg-[var(--ws-bg-subtle)] p-1"
+        >
+            {currencies.map(({ code, flag }) => {
+                const selected = currency === code;
+                return (
+                    <button
+                        key={code}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => onCurrencyChange(code)}
+                        className={`flex min-h-10 items-center justify-center gap-2 rounded-md px-3 text-sm font-medium ${
+                            selected
+                                ? 'bg-[var(--ws-bg-surface)] text-[var(--ws-text-primary)] shadow-sm'
+                                : 'text-[var(--ws-text-secondary)]'
+                        }`}
+                    >
+                        <span aria-hidden="true">{flag}</span>
+                        <span>{code}</span>
+                    </button>
+                );
+            })}
         </div>
     );
 };

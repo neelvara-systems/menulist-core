@@ -1,8 +1,66 @@
 # AI Menu Manager - Implementation Validation
 
-**Status:** Initial implementation validated; production audit hardening applied
+**Status:** Local source hardening validated; hosted release evidence pending
 **Audience:** Engineering / QA
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026
+
+---
+
+## July 16 Long-Term Durability Cross-Check
+
+The required bounded improvement is implemented without a second state model. Canonical compact writes maintain pending lookup metadata; when today's selected-project session is absent, the protected inbox uses one exact-scope indexed `limit(1)` lookup and revalidates the recovered session/proposal identity before returning it. Desktop and MobileShell already remember the returned session ID, so new commands continue the unresolved session until its pending work clears. Normal same-day reads and all existing approval/mutation adapters remain unchanged.
+
+If the compound index is absent or still building, only Firestore `failed-precondition` is converted to the existing current/empty inbox behavior with a fixed warning. Other database failures remain visible. This keeps deployment order from breaking the existing owner path while making recovery available as soon as the index is ready.
+
+The shared compact-session write preparation now keeps payloads below a conservative 700 KB application budget. It trims expendable artifact/history data before failing, never removes pending cards, and permits a retained oversized session to complete/cancel only when the payload becomes smaller. This adds no new collection, scheduler, listener, Function, Storage path, provider call, or write.
+
+Focused source and integrity suites, the dedicated Admin emulator (including next-day recovery and recovered proposal filtering), and the authenticated rules emulator pass. Exact TypeScript, scoped ESLint, accounting/tenant/mobile/dependency/docs/diff gates are rerun in the final cross-check below. Hosted use still requires the compound index/rules target and the app release; those remain pending because the shared Firebase files contain unrelated uncommitted work and Vercel deployment was not requested.
+
+### July 16 local results
+
+- `npm run verify:ai-menu-manager` passed with operation, session, proposal, and project integrity suites.
+- `npm run test:ai-menu-manager:emulator` passed, including latest-pending query, recovered-session identity, recovered proposal filtering, counter preservation, and pending-marker clearing.
+- `npm run test:ai-menu-manager:rules` passed against the authenticated owner boundary.
+- AMM-scoped ESLint passed.
+- `npm run verify:ai-accounting`, `npm run verify:menulist-api-tenant-safety`, `npm run verify:mobile-shell-route-map`, and `npm run verify:dependency-freeze` passed.
+- `npm run docs:check-links` passed with zero broken links; the 27 filename warnings are existing video artifact names outside AMM scope.
+- Firestore JSON parsing and `git diff --check` passed.
+- Exact root `npx tsc --noEmit --incremental false --pretty false` is blocked by three unrelated existing SignalDesk type errors in `src/lib/signaldesk/workflowServer.ts` at lines 13005, 15455, and 16205 (`SignalDeskProviderAccountSummary` lacks spend period keys required by `SignalDeskProviderAccountAuthority`). The compiler reported no AMM errors; this unrelated dirty-worktree blocker was not changed in the AMM pass.
+
+### Pending release actions
+
+1. Isolate and review unrelated changes already present in shared `firestore.rules` and `firestore.indexes.json`, then deploy the AMM rules/compound index/TTL target to `menulist-qa` through the approved Firebase release path. The dirty shared target was not deployed blindly.
+2. Resolve or separately verify the unrelated SignalDesk root-TypeScript blocker, then rerun exact root TypeScript on the integrated worktree.
+3. Release the Next.js app through the existing Vercel workflow; no Vercel deployment was requested or run.
+4. Run authenticated QA desktop and MobileShell smoke across a UTC date rollover: recover one unfinished direct card and one server-backed card, send a follow-up into the recovered session, then approve/cancel the final card and confirm the next command starts the current-day session.
+
+---
+
+## July 15 End-To-End Cross-Check
+
+The current pass closed three bounded gaps without adding another data model or execution lane. Desktop/mobile and linked-outlet approval now enforce the prepared project modification version inside the existing fresh-read transaction before menu truth changes. Grouped project saves reject partial or mixed-scope operation groups before patch application. Server-backed fallback writes preserve route-quality counters. Firestore native TTL is declared for the existing 35-day session and 45-day proposal expiries; hosted TTL activation remains a target-deploy step because the shared index file contains other pending work.
+
+The focused source verifier, project/operation/session/proposal integrity suites, Admin emulator, authenticated rules emulator, AI accounting, tenant-safety, mobile-shell route map, dependency freeze, docs links, TypeScript, and diff checks are the required local gates for this pass. Provider smoke, authenticated desktop/mobile owner QA, safe target deploy evidence, and production-host smoke remain external release evidence rather than source-code claims.
+
+### July 15 local results
+
+- `npm run verify:ai-menu-manager` passed.
+- `npm run test:ai-menu-manager:emulator` passed against the dedicated Firestore emulator ports.
+- `npm run test:ai-menu-manager:rules` passed, including expected deny cases.
+- `npm run verify:ai-accounting` passed.
+- `npm run verify:menulist-api-tenant-safety` passed.
+- `npm run verify:mobile-shell-route-map` passed.
+- `npm run verify:dependency-freeze` passed.
+- `npm run docs:check-links` passed with zero broken links; its 27 naming warnings are pre-existing video artifact names outside AMM scope.
+- Exact root TypeScript, AMM-scoped ESLint, JSON parsing, and `git diff --check` passed.
+
+### Pending owner/deployment actions
+
+1. Review or isolate every pending change already present in the shared `firestore.indexes.json`; do not deploy that dirty shared target blindly.
+2. After that review, enable the declared AMM TTL policies in QA with `firebase deploy --project menulist-qa --config firebase.json --only firestore:indexes --non-interactive`, verify the policies, and promote to production only through the normal approved release process.
+3. Release the Next.js app through the existing Vercel workflow; no Vercel deployment was run in this audit.
+4. On the deployed QA app, run authenticated owner smoke for desktop and MobileShell: deterministic single approval, compound grouped approval, stale-card rejection after a concurrent edit, linked-outlet approval, cancel/edit/manual-task behavior, server-backed fallback, receipt recovery, planner fallback/provider failure, and AI activity presentation.
+5. Run production-host smoke only after QA evidence is accepted. These hosted checks remain pending and are not represented as locally certified.
 
 ---
 
@@ -150,7 +208,7 @@ Firestore cost posture remains aligned with the AMM Firebase doc:
 - Session doc is one compact daily/project doc with capped arrays.
 - Normal deterministic selected-project cards stay in the compact session doc as capped pending operations; they do not create proposal docs.
 - Proposal docs are written only for server-backed cards that need provider secrets, import/upload jobs, external policy, or durable ledger detail.
-- Inbox loads one current selected-project session doc. Proposal detail docs load only when a compact summary points to server-backed durable detail.
+- Inbox normally loads one current selected-project session doc. When that document is absent, the protected fallback performs one exact-session read and one indexed exact-scope latest-pending query returning at most one session; proposal detail docs load only when its compact summary points to server-backed durable detail.
 - Approved project mutations reuse `updateProjectWithoutLoader()` so existing cache invalidation, MCE/MOL hooks, and outlet save behavior remain in the current project mutation path.
 - Desktop and mobile approval flows require `assertProjectUpdateSucceeded()` before local project state changes or executed receipts, so fallback-array project write failures become failed project-update outcomes. If AMM cannot mark that card/proposal as failed, the secondary completion failure logs bounded desktop/mobile runtime diagnostics instead of disappearing.
 - Completion/cancel transactionally re-reads the compact session before removing pending cards or appending receipts, then performs one session write. This adds one bounded read per mutation to prevent stale-tab loss; the project write itself stays on the existing `updateProjectWithoutLoader()` path.

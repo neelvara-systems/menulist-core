@@ -16,7 +16,7 @@
 | `answerlattice_canonicalAnswers` | Read | Active answers, drift flags | Up to 500 docs |
 | `answerlattice_entities` | Read | Active entity map | Up to 1000 docs |
 | `answerlattice_signalEvents` | Read | Recent signal counts by entity | Up to 1000 docs |
-| `aiSearchHistory` | Read | Coverage + resolution classification | 0 extra docs; reused from coverage KPI result |
+| `aiSearchHistory` | Read | Coverage, no-escalation, explicit resolution, and recontact classification | 0 extra docs; reused from the existing capped coverage KPI result |
 | `platformSummary/trustMetrics_{tId}_{sId}` | Read | Previous metric values for trend fields | 1 doc |
 
 ### Existing Collection (WRITE)

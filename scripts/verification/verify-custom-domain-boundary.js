@@ -30,6 +30,10 @@ const publicEligibility = read('src/lib/publicTruth/entityEligibility.ts');
 const clientLookup = read('src/lib/firestore/clientStoreLookup.ts');
 const domainLookup = read('src/lib/multiTenant/domainLookup.ts');
 const vercelDomains = read('src/lib/domains/vercelDomains.ts');
+const vercelDnsRecords = read('src/lib/domains/vercelDnsRecords.ts');
+const storesDal = read('src/database/stores/index.tsx');
+const desktopDomainSettings = read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx');
+const mobileDomainSettings = read('src/components/mobile/screens/MobileDomainSettingsScreen.tsx');
 const emulatorTest = read('scripts/verification/test-custom-domain-claim.ts');
 const identityTest = read('scripts/verification/test-public-entity-identity.ts');
 const providerTest = read('scripts/verification/test-vercel-domain-provider-boundary.ts');
@@ -63,6 +67,9 @@ requires(claim, [
   'CUSTOM_DOMAIN_RESERVATION_TTL_MS',
   'CUSTOM_DOMAIN_LABEL_MAX_LENGTH',
   'normalizeCustomDomainClaimCandidate',
+  'isReservedCustomDomainClaimCandidate',
+  'getKnownProductDomains(productId)',
+  'domain === root || domain.endsWith(`.${root}`)',
   'readCustomDomainReservationInTransaction',
   ".where('customDomain', '==', domain)",
   '.limit(2)',
@@ -80,6 +87,12 @@ requires(claim, [
 ], 'custom-domain claim boundary');
 
 requires(route, [
+  'checkDomainAvailabilityRateLimit',
+  "getRateLimitForFeature('DATA_READ')",
+  'failClosedOnProviderError: true',
+  "result.reason === 'provider_unavailable'",
+  'status: providerUnavailable ? 503 : 429',
+  'const candidateParam = request.nextUrl.searchParams.get(\'candidate\')',
   'readAuthorizedDomainStateInTransaction',
   'requireAnyStorePermissionForStoreData(',
   '!isMenuListPublicEntityEligible(tenantData)',
@@ -95,6 +108,8 @@ requires(route, [
   'writeReleasingCustomDomainClaim(',
   'writeReleasedCustomDomainClaim(',
   'const reservationId = randomUUID();',
+  'isReservedCustomDomainClaimCandidate(normalizedDomain)',
+  'This domain is reserved for MenuList services',
   'reservationId,',
   'getVercelProjectDomain(normalizedDomain)',
   'providerConflictHasMenuListProvenance',
@@ -106,6 +121,10 @@ requires(route, [
   'normalizeCustomDomainClaimCandidate(authorizedState.storeData.customDomain) !== domain',
   'await revalidateMenuCache(storeId, { tId: tenantId });',
 ], 'custom-domain route transaction boundary');
+assert(
+  (route.match(/failClosedOnProviderError: true/g) || []).length === 2,
+  'custom-domain management and advisory availability limiters must both fail closed on provider outage',
+);
 forbids(route, [
   'const permissionError = await requireAnyStorePermission(',
   '.where("active", "==", true)\n        .limit(1)',
@@ -118,6 +137,7 @@ requiresOrder(postBlock, [
   'checkDomainManagementRateLimit(session, storeId)',
   'readBoundedJsonBody(request, DOMAIN_ACTION_MAX_BODY_BYTES',
   'AddDomainSchema.safeParse(body)',
+  'isReservedCustomDomainClaimCandidate(normalizedDomain)',
   'readAuthorizedDomainStateInTransaction({',
   'writeReservedCustomDomainClaim(',
   'addDomainToVercelProject(normalizedDomain)',
@@ -130,7 +150,19 @@ requiresOrder(postBlock, [
 ], 'custom-domain POST admission/provider/finalization order');
 
 const getBlock = route.slice(route.indexOf('export const GET'), route.indexOf('export const DELETE'));
-requiresOrder(getBlock, [
+const availabilityBlock = getBlock.slice(
+  getBlock.indexOf("const candidateParam = request.nextUrl.searchParams.get('candidate')"),
+  getBlock.indexOf('const rateLimitResponse = await checkDomainManagementRateLimit'),
+);
+requiresOrder(availabilityBlock, [
+  'checkDomainAvailabilityRateLimit(session, storeId)',
+  'normalizeCustomDomainClaimCandidate(candidateParam)',
+  'isReservedCustomDomainClaimCandidate(candidate)',
+  'readAuthorizedDomainStateInTransaction({',
+  'readCustomDomainReservationInTransaction({',
+], 'custom-domain GET advisory availability order');
+const statusGetBlock = getBlock.slice(getBlock.indexOf('const rateLimitResponse = await checkDomainManagementRateLimit'));
+requiresOrder(statusGetBlock, [
   'checkDomainManagementRateLimit(session, storeId)',
   'readAuthorizedDomainStateInTransaction({',
   'getVercelDomainConfig(domain)',
@@ -142,6 +174,27 @@ requiresOrder(getBlock, [
   'transaction.update(db.collection(DB_COLLECTIONS.STORES).doc(storeId)',
   'revalidateMenuCache(storeId, { tId: tenantId })',
 ], 'custom-domain GET current-scope verification order');
+
+requires(storesDal, [
+  '`/api/domain?candidate=${encodeURIComponent(normalizedDomain)}`',
+  'AUTH_BROWSER_REQUEST_POLICY',
+  'CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES',
+  "typeof (payload as { available?: unknown }).available !== 'boolean'",
+], 'custom-domain owner availability client boundary');
+forbids(storesDal, [
+  "where('customDomain', '==', normalizedDomain)",
+], 'retired browser custom-domain uniqueness query');
+
+[desktopDomainSettings, mobileDomainSettings].forEach((source, index) => requires(source, [
+  "typeof domainStatus?.verified === 'boolean'",
+  "domainVerified: data.verified === true",
+  'providerCleanupPending',
+  'claimReleasePending',
+  'refreshPending',
+], index === 0 ? 'desktop custom-domain status parity' : 'mobile custom-domain status parity'));
+requires(mobileDomainSettings, [
+  'data?.success !== true || !isNonEmptyString(data.domain)',
+], 'mobile custom-domain add acknowledgement');
 
 const deleteBlock = route.slice(route.indexOf('export const DELETE'));
 requiresOrder(deleteBlock, [
@@ -163,6 +216,14 @@ requires(vercelDomains, [
   'response.ok && responseData.parsed',
   'response.ok && !responseData.parsed ? 502 : response.status',
 ], 'Vercel custom-domain project/conflict boundary');
+requires(vercelDnsRecords, [
+  'export function normalizeVercelDomainDnsRecords(',
+  'config?.recommendedIPv4',
+  'config?.recommendedCNAME',
+  'projectDomain?.apexName',
+  "addRecord('A', normalizedDomain, value)",
+  "addRecord('CNAME', normalizedDomain, record.value)",
+], 'Vercel provider-recommended DNS record boundary');
 requiresOrder(vercelDomains, [
   'const timeout = setTimeout(() => controller.abort(), VERCEL_DOMAIN_PROVIDER_TIMEOUT_MS)',
   'const response = await fetch(url, {',
@@ -176,6 +237,10 @@ requires(emulatorTest, [
   'expired release leases must recover after bounded cleanup time',
   'duplicate legacy rows must remain fail-closed instead of choosing a winner',
   'DNS labels longer than 63 characters must fail before provider work',
+  "isReservedCustomDomainClaimCandidate('menulist.ai')",
+  "isReservedCustomDomainClaimCandidate('owner.menulist.ai')",
+  "isReservedCustomDomainClaimCandidate('surfaceos.app')",
+  "!isReservedCustomDomainClaimCandidate('owner.example.com')",
 ], 'custom-domain emulator regression');
 requires(identityTest, [
   'conflicting store or tenant identity aliases must fail closed',
@@ -187,7 +252,22 @@ requires(providerTest, [
   'the provider deadline must remain active while the body is read',
   'an aborted or unparsable success body must not remain provider-success truth',
   'an empty HTTP-200 provider body must fail closed',
+  'apex domains must use Vercel recommended IPv4 records',
+  'subdomains must use the project-specific Vercel recommended CNAME',
+  'missing provider guidance must not invent a DNS record',
 ], 'Vercel provider delayed-body regression');
+
+[
+  [desktopDomainSettings, 'desktop Domain Settings'],
+  [mobileDomainSettings, 'mobile Domain Settings'],
+  [read('src/components/templates/main-app/businessSettings/tabs/CustomDomainTab.tsx'), 'legacy custom-domain tab'],
+].forEach(([source, label]) => {
+    requires(source, [
+      'normalizeVercelDomainDnsRecords',
+      'DNS records are not available yet. Check verification again in a moment.',
+    ], `${label} provider-recommended DNS UI`);
+    forbids(source, ['cname.vercel-dns.com'], `${label} stale generic DNS fallback`);
+  });
 
 [
   [routingReadme, 'URL routing README'],
@@ -243,7 +323,7 @@ requires(clientFirebase, [
 ], 'Client Menu canonical tenant eligibility cost contract');
 requires(publicDoctrine, [
   'tenant fields are not rendered, serialized, or merged into the public store payload',
-  'at most 5 canonical Firestore reads',
+  'at most 8 canonical Firestore query/document reads',
 ], 'Public routing tenant/render separation contract');
 requires(productionAudit, [
   'Custom-domain ownership, provider-ordering, and public-identity checkpoint',

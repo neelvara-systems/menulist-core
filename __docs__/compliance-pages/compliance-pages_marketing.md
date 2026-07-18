@@ -1,7 +1,7 @@
 # Compliance Pages — Marketing & Sales Collateral
 
-**Version:** 1.0  
-**Date:** March 18, 2026  
+**Version:** 1.1
+**Date:** July 16, 2026
 **Audience:** Internal — Sales & Marketing
 
 ---
@@ -17,10 +17,10 @@ This is NOT a feature to sell. It is infrastructure that removes friction from d
 
 ## Sales Talking Points
 
-1. **"Connect your domain and everything just works"** — privacy policy, terms, business page, menu — all on your domain
-2. **"Pass Meta and Google verification instantly"** — no need to build a separate website
-3. **"Zero maintenance"** — pages auto-generate from your business info, update automatically
-4. **"Replace your old website completely"** — your domain now has everything platforms require
+1. **"Core policy routes are already present"** — privacy, terms, refund, business page, and menu use the same domain
+2. **"Less domain setup work"** — the baseline pages are available without a page builder
+3. **"Business details stay current"** — baseline text uses current business identity/contact data
+4. **"Bring reviewed text when needed"** — owner content appears before the retained MenuList baseline and platform disclosure
 
 ---
 
@@ -28,8 +28,8 @@ This is NOT a feature to sell. It is infrastructure that removes friction from d
 
 | Objection | Response |
 |-----------|----------|
-| "I need my own privacy policy" | "You can paste your own text anytime. We just provide a professional default so you're never without one." |
-| "Is this legally valid?" | "It's a standard informational policy used by thousands of businesses. For specific legal requirements, you can add your own." |
+| "I need my own privacy policy" | "You can paste reviewed plain text anytime. It appears before the retained MenuList baseline and platform disclosure." |
+| "Is this legally valid?" | "The baseline is informational and is not legal certification. Review the final text with a qualified professional for your jurisdiction and business." |
 | "I need an About page too" | "Your Official Business Page already shows your business story, hours, photos, and contact info — that IS your about page." |
 
 ---
@@ -40,10 +40,13 @@ This is NOT a feature to sell. It is infrastructure that removes friction from d
 - "Smart compliance"
 - "Legal protection"
 - "Guaranteed compliance"
+- "Instant verification"
+- "Accepted by every platform"
+- "No legal review needed"
 
 ## Do Say
 
 - "Automatic"
-- "Professional default"
-- "Ready for verification"
-- "No maintenance needed"
+- "Baseline policy pages"
+- "Available on your domain"
+- "Owner/legal review remains required"

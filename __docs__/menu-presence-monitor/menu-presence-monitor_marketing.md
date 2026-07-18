@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Marketing & Sales
 
-> **Version:** 1.0
-> **Last Updated:** July 10, 2026
+> **Version:** 1.1
+> **Last Updated:** July 16, 2026
 > **Audience:** Internal sales/marketing team
 
 ---
@@ -24,8 +24,8 @@ Do not claim instant visibility, zero setup for external placement, automatic Go
 
 1. **Problem:** Owners publish menus but forget to distribute them across discovery surfaces
 2. **Solution:** Simple ✓/⚠ status checklist showing MenuList-recorded readiness and owner-confirmed external placements
-3. **Key Features:** MenuList-recorded QR/screen/feedback readiness, manual confirmation for Google/Apple/Bing/Instagram/WhatsApp
-4. **Differentiation:** No competitor offers presence monitoring — they only host the menu
+3. **Key Features:** Publish-backed QR/feedback readiness, screen setup status, and manual confirmation for Google/Apple/Bing/Instagram/WhatsApp
+4. **Differentiation:** One source-bounded checklist separates MenuList-recorded readiness from owner-confirmed external placement
 5. **Use Case:** Owner sees "Google Business — Not added" → copies link → adds it → done
 6. **Value:** Owners can see missing setup work in one place
 7. **CTA:** Included in all MenuList plans

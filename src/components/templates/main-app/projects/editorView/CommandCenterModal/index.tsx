@@ -17,7 +17,9 @@ import { assertProjectUpdateSucceeded, updateProjectMetadata } from '@database/p
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { applyMissingCategoryIconsToProject, countMissingCategoryIcons } from '@lib/menu/categoryIconRepair';
+import { hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import { removeObjRef } from '@util/utils';
 import { Button, Flex, Modal, Splitter, Typography, message as antdMessage, theme } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -46,7 +48,12 @@ import {
     getDescriptionGenerationStats,
     runDescriptionGeneration,
 } from '../descriptionGeneration.shared';
-import { getProjectLanguageIssues, repairLanguageProject } from '../languageRepair.shared';
+import {
+    getLanguageRepairFailureCause,
+    getLanguageRepairPartialProject,
+    getProjectLanguageIssues,
+    repairLanguageProject,
+} from '../languageRepair.shared';
 import {
     applyTextCaseToProject,
     type TextCaseConfig,
@@ -74,6 +81,7 @@ interface CommandCenterModalProps {
     storeName?: string;
     storeDetails?: any;
     allowInheritedDescriptionOverride?: boolean;
+    canGenerateDescriptions?: boolean;
     initialAction?: CommandCenterAction | null;
     onClose: () => void;
     onApply: (updatedProject: Project) => void;
@@ -90,6 +98,7 @@ export default function CommandCenterModal({
     storeName,
     storeDetails,
     allowInheritedDescriptionOverride = false,
+    canGenerateDescriptions = false,
     initialAction = null,
     onClose,
     onApply,
@@ -182,6 +191,9 @@ export default function CommandCenterModal({
             ? { itemStates }
             : undefined
     ), [allowInheritedDescriptionOverride, isMasterLinked, itemStates]);
+    const translationGovernance = useMemo(() => (
+        isMasterLinked ? { categoryStates, itemStates } : undefined
+    ), [categoryStates, isMasterLinked, itemStates]);
 
     const descriptionStats = useMemo(
         () => getDescriptionGenerationStats(internalProject, null, descriptionGovernance),
@@ -189,9 +201,10 @@ export default function CommandCenterModal({
     );
 
     const repairLanguageIssues = useMemo(() => {
-        const sourceLanguageCode = getProjectDefaultLanguage(internalProject);
-        return getProjectLanguageIssues(internalProject, sourceLanguageCode);
-    }, [internalProject]);
+        if (!canGenerateDescriptions) return [];
+        const sourceLanguageCode = getCanonicalProjectSourceLanguage(internalProject.languages);
+        return getProjectLanguageIssues(internalProject, sourceLanguageCode, translationGovernance);
+    }, [canGenerateDescriptions, internalProject, translationGovernance]);
 
     const languagesNeedingRepair = useMemo(
         () => repairLanguageIssues.filter((issue) => issue.total > 0),
@@ -199,8 +212,10 @@ export default function CommandCenterModal({
     );
 
     const projectPublicContentGaps = useMemo(
-        () => getMissingProjectPublicContentGaps(internalProject, internalProject.languages),
-        [internalProject]
+        () => canGenerateDescriptions
+            ? getMissingProjectPublicContentGaps(internalProject, internalProject.languages)
+            : [],
+        [canGenerateDescriptions, internalProject]
     );
 
     const projectPublicContentLanguagesNeedingRepair = useMemo(
@@ -224,8 +239,7 @@ export default function CommandCenterModal({
                 const categoryActive = categoryActiveMap.get(item.category) !== false;
                 if (item.active === false || !categoryActive) return;
 
-                const price = Number(String(item.price || '').replace(/[^0-9.-]/g, ''));
-                if (!(Number.isFinite(price) && price > 0) && !item.attributes?.length) {
+                if (!hasPublicItemDisplayPrice(item)) {
                     missingPrices += 1;
                 }
 
@@ -242,15 +256,18 @@ export default function CommandCenterModal({
     const repairSummary = useMemo<RepairMenuSummary>(() => {
         const languageIssueCount = languagesNeedingRepair.reduce((total, issue) => total + issue.total, 0);
         const categoryIconsToRepair = countMissingCategoryIcons(internalProject);
+        const descriptionsToGenerate = canGenerateDescriptions
+            ? descriptionStats.itemsWithoutDescriptions
+            : 0;
         const fixableNowCount = languageIssueCount
-            + descriptionStats.itemsWithoutDescriptions
+            + descriptionsToGenerate
             + projectPublicContentGaps.length
             + categoryIconsToRepair;
         const manualReviewCount = manualReviewSummary.missingImages + manualReviewSummary.missingPrices;
 
         return {
             categoryIconsToRepair,
-            descriptionsToGenerate: descriptionStats.itemsWithoutDescriptions,
+            descriptionsToGenerate,
             fixableNowCount,
             languageIssueCount,
             languagesToRepair: languagesNeedingRepair.length,
@@ -261,6 +278,7 @@ export default function CommandCenterModal({
             projectContentLanguagesToRepair: projectPublicContentLanguagesNeedingRepair.length,
         };
     }, [
+        canGenerateDescriptions,
         descriptionStats.itemsWithoutDescriptions,
         internalProject,
         languagesNeedingRepair,
@@ -336,11 +354,12 @@ export default function CommandCenterModal({
         setIsRepairing(true);
         setRepairStep('Preparing repair');
 
+        let updated = removeObjRef(internalProject);
+        let completedLanguageRepairs = 0;
         try {
             undoProjectRef.current = null;
-            let updated = removeObjRef(internalProject);
             const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
-            const sourceLanguageCode = getProjectDefaultLanguage(updated);
+            const sourceLanguageCode = getCanonicalProjectSourceLanguage(updated.languages);
             let repairedCategoryIconCount = 0;
 
             if (repairSummary.categoryIconsToRepair > 0) {
@@ -356,10 +375,16 @@ export default function CommandCenterModal({
 
             for (const issue of languagesNeedingRepair) {
                 setRepairStep(`Repairing ${issue.code.toUpperCase()} text`);
-                updated = await repairLanguageProject(updated, issue.code, sourceLanguageCode);
+                updated = await repairLanguageProject(
+                    updated,
+                    issue.code,
+                    sourceLanguageCode,
+                    translationGovernance,
+                );
+                completedLanguageRepairs += 1;
             }
 
-            if (descriptionStats.itemsWithoutDescriptions > 0) {
+            if (repairSummary.descriptionsToGenerate > 0) {
                 setRepairStep('Adding missing descriptions');
                 updated = await runDescriptionGeneration({
                     action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
@@ -442,7 +467,17 @@ export default function CommandCenterModal({
             setLastApplyMessage(successMessage);
             antdMessage.success('Menu repair finished.');
         } catch (error) {
-            if (error instanceof AICapacityError) {
+            const partialProject = getLanguageRepairPartialProject(error);
+            if (partialProject) updated = partialProject;
+            if (partialProject || completedLanguageRepairs > 0) {
+                setInternalProject(updated);
+                onApply(updated);
+                setActiveAction(null);
+                setLastApplyMessage('Repair stopped. Completed translations were kept.');
+                antdMessage.warning('Repair stopped. Completed translations were kept and will be saved.');
+                return;
+            }
+            if (getLanguageRepairFailureCause(error) instanceof AICapacityError) {
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error('Could not repair menu.');
@@ -467,6 +502,7 @@ export default function CommandCenterModal({
         repairSummary.missingPrices,
         repairSummary.projectContentIssueCount,
         storeDetails,
+        translationGovernance,
     ]);
 
     // ─── Apply logic ───

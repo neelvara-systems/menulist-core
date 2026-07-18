@@ -112,7 +112,7 @@ All buttons must be minimum 44px height (ICP compliance). Large, clear, one acti
 - WhatsApp Status
 - Google Maps image
 
-Print files download directly. Social files use the Web Share API when available and fall back to file download.
+Print files download directly. Social files use the Web Share API when available and fall back to file download only when file sharing is unsupported. Cancelling the native share sheet does not trigger an unwanted download, analytics event, or success toast; a real share failure uses the existing failure path.
 
 All mobile Menu Kit and QR downloads use the same premium output tokens as desktop:
 - existing store logo when available
@@ -127,7 +127,7 @@ Menu Kit ZIP filename boundary: Mobile Share uses the shared `generateMenuKit()`
 
 ## Mobile Implementation Notes
 
-1. Detect mobile via `navigator.share` availability (not user agent)
+1. Detect native file sharing through `navigator.share`, `navigator.canShare`, and the actual file payload (not user agent)
 2. If mobile: show the complete ZIP plus individual print/social asset buttons
 3. If desktop: show "Download Menu Kit" ZIP button, with share buttons where the browser supports file sharing
 4. Both paths use same generator functions and brand-token fallback order — only the delivery mechanism differs

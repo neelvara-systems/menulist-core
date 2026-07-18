@@ -2,7 +2,7 @@
 
 **Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** approved
+**Status:** retired
 **Approval:** automatic
 **Autonomy level:** 2
 **Output file:** packages/asset-factory/briefs/menulist.industry.local-service-businesses.demo-placeholder.md
@@ -17,7 +17,7 @@ Show the shape of a fictional local-service rate card while routed demo screensh
 - Route: /industries/local-service-businesses
 - Placement: bounded rate-card demo proof
 - Component: src/content/websiteIndustries.ts
-- Destination: public/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg
+- Historical internal file: packages/asset-factory/published/placeholders/spark-detailing-rate-card-placeholder.svg
 
 ## Output Contract
 
@@ -25,7 +25,7 @@ Show the shape of a fictional local-service rate card while routed demo screensh
 
 ## Existing Files
 
-- primary: public/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg
+- primary: packages/asset-factory/published/placeholders/spark-detailing-rate-card-placeholder.svg
 
 ## Narrative Rules
 

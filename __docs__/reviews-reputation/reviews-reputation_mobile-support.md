@@ -1,7 +1,7 @@
 # Reviews & Reputation — Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ❌ NOT IMPLEMENTED — Spec locked, blocked on GBP API access
+**Last Updated:** July 16, 2026
+**Decision:** NOT IMPLEMENTED — parent product is incomplete and disabled
 
 ---
 
@@ -13,9 +13,4 @@ Not applicable — feature not yet implemented on any platform.
 
 ## When Implemented
 
-If reviews management is built, the 4-gate test would likely result in:
-- **View reviews**: ✅ PASS (daily, quick, touch-friendly, on-floor value)
-- **Reply to reviews**: ✅ PASS (time-sensitive, quick text input)
-- **Analytics/reporting**: ❌ FAIL (charts need larger screen)
-
-**Recommendation:** When implemented, review viewing + quick reply should have mobile support. Analytics dashboard should be desktop-only.
+Do not pre-approve hypothetical screens. If the product is admitted, rerun the frequency, speed, touch, and owner-value gates against the implemented desktop workflow. Any admitted owner action reached from More must stay inside `MobileShell`, reuse shared permission/DAL logic, use 44px targets, and ship before the parent flag can be enabled. Sentiment/rating dashboards remain a product non-goal, not a desktop-only backlog item.

@@ -9,7 +9,7 @@
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
-import { Button, Card, DatePicker, Flex, Input, Modal, Tag, Typography, theme } from 'antd';
+import { Button, Card, DatePicker, Flex, Input, Modal, Tag, Typography, message as antdMessage, theme } from 'antd';
 import dayjs from 'dayjs';
 import { useFormatter } from 'next-intl';
 import { useCallback, useState } from 'react';
@@ -17,6 +17,7 @@ import { LuAlertTriangle, LuCheck, LuClock, LuX } from 'react-icons/lu';
 import { formatDateTime } from '@util/dateTime';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { readTempStatusResponse } from '@lib/tempStatus/clientResponse';
+import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from './utils/businessSettingsDiagnostics';
 
 const { Text } = Typography;
@@ -47,8 +48,9 @@ interface TempStatusCardProps {
 export default function TempStatusCard({ storeDetails, setStoreDetails }: TempStatusCardProps) {
     const { token } = theme.useToken();
     const formatter = useFormatter();
-    const currentStatus = storeDetails?.tempStatus;
-    const isActive = currentStatus && new Date(currentStatus.expiresAt).getTime() > Date.now();
+    const storedStatus = storeDetails?.tempStatus;
+    const currentStatus = useActiveTempStatus(storedStatus);
+    const isActive = Boolean(currentStatus);
 
     const [statusType, setStatusType] = useState<string>('closed_today');
     const [customMessage, setCustomMessage] = useState('');
@@ -61,7 +63,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
             setError('Please set an expiry time');
             return;
         }
-        if (expiresAt.isBefore(dayjs())) {
+        if (!expiresAt.isAfter(dayjs())) {
             setError('Expiry must be in the future');
             return;
         }
@@ -104,10 +106,15 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         }),
                     });
 
-                    await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType));
+                    const result = await readTempStatusResponse(res, 'set', buildTempStatusLogContext(storeDetails, 'set_temp_status', statusType));
+                    if (result.effectsPending) {
+                        antdMessage.warning('Status saved. Customer pages may take a moment to refresh.');
+                    } else {
+                        antdMessage.success('Temporary status is live.');
+                    }
                 } catch (err) {
                     // Revert optimistic update
-                    setStoreDetails((prev: any) => ({ ...prev, tempStatus: currentStatus }));
+                    setStoreDetails((prev: any) => ({ ...prev, tempStatus: storedStatus }));
                     logBusinessSettingsFailure(
                         'desktop_temp_status_set_failed',
                         err,
@@ -119,7 +126,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                 }
             },
         });
-    }, [statusType, customMessage, expiresAt, setStoreDetails, currentStatus, storeDetails, formatter]);
+    }, [statusType, customMessage, expiresAt, setStoreDetails, storedStatus, storeDetails, formatter]);
 
     const handleClear = useCallback(() => {
         const prevStatus = storeDetails?.tempStatus;
@@ -150,7 +157,12 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                         body: JSON.stringify({ action: 'clear' }),
                     });
 
-                    await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type));
+                    const result = await readTempStatusResponse(res, 'clear', buildTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type));
+                    if (result.effectsPending) {
+                        antdMessage.warning('Status cleared. Customer pages may take a moment to refresh.');
+                    } else {
+                        antdMessage.success('Temporary status cleared.');
+                    }
                 } catch (err) {
                     // Revert optimistic update
                     setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }));
@@ -194,7 +206,7 @@ export default function TempStatusCard({ storeDetails, setStoreDetails }: TempSt
                 </Flex>
             </Flex>
 
-            {isActive ? (
+            {currentStatus ? (
                 <Flex vertical gap={12}>
                     <div style={{
                         background: token.colorWarningBg,

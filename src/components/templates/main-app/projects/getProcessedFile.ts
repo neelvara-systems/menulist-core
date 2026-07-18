@@ -1,6 +1,7 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { checkExistingActiveJob, createMenuProcessingJob, MenuFileToProcess, TargetLanguage } from "@lib/firebase/menuProcessing";
 import { getBoundedMenuProcessingStringContext, getMenuProcessingProjectLogContext, logMenuProcessingFailure } from "@lib/firebase/menuProcessingDiagnostics";
+import { createMenuProcessingJobCallerError } from "@lib/menu-extraction/jobStartFailure";
 import { ProcessedFileAPIParams } from './types';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -26,7 +27,7 @@ export interface CreateJobResult {
  *    - PROD: onCreate trigger (automatic)
  *    - DEV: dev_triggerProcessMenuImages callable (called automatically in createMenuProcessingJob)
  * 5. Client uses useMenuProcessingJob hook to track progress
- * 6. Server saves results directly to project
+ * 6. Owner reviews the extracted draft before it is applied to the project
  * 
  * @param files - Files with uploaded URLs (already uploaded to Storage)
  * @param targetLanguages - Languages to extract
@@ -68,6 +69,7 @@ async function createProcessingJob({
       action,
       businessCategory,
       businessType,
+      forceReview: true,
       identityOverrideConfirmed,
     });
 
@@ -80,7 +82,7 @@ async function createProcessingJob({
       fileCount: files.length,
       targetLanguageCount: targetLanguages.length,
     });
-    throw new Error('Menu processing failed. Please try again.');
+    throw createMenuProcessingJobCallerError(error);
   }
 }
 

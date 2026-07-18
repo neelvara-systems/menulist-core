@@ -29,7 +29,7 @@ A separate dashboard accessible to authorized resellers (friends, sales partners
 **This IS:**
 
 - A controlled, founder-authorized assisted sales channel
-- Time-bound (designed to be phased out as self-serve grows)
+- Capped and source-controlled alongside self-serve onboarding
 - Architecturally integrated with existing billing (same `subscriptions` collection, same state machine)
 
 ---
@@ -42,9 +42,9 @@ A separate dashboard accessible to authorized resellers (friends, sales partners
 | 2   | **New `platformRole: RESELLER`**                      | Fits existing auth infrastructure (`withAuth` + `requiredPlatformRole`).                                  |
 | 3   | **Fixed pricing tiers only**                          | No arbitrary price input. Predefined reseller tiers in constants. Protects price anchor.                  |
 | 4   | **Online = same Razorpay Subscription as self-serve** | Unified billing. `shortUrl` for client checkout. Auto-renewal. Same webhooks.                             |
-| 5   | **Offline = manual subscription with auto-expiry**    | `billingMode: 'manual'` on subscription doc. Nightly scheduler enforces expiry.                           |
+| 5   | **Offline = manual subscription with auto-expiry**    | `billingMode: 'manual'` on subscription doc. The daily consolidated maintenance scheduler enforces expiry. |
 | 6   | **Same Next.js app, separate route group**            | Route: `/reseller/*`. Same codebase, gated by role. No separate deployment.                               |
-| 7   | **Immutable transaction logs**                        | Every reseller action logged in `resellerTransactions` collection. Cannot be edited.                      |
+| 7   | **Immutable financial/action inputs**                 | Every reseller action is appended in `resellerTransactions`; only bounded payment-status convergence fields may update. |
 | 8   | **Concurrent cap system (not lifetime)**              | Max concurrent active offline stores per reseller. Expired stores free up slots.                          |
 | 9   | **Feature-flag-based tier sunset**                    | Pricing tiers disabled via flags at scale thresholds. Not reliant on discipline.                          |
 
@@ -61,12 +61,13 @@ A separate dashboard accessible to authorized resellers (friends, sales partners
 | 5   | [Website](reseller-dashboard_website.md)               | Public         | Landing page content for partner program (if needed)          |
 | 6   | [Help Doc](reseller-dashboard_helpdoc.md)              | Resellers      | Step-by-step guide for reseller partners                      |
 | 7   | [Mobile Support](reseller-dashboard_mobile-support.md) | Internal       | Mobile admission test results                                 |
+| 8   | [July 16 Verification](reseller-dashboard_verification-2026-07-16.md) | Internal | Code-truth fixes, cost boundary, local gates, and pending external evidence |
 
 ---
 
 ## Production-Readiness Source Gate
 
-`npm run verify:reseller-dashboard-boundary` is the first-class local verifier for this feature. It source-checks reseller route admission order, platform/reseller role separation, hashed read/write rate-limit keys, bounded request/response parsing, offline/manual entitlement sync, online-provider failure compensation, desktop/mobile shell parity, and docs parity.
+`npm run verify:reseller-dashboard-boundary` is the first-class local verifier for this feature. It source-checks reseller route admission order, platform/reseller role separation, UUID retry boundaries, transaction-atomic subscription/ledger/profile writes, offline-cap enforcement, deferred online revenue recognition, bounded request/response parsing, safe Razorpay checkout URLs, desktop/mobile onboarding/renewal/location parity, and docs parity. The focused pure and Firestore-emulator tests are `npm run test:reseller-onboarding-boundary`, `npm run test:reseller-onboarding-billing:emulator`, `npm run test:reseller-confirm-payment-boundary`, and `npm run test:reseller-confirm-payment:emulator`.
 
 This is a local source gate only. It does not perform Razorpay sandbox payment smoke, authenticated browser QA, physical-device mobile QA, Firebase deploys, Vercel deploys, production builds, live Firestore writes, or provider calls.
 
@@ -78,10 +79,14 @@ Current reseller onboarding creates the tenant/store account, subscription state
 
 - **Auth:** Uses NextAuth session + existing `platformRole` check
 - **Billing:** Extends `FirestoreSubscriptionDoc` with `billingMode` + `resellerMetadata` fields
-- **Onboarding:** Reuses atomic transaction pattern from `create-subscription/route.ts`
+- **Onboarding:** Tenant/store/owner creation uses the shared onboarding transaction; subscription, reseller ledger, offline-cap reservation, and profile counters commit in a second atomic billing transaction
 - **State Machine:** Same `subscriptionStateMachine.ts` — no new states needed
-- **Nightly Scheduler:** Adds manual license expiry check to existing `decisionBlocksScoring.ts`
-- **Plans:** Adds reseller pricing tiers to `PlatformPlansList.ts` pattern
+- **Daily Scheduler:** Manual license expiry runs in `functions/src/schedulers/menulistMaintenanceScheduler.ts` under the shared per-task lease model
+- **Plans:** Internal reseller pricing tiers live only in `src/config/resellerPricing.ts`; public plan constants remain separate
+
+The dashboard client list reads current reseller subscription documents directly (100 per reseller, 200 for platform, plus one overflow row), ordered newest-first before the Firestore cap. This avoids a transaction-ledger query followed by one subscription read per row, prevents renewal/add-location ledger entries from appearing as duplicate clients, and keeps the bounded window deterministic. `isPartial` is shown on desktop and mobile when the bounded result is exceeded; the immutable ledger remains the source for monthly reporting, which carries its own 2,000-row partial indicator.
+
+Provider sandbox checkout, authenticated browser QA, and physical-device QA remain owner-run release checks. They stay pending until the matching environments and credentials are available; local source and emulator gates do not claim those external checks.
 
 ---
 
@@ -104,5 +109,5 @@ Current reseller onboarding creates the tenant/store account, subscription state
 
 ---
 
-**Last Updated:** July 4, 2026
-**Version:** 1.3 (added reseller onboarding account/link boundary)
+**Last Updated:** July 16, 2026
+**Version:** 1.4 (atomic billing, retry recovery, renewal UI, and current-subscription read model)

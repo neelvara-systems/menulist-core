@@ -19,7 +19,7 @@ import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } f
 const { Text, Title } = Typography;
 
 interface BusinessCopySetupTabProps {
-    onApplyGeneratedCopy: (generated: BusinessCopyGenerationResult, projectId?: string) => Promise<void>;
+    onApplyGeneratedCopy: (generated: BusinessCopyGenerationResult, projectId?: string) => Promise<{ translationIncomplete: boolean }>;
     onGenerateMissingTranslations?: (projectId?: string) => Promise<boolean>;
     scrollRef?: React.RefObject<HTMLDivElement>;
     storeDetails?: any;
@@ -131,7 +131,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 return;
             }
 
-            await onApplyGeneratedCopy(generated, projectContext?.projectId);
+            const applyResult = await onApplyGeneratedCopy(generated, projectContext?.projectId);
             form.setFieldsValue({
                 __localizedPublicPresenceDrafts: {
                     ...(form.getFieldValue('__localizedPublicPresenceDrafts') || {}),
@@ -163,7 +163,7 @@ export default function BusinessCopySetupTab({ onApplyGeneratedCopy, onGenerateM
                 },
                 tagline: generated.tagline,
             });
-            message.success(t('businessCopySuccess'));
+            message.success(t(applyResult.translationIncomplete ? 'businessCopyPartialSuccess' : 'businessCopySuccess'));
         } catch (error) {
             logBusinessSettingsFailure('business_settings_business_copy_generation_failed', error, {
                 ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails?.tenantId),

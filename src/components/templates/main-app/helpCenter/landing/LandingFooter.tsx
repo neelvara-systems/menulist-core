@@ -40,13 +40,10 @@ function LandingFooter() {
 
             <Flex wrap justify="center" gap={12} align="center">
                 <Text type="secondary" style={{ margin: 0, fontSize: 12 }}>
-                    © 2025 MenulistAI
+                    © {new Date().getFullYear()} MenuList
                 </Text>
-                <Link href="/terms" style={{ color: token.colorTextSecondary, fontSize: 12 }}>{t('terms')}</Link>
-                <Link href="/privacy" style={{ color: token.colorTextSecondary, fontSize: 12 }}>{t('privacy')}</Link>
-                <Link href="/blog" style={{ color: token.colorTextSecondary, fontSize: 12 }}>{t('blog')}</Link>
-                <Link href="/use-cases" style={{ color: token.colorTextSecondary, fontSize: 12 }}>{t('useCases')}</Link>
-                {/* <Link href="/api" style={{ color: token.colorTextSecondary, fontSize: 12 }}>API</Link> */}
+                <Link href="/terms-of-service" style={{ color: token.colorTextSecondary, fontSize: 12 }}>{t('terms')}</Link>
+                <Link href="/privacy-policy" style={{ color: token.colorTextSecondary, fontSize: 12 }}>{t('privacy')}</Link>
             </Flex>
         </Flex>
     );

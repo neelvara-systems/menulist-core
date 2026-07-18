@@ -3,16 +3,39 @@ import type { MenuCardGeneratedArtifact, MenuCardLocalHistoryRecord } from '../m
 const HISTORY_PREFIX = 'menulist_menu_card_exports_';
 const MAX_HISTORY = 20;
 
-function key(projectId: string): string {
-    return `${HISTORY_PREFIX}${projectId}`;
+function key(projectId: string, storageScope: string): string {
+    return `${HISTORY_PREFIX}${encodeURIComponent(storageScope)}_${encodeURIComponent(projectId)}`;
 }
 
-export function listLocalMenuCardExports(projectId: string): MenuCardLocalHistoryRecord[] {
-    if (typeof window === 'undefined' || !projectId) return [];
+function isMenuCardLocalHistoryRecord(value: unknown): value is MenuCardLocalHistoryRecord {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const record = value as Partial<MenuCardLocalHistoryRecord>;
+    return typeof record.id === 'string'
+        && typeof record.projectId === 'string'
+        && typeof record.projectName === 'string'
+        && typeof record.storeName === 'string'
+        && typeof record.preset === 'string'
+        && typeof record.styleId === 'string'
+        && typeof record.pageCount === 'number'
+        && Number.isFinite(record.pageCount)
+        && typeof record.sourceHash === 'string'
+        && typeof record.fileName === 'string'
+        && typeof record.generatedAt === 'string';
+}
+
+export function listLocalMenuCardExports(
+    projectId: string,
+    storageScope: string,
+): MenuCardLocalHistoryRecord[] {
+    if (typeof window === 'undefined' || !projectId || !storageScope) return [];
     try {
-        const raw = localStorage.getItem(key(projectId));
+        const raw = localStorage.getItem(key(projectId, storageScope));
         const parsed = raw ? JSON.parse(raw) : [];
-        return Array.isArray(parsed) ? parsed : [];
+        return Array.isArray(parsed)
+            ? parsed
+                .filter((record) => isMenuCardLocalHistoryRecord(record) && record.projectId === projectId)
+                .slice(0, MAX_HISTORY)
+            : [];
     } catch {
         return [];
     }
@@ -23,10 +46,11 @@ export function saveLocalMenuCardExport(params: {
     projectName: string;
     storeName: string;
     preset: MenuCardLocalHistoryRecord['preset'];
+    storageScope: string;
     styleId: string;
     artifact: MenuCardGeneratedArtifact;
 }): MenuCardLocalHistoryRecord[] {
-    if (typeof window === 'undefined' || !params.projectId) return [];
+    if (typeof window === 'undefined' || !params.projectId || !params.storageScope) return [];
 
     const record: MenuCardLocalHistoryRecord = {
         id: `${Date.now()}-${params.artifact.sourceHash}`,
@@ -43,9 +67,15 @@ export function saveLocalMenuCardExport(params: {
 
     const next = [
         record,
-        ...listLocalMenuCardExports(params.projectId).filter((item) => item.sourceHash !== record.sourceHash),
+        ...listLocalMenuCardExports(params.projectId, params.storageScope)
+            .filter((item) => item.sourceHash !== record.sourceHash),
     ].slice(0, MAX_HISTORY);
 
-    localStorage.setItem(key(params.projectId), JSON.stringify(next));
+    try {
+        localStorage.setItem(key(params.projectId, params.storageScope), JSON.stringify(next));
+    } catch {
+        // The file was already delivered. Device-local history is best-effort and
+        // must never turn a successful export into an owner-visible failure.
+    }
     return next;
 }

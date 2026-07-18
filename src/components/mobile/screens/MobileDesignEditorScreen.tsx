@@ -25,12 +25,20 @@ import {
 } from '@lib/menu/menuDesignPresets';
 import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions';
 import { getDataUrlMimeType, getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { isDataUrl } from '@lib/media/mediaStorage';
 import { prepareMediaImage, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import MediaPublicContextPreview from '@/components/shared/media/MediaPublicContextPreview';
 import MenuStylePresetPreview from '@/components/shared/menuDesign/MenuStylePresetPreview';
 import { generateProjectUrl } from '@lib/utils/slugify';
+import {
+    MENULIST_ANSWERLATTICE_EVENTS,
+    MENULIST_ANSWERLATTICE_TARGETS,
+    emitMenuListAnswerlatticeWorkflowEvent,
+    getMenuListAnswerlatticeTargetProps,
+    isVerifiedMenuPublishResult,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -139,7 +147,7 @@ export default function MobileDesignEditorScreen({
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const labels = useOfferingLabels();
-    const { storeDetails: contextStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails: contextStoreDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const storeDetails = embeddedStoreDetails || contextStoreDetails;
     const mobileProjects = useMobileProjects();
     const loadingProjects = embedded ? false : mobileProjects.isLoading;
@@ -366,7 +374,9 @@ export default function MobileDesignEditorScreen({
         return false;
     };
     const handleServiceChargeChange = (note: string) => {
-        const normalized = note.slice(0, SERVICE_CHARGE_MAX_LENGTH).trim();
+        // Preserve inter-word/trailing spaces in the controlled input. The
+        // public resolver trims/collapses whitespace after persistence.
+        const normalized = note.slice(0, SERVICE_CHARGE_MAX_LENGTH);
         setDraftProjectData((prev: any) => ({
             ...prev,
             menuSettings: {
@@ -419,7 +429,7 @@ export default function MobileDesignEditorScreen({
             if (!normalizedDraft.config.design) normalizedDraft.config.design = {};
             normalizedDraft.config.design.menu = resolveMenuDesignConfig(normalizedDraft.config.design.menu);
             const menuBackgroundImage = normalizedDraft.config.design.menu.backgroundImage;
-            if (typeof menuBackgroundImage === 'string' && menuBackgroundImage.includes('base64')) {
+            if (isDataUrl(menuBackgroundImage)) {
                 normalizedDraft.config.design.menu.backgroundImage = await uploadFile({
                     url: menuBackgroundImage,
                     type: getDataUrlMimeType(menuBackgroundImage, 'image/jpeg'),
@@ -427,7 +437,9 @@ export default function MobileDesignEditorScreen({
                 }, 'assets');
             }
 
-            const updated = await publishProject(normalizedDraft);
+            const updated = await publishProject(normalizedDraft, {
+                expectedModifiedOn: normalizedDraft.modifiedOn,
+            });
             assertProjectUpdateSucceeded(
                 updated,
                 normalizedDraft.projectId,
@@ -437,7 +449,15 @@ export default function MobileDesignEditorScreen({
             setDraftProjectData(updatedCopy);
             setSavedProjectData(cloneProjectData(updatedCopy));
             upsertCachedProject(updatedCopy);
+            if (updatedCopy.lastPublishedAt) {
+                setStoreDetails((current: any) => (
+                    current && String(current.storeId) === String(storeDetails?.storeId)
+                        ? { ...current, lastPublishedAt: updatedCopy.lastPublishedAt }
+                        : current
+                ));
+            }
             Toast.show({ content: t('designPublished'), icon: 'success', duration: 2000 });
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_COMPLETED);
 
             let verificationPublicMenuUrl: string | undefined;
             try {
@@ -454,6 +474,16 @@ export default function MobileDesignEditorScreen({
                         storeId: String(storeDetails.storeId),
                         tenantId: String(storeDetails.tenantId),
                         publicMenuUrl: verificationPublicMenuUrl,
+                    }).then((verificationResult) => {
+                        if (isVerifiedMenuPublishResult(verificationResult)) {
+                            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_VERIFIED);
+                        }
+                    }).catch((error) => {
+                        logMobileProjectFailure('mobile_design_publish_verification_failed', error, buildMobileDesignLogContext('publish_verification', {
+                            ...getBoundedMobileProjectStringContext('publicMenuUrl', verificationPublicMenuUrl),
+                            hasStoreSlug: Boolean(storeDetails?.subdomain),
+                            hasCustomDomain: Boolean(storeDetails?.customDomain),
+                        }));
                     });
                 }
             } catch (error) {
@@ -581,17 +611,23 @@ export default function MobileDesignEditorScreen({
                     />
                 ) : null}
                 {!embedded && menuUrl ? (
+                    <div {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_PUBLIC_LINK)}>
                     <MobileLinkCard
                         compact={isCompactHandheld}
                         description={tShare('directOfferingLinkDesc', { offering: labels.offeringLower })}
                         icon={<LuLink2 color={token.colorText} size={18} />}
                         label={tShare('directOfferingLink', { offering: labels.offeringTitle })}
                         onCopy={() => void handleCopyLink(withSource(menuUrl, 'copy'), tShare('directOfferingLinkCopyLabel', { offering: labels.offeringLower }))}
-                        onOpen={() => openMobilePublicLink(withSource(menuUrl, 'direct'), {
-                            flow: 'design_menu_link_open',
-                            metadata: buildMobileDesignLogContext('open_menu_link'),
-                            source: 'mobile_design_editor',
-                        })}
+                        onOpen={() => {
+                            const opened = openMobilePublicLink(withSource(menuUrl, 'direct'), {
+                                flow: 'design_menu_link_open',
+                                metadata: buildMobileDesignLogContext('open_menu_link'),
+                                source: 'mobile_design_editor',
+                            });
+                            if (opened) {
+                                emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLIC_LINK_OPENED);
+                            }
+                        }}
                         onShare={supportsNativeShare ? () => void handleNativeShare({
                             label: tShare('directOfferingLink', { offering: labels.offeringTitle }),
                             text: tShare('directOfferingLinkDesc', { offering: labels.offeringLower }),
@@ -600,6 +636,7 @@ export default function MobileDesignEditorScreen({
                         onShowQr={() => setIsQrSheetOpen(true)}
                         value={menuUrl}
                     />
+                    </div>
                 ) : null}
                 <Card size="small" title={<Text strong>Current style</Text>}>
                     <List>
@@ -931,7 +968,15 @@ export default function MobileDesignEditorScreen({
                         <Button block disabled={!hasChanges || isPublishing} fill="outline" onClick={handleReset} size="large">
                             {tSettings('reset')}
                         </Button>
-                        <Button block color="primary" disabled={!hasChanges || isPublishing} loading={isPublishing} onClick={() => void handleSave()} size="large">
+                        <Button
+                            {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_PUBLISH)}
+                            block
+                            color="primary"
+                            disabled={!hasChanges || isPublishing}
+                            loading={isPublishing}
+                            onClick={() => void handleSave()}
+                            size="large"
+                        >
                             {tSettings('saveChanges')}
                         </Button>
                     </Flex>

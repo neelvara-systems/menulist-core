@@ -1,38 +1,17 @@
-# Menu Setup Progress — Help Doc
+# Menu Setup - Help
 
-## What "Menu Setup" Means
+**Status:** Local source complete
 
-Menu setup shows whether your MenuList menu is ready to publish and share.
+Menu setup shows the next action for the menu currently selected in MenuList.
 
-It checks:
+1. Add or open a menu source.
+2. Make sure visible menu items were imported.
+3. Review prices and important menu details.
+4. Publish when ready.
+5. Open Share and place the official link. Starter setup records two distinct sharing or owner-confirmed placement actions.
 
-- source added
-- menu imported
-- key details checked
-- menu published
-- official link placed
+Descriptions, images, extra languages, official-page links, and photos are optional improvements.
 
-## Optional Improvements
+If the card shows the wrong menu, choose the correct project first. If project data cannot load, the card remains incomplete rather than guessing. Use the button on the card; mobile stays inside the Menu, Share, or Official Page screen.
 
-Some steps improve the public menu but do not block publishing:
-
-- descriptions
-- item images
-- menu language text
-- public page photo
-- social/public links
-
-## Where To Find It
-
-- Dashboard
-- Mobile Menu
-- Mobile Share
-- Mobile More, while setup is incomplete
-
-## What To Do Next
-
-Use the button shown in Menu setup. It opens the existing Menu or Share screen for the next step.
-
----
-
-**Created:** July 7, 2026
+Recorded sharing means MenuList acknowledged the owner action. External placement means the owner confirmed it; MenuList does not automatically verify the third-party platform or customer usage.

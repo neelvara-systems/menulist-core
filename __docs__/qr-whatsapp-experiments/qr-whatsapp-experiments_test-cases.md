@@ -1,7 +1,7 @@
 # QR WhatsApp Experiments Test Cases
 
-**Status:** Docs-ready
-**Last Updated:** June 25, 2026
+**Status:** PLANNING BOUNDARY
+**Last Updated:** July 17, 2026
 
 ## Docs Pass Verification
 
@@ -10,6 +10,7 @@
 - Branded QR Action Templates docs define the creative/safety layer.
 - Feature flag exists and defaults off.
 - No runtime route, Firestore rule, API route, Storage path, Function, or deploy is added in this docs pass.
+- `npm run verify:qr-whatsapp-experiments-boundary` proves the flag remains off and unconsumed, planned infrastructure is absent, ordinary QR output remains direct, and public/help/marketing copy remains held.
 
 ## Future Runtime Tests
 

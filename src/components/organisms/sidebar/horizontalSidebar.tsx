@@ -25,6 +25,8 @@ const HorizontalSidebarComponent = () => {
 
     const tNav = useTranslations('Navigation');
     const tSupport = useTranslations('SupportMenu');
+    const tAppSettings = useTranslations('AppSettings');
+    const tSettings = useTranslations('Settings');
     const dispatch = useAppDispatch();
     const { token } = theme.useToken();
     const router = useRouter()
@@ -38,7 +40,7 @@ const HorizontalSidebarComponent = () => {
     const { activeSubscription, tenantDetails, storeDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
 
     const ACTION_MENUS: NavItemType[] = [
-        { label: 'App Appearance', route: 'dashboard-settings', icon: <MdOutlineSettingsSuggest /> },
+        { label: 'App settings', route: 'dashboard-settings', icon: <MdOutlineSettingsSuggest /> },
         { label: 'Dark Mode', route: 'darkMode', icon: <MdDarkMode /> },
         { label: 'Support', route: 'dashboard-help', icon: <TbPhoneCalling /> },
     ]
@@ -207,6 +209,15 @@ const HorizontalSidebarComponent = () => {
         }
     };
 
+    const getActionLabel = (navItem: NavItemType) => {
+        if (navItem.route === 'dashboard-settings') return tAppSettings('title');
+        if (navItem.route === 'darkMode') {
+            return isDarkMode ? tSettings('lightMode') : tSettings('darkMode');
+        }
+        if (navItem.route === 'dashboard-help') return tSupport('title');
+        return tNav(navItem.label as any);
+    };
+
     const SupportPopoverContent = () => (
         <div style={{ width: 280, padding: '8px 0' }}>
             <div style={{
@@ -299,7 +310,7 @@ const HorizontalSidebarComponent = () => {
                                 key={i}
                                 type="text"
                                 onClick={() => onClickActionsMenu(nav)}
-                                aria-label={nav.label}
+                                aria-label={getActionLabel(nav)}
                                 icon={
                                     isDarkModeMenu ? (
                                         isDarkMode ? <MdLightMode style={{ fontSize: 18 }} /> : <MdDarkMode style={{ fontSize: 18 }} />

@@ -619,6 +619,46 @@ function HomepageHero({ basePath }: { basePath: string }) {
     );
 }
 
+function FirstTrustedAnswersSection({ basePath }: { basePath: string }) {
+    const steps = [
+        ['01', 'Teach from product sources', 'Select the website, docs, notes, releases, screenshots, or repeated replies you are willing to use as support evidence.'],
+        ['02', 'Generate a product-specific ten', 'Prepare ten editable questions and draft answers with source links, applicability, risk, and missing-evidence warnings.'],
+        ['03', 'Run free checks first', 'Canonical-only Answer Tests verify expected behavior without calling an AI provider.'],
+        ['04', 'Measure real outcomes', 'Track explicit Solved and Still need help responses instead of treating no escalation as proof.'],
+    ] as const;
+
+    return (
+        <section className="border-y border-white/[0.06] bg-teal-400/[0.025] px-4 py-16 sm:px-6">
+            <div className="mx-auto max-w-7xl">
+                <div className="grid gap-6 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
+                    <div>
+                        <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">First trusted answers</p>
+                        <h2 className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl">
+                            Start with the ten questions most likely to interrupt your launch.
+                        </h2>
+                        <p className="mt-4 max-w-xl text-base leading-relaxed text-[#a0a0c0]">
+                            You do not need a complete support operation on day one. Start from your own product sources, review the generated first-ten drafts, approve the answer path, verify the widget, then improve from real gaps.
+                        </p>
+                        <AnswerlatticeLink basePath={basePath} href="/resources/founder-launch-kit" className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-teal-700 px-5 py-3 text-sm font-semibold text-white transition hover:bg-teal-800">
+                            Open founder launch kit
+                            <LuArrowRight aria-hidden size={15} />
+                        </AnswerlatticeLink>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                        {steps.map(([number, title, detail]) => (
+                            <article key={number} className="border-t border-white/[0.09] py-4">
+                                <span className="text-xs font-semibold text-teal-200">{number}</span>
+                                <h3 className="mt-2 text-base font-semibold text-white">{title}</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-[#8f8faa]">{detail}</p>
+                            </article>
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
 function SupportSuiteSection({ basePath }: { basePath: string }) {
     return (
         <section className="border-y border-white/[0.06] bg-white/[0.012] px-4 py-20 sm:px-6">
@@ -1320,6 +1360,7 @@ export default function AnswerlatticeHomePage() {
             <AnswerlatticeStructuredData />
             <main className="al-home-flow">
                 <HomepageHero basePath={basePath} />
+                <FirstTrustedAnswersSection basePath={basePath} />
                 <SupportSuiteSection basePath={basePath} />
                 <SupportSurfaceStorySection />
                 <ProductOverviewSection basePath={basePath} />

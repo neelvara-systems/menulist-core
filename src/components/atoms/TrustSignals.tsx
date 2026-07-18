@@ -15,6 +15,7 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { getStoreStatus } from '@lib/hours';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import { getTrustSignalFreshnessText } from '@lib/menu/trustSignalFreshness';
 import { resolveHoursOutput } from '@lib/outputControl';
 
 interface TrustSignalsProps {
@@ -40,50 +41,6 @@ interface TrustSignalsProps {
      * "updated today" twice.
      */
     showContextLine?: boolean;
-}
-
-/**
- * Normalize lastPublishedAt to a Date object.
- * Handles Firestore Timestamp, serialized {seconds}, string, and Date.
- */
-function normalizeDate(lastPublishedAt: any): Date | null {
-    if (!lastPublishedAt) return null;
-
-    let d: Date;
-    if (typeof lastPublishedAt?.toDate === 'function') {
-        d = lastPublishedAt.toDate();
-    } else if (lastPublishedAt?.seconds) {
-        d = new Date(lastPublishedAt.seconds * 1000);
-    } else if (typeof lastPublishedAt === 'string') {
-        d = new Date(lastPublishedAt);
-    } else if (lastPublishedAt instanceof Date) {
-        d = lastPublishedAt;
-    } else {
-        return null;
-    }
-
-    return isNaN(d.getTime()) ? null : d;
-}
-
-/**
- * Format date as "Updated today" or "Updated Mar 12".
- * Returns null if data is missing or stale (>30 days).
- */
-function getFreshnessText(lastPublishedAt: any): string | null {
-    const date = normalizeDate(lastPublishedAt);
-    if (!date) return null;
-
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 1) return 'Updated today';
-    if (diffDays <= 30) {
-        const month = date.toLocaleDateString('en-US', { month: 'short' });
-        const day = date.getDate();
-        return `Updated ${month} ${day}`;
-    }
-    return null; // Stale — hide freshness
 }
 
 /**
@@ -134,7 +91,7 @@ export default function TrustSignals({
 }: TrustSignalsProps) {
     const labels = getOfferingLabels(businessType, businessCategory || undefined);
     const offeringLabel = labels.offeringTitle;
-    const freshnessText = getFreshnessText(lastPublishedAt);
+    const freshnessText = getTrustSignalFreshnessText(lastPublishedAt);
     const locationText = getLocationText(locationArea, city);
 
     // Compute operational status — confidence-gated when output control is enabled

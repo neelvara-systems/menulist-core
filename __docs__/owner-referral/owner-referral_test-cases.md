@@ -2,7 +2,7 @@
 
 **Feature:** Owner Referral
 **Status:** Automated source/emulator contract implemented; production-host and payment sandbox QA pending
-**Last updated:** July 11, 2026
+**Last updated:** July 16, 2026
 **Audience:** Engineering, QA, security, billing, operations
 
 ---
@@ -46,7 +46,8 @@
 | OR-FLAG-005 | Acquisition off, settlement on | No new attribution; existing paid referrals continue settlement. |
 | OR-FLAG-006 | Any reward count | Feature availability is unchanged; no cap query or cap state. |
 | OR-FLAG-007 | Pilot store removed after a token was issued | Desktop/mobile entry disappears and capture/attribution reject the stale token generically. |
-| OR-FLAG-008 | Pilot allowlist empty after broad-rollout approval | All otherwise eligible paid stores are admitted; reward eligibility remains uncapped. |
+| OR-FLAG-008 | Pilot allowlist empty while both flags are enabled | Acquisition fails closed across desktop, mobile, owner API, capture, and attribution. |
+| OR-FLAG-009 | Pilot allowlist contains only invalid IDs | Acquisition fails closed; env readiness reports the unsafe configuration. |
 
 ---
 
@@ -60,7 +61,7 @@
 | OR-AUTH-004 | Staff without billing authority | Denied. |
 | OR-AUTH-005 | Paid reseller/agency-assisted store owner | Allowed when current actor has billing authority. |
 | OR-AUTH-006 | Paid B2B MenuList wallet supported by policy | Allowed; no plan-type exclusion. |
-| OR-AUTH-007 | Owner-read rate limit exceeded | 429 before Firestore/token work. |
+| OR-AUTH-007 | Owner-read rate limit exceeded | 429 with `Retry-After` and `X-RateLimit-Reset` before the billing-permission Firestore read or token work. |
 | OR-AUTH-008 | Referrer has 100 previous rewards | Invite still available. |
 
 ---
@@ -86,10 +87,12 @@
 | OR-CAP-003 | Preview bot or iframe opens page | No capture; framing denied. |
 | OR-CAP-004 | Cross-origin capture post | Rejected. |
 | OR-CAP-005 | Existing valid cookie then another token | First capture remains. |
-| OR-CAP-006 | Normal non-referral CTA | No capture or cookie. |
+| OR-CAP-006 | Normal non-referral CTA with an older saved cookie | Explicit decline clears the older cookie, does not capture the displayed token, and navigates only after acknowledgement. |
 | OR-CAP-007 | Production cookie | Secure, SameSite=Lax, Path=/, Domain omitted. |
 | OR-CAP-008 | Capture response | `private, no-store`; no referrer identity. |
 | OR-CAP-009 | Valid page copy | 100/50, both-paid trigger, no cap, no action/wait requirement, and privacy notice visible. |
+| OR-CAP-010 | Capture rate limit exceeded or production limiter provider unavailable | Generic 429 with `Retry-After` and `X-RateLimit-Reset`; no cryptographic or cookie work. |
+| OR-CAP-011 | Acquisition disabled but normal setup selected | Decline still clears an older cookie and continues safely. |
 
 ---
 
@@ -116,6 +119,7 @@
 | OR-ATTR-017 | Invite opens on `www`, dashboard, tenant, or custom-domain host | Journey reaches canonical public host before capture; fragment survives and the host-only cookie is available to setup/payment start. |
 | OR-ATTR-018 | Capture completes on canonical host then continuation attempts cross-host payment start | Flow prevents or canonicalizes the continuation before attribution can be lost. |
 | OR-ATTR-019 | First payment commits concurrently with existing-unpaid attribution | Transaction retries against subscription history and does not create a retroactive referral. |
+| OR-ATTR-020 | Existing-unpaid history query returns the full 25-row limit without a visible successful payment | Attribution fails closed as prior-paid because older history cannot be disproved safely. |
 
 ---
 
@@ -146,6 +150,7 @@
 | OR-PAY-021 | No QR/link/distribution action | Qualifies. |
 | OR-PAY-022 | Zero retention days after captured payment | Qualifies immediately. |
 | OR-PAY-023 | Referrer/referred payments are distinct subscription wallets | Required two-paid-business invariant passes. |
+| OR-PAY-024 | Referrer or referred store is inactive, deleted, tenant-blocked, or store-blocked | Referral remains pending; no wallet or ledger mutation. |
 
 ---
 
@@ -168,6 +173,7 @@
 | OR-REWARD-013 | Successful reward settlement | Referrer and referred ledger rows commit atomically with both balances and referral state. |
 | OR-REWARD-014 | Reward ledger retry | Deterministic transaction IDs prevent duplicate history rows. |
 | OR-REWARD-015 | Billing history formatting | Both recipients see `Referral reward` with the correct positive credit amount and zero cash amount. |
+| OR-REWARD-016 | Pack balance is malformed, negative, fractional, or would overflow a safe integer | Transaction rejects; neither balance, ledger row, nor referral state partially changes. |
 
 ---
 
@@ -216,10 +222,10 @@
 | OR-FB-001 | Link/share/view/capture | Zero Firestore referral operations. |
 | OR-FB-002 | New-business attribution | About 1 read and 1 relation write. |
 | OR-FB-003 | Existing-unpaid attribution | Prior-paid check plus 1 relation write. |
-| OR-FB-004 | Immediate issue | Atomic issue uses 3 transaction reads and 5 writes; normal first caller is about 7 reads total including bounded pre-reads/repair query. |
+| OR-FB-004 | Immediate issue | Atomic issue uses 5 transaction reads and 5 writes; normal first caller is about 11 reads total including bounded wallet/store pre-reads and repair query. |
 | OR-FB-005 | Callback/webhook race | Second path performs no reward writes. |
 | OR-FB-006 | Owner status | Limited recent query; no cap query. |
-| OR-FB-007 | Pending repair | Indexed, bounded, cursor-paginated. |
+| OR-FB-007 | Pending repair | Indexed single batch fetches at most 26, processes at most 25, exposes `hasMore`, emits backlog evidence, and has no cursor loop. |
 | OR-FB-008 | Index inventory | Exactly recent-status and pending-repair feature indexes. |
 | OR-FB-009 | Scheduler search | No referral scheduler or due query. |
 | OR-FB-010 | Public summary/store signal search | No referral qualification reads/writes. |
@@ -250,6 +256,12 @@
 - website/help/spec/implementation disagree on payment-only or no-limit rules.
 - pilot admission is absent from desktop, mobile, owner API, capture, or attribution resolution.
 - existing-unpaid prior-payment detection occurs outside the referral-create transaction.
+- empty/invalid pilot configuration admits stores;
+- capture decline does not clear an existing referral cookie;
+- owner/capture rate limits run after expensive work or omit retry metadata;
+- a saturated 25-row subscription-history query can attach attribution;
+- settlement omits canonical store lifecycle/block checks or safe-integer balance validation;
+- pending repair processes more than 25 rows or contains an unbounded cursor loop.
 
 ---
 
@@ -270,7 +282,9 @@
 13. Test unpaid referrer then later activation repair.
 14. Issue more than three referrals; confirm no cap behavior.
 15. Confirm desktop/mobile/private status and Billing Pack balance.
-16. Verify Firestore rules, two indexes, operation counts, and no scheduler/project-summary/signal activity.
+16. Verify inactive/deleted/blocked stores and malformed/overflowing balances cannot produce a partial reward.
+17. Seed more than 25 pending rows; verify one invocation processes only 25, records backlog evidence, and a later verified-payment/operator replay continues safely.
+18. Verify Firestore rules, two indexes, operation counts, and no scheduler/project-summary/signal activity.
 
 ---
 

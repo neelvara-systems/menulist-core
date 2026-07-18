@@ -24,7 +24,7 @@
 
 | Collection               | Operation | When                                                                     | Cost Per Event |
 | ------------------------ | --------- | ------------------------------------------------------------------------ | -------------- |
-| `aiSearchHistory`        | 1 READ + 0-1 WRITE | Feedback submission (thumbs up/down); repeated identical feedback skips the write | Existing read/write pricing |
+| `aiSearchHistory`        | 1 READ + 0-1 WRITE | Explicit Solved/Still need help outcome on the existing search row; repeated feedback skips the write | Existing read/write pricing |
 | `answerlattice_signal_events` | 0-1 WRITE | Negative feedback → signal event (if ENABLE_ANSWERLATTICE_SIGNAL_MUTATION ON) | $0.000054      |
 | `stores`                 | 0-1 READ  | Runtime config lookup through `/api/widget/config`; browser/server caches use the public 60-second TTL | Existing read pricing |
 | `stores`                 | 0-1 WRITE | Explicit dashboard save in `/answerlattice/widget`; unchanged saves skip the write | Existing write pricing |

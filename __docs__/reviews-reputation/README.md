@@ -1,9 +1,9 @@
 # Reviews & Reputation
 
 **Feature:** Reviews & Reputation  
-**Status:** 🔒 SPEC LOCKED — Runtime infrastructure present, product disabled until GBP API access granted
+**Status:** DORMANT, INCOMPLETE SCAFFOLDING — keep disabled; provider access alone is insufficient
 **Version:** 1.0  
-**Last Updated:** July 11, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -26,11 +26,11 @@
 
 ## One-Line Description
 
-> **Defensive infrastructure that prevents irreversible public reputation damage.**
+> **Future Google-review workflow concept; no active ingestion, inbox, monitoring, or posting runtime exists.**
 
 ---
 
-## Architecture Overview (60 Seconds)
+## Planned Architecture (Not Current Runtime)
 
 ```
 Google Reviews → MenuList (Read-Only) → Classification → Owner Warning
@@ -55,7 +55,7 @@ States:
 | `src/components/templates/main-app/reviews/ReputationGuard.tsx` | Passive warning notice (not mounted while flag is off) | ✅ BUILT / DISABLED |
 | `functions/src/reviews/reviewsIngestion.ts`                     | Cloud Function - ingestion            | 🔶 BLOCKED |
 | `functions/src/reviews/reviewsClassifier.ts`                    | Cloud Function - classification       | 🔶 BLOCKED |
-| `functions/src/reviews/classificationRules.ts`                  | Classification rules                  | 🔶 BLOCKED |
+| `functions/src/reviews/classificationRules.ts`                  | Pure classification rules; no caller/writer | ✅ BUILT / DORMANT |
 
 ---
 
@@ -86,7 +86,7 @@ ENABLE_AI_REPLY_ASSIST: false; // Requires ENABLE_REVIEWS_REPUTATION
 - July 11, 2026: the persisted review-state contract is the flat `reviewsState/{reviewId}` collection with required embedded `tId` and `sId`, matching the active route, rules, and composite indexes. The disabled reply route now logs bounded `review_reply_generation_failed` diagnostics before returning its static, uncharged provider-failure fallback.
 - July 11, 2026: `npm run test:reviews:rules` uses the Firestore emulator to prove own-store and multi-store reads, numeric/string embedded scope compatibility, cross-store/cross-tenant/public denial, scope-complete list queries, malformed-scope denial, platform reads, and client/platform write denial.
 - `ReputationGuard` and `ReviewReplyTool` exist as components but are not mounted in the owner dashboard while the feature is disabled.
-- No GBP ingestion Cloud Function is active in this repo snapshot; full review product launch remains blocked.
+- No GBP ingestion/classifier writer, scheduler, review DAL/inbox, Google reply route, or mobile review UI exists. Full product implementation remains blocked beyond provider access.
 
 ---
 
@@ -94,9 +94,9 @@ ENABLE_AI_REPLY_ASSIST: false; // Requires ENABLE_REVIEWS_REPUTATION
 
 | Dependency                   | Status      | Impact                        |
 | ---------------------------- | ----------- | ----------------------------- |
-| **GBP API Access**           | 🔶 BLOCKED  | Cannot implement without this |
-| GBP Sync Feature             | 🔶 BLOCKED  | Shares same dependency        |
-| Internal Feedback            | ✅ COMPLETE | Cross-reference integration   |
+| **GBP API Access**           | 🔶 BLOCKED  | Required but not sufficient   |
+| GBP Sync Feature             | 🔶 BLOCKED  | Separate flow; validate during implementation |
+| Guest Feedback               | ✅ COMPLETE | Separate private correction channel only |
 | MOL (Menu Observation Layer) | ✅ COMPLETE | Logging integration           |
 
 ---
@@ -145,6 +145,6 @@ ENABLE_AI_REPLY_ASSIST: false; // Requires ENABLE_REVIEWS_REPUTATION
 
 ---
 
-**IMPLEMENTATION STATUS:** 🔶 BLOCKED FOR PRODUCT LAUNCH (GBP API dependency)
+**IMPLEMENTATION STATUS:** INCOMPLETE AND DISABLED (provider, writer, owner/mobile, security, deploy, and smoke evidence required)
 
-_Infrastructure scaffolding exists, but the product remains disabled until GBP API access and ingestion are real._
+_Source fragments exist, but they are not an activatable product._

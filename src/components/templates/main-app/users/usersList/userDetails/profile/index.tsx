@@ -9,7 +9,7 @@ import { LuBuilding2, LuKeyRound, LuMail, LuPen, LuPhoneCall, LuShieldCheck, LuS
 
 const { Text } = Typography;
 
-function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, onClickEdit?: any }) {
+function UserDetails({ canEdit = true, userDetails, onClickEdit }: { canEdit?: boolean, userDetails: UserDataType, onClickEdit?: any }) {
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const stores = Array.isArray(userDetails?.stores) ? userDetails.stores : [];
@@ -57,7 +57,7 @@ function UserDetails({ userDetails, onClickEdit }: { userDetails: UserDataType, 
 
     return (
         <Card
-            extra={<Button type="primary" ghost icon={<LuPen />} onClick={() => onClickEdit(userDetails)}>Edit User</Button>}
+            extra={<Button disabled={!canEdit} type="primary" ghost icon={<LuPen />} onClick={() => onClickEdit(userDetails)}>Edit User</Button>}
             style={{ width: '100%', height: 'max-content' }}
             title="User Profile"
         >

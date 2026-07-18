@@ -10,11 +10,14 @@
 | Load coverage | `platformSummary/coverage_{tId}_{sId}` | 1 | Optional governance KPI |
 | Load trust metrics | `platformSummary/trustMetrics_{tId}_{sId}` | 1 | Trust score, entity count, active canonical answer count |
 | Load compiled context manifest | `platformSummary/bundleManifest_{tId}_{sId}` | 1 | Compiled context readiness and public/private bundle status |
+| Load Answer Tests proof | `platformSummary/answerTests_{tId}_{sId}` | 1 | Bounded summary; derives First 10 count, latest proof state, and critical failures |
+| Load current governed source versions | `platformSummary/sourceVersions_{tId}_{sId}` | 1 | Six server-side counters invalidate stale Answer Test proof without source collection scans |
+| Stage-aware base-route entry | `platformSummary/activation_{tId}_{sId}` | 0-1 | One direct read after access resolution; missing/error fails to Activation |
 | Load Daily Governance | `stores/{sId}` + `platformSummary/answerlatticeSchedulerState` + `platformSummary/answerlatticeNightlyState_{tId}_{sId}` + 5 capped `answerlattice_schedulerRunLogs` | 8 | Separate owner status call; no source collection scans |
 | Legacy subscription fallback | `subscriptions where storeId == sId limit 5` | 0-5 | Only when store summary is missing; API reports a 5-read cap when used |
 | Notification readiness | Environment + feature flag | 0 | No Firestore read; computed server-side |
 | Surface readiness | Existing `platformSummary/contextContent_{tId}_{sId}` response | 0 additional | Derived in memory from the context summary already read for Activation/Readiness Metrics |
-| First-client launch proof | Existing activation summary inputs | 0 additional | Derived in memory from store, context, coverage, trust, and compiled context manifest fields already loaded |
+| First-client launch proof | Existing activation summary inputs | 0 additional | Derived in memory after the eight compact Activation reads |
 
 ## Writes
 
@@ -41,7 +44,9 @@ The added entity and canonical-answer readiness checks reuse the trust metrics s
 
 The notification readiness card does not expose raw Firebase/cache internals. It shows only whether emails are enabled, sender config exists, and which sender address will be used. The explicit test action is rate-limited to 3/hour per workspace and writes an Answerlattice-scoped delivery log for debugging.
 
-The First-client launch proof, Surface Readiness matrix, and Test-as-Customer checklist are view-only projections of the activation summary. They add 0 reads, 0 writes, and no listeners on normal page load. Launch proof stores compact group status fields inside the activation snapshot signature; surface readiness stores compact status/count fields only. Longer recommendations and action labels remain client-side UI copy.
+The First-client launch proof, ordered founder journey, Surface Readiness matrix, and Test-as-Customer checklist are view-only projections of the activation summary. They add 0 reads, 0 writes, and no listeners after the eight compact Activation reads. Launch proof stores compact group status fields inside the activation snapshot signature; surface readiness stores compact status/count fields only. Longer recommendations and action labels remain client-side UI copy.
+
+The base-route stage decision adds at most one compact activation-summary read when a management user enters `/answerlattice`. It performs no source scan, summary rebuild, listener, model call, or write. A direct visit to Activation remains eight compact reads, plus the existing bounded legacy subscription fallback only for old workspaces.
 
 Activation does not scan `answerlattice_mutationProposals` to prove proposal quality. It proves that the signal source is present from compact context data, then routes the owner to Signal Queue for proposal review.
 

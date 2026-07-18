@@ -42,6 +42,7 @@ export const GEMINI_COST_USD: Record<string, number> = {
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION]: 0.0016, // Article save ontology/entity extraction
     [AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT]: 0.0016, // Weekly friction insight generation
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ANSWER_TEST]: 0.0016, // Owner-triggered full-runtime support answer test
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_PRODUCT_STARTER_PACK]: 0.0016, // One bounded ten-question launch-pack generation
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR]: 0.0025, // Screenshot/UI OCR for source intake
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION]: 0.0060, // Short audio/video transcription for source intake
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING]: 0.0002, // Intake-published article embedding
@@ -98,6 +99,7 @@ export const AI_UNIT_COSTS: Record<string, number> = {
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION]: 0, // Article save ontology/entity extraction — logged for cost visibility
     [AI_ACTIONS_TYPES.ANSWERLATTICE_FRICTION_INSIGHT]: 0, // Weekly insight support operation — logged for cost visibility
     [AI_ACTIONS_TYPES.ANSWERLATTICE_ANSWER_TEST]: 1, // Owner-triggered full-runtime QA; deterministic-only tests remain free
+    [AI_ACTIONS_TYPES.ANSWERLATTICE_PRODUCT_STARTER_PACK]: 1, // One owner-triggered, source-backed first-ten generation
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR]: 1, // Answerlattice support-credit operation, charged in Answerlattice credit ledger
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION]: 2, // Answerlattice support-credit operation, charged in Answerlattice credit ledger
     [AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING]: 0, // Publishing support infrastructure — logged, not charged separately

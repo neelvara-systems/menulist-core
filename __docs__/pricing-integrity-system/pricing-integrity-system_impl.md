@@ -1,52 +1,43 @@
-# Pricing Integrity System - Implementation Boundary
+# Pricing Integrity System - Implementation
 
-**Document Type:** Technical implementation evidence
-**Status:** Current source-boundary implementation notes, not current launch certification
-**Last Updated:** July 2, 2026
+**Status:** Current source-boundary implementation, not current launch certification
+**Last updated:** July 16, 2026
 
----
+## Canonical modules
 
-## Current Save Path
+- `src/lib/validation/pricing.schema.ts` owns the 40-character persisted value boundary and optional-value normalization.
+- `src/lib/pricing/formatMenuPrice.ts` separates display formatting from `parseSingleMenuPrice()` arithmetic admission.
+- `src/lib/pricing/publicItemPricePresentation.ts` resolves base/active-option customer price truth.
+- `src/lib/pricing/projectPriceTruth.ts` normalizes all persisted project item/option/override prices in memory.
 
-`updateProject()` in `src/database/projects/index.ts` is the active owner price-save path. After a normal project save it:
+## Mutation path
 
-1. Persists the project document.
-2. Calls `revalidatePublicClientCacheForProject(projectId, "updateProject")`.
-3. Revalidates public menu/OBP cache.
-4. Touches Digital Screens content version through `touchDigitalScreenContentVersion()`.
+`runUpdateProject()` and `publishProject()` call `normalizeProjectPriceTruth()` after project-payload sanitization and before the existing write. The linked-outlet route validates both standard project data and allowed price overrides with the same contract. This adds no read or write; it is an in-memory precondition on existing mutations.
 
-This is the current code path that protects customer-facing price truth after owner edits.
+Desktop and MobileShell item sheets validate before updating local project state. Bulk desktop/mobile utilities use `parseSingleMenuPrice()` for relative arithmetic. AI Menu Manager uses the same rule: relative changes exclude text/ranges, while an explicit exact-price request may replace them after approval. Quality summaries, category reorder, and filters use display-price truth, including active options.
 
-## Current PDF Path
+## Output path
 
-Project Share PDF generation is browser-local/on-demand:
+- Public list cards and PDP option rows use the active option projection.
+- Digital Screens preserve numeric, text, range, and active-option price output.
+- Shareable owner cards show the same base/option projection.
+- Menu Card Export validates display values and counts an active priced option as price coverage.
+- Decision Block analytics records a price only when it is one single numeric value.
 
-- `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx` imports `generateMenuPdf()`.
-- `src/lib/export/menuPdfGenerator.ts` delegates visual output to Menu Card Export.
-- The generated artifact uses the currently loaded project/menu data and returns a `snapshotHash`.
-- No background PDF job is created by this share path.
+Project save/publish continues through the existing public cache revalidation and configured Digital Screens version touch. There is no new propagation collection or polling loop.
 
-## Dormant Pricing Scaffold
+## PDF path
 
-The following files exist but are not wired into the active editor save path:
+Project Share imports `generateMenuPdf()` on demand, renders the current loaded project snapshot, and records a scoped browser-local snapshot hash/history marker. No background PDF job is created by this share path. Previously downloaded PDFs are immutable external artifacts.
 
-| File | Current boundary |
-| --- | --- |
-| `src/lib/pricing/integrityEngine.ts` | Defines `runPricingIntegrity()`, `markPDFFresh()`, `markPDFFailed()`, and integrity state helpers. `runPricingIntegrity()` has no current caller. |
-| `src/lib/pricing/pdfQueue.ts` | Defines a debounced background job writer, but `ENABLE_BACKGROUND_PDF_REGEN` is hard-disabled. |
-| `src/lib/pricing/molLogger.ts` | Defines MOL price/PDF logging helpers for the dormant pricing engine path. |
-| `src/lib/pricing/index.ts` | Exports the dormant pricing helpers for future wiring. |
+## Dormant isolation
 
-PDF failure reason persistence follow-up (July 5, 2026): `markPDFFailed()` still belongs to the dormant pricing engine scaffold, but it no longer persists arbitrary caller text into `pricingIntegrity.pdf.lastFailureReason`. Code-shaped reasons matching the bounded local-code pattern are retained; arbitrary text collapses to `pricing_pdf_generation_failed`. Diagnostics record the stored code plus raw input presence/length metadata only.
+`integrityEngine.ts`, `molLogger.ts`, and `pdfQueue.ts` remain source scaffold. `runPricingIntegrity()` has no active caller and `ENABLE_BACKGROUND_PDF_REGEN` is false. The active pricing barrel exports formatter/presentation helpers only, preventing an incidental import from making the dormant engine look current.
 
-## Public Claim Boundary
-
-Implementation docs, website copy, help copy, and sales copy must use the current source-backed claim:
-
-> Saved MenuList project truth updates customer menus and staff-facing reads, configured Digital Screens receive a content-version touch, and PDF downloads are generated from current menu data on demand.
-
-They must not claim that background PDF regeneration is active or that `runPricingIntegrity()` is currently wired to editor saves.
+The bounded `pricingIntegrity.pdf.lastFailureReason` handling remains defense in depth for a future explicit caller; it does not create active runtime behavior.
 
 ## Verification
 
-This boundary is guarded by `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, and `npm run verify:menulist-api-tenant-safety`. Release approval still requires the active production-readiness audit, External Certification Runbook evidence, authenticated desktop/mobile price-change QA, public menu and PDF artifact QA, Digital Screens refresh QA where applicable, target deploy evidence, and production-host smoke.
+The local contract is guarded by `npm run test:menu-price-boundary`, `npm run verify:pricing-integrity-boundary`, and the affected Menu Editor, AI Menu Manager, public, screen, PDF, multi-location, rules, tenant, type, lint, dependency, and docs gates.
+
+This implementation note is not current launch certification. Release approval also requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/MobileShell mutation QA, public menu and PDF artifact QA, configured-screen QA, target deployment evidence, and production-host smoke.

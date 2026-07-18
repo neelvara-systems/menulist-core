@@ -1,4 +1,5 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import { isLikelyPhoneNumber, normalizePhoneDigits } from './phoneValidation';
 import type {
   WhatsAppReplyBlock,
   WhatsAppReplyPackAction,
@@ -50,24 +51,8 @@ function hasUsefulText(value: string, minimum = 3): boolean {
   return trimToSingleLine(value).length >= minimum;
 }
 
-function normalizePhoneDigits(value: string): string {
-  const trimmed = value.trim();
-  const digits = trimmed.replace(/\D/g, '');
-  if (trimmed.startsWith('00') && digits.length > 2) return digits.slice(2);
-  return digits;
-}
-
-function hasLikelyCountryCode(rawValue: string, digits: string): boolean {
-  const trimmed = rawValue.trim();
-  return trimmed.startsWith('+') || trimmed.startsWith('00') || digits.length > 10;
-}
-
 function isLikelyWhatsAppPhone(rawValue: string): boolean {
-  const digits = normalizePhoneDigits(rawValue);
-  return digits.length >= 8
-    && digits.length <= 15
-    && !digits.startsWith('0')
-    && hasLikelyCountryCode(rawValue, digits);
+  return isLikelyPhoneNumber(rawValue, { requireCountryCode: true });
 }
 
 function getWhatsAppReplyPackEvidenceText(evidence: WhatsAppReplyPackEvidence): string {
@@ -294,7 +279,7 @@ export function buildWhatsAppReplyPackReport(input: WhatsAppReplyPackInput): Wha
     preferredAction: input.preferredAction,
     responseTime,
   });
-  const previewLink = makePreviewLink(phoneDigits, copyBlocks[0]?.body || '');
+  const previewLink = makePreviewLink(validPhone ? phoneDigits : '', copyBlocks[0]?.body || '');
 
   const checks: WhatsAppReplyPackItem[] = [
     makeCheck(

@@ -61,7 +61,8 @@ export function normalizeGuestFeedbackReviewUrl(value: unknown, source = 'unknow
         const isReviewPath = parsed.pathname.includes('/local/writereview')
             || parsed.pathname.includes('/maps');
         const isGPageReview = host === 'g.page' && parsed.pathname.includes('/review');
-        const isGoogleMapsShortlink = host === 'maps.app.goo.gl' || host === 'goo.gl';
+        const isGoogleMapsShortlink = host === 'maps.app.goo.gl'
+            || (host === 'goo.gl' && parsed.pathname.startsWith('/maps'));
 
         if ((isGoogleHost && isReviewPath) || isGPageReview || isGoogleMapsShortlink) {
             return raw;

@@ -1,22 +1,22 @@
-# Help Center — Decoupling Analysis (Future Standalone SaaS Readiness)
+# Help Center — Historical Decoupling Analysis
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-01
+> **Version:** 1.0.1
+> **Last Updated:** 2026-07-16
 > **Audience:** Strategy, Architecture
-> **Purpose:** Assess readiness for future separation into standalone support SaaS product
-> **Rule:** This document assesses only. No redesign proposed.
+> **Status:** Historical pre-separation assessment; not current architecture authority
+> **Rule:** Preserve for decision history. Current code, Answerlattice doctrine, and the Help Center README override future-state statements below.
 
 ---
 
 ## 1. Strategic Context
 
-The Help Center is currently embedded within the MenuList dashboard as a feature module. The future intent is to extract it as a **standalone support infrastructure SaaS product** for other SaaS companies.
+This section records the March 2026 assessment that preceded the current product separation. Answerlattice is now a separate governed-answer product with dedicated Firebase boundaries. MenuList `/help-center` remains an authenticated client surface that uses an explicit Answerlattice product account; it is not being extracted into a second standalone helpdesk.
 
 **Target ICP (future):** SaaS tool owners who need embedded support infrastructure
 **End users (future):** Customers of those SaaS tools
 **Base architecture:** Will remain Next.js + Firebase + Gemini
 
-This analysis scores the current architecture across 7 dimensions for decoupling readiness.
+The scores below describe the historical snapshot and must not be reused as a current readiness score.
 
 ### Current Client Boundary Note
 

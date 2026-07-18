@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Test Cases
 
 **Status:** Active QA matrix
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -43,6 +43,13 @@ npm run verify:public-truth-tools
 | STR-016 | Invalid, oversized, malformed, or wrong-shape hash payload | Decoder logs bounded `shareable_tool_report_payload_decode_failed` diagnostics with shape metadata only and keeps the invalid-report state |
 | STR-017 | Hash payload has non-ISO `generatedAt` or control characters in display strings | Decoder rejects the non-canonical timestamp, strips control characters from accepted display strings, and never renders `Invalid Date` as report generated time |
 | STR-018 | A signed platform session is stale after the user is downgraded, disabled, blocked, deleted, identity-mismatched, or revoked | `/api/ops/report-leads` re-reads `users/{userId}`, returns generic `403`, and performs no `landingPageEnquiries` query; malformed issuance/revocation timestamps also fail closed |
+| STR-019 | Hash summary counts do not match displayed checks, primary number is unsafe, primary label is empty, or report limits are absent | Decoder keeps the invalid-report state |
+| STR-020 | Hash injects setup jobs unrelated to visible gaps | Decoder discards them and derives jobs from normalized missing/unclear/not-checked rows |
+| STR-021 | Next action uses `/\\evil.example`, encoded backslash, protocol-relative, or external URL syntax | Action falls back to `/create-menu` |
+| STR-022 | Valid report opens | Static copy says it is a browser-local self-report, not a digitally verified record |
+| STR-023 | Report Lead Ops reaches the 120-report-lead query cap | Response sets `scanMayBeIncomplete`; UI warns that older matches may exist; unrelated contact enquiries are not read |
+| STR-024 | Production rate-limit provider is unavailable | Report Lead Ops fails closed before enquiry PII is read |
+| STR-025 | Legacy/public source path contains a backslash or resolves away from the sentinel origin | Source path is rejected instead of normalized into misleading attribution |
 
 ---
 

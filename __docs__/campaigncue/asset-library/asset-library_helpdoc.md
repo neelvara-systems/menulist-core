@@ -2,23 +2,20 @@
 
 ## What This Does
 
-Asset Library stores campaign images, videos, drafts, exports, source files, and rights notes.
+Asset Library keeps notes and reusable CampaignCue files together with their source and rights status. Saving an asset note does not upload a file.
 
 ## How To Use It
 
 1. Open Asset Library.
-2. Upload or select an existing asset.
-3. Add source and permission notes when needed.
-4. Filter assets by campaign, channel, type, location, or status.
-5. Reuse approved assets in a new campaign.
-6. Archive assets that should not appear in normal selection.
+2. Save a clear name, type, rights status, consent posture, tags, and an internal rights note.
+3. Use **Reuse old image** when you need to upload a flat image through CueLayers.
+4. Download private files only when a Download action is shown.
+5. Confirm rights before relying on an asset in a ready campaign pack.
 
 ## Status Meanings
 
-- `Source`: original file.
-- `Draft`: generated or edited asset not yet approved.
-- `Approved`: can be reused.
-- `Exported`: used outside CampaignCue.
-- `Blocked`: should not be reused.
-- `Archived`: hidden from normal workflow.
+- `Confirmed`: rights information is confirmed for the intended use.
+- `Needs review`: check permission or consent before public use.
+- `Restricted`: the asset is blocked from use.
 
+Asset processing state is separate: a registry item can be ready, blocked, or archived. The current screen supports create/list/download and CueLayers reuse entry; archive and advanced filtering are not active owner actions.

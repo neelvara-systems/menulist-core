@@ -78,7 +78,7 @@ const LOYALTY_STATE_CONFIG: Record<string, SignalConfig> = {
 
 const RISK_STATE_CONFIG: Record<string, SignalConfig> = {
     stable: { tone: 'success', label: 'Stable' },
-    watch: { tone: 'warning', label: 'Watch' },
+    watch: { tone: 'warning', label: 'Needs attention' },
     at_risk: { tone: 'error', label: 'At Risk' },
 };
 

@@ -116,6 +116,14 @@ const cleanupFontFile = async (url: unknown, failureCode: string, fontId?: strin
     }
 };
 
+const deferPersistedFontFileCleanup = (url: unknown, fontId: string): void => {
+    if (!isFirebaseStorageReference(url)) return;
+    logStaticAssetDiagnostic(
+        'font_preset_persisted_file_cleanup_deferred_shared_reference',
+        getStaticAssetEntityLogContext('fontPreset', fontId),
+    );
+};
+
 const uploadFontDataUrl = async (font: FontPresetsType): Promise<string | null> => {
     if (!isDataUrl(font.fileUrl)) return null;
     const fileType = normalizeFontFileType(font.type);
@@ -145,11 +153,22 @@ export const addFontPreset = async (fontDetails: FontPresetsType) => {
                 throw new Error('font_preset_payload_invalid');
             }
 
+            let persistenceAttempted = false;
             try {
-                const fontDoc = await addDoc(getCollectionRef(), await requestBodyComposer(nextFont, { isNew: true }));
+                const payload = await requestBodyComposer(nextFont, { isNew: true });
+                persistenceAttempted = true;
+                const fontDoc = await addDoc(getCollectionRef(), payload);
                 return { ...nextFont, id: fontDoc.id };
             } catch (error) {
-                await cleanupFontFile(uploadedUrl, 'font_preset_failed_create_cleanup_failed');
+                if (uploadedUrl && persistenceAttempted) {
+                    logStaticAssetFailure(
+                        'font_preset_ambiguous_create_file_retained',
+                        new Error('persistence_outcome_ambiguous'),
+                        getStaticAssetEntityLogContext('fontPreset'),
+                    );
+                } else {
+                    await cleanupFontFile(uploadedUrl, 'font_preset_pre_persist_create_cleanup_failed');
+                }
                 throw error;
             }
         },
@@ -179,15 +198,26 @@ export const updateFontPreset = async (fontDetails: FontPresetsType) => {
                 throw new Error('font_preset_payload_invalid');
             }
 
+            let persistenceAttempted = false;
             try {
-                await updateDoc(fontRef, await requestBodyComposer(nextFont, { isNew: false }));
+                const payload = await requestBodyComposer(nextFont, { isNew: false });
+                persistenceAttempted = true;
+                await updateDoc(fontRef, payload);
             } catch (error) {
-                await cleanupFontFile(uploadedUrl, 'font_preset_failed_update_cleanup_failed', fontId);
+                if (uploadedUrl && persistenceAttempted) {
+                    logStaticAssetFailure(
+                        'font_preset_ambiguous_update_file_retained',
+                        new Error('persistence_outcome_ambiguous'),
+                        getStaticAssetEntityLogContext('fontPreset', fontId),
+                    );
+                } else {
+                    await cleanupFontFile(uploadedUrl, 'font_preset_pre_persist_update_cleanup_failed', fontId);
+                }
                 throw error;
             }
 
             if (uploadedUrl && uploadedUrl !== current.fileUrl) {
-                await cleanupFontFile(current.fileUrl, 'font_preset_replaced_file_cleanup_failed', fontId);
+                deferPersistedFontFileCleanup(current.fileUrl, fontId);
             }
             return nextFont;
         },
@@ -244,7 +274,7 @@ export const getFontPresets = async (): Promise<FontPresetsType[]> => {
     );
 };
 
-export const deletFontPreset = async (id: string, src?: string) => {
+export const deletFontPreset = async (id: string, _src?: string) => {
     return await apiCallComposer(
         async () => {
             const fontId = String(id || '').trim();
@@ -253,7 +283,7 @@ export const deletFontPreset = async (id: string, src?: string) => {
             if (!currentSnap.exists()) throw new Error('font_preset_not_found');
             const current = normalizeFontPreset(currentSnap.data(), currentSnap.id);
             await deleteDoc(fontRef);
-            await cleanupFontFile(current?.fileUrl || src, 'font_preset_delete_file_cleanup_failed', fontId);
+            deferPersistedFontFileCleanup(current?.fileUrl, fontId);
             return SUCCESS_RESPONSE;
         },
         id,

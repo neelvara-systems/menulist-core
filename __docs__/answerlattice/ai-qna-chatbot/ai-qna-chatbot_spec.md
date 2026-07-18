@@ -1,7 +1,7 @@
 # AI QnA Chatbot — Product Specification
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
 > **Audience:** CEO, PM, Clients
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -11,22 +11,22 @@
 
 ### Goal
 
-Provide a source-backed conversational support assistant that answers user questions by searching a knowledge base using semantic vector search and generating contextual answers via Gemini AI — reducing support ticket volume and giving owners instant self-service answers.
+Provide a governed support-answer runtime for SaaS users and support teams. Approved canonical answers and FAQs take priority; generated knowledge-base answers must remain workspace-scoped, source-backed, and able to refuse when the evidence is insufficient.
 
 ### Scope
 
 - RAG (Retrieval-Augmented Generation) pipeline with Gemini 2.5 Flash
 - Two conversation modes: QnA (stateless) and Assistant (contextual)
 - Image-based queries (upload screenshot → AI generates search query)
-- Source article citations with similarity confidence scores
+- Valid source references for generated non-refusal knowledge-base answers
 - AI-generated suggested follow-up questions
 - Per-message feedback (thumbs up/down with detailed reasons)
 - Response regeneration (replace previous AI answer)
 - Full chat session persistence across browser sessions
-- Response caching (40-60% speedup for repeated queries)
+- Response caching with source-version-aware invalidation
 - Embedding caching (avoids redundant Gemini API calls)
 - Streaming responses via SSE (feature-flagged, currently OFF)
-- Global AI search modal accessible from anywhere in dashboard
+- Authenticated Help Center search and embeddable widget surfaces
 - Chat history sidebar with session management
 
 ### Out of Scope
@@ -35,7 +35,8 @@ Provide a source-backed conversational support assistant that answers user quest
 - Proactive chat (bot initiates conversation)
 - Multi-language AI responses (responds in English only)
 - Voice input
-- Chat widget for end customers (this is owner-facing only)
+- Unrestricted account-changing actions
+- Treating historical tickets, screenshots, or generated text as approved product truth
 
 ---
 
@@ -44,15 +45,15 @@ Provide a source-backed conversational support assistant that answers user quest
 ### 2.1 QnA Mode (Default)
 
 ```
-Owner opens Help Chat → Types question → AI searches KB → Returns answer with sources
-  → Owner sees: Answer + Source citation + 3 suggested follow-up questions
-  → Owner can: Ask Follow-up (→ switches to Assistant mode) OR New Question (→ fresh QnA)
+User opens Help Chat → Types question → Answerlattice checks canonical answer, FAQ, then KB
+  → User sees: governed answer or source-backed fallback, optional sources, and optional follow-ups
+  → User can: Ask Follow-up (→ switches to Assistant mode) OR New Question (→ fresh QnA)
 ```
 
 ### 2.2 Assistant Mode (Conversational)
 
 ```
-Owner switches to Assistant mode (or clicks "Ask Follow-up")
+User switches to Assistant mode (or clicks "Ask Follow-up")
   → Types question → AI searches KB WITH last 5 messages as context
   → Returns contextual answer referencing conversation history
   → Owner continues multi-turn conversation
@@ -61,7 +62,7 @@ Owner switches to Assistant mode (or clicks "Ask Follow-up")
 ### 2.3 Image Query
 
 ```
-Owner attaches screenshot → Types question about it
+User attaches screenshot → Types question about it
   → Gemini 2.5 Flash analyzes image → Generates bounded visual search context
   → Normal RAG pipeline continues with enhanced query
   → Answer uses visual context only when supported by KB articles
@@ -70,7 +71,7 @@ Owner attaches screenshot → Types question about it
 ### 2.4 Feedback Flow
 
 ```
-Owner reads AI answer → Clicks thumbs up (instant positive feedback)
+User reads AI answer → Clicks thumbs up (instant positive feedback)
   OR → Clicks thumbs down → Modal appears with reason checkboxes + comment field
   → Feedback stored on message + search history record
 ```
@@ -78,7 +79,7 @@ Owner reads AI answer → Clicks thumbs up (instant positive feedback)
 ### 2.5 Regenerate Flow
 
 ```
-Owner sees AI answer they don't like → Clicks regenerate icon
+User sees AI answer they don't like → Clicks regenerate icon
   → Previous AI answer removed → Same question re-sent to API
   → New answer replaces old one → Generation metadata tracks retry count
 ```
@@ -108,7 +109,7 @@ After the first Q&A exchange (exactly 2 messages), the input bar is replaced wit
 
 | Model                | Purpose                                         | When Called                  |
 | -------------------- | ----------------------------------------------- | ---------------------------- |
-| `gemini-embedding-001` | Generate 768-dimension query vectors          | Every new unique query       |
+| `gemini-embedding-2`   | Generate canonical 768-dimension query vectors | Every new unique query       |
 | `gemini-2.5-flash`     | Generate answers from KB documents            | Cache miss only              |
 | `gemini-2.5-flash`     | Analyze uploaded images into search context   | Only when user uploads image |
 
@@ -121,15 +122,14 @@ After the first Q&A exchange (exactly 2 messages), the input bar is replaced wit
 - **Key:** Normalized query text (+ image hash if image present)
 - **Scope:** Tenant-scoped (`where('tId', '==', session.tId)`)
 - **Hit behavior:** Return cached response immediately (no Gemini call)
-- **Expected hit rate:** ~60% (many users ask similar questions)
+- **Measurement:** Track actual tenant-scoped hit rate; do not publish an expected percentage.
 
 ### 5.2 Embedding Cache (`queryEmbeddings` collection)
 
-- **Key:** Same cache key as response cache
-- **Scope:** Global (by cache key as doc ID)
+- **Key:** Hash of the scoped search cache key
+- **Scope:** Exact `pId + tId + sId`; mismatched stored scope is rejected
 - **Hit behavior:** Return cached vector (no Gemini embedding call)
-- **Tracks:** `hitCount` incremented on each cache hit
-- **Expected hit rate:** 40-60%
+- **Measurement:** Track actual scoped reuse and provider-call avoidance.
 
 ### 5.3 KB Categories Cache (Context-level)
 
@@ -153,9 +153,9 @@ After the first Q&A exchange (exactly 2 messages), the input bar is replaced wit
 - **Fallback threshold:** 0.4 (lower confidence, used when no results above 0.6)
 - **Vector search limit:** 12 documents retrieved per query
 
-### 6.2 Quality Scoring (Admin View)
+### 6.2 Retrieval Similarity (Admin View)
 
-Quality is calculated from similarity scores on references:
+The existing admin labels group vector-reference similarity. They do not prove factual correctness, completeness, freshness, or resolution:
 
 - **Good (≥60%)** — At least one reference has similarity ≥ 0.6
 - **Low (<60%)** — All references between 0.4 and 0.6
@@ -163,11 +163,13 @@ Quality is calculated from similarity scores on references:
 
 ### 6.3 Source Citation
 
-Every AI answer includes:
+Source behavior depends on the answer path:
 
-- **Source tag** at top of message — Shows highest-scoring reference article title (clickable)
-- **Full reference list** — All referenced articles with similarity scores
-- **Suggested questions** — 3 AI-generated follow-up questions based on available KB content
+- Approved canonical answers may be returned directly with governed answer metadata.
+- Published FAQs may include their configured article references.
+- A generated knowledge-base answer that is not a refusal must resolve at least one model-returned article ID to the exact prompt evidence set.
+- Exact-only evidence does not receive a fabricated cosine-similarity score.
+- Suggested questions are optional and capped at three.
 
 ---
 
@@ -198,43 +200,54 @@ Every AI answer includes:
 | Layer                | Implementation                                                                       |
 | -------------------- | ------------------------------------------------------------------------------------ |
 | **SAFE_MODE**        | Kill switch blocks all AI routes during maintenance                                  |
-| **Rate limiting**    | Upstash sliding window (30 req/min per user)                                         |
+| **Rate limiting**    | Shared AI-operation admission boundary; verify current runtime configuration before publishing a numeric limit |
 | **Input validation** | Zod schemas: query (1-2000 chars), XSS pattern detection, malicious content blocking |
-| **Image validation** | HTTPS only, Firebase Storage host only, 10MB max, path traversal prevention          |
+| **Image validation** | HTTPS Firebase Storage for authenticated uploads or validated inline widget images; 5 MB maximum |
 | **Request queue**    | Sequential processing prevents race conditions (one request at a time)               |
 | **Feedback dedup**   | `feedbackInProgressRef` prevents concurrent feedback submissions                     |
 
 ---
 
-## 9. Streaming vs Non-Streaming
+## 9. Current Delivery Contract
 
-| Aspect                     | Non-Streaming (Current Default)                     | Streaming (Feature-Flagged)                  |
-| -------------------------- | --------------------------------------------------- | -------------------------------------------- |
-| **Flag**                   | `ENABLE_STREAMING_RESPONSES: false`                 | `ENABLE_STREAMING_RESPONSES: true`           |
-| **API route**              | `/api/helpCenter/search-kb`                         | `/api/helpCenter/search-kb-stream`           |
-| **Response format**        | JSON response                                       | Server-Sent Events (SSE)                     |
-| **UX**                     | Local typing animation after full response received | Real-time text appearing as Gemini generates |
-| **Cache handling**         | Full response returned                              | Cached responses returned as instant JSON    |
-| **Performance (cached)**   | ~100ms                                              | ~100ms (same — cached bypass streaming)      |
-| **Performance (uncached)** | ~10s (wait for full response)                       | ~3.2s (first token appears quickly)          |
-
----
-
-## 10. Risks & Open Questions
-
-| #   | Item                                                                | Status                                                        |
-| --- | ------------------------------------------------------------------- | ------------------------------------------------------------- |
-| 1   | Missing `withAuth()` on all 3 helpCenter API routes                 | Documented — relies on `getActiveSession()`                   |
-| 2   | KB article reads must stay tenant/store scoped                      | ✅ RESOLVED — search and compatibility helpers require tenant/store scope for non-platform callers |
-| 3   | No explicit 401 response for unauthenticated users on search routes | Session returns null, search proceeds without tenant filter   |
-| 4   | Streaming mode currently OFF — untested in production               | Feature-flagged, ready to enable                              |
-| 5   | `console.error` used instead of `secureError` in search routes      | ✅ RESOLVED — all console.log/error removed in audit          |
-| 6   | Query embedding cache has no TTL/expiry                             | ✅ RESOLVED — 30-day retention fields, stale-read cleanup, and bounded cleanup-failure diagnostics |
-| 7   | No conversation length limit                                        | ✅ RESOLVED — capped at 50 messages via `trimMessages()`      |
+| Aspect | Current behavior |
+|---|---|
+| **API route** | `/api/helpCenter/search-kb` |
+| **Response format** | Bounded JSON response with `Cache-Control: private, no-store` |
+| **UX** | The client starts the local typing animation after the full validated response arrives |
+| **Cache handling** | Fresh scoped response-cache hits return through the same JSON contract |
+| **Streaming** | No maintained streaming route or streaming feature flag exists |
+| **Performance** | Measure on representative workspaces before publishing a target |
 
 ---
 
-## 11. STEP 9C Audit (2026-03-03)
+## 10. Bounded Hybrid Evidence Fallback
+
+The governed retrieval order remains:
+
+1. approved canonical answer;
+2. approved FAQ/custom answer;
+3. knowledge-base fallback.
+
+When `ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL` is enabled, the knowledge-base fallback may add one deterministic evidence lane to vector search. The lane runs only when the query contains a bounded exact technical literal, such as an error code, API path, configuration flag, command option, HTTP failure code, or product version, and canonical retrieval resolved at least one valid product entity.
+
+The lane reads at most 12 active published articles from the exact `pId + tId + sId` workspace whose `entityIds` overlap the resolved entities. An article is eligible only when its title, tags, or body contains an exact query literal. Eligible exact/entity results and similarity-qualified vector results are deduplicated and fused deterministically. No planner, model reranker, broad corpus search, authority override, or autonomous learning is introduced.
+
+The flag must remain off until the required index is deployed and representative Answer Tests show improved technical-question retrieval without citation, unsupported-claim, freshness, or abstention regressions.
+
+## 11. Risks & Open Questions
+
+| # | Item | Status |
+|---|---|---|
+| 1 | KB article reads must stay tenant/store scoped | Enforced by exact `pId + tId + sId` filters and response guards |
+| 2 | Hybrid evidence index is not remotely verified in this worktree | Keep feature default off until deploy and readback succeed |
+| 3 | Hybrid evidence quality is not proven with representative customer questions | Run Answer Tests before rollout |
+| 4 | Post-save entity extraction is browser-triggered and has no durable retry lease | Treat extraction as best effort and monitor unmapped articles |
+| 5 | Streaming behavior remains independently feature-flagged | Do not claim production readiness without surface testing |
+
+---
+
+## 12. STEP 9C Audit (2026-03-03)
 
 ### Bugs Fixed (15+ violations)
 
@@ -244,13 +257,13 @@ Every AI answer includes:
 - **`useChatData.ts`** — Removed 2x `console.error` calls (session fetch, category fetch)
 - **`useRequestQueue.ts`** — Removed `console.error` from queue processing
 
-### Assessment
+### Maintained Assessment
 
-- **Architecture:** Excellent. RAG pipeline is well-structured with Answerlattice canonical-first retrieval integrated. Caching at 3 levels (response, embedding, SWR).
-- **Security:** Strong. Zod validation, SAFE_MODE, rate limiting, image URL validation, request queue for race conditions, feedback dedup.
-- **Firebase Cost:** Well-optimized. Cache hit = 1 read. Cache miss = ~14 reads + 2 Gemini calls. Embedding cache prevents redundant API calls.
-- **UI/UX:** Clean customer-facing experience. Source citations, suggested questions, feedback, regeneration all working.
-- **Answerlattice Integration:** `attemptCanonicalRetrieval` properly called before RAG fallback. `emitAnswerlatticeSignal` fires on negative feedback.
+- Canonical and approved FAQ priority is enforced in the shared runtime.
+- Generated non-refusal answers require at least one valid reference from the prompt evidence set.
+- Firestore, provider, and latency costs are path-dependent and must be measured rather than inferred from document limits.
+- Retrieval similarity is not an overall answer-quality score.
+- Hybrid evidence retrieval remains default off pending remote index proof and representative Answer Tests.
 
 ### Improvements Implemented (2026-03-04)
 
@@ -260,5 +273,5 @@ Every AI answer includes:
 
 ### Skipped (Validated as Not Needed)
 
-4. ❌ **Offline indicator:** Browser already handles offline state. `fetch` failures show `antMessage.error`. Low ROI for SMB ICP.
+4. ❌ **Offline indicator:** Existing request failures remain the current boundary; a separate offline mode is not part of this feature.
 5. ❌ **Message retry on network:** Existing "Retry" button is sufficient. Auto-retry with backoff adds significant complexity for marginal benefit at current scale.

@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Hours Check - MenuList | Check Regular and Holiday Hours';
 const description = 'Check whether customers can understand regular hours, closed days, holiday hours, location timing, fallback contact, and the current customer link.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/hours-check',
   },
-};
+});
 
 export default function Page() {
   if (

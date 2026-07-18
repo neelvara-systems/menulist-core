@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -6,7 +7,7 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title: 'Features - MenuList | One Approved List, Every Customer Link',
   description: 'See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health.',
   alternates: {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     description: 'See how MenuList moves from current menu or service list to prepared review, official customer link, QR, print, owner updates, feedback, and Business Health.',
     url: '/features',
   },
-};
+});
 
 export default function Page() {
   return (

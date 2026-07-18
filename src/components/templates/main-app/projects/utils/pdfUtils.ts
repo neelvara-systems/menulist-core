@@ -192,7 +192,7 @@ export const convertPdfToImages = async (
                 // Show warning for large PDFs close to the processing cap.
                 if (totalPages > WARN_PDF_PAGES) {
                     message.warning({
-                        content: `"${file.name}" has ${totalPages} pages. This will take a few minutes to process and may use significant AI credits.`,
+                        content: `"${file.name}" has ${totalPages} pages. This will take a few minutes to process.`,
                         duration: 8
                     });
                 }

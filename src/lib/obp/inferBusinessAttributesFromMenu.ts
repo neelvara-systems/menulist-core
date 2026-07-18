@@ -1,4 +1,5 @@
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import { mergeMissingBusinessAttributeDefaults } from '@data/shared/businessAttributeDefaults';
 import {
     getAllowedBusinessAttributeKeysForCategory,
     getDietaryTagToBusinessAttributeMapForCategory,
@@ -6,7 +7,7 @@ import {
 } from '@data/shared/businessAttributeInference';
 import { matchDietaryTags } from '@lib/infrastructure/taxonomy/matcher';
 
-type BusinessAttributes = Record<string, boolean | undefined>;
+type BusinessAttributes = Record<string, unknown>;
 type BusinessAttributeSuggestionConfidence = 'high' | 'medium' | 'low';
 
 interface BusinessAttributeSuggestionLike {
@@ -143,15 +144,11 @@ export function getBusinessAttributesWithMenuDefaults(
 ): BusinessAttributes | null {
     const inferredAttributes = inferBusinessAttributesFromMenuData(menuData, store);
     const existingAttributes = store?.businessAttributes || {};
-    const nextAttributes: BusinessAttributes = { ...existingAttributes };
-    let changed = false;
+    const result = mergeMissingBusinessAttributeDefaults(
+        existingAttributes,
+        inferredAttributes,
+        Array.from(getAllowedAttributeKeys(store)),
+    );
 
-    Object.entries(inferredAttributes).forEach(([key, value]) => {
-        if (value !== true) return;
-        if (typeof existingAttributes[key] === 'boolean') return;
-        nextAttributes[key] = true;
-        changed = true;
-    });
-
-    return changed ? nextAttributes : null;
+    return result.changed ? result.businessAttributes : null;
 }

@@ -32,7 +32,10 @@ import {
     CAMPAIGNCUE_DEFAULT_TIMEZONE,
     CAMPAIGNCUE_SOURCE_TYPE_LABELS,
 } from "@constant/campaigncue/workspace";
-import type { CampaignCueOutputPickerItem } from "@constant/campaigncue/outputPicker";
+import {
+    campaignCueOutputIntentSupportsOwnerGoal,
+    type CampaignCueOutputPickerItem,
+} from "@constant/campaigncue/outputPicker";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useAppSelector } from "@hook/useAppSelector";
 import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
@@ -53,6 +56,11 @@ import {
     listCampaignCuePackTemplates,
 } from "@lib/campaigncue/pack-templates/catalog";
 import { saveCampaignCueWorkspacePackTemplate } from "@lib/campaigncue/pack-templates/workspaceTemplates";
+import { hydrateCampaignCuePackTemplateEditorDocument } from "@lib/campaigncue/pack-templates/editorDocumentBoundary";
+import {
+    getUnresolvedCampaignCueOutputIntentRequirements,
+    getUnresolvedCampaignCuePackTemplateFactSlots,
+} from "@lib/campaigncue/pack-templates/factSlotReadiness";
 import { formatDateTime, fromNativeDateTimeInputValue, toNativeDateTimeInputValue, type DateLike, type IntlFormatter } from "@util/dateTime";
 import {
     type CreativeEditorDocument,
@@ -944,21 +952,55 @@ const dedupeDailyDeskTasks = (tasks: CampaignCueDailyDeskTask[]) => {
     });
 };
 
+const templateFactTaskInputType = (type: string): CampaignCueDailyDeskTask["inputType"] => {
+    switch (type) {
+        case "price": return "price_or_date";
+        case "availability":
+        case "availability_date": return "available_time_slot";
+        case "booking_link": return "booking_link";
+        case "location":
+        case "branch_location":
+        case "location_detail": return "location_detail";
+        case "menu_item":
+        case "product":
+        case "service": return "menu_service_item";
+        case "photo": return "photo";
+        case "usage_rights":
+        case "asset_rights": return "asset_rights";
+        case "offer_end_date": return "offer_end_date";
+        case "terms": return "terms";
+        case "destination_url": return "destination_url";
+        case "approved_claim": return "commercial_policy";
+        case "whatsapp_number":
+        case "phone": return "business_cta";
+        default: return undefined;
+    }
+};
+
 const buildPackTemplateEditorContext = (
     overview: CampaignCueOverview,
     template: CampaignCuePackTemplateHydrated,
     intent?: CampaignCueOutputPickerItem,
+    unresolvedRequiredFactTypes: readonly string[] = template.payload.factSlots
+        .filter((slot) => slot.required)
+        .map((slot) => slot.type),
 ): CampaignCueEditorContext => {
-    const requiredFactSlots = template.payload.factSlots.filter((slot) => slot.required);
+    const unresolvedRequiredFactTypeSet = new Set(unresolvedRequiredFactTypes);
+    const requiredFactSlots = template.payload.factSlots.filter((slot) => (
+        slot.required && unresolvedRequiredFactTypeSet.has(slot.type)
+    ));
     const hasOutputIntent = Boolean(intent && intent.id !== "recommended_pack");
     const templateProtectedFacts = template.payload.factSlots
         .filter((slot) => slot.protected)
-        .map((slot): CampaignCueEditorProtectedFact => ({
-            id: `template:${template.summary.templateId}:fact:${slot.type}`,
-            label: displayLabel(slot.type),
-            status: slot.required ? "needs_review" : "ready",
-            value: slot.required ? "Required before reuse" : "Optional",
-        }));
+        .map((slot): CampaignCueEditorProtectedFact => {
+            const needsInput = slot.required && unresolvedRequiredFactTypeSet.has(slot.type);
+            return {
+                id: `template:${template.summary.templateId}:fact:${slot.type}`,
+                label: displayLabel(slot.type),
+                status: needsInput ? "needs_review" : "ready",
+                value: needsInput ? "Required before reuse" : slot.required ? "Confirmed from current facts" : "Optional",
+            };
+        });
     const outputFormats = Array.from(new Set([
         ...template.payload.outputPackShape.channels.map(displayLabel),
         ...template.summary.outputTypes.map(displayLabel),
@@ -985,17 +1027,20 @@ const buildPackTemplateEditorContext = (
             targetTab: "delivery",
         }
         : null;
-    const templateTasks = template.payload.factSlots.map((slot): CampaignCueDailyDeskTask => ({
-        actionLabel: slot.required ? "Confirm fact" : "Review fact",
-        detail: slot.ownerQuestion,
-        id: `template:${template.summary.templateId}:slot:${slot.type}`,
-        inputType: slot.type as CampaignCueDailyDeskTask["inputType"],
-        kind: "source_input",
-        label: `${slot.required ? "Required" : "Optional"} · ${displayLabel(slot.type)}`,
-        severity: slot.required ? "needs_fix" : "info",
-        sourceReferences: [`template:${template.summary.templateId}`],
-        targetTab: "sources",
-    }));
+    const templateTasks = template.payload.factSlots.map((slot): CampaignCueDailyDeskTask => {
+        const needsInput = slot.required && unresolvedRequiredFactTypeSet.has(slot.type);
+        return {
+            actionLabel: needsInput ? "Confirm fact" : "Review fact",
+            detail: slot.ownerQuestion,
+            id: `template:${template.summary.templateId}:slot:${slot.type}`,
+            inputType: templateFactTaskInputType(slot.type),
+            kind: "source_input",
+            label: `${needsInput ? "Required" : slot.required ? "Confirmed" : "Optional"} · ${displayLabel(slot.type)}`,
+            severity: needsInput ? "needs_fix" : "info",
+            sourceReferences: [`template:${template.summary.templateId}`],
+            targetTab: "sources",
+        };
+    });
     const deliveryCards = template.payload.outputPackShape.deliveryCards
         .slice(0, 3)
         .map((cardTitle, index): CampaignCueManualDeliveryCard => ({
@@ -1561,6 +1606,12 @@ function OutputPackSummary({
                 <StatCard label="Blocked" value={counts.blocked} />
             </div>
             <div className={styles.detailStack}>
+                {outputPack.decision.outputIntent ? (
+                    <div className={styles.noteBox}>
+                        <strong>Requested output focus: {outputPack.decision.outputIntent.title}</strong>
+                        <p>{outputPack.decision.outputIntent.requestedOutputTypes.map(displayLabel).join(", ")}</p>
+                    </div>
+                ) : null}
                 <div className={styles.noteBox}>
                     <strong>Pack readiness: {ownerStatusLabel(outputPack.readiness.status)}</strong>
                     <p>{outputPack.readiness.summary}</p>
@@ -2148,6 +2199,7 @@ export default function CampaignCueWorkspaceApp() {
                 body: JSON.stringify({
                     correctionType: "restore_fallback",
                     expectedRevision: activeCueLayerRevision,
+                    idempotencyKey: buildIdempotencyKey("cue_layers_repair"),
                 }),
             });
             const payload = await readCampaignCueWorkspaceData(res, "cue_layers_repair", isRecordData);
@@ -2267,11 +2319,23 @@ export default function CampaignCueWorkspaceApp() {
         return "Confirm required campaign details before creating this pack.";
     };
 
+    const decisionForOutputIntent = (intent?: CampaignCueOutputPickerItem): CampaignCueDecision | undefined => {
+        if (!data || !intent || intent.id === "recommended_pack" || !intent.ownerGoals.length) {
+            return data?.dailyDesk.decision;
+        }
+        const matching = data.dailyDesk.candidateDecisions.filter((decision) => (
+            campaignCueOutputIntentSupportsOwnerGoal(intent, decision.ownerGoal)
+        ));
+        return matching.find((decision) => decision.decisionStatus === "ready_to_prepare") || matching[0];
+    };
+
     const createCampaign = async (
         opportunityId?: string,
         templateDraft?: {
             brief: string;
             channels: CampaignCueChannel[];
+            outputIntentId?: CampaignCueOutputPickerItem["id"];
+            sourceTemplateId?: string;
             templateId: string;
             title: string;
         },
@@ -2301,7 +2365,9 @@ export default function CampaignCueWorkspaceApp() {
                     brief: templateDraft?.brief,
                     channels: templateDraft?.channels,
                     opportunityId,
+                    outputIntentId: templateDraft?.outputIntentId,
                     reuseCampaignId,
+                    sourceTemplateId: templateDraft?.sourceTemplateId,
                     title: templateDraft?.title,
                     idempotencyKey: buildIdempotencyKey("create"),
                 }),
@@ -2783,8 +2849,8 @@ export default function CampaignCueWorkspaceApp() {
                 outputPack,
                 workspaceId: data.workspace.workspaceId,
             });
-            await saveCampaignCueWorkspacePackTemplate(input);
-            setNotice(reusableEditorDocument
+            const savedTemplate = await saveCampaignCueWorkspacePackTemplate(input);
+            setNotice(savedTemplate.editorDocumentPath
                 ? "Reusable campaign pack and editor layout saved."
                 : "Reusable campaign pack saved.");
             await loadPackTemplates(data);
@@ -2800,18 +2866,49 @@ export default function CampaignCueWorkspaceApp() {
         fallbackChannels: CampaignCueChannel[],
     ) => {
         if (!intent?.channels.length || intent.id === "recommended_pack") return fallbackChannels;
-        const matchingTemplateChannels = intent.channels.filter((channel) => fallbackChannels.includes(channel));
-        return matchingTemplateChannels.length ? matchingTemplateChannels : intent.channels;
+        return intent.channels;
     };
 
     const createCampaignFromOutputIntent = (intent: CampaignCueOutputPickerItem) => {
         if (intent.id === "custom_size") {
+            if (!creativeEditorEnabled) {
+                setNotice("The creative editor is unavailable right now.");
+                return;
+            }
             openBlankCreativeEditor();
             return;
         }
-        void createCampaign(undefined, {
+        if (intent.id === "reuse_old_asset") {
+            if (!cueLayersUploadEnabled) {
+                setNotice("Old-image reuse is unavailable right now. You can still choose an existing ready asset.");
+                setTab("assets");
+                return;
+            }
+            cueLayerUploadInputRef.current?.click();
+            return;
+        }
+        if (!data) return;
+        const unresolvedRequirements = getUnresolvedCampaignCueOutputIntentRequirements(intent, {
+            assets: data.assets,
+            businessBrain: data.businessBrain,
+            sourceFacts: data.sourceFacts,
+            sourceInputs: data.sourceInputs,
+        });
+        if (unresolvedRequirements.length) {
+            setNotice(unresolvedRequirements[0].ownerQuestion);
+            setTab("sources");
+            return;
+        }
+        const intentDecision = decisionForOutputIntent(intent);
+        if (intent.ownerGoals.length && !intentDecision) {
+            setNotice("This output does not match a current campaign opportunity for this business.");
+            setTab("cues");
+            return;
+        }
+        void createCampaign(intentDecision?.opportunityId, {
             brief: `${intent.title}: ${intent.description}`,
-            channels: intent.channels.length ? intent.channels : data?.dailyDesk.recipe.recommendedChannels || ["creative"],
+            channels: intent.channels.length ? intent.channels : data.dailyDesk.recipe.recommendedChannels || ["creative"],
+            outputIntentId: intent.id,
             templateId: `output-intent-${intent.id}`,
             title: intent.title,
         });
@@ -2822,32 +2919,89 @@ export default function CampaignCueWorkspaceApp() {
         intent?: CampaignCueOutputPickerItem,
     ) => {
         if (!data) return;
+        const intentDecision = decisionForOutputIntent(intent);
+        if (intent?.ownerGoals.length && !intentDecision) {
+            setNotice("This output does not match a current campaign opportunity for this business.");
+            setTab("cues");
+            return;
+        }
+        const intentBlockedReason = intent && intent.id !== "recommended_pack" && intentDecision
+            ? campaignCreationBlockedReason(intentDecision.opportunityId, intentDecision.recipeId)
+            : "";
+        if (intentBlockedReason) {
+            setNotice(intentBlockedReason);
+            setTab("sources");
+            return;
+        }
         setBusyKey(`pack-template-open:${template.templateId}`);
         setNotice("");
         try {
-            const hydrated = await getCampaignCuePackTemplate(template);
-            setNotice(summarizeCampaignCuePackTemplateApplication(hydrated));
+            const hydrated = await getCampaignCuePackTemplate(template, {
+                workspaceId: data.workspace.workspaceId,
+            });
+            const unresolvedRequiredFactSlots = getUnresolvedCampaignCuePackTemplateFactSlots(
+                hydrated.payload.factSlots,
+                {
+                    assets: data.assets,
+                    businessBrain: data.businessBrain,
+                    sourceFacts: data.sourceFacts,
+                    sourceInputs: data.sourceInputs,
+                },
+            );
+            const unresolvedIntentRequirements = intent && intent.id !== "recommended_pack"
+                ? getUnresolvedCampaignCueOutputIntentRequirements(intent, {
+                    assets: data.assets,
+                    businessBrain: data.businessBrain,
+                    sourceFacts: data.sourceFacts,
+                    sourceInputs: data.sourceInputs,
+                })
+                : [];
+            setNotice(summarizeCampaignCuePackTemplateApplication(hydrated, unresolvedRequiredFactSlots.length));
+            if (unresolvedRequiredFactSlots.length || unresolvedIntentRequirements.length) {
+                if (unresolvedIntentRequirements.length) {
+                    setNotice(unresolvedIntentRequirements[0].ownerQuestion);
+                }
+                setTab("sources");
+                return;
+            }
             if (hydrated.editorDocument && creativeEditorEnabled) {
+                const hydratedEditorDocument = hydrateCampaignCuePackTemplateEditorDocument({
+                    businessFacts: {
+                        brandKit: {
+                            name: data.businessBrain.name,
+                            primaryColor: data.businessBrain.brandKit.primaryColor,
+                            voice: data.businessBrain.brandKit.voice,
+                        },
+                        contacts: data.businessBrain.contacts,
+                        locality: data.businessBrain.locality,
+                        name: data.businessBrain.name,
+                    },
+                    document: hydrated.editorDocument,
+                    template,
+                    workspaceId: data.workspace.workspaceId,
+                });
                 setActiveCueLayerDesign(null);
                 setActiveCueLayerRevision(null);
                 setEditorDraftDocument(null);
                 cueLayerLastSavedFingerprintRef.current = "";
-                setEditorDocument(hydrated.editorDocument);
-                setEditorContext(buildPackTemplateEditorContext(data, hydrated, intent));
+                setEditorDocument(hydratedEditorDocument);
+                setEditorContext(buildPackTemplateEditorContext(
+                    data,
+                    hydrated,
+                    intent,
+                    unresolvedRequiredFactSlots.map((slot) => slot.type),
+                ));
                 setEditorSourceLabel(`Template · ${template.title}`);
                 setTab("editor");
                 return;
             }
-            const requiredMissingInputCount = hydrated.payload.factSlots.filter((slot) => slot.required).length;
-            if (requiredMissingInputCount) {
-                setTab("sources");
-                return;
-            }
-            await createCampaign(undefined, {
+            await createCampaign(intentDecision?.opportunityId, {
                 brief: intent && intent.id !== "recommended_pack"
                     ? `${template.description} Focus this pack on ${intent.title.toLowerCase()}.`
                     : template.description,
                 channels: channelsForOutputIntent(intent, template.channels),
+                outputIntentId: intent?.id === "recommended_pack" ? undefined : intent?.id,
+                sourceTemplateId: template.templateId,
                 templateId: template.templateId,
                 title: intent && intent.id !== "recommended_pack"
                     ? `${template.title} · ${intent.title}`
@@ -3933,6 +4087,10 @@ export default function CampaignCueWorkspaceApp() {
                             {FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY ? (
                                 <PackTemplatePicker
                                     businessCategory={packTemplateState.catalog?.businessCategory || "specialty"}
+                                    busy={Boolean(
+                                        busyKey?.startsWith("cue-template:")
+                                        || busyKey?.startsWith("pack-template-open:"),
+                                    )}
                                     canSaveCurrent={Boolean(latestCampaign)}
                                     error={packTemplateState.error}
                                     loading={packTemplateState.loading}

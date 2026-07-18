@@ -66,7 +66,7 @@ Baseline counts:
 - professional: 2
 - specialty: 2
 
-The count is based on non-empty entries in `publicPresence.photos[]`.
+The count is based on unique, trimmed, non-empty URLs in `publicPresence.photos[]`; repeating the same stored image cannot satisfy another required photo.
 
 ### Menu Or Service Photo
 

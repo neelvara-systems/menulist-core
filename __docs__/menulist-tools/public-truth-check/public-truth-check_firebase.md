@@ -1,7 +1,7 @@
 # Public Truth Check - Firebase Cost Tracking
 
 **Status:** Implemented - public self-report route and logged-in owner check
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
@@ -106,6 +106,7 @@ If the public tool captures contact details:
 ## Cost Guardrails
 
 - No arbitrary URL crawling.
+- URL hostname/path/query text is not used as fact evidence; this is browser-local and cost-neutral.
 - No model calls in public free mode.
 - No per-check Firestore writes.
 - No scheduled Cloud Function per tool.
@@ -121,7 +122,7 @@ If the public tool captures contact details:
 | Static/client-only public page | 0 |
 | Public page with lead submit | Low, proportional to form writes |
 | Owner-authenticated status card | Low if it reuses existing store/project context |
-| Recurring report history | Not approved in this planning pass |
+| Manual entitled saved history | Implemented as one capped transactional `platformSummary/publicTruthMonitor_{storeId}` document; scheduled recurrence remains off |
 
 ---
 
@@ -135,7 +136,7 @@ If the public tool captures contact details:
 | Mobile Business Health | `useMobileProjects()` | Existing mobile project cache | Reuses summaries and cached selected project where available |
 | Mobile Business Health | `getProjectDataWithoutLoader(projectId)` | 0-1 read when the checked project is not already in mobile cache | Same DAL as desktop |
 
-No Public Truth Check state is stored for V1. The July 1 owner-side module expansion reuses the same read path and still writes no report state. Saved history remains V2-only.
+No Public Truth Check state is stored for V1. The July 1 owner-side module expansion reuses the same read path and still writes no report state. Saved history remains V2-only and is implemented only through the paid, capped, manual Public Truth Monitor summary document.
 
 The exact owner fix loop added on July 1 is navigation-only. Desktop `fixHref` values and mobile `mobileFixTarget` values route owners to existing Business Settings, Projects, QR/Share, Official Page, Hours, or Presence Monitor surfaces. They add no new Firestore reads, writes, Storage operations, API routes, Cloud Functions, providers, or report-history documents.
 

@@ -2,7 +2,7 @@
 
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline  
 **Status:** Enabled source/cost evidence — not current launch or deploy certification
-**Last Updated:** July 10, 2026
+**Last Updated:** July 14, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI Extraction Monitoring evidence only. Current source sets `ENABLE_EXTRACTION_MONITORING_DASHBOARD=true` and exposes platform-only desktop routes at `/ops/extraction` and `/platform/extraction-monitor` plus `MobileExtractionMonitorScreen` inside `MobileShell`. Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins; ordinary authenticated users retain own-job reads only. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:menu-extraction-pipeline`, `npm run verify:agent-readiness`, `npm run verify:mobile-shell-route-map`, `npm run verify:auth-security-failure-matrix`, authenticated platform desktop/mobile browser QA, bounded read/cost and desktop retry smoke, current extraction/provider smoke, applicable target Firebase rules/index/Functions and Vercel deploy evidence, and production-host smoke.
 
@@ -12,9 +12,11 @@
 
 - **Collections Read:** `menuImageProcessingJobs`, `MENULIST_AI_OPERATIONS` (no separate `aiUsageLog` collection is read)
 - **Collections Written:** No direct monitor writes. A platform admin can use the desktop retry action, which creates one new extraction job through the existing queue path.
+- **Extraction completion write boundary:** Successful/partial authenticated owner work batches the detailed `MENULIST_AI_OPERATIONS` row with one compact zero-credit `menulistAiOperations/{tId}/{sId}` owner-history row. Public/unscoped extraction writes only the detailed platform row.
 - **New Collections:** None
 - **Estimated Monthly Cost:** ~₹4/month at 10 internal visits/day (read-only queries from existing collections; assumes Firestore read pricing at $0.06/100K reads and ₹83/USD)
 - **Browser-local copy diagnostics:** Job Inspector copy hardening adds no Firestore, Storage, Cloud Function, provider, or cache operations. Failed clipboard handoffs use the existing ops diagnostics boundary with bounded metadata only, including clipboard/fallback support booleans and copied-text length rather than raw extraction payloads.
+- **Current authorization and failure truth:** Each browser snapshot adds one exact current-user read through `/api/platform/current-access` before its existing capped job/cost queries. Failed job/cost reads reject the snapshot and show unavailable/previous state instead of false zero metrics. This adds no collection, index, listener, write, Storage operation, Cloud Function or provider call.
 - **Standalone cost-panel diagnostics:** The dashboard snapshot path remains the normal cost source. If `CostMonitor.tsx` is reused without snapshot cost data and its direct compatibility read rejects, the component logs bounded `extraction_cost_monitor_load_failed` diagnostics and shows fixed unavailable copy instead of reporting zero calls. This adds no reads beyond the already-attempted compatibility read and no writes, Storage operations, Cloud Functions, provider calls, rules, indexes, or deploy requirement.
 
 ---
@@ -135,7 +137,7 @@ May already exist — verify before adding:
 | `getExtractionJobDetails()`        | `src/database/ops/extraction.ts` | Read (getDoc, single doc)                  | 1 read                |
 | `getExtractionCostMetrics()`       | `src/database/ops/extraction.ts` | Read (getDocs query, today)                | Up to 100 reads       |
 | `getExtractionQualityMetrics()`    | `src/database/ops/extraction.ts` | Compatibility helper, last completed jobs  | Up to 150 reads       |
-| `retryExtractionJob()`             | `src/database/ops/extraction.ts` | Read + Write (read old job, create new)    | 1R + 1W               |
+| `retryExtractionJob()`             | `src/database/ops/extraction.ts` + platform retry route | Current-platform-user read + SAFE_MODE check + original job read + canonical project read + active-job transaction query/create | Normal successful recovery: bounded authorization/config reads, 3 tenant/job/project reads including the active query, and 1 job write; transaction retries may repeat its query |
 
 ---
 
@@ -143,10 +145,12 @@ May already exist — verify before adding:
 
 No new security rules needed. Dashboard uses existing collections:
 
-- `menuImageProcessingJobs`: ordinary authenticated users can read only their own jobs; platform admins can read all jobs for the monitor
+- `menuImageProcessingJobs`: ordinary authenticated users can read only their own jobs within their current tenant and store; historical `uId` alone does not survive a scope switch. Platform admins can read all jobs for the monitor.
 - `MENULIST_AI_OPERATIONS`: readable only by platform admins
 
 Desktop and mobile components suppress monitor reads unless `platformRole === 'PLATFORM'`, and Firestore rules independently enforce the cross-tenant job and cost-ledger boundary.
+
+Desktop retry is a server-authoritative platform recovery mutation. The API re-reads current platform authority and derives tenant/store/project/owner identity only from the server-owned original failed job. It verifies that identity against the canonical nested project path and private Storage prefixes, sanitizes the replacement document, and uses the existing active-job transaction. No client-supplied tenant or store identifier is accepted, and the ordinary owner job-create route retains exact session-scope enforcement.
 
 ---
 

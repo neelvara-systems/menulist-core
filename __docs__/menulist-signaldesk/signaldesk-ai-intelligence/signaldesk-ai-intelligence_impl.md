@@ -123,6 +123,16 @@ The bounded synchronous batch is intentionally capped at five targets and three 
 
 The protected action route declares a finite 300-second execution window and uses the shared batch-operation rate limit for the worst-case 45-call batch. The API schema and server action independently enforce idempotency-key, target, task, and cost bounds. Aggregate projected cost is checked against current provider daily/monthly budget, and a six-minute recoverable global lock gives the route a one-minute shutdown margin while preventing overlapping paid batches from consuming the same budget snapshot. Any final rejected fact forces low confidence even if a provider reports higher confidence.
 
+The idempotency document identity is the deterministic parent itself. Its request fingerprint covers the normalized founder, target order, task order, optional instruction, and cost ceiling. Exact retries and matching legacy parents return the same run; changed input fails before model execution. A unique worker claim on new parents makes acknowledgement-loss recovery safe: only the worker whose transaction actually committed may continue into paid child execution.
+
+Standalone AI Assist uses the same safety direction without the volume parent: a deterministic `signaldeskIdempotencyKeys` record is transactionally created before the model call and binds actor, target, task, instruction, multi-pass mode, and volume identity. Completed exact retries read the deterministic worker row. The final worker, model-eval, decision-snapshot, AI-operation, provider-spend, timeline, audit, daily-cost, and claim-completion writes share one claim-owned transaction.
+
+Provider, critic, escalation, or unconfirmed final-transaction failure settles the exact owner as `unresolved` with a stable code and one audit event. Exact retry is review-required. If the final transaction committed before its acknowledgement was lost, the completed claim and deterministic worker prove success and no model call repeats.
+
+The standalone claim transaction also reads current Gemini account/policy spend and reserves the initial call estimate. A live AI Volume lock blocks standalone admission. Conversely, AI Volume repeats its complete projected-cost check inside the same transaction that acquires the global lock. Volume children prove that lock belongs to their parent and do not reserve the already bounded envelope individually; their actual call cost is recorded at finalization.
+
+Finalization reads the optional provider-budget policy again. It always increments the provider account, but increments the policy only when the document exists; account-only configuration therefore cannot create a partial policy lacking status, caps, provider, or scope.
+
 An idempotent retry of an expired `running` parent performs no provider call. It reads at most twenty existing worker rows for the parent ID, keeps at most fifteen `ai_assist_*` children, reconstructs completed count, model calls, and estimated cost, then transactionally records:
 
 - `completed` when all requested children already exist;

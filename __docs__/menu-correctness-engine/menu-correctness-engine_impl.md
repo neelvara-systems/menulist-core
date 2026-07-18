@@ -1,9 +1,11 @@
 # Menu Correctness Engine — Implementation Blueprint
 
-**Version:** 3.1
+**Version:** 3.2
 **Status:** ✅ IMPLEMENTED — Active (`ENABLE_MCE: true`)
 **Audience:** Developers
-**Last Updated:** June 27, 2026
+**Last Updated:** July 16, 2026
+
+> **Current runtime boundary:** Standalone update and standalone publish transactions stamp `_mce` in their existing write. The editor gate validates its in-memory project, including resolved linked outlets. The authenticated linked-outlet route enforces schema, policy, scope, and concurrency but does not persist `_mce`; do not interpret older blueprint wording below as a claim that every linked save is stamped.
 
 ---
 
@@ -79,7 +81,7 @@
 - **Frontend-first:** CSR validation runs entirely client-side. Zero Firebase calls for validation.
 - **Non-blocking:** MCE never blocks the raw data write. `_mce` metadata is merged into the same `setDoc` call.
 - **Failure-safe:** If MCE fails (try/catch), the raw project data is still written without `_mce` metadata. MCE failure never blocks the owner.
-- **Zero new collections:** No `menuSnapshots`, no `menuSnapshotPointers`, no `menuDriftLogs`. Only `_mce` field on existing project document.
+- **Zero MCE collections:** MCE adds only `_mce`; the separate canonical-truth flow already has short-term `menuSnapshots`.
 - **Zero cost increase:** No additional Firebase reads or writes beyond what already exists.
 
 ---
@@ -145,7 +147,7 @@ interface MCEMetadata {
 
 ### 2.3 Centralized Sanitization Utility
 
-Extracts the existing `sanitizeForClient()` function (currently a local function in `src/app/_client/[[...slug]]/page.tsx`, line ~237) into a shared utility.
+`sanitizeForClient()` now lives in `src/lib/mce/utils.ts` and is used by the current public client projection.
 
 ```typescript
 // src/lib/mce/utils.ts
@@ -240,7 +242,7 @@ The `_mce` field is a nested object on the existing project document. No composi
 | `src/config/features.ts`                                            | Add `ENABLE_MCE` flag                        | Minimal                            |
 | `src/components/templates/main-app/projects/types/project.types.ts` | Add `_mce` field to `Project` interface      | Minimal — optional field           |
 | `src/components/templates/main-app/projects/editorView/Editor.tsx`  | Publish-Gate in `onContinueClick()`          | Low — conditional behind flag      |
-| `src/app/_client/[[...slug]]/page.tsx`                              | Strip `_mce` in `sanitizeForClient()`        | 1 line — delete internal field     |
+| `src/lib/mce/utils.ts`                                             | Strip `_mce` from the public client projection | Internal metadata stays private  |
 
 **Total: 5 new files (1,062 lines), 5 modified files.**
 
@@ -341,7 +343,7 @@ All surfaces continue reading from the same project document. MCE does NOT modif
 
 **Current** (`src/lib/multiOutlet/resolveProject.ts`): `resolveProjectForRender()` merges master + outlet data.
 
-**MCE:** CSR validates the resolved output. If merge produces invalid state (e.g., orphan items, broken categories), CSR stamps `_mce.verified: false` with relevant warnings.
+**MCE:** The editor Publish-Gate validates resolved output. Standalone transactions persist `_mce`; linked outlet persistence relies on the outlet-save route's stricter schema/policy transaction and does not stamp `_mce`.
 
 ---
 
@@ -351,7 +353,7 @@ All surfaces continue reading from the same project document. MCE does NOT modif
 
 | Rule ID                   | Check                                               | Severity | Blocks Verification? |
 | ------------------------- | --------------------------------------------------- | -------- | -------------------- |
-| `VALID_PRICE_FORMAT`      | Price is a valid number or string-parseable number  | high     | Yes                  |
+| `VALID_PRICE_FORMAT`      | Price matches the shared stored display-price schema | high    | Yes                  |
 | `NO_NEGATIVE_PRICE`       | No item has a negative price                        | critical | Yes                  |
 | `NO_ZERO_PRICE_ACTIVE`    | Active items with price field must have price > 0   | high     | Yes                  |
 | `SUSPICIOUS_PRICE_CHANGE` | Price changed by more than 200% from previous value | medium   | No (warning)         |
@@ -412,11 +414,12 @@ When a master project is saved:
 
 ### Outlet Project
 
-When an outlet project is saved:
+When an outlet project is edited and saved:
 
-1. `resolveProjectForRender()` merges master + outlet overrides (existing behavior)
-2. CSR validates the resolved output (merged data)
-3. `_mce` metadata stamped on outlet project document
+1. `resolveProjectForRender()` supplies the merged editor view.
+2. The editor gate validates that resolved view before continuing.
+3. The save payload is reduced to outlet-local state and crosses `/api/projects/outlet-save`, which rechecks scope, permissions, linkage, policy, shape, and concurrency.
+4. The outlet document is updated transactionally without a second `_mce` write.
 
 ### Master Update Awareness Integration
 
@@ -442,7 +445,7 @@ Master saves → _mce stamped on master project
 /**
  * Menu Correctness Engine (MCE)
  *
- * Validation layer that checks menu data correctness on every save.
+ * Pure validation layer used by supported project mutations and the editor gate.
  * Stamps _mce verification metadata on project document.
  *
  * When enabled:
@@ -533,7 +536,7 @@ allow write: if !('_mce' in request.resource.data) ||
 // src/lib/mce/__tests__/correctnessResolver.test.ts
 
 describe("CSR — Law 1: Price Integrity", () => {
-  test("VALID_PRICE_FORMAT: rejects non-numeric price", () => {});
+  test("VALID_PRICE_FORMAT: accepts currency/text/range values and rejects unsafe format", () => {});
   test("NO_NEGATIVE_PRICE: rejects -50", () => {});
   test("NO_ZERO_PRICE_ACTIVE: rejects active item with price 0", () => {});
   test("SUSPICIOUS_PRICE_CHANGE: warns on >200% change", () => {});
@@ -613,7 +616,7 @@ describe("CSR — Law 5: Structural Integrity", () => {
 
 **Decision:** Defer background monitoring to Phase 2.
 
-**Rationale:** CSR validates on every save. Data cannot become invalid between saves unless someone bypasses `updateProject()`. If we ever need it, it's a simple Cloud Function to add later.
+**Rationale:** Current validation is mutation-local and adds no provider work. Background validation is not justified by current evidence; any future monitor must use the existing consolidated maintenance scheduler and a bounded read model rather than a new standalone Function.
 
 ### ADR-5: No Surface Exposure Controller
 

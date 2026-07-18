@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { logPosSyncSecretRotationAudit } from '@lib/posSync/secretAudit';
 import { formatWebhookSecretPreview } from '@lib/posSync/secretDisplay';
+import { requestPosSyncSecret } from '@lib/posSync/secretResponse';
 import {
     isPosSyncTestResponse,
     isSuccessfulPosSyncTestResponse,
@@ -14,6 +15,7 @@ import {
 import { validatePosSyncWebhookUrl } from '@lib/posSync/webhookUrl';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { Modal, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useTranslations } from 'next-intl';
@@ -35,12 +37,6 @@ const REGENERATE_SECRET_CONFIRMATION = 'REGENERATE';
 const POS_SYNC_CONNECTION_ISSUE_MESSAGE = 'Could not reach connected system';
 const MOBILE_POS_SYNC_COPY_UNAVAILABLE = 'mobile_pos_sync_copy_unavailable';
 const MOBILE_POS_SYNC_COPY_FALLBACK_FAILED = 'mobile_pos_sync_copy_fallback_failed';
-
-interface SecretRotationAuditDraft {
-    secretRotatedAt: string;
-    secretRotatedByEmail: string;
-    secretRotatedByUserId: string;
-}
 
 const hasMobilePosSyncClipboardWrite = (): boolean => (
     typeof navigator !== 'undefined'
@@ -135,12 +131,12 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
+    const [secretLoading, setSecretLoading] = useState(false);
     const [isTesting, setIsTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [secretVisible, setSecretVisible] = useState(false);
     const [regenerateSecretModalOpen, setRegenerateSecretModalOpen] = useState(false);
     const [regenerateSecretConfirmationText, setRegenerateSecretConfirmationText] = useState('');
-    const [pendingSecretRotationAudit, setPendingSecretRotationAudit] = useState<SecretRotationAuditDraft | null>(null);
 
     const currentPosSync = useMemo(() => ({
         enabled: storeDetails?.posSync?.enabled ?? false,
@@ -154,33 +150,65 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         secretRotatedAt: storeDetails?.posSync?.secretRotatedAt ?? '',
         secretRotatedByEmail: storeDetails?.posSync?.secretRotatedByEmail ?? '',
         secretRotatedByUserId: storeDetails?.posSync?.secretRotatedByUserId ?? '',
+        secretVersion: storeDetails?.posSync?.secretVersion ?? 0,
         status: storeDetails?.posSync?.status ?? 'disabled',
-        webhookSecret: storeDetails?.posSync?.webhookSecret ?? '',
         webhookUrl: storeDetails?.posSync?.webhookUrl ?? '',
     }), [storeDetails?.posSync]);
 
     const [enabled, setEnabled] = useState(currentPosSync.enabled);
     const [webhookUrl, setWebhookUrl] = useState(currentPosSync.webhookUrl);
-    const [webhookSecret, setWebhookSecret] = useState(currentPosSync.webhookSecret);
+    const [webhookSecret, setWebhookSecret] = useState('');
     const [originalDraft, setOriginalDraft] = useState(() => ({
         enabled: currentPosSync.enabled,
-        webhookSecret: currentPosSync.webhookSecret,
         webhookUrl: currentPosSync.webhookUrl,
     }));
 
     useEffect(() => {
         const nextDraft = {
             enabled: currentPosSync.enabled,
-            webhookSecret: currentPosSync.webhookSecret,
             webhookUrl: currentPosSync.webhookUrl,
         };
         setEnabled(nextDraft.enabled);
         setWebhookUrl(nextDraft.webhookUrl);
-        setWebhookSecret(nextDraft.webhookSecret);
         setOriginalDraft(nextDraft);
-        setPendingSecretRotationAudit(null);
         setSecretVisible(false);
-    }, [currentPosSync.enabled, currentPosSync.webhookSecret, currentPosSync.webhookUrl]);
+    }, [currentPosSync.enabled, currentPosSync.webhookUrl]);
+
+    useEffect(() => {
+        let active = true;
+        setWebhookSecret('');
+        setSecretVisible(false);
+        if (!storeDetails?.storeId || !storeDetails?.tenantId) return () => { active = false; };
+
+        setSecretLoading(true);
+        requestPosSyncSecret({
+            action: 'read',
+            storeId: storeDetails.storeId,
+            tenantId: storeDetails.tenantId,
+        }).then((result) => {
+            if (active) {
+                setWebhookSecret(result.secret);
+                setStoreDetails((previous: any) => {
+                    const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
+                    return {
+                        ...previous,
+                        posSync: { ...clientPosSync, secretVersion: result.version },
+                    };
+                });
+            }
+        }).catch((error: unknown) => {
+            if (!active || (error as { status?: unknown })?.status === 404) return;
+            logMobileOwnerFailure(
+                'mobile_pos_sync_secret_load_failed',
+                error,
+                getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
+            );
+        }).finally(() => {
+            if (active) setSecretLoading(false);
+        });
+
+        return () => { active = false; };
+    }, [storeDetails?.storeId, storeDetails?.tenantId]);
 
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
         return null;
@@ -194,17 +222,19 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             const writeResult = await updateStore({
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
-                posSync: nextPosSync,
+                posSync: getStoreDeepDifference(nextPosSync, currentPosSync, {
+                    detectRemovedRootKeys: true,
+                }),
             });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,
                 'mobile_pos_sync_store_update_rejected',
             );
-            setStoreDetails({
-                ...storeDetails,
+            setStoreDetails((previous: any) => ({
+                ...previous,
                 posSync: nextPosSync,
-            });
+            }));
             return true;
         } catch (error) {
             logMobileOwnerFailure('mobile_pos_sync_settings_save_failed', error, {
@@ -214,11 +244,9 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 previousEnabled: Boolean(currentPosSync.enabled),
                 hasWebhookUrl: Boolean(nextPosSync.webhookUrl),
                 webhookUrlLength: String(nextPosSync.webhookUrl || '').length,
-                hasWebhookSecret: Boolean(nextPosSync.webhookSecret),
-                webhookSecretLength: String(nextPosSync.webhookSecret || '').length,
-                pendingSecretRotation: Boolean(pendingSecretRotationAudit),
+                hasWebhookSecret: Boolean(webhookSecret),
+                webhookSecretLength: webhookSecret.length,
                 webhookUrlChanged: String(nextPosSync.webhookUrl || '').trim() !== originalDraft.webhookUrl.trim(),
-                secretChanged: nextPosSync.webhookSecret !== originalDraft.webhookSecret,
             });
             Toast.show({ content: 'Failed to save external sync settings.', duration: 1500 });
             return false;
@@ -227,27 +255,16 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         }
     };
 
-    const generateSecret = () => {
-        const bytes = new Uint8Array(32);
-        crypto.getRandomValues(bytes);
-        return `whsec_${Array.from(bytes).map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
-    };
-
     const handleToggle = (checked: boolean) => {
-        const nextSecret = checked && !webhookSecret ? generateSecret() : webhookSecret;
-
         setEnabled(checked);
-        setWebhookSecret(nextSecret);
         setSecretVisible(false);
     };
 
     const isDirty = JSON.stringify({
         enabled,
-        webhookSecret,
         webhookUrl: webhookUrl.trim(),
     }) !== JSON.stringify({
         enabled: originalDraft.enabled,
-        webhookSecret: originalDraft.webhookSecret,
         webhookUrl: originalDraft.webhookUrl.trim(),
     });
 
@@ -263,19 +280,44 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             normalizedWebhookUrl = validation.normalizedUrl;
         }
 
+        if (enabled && !webhookSecret) {
+            setSecretLoading(true);
+            try {
+                const result = await requestPosSyncSecret({
+                    action: 'ensure',
+                    storeId: storeDetails?.storeId,
+                    tenantId: storeDetails?.tenantId,
+                });
+                setWebhookSecret(result.secret);
+                setStoreDetails((previous: any) => {
+                    const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
+                    return {
+                        ...previous,
+                        posSync: { ...clientPosSync, secretVersion: result.version },
+                    };
+                });
+            } catch (error) {
+                logMobileOwnerFailure(
+                    'mobile_pos_sync_secret_ensure_failed',
+                    error,
+                    getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                );
+                Toast.show({ content: 'Could not prepare the verification secret. Try again.', duration: 1500 });
+                return;
+            } finally {
+                setSecretLoading(false);
+            }
+        }
+
         const connectionChanged = enabled !== currentPosSync.enabled
-            || normalizedWebhookUrl !== currentPosSync.webhookUrl
-            || webhookSecret !== currentPosSync.webhookSecret
-            || Boolean(pendingSecretRotationAudit);
+            || normalizedWebhookUrl !== currentPosSync.webhookUrl;
 
         const nextPosSync = {
             ...currentPosSync,
             enabled,
-            webhookSecret,
             consecutiveFailures: enabled && !connectionChanged ? currentPosSync.consecutiveFailures : 0,
             lastError: enabled && !connectionChanged && currentPosSync.lastError ? POS_SYNC_CONNECTION_ISSUE_MESSAGE : '',
             menuVersion: enabled ? currentPosSync.menuVersion : 0,
-            ...(pendingSecretRotationAudit ?? {}),
             status: enabled ? (connectionChanged || currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled',
             webhookUrl: normalizedWebhookUrl,
         };
@@ -285,19 +327,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         if (saved) {
             setOriginalDraft({
                 enabled,
-                webhookSecret,
                 webhookUrl: normalizedWebhookUrl,
             });
-            if (pendingSecretRotationAudit) {
-                logPosSyncSecretRotationAudit({
-                    actorEmail: pendingSecretRotationAudit.secretRotatedByEmail,
-                    actorUserId: pendingSecretRotationAudit.secretRotatedByUserId,
-                    rotatedAt: pendingSecretRotationAudit.secretRotatedAt,
-                    storeId: storeDetails?.storeId,
-                    tenantId: storeDetails?.tenantId,
-                });
-            }
-            setPendingSecretRotationAudit(null);
             Toast.show({ content: 'External sync settings saved.', duration: 1000 });
         }
     };
@@ -317,27 +348,64 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
         };
     };
 
-    const confirmSecretRegeneration = () => {
+    const confirmSecretRegeneration = async () => {
         if (regenerateSecretConfirmationText.trim() !== REGENERATE_SECRET_CONFIRMATION) {
             Toast.show({ content: `Type ${REGENERATE_SECRET_CONFIRMATION} to continue.`, duration: 1500 });
             return;
         }
 
-        const nextSecret = generateSecret();
-        setWebhookSecret(nextSecret);
-        setSecretVisible(false);
-        setPendingSecretRotationAudit(buildSecretRotationAudit());
-        setRegenerateSecretModalOpen(false);
-        setRegenerateSecretConfirmationText('');
-        Toast.show({ content: 'New secret generated. Use Copy to share it with your provider.', duration: 1500 });
+        const audit = buildSecretRotationAudit();
+        setSecretLoading(true);
+        try {
+            const result = await requestPosSyncSecret({
+                action: 'rotate',
+                storeId: storeDetails?.storeId,
+                tenantId: storeDetails?.tenantId,
+            });
+            setWebhookSecret(result.secret);
+            setSecretVisible(false);
+            setStoreDetails((previous: any) => {
+                const { webhookSecret: _legacySecret, ...clientPosSync } = previous?.posSync || {};
+                return {
+                    ...previous,
+                    posSync: {
+                        ...clientPosSync,
+                        consecutiveFailures: 0,
+                        lastError: '',
+                        secretRotatedAt: audit.secretRotatedAt,
+                        secretRotatedByEmail: audit.secretRotatedByEmail,
+                        secretRotatedByUserId: audit.secretRotatedByUserId,
+                        secretVersion: result.version,
+                        status: enabled ? 'healthy' : 'disabled',
+                    },
+                };
+            });
+            logPosSyncSecretRotationAudit({
+                actorEmail: audit.secretRotatedByEmail,
+                actorUserId: audit.secretRotatedByUserId,
+                rotatedAt: audit.secretRotatedAt,
+                storeId: storeDetails?.storeId,
+                tenantId: storeDetails?.tenantId,
+            });
+            setRegenerateSecretModalOpen(false);
+            setRegenerateSecretConfirmationText('');
+            Toast.show({ content: 'New secret generated. Use Copy to share it with your provider.', duration: 1500 });
+        } catch (error) {
+            logMobileOwnerFailure(
+                'mobile_pos_sync_secret_rotation_save_failed',
+                error,
+                getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+            );
+            Toast.show({ content: 'Could not save the new secret. Try again.', duration: 1500 });
+        } finally {
+            setSecretLoading(false);
+        }
     };
 
     const handleReset = () => {
         setEnabled(originalDraft.enabled);
         setWebhookUrl(originalDraft.webhookUrl);
-        setWebhookSecret(originalDraft.webhookSecret);
         setTestResult(null);
-        setPendingSecretRotationAudit(null);
         setSecretVisible(false);
     };
 
@@ -352,7 +420,6 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                 hasWebhookSecret: Boolean(webhookSecret),
                 webhookSecretLength: webhookSecret.length,
                 secretVisible,
-                pendingSecretRotation: Boolean(pendingSecretRotationAudit),
                 hasClipboardWrite: hasMobilePosSyncClipboardWrite(),
                 hasCopyFallback: hasMobilePosSyncCopyFallback(),
             });
@@ -519,7 +586,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                             <Text strong>{t('enablePosSync')}</Text>
                             <Text type="secondary">{t('enablePosSyncDesc')}</Text>
                         </Flex>
-                        <Switch checked={enabled} onChange={(checked) => void handleToggle(checked)} />
+                        <Switch checked={enabled} disabled={secretLoading} onChange={(checked) => void handleToggle(checked)} />
                     </Flex>
                 </Card>
 
@@ -548,19 +615,19 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
                         <Text style={{ wordBreak: 'break-all' }}>{webhookSecret ? (secretVisible ? webhookSecret : formatWebhookSecretPreview(webhookSecret)) : 'Generate a secret after enabling external sync.'}</Text>
                         <Text type="secondary">{t('signingSecretHelp')}</Text>
                         <Flex gap={8} wrap="wrap">
-                            <Button disabled={!webhookSecret} fill="outline" onClick={() => setSecretVisible((current) => !current)} style={{ flex: '1 1 112px' }}>
+                            <Button disabled={!webhookSecret || secretLoading} fill="outline" onClick={() => setSecretVisible((current) => !current)} style={{ flex: '1 1 112px' }}>
                                 <Flex align="center" gap={6} justify="center">
                                     {secretVisible ? <LuEyeOff size={16} /> : <LuEye size={16} />}
                                     <Text>{secretVisible ? 'Hide' : 'Reveal'}</Text>
                                 </Flex>
                             </Button>
-                            <Button disabled={!webhookSecret} fill="outline" onClick={() => void handleCopySecret()} style={{ flex: '1 1 112px' }}>
+                            <Button disabled={!webhookSecret || secretLoading} fill="outline" onClick={() => void handleCopySecret()} style={{ flex: '1 1 112px' }}>
                                 <Flex align="center" gap={6}>
                                     <LuCopy size={16} />
                                     <Text>{t('copySecret')}</Text>
                                 </Flex>
                             </Button>
-                            <Button fill="outline" onClick={() => void handleRegenerateSecret()} style={{ flex: '1 1 112px' }}>
+                            <Button disabled={secretLoading} fill="outline" onClick={() => void handleRegenerateSecret()} style={{ flex: '1 1 112px' }}>
                                 <Flex align="center" gap={6}>
                                     <LuRefreshCw size={16} />
                                     <Text>{t('regenerateSecret')}</Text>
@@ -572,7 +639,7 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
 
                 <Card>
                     <Flex gap={10} vertical>
-                        <Button block disabled={!enabled || !webhookUrl.trim()} fill="outline" loading={isTesting} onClick={() => void handleTest()}>
+                        <Button block disabled={!enabled || !webhookUrl.trim() || !webhookSecret || secretLoading} fill="outline" loading={isTesting} onClick={() => void handleTest()}>
                             <Flex align="center" gap={6}>
                                 <LuSend size={16} />
                                 <Text>{t('sendTest')}</Text>
@@ -613,7 +680,8 @@ export default function MobilePosSyncScreen({ onBack }: MobilePosSyncScreenProps
             <Modal
                 title="Regenerate verification secret"
                 open={regenerateSecretModalOpen}
-                onOk={confirmSecretRegeneration}
+                confirmLoading={secretLoading}
+                onOk={() => void confirmSecretRegeneration()}
                 onCancel={() => {
                     setRegenerateSecretModalOpen(false);
                     setRegenerateSecretConfirmationText('');

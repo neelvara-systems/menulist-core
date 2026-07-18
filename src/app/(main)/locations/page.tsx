@@ -3,7 +3,7 @@
 /**
  * Chain Control Panel — HQ Command Center
  * Visible only when isMaster && storesList.length > 1
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §17
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §17
  */
 
 import AddOutletModal from '@organisms/AddOutletModal';
@@ -23,6 +23,7 @@ import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { DEFAULT_OUTLET_POLICY } from '@type/multiOutlet.types';
 import { Badge, Button, Card, Empty, message, Modal, Space, Table, Tag, Typography } from 'antd';
+import { useFormatter } from 'next-intl';
 import { useContext, useState } from 'react';
 import { LuMapPin, LuPlusCircle, LuStar } from 'react-icons/lu';
 
@@ -49,6 +50,7 @@ async function readDesktopLocationActionResponse(
 }
 
 export default function LocationsPage() {
+    const formatter = useFormatter();
     const {
         tenantDetails,
         setTenantDetails,
@@ -96,7 +98,9 @@ export default function LocationsPage() {
     const totalCost = amount * activeCount;
 
     const handleSwitchStore = async (targetStoreId: number) => {
-        if (Number(targetStoreId) === Number(storeDetails?.storeId)) {
+        const currentStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);
+        if (Number(targetStoreId) === currentStoreId) return;
+        if (Number(targetStoreId) === Number(masterStoreId)) {
             if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
             setActiveStoreContext(null);
             return;
@@ -174,7 +178,15 @@ export default function LocationsPage() {
                         if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
                         setActiveStoreContext(null);
                     }
-                    message.success('Outlet deactivated');
+                    if (data.billingReductionPending) {
+                        message.warning(
+                            data.billingActionRequired === 'CONTACT_SUPPORT'
+                                ? 'Outlet deactivated. Contact support to finish the billing reduction.'
+                                : 'Outlet deactivated. Billing is still being updated.',
+                        );
+                    } else {
+                        message.success('Outlet deactivated');
+                    }
                 } catch (error) {
                     logMultiOutletFailure('desktop_location_deactivate_failed', error, {
                         ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
@@ -217,6 +229,7 @@ export default function LocationsPage() {
                 return (
                     <Space size="small">
                         <Button
+                            disabled={Number(record.storeId) === Number(activeStoreContext || storeDetails?.storeId)}
                             size="small"
                             onClick={() => void handleSwitchStore(record.storeId)}
                         >
@@ -271,11 +284,11 @@ export default function LocationsPage() {
                 <Card size="small" title="Billing Summary">
                     <Space direction="vertical">
                         <Text>Active Outlets: <Text strong>{activeOutletCount}</Text></Text>
-                        <Text>Cost per Store: <Text strong>{currency} {amount}/month</Text></Text>
-                        <Text>Total Chain Cost: <Text strong>{currency} {totalCost}/month</Text> (Master + {activeOutletCount} active outlets)</Text>
+                        <Text>Cost per Store: <Text strong>{formatter.number(amount, { currency, style: 'currency' })}/month</Text></Text>
+                        <Text>Total Chain Cost: <Text strong>{formatter.number(totalCost, { currency, style: 'currency' })}/month</Text> (Master + {activeOutletCount} active outlets)</Text>
                         {activeSubscription?.cycleEndDate && (
                             <Text type="secondary">
-                                Next Invoice: {activeSubscription.cycleEndDate.toDate().toLocaleDateString()}
+                                Next Invoice: {formatter.dateTime(activeSubscription.cycleEndDate.toDate(), 'date')}
                             </Text>
                         )}
                     </Space>

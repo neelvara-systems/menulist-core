@@ -6,6 +6,7 @@ import GlobalLanguagesList from "@data/languages";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { getBrandName, getStoreContextName, getStoreName } from "@lib/businessIdentity/names";
+import { normalizeGeoCoordinateDraft } from "@lib/businessIdentity/geoCoordinates";
 import {
     appendPublicLanguageParam,
     getNextIntlLocaleForPublicLanguage,
@@ -20,7 +21,9 @@ import { getBusinessAttributeConfigForType, normalizeCustomBusinessAttributes } 
 import { resolveOBPAccentColor } from "@lib/obp/accentColor";
 import { generateOBPUrl, getDefaultProjectUrl } from "@lib/obp/generateOBPUrl";
 import { getStoreOpenStatus } from "@lib/obp/hoursStatus";
+import { getStoreDayKey, getStoreStatus, normalizeWorkingHoursValue, parseWorkingHoursRanges } from "@lib/hours/hoursEngine";
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl, normalizeOBPReviewUrl, normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from "@lib/obp/publicLinks";
+import { buildTelHref, buildWhatsAppPhoneParam } from "@lib/phone/phoneNumber";
 import { resolveHoursOutput } from "@lib/outputControl";
 import { shouldShowStarterPublicPlaceholders } from "@lib/onboarding/starterActivation";
 import { resolveMenuListAttributionPolicy } from "@lib/platform/menuListBranding";
@@ -148,29 +151,28 @@ function logOBPResolvedSurfaceFailure(
 }
 
 function getTodayDayKey(timeZone: string | undefined): string {
-    const tz = timeZone || 'Asia/Kolkata';
-    try {
-        const formatter = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' });
-        const dayStr = formatter.format(new Date()).toLowerCase().slice(0, 3);
-        return DAY_KEYS.includes(dayStr) ? dayStr : DAY_KEYS[new Date().getDay()];
-    } catch (error) {
-        logOBPResolvedSurfaceFailure('public_obp_today_day_key_timezone_failed', error, {
-            timeZone: tz,
-        });
-        return DAY_KEYS[new Date().getDay()];
-    }
+    return getStoreDayKey(timeZone || 'Asia/Kolkata');
 }
 
 function getTodayHoursDisplay(workingHours: Record<string, string> | undefined, timeZone: string | undefined, t: (key: string, values?: Record<string, any>) => string): string | null {
     if (!workingHours) return null;
 
     const todayHours = workingHours[getTodayDayKey(timeZone)];
-
-    if (!todayHours || todayHours.toLowerCase() === 'closed') return t('publicClosedToday');
-
-    const [openTime, closeTime] = todayHours.split('-').map((time) => time.trim());
-    if (!openTime || !closeTime) return t('publicOpenToday', { hours: todayHours.replace('-', ' - ') });
-    return t('publicOpenToday', { hours: `${formatClockTime(openTime)} - ${formatClockTime(closeTime)}` });
+    const status = getStoreStatus(workingHours, timeZone || 'Asia/Kolkata');
+    if (status.isOpen && status.currentDayHours) {
+        return t('publicOpenToday', { hours: status.currentDayHours });
+    }
+    const ranges = parseWorkingHoursRanges(todayHours);
+    if (!ranges.length) {
+        if (!todayHours || (typeof todayHours === 'string' && todayHours.toLowerCase() === 'closed')) {
+            return t('publicClosedToday');
+        }
+        return t('publicHoursNotAvailable');
+    }
+    const display = ranges
+        .map((range) => `${formatClockTime(range.startTime)} - ${formatClockTime(range.endTime)}`)
+        .join(', ');
+    return t('publicOpenToday', { hours: display });
 }
 
 function getSafeGoogleMapsEmbedUrl(url?: string): string | null {
@@ -190,11 +192,6 @@ function getSafeGoogleMapsEmbedUrl(url?: string): string | null {
     return null;
 }
 
-function getValidCoordinate(value: unknown): number | null {
-    const numberValue = typeof value === 'number' ? value : Number(value);
-    return Number.isFinite(numberValue) ? numberValue : null;
-}
-
 function buildGoogleMapsEmbedUrl(params: {
     address?: string | null;
     apiKey?: string;
@@ -206,10 +203,9 @@ function buildGoogleMapsEmbedUrl(params: {
 
     if (!params.apiKey) return null;
 
-    const latitude = getValidCoordinate(params.geo?.latitude);
-    const longitude = getValidCoordinate(params.geo?.longitude);
-    const query = latitude !== null && longitude !== null
-        ? `${latitude},${longitude}`
+    const normalizedGeo = normalizeGeoCoordinateDraft(params.geo?.latitude, params.geo?.longitude);
+    const query = normalizedGeo.ok && normalizedGeo.geo
+        ? `${normalizedGeo.geo.latitude},${normalizedGeo.geo.longitude}`
         : params.address?.trim();
 
     if (!query) return null;
@@ -276,15 +272,17 @@ function getAllHoursDisplay(workingHours: Record<string, string> | undefined, t:
 
     const rows = DAY_ORDER.map(day => {
         const hours = workingHours[day];
-        const isClosed = !hours || hours.toLowerCase() === 'closed';
+        const isClosed = !hours || (typeof hours === 'string' && hours.toLowerCase() === 'closed');
+        const normalized = normalizeWorkingHoursValue(hours);
+        const ranges = parseWorkingHoursRanges(hours);
         const display = hours
-            ? hours.toLowerCase() === 'closed'
+            ? typeof hours === 'string' && hours.toLowerCase() === 'closed'
                 ? t('publicClosed')
-                : (() => {
-                    const [openTime, closeTime] = hours.split('-').map((time) => time.trim());
-                    if (!openTime || !closeTime) return hours.replace('-', ' - ');
-                    return `${formatClockTime(openTime)} - ${formatClockTime(closeTime)}`;
-                })()
+                : normalized === null || !ranges.length
+                    ? t('publicHoursNotAvailable')
+                    : ranges
+                        .map((range) => `${formatClockTime(range.startTime)} - ${formatClockTime(range.endTime)}`)
+                        .join(', ')
             : t('publicClosed');
         const isToday = todayKey === day;
         return (
@@ -622,8 +620,19 @@ export default function OBPResolvedSurface({
         ...project,
         label: t('publicViewNamedMenu', { name: project.name }),
     }));
-    const showCall = (pp.showCall !== false) && !!store?.phoneNumber;
-    const showWhatsApp = (pp.showWhatsApp !== false) && !!(pp.whatsappNumber || store?.phoneNumber);
+    const whatsappNumber = pp.whatsappNumber || store?.phoneNumber || '';
+    const safeCallHref = buildTelHref({
+        countryCode: store?.countryCode,
+        dialCode: store?.dialCode,
+        phoneNumber: store?.phoneNumber,
+    });
+    const safeWhatsAppPhoneParam = buildWhatsAppPhoneParam({
+        countryCode: store?.countryCode,
+        dialCode: store?.dialCode,
+        phoneNumber: whatsappNumber,
+    });
+    const showCall = (pp.showCall !== false) && !!safeCallHref;
+    const showWhatsApp = (pp.showWhatsApp !== false) && !!safeWhatsAppPhoneParam;
     const safeGoogleMapsUrl = normalizeOBPGoogleMapsUrl(pp.googleMapsUrl);
     const safeReservationUrl = normalizeOBPExternalHttpsUrl(pp.reservationUrl);
     const safeOrderUrl = normalizeOBPExternalHttpsUrl(pp.orderUrl);
@@ -643,7 +652,6 @@ export default function OBPResolvedSurface({
         ...((pp.showGoogleReview !== false) && !showGoogleReview ? ['reviews' as const] : []),
         ...((pp.showFeedback !== false) && store?.feedbackEnabled !== false && !showFeedback ? ['feedback' as const] : []),
     ] : [];
-    const whatsappNumber = pp.whatsappNumber || store?.phoneNumber || '';
     const directionsUrl = safeGoogleMapsUrl || (fullAddress ? `https://maps.google.com/?q=${encodeURIComponent(fullAddress)}` : '');
     const googleMapsEmbedUrl = buildGoogleMapsEmbedUrl({
         address: fullAddress,
@@ -683,13 +691,15 @@ export default function OBPResolvedSurface({
             fallbackIcon: iconVariant === 'emoji' ? getBusinessAttributeEmoji(attribute.key) : undefined,
             label: t(attribute.publicLabelKey),
         }));
-    const customAttributeTags = normalizeCustomBusinessAttributes(pp.customAttributes).map((attribute) => ({
-        key: attribute.id,
-        Icon: iconVariant === 'icons' && !attribute.icon ? LuBadgeCheck : undefined,
-        customIcon: attribute.icon,
-        fallbackIcon: iconVariant === 'emoji' ? getBusinessAttributeEmoji(attribute.id) : '+',
-        label: attribute.label,
-    }));
+    const customAttributeTags = normalizeCustomBusinessAttributes(pp.customAttributes)
+        .filter((attribute) => attribute.active !== false)
+        .map((attribute) => ({
+            key: attribute.id,
+            Icon: iconVariant === 'icons' && !attribute.icon ? LuBadgeCheck : undefined,
+            customIcon: attribute.icon,
+            fallbackIcon: iconVariant === 'emoji' ? getBusinessAttributeEmoji(attribute.id) : '+',
+            label: attribute.label,
+        }));
     const repeatedStructuredAttributeKeys = new Set([
         'dineIn',
         'takeaway',

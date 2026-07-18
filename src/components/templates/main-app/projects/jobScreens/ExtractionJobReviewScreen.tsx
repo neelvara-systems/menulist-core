@@ -10,6 +10,10 @@
  */
 
 import { applyExtractionChanges, discardExtractionChanges, isAcknowledgedApplyChangesResult } from '@lib/extraction/applyChanges';
+import {
+    MENULIST_ANSWERLATTICE_TARGETS,
+    getMenuListAnswerlatticeTargetProps,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { updateApplyPlan } from '@lib/extraction/comparisonEngine';
 import type {
     ComparisonEngineOutput,
@@ -24,12 +28,16 @@ import {
 } from '@lib/firebase/menuProcessingDiagnostics';
 import {
     countApprovedChanges,
+    createReviewPreviewSession,
+    getReviewPreviewIdentity,
     hasAnyPreviewChanges,
+    resolveReviewPreviewSession,
     setAllPreviewApprovals,
     setSafePreviewApprovals,
+    updateReviewPreviewSession,
 } from '@lib/extraction/reviewPreview';
 import { Alert, Button, Card, Checkbox, Empty, Flex, message, Space, Tag, theme, Typography } from 'antd';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
@@ -241,7 +249,34 @@ export function ExtractionJobReviewScreen({
     onDiscard,
 }: ExtractionJobReviewScreenProps) {
     const { token } = theme.useToken();
-    const [preview, setPreview] = useState(comparisonResult.preview);
+    const reviewIdentity = getReviewPreviewIdentity(projectId, jobId);
+    const activeReviewIdentityRef = useRef(reviewIdentity);
+    activeReviewIdentityRef.current = reviewIdentity;
+    const isMountedRef = useRef(false);
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+    const [previewSession, setPreviewSession] = useState(() => (
+        createReviewPreviewSession(projectId, jobId, comparisonResult.preview)
+    ));
+    const preview = resolveReviewPreviewSession(
+        previewSession,
+        projectId,
+        jobId,
+        comparisonResult.preview,
+    ).preview;
+    const setPreview = useCallback((update: (current: typeof preview) => typeof preview) => {
+        setPreviewSession((current) => updateReviewPreviewSession(
+            current,
+            projectId,
+            jobId,
+            comparisonResult.preview,
+            update,
+        ));
+    }, [comparisonResult.preview, jobId, projectId]);
     const [isSaving, setIsSaving] = useState(false);
     const [isDiscarding, setIsDiscarding] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
@@ -300,6 +335,7 @@ export function ExtractionJobReviewScreen({
 
         setIsSaving(true);
         setActionError(null);
+        const submittedReviewIdentity = reviewIdentity;
         try {
             // Build updated apply plan from current preview state
             const updatedOutput: ComparisonEngineOutput = {
@@ -316,6 +352,10 @@ export function ExtractionJobReviewScreen({
                 primaryLang,
             });
 
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
+
             if (isAcknowledgedApplyChangesResult(result, {
                 appliedChangeCount: totalChanges,
                 jobId,
@@ -329,7 +369,10 @@ export function ExtractionJobReviewScreen({
                 setActionError(errorMessage);
                 message.error(errorMessage);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             logMenuProcessingFailure('desktop_extraction_review_apply_failed', error, {
                 ...getMenuProcessingProjectLogContext(projectId),
                 ...getMenuProcessingJobLogContext(jobId),
@@ -338,21 +381,30 @@ export function ExtractionJobReviewScreen({
             setActionError(errorMessage);
             message.error(errorMessage);
         } finally {
-            setIsSaving(false);
+            if (isMountedRef.current && activeReviewIdentityRef.current === submittedReviewIdentity) {
+                setIsSaving(false);
+            }
         }
-    }, [comparisonResult, preview, projectId, jobId, primaryLang, totalChanges, onSaveComplete]);
+    }, [comparisonResult, preview, projectId, jobId, primaryLang, reviewIdentity, totalChanges, onSaveComplete]);
 
     // Discard handler
     const handleDiscard = useCallback(async () => {
+        const submittedReviewIdentity = reviewIdentity;
         markMenuProcessingJobAsDismissed(jobId);
         setIsDiscarding(true);
         setActionError(null);
         try {
             await discardExtractionChanges(jobId);
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             message.info('Changes discarded');
             onDiscard();
-        } catch (error: any) {
+        } catch (error: unknown) {
             clearMenuProcessingJobDismissal(jobId);
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             logMenuProcessingFailure('desktop_extraction_review_discard_failed', error, {
                 ...getMenuProcessingJobLogContext(jobId),
             });
@@ -360,9 +412,11 @@ export function ExtractionJobReviewScreen({
             setActionError(errorMessage);
             message.error(errorMessage);
         } finally {
-            setIsDiscarding(false);
+            if (isMountedRef.current && activeReviewIdentityRef.current === submittedReviewIdentity) {
+                setIsDiscarding(false);
+            }
         }
-    }, [jobId, onDiscard]);
+    }, [jobId, onDiscard, reviewIdentity]);
 
     // Check if there are any changes to show
     const hasAnyChanges = hasAnyPreviewChanges(preview);
@@ -549,6 +603,7 @@ export function ExtractionJobReviewScreen({
                 }}
             >
                 <Button
+                    {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_REVIEW_APPLY)}
                     onClick={handleDiscard}
                     loading={isDiscarding}
                     disabled={isSaving}

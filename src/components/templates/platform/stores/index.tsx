@@ -75,7 +75,7 @@ function StoresDashboard({ tenantsList, setTenantsList }) {
             key: 'logo',
             render: (_, record) => (
                 <Flex align='center' justify='flex-start' gap={10}>
-                    {record?.logo ? <img src={record?.logo} style={{ width: "auto", height: 50, borderRadius: 25 }} /> : <LuImageOff />}
+                    {record?.logo ? <img alt={`${record?.name || 'Store'} logo`} src={record?.logo} style={{ width: "auto", height: 50, borderRadius: 25 }} /> : <LuImageOff />}
                 </Flex>
             ),
         },

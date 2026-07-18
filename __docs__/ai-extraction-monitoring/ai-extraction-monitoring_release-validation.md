@@ -154,6 +154,27 @@ Failed jobs surface clear status and do not create partial project corruption.
 Expected result:
 All extraction-related strings render correctly in supported locale packs.
 
+### 11. Job Switch And Listener Failure Isolation
+
+1. Start or restore job A, then switch to a project tracking job B before B's first snapshot arrives.
+2. Confirm job A's completed/preview result is never applied or rendered under job B.
+3. Repeat with a denied or interrupted B listener.
+4. Confirm the prior job value clears and no success/review side effect runs.
+
+Expected result:
+Only a snapshot whose document ID equals the currently requested job ID can drive owner UI state.
+
+### 12. Platform Retry Recovery
+
+1. Sign in as a current persisted PLATFORM user whose active tenant/store differs from the failed job owner.
+2. Retry one eligible failed project job from the desktop inspector.
+3. Confirm one replacement job is created under the original tenant/store/project/owner, with `retriedFromJobId` and incremented `retryCount`.
+4. Confirm retry is denied for a downgraded/revoked platform user, non-retryable/completed job, third prior retry, missing project, foreign Storage prefix, and when another project job is active.
+5. Confirm repeated/concurrent clicks do not create duplicate active jobs.
+
+Expected result:
+Platform recovery succeeds without borrowing the operator's active tenant context or weakening ordinary owner isolation.
+
 ---
 
 ## Firestore And Functions Validation

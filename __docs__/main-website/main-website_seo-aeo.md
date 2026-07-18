@@ -106,7 +106,7 @@
 | Pricing        | Start with a 7-day MenuList setup, then choose the plan that keeps your official customer link live, current, and owner-approved.                  |
 | Multi-Location | Manage menu source changes across locations from one place. Keep outlet menus consistent while preserving location-level control.       |
 | About          | MenuList turns your menu into your entire online presence. Built for businesses that care about how they present themselves to customers.                           |
-| Contact        | Have questions about MenuList? Reach out to our team. We are here to help you get your menu online.                                                                 |
+| Contact        | Send a MenuList question or product note through the contact form, or email hello@menulist.ai for a direct conversation.                                             |
 | Get Started    | Start with your current menu and create the owner-approved source for the customer-facing version of your business.             |
 | Create Menu    | Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public. |
 | Create Menu Success | Share the published MenuList menu link and next steps after setup. This route is intentionally `noindex, nofollow, nocache` with a self canonical to the non-query success path. |

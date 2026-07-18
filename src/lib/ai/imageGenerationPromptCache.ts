@@ -1,9 +1,11 @@
 import crypto, { randomUUID } from "crypto";
 import { DB_COLLECTIONS } from "@constant/database";
 import {
+    buildImagePromptCacheSourcePath,
     getReusableImagePromptCacheSource,
     IMAGE_PROMPT_CACHE_KEY_VERSION,
     IMAGE_PROMPT_CACHE_STORAGE_PREFIX,
+    isImagePromptCacheSourcePathForKey,
 } from "@lib/ai/imagePromptCacheBoundary";
 import { firestoreAdmin, storageAdmin, admin } from "@lib/firebase/firebaseAdmin";
 import { getMediaImageProfile } from "@lib/media/imageProfiles";
@@ -11,6 +13,7 @@ import { buildMediaStoragePath, getMediaFileExtension } from "@lib/media/mediaSt
 import { prepareMediaImageAdmin } from "@lib/media/prepareMediaImageAdmin";
 import { createUppercaseRandomIdSegment } from "@lib/runtime/randomId";
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import { createOrReuseAdminImmutableObject } from "@lib/storage/adminImmutableObject";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { GenerateImageViaApiPayloadGenerationConfiType } from "@template/main-app/projects/types";
 
@@ -101,11 +104,6 @@ function normalizeImageDataUrl(image: PromptCacheImagePayload): string {
     return `data:${image.mimeType};base64,${image.base64}`;
 }
 
-function getPublicDownloadUrl(path: string, token: string): string {
-    const bucket = storageAdmin.bucket();
-    return `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
-}
-
 function isCacheDocFresh(cacheDoc: CachedPromptImageDoc): boolean {
     const expiresAt = cacheDoc.expiresAt?.toMillis?.() || 0;
     return expiresAt > Date.now();
@@ -178,24 +176,26 @@ export async function copyCachedImagePromptToStore(params: {
             variant: profile.primaryVariant,
         });
         const token = randomUUID();
-
-        await bucket.file(destinationPath).save(buffer, {
-            metadata: {
-                cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
-                contentType: mimeType,
-                metadata: {
-                    cacheKey,
-                    cacheVersion: String(IMAGE_PROMPT_CACHE_KEY_VERSION),
-                    firebaseStorageDownloadTokens: token,
-                    promptCacheHit: "true",
-                    profile: "menuItem",
-                    retentionPolicy: "public_asset_until_replaced_or_deleted",
-                    source: "ai-image-prompt-cache-hit",
-                    variant: profile.primaryVariant,
-                    version: "1",
-                },
+        const checksum = crypto.createHash("sha256").update(buffer).digest("hex");
+        const destinationUpload = await createOrReuseAdminImmutableObject({
+            bucketName: bucket.name,
+            buffer,
+            cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
+            contentType: mimeType,
+            customMetadata: {
+                cacheKey,
+                cacheVersion: String(IMAGE_PROMPT_CACHE_KEY_VERSION),
+                checksum,
+                promptCacheHit: "true",
+                profile: "menuItem",
+                retentionPolicy: "public_asset_until_replaced_or_deleted",
+                source: "ai-image-prompt-cache-hit",
+                variant: profile.primaryVariant,
+                version: "1",
             },
-            resumable: false,
+            file: bucket.file(destinationPath),
+            path: destinationPath,
+            token,
         });
 
         logRuntimeDiagnostic("ai_image_prompt_cache_hit", logContext);
@@ -207,7 +207,7 @@ export async function copyCachedImagePromptToStore(params: {
             promptCacheKey: cacheKey,
             sizeBytes: buffer.length,
             storagePath: destinationPath,
-            uploadedUrl: getPublicDownloadUrl(destinationPath, token),
+            uploadedUrl: destinationUpload.url,
         };
     } catch (error) {
         logRuntimeFailure("ai_image_prompt_cache_hit_failed", error, logContext);
@@ -233,7 +233,8 @@ export async function writeImagePromptCacheSource(params: {
             aspectRatio: params.generationConfig?.aspectRatio,
         });
         const extension = getMediaFileExtension(prepared.mimeType);
-        const sourcePath = `${IMAGE_PROMPT_CACHE_STORAGE_PREFIX}/${cacheKey}.${extension}`;
+        const sourcePath = buildImagePromptCacheSourcePath(cacheKey, randomUUID(), extension);
+        if (!sourcePath) throw new Error('Image prompt cache source identity is invalid.');
         const now = admin.firestore.Timestamp.now();
 
         await storageAdmin.bucket().file(sourcePath).save(prepared.buffer, {
@@ -256,20 +257,31 @@ export async function writeImagePromptCacheSource(params: {
             resumable: false,
         });
 
-        await getImagePromptCacheRef(cacheKey).set({
-            aiModel: params.aiModel,
-            aspectRatio: params.generationConfig?.aspectRatio || "1:1",
-            createdAt: now,
-            expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + IMAGE_PROMPT_CACHE_TTL_DAYS * DAY_MS),
-            height: prepared.height,
-            keyVersion: IMAGE_PROMPT_CACHE_KEY_VERSION,
-            mimeType: prepared.mimeType,
-            outputSizeBytes: prepared.sizeBytes,
-            promptLength: params.prompt.length,
-            sourcePath,
-            updatedAt: now,
-            width: prepared.width,
-        }, { merge: true });
+        const cacheRef = getImagePromptCacheRef(cacheKey);
+        let previousSourcePath = '';
+        await firestoreAdmin.runTransaction(async (transaction) => {
+            const current = await transaction.get(cacheRef);
+            previousSourcePath = typeof current.data()?.sourcePath === 'string' ? current.data()!.sourcePath : '';
+            transaction.set(cacheRef, {
+                aiModel: params.aiModel,
+                aspectRatio: params.generationConfig?.aspectRatio || "1:1",
+                createdAt: now,
+                expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + IMAGE_PROMPT_CACHE_TTL_DAYS * DAY_MS),
+                height: prepared.height,
+                keyVersion: IMAGE_PROMPT_CACHE_KEY_VERSION,
+                mimeType: prepared.mimeType,
+                outputSizeBytes: prepared.sizeBytes,
+                promptLength: params.prompt.length,
+                sourcePath,
+                updatedAt: now,
+                width: prepared.width,
+            });
+        });
+        if (previousSourcePath !== sourcePath && isImagePromptCacheSourcePathForKey(previousSourcePath, cacheKey)) {
+            await storageAdmin.bucket().file(previousSourcePath).delete({ ignoreNotFound: true }).catch((error) => {
+                logRuntimeFailure('ai_image_prompt_cache_superseded_source_cleanup_failed', error, logContext);
+            });
+        }
 
         logRuntimeDiagnostic("ai_image_prompt_cache_written", logContext);
         return cacheKey;

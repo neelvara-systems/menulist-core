@@ -31,13 +31,22 @@ Prepare image drafts for selected menu items where the feature, plan, credits, p
 ### How to prepare a supported batch
 1. Go to your project → **Editor**
 2. Click the **Bulk Generate** option if it is available in the image upload modal
-3. Choose the supported items to include
+3. Choose 1–50 supported items to include
 4. Click **Start Generation**
 5. Watch progress as the selected items are processed
 6. Review each result before applying it
 7. Save only the images that match the real business and menu item
 
 > 💡 **Tip:** Batch size, processing time, and retry behavior depend on the current release, credits, provider status, and safety checks.
+
+### How to generate a menu or business cover
+1. Open the menu settings or Official Business Page settings
+2. Find the menu image or business cover section
+3. Choose **Generate** if the option is available
+4. Review the prepared preview against the real business
+5. Adjust or replace it if needed, then save
+
+A missing menu cover may also be prepared after accepted menu extraction truth. An existing owner image always has priority and must not be overwritten by a late generated result.
 
 ### How to edit a generated image
 1. Click on an existing image in the Editor
@@ -59,8 +68,12 @@ Prepare image drafts for selected menu items where the feature, plan, credits, p
 **Fix:** Add a descriptive name ("Butter Chicken with Naan") and a short description.
 
 ### Bulk generation stopped partway through
-**Why:** Network interruption or temporary service issue.
-**Fix:** The progress is saved. Refresh the page and resume from where it stopped.
+**Why:** One or more item tasks exhausted retries, were rate limited, or hit a temporary provider/service issue.
+**Fix:** Progress already recorded remains visible. Save any suitable available images, then use **Save Available & Retry** or **Retry Job** to start a new job for the failed items.
+
+### Generate or Edit is not shown
+**Why:** The master feature flag is off for the deployed release, or the current owner/location does not have permission under the active outlet policy.
+**Fix:** Upload and manage existing photos instead. Existing batch results remain available for review; contact the workspace owner if the action should be enabled.
 
 ### Image draft does not match the item
 **Fix:** 

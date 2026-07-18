@@ -3,10 +3,7 @@ import { extractGeminiUsageMetadata, recordEmbeddingOperation } from '../answerl
 import { answerlatticeGenAIClient } from '../genAiClient';
 import {
     ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
-    ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG,
-    type AnswerlatticeEmbeddingVersion,
     buildAnswerlatticeEmbeddingRequest,
-    getAnswerlatticeEmbeddingConfig,
 } from '../sharedData/answerlatticeEmbedding';
 import { tiptapToText } from './tiptapUtils';
 
@@ -66,9 +63,8 @@ type AnswerlatticeEmbeddingArticle = {
     content: any;
 };
 
-export const generateEmbeddingForVersion = async (
+export const genrateEmbedding = async (
     article: AnswerlatticeEmbeddingArticle,
-    version: AnswerlatticeEmbeddingVersion,
 ): Promise<number[]> => {
     const logger = functions.logger;
     const rawTextToEmbed = [
@@ -83,12 +79,11 @@ export const generateEmbeddingForVersion = async (
     }
 
     try {
-        const embeddingConfig = getAnswerlatticeEmbeddingConfig(version);
+        const embeddingConfig = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG;
         const request = buildAnswerlatticeEmbeddingRequest({
             content: rawTextToEmbed,
             purpose: 'document',
             title: article.title,
-            version,
         });
         const textToEmbed = request.contents;
         const startedAt = Date.now();
@@ -137,35 +132,5 @@ export const generateEmbeddingForVersion = async (
             ...getEmbeddingErrorContext(error),
         });
         throw new Error(ANSWERLATTICE_EMBEDDING_FAILED_MESSAGE);
-    }
-};
-
-export const genrateEmbedding = async (article: AnswerlatticeEmbeddingArticle): Promise<number[]> => (
-    generateEmbeddingForVersion(article, ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version)
-);
-
-export const generateEmbeddingMigrationVectors = async (
-    article: AnswerlatticeEmbeddingArticle,
-    options: { includeLegacy: boolean },
-): Promise<{ active: number[]; legacy?: number[] }> => {
-    const active = await generateEmbeddingForVersion(
-        article,
-        ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
-    );
-    if (!options.includeLegacy) return { active };
-
-    try {
-        const legacy = await generateEmbeddingForVersion(
-            article,
-            ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.version,
-        );
-        return { active, legacy };
-    } catch (error) {
-        functions.logger.warn('[Answerlattice KB] Legacy embedding dual-write failed', {
-            failureCode: 'ANSWERLATTICE_LEGACY_EMBEDDING_DUAL_WRITE_FAILED',
-            ...getEmbeddingArticleContext(article),
-            ...getEmbeddingErrorContext(error),
-        });
-        return { active };
     }
 };

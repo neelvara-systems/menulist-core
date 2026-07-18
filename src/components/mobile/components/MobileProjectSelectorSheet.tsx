@@ -1,12 +1,14 @@
 'use client'
 
-import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader } from '@database/projects';
+import { FEATURE_FLAGS } from '@config/features';
+import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getProjectDataWithoutLoader, setProjectActive, updateProjectMetadata, updateProjectWithoutLoader, updateSpecialMenuProject } from '@database/projects';
 import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { generateProjectImageCandidate } from '@lib/image/projectImageGeneration';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { isDataUrl } from '@lib/media/mediaStorage';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
@@ -278,6 +280,7 @@ export default function MobileProjectSelectorSheet({
     }, [isMasterUser, storeDetails?.isMaster, userPermissions]);
     const canCreateLocalProjects = !outletPolicy || outletPolicy.allowLocalProjects !== false;
     const canDeactivateLinkedProjects = !outletPolicy || outletPolicy.allowProjectDeactivate !== false;
+    const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
     const skipLinkedOutletDeleteCheck = !canHaveLinkedOutlets(tenantDetails as any);
     const orderedProjects = useMemo(() => {
         return [...projects].sort((a, b) => {
@@ -581,7 +584,7 @@ export default function MobileProjectSelectorSheet({
         setIsSubmitting(true);
         try {
             let savedProjectImage = formProjectImage;
-            if (savedProjectImage?.includes('base64')) {
+            if (isDataUrl(savedProjectImage)) {
                 const mimeMatch = savedProjectImage.match(/^data:(.*?);base64,/);
                 const { uploadFile } = await import('@database/projects');
                 savedProjectImage = await uploadFile({
@@ -734,23 +737,36 @@ export default function MobileProjectSelectorSheet({
                     return;
                 }
 
-                const metadataUpdate: Record<string, any> = {
-                    description: localizedDescription,
-                    isDefault: formIsDefault,
-                    name: localizedName,
-                    projectImage: savedProjectImage || null,
-                };
+                const metadataUpdate: Record<string, any> = isEditingSpecialMenu
+                    ? { projectImage: savedProjectImage || null }
+                    : {
+                        description: localizedDescription,
+                        isDefault: formIsDefault,
+                        name: localizedName,
+                        projectImage: savedProjectImage || null,
+                    };
                 const nextActive = formActive;
-                const activeChanged = formSourceProject?.active !== nextActive;
+                const activeChanged = !isEditingSpecialMenu && formSourceProject?.active !== nextActive;
                 const shouldUnsetPreviousDefault = formIsDefault && formSourceProject?.isDefault !== true;
                 const currentDefault = projects.find(
                     (project) => project.isDefault === true && project.projectId !== formProjectId,
                 );
 
                 if (isEditingSpecialMenu) {
-                    metadataUpdate.specialMenuDisplayName = localizedName;
-                    metadataUpdate.specialMenuStartsAt = fromNativeDateTimeInputValue(formStartsAt);
-                    metadataUpdate.specialMenuEndsAt = fromNativeDateTimeInputValue(formEndsAt);
+                    const specialMenuResult = await updateSpecialMenuProject({
+                        projectId: formProjectId,
+                        description: nextDescription || undefined,
+                        displayName: nextName,
+                        localizedDescription: localizedDescription || undefined,
+                        localizedDisplayName: localizedName,
+                        endsAt: fromNativeDateTimeInputValue(formEndsAt),
+                        startsAt: fromNativeDateTimeInputValue(formStartsAt),
+                    });
+                    assertProjectUpdateSucceeded(
+                        specialMenuResult,
+                        formProjectId,
+                        'mobile_project_selector_special_menu_project_update_rejected',
+                    );
                 }
 
                 const metadataResult = await updateProjectMetadata(formProjectId, metadataUpdate, {
@@ -780,22 +796,6 @@ export default function MobileProjectSelectorSheet({
                         activeResult,
                         formProjectId,
                         'mobile_project_selector_active_project_update_rejected',
-                    );
-                }
-
-                if (isEditingSpecialMenu) {
-                    const specialMenuResult = await updateProjectWithoutLoader({
-                        projectId: formProjectId,
-                        _specialMenu: {
-                            displayName: localizedName,
-                            endsAt: fromNativeDateTimeInputValue(formEndsAt),
-                            startsAt: fromNativeDateTimeInputValue(formStartsAt),
-                        } as any,
-                    });
-                    assertProjectUpdateSucceeded(
-                        specialMenuResult,
-                        formProjectId,
-                        'mobile_project_selector_special_menu_project_update_rejected',
                     );
                 }
 
@@ -984,6 +984,7 @@ export default function MobileProjectSelectorSheet({
     };
 
     const handleTranslatePublicContent = async () => {
+        if (!canTranslatePublicContent) return;
         if (!formProjectId || formMode !== 'edit') return;
         if (!hasMultipleFormLanguages) return;
         if (!hasMissingFormPublicDrafts) return;
@@ -1347,50 +1348,56 @@ export default function MobileProjectSelectorSheet({
             labelStyle: undefined,
             onClick: () => openDuplicate(managingProject),
         }]),
-        {
-            key: managingProject.active === false ? 'activate' : 'inactivate',
-            label: managingProject.active === false ? t('activateCatalog') : t('makeInactive'),
-            description: managingProject.active === false
-                ? `Make this ${labels.offeringLower} available again.`
-                : `Hide this ${labels.offeringLower} from normal use.`,
-            icon: (
-                <LuPower
-                    size={16}
-                    style={{ color: managingProject.active === false ? token.colorSuccess : token.colorError }}
-                />
-            ),
-            iconBackground: managingProject.active === false ? token.colorSuccessBg : token.colorErrorBg,
-            labelStyle: { color: managingProject.active === false ? token.colorSuccess : token.colorError },
-            onClick: () => {
-                void Dialog.confirm({
-                    cancelText: t('cancel'),
-                    confirmText: managingProject.active === false ? t('activate') : t('inactivate'),
-                    content: managingProject.active === false
-                        ? t('activateCatalogConfirm')
-                        : t('inactivateCatalogConfirm'),
-                    onConfirm: () => void handleToggleActive(managingProject),
-                });
+        ...(managingProject.isSpecialMenu ? [] : [
+            {
+                key: managingProject.active === false ? 'activate' : 'inactivate',
+                label: managingProject.active === false ? t('activateCatalog') : t('makeInactive'),
+                description: managingProject.active === false
+                    ? `Make this ${labels.offeringLower} available again.`
+                    : `Hide this ${labels.offeringLower} from normal use.`,
+                icon: (
+                    <LuPower
+                        size={16}
+                        style={{ color: managingProject.active === false ? token.colorSuccess : token.colorError }}
+                    />
+                ),
+                iconBackground: managingProject.active === false ? token.colorSuccessBg : token.colorErrorBg,
+                labelStyle: { color: managingProject.active === false ? token.colorSuccess : token.colorError },
+                onClick: () => {
+                    void Dialog.confirm({
+                        cancelText: t('cancel'),
+                        confirmText: managingProject.active === false ? t('activate') : t('inactivate'),
+                        content: managingProject.active === false
+                            ? t('activateCatalogConfirm')
+                            : t('inactivateCatalogConfirm'),
+                        onConfirm: () => void handleToggleActive(managingProject),
+                    });
+                },
             },
-        },
-        {
-            key: 'reset',
-            label: t('resetCatalog'),
-            description: 'Clear uploaded files and start fresh.',
-            icon: <LuRotateCcw size={16} />,
-            iconBackground: token.colorFillTertiary,
-            labelStyle: undefined,
-            onClick: () => {
-                void Dialog.confirm({
-                    cancelText: t('cancel'),
-                    confirmText: 'Reset catalog',
-                    content: `Reset "${resolveProjectName(managingProject.name)}" and remove its uploaded files and extracted menu data? You can keep the catalog itself, but you will need to upload and build it again.`,
-                    onConfirm: () => void handleResetProject(managingProject),
-                });
+            {
+                key: 'reset',
+                label: t('resetCatalog'),
+                description: 'Clear uploaded files and start fresh.',
+                icon: <LuRotateCcw size={16} />,
+                iconBackground: token.colorFillTertiary,
+                labelStyle: undefined,
+                onClick: () => {
+                    void Dialog.confirm({
+                        cancelText: t('cancel'),
+                        confirmText: 'Reset catalog',
+                        content: `Reset "${resolveProjectName(managingProject.name)}" and remove its uploaded files and extracted menu data? You can keep the catalog itself, but you will need to upload and build it again.`,
+                        onConfirm: () => void handleResetProject(managingProject),
+                    });
+                },
             },
-        },
+        ]),
     ] : [];
 
-    const dangerItems: ActionItem[] = managingProject ? [
+    const dangerItems: ActionItem[] = managingProject && (
+        managingProject.isSpecialMenu !== true
+        || managingProject.specialMenuStatus === 'expired'
+        || managingProject.specialMenuStatus === 'cancelled'
+    ) ? [
         {
             key: 'delete',
             label: t('deleteCatalog'),
@@ -1602,7 +1609,7 @@ export default function MobileProjectSelectorSheet({
                                         selectedLanguage={formSelectedLanguage}
                                         title="Project content language"
                                     />
-                                    {formMode === 'edit' && hasMissingFormPublicDrafts ? (
+                                    {formMode === 'edit' && hasMissingFormPublicDrafts && canTranslatePublicContent ? (
                                         <Button
                                             fill="outline"
                                             loading={isTranslatingPublicContent}
@@ -1667,15 +1674,17 @@ export default function MobileProjectSelectorSheet({
                                     placeholderTitle="Menu image"
                                     size="compact"
                                 />
-                                <Button block loading={isGeneratingProjectImage} onClick={() => { void handleGenerateProjectImage(); }} size="small">
-                                    <Flex align="center" gap={6} justify="center">
-                                        <LuSparkles size={16} />
-                                        <Text>{formProjectImage ? 'Regenerate' : 'Generate'}</Text>
-                                    </Flex>
-                                </Button>
+                                {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                                    <Button block loading={isGeneratingProjectImage} onClick={() => { void handleGenerateProjectImage(); }} size="small">
+                                        <Flex align="center" gap={6} justify="center">
+                                            <LuSparkles size={16} />
+                                            <Text>{formProjectImage ? 'Regenerate' : 'Generate'}</Text>
+                                        </Flex>
+                                    </Button>
+                                ) : null}
                             </Flex>
 
-                            {formMode !== 'duplicate' ? (
+                            {formMode !== 'duplicate' && !isEditingSpecialMenu ? (
                                 <Flex align="center" justify="space-between" gap={12}>
                                     <Flex gap={4} vertical>
                                         <Text strong>Active</Text>

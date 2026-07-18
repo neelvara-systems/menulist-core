@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import MenuReadabilityCheckPage from '@/components/website/menuReadabilityCheck/MenuReadabilityCheckPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Menu Readability Check - MenuList | Check Your Menu or Service List';
 const description = 'Check whether pasted menu, service, catalog, rate-card, or package text is clear enough for customers to understand prices, details, and the next action.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/menu-readability-check',
   },
-};
+});
 
 export default function Page() {
   if (

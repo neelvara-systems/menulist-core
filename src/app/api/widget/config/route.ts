@@ -340,14 +340,20 @@ export async function GET(request: NextRequest) {
             getPredictiveSupportCapability(db, tId, sId),
             getWidgetPublicBundleConfig(tId, sId),
         ]);
+        const normalizedWidgetConfig = normalizeWidgetConfig(storeData.widgetConfig);
         const body = {
             schemaVersion: ANSWERLATTICE_WIDGET_CONFIG_SCHEMA_VERSION,
             cacheTtlSeconds: ANSWERLATTICE_WIDGET_REMOTE_CONFIG_TTL_SECONDS,
             configVersion: Number(storeData.widgetConfigVersion || 0),
-            config: normalizeWidgetConfig(storeData.widgetConfig),
+            config: normalizedWidgetConfig,
             capabilities: {
                 predictiveSupport,
                 contextBundles: Boolean(bundleConfig),
+                guidedResolution: Boolean(
+                    FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS
+                    && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION
+                    && normalizedWidgetConfig.guidedResolutionEnabled
+                ),
             },
             runtimeAuthorization: runtimeAuthorizationRequired
                 ? {

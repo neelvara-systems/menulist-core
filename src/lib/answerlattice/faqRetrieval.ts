@@ -71,6 +71,16 @@ const normalizeText = (value: unknown): string => (
         : ''
 );
 
+const cleanReferenceText = (value: unknown, maxLength: number): string => (
+    typeof value === 'string'
+        ? value
+            .replace(/[\u0000-\u001f\u007f]/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, maxLength)
+        : ''
+);
+
 const STOP_WORDS = new Set([
     'a',
     'about',
@@ -320,12 +330,21 @@ const loadLinkedArticleReference = async (
             }];
         }
 
-        const reference: any = {
-            ...article,
+        const reference = {
+            id: articleId,
+            title: cleanReferenceText(article.title, 240) || 'Related article',
+            url: cleanReferenceText(article.url, 500),
+            categoryId: cleanReferenceText(article.categoryId, 180),
+            sectionId: cleanReferenceText(article.sectionId, 180),
+            categoryTitle: cleanReferenceText(article.categoryTitle, 180),
+            sectionTitle: cleanReferenceText(article.sectionTitle, 180),
+            content: article.content,
+            tags: Array.isArray(article.tags)
+                ? article.tags.filter((tag): tag is string => typeof tag === 'string').slice(0, 20)
+                : [],
             similarityScore: 1,
             sourceType: 'faq',
         };
-        delete reference.embedding;
         return [reference];
     } catch {
         return [{

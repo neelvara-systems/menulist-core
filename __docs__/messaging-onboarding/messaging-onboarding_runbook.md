@@ -2,7 +2,7 @@
 
 **Feature:** Messaging Onboarding  
 **Status:** ACTIVE SOURCE RUNBOOK — provider processing remains disabled in checked-in targets
-**Last Updated:** July 10, 2026
+**Last Updated:** July 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Execute provider operations only after the final owned account, real Meta secrets, webhook registration, explicit target enablement and scoped deploy approval are documented.
 
@@ -59,6 +59,8 @@ Access is platform-only. Owners do not receive API keys or dashboard controls fo
 | Preview link send failed | Sessions with `previewMessagePending=true` | Check Meta send API health; `menulistMaintenanceScheduler` retries `messaging_intake` every 2 minutes |
 | Preview link opens wrong domain | `NEXT_PUBLIC_MSG_PREVIEW_BASE_URL` on `msgExtractionWatcher` | Set it to the active preview host and redeploy the function |
 | Message send failed grows | `WHATSAPP_PHONE_NUMBER_ID` and access token | Rotate real token or check Graph API response |
+| Graph API returns `3xx` | Meta endpoint/account configuration and captured bounded status metadata | The adapter intentionally refuses redirects so bearer credentials are not forwarded. Correct the provider endpoint/configuration; do not enable redirect following. |
+| Graph lookup/send aborts near 15 seconds, or media download near 30 seconds | Meta service health, DNS/egress, and bounded provider failure code | Treat as a provider/network incident and let the existing durable retry boundary handle it. Do not increase timeouts without measured provider evidence. |
 | Meta Graph API returns OAuth `190` | Temporary `WHATSAPP_ACCESS_TOKEN` expired | Generate a fresh token in Meta Developer app, update the Firebase secret, and redeploy affected WhatsApp functions |
 | Cost per publish high | Processing runs per session | Review duplicate uploads, low publish rate, and extraction retry behavior |
 | No sessions after enabling | Webhook registration URL and function env | Confirm Meta webhook URL and `ENABLE_MESSAGING_ONBOARDING=true` |

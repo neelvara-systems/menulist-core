@@ -1,7 +1,7 @@
 # Entity System — Website Content
 
 > **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-18
 > **Audience:** Public (answerlattice.com)
 > **Language Governance:** Enforced — no "AI-powered," "Smart," "Dynamic"
 
@@ -21,17 +21,17 @@ Answerlattice builds a knowledge graph of your product's features, integrations,
 
 Most support AI searches documents. Answerlattice understands your product.
 
-When you add documentation, Answerlattice automatically identifies the product concepts inside — features, workflows, integrations, error codes. These become entities in a structured knowledge graph.
+When ontology is enabled, saving documentation triggers a scoped extraction workflow that matches known product concepts and proposes new ones for review.
 
-When users ask questions, Answerlattice detects which product concepts they're referring to — even when they use informal language like "token" instead of "API Keys." Answers come from the right documentation, every time.
+When users ask questions, Answerlattice can resolve approved aliases such as "token" to "API Keys" and use those entities to scope canonical or fallback evidence.
 
 ### Features List
 
-- **Automatic entity extraction.** Write articles. Answerlattice identifies product concepts automatically. No manual tagging.
+- **Assisted entity extraction.** Match known product concepts after save and review genuinely new candidates.
 - **Alias resolution.** Users say "token." Your docs say "API Keys." Same concept. Resolved automatically.
 - **Knowledge coverage.** See which product areas have strong documentation and which need more content.
-- **Entity governance.** Rename, merge, deprecate entities as your product evolves. All references update automatically.
-- **Version-aware.** Entities track product versions. Answers scope to the correct version window.
+- **Entity governance.** Rename, merge, or deprecate entities as your product evolves. Governed bounded merges update their dependent answer, article, relation, and search-index references together.
+- **Version-aware answers.** Approved answers can carry explicit product-version windows instead of treating every source as universally current.
 
 ### CTA
 
@@ -55,7 +55,7 @@ Find documentation covering those concepts
 Generate grounded answer
 ```
 
-Unlike search-based systems that match keywords to articles, Answerlattice routes queries through your product's knowledge structure. This produces consistent, accurate answers — even for ambiguous questions.
+Answerlattice resolves governed product concepts before it uses bounded knowledge-base fallback. This gives support teams a traceable structure for deciding which evidence applies; it does not treat entity matching or citations alone as proof of correctness.
 
 ---
 

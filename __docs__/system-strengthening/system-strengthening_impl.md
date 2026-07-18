@@ -36,7 +36,7 @@ npm run verify:system-strengthening
 | SS-5 AI route rate limiting | Closed | The original AI route group is guarded by SAFE_MODE, rate limiting helpers, bounded bodies where applicable, validation, permission checks, capacity checks, and accounting/source logging. |
 | SS-6 chat feedback full-array rewrite | Accepted | `updateMessageFeedback()` keeps feedback on the bounded session message array by design so reopened chat sessions preserve feedback with the original message shape. |
 | SS-7 subscription read/write side effect | Closed | Browser reads return no active subscription after grace expires without mutating billing docs; server-owned expiry writes remain the authoritative state transition and entitlement sync path. |
-| SS-8 preset cascade sequential writes | Closed | `removePresetFromAllCategories()` stages changed project documents in Firestore batches, commits pending writes, then revalidates public cache for changed projects. |
+| SS-8 preset cascade sequential/stale writes | Closed | Preset cascades use document-ID pagination, bounded concurrency, transaction-current project reads, files-only writes, scope checks, and post-commit public cache revalidation. The former batch implementation was faster but could replace concurrent project edits with a stale full snapshot. |
 | SS-9 API/DAL console logging | Closed | The verifier scans `src/app/api` and `src/database` and fails on `console.log`, `console.warn`, or `console.error`. |
 
 The historical findings below are retained for audit traceability and should not be read as current open work unless the source gate fails.
@@ -287,7 +287,7 @@ for (const docSnap of snapshot.docs) {
 }
 ```
 
-**Fix:** Use Firestore `writeBatch()` for atomic batched writes (max 500 per batch).
+**Historical fix:** The first repair used `writeBatch()`. The current implementation supersedes it with paged discovery plus bounded per-project transactions because a batch built from query snapshots can overwrite a concurrent menu edit. Each candidate is re-read in its transaction and only `files` plus `modifiedOn` are written.
 
 ---
 
@@ -387,7 +387,7 @@ These areas were audited and found to be well-implemented:
 |---|------|--------|-------|
 | SS-5 | Add rate limiting to AI-calling routes | 1 hr | 10 route files |
 | SS-7 | Extract subscription expiry from read function | 30 min | 1 DAL file |
-| SS-8 | Batch writes in removePresetFromAllCategories | 20 min | 1 DAL file |
+| SS-8 | Transaction-current preset cascades with bounded pagination | Complete | Project DAL, shared time-slot boundary, source/regression gates |
 
 ### Phase 3: Compliance (DO — when time allows)
 

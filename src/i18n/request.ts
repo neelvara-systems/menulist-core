@@ -1,6 +1,15 @@
 
 import { match as matchLocale } from '@formatjs/intl-localematcher';
-import { APP_LOCALE_COOKIES_KEY, APP_TIMEZONE_COOKIES_KEY, AppSupportedLocales, defaultLocale, defaultTimezone, Locale } from '@lib/localization/config';
+import {
+    APP_LOCALE_COOKIES_KEY,
+    APP_TIMEZONE_COOKIES_KEY,
+    AppSupportedLocales,
+    defaultLocale,
+    defaultTimezone,
+    Locale,
+    normalizeLocalePreference,
+    normalizeTimeZone,
+} from '@lib/localization/config';
 import Negotiator from 'negotiator';
 import { IntlErrorCode } from 'next-intl';
 import { getRequestConfig } from 'next-intl/server';
@@ -114,38 +123,6 @@ const localeMessages: Record<string, Record<string, any>> = {
     'zh-TW': zhTW,
 };
 
-const supportedLocales = AppSupportedLocales as readonly string[];
-
-function isSupportedLocale(value: string): boolean {
-    return supportedLocales.includes(value);
-}
-
-function normalizeLocalePreference(value?: string | null): Locale | null {
-    if (!value || typeof value !== 'string') return null;
-
-    const normalizedInput = value.trim().replace('_', '-');
-    if (!normalizedInput || normalizedInput === '*') return null;
-    if (normalizedInput === 'en') return 'en-US';
-
-    try {
-        const canonical = Intl.getCanonicalLocales(normalizedInput)[0];
-        if (!canonical) return null;
-        if (isSupportedLocale(canonical)) return canonical as Locale;
-
-        const baseLanguage = canonical.split('-')[0]?.toLowerCase();
-        if (baseLanguage === 'en') return 'en-US';
-
-        const supportedMatch = supportedLocales.find((locale) => (
-            locale.toLowerCase() === baseLanguage ||
-            locale.toLowerCase().startsWith(`${baseLanguage}-`)
-        ));
-
-        return supportedMatch ? supportedMatch as Locale : null;
-    } catch (_) {
-        return null;
-    }
-}
-
 // Deep merge: target values overwrite source, but missing keys fall back to source
 function deepMerge(source: Record<string, any>, target: Record<string, any>): Record<string, any> {
     const result = { ...source };
@@ -204,8 +181,7 @@ export default getRequestConfig(async () => {
 
         //5. Normalize/sanitize selected locale before handing it to next-intl.
         locale = normalizeLocalePreference(locale) || defaultLocale;
-        let timeZone: string | undefined = cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value;
-        if (!timeZone) timeZone = defaultTimezone;
+        const timeZone = normalizeTimeZone(cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value);
 
         // Always load en-US as the fallback base.
         // Static imports avoid missing generated JSON chunks in Next dev after route-table rebuilds.
@@ -229,7 +205,7 @@ export default getRequestConfig(async () => {
         }
 
         return {
-            timeZone: timeZone || defaultTimezone,
+            timeZone,
             locale: locale || defaultLocale,
             messages,
             // Graceful error handling for missing translations in production

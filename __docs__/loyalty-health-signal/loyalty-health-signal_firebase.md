@@ -11,6 +11,8 @@
 
 The shared computation is not exported or scheduled and the loyalty flag is `false`. The historical table below is a planning estimate only. If activated, loyalty must share the one bounded analytics scan and store update with trust/risk rather than create its own reads or write.
 
+The existing daily page-view and unique counters cannot infer returning customers. No additional collection, identity ledger, listener, or per-visitor write is justified to rescue the dormant heuristic. Activation must first approve a privacy-safe aggregate returning-visitor contract and its measured cost.
+
 ## Historical Planning Estimate (Not Current Evidence)
 
 | Component | Cost |
@@ -22,4 +24,4 @@ The shared computation is not exported or scheduled and the loyalty flag is `fal
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026

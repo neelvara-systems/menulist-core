@@ -26,13 +26,10 @@ const DateRangeSelector: React.FC<DateRangeSelectorProps> = ({ value, onChange }
         if (!storeDetails?.storeId) return;
 
         try {
-            const currentPrefs = storeDetails.analytics?.dashboardPreferences || {};
             const writeResult = await updateStore({
                 storeId: storeDetails.storeId,
                 analytics: {
-                    ...storeDetails.analytics,
                     dashboardPreferences: {
-                        ...currentPrefs,
                         dateRange
                     }
                 }

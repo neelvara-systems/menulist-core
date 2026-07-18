@@ -1,9 +1,9 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
+import { useSession } from "next-auth/react";
 import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import {
   LuArrowRight,
   LuBadgeCheck,
@@ -27,6 +27,11 @@ import Link from "./shared/WebsiteLink";
 import { FEATURE_FLAGS } from "@config/features";
 import { buildWebsiteSignInPath } from "@/lib/website/signInLinks";
 import { websiteFeatureNavGroups } from "./features/featureNavigation";
+import {
+  useWebsiteBasePath,
+  withoutWebsiteBasePath,
+} from "./shared/WebsiteProductPathProvider";
+import { signOutSession } from "@lib/auth/client";
 
 const navItemKeys = [
   { href: "/features", key: "features", icon: LuLayoutGrid },
@@ -55,17 +60,17 @@ export default function Header() {
   const t = useTranslations("Website");
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [openDesktopMenu, setOpenDesktopMenu] = useState<"features" | "resources" | null>(null);
+  const mobileMenuButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileDrawerRef = useRef<HTMLDivElement>(null);
   const [openMobileSections, setOpenMobileSections] = useState<Record<string, boolean>>({
     features: true,
     resources: false,
   });
   const [openMobileFeatureGroups, setOpenMobileFeatureGroups] = useState<Record<string, boolean>>({});
   const pathname = usePathname();
-  const publicPathname = pathname === "/ml"
-    ? "/"
-    : pathname?.startsWith("/ml/")
-      ? pathname.slice("/ml".length)
-      : pathname;
+  const basePath = useWebsiteBasePath();
+  const publicPathname = pathname ? withoutWebsiteBasePath(pathname, basePath) : pathname;
 
   const openDrawer = () => setIsOpen(true);
   const handleMenuTouch = () => openDrawer();
@@ -80,9 +85,18 @@ export default function Header() {
     }
 
     event.preventDefault();
+    setOpenDesktopMenu(null);
     const activeElement = document.activeElement;
     if (activeElement instanceof HTMLElement) {
       activeElement.blur();
+    }
+  };
+  const handleDesktopMenuBlur = (
+    event: ReactFocusEvent<HTMLDivElement>,
+    menu: "features" | "resources",
+  ) => {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setOpenDesktopMenu((current) => current === menu ? null : current);
     }
   };
 
@@ -124,14 +138,57 @@ export default function Header() {
       return;
     }
 
+    const previousFocus = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : mobileMenuButtonRef.current;
+    const backgroundElements = Array.from(document.querySelectorAll<HTMLElement>(".ws-header, main, #site-footer"));
+    backgroundElements.forEach((element) => {
+      element.inert = true;
+    });
+    window.requestAnimationFrame(() => {
+      mobileDrawerRef.current
+        ?.querySelector<HTMLElement>('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+        ?.focus();
+    });
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         closeDrawer();
+        return;
+      }
+      if (event.key !== "Tab" || !mobileDrawerRef.current) {
+        return;
+      }
+
+      const focusable = Array.from(
+        mobileDrawerRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => !element.hasAttribute("hidden"));
+      if (focusable.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      backgroundElements.forEach((element) => {
+        element.inert = false;
+      });
+      previousFocus?.focus();
+    };
   }, [closeDrawer, isOpen]);
 
   useEffect(() => {
@@ -212,12 +269,17 @@ export default function Header() {
                     key={item.href}
                     className="ws-header-feature-menu"
                     onKeyDown={handleDesktopDropdownKeyDown}
+                    onMouseEnter={() => setOpenDesktopMenu("features")}
+                    onMouseLeave={() => setOpenDesktopMenu(null)}
+                    onFocusCapture={() => setOpenDesktopMenu("features")}
+                    onBlurCapture={(event) => handleDesktopMenuBlur(event, "features")}
                   >
                     <button
                       type="button"
                       className="ws-header-feature-menu__trigger"
                       aria-label={t("Header.featuresMenuAria")}
-                      aria-haspopup="true"
+                      aria-expanded={openDesktopMenu === "features"}
+                      aria-controls="ws-desktop-features-panel"
                       style={{
                         fontSize: "0.9375rem",
                         fontWeight: 500,
@@ -231,8 +293,8 @@ export default function Header() {
                       {t("Header.features")}
                       <LuChevronDown size={14} aria-hidden="true" />
                     </button>
-                    <div className="ws-header-feature-menu__panel" role="menu" aria-label={t("Header.featuresMenuTitle")}>
-                      <Link href="/features" role="menuitem" className="ws-header-feature-menu__overview">
+                    <div id="ws-desktop-features-panel" className="ws-header-feature-menu__panel" aria-label={t("Header.featuresMenuTitle")}>
+                      <Link href="/features" className="ws-header-feature-menu__overview">
                         <span>
                           <LuLayoutGrid size={18} aria-hidden="true" />
                         </span>
@@ -253,13 +315,15 @@ export default function Header() {
                                   <Link
                                     key={featureLink.href}
                                     href={featureLink.href}
-                                    role="menuitem"
                                     className="ws-header-feature-menu__item"
                                   >
-                                    <FeatureIcon size={17} aria-hidden="true" />
+                                    <FeatureIcon className="ws-header-feature-menu__item-icon" size={17} aria-hidden="true" />
                                     <span>
                                       <strong>{t(`Header.${featureLink.key}`)}</strong>
                                       <small>{t(`Header.${featureLink.key}Desc`)}</small>
+                                    </span>
+                                    <span className="ws-header-feature-menu__item-action" aria-hidden="true">
+                                      <LuArrowRight size={14} />
                                     </span>
                                   </Link>
                                 );
@@ -293,12 +357,17 @@ export default function Header() {
                     key={item.href}
                     className="ws-header-resource-menu"
                     onKeyDown={handleDesktopDropdownKeyDown}
+                    onMouseEnter={() => setOpenDesktopMenu("resources")}
+                    onMouseLeave={() => setOpenDesktopMenu(null)}
+                    onFocusCapture={() => setOpenDesktopMenu("resources")}
+                    onBlurCapture={(event) => handleDesktopMenuBlur(event, "resources")}
                   >
                     <Link
                       href="/resources"
                       className="ws-header-resource-menu__trigger"
                       aria-label={t("Header.resourcesMenuAria")}
-                      aria-haspopup="true"
+                      aria-expanded={openDesktopMenu === "resources"}
+                      aria-controls="ws-desktop-resources-panel"
                       style={{
                         fontSize: "0.9375rem",
                         fontWeight: 500,
@@ -312,14 +381,13 @@ export default function Header() {
                       {t("Header.resources")}
                       <LuChevronDown size={14} aria-hidden="true" />
                     </Link>
-                    <div className="ws-header-resource-menu__panel" role="menu" aria-label={t("Header.resourcesMenuTitle")}>
+                    <div id="ws-desktop-resources-panel" className="ws-header-resource-menu__panel" aria-label={t("Header.resourcesMenuTitle")}>
                       {resourceDropdownLinks.map((resourceLink) => {
                         const ResourceIcon = resourceLink.icon;
                         return (
                           <Link
                             key={resourceLink.href}
                             href={resourceLink.href}
-                            role="menuitem"
                             className="ws-header-resource-menu__item"
                           >
                             <ResourceIcon size={16} aria-hidden="true" />
@@ -387,7 +455,9 @@ export default function Header() {
                     t("Header.dashboard")}
                 </Link>
                 <button
-                  onClick={() => signOut({ callbackUrl: "/" })}
+                  onClick={() => {
+                    void signOutSession("/").catch(() => undefined);
+                  }}
                   className="ws-btn ws-btn--secondary"
                   style={{
                     padding: "0.625rem 1.25rem",
@@ -442,6 +512,7 @@ export default function Header() {
           </div>
 
           <button
+            ref={mobileMenuButtonRef}
             type="button"
             onClick={openDrawer}
             onTouchStart={handleMenuTouch}
@@ -471,6 +542,7 @@ export default function Header() {
             aria-hidden="true"
           />
           <div
+            ref={mobileDrawerRef}
             className="ws-drawer-panel ws-drawer-panel--open"
             role="dialog"
             aria-modal="true"
@@ -505,8 +577,8 @@ export default function Header() {
             >
               {navItemKeys.map((item) => {
                 const Icon = item.icon;
-                const isFeaturesPath = Boolean(pathname?.startsWith("/features"));
-                const isActive = pathname === item.href
+                const isFeaturesPath = Boolean(publicPathname?.startsWith("/features"));
+                const isActive = publicPathname === item.href
                   || (item.href === "/features" && isFeaturesPath)
                   || (item.href === "/resources" && (isResourcesPath || isToolsPath));
 
@@ -749,7 +821,7 @@ export default function Header() {
                   <button
                     onClick={() => {
                       closeDrawer();
-                      signOut({ callbackUrl: "/" });
+                      void signOutSession("/").catch(() => undefined);
                     }}
                     style={{
                       display: "flex",

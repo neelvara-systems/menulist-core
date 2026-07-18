@@ -3,19 +3,17 @@ import { addDoc, collection, deleteField, doc, getDoc, getDocs, limit, orderBy, 
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
-import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
+import { getBoundedAnswerlatticeStringContext, logAnswerlatticeDiagnostic, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import {
-    countFailedStorageCleanupResults,
     getIngestionJobTimestampMillis,
     isDeletableIngestionJobStatus,
     isExactAnswerlatticeProductId,
     normalizeIngestionJobQueryLimit,
 } from '@lib/answerlattice/ingestionJobDeletionBoundary';
-import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
+import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
 import { triggerFinalizePublish, triggerStartGeneration } from "@lib/firebase/functions";
 import { createRuntimeId } from "@lib/runtime/randomId";
-import { ARTICLE_RECONCILIATION_STATUS, INGESTION_JOB_STATUS, IngestionJob } from "@type/knowledgeBase";
-import { deleteFileByUrl } from "../storage/deleteFromStorage";
+import { ARTICLE_RECONCILIATION_STATUS, INGESTION_JOB_STATUS, IngestionJob, IngestionJobCategoriesMap } from "@type/knowledgeBase";
 
 const COLLECTION = DB_COLLECTIONS.KB_GENERATION_JOBS;
 const ACTIVE_JOB_LIMIT = 5;
@@ -25,7 +23,7 @@ const PRODUCT_ID = 'AL';
 const MAX_JOB_ARTICLES = 100;
 const MAX_REVIEW_NAVIGATION_BYTES = 700 * 1024;
 const JOB_DELETION_LEASE_MS = 5 * 60 * 1000;
-const REVIEW_UPDATE_KEYS = new Set(['articleIds', 'articlesToReview', 'categories']);
+const REVIEW_UPDATE_KEYS = new Set(['articleIds', 'articlesToReview']);
 const REVIEW_ITEM_KEYS = new Set(['id', 'title', 'status', 'similarArticles']);
 const REVIEW_SUMMARY_KEYS = new Set(['id', 'title', 'categoryTitle', 'sectionTitle', 'status', 'active', 'score']);
 const REVIEW_CATEGORY_KEYS = new Set(['id', 'title', 'description', 'active', 'icon', 'index', 'url', 'sections', 'articles']);
@@ -164,7 +162,7 @@ const assertReviewItems = (value: unknown) => {
     }
 };
 
-const assertReviewNavigation = (value: unknown) => {
+const assertReviewNavigation: (value: unknown) => asserts value is IngestionJobCategoriesMap = (value) => {
     if (!isRecord(value) || getJsonByteLength(value) > MAX_REVIEW_NAVIGATION_BYTES) {
         throw new Error('Knowledge generation review navigation is invalid.');
     }
@@ -251,7 +249,9 @@ const assertReviewUpdate = (data: Partial<IngestionJob>) => {
         ) throw new Error('Knowledge generation article IDs are invalid.');
     }
     if (data.articlesToReview !== undefined) assertReviewItems(data.articlesToReview);
-    if (data.categories !== undefined) assertReviewNavigation(data.categories);
+    if (data.categories !== undefined) {
+        throw new Error('Use the transactional review-navigation mutation for category changes.');
+    }
 };
 
 export function assertIngestionJobWriteSucceeded(
@@ -472,6 +472,61 @@ export const updateJob = async (jobId: string, data: Partial<IngestionJob>) => {
     );
 };
 
+type ReviewNavigationMutation = (
+    current: IngestionJobCategoriesMap,
+) => IngestionJobCategoriesMap;
+
+export const updateReviewJobNavigation = async (
+    jobId: string,
+    operation: string,
+    mutate: ReviewNavigationMutation,
+) => {
+    return await apiCallComposer(
+        async () => {
+            const safeJobId = normalizeDocumentId(jobId);
+            if (!safeJobId) throw new Error('Knowledge generation job ID is invalid.');
+            if (!isBoundedString(operation, 80, true)) {
+                throw new Error('Knowledge generation review operation is invalid.');
+            }
+            await assertPlatformIngestionSession('update_job_review_navigation');
+            const composed = await answerlatticeRequestBodyComposer({}, { isNew: false });
+            const jobRef = doc(getCollectionRef(), safeJobId);
+            const categories = await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const snapshot = await transaction.get(jobRef);
+                if (!snapshot.exists()) throw new Error(`Job ${safeJobId} not found.`);
+                const job = snapshot.data() as Record<string, unknown>;
+                assertAnswerlatticeJob(safeJobId, job);
+                if (job.status !== INGESTION_JOB_STATUS.NEEDS_REVIEW) {
+                    throw new Error('Only jobs awaiting review can be edited.');
+                }
+                if (isRecord(job.deletionRun)) {
+                    throw new Error('This knowledge generation job is being deleted.');
+                }
+                assertReviewNavigation(job.categories);
+                const next = mutate(job.categories);
+                assertReviewNavigation(next);
+                transaction.update(jobRef, {
+                    categories: next,
+                    modifiedBy: composed.modifiedBy,
+                    modifiedOn: composed.modifiedOn,
+                    requestId: composed.requestId,
+                    traceId: composed.traceId,
+                    uId: composed.uId,
+                });
+                return next;
+            });
+            return {
+                id: safeJobId,
+                categories,
+                success: true,
+                updatedFields: ['categories', 'modifiedBy', 'modifiedOn', 'requestId', 'traceId', 'uId'],
+            } satisfies IngestionJobWriteResult;
+        },
+        { jobId, operation },
+        'updateReviewJobNavigation',
+    );
+};
+
 export const deleteIngestionJob = async (jobId: string) => {
     return await apiCallComposer(
         async () => {
@@ -564,28 +619,12 @@ export const deleteIngestionJob = async (jobId: string) => {
                 });
             });
 
-            const storageResults = await Promise.all(
-                jobData.sourceFiles.map(file => deleteFileByUrl(file.downloadURL, answerlatticeStorage)),
-            );
-            const storageCleanupFailedCount = countFailedStorageCleanupResults(storageResults);
-            if (storageCleanupFailedCount > 0) {
-                const failedAt = Timestamp.now();
-                await runTransaction(db, async (transaction) => {
-                    const currentJob = await transaction.get(jobRef);
-                    if (!currentJob.exists()) return;
-                    const currentDeletionRun = currentJob.data()?.deletionRun;
-                    if (currentDeletionRun?.id !== deletionRunId) return;
-                    transaction.update(jobRef, {
-                        deletionRun: {
-                            ...currentDeletionRun,
-                            status: 'failed',
-                            completedAt: failedAt,
-                            failedCount: storageCleanupFailedCount,
-                        },
-                        modifiedOn: failedAt,
-                    });
-                });
-                throw new Error('Knowledge source cleanup failed. Retry deleting this job.');
+            const retainedSourceFileCount = new Set(jobData.sourceFiles.map((file) => file.storagePath)).size;
+            if (retainedSourceFileCount > 0) {
+                logAnswerlatticeDiagnostic(
+                    'answerlattice_kb_source_cleanup_deferred_shared_reference',
+                    { retainedSourceFileCount },
+                );
             }
 
             await runTransaction(db, async (transaction) => {
@@ -606,7 +645,7 @@ export const deleteIngestionJob = async (jobId: string) => {
                 deleted: true,
                 deletedDraftArticles: draftArticleDocs.length,
                 preservedPublishedArticles,
-                storageCleanupFailedCount,
+                storageCleanupFailedCount: 0,
             } satisfies IngestionJobDeleteResult;
         },
         jobId,

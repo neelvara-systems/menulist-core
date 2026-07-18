@@ -6,9 +6,9 @@ import { firestoreAdmin as db, storageAdmin } from '../firebaseAdmin';
 import {
     compiledSourceVersionsEqual,
     areAnswerlatticeCompiledSourceVersionsValid,
+    getAnswerlatticeBundleBuildClaimDecision,
     getAnswerlatticeBundleLockDocId,
     getAnswerlatticeBundleManifestDocId,
-    getNextAnswerlatticeBundleVersion,
     hasExactAnswerlatticeReadyBundleVersions,
     getAnswerlatticeSourceVersionsDocId,
     normalizeAnswerlatticeStoredBundleVersion,
@@ -601,9 +601,6 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
     if (existingBundleVersion === null) {
         return { status: 'failed', rebuilt: false, bundleVersion: 0, bytesTotal: 0, routes: 0, error: 'invalid_manifest_version' };
     }
-    const existingActiveVersion = normalizeAnswerlatticeStoredBundleVersion(existingManifest?.activeVersion) ?? 0;
-    const existingLastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(existingManifest?.lastReadyVersion) ?? 0;
-
     if (existingManifest?.status === 'ready'
         && hasExactAnswerlatticeReadyBundleVersions(existingManifest)
         && compiledSourceVersionsEqual(existingManifest.sourceVersions, sourceVersions)) {
@@ -617,50 +614,65 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
         };
     }
 
-    const lockSnap = await lockRef.get();
-    const lockData = lockSnap.exists ? lockSnap.data() || {} : {};
-    if (lockData.status === 'building' && lockData.expiresAt?.toMillis?.() > Date.now()) {
+    const startedAt = Timestamp.now();
+    const lockId = `bundle_${tenantId}_${storeId}_${randomUUID()}`;
+    const claim = await db.runTransaction(async (transaction) => {
+        const [currentManifestSnap, currentLockSnap] = await Promise.all([
+            transaction.get(manifestRef),
+            transaction.get(lockRef),
+        ]);
+        const currentManifest = currentManifestSnap.exists ? currentManifestSnap.data() || null : null;
+        const currentLock = currentLockSnap.exists ? currentLockSnap.data() || null : null;
+        const decision = getAnswerlatticeBundleBuildClaimDecision(currentManifest, currentLock, startedAt.toMillis());
+        if (decision.status !== 'claimable') {
+            return { status: decision.status, existingManifest: currentManifest, bundleVersion: decision.bundleVersion };
+        }
+        const bundleVersion = decision.bundleVersion;
+
+        transaction.set(lockRef, {
+            schemaVersion: SCHEMA_VERSION,
+            pId: 'AL',
+            tId: tenantId,
+            sId: storeId,
+            status: 'building',
+            lockId,
+            bundleVersion,
+            startedAt,
+            expiresAt: Timestamp.fromMillis(startedAt.toMillis() + 10 * 60 * 1000),
+            reason: 'nightly_repair',
+            requestedBy: 'system:answerlattice_nightly',
+            sourceVersionsAtStart: sourceVersions,
+        }, { merge: true });
+        transaction.set(manifestRef, {
+            schemaVersion: SCHEMA_VERSION,
+            pId: 'AL',
+            tId: tenantId,
+            sId: storeId,
+            status: 'building',
+            lastBuildStartedAt: FieldValue.serverTimestamp(),
+            lastBuildError: null,
+        }, { merge: true });
+        return { status: 'claimed' as const, existingManifest: currentManifest, bundleVersion };
+    });
+
+    if (claim.status === 'active') {
         return {
             status: 'skipped',
             rebuilt: false,
             skippedReason: 'build_lock_active',
-            bundleVersion: existingBundleVersion,
-            bytesTotal: Number(existingManifest?.stats?.bytesTotal || 0),
-            routes: Number(existingManifest?.stats?.routes || 0),
+            bundleVersion: claim.bundleVersion,
+            bytesTotal: Number(claim.existingManifest?.stats?.bytesTotal || 0),
+            routes: Number(claim.existingManifest?.stats?.routes || 0),
         };
     }
-
-    const startedAt = Timestamp.now();
-    const bundleVersion = getNextAnswerlatticeBundleVersion(existingManifest);
-    if (bundleVersion === null) {
+    if (claim.status === 'invalid') {
         return { status: 'failed', rebuilt: false, bundleVersion: existingBundleVersion, bytesTotal: 0, routes: 0, error: 'invalid_manifest_version' };
     }
-    const publicBundleId = getPublicBundleId(existingManifest, tenantId, storeId);
-    const lockId = `bundle_${tenantId}_${storeId}_${Date.now()}`;
-
-    await lockRef.set({
-        schemaVersion: SCHEMA_VERSION,
-        pId: 'AL',
-        tId: tenantId,
-        sId: storeId,
-        status: 'building',
-        lockId,
-        startedAt,
-        expiresAt: Timestamp.fromMillis(startedAt.toMillis() + 10 * 60 * 1000),
-        reason: 'nightly_repair',
-        requestedBy: 'system:answerlattice_nightly',
-        sourceVersionsAtStart: sourceVersions,
-    }, { merge: true });
-
-    await manifestRef.set({
-        schemaVersion: SCHEMA_VERSION,
-        pId: 'AL',
-        tId: tenantId,
-        sId: storeId,
-        status: 'building',
-        lastBuildStartedAt: FieldValue.serverTimestamp(),
-        lastBuildError: null,
-    }, { merge: true });
+    const bundleVersion = claim.bundleVersion;
+    const claimedManifest = claim.existingManifest;
+    const existingActiveVersion = normalizeAnswerlatticeStoredBundleVersion(claimedManifest?.activeVersion) ?? 0;
+    const existingLastReadyVersion = normalizeAnswerlatticeStoredBundleVersion(claimedManifest?.lastReadyVersion) ?? 0;
+    const publicBundleId = getPublicBundleId(claimedManifest, tenantId, storeId);
 
     try {
         const generatedAt = new Date().toISOString();
@@ -748,8 +760,14 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             PRIVATE_CACHE_CONTROL,
             { tId: tenantId, sId: storeId, bundleVersion, visibility: 'private' },
         );
-        await manifestRef.set(manifest, { merge: true });
-        await lockRef.set({ status: 'released', completedAt: FieldValue.serverTimestamp() }, { merge: true });
+        await db.runTransaction(async (transaction) => {
+            const currentLockSnap = await transaction.get(lockRef);
+            if (!currentLockSnap.exists || currentLockSnap.data()?.lockId !== lockId) {
+                throw new Error('context_bundle_build_lease_lost');
+            }
+            transaction.set(manifestRef, manifest, { merge: true });
+            transaction.set(lockRef, { status: 'released', completedAt: FieldValue.serverTimestamp() }, { merge: true });
+        });
 
         return {
             status: superseded ? 'superseded' : 'ready',
@@ -759,24 +777,28 @@ export const repairCompiledContextBundle = async (tId: number, sId: number): Pro
             routes: stats.routes,
         };
     } catch (error) {
-        await manifestRef.set({
-            schemaVersion: SCHEMA_VERSION,
-            pId: 'AL',
-            tId: tenantId,
-            sId: storeId,
-            status: existingManifest?.lastReadyVersion ? 'stale' : 'failed',
-            lastBuildError: 'build_failed',
-            lastBuildCompletedAt: FieldValue.serverTimestamp(),
-            staleReason: 'build_failed',
-            activeVersion: existingActiveVersion,
-            lastReadyVersion: existingLastReadyVersion,
-        }, { merge: true });
-        await lockRef.set({
-            status: 'failed',
-            completedAt: FieldValue.serverTimestamp(),
-            error: ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED,
-            ...getContextBundleSourceErrorContext(error),
-        }, { merge: true });
+        await db.runTransaction(async (transaction) => {
+            const currentLockSnap = await transaction.get(lockRef);
+            if (!currentLockSnap.exists || currentLockSnap.data()?.lockId !== lockId) return;
+            transaction.set(manifestRef, {
+                schemaVersion: SCHEMA_VERSION,
+                pId: 'AL',
+                tId: tenantId,
+                sId: storeId,
+                status: existingLastReadyVersion ? 'stale' : 'failed',
+                lastBuildError: 'build_failed',
+                lastBuildCompletedAt: FieldValue.serverTimestamp(),
+                staleReason: 'build_failed',
+                activeVersion: existingActiveVersion,
+                lastReadyVersion: existingLastReadyVersion,
+            }, { merge: true });
+            transaction.set(lockRef, {
+                status: 'failed',
+                completedAt: FieldValue.serverTimestamp(),
+                error: ANSWERLATTICE_CONTEXT_BUNDLE_REPAIR_FAILED,
+                ...getContextBundleSourceErrorContext(error),
+            }, { merge: true });
+        });
         return {
             status: 'failed',
             rebuilt: false,

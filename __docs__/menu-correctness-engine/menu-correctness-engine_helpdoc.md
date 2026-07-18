@@ -23,7 +23,7 @@ If published for owners, keep the customer-facing wording short and remove this 
 
 ## Quick Summary
 
-MenuList automatically checks your menu every time you save it. Supported surfaces read from the same verified project data after their normal refresh, download, or provider flow completes.
+MenuList checks supported project changes inside the save/publish or editor-gate path. Supported surfaces read from the same verified project data after their normal refresh, download, or provider flow completes.
 
 You don't need to do anything to activate this. It works automatically.
 
@@ -43,7 +43,7 @@ That's it. No extra steps. No settings to configure.
 
 ## What Gets Checked
 
-MenuList checks these things every time you save:
+MenuList checks these things on the supported standalone mutation and editor-gate paths:
 
 | Check            | What It Means                                                           |
 | ---------------- | ----------------------------------------------------------------------- |
@@ -98,11 +98,11 @@ Your POS connection receives menu data from the same project truth when the conn
 
 If you manage multiple outlets:
 
-1. **Master menu changes** are verified before reaching any outlet.
-2. **Each outlet** reads from verified project data with any local overrides applied.
+1. **Master menu changes** use the standalone validation path.
+2. **Each outlet** resolves master data with its local overrides; the linked save route checks location scope and policy.
 3. **Each outlet** should be checked in target QA when a release changes outlet inheritance, overrides, or location publishing.
 
-For normal edits, you do not need to manually check each outlet after changing the master menu. Release teams should still run target QA when outlet inheritance or publishing behavior changes.
+Normal edits do not create an extra owner MCE task. Release teams should still run target QA when outlet inheritance or publishing behavior changes.
 
 ---
 
@@ -110,7 +110,7 @@ For normal edits, you do not need to manually check each outlet after changing t
 
 ### Q: Do I need to turn this on?
 
-**A:** No. Menu verification is always on. It works automatically every time you save.
+**A:** No. The current flag is on. Standalone update/publish paths and the editor gate run local validation; linked outlet saves use their protected server route.
 
 ### Q: Will this slow down my editing?
 
@@ -134,7 +134,7 @@ For normal edits, you do not need to manually check each outlet after changing t
 
 - **Save regularly.** Each save triggers a verification check. More saves = more verification.
 - **Fix warnings promptly.** Even though warnings don't block your menu, fixing them ensures every surface shows the best version.
-- **For normal edits, you don't need to check every surface manually.** MenuList validates your menu every time you save.
+- **For normal edits, there is no separate MCE task.** Target-specific release QA still proves public, screen, PDF, and provider behavior.
 
 ---
 

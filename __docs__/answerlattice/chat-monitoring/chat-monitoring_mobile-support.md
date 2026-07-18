@@ -45,7 +45,8 @@ Firebase cost rules:
 - store summary options are cached in `PlatformGlobalDataProvider`;
 - no realtime listener is used for store selection;
 - backfill only runs after explicit confirmation;
-- the callable remains idempotent and skips days that already have reports.
+- the screen calls `backfillChatAnalytics` through the dedicated Answerlattice Functions client, never the legacy MenuList callable;
+- the callable uses a scoped cooldown/lease, remains source-hash idempotent, and skips unchanged or empty days.
 
 ## UX Requirements
 

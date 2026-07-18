@@ -106,7 +106,7 @@ export function LocalOnlyBadge(props: Omit<InheritanceBadgeProps, "state">) {
 
 /**
  * LocalOverrideBadge — Shows "Local Override" next to item name in outlet context
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §17.3
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §17.3
  */
 export function LocalOverrideBadge({ compact = false }: { compact?: boolean }) {
     return (

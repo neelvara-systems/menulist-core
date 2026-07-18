@@ -2,7 +2,7 @@
 
 > **Status:** Historical QA evidence; not current launch certification
 > **Original Date:** 2026-01-22  
-> **Last Reviewed:** 2026-05-20
+> **Last Reviewed:** 2026-07-16
 
 > **Source:** ChatGPT Deep Analysis + Codebase Cross-Check  
 > **Purpose:** Comprehensive test matrix for stability and scalability
@@ -29,6 +29,19 @@
 > - Follow-up policy audit also added server-side checks for linked outlet description/image generation, theme/brand/layout changes, and extraction job store scoping.
 > - May 20 completion pass closed the remaining useful partials: public item links now fall back cleanly when an outlet local item is gone, extraction persists `extractionIdAliases` for stable master/local IDs, outlet local saves stamp `outletLocalState`, and mobile now has the same master-update review/acknowledge surface as desktop.
 > - May 20 billing follow-up corrected manual/offline payment handling: manual accounts now require prepaid location capacity before outlet creation, reseller desktop/mobile can record paid capacity, Razorpay-backed quantity updates still happen before store writes when the provider supports them, and UPI-backed subscriptions now use a replacement same-plan checkout when Razorpay rejects quantity update.
+> - July 16 source cross-check added current transaction-authority coverage for create/policy/rename/deactivate, canonical tenant membership for linked saves and brand propagation, the 200-project outlet-creation cap, inactive/deleted master rejection, public linked-reference scope rejection, active outlet-context labels on mobile, and explicit support acknowledgement for unresolved deactivation billing reduction.
+
+## July 16, 2026 Current Regression Addendum
+
+| Boundary | Expected result | Current evidence |
+| --- | --- | --- |
+| Create with blank/extra-shaped body, stale role, inactive/deleted/blocked tenant or master, missing creator row, changed compact membership, exhausted capacity, or more than 200 eligible master projects | Reject before outlet commit; compensate any prior quantity update and release only the acquired lock | `POST /api/outlets/create`; `npm run verify:multi-location-boundary` |
+| Create, rename, change policy, or deactivate after tenant becomes inactive, deleted, or blocked | Current transaction rejects without applying the outlet mutation | `/api/outlets/*`; source gate |
+| Deactivate active or already-inactive outlet | Store/tenant/summary mutation is idempotent; Razorpay-managed quantity is reduced when possible; every unresolved reduction returns `billingReductionPending` plus `CONTACT_SUPPORT` | `POST /api/outlets/deactivate`; desktop/mobile response guards; source gate |
+| Save linked outlet after caller/outlet/master membership or block status changes | Transaction rejects with no project/summary write | `POST /api/projects/outlet-save`; source gate |
+| Propagate chain identity with orphan, missing, inactive, blocked, or cross-tenant store documents | Only current canonical active outlets are eligible; drift rejects the transaction rather than partially propagating | `POST /api/outlets/brand-propagation`; source gate |
+| Resolve public outlet project with cross-tenant, same-store, inactive, deleted, or malformed master reference | Fail closed; do not read/render unrelated master content | public client resolver plus `resolveProjectForRender`; source gate |
+| Switch Mobile Locations to an outlet and then HQ | Exactly the active context shows `Current`; current-row selection is a no-op; HQ claim refresh occurs before context clear | `MobileLocationsScreen`; source gate; authenticated browser QA still pending |
 
 ---
 
@@ -80,7 +93,7 @@ This document captures **90 real-world multi-outlet scenarios**, a **QA test mat
 
 | Aspect              | Detail                                                    |
 | ------------------- | --------------------------------------------------------- |
-| **HQ Intent**       | Update should apply to all outlets instantly              |
+| **HQ Intent**       | Saved update should flow to linked outlets through the resolver/cache path |
 | **Outlet Reality**  | We didn't touch anything                                  |
 | **Risk**            | None (ideal flow)                                         |
 | **Resolution Rule** | Master price used when no override                        |

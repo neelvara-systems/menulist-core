@@ -1,80 +1,83 @@
-# Answerlattice — Guided Workflows (Structured Procedure Answers)
+# Answerlattice Guided Workflows
 
-> **Status:** DESIGNED — Ready for Implementation
-> **Version:** 1.0.0
+> **Status:** Implemented, workspace opt-in
+> **Version:** 2.1.0
 > **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
-> **Expansion Item:** #2 (from answerlattice-expansion-tracker.md)
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`
-> **Dependencies:** #1 Context-Aware Support (IMPLEMENTED)
-> **Doctrine Compliance:** ✅ Additive metadata field on canonical answer (Freeze §2)
+> **Last verified:** 2026-07-18
+> **Flags:** `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`, `ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION`
 
----
+## Purpose
 
-## Summary
+Guided Workflows turn an approved canonical procedure into controlled in-product help:
 
-Converts Answerlattice's canonical answers from text-only explanations into structured, executable procedures for procedural ("how to") support queries. Most SaaS support load comes from Class 3 queries ("how do I do X?"), which require deterministic step-by-step instructions — not paragraphs.
+1. Explain the approved procedure.
+2. Highlight a client-declared semantic target.
+3. Wait for the user or a client-verified workflow event.
+4. Advance, complete, report a missing target, or escalate.
+5. Record at most one deduplicated terminal outcome when signal mutation is enabled.
 
-This feature adds an `answerType` discriminator and an embedded `procedure` structure to the existing `AnswerlatticeCanonicalAnswer` type. No new Firestore collections. No new reads. Same 2-read retrieval path.
+The runtime is an **Explain + Guide** layer. It does not click controls, execute client code, read the page DOM as product truth, or change product data.
 
----
+## Runtime Truth
 
-## Key Architecture Decisions
+- Procedure data remains embedded in an existing canonical answer.
+- Only a canonical widget search result may start a guided session.
+- Existing answers without procedures remain unchanged.
+- `target` maps to `data-answerlattice-target="<semantic-id>"`.
+- `expectedEvent` maps to `AnswerlatticeWidget.emitWorkflowEvent("<semantic-id>")`.
+- Semantic IDs are bounded, lowercase identifiers. CSS selectors are rejected.
+- The host script scans at most 500 explicitly marked targets.
+- Highlight overlays use `pointer-events: none`.
+- Route/context changes, widget hide, and widget close clear the active highlight.
+- Missing targets fall back to the written instruction.
+- Owner configuration defaults to disabled per workspace.
+- The widget response never exposes tenant or store identifiers.
+- Guided outcomes do not become approved knowledge. Escalation enters the existing governed signal path.
+- MenuList is the first source-integrated reference client for menu import, import recovery, publish, share, and public-link verification.
+- Reference procedure templates are non-authoritative code fixtures. They become live only when an owner creates or imports a matching draft and approves it through the existing intake, mutation-proposal, and governance path; Answerlattice never seeds client truth automatically.
+- MenuList mobile controls carry the same semantic contracts, but the MenuList widget remains intentionally suppressed on mobile.
 
-| # | Decision | Rationale |
-|---|----------|-----------|
-| 1 | **No separate `procedures` collection** | Canonical answer IS the atomic knowledge unit. Separate collection breaks "one authoritative answer" invariant + adds reads |
-| 2 | **No separate `warnings`/`prerequisites` collections** | Scope system (planIds/roleIds/stateIds) already handles prerequisites. Embedding in answer = zero extra reads |
-| 3 | **No UI Target Map collection** | Step `target` is a simple string. Future registry can be additive without breaking structure |
-| 4 | **`answerType` as discriminator field** | Backward compatible: defaults to `'explanation'` for all existing answers |
-| 5 | **Steps embedded in answer document** | Maintains 2-read retrieval path (search index + answer) |
-| 6 | **Fixed action vocabulary as TypeScript const** | Zero Firestore reads. Enforced at write-time |
-| 7 | **Max 12 steps per procedure** | Cognitive load boundary. Exceeding = split into multiple answers |
-| 8 | **Linear steps only (no branching)** | v1 simplicity. Use prerequisites for conditional logic |
-| 9 | **Same mutation pipeline for procedures** | Procedure answers are canonical answers. Same governance applies |
-| 10 | **No separate intent mapping collection** | Existing entity + intent resolution already handles routing |
+## First Reference Client
 
----
+MenuList proves the integration contract on real product workflows without adding browser control:
+
+1. **Import a first menu:** choose photos, PDF, or an approved public URL; start an acknowledged extraction job; review; apply.
+2. **Recover a failed import:** use the real retry state and return to owner review.
+3. **Publish and check:** publish acknowledged project changes, open Share, and open the public menu.
+
+The canonical target/event registry is `src/lib/answerlattice/referenceClients/menuListGuidedResolution.ts`. Product code imports that registry instead of duplicating string identifiers.
+
+## Product Boundary
+
+This is not:
+
+- a general browser agent;
+- product-tour automation;
+- arbitrary JavaScript execution;
+- an action broker;
+- screenshot or raw DOM capture;
+- autonomous knowledge mutation;
+- a replacement for client authorization.
 
 ## Documents
 
-| Document | Audience | Purpose |
-|----------|----------|---------|
-| [README.md](./README.md) | Everyone | Index + architecture decisions |
-| [guided-workflows_spec.md](./guided-workflows_spec.md) | CEO/PM/Clients | Business requirements, user stories |
-| [guided-workflows_impl.md](./guided-workflows_impl.md) | Developers | Technical blueprint, data model, file changes |
-| [guided-workflows_firebase.md](./guided-workflows_firebase.md) | Developers/Ops | Firebase cost tracking, read/write analysis |
-| [guided-workflows_marketing.md](./guided-workflows_marketing.md) | Sales/Marketing | Positioning, pitch points |
-| [guided-workflows_website.md](./guided-workflows_website.md) | Marketing | Landing page content |
-| [guided-workflows_helpdoc.md](./guided-workflows_helpdoc.md) | Customers | How to use guided workflows |
-| [guided-workflows_mobile-support.md](./guided-workflows_mobile-support.md) | Developers | Mobile admission test + assessment |
-
----
-
-## Feature Rejection Filter (Doctrine IX)
-
-| Question | Answer |
-|----------|--------|
-| Does this increase Canonical Coverage? | ✅ Yes — procedure answers cover Class 3 queries that text answers handle poorly |
-| Does this strengthen Release Binding? | ✅ Yes — procedure steps reference product versions, drift when UI changes |
-| Does this improve Drift Detection? | ✅ Yes — structured steps are version-diffable, drift-detectable |
-| Does this reduce Fallback Reliance? | ✅ Yes — deterministic procedure answers reduce RAG fallback for how-to queries |
-| Does this reinforce Ontology Quality? | ✅ Yes — procedures are entity-bound, strengthen entity coverage |
-
-**Verdict:** PASSES all 5 filters.
-
----
-
-## Expansion Axis Alignment (Doctrine VII)
-
-- **Canonical coverage increase** ✅ — Procedures increase answer quality for procedural queries
-- **Deterministic retrieval performance** ✅ — Structured steps = no generation needed for known procedures
-- **Ontology depth** ✅ — Procedures bind to entities, enriching the ontology
-
----
+| Document | Purpose |
+|---|---|
+| [guided-workflows_spec.md](./guided-workflows_spec.md) | Product contract and boundaries |
+| [guided-workflows_impl.md](./guided-workflows_impl.md) | Verified runtime architecture |
+| [guided-workflows_firebase.md](./guided-workflows_firebase.md) | Firebase cost and data behavior |
+| [guided-workflows_helpdoc.md](./guided-workflows_helpdoc.md) | Owner installation and use |
+| [guided-workflows_mobile-support.md](./guided-workflows_mobile-support.md) | Mobile behavior |
+| [guided-workflows_marketing.md](./guided-workflows_marketing.md) | Claim-safe positioning |
+| [guided-workflows_website.md](./guided-workflows_website.md) | Public-copy boundary |
+| [guided-workflows_test-cases.md](./guided-workflows_test-cases.md) | Required test cases |
+| [guided-workflows_validation.md](./guided-workflows_validation.md) | Latest verification evidence |
 
 ## Version History
 
 | Date | Version | Change |
-|------|---------|--------|
-| 2026-03-08 | 1.0.0 | Initial design from ChatGPT conversation + Cascade codebase audit + external research |
+|---|---:|---|
+| 2026-03-08 | 1.0.0 | Structured procedure design |
+| 2026-07-17 | 2.0.0 | Controlled Explain + Guide runtime, semantic targets/events, owner opt-in, and bounded terminal outcomes |
+| 2026-07-18 | 2.0.0 | Cross-check aligned the owner toggle and install option with the parent and child feature-flag dependency |
+| 2026-07-18 | 2.1.0 | Added the MenuList reference client, intake-to-governance procedure preservation, typed SDK parity, and focused regression coverage |

@@ -1,9 +1,9 @@
 # Shareable Tool Reports - Documentation Hub
 
 > **Feature:** Shareable public report layer for MenuList Tools
-> **Status:** Implemented V0 for public report viewing, all current public MenuList Tools, setup job lists, structured consented report follow-up capture with canonical source timestamps, and internal Report Leads triage
-> **Last Updated:** July 5, 2026
-> **Version:** 0.8
+> **Status:** Implemented V0 for public self-report viewing, all current public MenuList Tools, derived setup job lists, consented follow-up capture, and bounded internal Report Leads triage
+> **Last Updated:** July 16, 2026
+> **Version:** 0.9
 
 ---
 
@@ -38,8 +38,10 @@ The V0 implementation is intentionally light:
 - no AI/provider call
 - report payload is carried in the URL hash fragment
 - invalid, oversized, or malformed report hashes keep the invalid-report state and use bounded decode diagnostics only
+- inconsistent summary counts, missing report limits, or unsafe internal action paths fail closed
 - all current public MenuList Tools can copy a public report link
-- each report carries a bounded setup job list derived from its visible gaps
+- each report rebuilds a bounded setup job list from its visible gaps instead of trusting job rows from the hash
+- the viewer labels the link as an unsigned browser-local self-report and asks readers to confirm facts with the owner
 - optional report follow-up form reuses the existing consented `/api/public/contact` path and stores bounded `sourceContext` metadata with canonical ISO `reportGeneratedAt` on that existing enquiry
 - internal platform route: `/ops/report-leads` for manual triage of consented report leads
 
@@ -51,7 +53,7 @@ If a visitor submits the follow-up form, MenuList stores one existing public con
 
 Direct follow-up submissions store `sourceContext.reportGeneratedAt` only when it is the canonical ISO timestamp shape produced by source tools. Invalid or malformed values are stored as `null` and returned as `null` by Report Leads.
 
-Report Leads at `/ops/report-leads` reads those existing enquiries for platform-admin triage. Before that PII read, the API re-reads the exact current platform-user document and rejects stale, downgraded, disabled, blocked, deleted, identity-mismatched, or revoked sessions. It is not public, not an owner surface, and not a report history system.
+Report Leads at `/ops/report-leads` reads those existing enquiries for platform-admin triage. Before that PII read, the API re-reads the exact current platform-user document and rejects stale, downgraded, disabled, blocked, deleted, identity-mismatched, or revoked sessions. Production rate-limit-provider failure blocks the read. The indexed `sourceKind = shareable_tool_report` query reads only matching enquiries, remains capped at 120 rows, and warns when older matching leads may exist. It is not public, not an owner surface, and not a report history system.
 
 ---
 
@@ -109,6 +111,7 @@ Future tools must adopt the shared payload contract when their report cards are 
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 0.9 | July 16, 2026 | Added report summary/check consistency, derived setup jobs, origin-safe actions, required report limits, unsigned self-report disclosure, strict source-path handling, production fail-closed ops rate limiting, and visible bounded-scan disclosure |
 | 0.8 | July 5, 2026 | Added canonical ISO `reportGeneratedAt` normalization for consented report follow-up metadata and Report Leads triage |
 | 0.7 | July 5, 2026 | Added bounded decode diagnostics for invalid, oversized, malformed, or wrong-shape report hash payloads without storing or logging report content |
 | 0.6 | July 4, 2026 | Added bounded setup job lists to shareable report payloads, public viewer output, consented source metadata, and Report Leads triage |

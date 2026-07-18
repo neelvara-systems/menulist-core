@@ -1,0 +1,190 @@
+<!-- MenuList caption skin: transparent, quiet, word-timed, no pill. -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+
+<style data-brand-tokens></style>
+
+<style>
+  #captions-root,
+  .caption-layer {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .caption-layer {
+    z-index: 20;
+  }
+
+  .caption-stage {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: var(--cap-band-top, 900px);
+    height: var(--cap-band-height, 180px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .caption-group {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+  }
+
+  .caption-pill {
+    max-width: 82%;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .caption-line {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.1em 0.3em;
+    font-family: var(--font-body, "Inter"), system-ui, sans-serif;
+    font-size: clamp(40px, 3vw, 58px);
+    font-weight: 650;
+    line-height: 1.35;
+    letter-spacing: 0;
+    text-align: center;
+  }
+
+  .caption-word {
+    display: inline-block;
+    padding: 0;
+    color: var(--cap-muted, #94a3b8);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .caption-word.is-active {
+    color: var(--cap-accent, #0051d1);
+  }
+
+  .caption-word.is-spoken {
+    color: var(--cap-ink, #0f172a);
+  }
+
+  @media (max-aspect-ratio: 9/16) {
+    .caption-pill {
+      max-width: 88%;
+    }
+
+    .caption-line {
+      font-size: clamp(42px, 5.2vw, 54px);
+    }
+  }
+</style>
+
+<div
+  id="captions-root"
+  data-composition-id="captions"
+  data-timeline-locked
+  data-start="0"
+  data-duration="0"
+  data-fps="30"
+  data-width="0"
+  data-height="0"
+>
+  <div class="caption-layer" aria-hidden="true">
+    <div id="caption-stage" class="caption-stage"></div>
+  </div>
+</div>
+
+<script>
+  var GROUPS = [];
+  var DURATION = 0;
+
+  (function () {
+    var stage = document.getElementById("caption-stage");
+
+    GROUPS.forEach(function (group, groupIndex) {
+      var groupElement = document.createElement("div");
+      groupElement.className = "caption-group";
+      groupElement.id = "caption-group-" + groupIndex;
+
+      var wrapper = document.createElement("div");
+      wrapper.className = "caption-pill";
+      var line = document.createElement("div");
+      line.className = "caption-line";
+
+      (group.words || []).forEach(function (word, wordIndex) {
+        var span = document.createElement("span");
+        span.className = "caption-word";
+        span.id = "caption-word-" + groupIndex + "-" + wordIndex;
+        span.textContent = String(word.text);
+        line.appendChild(span);
+      });
+
+      wrapper.appendChild(line);
+      groupElement.appendChild(wrapper);
+      stage.appendChild(groupElement);
+    });
+
+    window.__timelines = window.__timelines || {};
+    var timeline = gsap.timeline({ paused: true });
+
+    GROUPS.forEach(function (group, groupIndex) {
+      var groupElement = document.getElementById("caption-group-" + groupIndex);
+      var words = group.words || [];
+      var nextGroup = GROUPS[groupIndex + 1];
+      var start = Math.max(0, Number(group.start));
+      var end =
+        groupIndex === GROUPS.length - 1
+          ? DURATION
+          : Math.min(Number(nextGroup.start), Number(group.end) + 0.3);
+
+      if (end <= start) end = start + 0.01;
+
+      timeline.set(groupElement, { opacity: 1 }, start);
+      timeline.set(groupElement, { opacity: 0 }, end);
+
+      words.forEach(function (word, wordIndex) {
+        var element = document.getElementById(
+          "caption-word-" + groupIndex + "-" + wordIndex,
+        );
+        var activeAt = Math.max(start, Number(word.start));
+
+        timeline.set(element, { className: "caption-word" }, start);
+        timeline.set(element, { className: "caption-word is-active" }, activeAt);
+        timeline.fromTo(
+          element,
+          { scale: 0.985 },
+          { scale: 1, duration: 0.16, ease: "power1.out" },
+          activeAt,
+        );
+
+        if (wordIndex + 1 < words.length) {
+          timeline.set(
+            element,
+            { className: "caption-word is-spoken" },
+            Math.max(start, Number(words[wordIndex + 1].start)),
+          );
+        }
+      });
+
+      if (words.length) {
+        var finalWord = document.getElementById(
+          "caption-word-" + groupIndex + "-" + (words.length - 1),
+        );
+        timeline.set(
+          finalWord,
+          { className: "caption-word is-spoken" },
+          Math.min(end, Number(words[words.length - 1].end) + 0.1),
+        );
+      }
+    });
+
+    timeline.to({}, { duration: DURATION }, 0);
+    window.__timelines.captions = timeline;
+  })();
+</script>

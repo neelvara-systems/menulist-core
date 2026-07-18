@@ -69,13 +69,13 @@ Choose when your special menu should start and when it should end.
 - **Starts:** Pick a date and time
 - **Ends:** Pick a date and time
 
-Your special menu will appear automatically at the start time and disappear at the end time.
+MenuList checks scheduled boundaries every two minutes. The live menu normally switches within a few minutes of the time you choose and switches back the same way at the end.
 
 `[Screenshot: Date/time picker]`
 
 ### Step 5: Edit your special menu
 
-Your special menu starts as a copy of your current regular menu. Now you can:
+If you choose **Replace**, the special menu starts as a copy of your regular menu. If you choose **Add as special section**, it starts with an empty special section while keeping the same language/editor setup. Now you can:
 
 - **Remove** items you don't want in the special menu
 - **Add** new festival or special items
@@ -107,7 +107,7 @@ Your menu list shows the status of each special menu:
 
 ### Editing a Scheduled Menu
 
-You can edit a special menu before it becomes active. Just open it from your menu list and make changes.
+You can edit a scheduled special menu from **More → Special Menus** on mobile, or open the special project in the normal menu editor to change its content. Schedule/name edits use the same conflict and lifecycle checks as creation.
 
 ### Ending a Special Menu Early
 
@@ -133,7 +133,7 @@ If you changed your mind about a scheduled menu:
 
 ### Will my regular menu be affected?
 
-**No.** Your regular menu stays exactly as it is. Special menus are completely separate. When the special period ends, your regular menu is back — exactly as you left it.
+**No.** Your regular menu project is not modified by the special-menu lifecycle. When the special period ends, the public resolver returns to the regular menu.
 
 ### Can I have multiple special menus?
 
@@ -157,14 +157,14 @@ Special menus stay in your list after they end. You can create a new one for nex
 
 ### Does this cost extra?
 
-No. Special menu switching is included in your MenuList plan.
+Plan availability is shown in your MenuList account. Check Billing or ask support for the current plan boundary instead of relying on an older help-page promise.
 
 ---
 
 ## Tips
 
 - **Prepare ahead:** Create your festival menu a week early. Schedule it, and forget about it.
-- **Start from your current menu:** Your special menu starts as a copy — just add/remove what you need instead of building from scratch.
+- **Choose the right mode:** Replace starts from the current menu; Add as special section starts empty so you add only the temporary rows.
 - **Check the dates:** Make sure your end date is correct so your regular menu comes back at the right time.
 - **One at a time:** Only one special menu can be active. Plan your calendar so dates don't overlap.
 
@@ -176,7 +176,7 @@ No. Special menu switching is included in your MenuList plan.
 | ------------------------------------------ | ---------------------------------------------------------------------------------------- |
 | "I can't create a special menu"            | Make sure you have at least one regular menu first                                       |
 | "Dates are overlapping"                    | Check your other scheduled menus and adjust dates                                        |
-| "Special menu didn't appear"               | Check the start time — it might not have arrived yet                                     |
+| "Special menu didn't appear"               | Check the time and wait a few minutes. Refresh the public link; if it is still wrong, contact support. |
 | "My regular menu is different than before" | This shouldn't happen. Contact support — regular menu is never modified by special menus |
 
 ---
@@ -200,4 +200,4 @@ If something isn't working as expected, contact our support team. Include:
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** July 16, 2026

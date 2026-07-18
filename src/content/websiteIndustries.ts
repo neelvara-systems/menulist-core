@@ -243,13 +243,6 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
             { label: 'Official customer link', href: '/resources/official-menu-url-checklist' },
             { label: 'Public discovery', href: '/features/public-discovery' },
         ],
-        demo: {
-            label: 'Placeholder proof asset',
-            title: 'Glow & Blade Studio service-list demo',
-            caption: 'Sample business. Demo data only. Replace this placeholder with approved MenuList screenshots before broad campaign use.',
-            imageSrc: '/images/website/demo-placeholders/glow-blade-service-list-placeholder.svg',
-            imageAlt: 'Placeholder sample showing a salon service list becoming one official customer link.',
-        },
         faq: [
             {
                 question: 'Is MenuList a booking system for salons?',
@@ -295,13 +288,6 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
             { label: 'WhatsApp onboarding', href: '/whatsapp' },
             { label: 'AI search discovery', href: '/resources/ai-search-menu-discovery' },
         ],
-        demo: {
-            label: 'Placeholder proof asset',
-            title: 'Multi-category service-list demo',
-            caption: 'Sample businesses. Demo data only. Replace this placeholder with approved screenshots or a walkthrough video before final launch use.',
-            imageSrc: '/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg',
-            imageAlt: 'Placeholder sample showing service lists, packages, rate cards, catalogs, and customer links.',
-        },
         faq: [
             {
                 question: 'Does MenuList only work for food menus?',
@@ -347,13 +333,6 @@ export const websiteIndustryPages: WebsiteIndustryPage[] = [
             { label: 'Menu source audit', href: '/resources/menu-source-audit' },
             { label: 'QR placement checklist', href: '/resources/qr-code-placement-checklist' },
         ],
-        demo: {
-            label: 'Placeholder proof asset',
-            title: 'Spark Auto Detailing rate-card demo',
-            caption: 'Sample business. Demo data only. Replace this placeholder with routed product screenshots before campaign use.',
-            imageSrc: '/images/website/demo-placeholders/spark-detailing-rate-card-placeholder.svg',
-            imageAlt: 'Placeholder sample showing a local service package rate card becoming an official customer link.',
-        },
         faq: [
             {
                 question: 'Can the page show starting prices instead of fixed prices?',

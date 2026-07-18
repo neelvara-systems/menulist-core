@@ -856,6 +856,8 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 
 ## 19. Implementation Completion Checklist
 
+The owner review card now resolves up to three linked sources from the already-loaded intake bundle. It shows bounded source excerpts, source type/title, public HTTPS origin where available, launch-pack applicability, and missing-evidence warnings before Accept/Reject. The edit modal reuses the same evidence projection. This is a UI projection only: it adds no source query, listener, provider call, or review status.
+
 - Feature flags added client/server.
 - Constants added to app/functions Answerlattice DB constants.
 - Firestore rules deny by default and scope by `pId/tId/sId`.
@@ -904,3 +906,4 @@ Expected outputs are defined in `knowledge-intake-command-center_test-cases.md`.
 | 2026-06-30 | 2.0.5 | Added shared Knowledge Intake browser request policy before bounded response validation. |
 | 2026-06-30 | 2.0.6 | Bounded Knowledge Intake and platform intake-monitor security-log metadata for shared rate-limit denials. |
 | 2026-07-05 | 2.0.7 | Added protected Knowledge Intake route ID admission for Firestore auto-ID job params and deterministic `kii_` review item IDs. |
+| 2026-07-17 | 2.0.8 | Added bounded linked-source evidence and applicability to owner review decisions without additional reads. |

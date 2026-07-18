@@ -231,7 +231,7 @@ Even with perfect taste, building the right thing at the wrong time wastes effor
 
 - Save status shows "· Live" instead of "Saved successfully at 14:32:01 IST"
 - No onboarding wizard — menu appears, link works, done
-- BehaviorNudgeCard is dismissible and shows once (not persistent)
+- Official-link guidance is embedded in existing Dashboard and Share surfaces; no duplicate nudge card or dismissal state
 - Post-save confidence toast fires once per session (not every save)
 - OBP page shows only: name, logo, hours, actions, menu button (not everything we know)
 - Error state: silence or "No action needed" — never stack traces or technical detail

@@ -16,6 +16,7 @@ import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuClock, LuRefreshCw, LuShieldAlert } from 'react-icons/lu';
+import { Alert } from 'antd';
 import { Button, Card, DotLoading, Flex, List, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -71,10 +72,12 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
     const [cost, setCost] = useState<ExtractionCostMetrics | null>(null);
     const [jobs, setJobs] = useState<ExtractionJobSummary[]>([]);
     const [jobFilter, setJobFilter] = useState<JobFilter>('all');
+    const [loadError, setLoadError] = useState(false);
 
     const loadData = useCallback(async () => {
         if (!isPlatform || !isEnabled) return;
         setLoading(true);
+        setLoadError(false);
         try {
             const snapshot = await getExtractionDashboardSnapshot({ status: filterToStatus(jobFilter), pageSize: 20 });
             setHealth(snapshot.health);
@@ -82,6 +85,7 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
             setCost(snapshot.cost);
             setJobs(snapshot.jobs);
         } catch {
+            setLoadError(true);
             Toast.show({ content: 'Could not load extraction data', duration: 1800 });
         } finally {
             setLoading(false);
@@ -158,6 +162,16 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
                     </Card>
                 ) : (
                     <>
+                        {loadError ? (
+                            <Alert
+                                message="Extraction state unavailable"
+                                description={health ? 'Showing the previous successful snapshot.' : 'No current extraction snapshot could be verified.'}
+                                showIcon
+                                type="error"
+                            />
+                        ) : null}
+                        {loadError && !health ? null : (
+                        <>
                         <Card size="small" title={<Text strong>Health</Text>}>
                             <Flex gap={12} vertical>
                                 <Flex align="center" justify="space-between">
@@ -241,6 +255,8 @@ export default function MobileExtractionMonitorScreen({ onBack }: MobileExtracti
                                 <Text type="secondary">No extraction jobs found.</Text>
                             )}
                         </Card>
+                        </>
+                        )}
                     </>
                 )}
             </Flex>

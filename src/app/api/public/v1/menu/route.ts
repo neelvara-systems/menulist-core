@@ -100,8 +100,12 @@ async function getDefaultPublicMenuProject(
     const projects = Object.entries(parseSummaryProjects(summarySnap.data()))
         .map(([projectId, data]) => {
             const projectDocumentId = normalizePublicApiDocumentId(projectId);
-            return projectDocumentId
-                ? withAuthoritativeSummaryProjectId(projectDocumentId, data)
+            const projectScope = projectDocumentId
+                ? normalizeMultiOutletProjectId(projectDocumentId)
+                : null;
+            return projectScope?.tenantDocumentId === tenantDocumentId
+                && projectScope.storeDocumentId === storeDocumentId
+                ? withAuthoritativeSummaryProjectId(projectScope.projectId, data)
                 : null;
         })
         .filter((project): project is NonNullable<typeof project> => Boolean(project))

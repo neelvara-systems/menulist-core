@@ -288,7 +288,7 @@ function FontPresets() {
                             <Flex gap={20} vertical style={{ width: "100%" }}>
                                 <Text>Black Theme</Text>
                                 <Flex style={{ width: "100%", height: 80, background: "black", border: `2px solid ${token.colorBorder}`, boxShadow: token.boxShadow }} align="center" justify="center">
-                                    <img style={{ width: "auto", border: `1px solid ${token.colorBorder}` }} src={fontDetails.whiteTextUrl} />
+                                    <img alt={`${fontDetails.code} font preview on a dark background`} style={{ width: "auto", border: `1px solid ${token.colorBorder}` }} src={fontDetails.whiteTextUrl} />
                                 </Flex>
                                 <Button>Size: {Number(getBase64Length(fontDetails.whiteTextUrl) / 1000).toFixed()}KB  ({fontDetails.width}X{fontDetails.height})</Button>
                             </Flex>
@@ -296,7 +296,7 @@ function FontPresets() {
                             <Flex gap={20} vertical style={{ width: "100%" }}>
                                 <Text>White Theme</Text>
                                 <Flex style={{ width: "100%", height: 80, background: "white", border: `2px solid ${token.colorBorder}`, boxShadow: token.boxShadow }} align="center" justify="center">
-                                    <img style={{ width: "auto", border: `1px solid ${token.colorBorder}` }} src={fontDetails.blackTextUrl} />
+                                    <img alt={`${fontDetails.code} font preview on a light background`} style={{ width: "auto", border: `1px solid ${token.colorBorder}` }} src={fontDetails.blackTextUrl} />
                                 </Flex>
                                 <Button>Size: {Number(getBase64Length(fontDetails.blackTextUrl) / 1000).toFixed()}KB  ({fontDetails.width}X{fontDetails.height})</Button>
                             </Flex>

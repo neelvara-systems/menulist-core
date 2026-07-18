@@ -1,20 +1,18 @@
 import { APP_LANGUAGES } from "@constant/common";
-import { DateTimeFormatOptions } from "next-intl";
+import type { DateTimeFormatOptions } from "next-intl";
 
 export const APP_LOCALE_COOKIES_KEY = `e-locale`
 export const APP_TIMEZONE_COOKIES_KEY = `e-timezone`
 export const APP_DATE_FORMAT_COOKIES_KEY = `e-date-format`;
 export const APP_TIME_FORMAT_COOKIES_KEY = `e-time-format`;
 
-export type Locale = (typeof AppSupportedLocales)[number];
+export type Locale = string;
 export const AppSupportedLocales = APP_LANGUAGES.map(l => l.value);
 export const defaultLocale: Locale = 'en-US';
 
-// Safe fallback: Intl API on server (Vercel) returns server TZ (often UTC).
-// We use it when available but the real user TZ comes from the cookie.
-export const defaultTimezone = typeof Intl !== 'undefined'
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
-    : 'UTC';
+// Keep the SSR fallback deterministic. The selected browser preference is
+// persisted separately in APP_TIMEZONE_COOKIES_KEY.
+export const defaultTimezone = 'UTC';
 
 // Safe hardcoded defaults — Intl.DateTimeFormat().resolvedOptions() does NOT
 // reliably return day/month/year on all runtimes (returns undefined on some servers).
@@ -47,3 +45,80 @@ export const TIME_FORMATS: TimeFormatsEntry[] = [
     { labelHelper: "24 Hr format", label: "numeric|numeric|false", value: { hour: 'numeric', minute: 'numeric', hour12: false } },
     { labelHelper: "24 Hr format", label: "2-digit|2-digit|false", value: { hour: '2-digit', minute: '2-digit', hour12: false } },
 ]
+
+const supportedLocaleSet = new Set<string>(AppSupportedLocales);
+const rtlLanguageCodes = new Set(['ar', 'fa', 'he', 'ks', 'sd', 'ur']);
+
+export const isSupportedLocale = (value?: string | null): boolean => (
+    Boolean(value && supportedLocaleSet.has(value))
+);
+
+export const normalizeLocalePreference = (value?: string | null): Locale | null => {
+    if (!value || typeof value !== 'string') return null;
+
+    const normalizedInput = value.trim().replace(/_/g, '-');
+    if (!normalizedInput || normalizedInput === '*') return null;
+
+    try {
+        const canonical = Intl.getCanonicalLocales(normalizedInput)[0];
+        if (!canonical) return null;
+        if (isSupportedLocale(canonical)) return canonical as Locale;
+
+        const baseLanguage = canonical.split('-')[0]?.toLowerCase();
+        if (!baseLanguage) return null;
+        if (baseLanguage === 'en') return defaultLocale;
+
+        return AppSupportedLocales.find((locale) => (
+            locale.toLowerCase() === baseLanguage
+            || locale.toLowerCase().startsWith(`${baseLanguage}-`)
+        )) || null;
+    } catch {
+        return null;
+    }
+};
+
+export const normalizeTimeZone = (
+    value?: string | null,
+    fallback = defaultTimezone,
+): string => {
+    const candidate = typeof value === 'string' ? value.trim() : '';
+    if (!candidate || candidate.length > 100) return fallback;
+
+    try {
+        new Intl.DateTimeFormat('en-US', { timeZone: candidate }).format(0);
+        return candidate;
+    } catch {
+        return fallback;
+    }
+};
+
+export const normalizeDateFormatPreference = (value?: string | null): string => (
+    DATE_FORMATS.some((format) => format.label === value)
+        ? value as string
+        : defaultDateFormatString
+);
+
+export const normalizeTimeFormatPreference = (value?: string | null): string => (
+    TIME_FORMATS.some((format) => format.label === value)
+        ? value as string
+        : defaultTimeFormatString
+);
+
+export const getDateFormatOptions = (value?: string | null): DateTimeFormatOptions => (
+    DATE_FORMATS.find((format) => format.label === normalizeDateFormatPreference(value))?.value
+    || defaultDateFormat
+);
+
+export const getTimeFormatOptions = (value?: string | null): DateTimeFormatOptions => (
+    TIME_FORMATS.find((format) => format.label === normalizeTimeFormatPreference(value))?.value
+    || defaultTimeFormat
+);
+
+export const isRtlLocale = (value?: string | null): boolean => {
+    const normalized = normalizeLocalePreference(value);
+    return normalized ? rtlLanguageCodes.has(normalized.split('-')[0].toLowerCase()) : false;
+};
+
+export const getLocaleDirection = (value?: string | null): 'ltr' | 'rtl' => (
+    isRtlLocale(value) ? 'rtl' : 'ltr'
+);

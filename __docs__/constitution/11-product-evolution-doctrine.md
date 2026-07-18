@@ -1,6 +1,6 @@
 # Product Evolution Doctrine
 
-**Version:** 1.0  
+**Version:** 1.1
 **Status:** 🔒 LOCKED — 3-YEAR COMMITMENT (February 2026 → February 2029)  
 **Authority:** Maximum — Overrides all feature proposals and expansion ideas  
 **Source:** ChatGPT Strategic Session → Cascade Review + Codebase Cross-Check  
@@ -105,11 +105,11 @@ Within first 5 minutes, owner must grasp:
 
 1. **Minute 0-1:** "This controls my menu and business info"
 2. **Minute 1-3:** Upload menu, see preview, set hours
-3. **Minute 3-5:** Change something → see it reflected everywhere
+3. **Minute 3-5:** Approve a change → see the supported customer link and connected MenuList outputs refresh
 
 ### The Test
 
-- **PASS:** Owner says "Whatever I update here becomes correct everywhere"
+- **PASS:** Owner says "I approve it once, then my MenuList customer links and outputs use it"
 - **FAIL:** Owner asks "What does this do?" or "Where do I click?"
 
 ### Implications
@@ -173,8 +173,8 @@ Every decision must answer:
 
 1. **Single source of truth** — Only one canonical value exists. No duplicates.
 2. **Silent propagation** — Owner updates once. System handles the rest.
-3. **No dashboard addiction** — This is not an analytics product. Minimal UI.
-4. **High trust system** — If MenuList shows something, it must always be correct.
+3. **No dashboard addiction** — This is not an engagement analytics product. Keep approval, correction, billing, and settled health views compact.
+4. **High trust system** — Public output comes from owner-approved truth, uses conservative fallbacks, and shows less rather than inventing certainty.
 5. **Customer-facing only** — Everything must affect what customer sees.
 
 ### When UI Appears
@@ -182,7 +182,7 @@ Every decision must answer:
 UI should appear only when human confirmation is genuinely required:
 
 - "Today is marked closed but screens are scheduled. Keep closed everywhere?" → One tap confirm.
-- NOT: dashboards, analytics, monitoring screens, status panels.
+- NOT: engagement dashboards, routine monitoring screens, or status panels that ask the owner to supervise healthy operation.
 
 ---
 
@@ -238,3 +238,4 @@ When SMB owners say this about MenuList, we have achieved infrastructure status.
 **Created:** February 19, 2026  
 **Lock Expires:** February 2029 (3-year minimum)  
 **Modification:** Founder only, requires explicit unlock decision
+**Last Updated:** July 18, 2026 — clarified supported-output propagation, approval authority, compact health views, and conservative public truth

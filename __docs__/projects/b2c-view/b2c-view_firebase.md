@@ -1,77 +1,50 @@
-# B2C View (Customer Preview) — Firebase Cost Tracking
+# B2C View — Firebase and Storage Boundary
 
-**Feature:** Visual Menu Builder & Theme Customization (B2C Preview)
-**Status:** Source-cost evidence; not current launch certification
-**Last Updated:** July 2, 2026
-**Priority:** MEDIUM — Preview-only. Reads project data, writes theme config.
+**Status:** Local source-cost evidence; not current launch certification
+**Last Updated:** July 17, 2026
 
-**Launch boundary:** This Firebase cost note documents the B2C design save/publish cost surface; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
+The prior estimate-based note is preserved in `_archive/b2c-view_firebase-pre-2026-07-16.md`. This maintained document records operation shape from current source and does not publish speculative monthly cost totals.
 
----
+**Launch boundary:** Current approval still requires the [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md), Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
-## Summary
+## Data model
 
-- **Collections Used:** `projects/{tId}/{sId}` (projectsData)
-- **Storage Buckets:** `MenuListAi/project/assets/{projectId}` (brand assets like logo, background)
-- **Cloud Functions:** None
-- **Estimated Monthly Cost:** **Very Low** — Theme saves are infrequent
+Menu design adds no collection. It is stored under `config.design.menu` and `config.design.brand` in the canonical project document at `projects/{tId}/{sId}/{projectId}`. The current summary/published-truth/cache effects belong to the shared project mutation/publish flow rather than a parallel design record.
 
----
+Prepared menu backgrounds use the canonical public-media path:
 
-## Firestore Operations
+```text
+media/menuBackground/{tenantId}/{storeId}/{entityId}/{mediaId}_{variant}.webp
+```
 
-### Reads
+The exact extension and variant follow the `menuBackground` media profile. The older `MenuListAi/project/assets/{projectId}/background` path is not the current prepared-media contract.
 
-| Operation | Collection | Trigger | Frequency | Docs Read | Indexed? | Notes |
-|-----------|-----------|---------|-----------|-----------|----------|-------|
-| Load project for preview | `projects/{tId}/{sId}/{projectId}` | User opens B2C preview tab | Per preview session | 1 | Direct doc | Same project doc as editor. Full data with items, categories, config. |
+## Read and write shape
 
-### Writes
+| Flow | Current source behavior | Cost boundary |
+| --- | --- | --- |
+| Open desktop/mobile design editor | Uses the project already loaded by the existing project provider/editor flow | No design-only listener or duplicate Firestore collection |
+| Publish standalone design | `publishProject()` reads current project truth, checks the expected mutation version, then uses the shared standalone project transaction and post-commit truth/cache path | Existing project publish reads/writes; no additional normalization read/write |
+| Publish linked-outlet design | Reads current outlet project and linked master truth, then calls protected `/api/projects/outlet-save` with `publish: true` | Existing linked-outlet policy transaction plus post-commit truth/cache path |
+| Prepare background | Client-side image preparation | No Firestore operation |
+| Upload pending background | One or more immutable prepared-media variant object uploads, according to the media profile | Storage writes only; returned URL is included in the existing project publish |
+| Verify acknowledged public publish | Best-effort `verifyMenuPublish` callable when `ENABLE_MENU_HEALTH_MONITOR` is enabled | Existing health-monitor store-scope reads, HTTP verification, health write, and optional lifecycle-notification work; failure does not roll back the acknowledged publish |
 
-| Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
-|-----------|-----------|---------|-----------|-------------|--------|-------|
-| Save/publish theme/design config | `projects/{tId}/{sId}/{projectId}` | User saves design changes | Per design save | 1 | config.design (home, menu, brand), publish metadata | Desktop B2C and mobile design publish through `publishProject()`. Linked outlets route through `/api/projects/outlet-save` so master policy controls theme, brand, and layout overrides before cache invalidation. |
-| Save Official Page fields from B2C editor | `stores` | User publishes Official Page changes from desktop B2C editor | Rare | 1 | `publicPresence`, optional `businessCopyMeta` | Uses existing `updateStore()` DAL and now requires `assertStoreUpdateSucceeded()` before local store state, queued OBP photo cleanup, or publish success copy changes. |
-| Upload brand assets | Storage | User uploads logo/background | Per asset upload | 0 Firestore | — | Direct to Storage, URL saved in project config. |
+Design-only changes do not increment the master operational-change signal or append a multi-outlet menu-revision observation. The shared project DAL reuses the same operational diff result for both writes, so theme/layout/background-only saves keep the canonical project mutation, public cache invalidation, publish truth, and existing POS handoff without an unrelated observation write. Actual item, price, availability, variant, and category changes retain both operational behaviors.
 
-### Deletes
+## Storage lifecycle
 
-None.
+Background objects are immutable/content-addressed public media with the shared `public_asset_until_replaced_or_deleted` retention policy. A failed or ambiguous project publish does not prove the object is unreferenced across retries, duplicates, or outlet projections, so this feature does not add destructive cleanup, a reference collection, or a scheduler. That bounded retention decision favors customer-output safety over speculative reclamation.
 
----
+## Scale and index posture
 
-## Firebase Storage
+- Design normalization is pure in-memory work.
+- Public rendering does not issue a design-specific Firestore read.
+- No new query, listener, composite index, Firestore rule, Storage rule, Function, or scheduler was added in the July 16 pass.
+- Large menus no longer use an estimated-height category placeholder; removing that client approximation changes no Firebase operations.
+- Public cache invalidation remains one post-commit shared project operation rather than a per-control write.
+- Cosmetic design saves do not create a `menuChangeLog` multi-outlet revision row. This removes one optional Firestore write per non-operational save while keeping operational menu-change history intact.
 
-| Operation | Path Pattern | Trigger | Size | Notes |
-|-----------|-------------|---------|------|-------|
-| Upload background image | `MenuListAi/project/assets/{projectId}/background` | User sets background | 0.5-3MB | JPEG compressed |
-| Upload logo | `MenuListAi/project/assets/{projectId}/logo` | User sets logo | 0.1-1MB | PNG/JPEG |
+## Verification boundary
 
----
-
-## Cost Estimate (per 1000 design saves/month)
-
-| Resource | Operations/month | Unit Cost | Monthly Cost |
-|----------|-----------------|-----------|-------------|
-| Firestore Reads | 2,000 | $0.06/100K | $0.00 |
-| Firestore Writes | 1,000 | $0.18/100K | $0.00 |
-| Storage | 500MB | $0.026/GB | $0.01 |
-| **Total** | | | **~$0.01/month** |
-
----
-
-## DAL Functions Used
-
-| Function | File | Operation Type |
-|----------|------|---------------|
-| `updateProject` | `src/database/projects/index.ts` | Write (setDoc merge) |
-| `publishProject` | `src/database/projects/index.ts` | Publish write + public cache invalidation |
-| `updateStore` | `src/database/stores/index.tsx` | Official Page store write + public cache invalidation |
-| `/api/projects/outlet-save` | `src/app/api/projects/outlet-save/route.ts` | Linked-outlet server validation/write |
-| `uploadBase64ToStorage` | `src/database/storage/uploadBase64ToStorage.ts` | Storage upload |
-
----
-
-## Verification Boundary
-
-`npm run verify:menu-design-presentation-boundary` source-gates the B2C design save path, mobile parity, public output normalization, and project publish/cache invalidation evidence. It does not run live Firestore writes, Storage uploads, Firebase deploy, Vercel deploy, production build, provider smoke, browser/mobile customer-menu QA, or target production smoke.
+`npm run verify:menu-design-presentation-boundary` source-gates the design save path, standalone/linked publish acknowledgement, published-truth and cache calls, mobile parity, public normalization, active option prices, background admission, and docs. It does not run live Firestore/Storage operations, Firebase or Vercel deploys, provider smoke, browser/mobile customer-menu QA, or target production smoke.

@@ -2,12 +2,14 @@
 
 > **Feature:** #4 — Multi-Store Menu Consistency  
 > **Status:** Implemented source evidence; not current launch certification
-> **Last Updated:** July 5, 2026
-> **Version:** 4.3
+> **Last Updated:** July 16, 2026
+> **Version:** 4.4
 
 > **Scope:** Master/outlet store linking, project replication, override fields, AI extraction integration, and store onboarding. For permissions, see [Roles & Permissions](../roles-permissions/) (Layer 1) and [Multi-Chain Permissions](../multi-chain-permissions/) (Layer 2). For platform admin store CRUD, see [Stores Management](../stores-management/).
 >
 > **Launch Boundary:** This documentation hub records implemented Multi-Outlet source evidence, not current production-launch approval. Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:multi-location-boundary`, desktop/mobile Locations browser QA, linked outlet save QA, Razorpay sandbox evidence where billing is involved, Firebase deploy evidence where rules/functions change, and target-environment smoke.
+
+> **July 16, 2026 code-truth checkpoint:** The source flags listed below are enabled. Outlet create, policy, rename, deactivate, linked-menu save, and brand propagation recheck current store/tenant authority in their write transactions. Outlet creation caps inherited master-project replication at 200 projects, deactivation can retry an unfinished Razorpay quantity reduction, and desktop/mobile Locations surface billing follow-up when deactivation commits but provider reduction remains pending. Public linked-menu resolution rejects cross-tenant, same-store, deleted, or inactive master references. These are local source guarantees; hosted browser, Razorpay sandbox, and deployment evidence remain external gates.
 
 ---
 
@@ -150,7 +152,7 @@ Contains:
 - **Master Project:** Single source of truth for menu items
 - **Outlet Project:** Inherits from master, can add local overrides
 - **Override:** Outlet-specific price, availability, or active state
-- **Local-Only Item:** Item that exists only at one outlet (L*I* prefix)
+- **Local-Only Item/Category:** Outlet-only records use `L_I_` and `L_C_` prefixes
 - **Inheritance:** Real-time resolution at read-time (no sync needed)
 
 ---
@@ -166,7 +168,7 @@ Contains:
 | **Propagation**        | `src/database/multiOutlet/propagation.ts`                           |
 | **Types**              | `src/components/templates/main-app/projects/types/project.types.ts` |
 | **Multi-Outlet Types** | `src/types/multiOutlet.types.ts`                                    |
-| **Feature Flags**      | `src/config/features.ts` (lines 640–722)                            |
+| **Feature Flags**      | `src/config/features.ts`                                            |
 | **UI Badge**           | `src/components/atoms/InheritanceBadge/index.tsx`                   |
 | **AI Extraction**      | `src/lib/extraction/comparisonEngine.ts`                            |
 | **Job Listener**       | `src/hooks/useMenuProcessingJob.ts`                                 |
@@ -201,17 +203,18 @@ Contains:
 
 | Flag                               | Default | Scope                                        |
 | ---------------------------------- | ------- | -------------------------------------------- |
-| `ENABLE_MULTI_OUTLET`              | `false` | Master gate for all multi-outlet features    |
-| `ENABLE_OUTLET_CREATION`           | `false` | Gate outlet creation API + UI                |
-| `ENABLE_OUTLET_BILLING`            | `false` | Gate Razorpay quantity operations            |
-| `ENABLE_OUTLET_DEACTIVATE`         | `false` | Gate outlet deactivation                     |
-| `ENABLE_CHAIN_CONTROL_PANEL`       | `false` | Gate Locations page visibility               |
-| `ENABLE_PROJECT_PROPAGATION`       | `false` | Auto-create outlet projects on master create |
-| `ENABLE_MASTER_UPDATE_AWARENESS`   | `false` | Operational awareness for outlet owners      |
+| `ENABLE_MULTI_OUTLET`              | `true`  | Master gate for all multi-outlet features    |
+| `ENABLE_OUTLET_CREATION`           | `true`  | Gate outlet creation API + UI                |
+| `ENABLE_OUTLET_BILLING`            | `true`  | Gate quantity/capacity checks                |
+| `ENABLE_OUTLET_PRORATION_DISPLAY`  | `true`  | Show eligible Razorpay proration estimate    |
+| `ENABLE_OUTLET_DEACTIVATE`         | `true`  | Gate outlet deactivation                     |
+| `ENABLE_CHAIN_CONTROL_PANEL`       | `true`  | Gate Locations owner surfaces                |
+| `ENABLE_PROJECT_PROPAGATION`       | `true`  | Auto-create outlet projects on master create |
+| `ENABLE_MASTER_UPDATE_AWARENESS`   | `true`  | Non-blocking operational awareness           |
 | `ENABLE_BILLING_REMOVAL_IMMEDIATE` | `true`  | Reduce Razorpay quantity on deactivation     |
 | `MAX_OUTLETS_PER_TENANT`           | `30`    | Hard limit on outlet count per tenant        |
 
-All flags at `src/config/features.ts`. When ALL flags are `false`, zero behavior change — single-store mode.
+All values above are current source defaults in `src/config/features.ts`; deployment readiness is tracked separately by the launch boundary.
 
 ---
 
@@ -235,6 +238,8 @@ Historical audit and review files are preserved in [`_archive/`](./_archive/) fo
 | `master-updates-awareness_verification.md`       | Feature #4.1 verification (merged into main)   |
 | `store-onboarding-chatgpt-review-2.md`           | ChatGPT review session 2                       |
 | `store-onboarding-chatgpt-review-3.md`           | ChatGPT review session 3                       |
+| `store-onboarding_impl-historical-through-2026-07-14.md` | Historical outlet-creation design blueprint |
+| `store-onboarding-billing_impl-historical-through-2026-07-14.md` | Historical billing design blueprint |
 
 ---
 
@@ -246,7 +251,7 @@ Historical audit and review files are preserved in [`_archive/`](./_archive/) fo
 | `setProjectAsMaster()`           | Mark project as master           | `multiOutlet/index.ts` |
 | `linkStoreToMaster()`            | Link outlet to master            | `multiOutlet/index.ts` |
 | `applyItemOverride()`            | Set outlet price/availability    | `multiOutlet/index.ts` |
-| `removeItemOverride()`           | Reset to master value            | `multiOutlet/index.ts` |
+| `removeItemOverride()` / `removeCategoryOverride()` | Reset one inherited value with a field-level delete that preserves concurrent sibling overrides | `multiOutlet/index.ts` |
 | `propagateNewProjectToOutlets()` | Auto-create outlet projects      | `propagation.ts`       |
 | `runComparisonEngine()`          | Compare extracted vs existing    | `comparisonEngine.ts`  |
 | `applyExtractionChanges()`       | Save approved changes            | `applyChanges.ts`      |

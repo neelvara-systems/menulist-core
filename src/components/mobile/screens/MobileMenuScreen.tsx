@@ -6,8 +6,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
-import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
-import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import { applyStoreBusinessAttributeDefaults, assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { appendImageBatchProjectSelections, assertProjectUpdateSucceeded, updateProjectWithoutLoader, uploadFile } from '@database/projects';
 import { useImageBatchJobListener } from '@hook/useImageBatchJobListener';
 import useMenuProcessingJob from '@hook/useMenuProcessingJob';
@@ -19,12 +18,16 @@ import { getDismissedMenuProcessingJobIds, clearExpiredMenuProcessingJobDismissa
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
+import { buildExtractedProfileProjectPatch, mergeProjectWithExtractedProfileDefaults } from '@lib/extraction/projectVisualDefaults';
+import { getReviewPreviewIdentity } from '@lib/extraction/reviewPreview';
 import { checkExistingActiveJob } from '@lib/firebase/menuProcessing';
 import { generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import { buildExtractedProfileHighlights, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getDataUrlMimeType } from '@lib/media/imageProfiles';
+import { isDataUrl } from '@lib/media/mediaStorage';
 import { toPreparedUploadName } from '@lib/media/prepareMediaImage';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { getMultiOutletProjectLogContext, logMultiOutletFailure } from '@lib/multiOutlet/diagnostics';
@@ -33,12 +36,19 @@ import { stripResolvedOutletProjectForSave } from '@lib/multiOutlet/outletProjec
 import { isPriceOutlierReviewed, normalizePriceForReview } from '@lib/mce/qualitySignals';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
-import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { generateProjectUrl } from '@lib/utils/slugify';
 import { normalizeCategoryIconValue } from '@lib/categoryIcons';
+import {
+    MENULIST_ANSWERLATTICE_EVENTS,
+    emitMenuListAnswerlatticeWorkflowEvent,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import ProjectsDataProvider from '@providers/projectsDataProvider';
-import { removeObjRef } from '@util/utils';
+import { AICapacityError } from '@services/ai/capacityError';
+import { formatDateTime } from '@util/dateTime';
+import { isSameObjects, removeObjRef } from '@util/utils';
 import { DEFAULT_OUTLET_POLICY, type InheritanceState, type OutletPolicy } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -273,74 +283,19 @@ function hasMissingCategoryTranslationForLanguage(
     return hasLocalizedValue(category.name, primaryLanguage) && !hasLocalizedValue(category.name, targetLanguage);
 }
 
-function normalizeExtractedPrice(price: unknown): number {
-    if (typeof price === 'number') {
-        return Number.isFinite(price) ? price : 0;
-    }
-
-    if (typeof price === 'string') {
-        const direct = Number(price.trim());
-        if (Number.isFinite(direct)) return direct;
-
-        const cleaned = price.replace(/[^0-9.-]/g, '');
-        const parsed = Number(cleaned);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-
-    return 0;
+function normalizeExtractedPriceDisplay(price: unknown): string | number {
+    if (typeof price === 'number') return Number.isFinite(price) ? price : '';
+    return typeof price === 'string' ? price.trim() : '';
 }
 
-function mergeProjectWithExtractedProfileDefaults(projectData: any, profile: any): any {
-    if (!profile) return projectData;
-    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
-    if (!imageBackgroundColor) return projectData;
-
-    return {
-        ...(projectData || {}),
-        aiPreferences: {
-            ...(projectData?.aiPreferences || {}),
-            image: {
-                ...(projectData?.aiPreferences?.image || {}),
-                backgroundColor: projectData?.aiPreferences?.image?.backgroundColor || imageBackgroundColor,
-            },
-        },
-    };
-}
-
-function buildExtractedProfileProjectPatch(projectData: any, profile: any): Partial<Project> | null {
-    if (!projectData?.projectId || !profile) return null;
-
-    const patch: any = { projectId: projectData.projectId };
-    if (projectData.masterProjectId) {
-        patch.masterProjectId = projectData.masterProjectId;
-    }
-    const brandAccentColor = getSuggestionValue(profile?.visualBrand?.brandAccentColor, 'medium');
-    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
-
-    if (brandAccentColor && !projectData?.config?.design?.brand?.accentColor) {
-        patch.config = {
-            ...(projectData?.config || {}),
-            design: {
-                ...(projectData?.config?.design || {}),
-                brand: {
-                    ...(projectData?.config?.design?.brand || {}),
-                    accentColor: brandAccentColor,
-                },
-            },
-        };
-    }
-
-    if (imageBackgroundColor && !projectData?.aiPreferences?.image?.backgroundColor) {
-        patch.aiPreferences = {
-            ...(projectData?.aiPreferences || {}),
-            image: {
-                ...(projectData?.aiPreferences?.image || {}),
-                backgroundColor: imageBackgroundColor,
-            },
-        };
-    }
-
-    return patch.config || patch.aiPreferences ? patch : null;
+function hasMobileMenuPrice(item: MenuItemType): boolean {
+    const basePrice = normalizeOptionalMenuPrice(item.price);
+    if (basePrice.success && Boolean(basePrice.data)) return true;
+    return (item.attributes || []).some((attribute) => {
+        if (attribute.active === false) return false;
+        const result = normalizeOptionalMenuPrice(attribute.price);
+        return result.success && Boolean(result.data);
+    });
 }
 
 function findExtractedItemById(projectData: Project | null | undefined, itemId: string): ExtractedDataItem | null {
@@ -464,16 +419,8 @@ function resolveSpecialMenuStatus(project: any): 'scheduled' | 'active' | 'expir
 
 function formatSpecialMenuWindow(start?: string, end?: string): string | null {
     if (!start && !end) return null;
-
-    const formatter = new Intl.DateTimeFormat(undefined, {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-
-    const startLabel = start ? formatter.format(new Date(start)) : null;
-    const endLabel = end ? formatter.format(new Date(end)) : null;
+    const startLabel = start ? formatDateTime(start, 'datetime') : null;
+    const endLabel = end ? formatDateTime(end, 'datetime') : null;
 
     if (startLabel && endLabel) return `${startLabel} to ${endLabel}`;
     return startLabel || endLabel;
@@ -638,7 +585,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         };
     }, [isMasterUser, menuData?.masterProjectId, userPermissions]);
 
-    const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true && userPermissions?.canManageMenu === true;
+    const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;
+    const canGenerateDescriptions = userPermissions?.canGenerateDescriptions === true;
     const canAddLocalItems = userPermissions?.canAddLocalItems === true && userPermissions?.canManageMenu === true;
     const canAddLocalCategories = userPermissions?.canAddLocalCategories === true && userPermissions?.canManageMenu === true;
 
@@ -839,8 +787,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         if (!nextBusinessAttributes) return;
 
         try {
-            const writeResult = await updateStore({
-                id: storeDetails.storeId,
+            const writeResult = await applyStoreBusinessAttributeDefaults({
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
                 businessAttributes: nextBusinessAttributes,
@@ -851,7 +798,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 'mobile_menu_business_attributes_default_store_update_rejected',
             );
             setStoreDetails((previous: any) => previous
-                ? { ...previous, businessAttributes: nextBusinessAttributes }
+                ? { ...previous, businessAttributes: writeResult.businessAttributes }
                 : previous);
         } catch (error) {
             logMobileMenuFailure('mobile_menu_business_attributes_default_apply_failed', error, {
@@ -911,17 +858,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         if (!patch) return;
 
         try {
-            const savedProject = await updateProjectWithoutLoader(patch);
+            const savedProject = await updateProjectWithoutLoader(patch, {
+                preserveExistingVisualDefaults: true,
+            });
             assertProjectUpdateSucceeded(
                 savedProject,
                 baseProject?.projectId,
                 'mobile_menu_project_profile_defaults_project_update_rejected',
             );
-            syncSavedMenuProject({
-                ...(baseProject || {}),
-                ...patch,
-                ...(savedProject || {}),
-            });
+            syncSavedMenuProject(savedProject);
         } catch (error) {
             logMobileMenuFailure('mobile_menu_project_profile_defaults_apply_failed', error, {
                 ...getMobileMenuProjectLogContext(baseProject?.projectId, baseProject?.masterProjectId),
@@ -1263,7 +1208,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     }, [applyLocalMenuUpdate]);
 
     const uploadItemImageInBackground = useCallback((itemId: string, imageData: string, imageName: string, uid: string) => {
-        if (!imageData.includes('base64')) return;
+        if (!isDataUrl(imageData)) return;
         const mimeType = getDataUrlMimeType(imageData, 'image/webp');
         const preparedName = toPreparedUploadName(imageName, mimeType, imageName);
 
@@ -1560,6 +1505,8 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
     }, [cancelJob, t]);
 
     useEffect(() => {
+        let comparisonEffectCancelled = false;
+
         if (!activeProcessingJobId) return;
 
         if (jobIsCompleted) {
@@ -1591,6 +1538,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             setComparisonResult(null);
             void refreshCachedProject(activeProcessingState?.projectId || menuData?.projectId);
             setShowSuccessState(true);
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_COMPLETED);
         }
 
         if (jobIsPreviewReady && !showReviewSheet && activeJob?.result && menuData?.projectId) {
@@ -1600,10 +1548,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     const masterProject = menuData?.masterProjectId
                         ? await getLinkedMasterComparisonInput(menuData)
                         : undefined;
+                    if (comparisonEffectCancelled) return;
                     const extractedItems = activeJob.result.combinedData?.items || [];
                     const extractedCategories = activeJob.result.combinedData?.categories || [];
                     const comparisonMode: ComparisonMode = menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE';
-                    const primaryLang = menuData?.languages?.[0] || 'en';
+                    const primaryLang = getCanonicalProjectSourceLanguage(menuData?.languages);
 
                     const comparison = runComparisonEngine({
                         extracted: {
@@ -1625,29 +1574,40 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     });
                     setComparisonResult(comparison);
                     setShowReviewSheet(true);
+                    emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_REVIEW_READY);
                 } catch (error) {
+                    if (comparisonEffectCancelled) return;
                     logMobileMenuFailure('mobile_menu_comparison_engine_failed', error, {
                         ...getMobileMenuProjectLogContext(menuData.projectId, menuData.masterProjectId),
                         extractedCategoryCount: activeJob.result.combinedData?.categories?.length || 0,
                         extractedItemCount: activeJob.result.combinedData?.items?.length || 0,
                         mode: menuData?.masterProjectId ? 'OUTLET_LINKED' : 'SINGLE_STORE',
-                        ...getBoundedMobileMenuStringContext('primaryLanguage', menuData?.languages?.[0] || 'en'),
+                        ...getBoundedMobileMenuStringContext('primaryLanguage', getCanonicalProjectSourceLanguage(menuData?.languages)),
                     });
                     setFailureMessage(t('comparisonFailed'));
                     setShowFailureState(true);
                     setShowReviewSheet(false);
                     setComparisonResult(null);
                     setActiveProcessingState(null);
+                    emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_FAILED);
                 }
             })();
         }
 
         if (jobIsFailed) {
-            setFailureMessage(jobError?.message || t('processingFailedMessage'));
+            logMobileMenuFailure('mobile_menu_processing_job_failed', jobError, {
+                ...getBoundedMobileMenuStringContext('jobId', activeProcessingJobId),
+                ...getMobileMenuProjectLogContext(
+                    activeProcessingState?.projectId || menuData?.projectId,
+                    menuData?.masterProjectId,
+                ),
+            });
+            setFailureMessage(t('processingFailedMessage'));
             setShowFailureState(true);
             setShowReviewSheet(false);
             setComparisonResult(null);
             setActiveProcessingState(null);
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_FAILED);
         }
 
         if (jobIsCancelled) {
@@ -1656,11 +1616,15 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             setComparisonResult(null);
             setActiveProcessingState(null);
         }
+
+        return () => {
+            comparisonEffectCancelled = true;
+        };
     }, [
         activeJob,
         activeProcessingJobId,
         activeProcessingState?.projectId,
-        jobError?.message,
+        jobError,
         jobIsCancelled,
         jobIsCompleted,
         jobIsFailed,
@@ -1676,26 +1640,25 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         t,
     ]);
 
-    const primaryLang = useMemo(
+    const preferredLanguage = useMemo(
         () => getProjectDefaultLanguage(menuData, storeDetails),
         [menuData, storeDetails],
     );
-    const activeProjectLanguages = useMemo(() => {
-        const languageCodes = Array.isArray(menuData?.languages) && menuData.languages.length
-            ? menuData.languages
-            : ['en'];
-
-        return languageCodes.includes(primaryLang)
-            ? [primaryLang, ...languageCodes.filter((code) => code !== primaryLang)]
-            : languageCodes;
-    }, [menuData?.languages, primaryLang]);
+    const primaryLang = useMemo(
+        () => getCanonicalProjectSourceLanguage(menuData?.languages),
+        [menuData?.languages],
+    );
+    const activeProjectLanguages = useMemo(
+        () => normalizeProjectLanguages(menuData?.languages),
+        [menuData?.languages],
+    );
     const showCategoryIcons = menuData?.config?.design?.menu?.showCategoryIcons ?? true;
     const showItemPrices = menuData?.config?.design?.menu?.showItemPrices ?? true;
-    const [displayLanguage, setDisplayLanguage] = useState<string>(primaryLang);
+    const [displayLanguage, setDisplayLanguage] = useState<string>(preferredLanguage);
 
     useEffect(() => {
-        setDisplayLanguage(primaryLang);
-    }, [primaryLang, menuData?.projectId]);
+        setDisplayLanguage(preferredLanguage);
+    }, [preferredLanguage, menuData?.projectId]);
 
     useEffect(() => {
         if (showItemPrices) return;
@@ -1768,11 +1731,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         const labelsByCode = new Map(GlobalLanguagesList.map((language) => [language.code, language.nativeName || language.name]));
         return activeProjectLanguages.map((code) => ({
             code,
-            isPrimary: code === primaryLang,
+            isPrimary: code === preferredLanguage,
             label: labelsByCode.get(code) || code.toUpperCase(),
             stats: languageStats.find((entry) => entry.code === code) || null,
         }));
-    }, [activeProjectLanguages, languageStats, primaryLang]);
+    }, [activeProjectLanguages, languageStats, preferredLanguage]);
     const firstLanguageWithMissingTranslations = useMemo(() => {
         const reviewableLanguages = activeProjectLanguages.filter((language) => language !== primaryLang);
         if (reviewableLanguages.length === 0 || !menuData?.files) return null;
@@ -1848,7 +1811,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     categoryItems.forEach((item) => {
                         const itemName = resolveItemName(item, displayLanguage, t('unnamedItem'));
                         const itemDescription = resolveItemDescription(item, displayLanguage);
-                        const price = normalizeExtractedPrice(item.price);
+                        const price = normalizeExtractedPriceDisplay(item.price);
                         const available = item.available !== false;
                         const active = item.active !== false;
                         const hiddenByCategory = item.category ? categoryActiveById.get(item.category) === false : false;
@@ -1856,10 +1819,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             id: item.id || `${categoryName}-${itemName}`,
                             name: itemName,
                             price: price,
-                            attributes: item.attributes?.map((attribute: any) => ({
+                            attributes: item.attributes?.filter((attribute: any) => attribute?.active !== false).map((attribute: any) => ({
                                 id: attribute.id,
                                 name: resolveAttributeName(attribute, displayLanguage, 'Attribute'),
-                                price: normalizeExtractedPrice(attribute.price),
+                                price: normalizeExtractedPriceDisplay(attribute.price),
                                 active: attribute.active !== false,
                             })),
                             available,
@@ -1884,17 +1847,17 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 uncategorizedItems.forEach((item) => {
                     const itemName = resolveItemName(item, displayLanguage, t('unnamedItem'));
                     const itemDescription = resolveItemDescription(item, displayLanguage);
-                    const price = normalizeExtractedPrice(item.price);
+                    const price = normalizeExtractedPriceDisplay(item.price);
                     const available = item.available !== false;
                     const active = item.active !== false;
                     items.push({
                         id: item.id || `${uncategorizedLabel}-${itemName}`,
                         name: itemName,
                         price: price,
-                        attributes: item.attributes?.map((attribute: any) => ({
+                        attributes: item.attributes?.filter((attribute: any) => attribute?.active !== false).map((attribute: any) => ({
                             id: attribute.id,
                             name: resolveAttributeName(attribute, displayLanguage, 'Attribute'),
-                            price: normalizeExtractedPrice(attribute.price),
+                            price: normalizeExtractedPriceDisplay(attribute.price),
                             active: attribute.active !== false,
                         })),
                         available,
@@ -1937,10 +1900,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
         menuItems.forEach((item) => {
             if (!isItemEffectivelyActive(item) || item.attributes?.length) return;
-            if (!item.categoryId || !(item.price > 0)) return;
+            const numericPrice = parseSingleMenuPrice(item.price);
+            if (!item.categoryId || numericPrice === null || numericPrice <= 0) return;
             if (item.rawItem && isPriceOutlierReviewed(item.rawItem)) return;
             const items = groupedPrices.get(item.categoryId) || [];
-            items.push({ id: item.id, price: item.price });
+            items.push({ id: item.id, price: numericPrice });
             groupedPrices.set(item.categoryId, items);
         });
 
@@ -2028,7 +1992,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
             if (item.descriptionMissing) summary.missingDescriptions += 1;
             if (!item.image) summary.missingImages += 1;
-            if (showItemPrices && !(item.price > 0) && !item.attributes?.length) summary.missingPrices += 1;
+            if (showItemPrices && !hasMobileMenuPrice(item)) summary.missingPrices += 1;
             if (!isItemEffectivelyActive(item)) summary.hidden += 1;
         });
 
@@ -2053,7 +2017,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 if (hasDescription !== filters.hasDescription) return false;
             }
             if (showItemPrices && filters.hasPrice !== null) {
-                const hasPrice = item.price > 0;
+                const hasPrice = hasMobileMenuPrice(item);
                 if (hasPrice !== filters.hasPrice) return false;
             }
             if (filters.availability !== null && item.available !== filters.availability) {
@@ -2097,7 +2061,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             hidden: scopedItems.filter((item) => !isItemEffectivelyActive(item)).length,
             missingPhoto: reviewableItems.filter((item) => !item.image).length,
             missingDescription: reviewableItems.filter((item) => item.descriptionMissing).length,
-            missingPrice: showItemPrices ? reviewableItems.filter((item) => !(item.price > 0) && !item.attributes?.length).length : 0,
+            missingPrice: showItemPrices ? reviewableItems.filter((item) => !hasMobileMenuPrice(item)).length : 0,
             priceOutliers: showItemPrices ? reviewableItems.filter((item) => priceOutlierItemIds.has(item.id)).length : 0,
             missingTranslation: reviewableItems.filter((item) => hasAnyMissingTranslationsForMenuItem(item)).length,
             missingCategoryIcon: showCategoryIcons
@@ -2439,7 +2403,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     name: resolveItemName(item, displayLanguage, t('unnamedItem')),
                     active: (item.active !== false) && (categoryId === 'uncategorized' || categoryActiveById.get(categoryId) !== false),
                     hiddenByCategory: categoryId !== 'uncategorized' && categoryActiveById.get(categoryId) === false && item.active !== false,
-                    price: typeof item.price === 'string' ? parseFloat(item.price) || 0 : item.price,
+                    price: normalizeExtractedPriceDisplay(item.price),
+                    attributes: toArray<ExtractedDataAttribute>(item.attributes).map((attribute) => ({
+                        active: attribute.active !== false,
+                        price: normalizeExtractedPriceDisplay(attribute.price),
+                    })),
                     hasImage: Boolean(item.images?.[0]?.url),
                     hasDescription: !hasMissingDescriptionForLanguages(item, activeProjectLanguages),
                 });
@@ -2589,6 +2557,19 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
     const handleCategoryGenerateContent = async ({ id: categoryId, mode, names }: { id?: string; mode: 'missing' | 'regenerate'; names: Record<string, string> }) => {
         if (!menuData) return null;
+        if (!canGenerateDescriptions) {
+            Toast.show({ content: 'Translation access is required.', duration: 1800 });
+            return null;
+        }
+        const categoryInheritanceState = categoryId ? categoryInheritanceStates[categoryId] : undefined;
+        if (
+            menuData.masterProjectId
+            && categoryId
+            && categoryInheritanceState !== 'local-only'
+        ) {
+            Toast.show({ content: 'Translations for this category stay connected to the main menu.', duration: 1800 });
+            return null;
+        }
 
         const targetFile = categoryId
             ? findFileForCategory(menuData, categoryId)
@@ -2597,7 +2578,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
         const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLang);
         const targetLanguages = activeProjectLanguages
-            .slice(1)
+            .filter((languageCode) => languageCode !== primaryLang)
             .filter((languageCode) => mode === 'regenerate' || !names[languageCode]?.trim())
             .map((languageCode) => GlobalLanguagesList.find((language) => language.code === languageCode))
             .filter(Boolean);
@@ -2614,27 +2595,58 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
             id: baseCategoryId,
             name: Object.fromEntries(activeProjectLanguages.map((language) => [
                 language,
-                mode === 'regenerate' && language !== sourceLanguage.code ? '' : names[language] || '',
+                names[language] || '',
             ])),
         };
 
         let translatedCount = 0;
-        for (const targetLanguage of targetLanguages) {
-            const { updatedCategory, messageType } = await translateCategory(
-                menuData,
-                targetFile,
-                targetLanguage as any,
-                sourceLanguage as any,
-                AI_ACTIONS_TYPES.ITEM_TRANSLATION,
-                nextCategory
-            );
-            nextCategory = updatedCategory;
-            if (messageType === 'success') {
-                translatedCount += 1;
+        let failedCount = 0;
+        try {
+            for (const targetLanguage of targetLanguages) {
+                const candidateCategory = mode === 'regenerate'
+                    ? {
+                        ...nextCategory,
+                        name: {
+                            ...(nextCategory.name || {}),
+                            [targetLanguage!.code]: '',
+                        },
+                    }
+                    : nextCategory;
+                const { updatedCategory, messageType } = await translateCategory(
+                    menuData,
+                    targetFile,
+                    targetLanguage as any,
+                    sourceLanguage as any,
+                    AI_ACTIONS_TYPES.ITEM_TRANSLATION,
+                    candidateCategory,
+                );
+                if (messageType === 'error') {
+                    failedCount += 1;
+                    continue;
+                }
+                nextCategory = updatedCategory;
+                if (messageType === 'success') translatedCount += 1;
             }
+        } catch (error) {
+            Toast.show({
+                content: translatedCount > 0
+                    ? error instanceof AICapacityError
+                        ? 'Some category translations were updated. Get more enhancements to continue.'
+                        : 'Some category translations were updated. Remaining translations stopped.'
+                    : error instanceof AICapacityError
+                        ? t('translationCreditsRequired')
+                        : 'Category translation failed.',
+                duration: 2000,
+            });
+            return translatedCount > 0 ? nextCategory.name : null;
         }
 
-        if (translatedCount === 0) {
+        if (translatedCount === 0 && failedCount > 0) {
+            Toast.show({ content: 'Category translation failed.', duration: 1800 });
+            return null;
+        } else if (failedCount > 0) {
+            Toast.show({ content: 'Some category translations could not be updated.', duration: 1800 });
+        } else if (translatedCount === 0) {
             Toast.show({ content: 'No missing category translations found.', duration: 1500 });
         } else {
             Toast.show({ content: mode === 'regenerate' ? 'Category translations regenerated.' : 'Category translations updated.', duration: 1200 });
@@ -2941,7 +2953,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
         (editingItemInheritanceState === 'inherited' || editingItemInheritanceState === 'overridden')
     );
     const canEditEditingItemImages = !isEditingInheritedOutletItem || outletPolicy?.imageOverride === true;
-    const canRunLinkedDescriptionActions = !menuData?.masterProjectId || outletPolicy?.descriptionOverride === true;
+    const canRunLinkedDescriptionActions = canGenerateDescriptions
+        && (!menuData?.masterProjectId || outletPolicy?.descriptionOverride === true);
+    const descriptionActionUnavailableMessage = !canGenerateDescriptions
+        ? 'You do not have permission to generate descriptions.'
+        : 'Description changes are not enabled for this location.';
     const canManageLinkedLanguages = !menuData?.masterProjectId || outletPolicy?.canAddLanguages !== false;
 
     if (!storeDetails || (loadingProjects && !menuData)) {
@@ -3107,7 +3123,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                         </Flex>
                                     </Tag>
                                 ))}
-                                {filters.hasImage === false && filteredItems.length > 0 ? (
+                                {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && filters.hasImage === false && filteredItems.length > 0 ? (
                                     <Button
                                         color="primary"
                                         fill="outline"
@@ -3142,7 +3158,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                         fill="outline"
                                         onClick={() => {
                                             if (!canRunLinkedDescriptionActions) {
-                                                Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
+                                                Toast.show({ content: descriptionActionUnavailableMessage, duration: 1800 });
                                                 return;
                                             }
                                             setIsGenerateDescriptionsOpen(true);
@@ -3635,7 +3651,11 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                                                     description={
                                                                         <Flex gap={8} vertical>
                                                                             <Flex align="center" gap={8} wrap>
-                                                                                {!item.attributes?.length ? <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag> : null}
+                                                                                {!item.attributes?.length ? (
+                                                                                    hasMobileMenuPrice(item)
+                                                                                        ? <Tag>{formatMenuPrice(item.price, currencySymbol)}</Tag>
+                                                                                        : <Tag color="warning">No price</Tag>
+                                                                                ) : null}
                                                                             </Flex>
 
                                                                             {item.hiddenByCategory ? (
@@ -3666,7 +3686,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                                                                     {item.attributes.slice(0, 3).map((attribute) => (
                                                                                         <Tag key={attribute.id}>
                                                                                             {attribute.name}
-                                                                                            {typeof attribute.price === 'number' && attribute.price > 0 ? ` · ${formatMenuPrice(attribute.price, currencySymbol)}` : ''}
+                                                                                            {normalizeOptionalMenuPrice(attribute.price).data ? ` · ${formatMenuPrice(attribute.price, currencySymbol)}` : ''}
                                                                                         </Tag>
                                                                                     ))}
                                                                                     {item.attributes.length > 3 ? <Tag>+{item.attributes.length - 3} more</Tag> : null}
@@ -3705,6 +3725,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
             {!isFirstRunProject ? (
                 <FloatingBubble
+                    ariaLabel={t('manageAndControl', { offering: labels.offeringTitle })}
                     onClick={() => setIsCommandMenuOpen(true)}
                     style={{ '--initial-position-bottom': 'calc(env(safe-area-inset-bottom) + 96px)', '--initial-position-right': 84, '--size': 52 }}
                 >
@@ -4153,7 +4174,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 onAddImages={() => launchCommandAction(() => openImageUploadModal(undefined, 'menu'))}
                 onGenerateDescriptions={() => launchCommandAction(() => {
                     if (!canRunLinkedDescriptionActions) {
-                        Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
+                        Toast.show({ content: descriptionActionUnavailableMessage, duration: 1800 });
                         return;
                     }
                     setIsGenerateDescriptionsOpen(true);
@@ -4168,7 +4189,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 onOpenDesignEditor={onOpenDesignEditor}
                 onRepairMenu={() => launchCommandAction(() => {
                     if (!canRunLinkedDescriptionActions) {
-                        Toast.show({ content: 'Description changes are not enabled for this location.', duration: 1800 });
+                        Toast.show({ content: descriptionActionUnavailableMessage, duration: 1800 });
                         return;
                     }
                     setBulkActionType('aiRepair');
@@ -4201,7 +4222,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     setCategorySheetInitialCategoryId(null);
                     setIsCategorySheetOpen(true);
                 })}
-                onSmartRecommendations={() => launchCommandAction(() => setIsSmartRecommendationsOpen(true))}
+                onSmartRecommendations={FEATURE_FLAGS.ENABLE_DECISION_BLOCKS
+                    ? () => launchCommandAction(() => setIsSmartRecommendationsOpen(true))
+                    : undefined}
                 onShowHide={() => launchCommandAction(() => {
                     setBulkActionType('showHide');
                     setIsBulkActionsOpen(true);
@@ -4222,7 +4245,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 />
             ) : null}
 
-            {menuData ? (
+            {menuData && FEATURE_FLAGS.ENABLE_DECISION_BLOCKS ? (
                 <SmartRecommendationsSheet
                     businessType={storeDetails?.businessType}
                     businessCategory={storeDetails?.businessCategory}
@@ -4239,12 +4262,17 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
             {menuData ? (
                 <ManageLanguagesSheet
+                    canTranslate={canGenerateDescriptions}
+                    categoryStates={categoryInheritanceStates}
+                    isMasterLinked={Boolean(menuData?.masterProjectId)}
+                    itemStates={itemInheritanceStates}
                     onClose={() => handleCommandActionBack(() => setIsManageLanguagesOpen(false))}
                     onSaved={(updatedProject) => {
                         applyLocalMenuUpdate(updatedProject);
                         setIsManageLanguagesOpen(false);
                         resetCommandActionFlow();
                     }}
+                    persistProject={persistMenuProjectImmediately}
                     projectData={menuData}
                     visible={isManageLanguagesOpen}
                 />
@@ -4290,6 +4318,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 categoryIconsEnabled={showCategoryIcons}
                 categories={categorySummary}
                 categoryItems={categoryItemMap}
+                currencySymbol={currencySymbol}
                 initialCategoryId={categorySheetInitialCategoryId}
                 initialMode={categorySheetMode}
                 presets={storeDetails?.timeSlotPresets || []}
@@ -4300,7 +4329,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     setCategorySheetInitialCategoryId(null);
                 })}
                 onDelete={handleCategoryDelete}
-                onGenerateContent={handleCategoryGenerateContent}
+                onGenerateContent={canGenerateDescriptions ? handleCategoryGenerateContent : undefined}
                 onOpenDesignEditor={onOpenDesignEditor}
                 onUpdate={handleCategoryUpdate}
                 onReorder={handleCategoryReorder}
@@ -4346,7 +4375,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         setEditingItem(null);
                         resetCommandActionFlow();
                     }}
-                    onGenerateImage={editingItem.id && canEditEditingItemImages ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
+                    onGenerateImage={FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && editingItem.id && canEditEditingItemImages
+                        ? () => openImageUploadModal(editingItem.id, 'item', 'generate')
+                        : undefined}
                     onManageImages={editingItem.id && canEditEditingItemImages ? () => openImageUploadModal(editingItem.id, 'item', 'upload') : undefined}
                     projectData={menuData}
                     inheritanceState={editingItemInheritanceState}
@@ -4360,14 +4391,17 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             (inheritanceState === 'inherited' || inheritanceState === 'overridden')
                         );
                         const pendingImage = typeof updatedItem.image === 'string' ? updatedItem.image : null;
-                        const shouldUploadImage = Boolean(pendingImage?.includes('base64'));
+                        const shouldUploadImage = isDataUrl(pendingImage);
                         const imageName = `${updatedItem.name || editingItem.id}.jpg`;
                         const rawItem = updatedItem.rawItem
                             ? clearStaleTranslations(
                                 editingItem.rawItem || updatedItem.rawItem,
                                 removeObjRef(updatedItem.rawItem),
                                 primaryLang,
-                                activeProjectLanguages
+                                activeProjectLanguages,
+                                {
+                                    preserveGeneratedDescriptionTranslations: updatedItem.rawItem.descriptionSource === 'ai',
+                                },
                             )
                             : null;
 
@@ -4392,9 +4426,9 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             const currentOwnerBoostValue = editingItem.rawItem?.ownerBoost ?? editingItem.ownerBoost ?? 0;
                             const nextOwnerBoostValue = rawItem?.ownerBoost ?? 0;
                             const ownerBoostChanged = rawItem !== null && currentOwnerBoostValue !== nextOwnerBoostValue;
-                            const currentDescriptionValue = String(
-                                editingItem.rawItem?.description?.[primaryLang] ?? editingItem.description ?? ''
-                            );
+                            const currentDescription = editingItem.rawItem?.description || {
+                                [primaryLang]: String(editingItem.description || ''),
+                            };
                             const nextDescription = rawItem?.description || (
                                 updatedItem.description !== undefined
                                     ? {
@@ -4405,7 +4439,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                             );
                             const descriptionChanged = Boolean(
                                 nextDescription &&
-                                String(nextDescription[primaryLang] || '') !== currentDescriptionValue
+                                !isSameObjects(currentDescription, nextDescription)
                             );
                             const imageChanged = updatedItem.image !== undefined && !shouldUploadImage;
 
@@ -4470,7 +4504,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                                         ...(bestSellerChanged ? { isBestSeller: nextBestSellerValue } : {}),
                                         ...(durationChanged ? { duration: nextDurationValue } : {}),
                                         ...(ownerBoostChanged ? { ownerBoost: nextOwnerBoostValue } : {}),
-                                        ...(descriptionChanged && nextDescription ? { description: nextDescription, descriptionSource: 'manual' } : {}),
+                                        ...(descriptionChanged && nextDescription ? {
+                                            description: nextDescription,
+                                            descriptionSource: rawItem?.descriptionSource === 'ai' ? 'ai' : 'manual',
+                                        } : {}),
                                         ...(imageChanged ? { images: pendingImage ? [{ url: pendingImage, name: imageName }] : [] } : {}),
                                     };
                                 });
@@ -4600,7 +4637,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         const rawItem = newItem.rawItem ? removeObjRef(newItem.rawItem) : null;
 
                         const pendingImage = typeof newItem.image === 'string' ? newItem.image : null;
-                        const shouldUploadImage = Boolean(pendingImage?.includes('base64'));
+                        const shouldUploadImage = isDataUrl(pendingImage);
 
                         const createdItem = createNewItem(
                             targetFile,
@@ -4686,6 +4723,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                     existingFiles={menuData?.files || []}
                     onClose={() => handleCommandActionBack(() => setIsUploadSheetOpen(false))}
                     onJobCreated={({ jobId, projectId }) => {
+                        emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_STARTED);
                         setIsUploadSheetOpen(false);
                         resetCommandActionFlow();
                         void refreshProjects({ force: true, preferredProjectId: projectId, showLoader: false });
@@ -4797,6 +4835,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
 
             {showReviewSheet && comparisonResult && activeProcessingJobId && menuData?.projectId ? (
                 <ExtractionReviewSheet
+                    key={getReviewPreviewIdentity(menuData.projectId, activeProcessingJobId)}
                     comparisonResult={comparisonResult}
                     jobId={activeProcessingJobId}
                     onDiscard={() => {
@@ -4805,6 +4844,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         setActiveProcessingState(null);
                     }}
                     onSaveComplete={() => {
+                        emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_COMPLETED);
                         const previewData = getProjectImageDataFromComparisonPreview(comparisonResult);
                         const extractedProfile = activeJob?.result?.extractedBusinessProfile || activeJob?.result?.combinedData?.extractedBusinessProfile;
                         void maybeAutoGenerateProjectImage({
@@ -4826,7 +4866,7 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                         void refreshCachedProject(menuData.projectId);
                         setShowSuccessState(true);
                     }}
-                    primaryLang={menuData?.languages?.[0] || 'en'}
+                    primaryLang={getCanonicalProjectSourceLanguage(menuData?.languages)}
                     projectId={menuData.projectId}
                     visible={showReviewSheet}
                 />
@@ -4843,8 +4883,10 @@ export default function MobileMenuScreen({ onOpenDesignEditor, onOpenOfficialPag
                 projectData={menuData}
                 visible={isBulkActionsOpen}
                 itemStates={itemInheritanceStates}
+                categoryStates={categoryInheritanceStates}
                 isMasterLinked={Boolean(menuData?.masterProjectId)}
                 allowInheritedDescriptionOverride={outletPolicy?.descriptionOverride === true}
+                canGenerateDescriptions={canGenerateDescriptions}
                 onClose={() => {
                     handleCommandActionBack(() => {
                         setIsBulkActionsOpen(false);

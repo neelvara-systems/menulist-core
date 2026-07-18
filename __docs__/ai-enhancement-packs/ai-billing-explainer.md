@@ -1,12 +1,22 @@
 # How the AI Billing System Works
 
 **For: Founder / CEO / Co-Founder**
-**Last Updated: June 11, 2026**
+**Last Updated: July 15, 2026**
 **Status: Implemented — billing-slice audited; full MenuList certification pending**
 
 > **Launch boundary:** Not current launch certification or deploy approval. This founder explainer records source-gated billing and AI accounting behavior only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
 
 This document explains the complete subscription, credit, and AI billing system as it exists in the codebase today. Nothing here is proposed or planned — everything described is built and working.
+
+## July 14 Current Runtime and Owner-Display Contract
+
+- Paid actions reserve exact credits transactionally before Gemini, settle the same hidden operation row after valid output, and refund the exact charged buckets on terminal failure.
+- The operation belongs to the selected outlet. If that outlet inherits HQ billing, `accountingBillingStoreId` records the effective HQ subscription used for reserve, settle, refund, and recovery.
+- API `remainingBalance` includes that effective `billingStoreId`; the browser applies it only to the matching active subscription.
+- Owner Transactions read `menulistAiOperations/{tId}/{selectedOutletId}`. Successful/partial authenticated menu extraction is mirrored there as a compact no-credit activity row while its detailed cost/token audit remains in `MENULIST_AI_OPERATIONS` for platform operators.
+- MenuList owners see exact purchased Pack balance and exact credits required/used by eligible actions. They do not see monthly included allowance, monthly remaining, used-this-cycle counts, provider cost, or margin.
+
+Where older explanatory examples below expose monthly internal values, treat them as founder/internal mechanics only, not owner-facing UI copy.
 
 ---
 
@@ -79,10 +89,11 @@ For upgrades, carry-forward is applied by the server-owned upgrade route after b
 
 When a customer uses a paid AI feature (e.g., generates an image):
 
-1. System checks: does the store have enough credits?
-2. If yes → calls Google Gemini API
-3. If Google succeeds → deducts units from the store's balance
-4. **Consumption order:** `monthlyCredits` are used first. Only when `monthlyCredits` hits 0, `topUpCredits` are used.
+1. System checks the effective subscription for enough capacity.
+2. If yes, it atomically reserves exact units and writes the hidden operation shell.
+3. Only after reservation succeeds does it call Google Gemini.
+4. Valid output settles the same shell without a second debit; terminal failure refunds the exact reservation once.
+5. **Reservation order:** `monthlyCredits` are used first. Only when `monthlyCredits` hits 0, `topUpCredits` are used.
 
 Example: Store has 10 monthlyCredits + 50 topUpCredits. Generates 1 image (5 units).
 → After: 5 monthlyCredits + 50 topUpCredits. Monthly credits were consumed first.
@@ -222,10 +233,10 @@ A global feature flag `ENABLE_AI_ENHANCEMENTS` can disable all paid AI operation
 
 ## 6. Frontend Balance Sync
 
-After every AI operation, the API response includes the updated credit balance. The frontend uses a `CustomEvent ('ai-balance-update')` to update the subscription state in the session provider without making an extra Firestore read. This saves one Firestore read per AI operation.
+After every settled paid AI operation, the API response includes the updated credit balance and effective billing store. The frontend uses a `CustomEvent ('ai-balance-update')` to update the matching subscription state in the session provider without making an extra Firestore read. Responses for another active store are ignored.
 
 ```
-API response includes: { remainingBalance: { monthlyCredits: 195, topUpCredits: 50 } }
+API response includes: { remainingBalance: { billingStoreId: 72, monthlyCredits: 195, topUpCredits: 50 } }
   → Frontend fires CustomEvent 'ai-balance-update'
   → SessionProvider updates activeSubscription state
   → UI reflects new balance instantly
@@ -249,7 +260,7 @@ API response includes: { remainingBalance: { monthlyCredits: 195, topUpCredits: 
 
 ## 8. Per-Store Transaction Tracking
 
-Every AI operation logs a detailed transaction document at: `aiOperations/{tenantId}/{storeId}/{docId}`
+Every owner-visible MenuList operation logs an allowlisted transaction document at `menulistAiOperations/{tenantId}/{selectedOutletId}/{docId}`. Menu extraction also keeps its separate detailed platform audit in top-level `MENULIST_AI_OPERATIONS`.
 
 Each document contains:
 
@@ -280,15 +291,17 @@ Raju gets 200 monthly credits. His first month:
 | ---------------------------------- | ------------------------ | ------------- | ----------- |
 | Upload 2 menu pages                | Extraction (FREE)        | 0             | ₹1.36       |
 | Descriptions auto-generated        | First-pass (FREE)        | 0             | ₹0.13       |
-| Rewrites 10 descriptions           | REWRITE_DESCRIPTION × 10 | 10            | ₹1.30       |
-| Adds Hindi translation             | LANGUAGE_ADDITION × 1    | 3             | ₹0.37       |
+| Refreshes 10 descriptions in one bulk request | REWRITE_DESCRIPTION × 1 | 1     | ₹0.13       |
+| Runs one menu-file or public-copy Hindi translation request | LANGUAGE_ADDITION × 1 | 3 | ₹0.37 |
 | Generates AI images for 15 items   | IMAGE_GENERATION × 15    | 75            | ₹50.70      |
 | Edits 3 images (background change) | IMAGE_EDITING × 3        | 15            | ₹10.14      |
-| **TOTAL**                          |                          | **103 / 200** | **₹64.00**  |
+| **TOTAL**                          |                          | **94 / 200**  | **₹62.83**  |
 
-Raju used 103 of 200 monthly credits. He has 97 credits left this month.
+Raju used 94 of 200 monthly credits. He has 106 credits left this month. A separate single-item refresh is another request and therefore another credit.
 
-**Next month:** His 200 monthly credits reset to full. The unused 97 do NOT carry forward. He starts fresh with 200 again.
+Language addition is charged per `/api/translations` request, not once per language-selection gesture. For example, translating two menu files and one project-public-copy batch can create three `LANGUAGE_ADDITION` operations (9 units total). The UI processes and records each request separately so partial completion and transaction history remain truthful.
+
+**Next month:** His 200 monthly credits reset to full. The unused 106 do NOT carry forward. He starts fresh with 200 again.
 
 If Raju runs out mid-month, he can buy an Enhancement Pack (₹2,999 = 250 topUpCredits). Those topUp credits persist even after monthly reset.
 
@@ -432,7 +445,7 @@ Image generation is the most expensive operation. The credits-per-image number d
 Each AI operation document has `realCostPaise`, `ourChargePaise`, and `marginPaise`. To check margins for any store in any month:
 
 ```
-Collection: aiOperations/{tenantId}/{storeId}
+Collection: menulistAiOperations/{tenantId}/{storeId}
 Filter: createdOn >= startOfMonth
 Aggregate: sum(realCostPaise), sum(ourChargePaise), sum(marginPaise)
 ```
@@ -446,9 +459,9 @@ Aggregate: sum(realCostPaise), sum(ourChargePaise), sum(marginPaise)
 | Unit costs per operation     | `src/constants/AI/unitCosts.ts`                       |
 | Action type constants        | `src/constants/common.ts` → `AI_ACTIONS_TYPES`        |
 | Capacity check + lazy reset  | `src/lib/ai/capacityCheck.ts`                         |
-| Credit consumption logic     | `src/lib/ai/capacityCheck.ts` → `consumeAICapacity`   |
+| Credit reservation/settlement | `src/lib/ai/capacityCheck.ts` → reserve/finalize/refund |
 | Kill switch                  | `src/config/features.ts` → `ENABLE_AI_ENHANCEMENTS`   |
-| Transaction logging          | `src/database/aiOperations/index.tsx`                 |
+| Transaction logging          | `src/lib/ai/operationLog.ts`; browser reader: `src/database/aiOperations/index.tsx` |
 | Plan definitions + pricing   | `src/data/PlatformPlansList.ts`                       |
 | Subscription type definition | `src/types/razorpay.ts` → `FirestoreSubscriptionDoc`  |
 | Subscription database layer  | `src/database/subscriptions/index.ts`                 |
@@ -482,7 +495,8 @@ CREDIT FLOW:
   Plan gives monthlyCreditsAllowance (e.g., 200)
   monthlyCredits = 200 (resets every billing cycle)
   topUpCredits = purchased separately (never resets)
-  AI call → deduct from monthlyCredits first, then topUpCredits
+  AI request → reserve from monthlyCredits first, then topUpCredits
+  Valid output → settle; terminal failure → refund the exact reservation
   Credits exhausted → 402 → "Get More Enhancements" → buy pack
 
 MONTHLY RESET:
@@ -491,6 +505,7 @@ MONTHLY RESET:
   Both are idempotent and race-safe
 
 TRACKING:
-  Every operation → aiOperations/{tId}/{sId}/{docId}
-  Contains: units consumed, Google cost, our charge, margin, tokens, model, timing
+  Owner history → menulistAiOperations/{tId}/{selectedOutletId}/{docId}
+  Platform extraction audit → MENULIST_AI_OPERATIONS/{docId}
+  Owner projection hides provider economics; platform audit retains bounded cost/token telemetry
 ```

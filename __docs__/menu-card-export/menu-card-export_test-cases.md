@@ -187,7 +187,11 @@ Authenticated browser click-through remains an external certification gate befor
 | Repeat logo export | Same logo URL is converted from in-memory cache during the route session instead of refetching for every export. |
 | Auto design cost | No provider call, AI credit consumption, Firestore write, Storage upload, Cloud Function, rule, or index. |
 | History flag off | Local history UI is hidden and no browser history record is written. |
-| History flag on | Reads local browser history only, max 20 records per project. |
+| History flag on | Reads shaped local browser history only, max 20 records per tenant/store/project. Equal project IDs in another store return no records. |
+| Device storage rejection after delivery | Export/download success remains success; device-local history/freshness persistence is omitted without a false failure. |
+| Native share cancelled | No fallback download, success event, or local history record. |
+| Native file sharing unsupported | Download fallback runs and reports a download. |
+| Empty or non-Latin-only QR filename label | Browser file falls back to `menu-qr.png` or `menu-feedback-qr.png`; valid ASCII labels keep their existing sanitized name. |
 | Print-shop flag off | Preset is hidden and no print-shop artifact is generated. |
 | Batch flag off | Batch endpoint/action is unavailable. |
 | AI advisor flag off | No AI/provider call occurs. |

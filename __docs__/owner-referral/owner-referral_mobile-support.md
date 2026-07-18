@@ -3,7 +3,7 @@
 **Feature:** Owner Referral
 **Decision:** Supported inside the existing Mobile Share tab
 **Status:** Implemented behind disabled rollout controls; device/payment QA pending
-**Last updated:** July 11, 2026
+**Last updated:** July 16, 2026
 
 ---
 
@@ -29,10 +29,7 @@ Add one compact action inside `MobileShareScreen` after the existing customer-li
 
 Selecting it opens `MobileOwnerReferralSheet` inside `MobileShell`.
 
-The action is visible only when:
-
-- acquisition is enabled for the pilot/global rollout;
-- the current store is admitted by the configured pilot allowlist.
+The action is visible only when acquisition and settlement are enabled, the pilot allowlist contains at least one valid store ID, and the current store is explicitly admitted. An empty or invalid allowlist fails closed; there is no accidental global rollout state.
 
 The sheet loads lazily. The protected owner API then verifies paid MenuList subscription evidence and billing-management authority. This avoids adding subscription or role reads to Mobile Share boot; an unauthorized or unpaid actor receives the same generic unavailable state.
 
@@ -81,8 +78,8 @@ Each control has a minimum 44x44px target, a familiar Lucide icon, visible label
 Behavior:
 
 - Share remains the first action; it uses native Share when available and falls back to Copy when unavailable;
-- WhatsApp opens an encoded `wa.me` URL without recipient number;
-- Copy uses Clipboard API and current fallback behavior;
+- WhatsApp opens an encoded `wa.me` URL without recipient number and reports a calm share failure if the browser blocks or cannot open the handoff;
+- Copy uses Clipboard API and current fallback behavior; the fallback always removes its temporary textarea even when copy fails;
 - no recipient information is stored;
 - no referral-specific analytics event is emitted in the current implementation;
 - raw invite URLs never enter diagnostics.
@@ -118,6 +115,7 @@ Statuses:
 | `reward_issued` | Credits added |
 
 Long business names use two lines, then ellipsis with an accessible full label.
+Dates use the shared app formatter so desktop/mobile localization and timezone behavior stay aligned.
 
 ---
 
@@ -128,7 +126,7 @@ Long business names use two lines, then ellipsis with an accessible full label.
 - open the sheet immediately;
 - show a stable centered preparation state;
 - do not block the Share screen;
-- target usable state within two seconds on ordinary mobile data.
+- avoid promising a fixed load time until production-host device evidence exists.
 
 ### No Referrals
 

@@ -2,8 +2,13 @@ import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
 import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
-import { hasMeaningfulDescription, hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
-import { addDescription, type DescriptionGovernanceOptions } from '@services/ai/description/descriptionUtils';
+import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
+import {
+    addDescription,
+    chunkDescriptionItems,
+    prepareDescriptionPayload,
+    type DescriptionGovernanceOptions,
+} from '@services/ai/description/descriptionUtils';
 import getDescriptionsViaAPI from '@services/ai/description/generateDescriptionViaAPI';
 import { removeObjRef } from '@util/utils';
 import type { ExtractedDataItem, Project, ProjectFileType } from '../types';
@@ -47,7 +52,7 @@ export function getDescriptionGenerationStats(
     const filesToCheck = sourceFile
         ? projectData.files?.filter((file) => file.uid === sourceFile.uid)
         : projectData.files;
-    const activeLanguages = projectData.languages?.filter(Boolean) || [];
+    const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectData.languages);
 
     filesToCheck?.forEach((file) => {
         const items = file.extractedData?.data?.items || [];
@@ -56,13 +61,16 @@ export function getDescriptionGenerationStats(
                 return;
             }
 
+            const sourceName = item.name?.[sourceLanguageCode]?.trim();
+            if (!sourceName) return;
+
             itemsCount++;
 
-            const hasDescription = item.description && (
-                activeLanguages.length > 0
-                    ? hasMeaningfulDescriptionsForLanguages(item.description, activeLanguages)
-                    : Object.values(item.description).some((description) => hasMeaningfulDescription(description))
-            );
+            const sourceDescription = item.description?.[sourceLanguageCode]?.trim() || '';
+            const hasManualDescription = item.descriptionSource === 'manual'
+                && hasAnyNonEmptyDescription(item.description);
+            const hasDescription = sourceDescription.length > 0
+                || hasManualDescription;
 
             if (hasDescription) {
                 itemsWithDescriptions++;
@@ -70,7 +78,7 @@ export function getDescriptionGenerationStats(
                 itemsWithoutDescriptions++;
             }
 
-            if (item.descriptionSource === 'manual') {
+            if (hasManualDescription) {
                 manualDescriptionCount++;
             } else if (hasDescription) {
                 aiDescriptionCount++;
@@ -85,6 +93,35 @@ export function getDescriptionGenerationStats(
         itemsWithoutDescriptions,
         manualDescriptionCount,
     };
+}
+
+export function getDescriptionGenerationRequestCount(
+    projectData: Project,
+    sourceFile: ProjectFileType | null | undefined,
+    action: string,
+    governance?: DescriptionGovernanceOptions,
+): number {
+    const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectData.languages);
+    const projectLanguageCodes = projectData.languages?.length
+        ? projectData.languages
+        : [sourceLanguageCode];
+    const targetLanguageCount = projectLanguageCodes.filter((code) => (
+        GlobalLanguagesList.some((language) => language.code === code)
+    )).length;
+    if (!GlobalLanguagesList.some((language) => language.code === sourceLanguageCode) || targetLanguageCount === 0) {
+        return 0;
+    }
+
+    const filesToCheck = sourceFile
+        ? projectData.files?.filter((file) => file.uid === sourceFile.uid)
+        : projectData.files;
+
+    return (filesToCheck || []).reduce((requestCount, file) => {
+        const fileData = file.extractedData?.data;
+        if (!fileData) return requestCount;
+        const items = prepareDescriptionPayload(fileData, sourceLanguageCode, action, governance);
+        return requestCount + chunkDescriptionItems(items, { targetLanguageCount }).length;
+    }, 0);
 }
 
 type RunDescriptionGenerationParams = {
@@ -119,41 +156,65 @@ export async function runDescriptionGeneration({
         file.extractedData?.data && (sourceFile ? sourceFile.uid === file.uid : true)
     ) || [];
 
-    const sourceLanguage = GlobalLanguagesList.find(
-        (lang) => lang.code === getCanonicalProjectSourceLanguage(nextProject.languages),
-    );
-    const targetLanguages = nextProject.languages.map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang)).filter(Boolean);
+    const sourceLanguageCode = getCanonicalProjectSourceLanguage(nextProject.languages);
+    const sourceLanguage = GlobalLanguagesList.find((lang) => lang.code === sourceLanguageCode);
+    const projectLanguageCodes = nextProject.languages?.length
+        ? nextProject.languages
+        : [sourceLanguageCode];
+    const targetLanguages = projectLanguageCodes
+        .map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang))
+        .filter(Boolean);
+    if (!sourceLanguage || targetLanguages.length === 0) {
+        throw new Error('Description generation languages are unavailable.');
+    }
+
+    const totalRequestCount = action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
+        ? getDescriptionGenerationRequestCount(nextProject, sourceFile, action, governance)
+        : 0;
+    // Preserve every single-request flow. Only the first eligible file sends
+    // a multi-request count for server-side whole-scope capacity admission.
+    let pendingOperationRequestCount = totalRequestCount > 1
+        ? totalRequestCount
+        : undefined;
 
     let processedFiles = 0;
     for (const file of filesToProcess) {
-        onFileProcessingIdChange?.(file.uid);
-        const descriptionResult = await addDescription(
-            nextProject,
-            file,
-            targetLanguages as any,
-            sourceLanguage as any,
-            action,
-            contentLength,
-            tone,
-            governance
-        );
-        const { updatedProject, messageType } = descriptionResult;
-        const resultMessage = descriptionResult.message;
+        try {
+            onFileProcessingIdChange?.(file.uid);
+            const descriptionResult = await addDescription(
+                nextProject,
+                file,
+                targetLanguages as any,
+                sourceLanguage as any,
+                action,
+                contentLength,
+                tone,
+                governance,
+                pendingOperationRequestCount,
+            );
+            const { requestCount, updatedProject, messageType } = descriptionResult;
+            const resultMessage = descriptionResult.message;
 
-        if (messageType === 'error' && resultMessage) {
-            logMenuEditorFailure('menu_editor_description_generation_returned_error_message', new Error('description_generation_returned_error_message'), {
-                ...getMenuEditorProjectLogContext(projectData.projectId),
-                ...getBoundedMenuEditorStringContext('fileId', file.uid),
-                ...getBoundedMenuEditorStringContext('resultMessage', resultMessage),
-                ...getBoundedMenuEditorStringContext('messageType', messageType),
-            });
+            if (requestCount > 0) {
+                pendingOperationRequestCount = undefined;
+            }
+
+            if (messageType === 'error') {
+                logMenuEditorFailure('menu_editor_description_generation_returned_error_message', new Error('description_generation_returned_error_message'), {
+                    ...getMenuEditorProjectLogContext(projectData.projectId),
+                    ...getBoundedMenuEditorStringContext('fileId', file.uid),
+                    ...getBoundedMenuEditorStringContext('resultMessage', resultMessage),
+                    ...getBoundedMenuEditorStringContext('messageType', messageType),
+                });
+                throw new Error('Description generation failed.');
+            }
+
+            nextProject = updatedProject;
+            processedFiles++;
+            onProgress?.(processedFiles, filesToProcess.length, file);
+        } finally {
+            onFileProcessingIdChange?.(null);
         }
-
-        nextProject = updatedProject;
-        processedFiles++;
-        onProjectUpdate?.(updatedProject);
-        onProgress?.(processedFiles, filesToProcess.length, file);
-        onFileProcessingIdChange?.(null);
     }
 
     if (!skipPersist) {
@@ -168,6 +229,7 @@ export async function runDescriptionGeneration({
             );
         }
     }
+    onProjectUpdate?.(nextProject);
     return removeObjRef(nextProject);
 }
 
@@ -192,10 +254,12 @@ export async function runSingleItemDescriptionGeneration({
     sourceFile,
     tone = DEFAULT_DESCRIPTION_TONE,
 }: RunSingleItemDescriptionGenerationParams): Promise<SingleItemDescriptionGenerationResult> {
-    const sourceLanguage = GlobalLanguagesList.find(
-        (lang) => lang.code === getCanonicalProjectSourceLanguage(projectData.languages),
-    );
-    const targetLanguages = projectData.languages
+    const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectData.languages);
+    const sourceLanguage = GlobalLanguagesList.find((lang) => lang.code === sourceLanguageCode);
+    const projectLanguageCodes = projectData.languages?.length
+        ? projectData.languages
+        : [sourceLanguageCode];
+    const targetLanguages = projectLanguageCodes
         .map((lang) => GlobalLanguagesList.find((gl) => gl.code === lang))
         .filter(Boolean);
 
@@ -221,7 +285,10 @@ export async function runSingleItemDescriptionGeneration({
         ? AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
         : AI_ACTIONS_TYPES.ADD_DESCRIPTION;
 
-    if (action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION && item.descriptionSource === 'manual') {
+    if (
+        item.descriptionSource === 'manual'
+        && hasAnyNonEmptyDescription(item.description)
+    ) {
         return {
             action,
             reason: 'manual_protected',
@@ -229,24 +296,23 @@ export async function runSingleItemDescriptionGeneration({
         };
     }
 
-    const categoryName = sourceFile.extractedData?.data?.categories
-        ?.find((category) => category.id === item.category)
-        ?.name?.[sourceLanguage.code] || '';
+    const [descriptionItem] = prepareDescriptionPayload({
+        categories: sourceFile.extractedData?.data?.categories || [],
+        items: [item],
+    }, sourceLanguage.code, action);
+    if (!descriptionItem) {
+        return {
+            action,
+            reason: 'no_result',
+            updatedItem: removeObjRef(item),
+        };
+    }
 
     const generatedDescriptions = await getDescriptionsViaAPI({
         action,
         contentLength,
         fileId: sourceFile.uid,
-        itemsList: [{
-            attributes: (item.attributes || [])
-                .map((attribute) => attribute.name?.[sourceLanguage.code]?.trim() || '')
-                .filter(Boolean)
-                .join(', '),
-            category: categoryName,
-            description: existingDescription,
-            id: item.id,
-            name: sourceName,
-        }] as any,
+        itemsList: [descriptionItem],
         projectId: projectData.projectId,
         sourceLang: sourceLanguage,
         targetLang: targetLanguages as any,

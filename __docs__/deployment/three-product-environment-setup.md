@@ -699,7 +699,7 @@ from.
 
 | Group | Variables | Source |
 | --- | --- | --- |
-| Runtime identity | `NEXT_PUBLIC_ENV`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_DEPLOYMENT_URL`, `NEXT_PUBLIC_PLATFORM_DOMAIN`, `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES`, `NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_BUILD_CREATED_AT`, `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE` | repo contract plus Vercel build metadata |
+| Runtime identity | `NEXT_PUBLIC_ENV`, `NEXT_PUBLIC_VERCEL_ENV`, `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_DEPLOYMENT_URL`, `NEXT_PUBLIC_PLATFORM_DOMAIN`, `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES`, `NEXT_PUBLIC_BUILD_ID`, `NEXT_PUBLIC_BUILD_CREATED_AT`, `NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE` | repo contract plus Vercel build metadata |
 | Auth | `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, optional `NEXTAUTH_URL` | OpenSSL plus Google Cloud OAuth |
 | MenuList Firebase client | `NEXT_PUBLIC_FIREBASE_*`, `NEXT_PUBLIC_FB_DATABASE_URL` | Firebase Web App config |
 | MenuList Firebase Admin | `FIREBASE_PROJECT_ID`, `FIREBASE_STORAGE_BUCKET`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_PROJECT_LOCATION` | Firebase service account |
@@ -708,7 +708,7 @@ from.
 | Answerlattice runtime | `ANSWERLATTICE_CRON_SECRET`, `ANSWERLATTICE_MCP_SESSION_SECRET`, `ANSWERLATTICE_PUBLIC_BUNDLE_SALT`, `ANSWERLATTICE_NIGHTLY_TRIGGER_URL`, `ANSWERLATTICE_TRIGGER_NIGHTLY_URL`, `ANSWERLATTICE_PUBLIC_API_DEBUG`, `ANSWERLATTICE_TEST_URL`, `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY` | generated secrets plus deployed function URL and product URL |
 | CampaignCue Firebase client | `NEXT_PUBLIC_CAMPAIGNCUE_FIREBASE_*`, `NEXT_PUBLIC_CAMPAIGNCUE_FIRESTORE_DATABASE_ID` | CampaignCue Firebase Web App config |
 | CampaignCue Firebase Admin | `CAMPAIGNCUE_FIREBASE_*`, `CAMPAIGNCUE_GOOGLE_APPLICATION_CREDENTIALS`, `CAMPAIGNCUE_FIRESTORE_DATABASE_ID` | CampaignCue Firebase service account |
-| CampaignCue CueLayers | `CAMPAIGNCUE_CUE_LAYERS_LOW_COST_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_ENABLE_PREMIUM_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_ROLLOUT_PERCENT`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_ROLLOUT_PERCENT`, `CAMPAIGNCUE_TEMPLATE_SEED_ACTOR` | product model rollout decision |
+| CampaignCue CueLayers | `CAMPAIGNCUE_CUE_LAYERS_LOW_COST_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_ENABLE_PREMIUM_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_IMAGE_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_PREMIUM_ROLLOUT_PERCENT`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_MODEL`, `CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_ROLLOUT_PERCENT`, `CAMPAIGNCUE_TEMPLATE_SEED_ACTOR` | explicit premium boolean, real segmentation model ID or blank, and bounded 0-100 rollout |
 | MyCodex static auth | `MYCODEX_BASIC_AUTH_USER`, `MYCODEX_BASIC_AUTH_PASSWORD`, `MYCODEX_SESSION_SECRET` | generated credentials/password manager |
 | AI | `GEMINI_AI_KEY`, `GEMINI_API_KEY`, `GEMINI_AI_KEY_2`, `GEMINI_AI_KEY_3`, `GEMINI_AI_KEY_4`, `OPENAI_API_KEY` | Google AI Studio and optional OpenAI |
 | Payments | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`, `NEXT_PUBLIC_RAZORPAY_KEY_ID`, `CRON_SECRET`, `INTERNAL_BILLING_EMAIL`, `GCP_BUDGET_WEBHOOK_SECRET` | Razorpay plus generated internal secrets |
@@ -725,6 +725,13 @@ from.
 | Optional webhooks | `GITHUB_WEBHOOK_SECRET`, `SHOPIFY_WEBHOOK_SECRET` | GitHub/Shopify dashboard |
 
 Firebase Admin credential and local ADC diagnostics use `src/lib/firebase/firebaseAdminDiagnostics.ts`. Do not debug these paths by logging service-account file paths, service-account JSON, private keys, client emails, raw credential errors, or ADC exception text. Use the bounded Admin bootstrap codes guarded by `npm run verify:auth-security-failure-matrix`.
+
+SignalDesk is intentionally stricter than the local ADC fallback used by
+Answerlattice and CampaignCue: its app-server Admin runtime accepts only the
+product-scoped `MENULIST_SIGNALDESK_FIREBASE_*` credential values, the
+product-scoped `MENULIST_SIGNALDESK_GOOGLE_APPLICATION_CREDENTIALS` file, or
+emulator identity. It must not fall back to generic host ADC because that
+credential may belong to another Firebase product or deployment stage.
 
 Startup environment validation diagnostics use `src/lib/env/envDiagnostics.ts`. Do not debug missing env setup by logging secret values or full local `.env` contents. The runtime diagnostic records missing/warning counts and product-stage failure codes; this document remains the source for exact variables to configure.
 
@@ -1132,6 +1139,7 @@ Checklist:
 - [ ] Set `BATCH_IMAGE_GENERATION_QUEUE_ID`.
 - [ ] Set `BATCH_IMAGE_GENERATION_WORKER_URL`.
 - [ ] Generate and set `BATCH_IMAGE_GENERATION_WORKER_SECRET`.
+- [ ] Capture the QA and production queue descriptions and verify `maxConcurrentDispatches`, `maxDispatchesPerSecond`, and `retryConfig` against each deployed worker and current Gemini target quota; do not copy unverified throughput values between environments.
 
 ### 14. Google Cloud budget alerts
 

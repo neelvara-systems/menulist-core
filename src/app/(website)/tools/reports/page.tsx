@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import ToolReportPage from '@/components/website/toolReports/ToolReportPage';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Shareable MenuList Tool Report - MenuList';
 const description = 'Open a public MenuList tool report link with checked facts, evidence text, clear limits, and the next MenuList action.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/reports',
   },
-};
+});
 
 export default function Page() {
   if (

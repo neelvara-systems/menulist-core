@@ -20,7 +20,7 @@ import { ProjectFileType } from './types';
  * - PDFs: Max 50MB
  * 
  * Also shows warnings for large files (>30MB) to inform users
- * about potential processing time and costs.
+ * about potential processing time.
  */
 export const validateFileSize = (file: File, fileList: File[]): boolean | typeof Upload.LIST_IGNORE => {
   const isPDF = file.type === 'application/pdf';
@@ -40,7 +40,7 @@ export const validateFileSize = (file: File, fileList: File[]): boolean | typeof
   if (file.size > WARN_FILE_SIZE) {
     const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
     message.warning({
-      content: `${file.name} (${sizeMB}MB) is quite large. Processing may take longer and incur higher AI costs.`,
+      content: `${file.name} (${sizeMB}MB) is quite large. Processing may take longer.`,
       duration: 6
     });
   }
@@ -158,7 +158,7 @@ export const validateFileMagicBytes = async (file: File): Promise<boolean> => {
  * Detects duplicate files based on name and size.
  * Shows confirmation modal asking user if they want to upload anyway.
  * 
- * Prevents wasting AI credits on processing the same file twice.
+ * Prevents accidentally processing the same file twice.
  */
 export const detectDuplicateFile = (
   file: File,
@@ -173,7 +173,7 @@ export const detectDuplicateFile = (
     if (isDuplicate) {
       Modal.confirm({
         title: 'Duplicate File Detected',
-        content: `"${file.name}" already exists in this project. Uploading it again will use additional AI credits. Do you want to continue?`,
+        content: `"${file.name}" already exists in this project. Uploading it again will repeat menu processing. Do you want to continue?`,
         okText: 'Upload Anyway',
         cancelText: 'Skip',
         onOk: () => resolve(true),

@@ -4,9 +4,18 @@
     "indexes": "firestore.indexes.json"
   },
   "emulators": {
+    "hub": {
+      "host": "127.0.0.1",
+      "port": 4496
+    },
+    "logging": {
+      "host": "127.0.0.1",
+      "port": 4596
+    },
     "firestore": {
       "host": "127.0.0.1",
-      "port": 8096
+      "port": 8096,
+      "websocketPort": 9196
     }
   }
 }

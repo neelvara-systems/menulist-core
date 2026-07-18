@@ -1,82 +1,45 @@
-# Hours & Holiday Accuracy — Firebase Cost Tracking
+# Working Hours, Holidays, and Time Slots — Firebase Cost
 
-**Feature:** Hours Status Display + Holiday Exceptions
-**Status:** #2A ✅ IMPLEMENTED (Hours Status) | #2B 🔶 DEFERRED (Holidays)
-**Last Updated:** July 2, 2026
-**Priority:** LOW — Reads existing store data. No new collections or writes.
+**Status:** Current cost contract
+
+**Last verified:** July 17, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc is source-gated working-hours and time-slot cost evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.
 
----
-
 ## Source Gate
 
-- Source gate: `npm run verify:working-hours-boundary`
-- Working-hours saves use `updateStore()` and require explicit write acknowledgement before local success state is treated as confirmed.
-- Time-slot preset saves use `updateTimeSlotPresets()`; the shared store DAL refreshes public menu/OBP cache after the store-level preset write.
-- Preset edit/delete cascades update project category snapshots and keep their existing per-project public cache revalidation.
-- Hours status fallback diagnostics are browser/runtime logging only; invalid timezone fallback and malformed time-range handling do not add Firebase reads, writes, deletes, listeners, Storage objects, or Cloud Functions.
-- Output Control timestamp diagnostics are browser/runtime logging only; malformed freshness metadata still degrades locally to the existing `Check with store` fallback.
-- No holiday-calendar collection, exception collection, Cloud Function, Storage object, provider call, or extra listener exists in current source.
+`npm run verify:working-hours-boundary` confirms the current DAL/cache/cascade contract.
 
----
+## Active Operations
 
-## Summary
+| Operation | Reads | Writes | Notes |
+| --- | ---: | ---: | --- |
+| Render current status | 0 incremental | 0 | Uses the store object already loaded for menu/OBP/owner output |
+| Save weekly hours | Existing store/summary path as required | 1 store patch plus existing summary/version side effects | `updateStore()`; no hours-specific document |
+| Save one Today weekday | Same as weekly save | Same as weekly save | Leaf `workingHours.{day}` patch |
+| Create preset | Session/store admission already owned by DAL | 1 store merge | `updateTimeSlotPresets()` plus cache invalidation |
+| Edit/delete preset | Paged project scan and transaction reads for referenced candidates | 1 store merge plus changed project writes | Pages are 100; concurrency is bounded; each changed project cache is revalidated |
+| Status fallback diagnostics | 0 | 0 | Browser/runtime logs only; capped in memory |
 
-- **Collections Used:** `stores` (`workingHours` field plus `hoursLastUpdatedAt` freshness stamp)
-- **Storage Buckets:** None
-- **Cloud Functions:** None
-- **Estimated Monthly Cost:** **Negligible** — Uses existing store data reads
+Public reads do not increase because `workingHours`, `timeZone`, and time-slot preset truth are part of existing store/project payloads and cache entries.
 
----
+Hours status fallback diagnostics add no Firebase operation and are capped in memory.
+Output Control timestamp diagnostics also run in memory and add no Firebase operation.
 
-## Firestore Operations
+## Cost and Scale Guardrails
 
-### Reads
+- Weekly saves use nested/deep patches; they do not rewrite unrelated store siblings.
+- Closed-day removal is a field delete instead of a second cleanup read/write.
+- Public cache invalidation stays on the existing store and project tag paths.
+- Preset cascade processes project pages of 100 with bounded concurrency and skips projects without references.
+- `stores.timeSlotPresets` is never filtered or ordered by runtime queries, so its nested array/map automatic indexes are disabled. Preset saves and reads remain exact store-document operations.
+- No new query index, holiday document, exception document, listener, scheduled Function, Storage object, or provider call exists.
+- Preset edits are expected to be rare. Add a reference index only after measured scan latency or read cost demonstrates a material problem.
 
-| Operation | Collection | Trigger | Frequency | Docs Read | Indexed? | Notes |
-|-----------|-----------|---------|-----------|-----------|----------|-------|
-| Read store working hours | `stores/{storeId}` | Customer menu page load | Per menu view (cached 60s) | 0 (already loaded) | N/A | Hours data is part of store document already fetched for menu rendering. Zero incremental cost. |
+## Residual Risk
 
-### Writes
+The store preset write and project category cascade are not one Firestore transaction across all projects. A failure is surfaced and retryable, but an interruption can temporarily leave store preset metadata ahead of some category snapshots. A durable operation ledger would be justified only if production telemetry shows repeated partial cascades; adding one pre-emptively would be overengineering.
 
-| Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
-|-----------|-----------|---------|-----------|-------------|--------|-------|
-| Update working hours | `stores/{storeId}` | Owner edits hours in settings | Rare (setup only) | 1 | `workingHours`, `hoursLastUpdatedAt` | Same store settings write; no extra document write. |
-| Update time-slot presets | `stores/{storeId}` | Owner creates, edits, or deletes a preset | Rare (setup only) | 1 | `timeSlotPresets`, `modifiedOn` | Same store settings write plus public cache revalidation; no extra Firestore write. |
+## Infrastructure Change
 
-Mobile full-hours and Today quick-hours saves require an explicit `updateStore()` acknowledgement before saved copy or local baselines change. This does not add reads/writes/deletes; it only prevents `apiCallComposer()` fallback values from being treated as confirmed working-hours persistence.
-
-Desktop and mobile time-slot preset saves require an explicit `updateTimeSlotPresets()` acknowledgement before local preset state changes. The shared store DAL now revalidates the public menu/OBP cache after the preset merge so public surfaces do not keep stale store-level preset truth. Editing or deleting a preset still runs the existing project-category cascade; those project writes keep their existing per-project cache revalidation.
-
-Hours status fallback diagnostics add no Firebase reads, writes, deletes, listeners, Storage operations, Cloud Functions, or cache invalidations. The shared hours diagnostics helper logs bounded `hours_status_timezone_fallback_failed` and `hours_status_time_range_invalid` metadata in memory when public hours status has to fall back from invalid timezone resolution or suppress malformed time ranges.
-
-Output Control timestamp diagnostics add no Firebase reads, writes, deletes, listeners, Storage operations, Cloud Functions, or cache invalidations. The resolver validates `hoursLastUpdatedAt` shapes in memory and logs bounded `hours_confidence_timestamp_parse_failed` metadata only when an unexpected parser exception forces the existing untrusted-output fallback.
-
-### Deletes
-
-None.
-
----
-
-## Planned (Feature #2B — Holiday Exceptions)
-
-| Operation | Collection | Trigger | Notes |
-|-----------|-----------|---------|-------|
-| Read holiday config | `stores/{storeId}` (holidays field) | Customer page load | Will be part of existing store doc. Zero incremental reads. |
-| Write holiday config | `stores/{storeId}` | Owner sets holidays | Merge update to store doc. Very rare. |
-
----
-
-## Cost Estimate
-
-**$0.00/month** — No incremental Firebase cost. Uses existing store document reads.
-
----
-
-## DAL Functions Used
-
-| Function | File | Operation Type |
-|----------|------|---------------|
-| `getStoreById` | `src/database/stores/index.ts` | Read (already loaded for menu) |
-| `updateStore` | `src/database/stores/index.ts` | Write (hours update — rare) |
+This audit changed app-side validation/evaluation and verifier/docs only. No Firestore rule, index, Storage rule, or Cloud Function source changed, so no Firebase infrastructure deploy was triggered.

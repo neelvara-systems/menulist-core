@@ -2,6 +2,7 @@
 
 import ChatHighlight from '@atoms/ChatHighlight';
 import ArticleViewModal from '@organisms/ArticleViewModal';
+import { helpCenterArticleRouting } from '@constant/navigations';
 import { Button, Card, Flex, Image, Typography, message as antMessage, theme } from 'antd';
 import { motion } from 'framer-motion';
 import { memo, useEffect, useState } from 'react';
@@ -59,11 +60,11 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
     };
 
     const handleRelatedArticleOpen = (article: any) => {
-        const articleUrl = article?.url;
-        if (!articleUrl) return;
+        const articleId = typeof article?.id === 'string' ? article.id : '';
+        if (!articleId) return;
 
         try {
-            const opened = window.open(articleUrl, '_blank', 'noopener,noreferrer');
+            const opened = window.open(helpCenterArticleRouting(articleId), '_blank', 'noopener,noreferrer');
             if (!opened) {
                 throw new Error('help_chat_related_article_open_blocked');
             }
@@ -75,7 +76,7 @@ const MessageBubble = memo(({ message, onCopy, onRegenerate, onFeedback, isTypin
                 ...getBoundedHelpChatStringContext('messageId', message.id),
                 ...getBoundedHelpChatStringContext('articleId', article?.id),
                 ...getBoundedHelpChatStringContext('articleTitle', article?.title),
-                ...getBoundedHelpChatStringContext('articleUrl', articleUrl),
+                articleRoutePresent: true,
             });
             antMessage.error('Unable to open article');
         }

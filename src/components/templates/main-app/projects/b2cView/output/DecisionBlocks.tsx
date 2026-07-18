@@ -28,11 +28,11 @@ import { DECISION_REASON_KEYS, DecisionBlockType, getBlockLabels, getDecisionBlo
 import { FEATURE_FLAGS } from '@config/features';
 import CategoryIcon from '@atoms/CategoryIcon';
 import useDeviceType from '@hook/useDeviceType';
+import { isWithinTimeSlot } from '@hook/useTimedCategories';
 import { trackDecisionBlockClick, trackDecisionBlocksRendered } from '@lib/analytics/unified';
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { getPrimaryPublicMenuImage } from '@lib/menu/publicMenuImages';
-import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
-import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
 import Image from 'next/image';
 import type { CSSProperties } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -79,18 +79,6 @@ const OWNER_PINNED_TITLES: Record<DecisionBlockType, string> = {
     quickPick: 'Quick choice',
     bestValue: 'Value choice',
 };
-
-let reportedDecisionBlocksTimezoneFailure = false;
-
-function logDecisionBlocksTimezoneFailure(error: unknown, timeZone?: string): void {
-    if (reportedDecisionBlocksTimezoneFailure) return;
-    reportedDecisionBlocksTimezoneFailure = true;
-
-    logRuntimeFailure('public_menu_decision_blocks_timezone_failed', error, {
-        ...getBoundedRuntimeStringContext('timeZone', timeZone),
-        hasWindow: typeof window !== 'undefined',
-    });
-}
 
 function getLocalizedMenuText(value: unknown, language: string, fallback = ''): string {
     if (typeof value === 'string') return value || fallback;
@@ -190,31 +178,6 @@ function getTimestampMillis(value: unknown): number | null {
     return null;
 }
 
-function getCurrentStoreMinutes(timeZone?: string): number {
-    if (timeZone) {
-        try {
-            const parts = new Intl.DateTimeFormat('en-GB', {
-                hour: '2-digit',
-                hourCycle: 'h23',
-                minute: '2-digit',
-                timeZone,
-            }).formatToParts(new Date());
-            const hour = Number(parts.find((part) => part.type === 'hour')?.value);
-            const minute = Number(parts.find((part) => part.type === 'minute')?.value);
-            if (Number.isFinite(hour) && Number.isFinite(minute)) {
-                return hour * 60 + minute;
-            }
-            logDecisionBlocksTimezoneFailure(new Error('invalid_decision_block_time_parts'), timeZone);
-        } catch (error) {
-            logDecisionBlocksTimezoneFailure(error, timeZone);
-            // Fall back to browser time if the store timezone is invalid.
-        }
-    }
-
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-}
-
 /** Thresholds for lifecycle gating */
 const LIFECYCLE_THRESHOLDS = {
     COLD_MAX_VIEWS: 100,       // Below this = COLD (no blocks)
@@ -296,29 +259,9 @@ function passesGlobalGate(precomputed: PrecomputedDecisionBlocks | null | undefi
  * - Category has no time slots (always visible)
  * - Current time is within any of the category's time slots
  */
-function isCategoryWithinTimeSlot(category: ExtractedDataCategory | undefined, currentMinutes: number): boolean {
+function isCategoryWithinTimeSlot(category: ExtractedDataCategory | undefined, storeTimeZone?: string): boolean {
     if (!category) return true; // No category = always visible
-    if (!Array.isArray(category.timeSlots) || category.timeSlots.length === 0) return true; // No slots = always visible
-
-    for (const slot of category.timeSlots) {
-        if (!slot?.startTime || !slot?.endTime) continue;
-
-        const [startHour, startMin] = slot.startTime.split(':').map(Number);
-        const [endHour, endMin] = slot.endTime.split(':').map(Number);
-        if ([startHour, startMin, endHour, endMin].some((value) => Number.isNaN(value))) continue;
-
-        const slotStart = startHour * 60 + startMin;
-        const slotEnd = endHour * 60 + endMin;
-
-        // Handle overnight slots (e.g., 22:00 - 02:00)
-        if (slotEnd < slotStart) {
-            if (currentMinutes >= slotStart || currentMinutes <= slotEnd) return true;
-        } else {
-            if (currentMinutes >= slotStart && currentMinutes <= slotEnd) return true;
-        }
-    }
-
-    return false; // Current time not within any slot
+    return isWithinTimeSlot(category.timeSlots, storeTimeZone);
 }
 
 /**
@@ -339,7 +282,7 @@ function selectAvailableCandidate(
     items: ExtractedDataItem[],
     categoryMap: Map<string, ExtractedDataCategory>,
     usedItemIds: Set<string>,
-    currentStoreMinutes: number,
+    storeTimeZone?: string,
     pinnedId?: string
 ): { item: ExtractedDataItem; reason: string; reasonParams?: Record<string, any> } | undefined {
     // Build lookup map for O(1) access
@@ -358,7 +301,7 @@ function selectAvailableCandidate(
 
         // Check 3: Category time-slot validation
         const category = categoryMap.get(item.category);
-        if (!isCategoryWithinTimeSlot(category, currentStoreMinutes)) return undefined;
+        if (!isCategoryWithinTimeSlot(category, storeTimeZone)) return undefined;
 
         // Check 4: Not already used in another block
         if (usedItemIds.has(item.id)) return undefined;
@@ -420,7 +363,6 @@ function computeFromPrecomputed(
 
     // Build category lookup map for time-slot validation
     const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
-    const currentStoreMinutes = getCurrentStoreMinutes(storeTimeZone);
 
     // ── Block-level eligibility (data coverage gates) ──
 
@@ -448,7 +390,7 @@ function computeFromPrecomputed(
             items,
             categoryMap,
             usedItemIds,
-            currentStoreMinutes,
+            storeTimeZone,
             ownerControls?.pinnedPopular
         );
         if (result) {
@@ -469,7 +411,7 @@ function computeFromPrecomputed(
             items,
             categoryMap,
             usedItemIds,
-            currentStoreMinutes,
+            storeTimeZone,
             ownerControls?.pinnedQuickPick
         );
         if (result) {
@@ -490,7 +432,7 @@ function computeFromPrecomputed(
             items,
             categoryMap,
             usedItemIds,
-            currentStoreMinutes,
+            storeTimeZone,
             ownerControls?.pinnedBestValue
         );
         if (result) {
@@ -538,7 +480,6 @@ function computeBlocksFallback(
 
     // Build category lookup map for time-slot validation
     const categoryMap = new Map(categories.map(cat => [cat.id, cat]));
-    const currentStoreMinutes = getCurrentStoreMinutes(storeTimeZone);
 
     // Build item lookup map
     const itemMap = buildDecisionItemLookup(items);
@@ -550,7 +491,7 @@ function computeBlocksFallback(
         if (item.active === false) return undefined;
         if (item.available === false) return undefined;
         const category = categoryMap.get(item.category);
-        if (!isCategoryWithinTimeSlot(category, currentStoreMinutes)) return undefined;
+        if (!isCategoryWithinTimeSlot(category, storeTimeZone)) return undefined;
         if (usedItemIds.has(item.id)) return undefined;
         return item;
     };
@@ -727,7 +668,7 @@ export default function DecisionBlocks({
     // Handle block click
     const handleClick = useCallback((rec: ComputedBlock) => {
         const itemName = getLocalizedMenuText(rec.item.name, primaryLanguage, 'Unknown');
-        const price = parseFloat(rec.item.price || '0');
+        const price = parseSingleMenuPrice(rec.item.price) ?? undefined;
         const analyticsCategoryName = categoryAnalyticsLabelById.get(rec.item.category) || rec.item.category;
 
         const revealInlineItem = () => {

@@ -80,33 +80,34 @@ const shouldTranslateCategory = (
 };
 
 /**
- * Clear stale translations when primary language text changes.
+ * Clear stale translations when canonical source-language text changes.
  * 
  * Problem: If owner edits "Chicken Wings" → "Buffalo Wings" in English,
  * the Spanish translation "Alitas de Pollo" silently becomes wrong.
  * extractTranslatableStringsJSON skips it because target already exists.
  * 
- * Solution: When primary text changes, clear non-primary translations
+ * Solution: When source text changes, clear non-source translations
  * for that field to empty string. This causes:
  * 1. extractTranslatableStringsJSON picks them up for retranslation
- * 2. Rendering falls back to primary language instead of showing wrong data
+ * 2. Rendering falls back to the source language instead of showing wrong data
  * 3. Quality percentage drops, signaling owner needs to retranslate
  */
 export const clearStaleTranslations = (
     originalItem: ExtractedDataItem,
     updatedItem: ExtractedDataItem,
-    primaryLang: string,
-    allLanguages: string[]
+    sourceLang: string,
+    allLanguages: string[],
+    options: { preserveGeneratedDescriptionTranslations?: boolean } = {},
 ): ExtractedDataItem => {
     if (allLanguages.length <= 1) return updatedItem;
 
     const result = { ...updatedItem };
-    const nonPrimaryLangs = allLanguages.filter(l => l !== primaryLang);
+    const nonSourceLangs = allLanguages.filter(l => l !== sourceLang);
 
-    // Check if primary name changed
-    if (originalItem.name?.[primaryLang]?.trim() !== updatedItem.name?.[primaryLang]?.trim()) {
+    // Check if canonical source name changed
+    if (originalItem.name?.[sourceLang]?.trim() !== updatedItem.name?.[sourceLang]?.trim()) {
         const clearedName = { ...result.name };
-        for (const lang of nonPrimaryLangs) {
+        for (const lang of nonSourceLangs) {
             if (clearedName[lang]) {
                 clearedName[lang] = '';
             }
@@ -114,10 +115,13 @@ export const clearStaleTranslations = (
         result.name = clearedName;
     }
 
-    // Check if primary description changed
-    if (originalItem.description?.[primaryLang]?.trim() !== updatedItem.description?.[primaryLang]?.trim()) {
+    // Check if canonical source description changed
+    if (
+        !options.preserveGeneratedDescriptionTranslations
+        && originalItem.description?.[sourceLang]?.trim() !== updatedItem.description?.[sourceLang]?.trim()
+    ) {
         const clearedDesc = { ...(result.description || {}) };
-        for (const lang of nonPrimaryLangs) {
+        for (const lang of nonSourceLangs) {
             if (clearedDesc[lang]) {
                 clearedDesc[lang] = '';
             }
@@ -129,9 +133,9 @@ export const clearStaleTranslations = (
     if (updatedItem.attributes) {
         result.attributes = updatedItem.attributes.map(attr => {
             const origAttr = originalItem.attributes?.find(a => a.id === attr.id);
-            if (origAttr && origAttr.name?.[primaryLang]?.trim() !== attr.name?.[primaryLang]?.trim()) {
+            if (origAttr && origAttr.name?.[sourceLang]?.trim() !== attr.name?.[sourceLang]?.trim()) {
                 const clearedName = { ...attr.name };
-                for (const lang of nonPrimaryLangs) {
+                for (const lang of nonSourceLangs) {
                     if (clearedName[lang]) {
                         clearedName[lang] = '';
                     }
@@ -146,21 +150,21 @@ export const clearStaleTranslations = (
 };
 
 /**
- * Clear stale category translations when primary language name changes.
+ * Clear stale category translations when canonical source-language name changes.
  * Same principle as clearStaleTranslations but for categories (name only).
  */
 export const clearStaleCategoryTranslations = (
     originalName: Record<string, string> | undefined,
     updatedName: Record<string, string> | undefined,
-    primaryLang: string,
+    sourceLang: string,
     allLanguages: string[]
 ): Record<string, string> | undefined => {
     if (!updatedName || allLanguages.length <= 1) return updatedName;
-    if (originalName?.[primaryLang]?.trim() === updatedName[primaryLang]?.trim()) return updatedName;
+    if (originalName?.[sourceLang]?.trim() === updatedName[sourceLang]?.trim()) return updatedName;
 
     const clearedName = { ...updatedName };
-    const nonPrimaryLangs = allLanguages.filter(l => l !== primaryLang);
-    for (const lang of nonPrimaryLangs) {
+    const nonSourceLangs = allLanguages.filter(l => l !== sourceLang);
+    for (const lang of nonSourceLangs) {
         if (clearedName[lang]) {
             clearedName[lang] = '';
         }

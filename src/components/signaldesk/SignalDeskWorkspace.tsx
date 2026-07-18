@@ -9,6 +9,7 @@ import { SIGNALDESK_ROUTES } from "@constant/signaldesk/routes";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { useAppSelector } from "@hook/useAppSelector";
 import { useSignalDeskOverview } from "@hook/signaldesk/useSignalDeskOverview";
+import { parseSignalDeskTargetImportCsv, SIGNALDESK_IMPORT_CSV_COLUMNS } from "@lib/signaldesk/csvImport";
 import { getDarkModeState, getSidebarState, toggleDarkMode, toggleSidbar } from "@reduxSlices/clientThemeConfig";
 import type {
     SignalDeskAiShadowReviewDecision,
@@ -16,12 +17,18 @@ import type {
     SignalDeskAiVolumeTask,
     SignalDeskApprovalRejectionReason,
     SignalDeskApprovalItem,
+    SignalDeskContentChannel,
+    SignalDeskContentSourceSummary,
+    SignalDeskContentSourceType,
+    SignalDeskControlStatus,
     SignalDeskKillSwitchScope,
     SignalDeskManualContactResult,
     SignalDeskManualContactRoute,
+    SignalDeskProofPermissionSummary,
     SignalDeskProofPermissionScope,
     SignalDeskRole,
     SignalDeskSection,
+    SignalDeskSourcePolicy,
     SignalDeskTargetSummary,
     SignalDeskTeamMemberSummary,
     SignalDeskWorkspaceResponse,
@@ -63,6 +70,37 @@ const { Text } = Typography;
 const SIGNALDESK_SIDEBAR_EXPANDED_WIDTH = 220;
 const SIGNALDESK_AI_VOLUME_RETRY_STORAGE_KEY = "menulist.signaldesk.ai-volume-retry-v1";
 const SIGNALDESK_ACTIVATION_SURFACES = ["qr", "whatsapp", "google-profile", "instagram", "website", "print", "other"] as const;
+type ExperimentReadbackFormState = {
+    baselineEndAt: string;
+    baselineStartAt: string;
+    candidateEndAt: string;
+    candidateStartAt: string;
+    confounders: string;
+    nextReadbackAt: string;
+    primaryMetric: string;
+};
+const toLocalDateTimeInputValue = (date: Date) => new Date(date.getTime() - (date.getTimezoneOffset() * 60_000))
+    .toISOString()
+    .slice(0, 16);
+const createDefaultExperimentReadbackForm = (): ExperimentReadbackFormState => {
+    const candidateStart = new Date();
+    candidateStart.setSeconds(0, 0);
+    const baselineStart = new Date(candidateStart.getTime() - (7 * 24 * 60 * 60 * 1_000));
+    const candidateEnd = new Date(candidateStart.getTime() + (7 * 24 * 60 * 60 * 1_000));
+    return {
+        baselineEndAt: toLocalDateTimeInputValue(candidateStart),
+        baselineStartAt: toLocalDateTimeInputValue(baselineStart),
+        candidateEndAt: toLocalDateTimeInputValue(candidateEnd),
+        candidateStartAt: toLocalDateTimeInputValue(candidateStart),
+        confounders: "Market pod changes, Source policy changes, Offer or CTA changes, Seasonal demand",
+        nextReadbackAt: toLocalDateTimeInputValue(candidateEnd),
+        primaryMetric: "Owner-reviewed two-surface activations",
+    };
+};
+const toExperimentReadbackIso = (value: string) => {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
+};
 const SIGNALDESK_PUBLIC_PROOF_SCOPES = new Set<SignalDeskProofPermissionScope>([
     "business-name",
     "logo",
@@ -71,6 +109,14 @@ const SIGNALDESK_PUBLIC_PROOF_SCOPES = new Set<SignalDeskProofPermissionScope>([
     "public-case-study",
     "partner-material",
 ]);
+const isProofPermissionCurrentlyActive = (permission: SignalDeskProofPermissionSummary) => {
+    if (permission.status !== "active" || !permission.grantedAt) return false;
+    const grantedAt = new Date(permission.grantedAt).getTime();
+    const expiresAt = permission.expiresAt ? new Date(permission.expiresAt).getTime() : null;
+    return !Number.isNaN(grantedAt)
+        && grantedAt <= Date.now()
+        && (expiresAt === null || (!Number.isNaN(expiresAt) && expiresAt > Date.now()));
+};
 const SIGNALDESK_APPROVAL_REJECTION_OPTIONS: Array<{ label: string; value: SignalDeskApprovalRejectionReason }> = [
     { label: "Evidence weak or stale", value: "evidence-weak-or-stale" },
     { label: "Identity uncertain", value: "identity-uncertain" },
@@ -432,35 +478,35 @@ const metricClass = (tone?: string) => [
 
 const formatRate = (value?: number | null) => `${Math.round(Math.max(0, Number(value) || 0) * 100)}%`;
 
-const parseImportRows = (raw: string) => raw
-    .split(/\n+/)
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-        const [displayName, category, city, country, website, email, phone, currentListUrl, instagram] = line.split(",").map((part) => part?.trim() || "");
-        return {
-            category,
-            city,
-            country,
-            currentListUrl,
-            displayName,
-            email,
-            instagram,
-            phone,
-            website,
-        };
-    })
-    .filter((row) => row.displayName);
-
 const firstTargetId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.targets[0]?.targetId || "";
 const firstPolicyId = (data: SignalDeskWorkspaceResponse | null) => (
     data?.workspace.policies.find((policy) => policy.sourceType === "manual-research" && !policy.allowedUse.contact)?.sourcePolicyId
     || data?.workspace.policies[0]?.sourcePolicyId
     || ""
 );
-const firstProviderPolicyId = (data: SignalDeskWorkspaceResponse | null) => (
-    data?.workspace.policies.find((policy) => policy.sourceType === "provider")?.sourcePolicyId || ""
-);
+const isUsableProviderPolicy = (policy: SignalDeskSourcePolicy, provider: string) => {
+    const expiresAt = policy.expiresAt ? Date.parse(policy.expiresAt) : Number.NaN;
+    return policy.sourceType === "provider"
+        && policy.provider === provider
+        && (policy.status === "active" || policy.status === "approved")
+        && (policy.policyState === "active" || policy.policyState === "expires_soon")
+        && policy.allowedUse.evidence
+        && policy.allowedUse.import
+        && policy.allowedUse.providerRun
+        && policy.retentionDays > 0
+        && Number.isFinite(expiresAt)
+        && expiresAt > Date.now();
+};
+const isUsableManualImportPolicy = (policy: SignalDeskSourcePolicy) => {
+    const expiresAt = policy.expiresAt ? Date.parse(policy.expiresAt) : Number.NaN;
+    return (policy.sourceType === "manual-csv" || policy.sourceType === "manual-research" || policy.sourceType === "owned-demand")
+        && (policy.status === "active" || policy.status === "approved")
+        && (policy.policyState === "active" || policy.policyState === "expires_soon")
+        && policy.allowedUse.import
+        && policy.retentionDays > 0
+        && Number.isFinite(expiresAt)
+        && expiresAt > Date.now();
+};
 const firstWaterfallId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.enrichmentWaterfalls[0]?.waterfallId || "";
 const firstMarketPodId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.marketPods[0]?.marketPodId || "";
 const firstActiveMarketPodId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.marketPods.find((pod) => pod.status === "active")?.marketPodId || "";
@@ -471,15 +517,12 @@ const firstTrustDeliverableId = (data: SignalDeskWorkspaceResponse | null) => da
 const firstTrustBudgetId = (data: SignalDeskWorkspaceResponse | null) => (
     data?.workspace.budgetPolicies.find((budget) => budget.scope === "trust-partner")?.budgetPolicyId || ""
 );
-const firstCtaId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.selfServiceCtas[0]?.ctaId || "";
+const firstCtaId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.selfServiceCtas.find((cta) => cta.status === "active")?.ctaId || "";
 const firstGrowthMissionId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.growthMissions[0]?.growthMissionId || "";
 const firstExperimentCardId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.experimentCards[0]?.experimentCardId || "";
 const firstOfferCtaId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.offerCtas[0]?.offerCtaId || "";
 const firstReplyPlaybookId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.replyPlaybooks[0]?.playbookId || "";
 const firstSourceRunId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.imports[0]?.sourceRunId || "";
-const firstContentSourceId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.contentSources[0]?.contentSourceId || "";
-const firstContentAssetId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.contentAssets[0]?.contentAssetId || "";
-const firstContentDraftId = (data: SignalDeskWorkspaceResponse | null) => data?.workspace.contentDistributionDrafts[0]?.contentDraftId || "";
 const firstReadySenderDomainId = (data: SignalDeskWorkspaceResponse | null) => (
     data?.workspace.senderDomains.find((sender) => (
         sender.status === "active" &&
@@ -987,13 +1030,17 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [mobileReadOnly, setMobileReadOnly] = useState(false);
     const [policyName, setPolicyName] = useState("Public business research");
     const [policySourceType, setPolicySourceType] = useState("manual-research");
+    const [policyProvider, setPolicyProvider] = useState("google-places");
     const [policyAllowContact, setPolicyAllowContact] = useState(false);
     const [policyAllowEvidence, setPolicyAllowEvidence] = useState(true);
     const [policyAllowPersonalization, setPolicyAllowPersonalization] = useState(false);
+    const [policyCreateRetry, setPolicyCreateRetry] = useState<{ idempotencyKey: string; lastReviewedAt: string; requestKey: string } | null>(null);
     const [retentionDays, setRetentionDays] = useState(30);
     const [sourcePolicyId, setSourcePolicyId] = useState("");
     const [sourceName, setSourceName] = useState("Manual import");
-    const [importRows, setImportRows] = useState("Demo Cafe,Cafe,Bengaluru,India,https://example.invalid,,,,\nDemo QSR,QSR,Bengaluru,India,https://example.invalid,,,,");
+    const [importRows, setImportRows] = useState("Demo Cafe,Cafe,Bengaluru,India,https://example.invalid,,,,,\nDemo QSR,QSR,Bengaluru,India,https://example.invalid,,,,,");
+    const [importRetry, setImportRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [importValidationError, setImportValidationError] = useState<string | null>(null);
     const [selectedTargetId, setSelectedTargetId] = useState("");
     const [selectedOpportunityId, setSelectedOpportunityId] = useState("");
     const [manualContactRoute, setManualContactRoute] = useState<SignalDeskManualContactRoute>("email-export");
@@ -1004,19 +1051,25 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [approvalRejectionNote, setApprovalRejectionNote] = useState("");
     const [replyChannel, setReplyChannel] = useState("email");
     const [replyText, setReplyText] = useState("");
+    const [replyRetry, setReplyRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [outcomeType, setOutcomeType] = useState("route_created");
     const [outcomeEvidenceRef, setOutcomeEvidenceRef] = useState("");
     const [outcomeOwnerQualifiedAt, setOutcomeOwnerQualifiedAt] = useState("");
     const [outcomeOwnerReviewedAt, setOutcomeOwnerReviewedAt] = useState("");
     const [outcomeSurfaces, setOutcomeSurfaces] = useState<string[]>([]);
+    const [outcomeRetry, setOutcomeRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [demandSignalType, setDemandSignalType] = useState("link_click");
+    const [demandSignalRetry, setDemandSignalRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [sourceProvider, setSourceProvider] = useState("google-places");
     const [sourceQuery, setSourceQuery] = useState("independent cafes, dessert shops, and QSRs with weak current-menu presence in Indiranagar and Koramangala");
     const [sourceCity, setSourceCity] = useState("Bengaluru");
     const [sourceCountry, setSourceCountry] = useState("India");
     const [sourceMaxResults, setSourceMaxResults] = useState(25);
+    const [sourceProviderRetry, setSourceProviderRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [researchAgentRetry, setResearchAgentRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [aiTask, setAiTask] = useState("evidence");
     const [aiInstruction, setAiInstruction] = useState("");
+    const [aiAssistRetry, setAiAssistRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [aiVolumeInstruction, setAiVolumeInstruction] = useState("");
     const [aiVolumeMaxCostUsd, setAiVolumeMaxCostUsd] = useState(2);
     const [aiVolumeTargetCount, setAiVolumeTargetCount] = useState(5);
@@ -1027,12 +1080,14 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [channel, setChannel] = useState("whatsapp");
     const [channelWindowSource, setChannelWindowSource] = useState("inbound");
     const [channelWindowStatus, setChannelWindowStatus] = useState("open");
+    const [channelWindowRetry, setChannelWindowRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [selectedWaterfallId, setSelectedWaterfallId] = useState("");
     const [providerEvaluationProvider, setProviderEvaluationProvider] = useState("google-places");
     const [providerEvaluationUse, setProviderEvaluationUse] = useState("discovery");
     const [pauseScope, setPauseScope] = useState<SignalDeskKillSwitchScope>("source-provider");
     const [sequencerProvider, setSequencerProvider] = useState("owned-email");
     const [senderDomain, setSenderDomain] = useState("pending");
+    const [senderDomainRetry, setSenderDomainRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [connectorKind, setConnectorKind] = useState("email-smtp");
     const [connectorName, setConnectorName] = useState("MenuList email");
     const [connectorStatus, setConnectorStatus] = useState("hold");
@@ -1067,38 +1122,59 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [deliverablePostUrl, setDeliverablePostUrl] = useState("");
     const [metricViews, setMetricViews] = useState(0);
     const [metricOwnerLeads, setMetricOwnerLeads] = useState(0);
+    const [trustMetricsRetry, setTrustMetricsRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [contentSourceTitle, setContentSourceTitle] = useState("MenuList owned proof");
-    const [contentSourceType, setContentSourceType] = useState("proof-page");
+    const [contentSourceType, setContentSourceType] = useState<SignalDeskContentSourceType>("proof-page");
     const [contentSourceUrl, setContentSourceUrl] = useState("https://menulist.ai");
-    const [contentSourceAudience, setContentSourceAudience] = useState("restaurant-owner");
+    const [contentSourceAudience, setContentSourceAudience] = useState<SignalDeskContentSourceSummary["defaultAudience"]>("restaurant-owner");
+    const [contentSourceStatus, setContentSourceStatus] = useState<SignalDeskControlStatus>("active");
+    const [contentSourceDefaultMarketPodId, setContentSourceDefaultMarketPodId] = useState("");
     const [selectedContentSourceId, setSelectedContentSourceId] = useState("");
+    const [selectedContentAssetSourceId, setSelectedContentAssetSourceId] = useState("");
+    const [selectedContentMarketPodId, setSelectedContentMarketPodId] = useState("");
+    const [selectedContentCtaId, setSelectedContentCtaId] = useState("");
+    const [contentSourceRetry, setContentSourceRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [contentAssetTitle, setContentAssetTitle] = useState("Current-list proof angle");
     const [contentAssetMessage, setContentAssetMessage] = useState("Restaurant owners need one clean current list customers can trust before they order, call, or visit.");
     const [contentAssetUrl, setContentAssetUrl] = useState("");
-    const [contentAssetSourceType, setContentAssetSourceType] = useState("proof-page");
-    const [contentAssetAudience, setContentAssetAudience] = useState("restaurant-owner");
+    const [contentAssetSourceType, setContentAssetSourceType] = useState<SignalDeskContentSourceType>("proof-page");
+    const [contentAssetAudience, setContentAssetAudience] = useState<SignalDeskContentSourceSummary["defaultAudience"]>("restaurant-owner");
     const [contentAssetProofLevel, setContentAssetProofLevel] = useState("owned");
+    const [contentAssetRetry, setContentAssetRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [contentAssetReviewRetry, setContentAssetReviewRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [proofPermissionEvidenceRef, setProofPermissionEvidenceRef] = useState("");
     const [proofPermissionExpiresAt, setProofPermissionExpiresAt] = useState("");
     const [proofPermissionScopes, setProofPermissionScopes] = useState<string[]>(["business-name", "before-after-screenshots"]);
-    const [selectedProofPermissionId, setSelectedProofPermissionId] = useState("");
+    const [proofPermissionRetry, setProofPermissionRetry] = useState<{ grantedAt?: string; idempotencyKey: string; requestKey: string } | null>(null);
+    const [selectedProofPermissionEditorId, setSelectedProofPermissionEditorId] = useState("");
+    const [selectedContentAssetProofPermissionId, setSelectedContentAssetProofPermissionId] = useState("");
     const [selectedContentAssetId, setSelectedContentAssetId] = useState("");
     const [selectedContentDraftId, setSelectedContentDraftId] = useState("");
     const [contentDraftChannels, setContentDraftChannels] = useState<string[]>(["linkedin", "email", "partner-brief"]);
     const [contentScheduleAt, setContentScheduleAt] = useState("");
+    const [contentScheduleRetry, setContentScheduleRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [contentReviewRetry, setContentReviewRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [contentDraftGenerationRetry, setContentDraftGenerationRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [contentPerformanceViews, setContentPerformanceViews] = useState(0);
     const [contentPerformanceClicks, setContentPerformanceClicks] = useState(0);
     const [contentPerformanceOwnerLeads, setContentPerformanceOwnerLeads] = useState(0);
     const [contentPerformanceSubmissions, setContentPerformanceSubmissions] = useState(0);
     const [contentPerformanceActivations, setContentPerformanceActivations] = useState(0);
+    const [contentPerformanceChannel, setContentPerformanceChannel] = useState<SignalDeskContentChannel | "">("");
+    const [contentPerformancePublicationUrl, setContentPerformancePublicationUrl] = useState("");
+    const [contentPerformancePublishedAt, setContentPerformancePublishedAt] = useState("");
+    const [contentPerformanceRetry, setContentPerformanceRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
+    const [enrichmentWaterfallRetry, setEnrichmentWaterfallRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [selectedGrowthMissionId, setSelectedGrowthMissionId] = useState("");
     const [missionDecisionNote, setMissionDecisionNote] = useState("");
     const [selectedExperimentCardId, setSelectedExperimentCardId] = useState("");
+    const [selectedExperimentContentAssetId, setSelectedExperimentContentAssetId] = useState("");
     const [experimentHypothesis, setExperimentHypothesis] = useState("One narrow local restaurant pod will convert better when the ask is a private current-list preview.");
     const [experimentChannel, setExperimentChannel] = useState("manual");
     const [experimentTargetCount, setExperimentTargetCount] = useState(25);
     const [experimentStopRule, setExperimentStopRule] = useState("Stop if five owner conversations produce no accepted private preview, or if fewer than two of the first five accepted previews activate on two surfaces.");
     const [experimentExpectedOutcome, setExperimentExpectedOutcome] = useState("Three owner-reviewed two-surface activations within seven days, plus one permissioned proof asset.");
+    const [experimentReadbackPlan, setExperimentReadbackPlan] = useState<ExperimentReadbackFormState>(createDefaultExperimentReadbackForm);
     const [experimentResultSummary, setExperimentResultSummary] = useState("");
     const [offerTitle, setOfferTitle] = useState("Current list upload");
     const [offerAsk, setOfferAsk] = useState("Upload the current menu or service list so MenuList can prepare a private preview for review before publishing.");
@@ -1118,6 +1194,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const [researchType, setResearchType] = useState("business-prospect");
     const [researchMaxResults, setResearchMaxResults] = useState(25);
     const [marketPodReviewReason, setMarketPodReviewReason] = useState("Approved for one zero-external-spend Bengaluru trial with manual preparation and per-item review.");
+    const [marketPodReviewRetry, setMarketPodReviewRetry] = useState<{ idempotencyKey: string; requestKey: string } | null>(null);
     const [revenueOrganizationName, setRevenueOrganizationName] = useState("");
     const [revenueLocationType, setRevenueLocationType] = useState("single-location");
     const [selectedCommercialOpportunityId, setSelectedCommercialOpportunityId] = useState("");
@@ -1203,12 +1280,22 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         ? manualContactRoute
         : Array.from(allowedManualContactRoutes)[0] || null;
     const resolvedPolicyId = data ? (sourcePolicyId || firstPolicyId(data)) : "";
-    const providerPolicies = data?.workspace.policies.filter((policy) => policy.sourceType === "provider") || [];
+    const manualImportPolicies = data?.workspace.policies.filter(isUsableManualImportPolicy) || [];
+    const resolvedManualImportPolicyId = data
+        ? (manualImportPolicies.some((policy) => policy.sourcePolicyId === sourcePolicyId)
+            ? sourcePolicyId
+            : manualImportPolicies[0]?.sourcePolicyId || "")
+        : "";
+    const providerPolicies = data?.workspace.policies.filter((policy) => (
+        isUsableProviderPolicy(policy, sourceProvider)
+    )) || [];
     const resolvedProviderPolicyId = data
-        ? (providerPolicies.some((policy) => policy.sourcePolicyId === sourcePolicyId) ? sourcePolicyId : firstProviderPolicyId(data))
+        ? (providerPolicies.some((policy) => policy.sourcePolicyId === sourcePolicyId)
+            ? sourcePolicyId
+            : providerPolicies[0]?.sourcePolicyId || "")
         : "";
     const resolvedResearchPolicyId = data
-        ? data.workspace.policies.find((policy) => policy.sourceType === "provider" && policy.provider === researchProvider)?.sourcePolicyId || resolvedProviderPolicyId
+        ? data.workspace.policies.find((policy) => isUsableProviderPolicy(policy, researchProvider))?.sourcePolicyId || ""
         : "";
     const resolvedWaterfallId = data ? (selectedWaterfallId || firstWaterfallId(data)) : "";
     const resolvedMarketPodId = data ? firstMarketPodId(data) : "";
@@ -1223,14 +1310,67 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const resolvedOfferCtaId = data ? firstOfferCtaId(data) : "";
     const resolvedReplyPlaybookId = data ? firstReplyPlaybookId(data) : "";
     const resolvedSourceRunId = data ? (selectedSourceRunId || firstSourceRunId(data)) : "";
-    const resolvedContentSourceId = data ? (selectedContentSourceId || firstContentSourceId(data)) : "";
-    const resolvedContentAssetId = data ? (selectedContentAssetId || firstContentAssetId(data)) : "";
-    const resolvedProofPermissionId = data
-        ? (selectedProofPermissionId || data.workspace.proofPermissions[0]?.proofPermissionId || "")
+    const selectedContentSource = data?.workspace.contentSources.find((source) => source.contentSourceId === selectedContentSourceId) || null;
+    const selectedContentAssetSource = data?.workspace.contentSources.find((source) => source.contentSourceId === selectedContentAssetSourceId) || null;
+    const approvedContentMarketPods = data?.workspace.marketPods.filter((pod) => (
+        pod.status === "active" && pod.reviewDecision === "approved" && Boolean(pod.approvedBy)
+    )) || [];
+    const resolvedContentMarketPodId = approvedContentMarketPods.some((pod) => pod.marketPodId === selectedContentMarketPodId)
+        ? selectedContentMarketPodId
         : "";
-    const resolvedProofPermission = data?.workspace.proofPermissions.find((permission) => permission.proofPermissionId === resolvedProofPermissionId) || null;
-    const resolvedPublicProofScopes = (resolvedProofPermission?.scopes || []).filter((scope) => SIGNALDESK_PUBLIC_PROOF_SCOPES.has(scope));
-    const resolvedContentDraftId = data ? (selectedContentDraftId || firstContentDraftId(data)) : "";
+    const selectedContentAssetSourceUsable = Boolean(
+        selectedContentAssetSource
+        && selectedContentAssetSource.status === "active"
+        && (!selectedContentAssetSource.defaultMarketPodId
+            || approvedContentMarketPods.some((pod) => pod.marketPodId === selectedContentAssetSource.defaultMarketPodId))
+    );
+    const selectedContentAsset = data?.workspace.contentAssets.find((asset) => asset.contentAssetId === selectedContentAssetId) || null;
+    const resolvedContentAssetId = selectedContentAsset?.contentAssetId || "";
+    const contentDraftsForSelectedAsset = data?.workspace.contentDistributionDrafts.filter((draft) => (
+        draft.contentAssetId === resolvedContentAssetId
+    )) || [];
+    const selectedProofPermissionEditor = data?.workspace.proofPermissions.find((permission) => (
+        permission.proofPermissionId === selectedProofPermissionEditorId
+    )) || null;
+    const resolvedProofPermissionEditorId = selectedProofPermissionEditor?.proofPermissionId || "";
+    const selectedContentAssetProofPermission = data?.workspace.proofPermissions.find((permission) => (
+        permission.proofPermissionId === selectedContentAssetProofPermissionId
+        && isProofPermissionCurrentlyActive(permission)
+        && permission.scopes.some((scope) => SIGNALDESK_PUBLIC_PROOF_SCOPES.has(scope))
+    )) || null;
+    const resolvedContentAssetProofPermissionId = selectedContentAssetProofPermission?.proofPermissionId || "";
+    const resolvedContentAssetPublicProofScopes = (selectedContentAssetProofPermission?.scopes || []).filter((scope) => (
+        SIGNALDESK_PUBLIC_PROOF_SCOPES.has(scope)
+    ));
+    const resolvedContentDraftId = contentDraftsForSelectedAsset.some((draft) => draft.contentDraftId === selectedContentDraftId)
+        ? selectedContentDraftId
+        : "";
+    const contentPerformanceHasObservedMetrics = (
+        contentPerformanceViews
+        + contentPerformanceClicks
+        + contentPerformanceOwnerLeads
+        + contentPerformanceSubmissions
+        + contentPerformanceActivations
+    ) > 0;
+    const contentPerformanceHasPublicationEvidence = Boolean(
+        contentPerformancePublicationUrl.trim() && contentPerformancePublishedAt.trim()
+    );
+    const contentPerformancePublicationIncomplete = (
+        Boolean(contentPerformancePublicationUrl.trim()) !== Boolean(contentPerformancePublishedAt.trim())
+        || (contentPerformanceHasObservedMetrics && !contentPerformanceHasPublicationEvidence)
+    );
+    const selectedContentPerformanceDraft = contentDraftsForSelectedAsset.find((draft) => (
+        draft.contentDraftId === resolvedContentDraftId
+    )) || null;
+    const contentPerformanceDraftEligible = Boolean(
+        selectedContentPerformanceDraft
+        && selectedContentPerformanceDraft.approvalStatus === "approved"
+        && ["approved", "queued", "published"].includes(selectedContentPerformanceDraft.status)
+    );
+    const resolvedContentPerformanceChannel = selectedContentPerformanceDraft?.channel || contentPerformanceChannel;
+    const selectedExperimentContentAsset = data?.workspace.contentAssets.find((asset) => (
+        asset.contentAssetId === selectedExperimentContentAssetId
+    )) || null;
     const resolvedSenderDomainId = data ? firstReadySenderDomainId(data) : "";
     const resolvedCommercialOfferId = data ? (selectedCommercialOfferId || firstCommercialOfferId(data)) : "";
     const resolvedCommercialOpportunityId = data ? (selectedCommercialOpportunityId || firstCommercialOpportunityId(data)) : "";
@@ -1243,11 +1383,15 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     const canPause = Boolean(data?.access.permissions.includes("kill-switch.activate"));
     const canResume = Boolean(data?.access.permissions.includes("kill-switch.deactivate"));
     const canConfigureSignalDesk = Boolean(data?.access.permissions.includes("signaldesk.configure"));
+    const canReviewTargets = Boolean(data?.access.permissions.includes("target.review"));
+    const canApproveContent = Boolean(data?.access.permissions.includes("draft.approve"));
     const canApproveMarketPod = Boolean(data?.access.role === "founder-admin" && data.access.permissions.includes("signaldesk.configure"));
     const canReviewAiShadow = Boolean(data?.access.role === "founder-admin" && canConfigureSignalDesk && !mobileReadOnly);
     const canRunAiVolume = Boolean(data?.access.role === "founder-admin" && canConfigureSignalDesk && !mobileReadOnly);
     const aiVolumeRetryActive = Boolean(aiVolumeRetryPayload);
     const actionDisabled = saving || mobileReadOnly;
+    const experimentActionDisabled = actionDisabled || !canReviewTargets;
+    const experimentReviewDisabled = experimentActionDisabled || !resolvedExperimentCardId || experimentResultSummary.trim().length < 2;
     const globalPauseDisabled = saving || (mobileReadOnly
         ? globalPauseActive || !canPause
         : (!globalPauseActive && !canPause) || (globalPauseActive && !canResume));
@@ -1255,12 +1399,13 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         ? scopedPauseActive || !canPause
         : (!scopedPauseActive && !canPause) || (scopedPauseActive && !canResume));
     const activationOutcomeIncomplete = outcomeType === "two_surface_activation" && (
-        !resolvedTargetId
-        || !outcomeEvidenceRef.trim()
-        || !outcomeOwnerQualifiedAt.trim()
+        !outcomeOwnerQualifiedAt.trim()
         || !outcomeOwnerReviewedAt.trim()
         || new Set(outcomeSurfaces).size < 2
     );
+    const manualOutcomeIncomplete = !resolvedTargetId
+        || !outcomeEvidenceRef.trim()
+        || activationOutcomeIncomplete;
     const manualContactIncomplete = !resolvedTarget
         || !resolvedTargetPolicy
         || !resolvedManualContactRoute
@@ -1297,11 +1442,34 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         void runAction("seed-defaults");
     };
 
-    const handlePolicyCreate = (event: FormEvent) => {
+    const handlePolicyCreate = async (event: FormEvent) => {
         event.preventDefault();
-        const baseAllowedFields = ["displayName", "category", "city", "country", "currentListUrl", "website", "notes", "providerRecordId", "providerRecordUrl"];
+        const baseAllowedFields = ["displayName", "category", "city", "country", "currentListUrl", "website", "notes"];
+        const sourceAllowedFields = policySourceType === "provider"
+            ? [...baseAllowedFields, "providerRecordId", "providerRecordUrl"]
+            : baseAllowedFields;
         const contactFields = ["email", "phone", "instagram"];
-        void runAction("create-source-policy", {
+        const requestKey = JSON.stringify({
+            allowContact: policyAllowContact,
+            allowEvidence: policyAllowEvidence,
+            allowPersonalization: policyAllowPersonalization,
+            name: policyName.trim(),
+            provider: policySourceType === "provider" ? policyProvider : null,
+            retentionDays,
+            sourceType: policySourceType,
+        });
+        const retry = policyCreateRetry?.requestKey === requestKey
+            ? policyCreateRetry
+            : {
+                idempotencyKey: globalThis.crypto.randomUUID(),
+                lastReviewedAt: new Date().toISOString(),
+                requestKey,
+            };
+        setPolicyCreateRetry(retry);
+        const expiresAt = new Date(
+            new Date(retry.lastReviewedAt).getTime() + retentionDays * 24 * 60 * 60 * 1_000,
+        ).toISOString();
+        const result = await runAction("create-source-policy", {
             accessMethod: policyAllowContact
                 ? "permissioned-referral"
                 : policySourceType === "provider"
@@ -1310,10 +1478,13 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             allowContact: policyAllowContact,
             allowEvidence: policyAllowEvidence,
             allowPersonalization: policyAllowPersonalization,
-            allowedFields: policyAllowContact ? [...baseAllowedFields, ...contactFields] : baseAllowedFields,
+            allowedContactChannels: policyAllowContact ? ["email", "manual"] : [],
+            allowedFields: policyAllowContact ? [...sourceAllowedFields, ...contactFields] : sourceAllowedFields,
             attributionRequirements: ["Keep source policy, source run, and source reference attached to evidence."],
             blockedFields: policyAllowContact ? ["personal-profile", "sensitive-attribute"] : contactFields,
-            lastReviewedAt: new Date().toISOString(),
+            expiresAt,
+            idempotencyKey: retry.idempotencyKey,
+            lastReviewedAt: retry.lastReviewedAt,
             name: policyName,
             notes: policyAllowContact
                 ? "Contact use is limited to a permissioned manual introduction or referral; public availability alone is not permission."
@@ -1322,12 +1493,14 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             prohibitedUses: policyAllowContact
                 ? ["cold WhatsApp", "cold social DM", "unapproved provider send", "proof use without permission"]
                 : ["contact", "personalization", "provider send", "raw provider payload storage"],
+            provider: policySourceType === "provider" ? policyProvider : undefined,
             rawPayloadPolicy: "never-store",
             refreshMethod: policySourceType === "provider" ? "provider-refresh" : "manual-review",
             retentionDays,
             sourceType: policySourceType,
             termsVersion: "internal-source-rights-v1",
         });
+        if (result) setPolicyCreateRetry(null);
     };
 
     const handlePolicySourceTypeChange = (sourceType: string) => {
@@ -1339,13 +1512,31 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         }
     };
 
-    const handleImport = (event: FormEvent) => {
+    const handleImport = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("import-targets", {
-            rows: parseImportRows(importRows),
+        let rows: ReturnType<typeof parseSignalDeskTargetImportCsv>;
+        try {
+            rows = parseSignalDeskTargetImportCsv(importRows);
+            setImportValidationError(null);
+        } catch (parseError) {
+            const message = parseError instanceof Error && parseError.message.startsWith("SIGNALDESK_IMPORT_CSV_INVALID:")
+                ? parseError.message.slice("SIGNALDESK_IMPORT_CSV_INVALID:".length)
+                : "The import could not be read. Check the CSV rows and try again.";
+            setImportValidationError(message);
+            return;
+        }
+        const requestKey = JSON.stringify({ rows, sourceName: sourceName.trim(), sourcePolicyId: resolvedManualImportPolicyId });
+        const retry = importRetry?.requestKey === requestKey
+            ? importRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setImportRetry(retry);
+        const result = await runAction("import-targets", {
+            idempotencyKey: retry.idempotencyKey,
+            rows,
             sourceName,
-            sourcePolicyId: resolvedPolicyId,
+            sourcePolicyId: resolvedManualImportPolicyId,
         });
+        if (result) setImportRetry(null);
     };
 
     const scoreTarget = (targetId: string) => {
@@ -1392,31 +1583,52 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
-    const captureReply = (event: FormEvent) => {
+    const captureReply = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("capture-reply", {
+        const requestKey = JSON.stringify({
             channel: replyChannel,
+            message: replyText.trim(),
+            targetId: resolvedTargetId,
+        });
+        const retry = replyRetry?.requestKey === requestKey
+            ? replyRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setReplyRetry(retry);
+        const result = await runAction("capture-reply", {
+            channel: replyChannel,
+            idempotencyKey: retry.idempotencyKey,
             message: replyText,
             targetId: resolvedTargetId,
         });
+        if (result) setReplyRetry(null);
     };
 
-    const recordOutcome = (event: FormEvent) => {
+    const recordOutcome = async (event: FormEvent) => {
         event.preventDefault();
-        const activation = outcomeType === "two_surface_activation";
-        void runAction("record-outcome", {
+        const requestKey = JSON.stringify({
+            evidenceRef: outcomeEvidenceRef.trim(),
+            outcomeType,
+            ownerQualifiedAt: outcomeOwnerQualifiedAt,
+            ownerReviewedAt: outcomeOwnerReviewedAt,
+            surfaces: [...outcomeSurfaces].sort(),
+            targetId: resolvedTargetId,
+        });
+        const retry = outcomeRetry?.requestKey === requestKey
+            ? outcomeRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setOutcomeRetry(retry);
+        const result = await runAction("record-outcome", {
             channel: "manual",
-            evidenceRef: outcomeEvidenceRef || undefined,
-            idempotencyKey: activation
-                ? `manual:${resolvedTargetId}:${outcomeType}:${outcomeOwnerReviewedAt}`
-                : undefined,
+            evidenceRef: outcomeEvidenceRef,
+            idempotencyKey: retry.idempotencyKey,
             outcomeType,
             ownerQualifiedAt: outcomeOwnerQualifiedAt || undefined,
             ownerReviewedAt: outcomeOwnerReviewedAt || undefined,
             source: "manual",
             surfaces: outcomeSurfaces,
-            targetId: resolvedTargetId || undefined,
+            targetId: resolvedTargetId,
         });
+        if (result) setOutcomeRetry(null);
     };
 
     const toggleOutcomeSurface = (surface: string) => {
@@ -1425,52 +1637,87 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             : [...current, surface]);
     };
 
-    const captureDemand = (event: FormEvent) => {
+    const captureDemand = async (event: FormEvent) => {
         event.preventDefault();
         const target = data?.workspace.targets.find((item: SignalDeskTargetSummary) => item.targetId === resolvedTargetId);
-        void runAction("capture-demand-signal", {
+        const requestKey = JSON.stringify({ signalType: demandSignalType, targetId: resolvedTargetId });
+        const retry = demandSignalRetry?.requestKey === requestKey
+            ? demandSignalRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setDemandSignalRetry(retry);
+        const result = await runAction("capture-demand-signal", {
+            idempotencyKey: retry.idempotencyKey,
             signalType: demandSignalType,
             sourceSurface: "manual",
             targetId: resolvedTargetId || undefined,
             targetName: target?.displayName,
         });
+        if (result) setDemandSignalRetry(null);
     };
 
     const recommendMarketPodPlan = (marketPodId?: string) => {
         void runAction("recommend-market-pod-plan", { marketPodId });
     };
 
-    const reviewMarketPod = (marketPodId: string, decision: "approved" | "held" | "rejected") => {
-        void runAction("review-market-pod", {
+    const reviewMarketPod = async (marketPodId: string, decision: "approved" | "held" | "rejected") => {
+        const requestKey = JSON.stringify({ decision, marketPodId, reason: marketPodReviewReason });
+        const retry = marketPodReviewRetry?.requestKey === requestKey
+            ? marketPodReviewRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setMarketPodReviewRetry(retry);
+        const result = await runAction("review-market-pod", {
             decision,
+            idempotencyKey: retry.idempotencyKey,
             marketPodId,
             reason: marketPodReviewReason,
         });
+        if (result) setMarketPodReviewRetry(null);
     };
 
     const createWeeklyStrategistMemo = () => {
         void runAction("create-weekly-strategist-memo");
     };
 
-    const runSourceProvider = (event: FormEvent) => {
+    const runSourceProvider = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("run-source-provider", {
+        const requestKey = JSON.stringify({
+            city: sourceCity.trim(),
+            country: sourceCountry.trim(),
+            maxResults: sourceMaxResults,
+            provider: sourceProvider,
+            query: sourceQuery.trim(),
+            sourcePolicyId: resolvedProviderPolicyId,
+        });
+        const retry = sourceProviderRetry?.requestKey === requestKey
+            ? sourceProviderRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setSourceProviderRetry(retry);
+        const result = await runAction("run-source-provider", {
             city: sourceCity,
             country: sourceCountry,
+            idempotencyKey: retry.idempotencyKey,
             maxResults: sourceMaxResults,
             provider: sourceProvider,
             query: sourceQuery,
             sourcePolicyId: resolvedProviderPolicyId,
         });
+        if (result) setSourceProviderRetry(null);
     };
 
-    const runAiAssist = (event: FormEvent) => {
+    const runAiAssist = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("run-ai-assist", {
+        const requestKey = JSON.stringify({ instruction: aiInstruction.trim(), targetId: resolvedTargetId, task: aiTask });
+        const retry = aiAssistRetry?.requestKey === requestKey
+            ? aiAssistRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setAiAssistRetry(retry);
+        const result = await runAction("run-ai-assist", {
+            idempotencyKey: retry.idempotencyKey,
             instruction: aiInstruction || undefined,
             targetId: resolvedTargetId,
             task: aiTask,
         });
+        if (result) setAiAssistRetry(null);
     };
 
     const toggleAiVolumeTask = (task: SignalDeskAiVolumeTask, checked: boolean) => {
@@ -1509,12 +1756,17 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
-    const runEnrichmentWaterfall = (event: FormEvent) => {
+    const runEnrichmentWaterfall = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("run-enrichment-waterfall", {
+        const requestKey = JSON.stringify({ targetId: resolvedTargetId, waterfallId: resolvedWaterfallId });
+        const retry = enrichmentWaterfallRetry?.requestKey === requestKey ? enrichmentWaterfallRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setEnrichmentWaterfallRetry(retry);
+        const result = await runAction("run-enrichment-waterfall", {
+            idempotencyKey: retry.idempotencyKey,
             targetId: resolvedTargetId,
             waterfallId: resolvedWaterfallId,
         });
+        if (result) setEnrichmentWaterfallRetry(null);
     };
 
     const createApprovalPacket = (approval?: SignalDeskApprovalItem) => {
@@ -1612,33 +1864,47 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
-    const holdSenderDomain = (event: FormEvent) => {
+    const holdSenderDomain = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("upsert-sender-domain", {
+        const request = {
             authenticationState: "missing",
             bounceRate: 0,
             brandRisk: "medium",
             complaintRate: 0,
-            domain: senderDomain,
+            domain: senderDomain.trim().toLowerCase().replace(/\.$/, ""),
             provider: "owned-email",
             status: "hold",
             unsubscribeReady: false,
             volumeRampState: "not_started",
-        });
+        };
+        const requestKey = JSON.stringify(request);
+        const retry = senderDomainRetry?.requestKey === requestKey
+            ? senderDomainRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setSenderDomainRetry(retry);
+        const result = await runAction("upsert-sender-domain", { ...request, idempotencyKey: retry.idempotencyKey });
+        if (result) setSenderDomainRetry(null);
     };
 
-    const readySenderDomain = () => {
-        void runAction("upsert-sender-domain", {
+    const readySenderDomain = async () => {
+        const request = {
             authenticationState: "ready",
             bounceRate: 0,
             brandRisk: "low",
             complaintRate: 0,
-            domain: senderDomain,
+            domain: senderDomain.trim().toLowerCase().replace(/\.$/, ""),
             provider: "owned-email",
             status: "active",
             unsubscribeReady: true,
             volumeRampState: "low_volume",
-        });
+        };
+        const requestKey = JSON.stringify(request);
+        const retry = senderDomainRetry?.requestKey === requestKey
+            ? senderDomainRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setSenderDomainRetry(retry);
+        const result = await runAction("upsert-sender-domain", { ...request, idempotencyKey: retry.idempotencyKey });
+        if (result) setSenderDomainRetry(null);
     };
 
     const handleConnectorKindChange = (kind: string) => {
@@ -1713,13 +1979,18 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
-    const upsertChannelWindow = () => {
-        void runAction("upsert-channel-window-state", {
+    const upsertChannelWindow = async () => {
+        const requestKey = JSON.stringify({ channel, source: channelWindowSource, status: channelWindowStatus, targetId: resolvedTargetId });
+        const retry = channelWindowRetry?.requestKey === requestKey ? channelWindowRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setChannelWindowRetry(retry);
+        const result = await runAction("upsert-channel-window-state", {
             channel,
+            idempotencyKey: retry.idempotencyKey,
             source: channelWindowSource,
             status: channelWindowStatus,
             targetId: resolvedTargetId || undefined,
         });
+        if (result) setChannelWindowRetry(null);
     };
 
     const refreshProviderRetention = (providerSourceRetentionId: string) => {
@@ -1805,17 +2076,22 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
-    const recordTrustPartnerMetrics = () => {
-        void runAction("record-trust-partner-metrics", {
+    const recordTrustPartnerMetrics = async () => {
+        const requestKey = JSON.stringify({ deliverableId: resolvedTrustDeliverableId, ownerLeads: metricOwnerLeads, partnerId: resolvedPartnerId, views: metricViews });
+        const retry = trustMetricsRetry?.requestKey === requestKey ? trustMetricsRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setTrustMetricsRetry(retry);
+        const result = await runAction("record-trust-partner-metrics", {
             activations: 0,
             commentQuality: metricOwnerLeads ? "medium" : "low",
             comments: 0,
             currentListSubmissions: 0,
             deliverableId: resolvedTrustDeliverableId || undefined,
+            idempotencyKey: retry.idempotencyKey,
             ownerLeads: metricOwnerLeads,
             partnerId: resolvedPartnerId,
             views: metricViews,
         });
+        if (result) setTrustMetricsRetry(null);
     };
 
     const reviewTrustPartnerRenewal = () => {
@@ -1836,35 +2112,127 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         ));
     };
 
-    const upsertContentSource = (event: FormEvent) => {
-        event.preventDefault();
-        void runAction("upsert-content-source", {
-            defaultAudience: contentSourceAudience,
-            defaultMarketPodId: resolvedMarketPodId || undefined,
-            sourceType: contentSourceType,
-            sourceUrl: contentSourceUrl || undefined,
-            status: "active",
-            title: contentSourceTitle,
-        });
+    const resetContentPerformanceInput = () => {
+        setContentPerformanceViews(0);
+        setContentPerformanceClicks(0);
+        setContentPerformanceOwnerLeads(0);
+        setContentPerformanceSubmissions(0);
+        setContentPerformanceActivations(0);
+        setContentPerformanceChannel("");
+        setContentPerformancePublicationUrl("");
+        setContentPerformancePublishedAt("");
+        setContentPerformanceRetry(null);
     };
 
-    const createContentAsset = (event: FormEvent) => {
+    const selectContentAsset = (contentAssetId: string) => {
+        resetContentPerformanceInput();
+        setSelectedContentAssetId(contentAssetId);
+        setSelectedContentDraftId("");
+    };
+
+    const selectContentDraft = (contentDraftId: string) => {
+        const draft = data?.workspace.contentDistributionDrafts.find((item) => item.contentDraftId === contentDraftId);
+        resetContentPerformanceInput();
+        if (!draft) {
+            setSelectedContentDraftId("");
+            return;
+        }
+        setSelectedContentAssetId(draft.contentAssetId);
+        setSelectedContentDraftId(draft.contentDraftId);
+    };
+
+    const selectContentPerformanceChannel = (channelValue: SignalDeskContentChannel | "") => {
+        resetContentPerformanceInput();
+        setContentPerformanceChannel(channelValue);
+    };
+
+    const selectContentSourceForEdit = (contentSourceId: string) => {
+        setSelectedContentSourceId(contentSourceId);
+        setContentSourceRetry(null);
+        const source = data?.workspace.contentSources.find((item) => item.contentSourceId === contentSourceId);
+        if (!source) {
+            setContentSourceTitle("MenuList owned proof");
+            setContentSourceType("proof-page");
+            setContentSourceUrl("https://menulist.ai");
+            setContentSourceAudience("restaurant-owner");
+            setContentSourceStatus("active");
+            setContentSourceDefaultMarketPodId("");
+            return;
+        }
+        setContentSourceTitle(source.title);
+        setContentSourceType(source.sourceType);
+        setContentSourceUrl(source.sourceUrl || "");
+        setContentSourceAudience(source.defaultAudience);
+        setContentSourceStatus(source.status);
+        setContentSourceDefaultMarketPodId(source.defaultMarketPodId || "");
+    };
+
+    const upsertContentSource = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("create-content-asset", {
+        const request = {
+            contentSourceId: selectedContentSourceId || undefined,
+            defaultAudience: contentSourceAudience,
+            defaultMarketPodId: contentSourceDefaultMarketPodId || null,
+            sourceType: contentSourceType,
+            sourceUrl: contentSourceUrl || undefined,
+            status: contentSourceStatus,
+            title: contentSourceTitle,
+        };
+        const requestKey = JSON.stringify(request);
+        const retry = contentSourceRetry?.requestKey === requestKey ? contentSourceRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setContentSourceRetry(retry);
+        const result = await runAction<SignalDeskContentSourceSummary>("upsert-content-source", { ...request, idempotencyKey: retry.idempotencyKey });
+        if (result?.contentSourceId) {
+            setContentSourceRetry(null);
+            setSelectedContentSourceId(result.contentSourceId);
+        }
+    };
+
+    const createContentAsset = async (event: FormEvent) => {
+        event.preventDefault();
+        const proofScopes = contentAssetProofLevel === "customer-proof"
+            ? Array.from(new Set(resolvedContentAssetPublicProofScopes)).sort()
+            : [];
+        const request = {
             canonicalMessage: contentAssetMessage,
-            ctaId: resolvedCtaId || undefined,
-            marketPodId: resolvedMarketPodId || undefined,
-            primaryAudience: contentAssetAudience,
+            ctaId: selectedContentCtaId || undefined,
+            marketPodId: selectedContentAssetSource ? undefined : resolvedContentMarketPodId || undefined,
+            primaryAudience: selectedContentAssetSource?.defaultAudience || contentAssetAudience,
             proofLevel: contentAssetProofLevel,
-            proofPermissionId: contentAssetProofLevel === "customer-proof" ? resolvedProofPermissionId || undefined : undefined,
-            proofScopes: contentAssetProofLevel === "customer-proof" ? resolvedPublicProofScopes : [],
+            proofPermissionId: contentAssetProofLevel === "customer-proof" ? resolvedContentAssetProofPermissionId || undefined : undefined,
+            proofScopes,
             riskNotes: contentAssetProofLevel === "internal-note" ? ["Internal note needs proof before broad distribution."] : [],
-            sourceId: resolvedContentSourceId || undefined,
+            sourceId: selectedContentAssetSource?.contentSourceId || undefined,
             sourceNotes: "Prepared from internal owner-approved MenuList proof.",
-            sourceType: contentAssetSourceType,
-            sourceUrl: contentAssetUrl || contentSourceUrl || undefined,
+            sourceType: selectedContentAssetSource?.sourceType || contentAssetSourceType,
+            sourceUrl: selectedContentAssetSource ? selectedContentAssetSource.sourceUrl || undefined : contentAssetUrl || undefined,
             title: contentAssetTitle,
+        };
+        const requestKey = JSON.stringify(request);
+        const retry = contentAssetRetry?.requestKey === requestKey ? contentAssetRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setContentAssetRetry(retry);
+        const result = await runAction("create-content-asset", { ...request, idempotencyKey: retry.idempotencyKey });
+        if (result) setContentAssetRetry(null);
+    };
+
+    const reviewContentAsset = async (contentAssetId: string, status: "ready" | "hold" | "archived") => {
+        const reason = status === "ready"
+            ? "Current source, proof, CTA, and market-pod authority rechecked."
+            : status === "archived"
+                ? "Archived by founder review."
+                : "Held by owner review.";
+        const requestKey = JSON.stringify({ contentAssetId, reason, status });
+        const retry = contentAssetReviewRetry?.requestKey === requestKey
+            ? contentAssetReviewRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setContentAssetReviewRetry(retry);
+        const result = await runAction("review-content-asset", {
+            contentAssetId,
+            idempotencyKey: retry.idempotencyKey,
+            reason,
+            status,
         });
+        if (result) setContentAssetReviewRetry(null);
     };
 
     const toggleProofPermissionScope = (scope: string) => {
@@ -1873,55 +2241,107 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             : [...current, scope]);
     };
 
-    const upsertProofPermission = (event: FormEvent) => {
+    const selectProofPermissionForEdit = (proofPermissionId: string) => {
+        setSelectedProofPermissionEditorId(proofPermissionId);
+        setProofPermissionRetry(null);
+        const permission = data?.workspace.proofPermissions.find((item) => item.proofPermissionId === proofPermissionId);
+        if (!permission) {
+            setProofPermissionEvidenceRef("");
+            setProofPermissionExpiresAt("");
+            setProofPermissionScopes(["business-name", "before-after-screenshots"]);
+            return;
+        }
+        setSelectedTargetId(permission.targetId);
+        setProofPermissionEvidenceRef(permission.evidenceRef);
+        setProofPermissionExpiresAt(permission.expiresAt || "");
+        setProofPermissionScopes(permission.scopes);
+    };
+
+    const upsertProofPermission = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("upsert-proof-permission", {
+        const scopes = Array.from(new Set(proofPermissionScopes)).sort();
+        const reactivationRequired = selectedProofPermissionEditor?.status === "revoked" || selectedProofPermissionEditor?.status === "expired";
+        const grantedAt = reactivationRequired
+            ? proofPermissionRetry?.grantedAt || new Date().toISOString()
+            : undefined;
+        const requestKey = JSON.stringify({ evidenceRef: proofPermissionEvidenceRef, expiresAt: proofPermissionExpiresAt || null, grantedAt: grantedAt || null, proofPermissionId: resolvedProofPermissionEditorId || null, scopes, status: "active", targetId: resolvedTargetId });
+        const retry = proofPermissionRetry?.requestKey === requestKey
+            ? proofPermissionRetry
+            : { grantedAt, idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setProofPermissionRetry(retry);
+        const result = await runAction("upsert-proof-permission", {
             evidenceRef: proofPermissionEvidenceRef,
             expiresAt: proofPermissionExpiresAt || undefined,
-            grantedAt: new Date().toISOString(),
-            proofPermissionId: selectedProofPermissionId || undefined,
-            scopes: proofPermissionScopes,
+            grantedAt: retry.grantedAt,
+            idempotencyKey: retry.idempotencyKey,
+            proofPermissionId: resolvedProofPermissionEditorId || undefined,
+            scopes,
             status: "active",
             targetId: resolvedTargetId,
         });
+        if (result) setProofPermissionRetry(null);
     };
 
-    const generateContentDrafts = () => {
-        void runAction("generate-content-distribution-drafts", {
+    const generateContentDrafts = async () => {
+        const channels = Array.from(new Set(contentDraftChannels)).sort();
+        const requestKey = JSON.stringify({ channels, contentAssetId: resolvedContentAssetId });
+        const retry = contentDraftGenerationRetry?.requestKey === requestKey ? contentDraftGenerationRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setContentDraftGenerationRetry(retry);
+        const result = await runAction("generate-content-distribution-drafts", {
             channels: contentDraftChannels,
             contentAssetId: resolvedContentAssetId,
+            idempotencyKey: retry.idempotencyKey,
         });
+        if (result) setContentDraftGenerationRetry(null);
     };
 
-    const reviewContentDraft = (contentDraftId: string, approvalStatus: "approved" | "rejected" | "hold") => {
-        void runAction("review-content-distribution-draft", {
+    const reviewContentDraft = async (contentDraftId: string, approvalStatus: "approved" | "rejected" | "hold") => {
+        const reviewReason = approvalStatus === "approved" ? "Approved by owner for manual scheduling." : "Needs revision before scheduling.";
+        const requestKey = JSON.stringify({ approvalStatus, contentDraftId, reviewReason });
+        const retry = contentReviewRetry?.requestKey === requestKey ? contentReviewRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setContentReviewRetry(retry);
+        const result = await runAction("review-content-distribution-draft", {
             approvalStatus,
             contentDraftId,
-            reviewReason: approvalStatus === "approved" ? "Approved by owner for manual scheduling." : "Needs revision before scheduling.",
+            idempotencyKey: retry.idempotencyKey,
+            reviewReason,
         });
+        if (result) setContentReviewRetry(null);
     };
 
-    const scheduleContentDraft = (contentDraftId: string) => {
-        void runAction("schedule-content-distribution-draft", {
+    const scheduleContentDraft = async (contentDraftId: string) => {
+        const requestKey = JSON.stringify({ contentDraftId, scheduledFor: contentScheduleAt || null, status: "queued" });
+        const retry = contentScheduleRetry?.requestKey === requestKey ? contentScheduleRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setContentScheduleRetry(retry);
+        const result = await runAction("schedule-content-distribution-draft", {
             contentDraftId,
+            idempotencyKey: retry.idempotencyKey,
             scheduledFor: contentScheduleAt || undefined,
             status: "queued",
         });
+        if (result) setContentScheduleRetry(null);
     };
 
-    const recordContentPerformance = () => {
-        const draft = data?.workspace.contentDistributionDrafts.find((item) => item.contentDraftId === resolvedContentDraftId);
-        void runAction("record-content-performance", {
+    const recordContentPerformance = async () => {
+        if (!resolvedContentPerformanceChannel) return;
+        const requestKey = JSON.stringify({ activations: contentPerformanceActivations, channel: resolvedContentPerformanceChannel, clicks: contentPerformanceClicks, contentAssetId: resolvedContentAssetId, contentDraftId: resolvedContentDraftId, currentListSubmissions: contentPerformanceSubmissions, ownerLeads: contentPerformanceOwnerLeads, publicationUrl: contentPerformancePublicationUrl.trim() || null, publishedAt: contentPerformancePublishedAt.trim() || null, views: contentPerformanceViews });
+        const retry = contentPerformanceRetry?.requestKey === requestKey ? contentPerformanceRetry : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setContentPerformanceRetry(retry);
+        const result = await runAction("record-content-performance", {
             activations: contentPerformanceActivations,
-            channel: draft?.channel || "linkedin",
+            channel: resolvedContentPerformanceChannel,
             clicks: contentPerformanceClicks,
             contentAssetId: resolvedContentAssetId,
             contentDraftId: resolvedContentDraftId || undefined,
             currentListSubmissions: contentPerformanceSubmissions,
             engagementQuality: contentPerformanceOwnerLeads || contentPerformanceSubmissions || contentPerformanceActivations ? "medium" : "low",
+            idempotencyKey: retry.idempotencyKey,
             ownerLeads: contentPerformanceOwnerLeads,
+            publicationUrl: contentPerformancePublicationUrl.trim() || undefined,
+            publishedAt: contentPerformancePublishedAt.trim() || undefined,
             views: contentPerformanceViews,
         });
+        if (result) setContentPerformanceRetry(null);
     };
 
     const prepareChannelHandoff = (approvalId: string) => {
@@ -1954,14 +2374,28 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
 
     const createExperimentCard = (event: FormEvent) => {
         event.preventDefault();
+        if (experimentActionDisabled) return;
         void runAction("create-experiment-card", {
             channel: experimentChannel,
-            contentAssetId: resolvedContentAssetId || undefined,
+            contentAssetId: selectedExperimentContentAsset?.contentAssetId || undefined,
             ctaId: resolvedOfferCtaId || undefined,
             expectedOutcome: experimentExpectedOutcome,
             hypothesis: experimentHypothesis,
             marketPodId: resolvedMarketPodId || undefined,
-            proofAssetSummary: contentAssetTitle || undefined,
+            proofAssetSummary: selectedExperimentContentAsset?.title || undefined,
+            readbackPlan: {
+                baselineWindow: {
+                    endAt: toExperimentReadbackIso(experimentReadbackPlan.baselineEndAt),
+                    startAt: toExperimentReadbackIso(experimentReadbackPlan.baselineStartAt),
+                },
+                candidateWindow: {
+                    endAt: toExperimentReadbackIso(experimentReadbackPlan.candidateEndAt),
+                    startAt: toExperimentReadbackIso(experimentReadbackPlan.candidateStartAt),
+                },
+                confounders: experimentReadbackPlan.confounders.split(",").map((item) => item.trim()).filter(Boolean),
+                nextReadbackAt: toExperimentReadbackIso(experimentReadbackPlan.nextReadbackAt),
+                primaryMetric: experimentReadbackPlan.primaryMetric,
+            },
             sourcePolicyId: resolvedPolicyId || undefined,
             stopRule: experimentStopRule,
             targetCount: experimentTargetCount,
@@ -1969,6 +2403,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
     };
 
     const reviewExperimentCard = (ownerDecision: "repeat" | "narrow" | "stop" | "hold" | "complete") => {
+        if (experimentReviewDisabled) return;
         void runAction("review-experiment-card", {
             experimentCardId: resolvedExperimentCardId,
             ownerDecision,
@@ -2011,15 +2446,28 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
         });
     };
 
-    const createResearchAgentRun = (event: FormEvent) => {
+    const createResearchAgentRun = async (event: FormEvent) => {
         event.preventDefault();
-        void runAction("create-research-agent-run", {
+        const requestKey = JSON.stringify({
+            maxResults: researchMaxResults,
+            prompt: researchPrompt.trim(),
+            provider: researchProvider,
+            researchType,
+            sourcePolicyId: resolvedResearchPolicyId,
+        });
+        const retry = researchAgentRetry?.requestKey === requestKey
+            ? researchAgentRetry
+            : { idempotencyKey: globalThis.crypto.randomUUID(), requestKey };
+        setResearchAgentRetry(retry);
+        const result = await runAction("create-research-agent-run", {
+            idempotencyKey: retry.idempotencyKey,
             maxResults: researchMaxResults,
             prompt: researchPrompt,
             provider: researchProvider,
             researchType,
             sourcePolicyId: resolvedResearchPolicyId || undefined,
         });
+        if (result) setResearchAgentRetry(null);
     };
 
     const qualifyRevenueAccount = (event: FormEvent) => {
@@ -2221,17 +2669,36 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         <form className={styles.panel} onSubmit={createExperimentCard}>
                             <div className={styles.panelHeader}>
                                 <h2>Experiment Card</h2>
-                                <WorkspaceButton className={styles.button} disabled={actionDisabled} type="submit">Create</WorkspaceButton>
+                                <WorkspaceButton className={styles.button} disabled={experimentActionDisabled} type="submit">Create</WorkspaceButton>
                             </div>
-                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setExperimentHypothesis(event.target.value)} value={experimentHypothesis} />
+                            <WorkspaceTextarea className={styles.textarea} disabled={experimentActionDisabled} onChange={(event) => setExperimentHypothesis(event.target.value)} value={experimentHypothesis} />
                             <div className={styles.formGrid}>
-                                <WorkspaceSelect className={styles.input} onChange={(event) => setExperimentChannel(event.target.value)} value={experimentChannel}>
+                                <WorkspaceSelect className={styles.input} disabled={experimentActionDisabled} onChange={(event) => setExperimentChannel(event.target.value)} value={experimentChannel}>
                                     {["email", "manual", "content", "partner", "referral", "other"].map((item) => <option key={item} value={item}>{item}</option>)}
                                 </WorkspaceSelect>
-                                <WorkspaceInput className={styles.input} min={1} max={500} onChange={(event) => setExperimentTargetCount(Number(event.target.value))} type="number" value={experimentTargetCount} />
+                                <WorkspaceInput className={styles.input} disabled={experimentActionDisabled} min={1} max={500} onChange={(event) => setExperimentTargetCount(Number(event.target.value))} type="number" value={experimentTargetCount} />
                             </div>
-                            <WorkspaceInput className={styles.input} onChange={(event) => setExperimentExpectedOutcome(event.target.value)} value={experimentExpectedOutcome} />
-                            <WorkspaceTextarea className={styles.textarea} onChange={(event) => setExperimentStopRule(event.target.value)} value={experimentStopRule} />
+                            <WorkspaceInput className={styles.input} disabled={experimentActionDisabled} onChange={(event) => setExperimentExpectedOutcome(event.target.value)} value={experimentExpectedOutcome} />
+                            <WorkspaceTextarea className={styles.textarea} disabled={experimentActionDisabled} onChange={(event) => setExperimentStopRule(event.target.value)} value={experimentStopRule} />
+                            <div className={styles.statusRow}><span>Baseline window</span><span>Comparison period</span></div>
+                            <div className={styles.formGrid}>
+                                <WorkspaceInput aria-label="Baseline start" className={styles.input} disabled={experimentActionDisabled} max={experimentReadbackPlan.baselineEndAt} onChange={(event) => setExperimentReadbackPlan((current) => ({ ...current, baselineStartAt: event.target.value }))} required type="datetime-local" value={experimentReadbackPlan.baselineStartAt} />
+                                <WorkspaceInput aria-label="Baseline end" className={styles.input} disabled={experimentActionDisabled} min={experimentReadbackPlan.baselineStartAt} max={experimentReadbackPlan.candidateStartAt} onChange={(event) => setExperimentReadbackPlan((current) => ({ ...current, baselineEndAt: event.target.value }))} required type="datetime-local" value={experimentReadbackPlan.baselineEndAt} />
+                            </div>
+                            <div className={styles.statusRow}><span>Candidate window</span><span>Test period</span></div>
+                            <div className={styles.formGrid}>
+                                <WorkspaceInput aria-label="Candidate start" className={styles.input} disabled={experimentActionDisabled} min={experimentReadbackPlan.baselineEndAt} max={experimentReadbackPlan.candidateEndAt} onChange={(event) => setExperimentReadbackPlan((current) => ({ ...current, candidateStartAt: event.target.value }))} required type="datetime-local" value={experimentReadbackPlan.candidateStartAt} />
+                                <WorkspaceInput aria-label="Candidate end" className={styles.input} disabled={experimentActionDisabled} min={experimentReadbackPlan.candidateStartAt} max={experimentReadbackPlan.nextReadbackAt} onChange={(event) => setExperimentReadbackPlan((current) => ({ ...current, candidateEndAt: event.target.value }))} required type="datetime-local" value={experimentReadbackPlan.candidateEndAt} />
+                            </div>
+                            <WorkspaceInput aria-label="Primary metric" className={styles.input} disabled={experimentActionDisabled} maxLength={160} onChange={(event) => setExperimentReadbackPlan((current) => ({ ...current, primaryMetric: event.target.value }))} placeholder="Primary metric" required value={experimentReadbackPlan.primaryMetric} />
+                            <WorkspaceTextarea aria-label="Known confounders" className={styles.textarea} disabled={experimentActionDisabled} onChange={(event) => setExperimentReadbackPlan((current) => ({ ...current, confounders: event.target.value }))} placeholder="Known confounders, separated by commas" value={experimentReadbackPlan.confounders} />
+                            <WorkspaceInput aria-label="Next readback" className={styles.input} disabled={experimentActionDisabled} min={experimentReadbackPlan.candidateEndAt} onChange={(event) => setExperimentReadbackPlan((current) => ({ ...current, nextReadbackAt: event.target.value }))} required type="datetime-local" value={experimentReadbackPlan.nextReadbackAt} />
+                            <WorkspaceSelect className={styles.input} disabled={experimentActionDisabled} onChange={(event) => setSelectedExperimentContentAssetId(event.target.value)} value={selectedExperimentContentAsset?.contentAssetId || ""}>
+                                <option value="">No proof asset</option>
+                                {data.workspace.contentAssets.map((asset) => (
+                                    <option key={asset.contentAssetId} value={asset.contentAssetId}>{asset.title}</option>
+                                ))}
+                            </WorkspaceSelect>
                             {data.workspace.experimentCards.length ? (
                                 <>
                                     <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedExperimentCardId(event.target.value)} value={resolvedExperimentCardId}>
@@ -2239,13 +2706,22 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                             <option key={experiment.experimentCardId} value={experiment.experimentCardId}>{experiment.hypothesis.slice(0, 90)}</option>
                                         ))}
                                     </WorkspaceSelect>
-                                    <WorkspaceTextarea className={styles.textarea} onChange={(event) => setExperimentResultSummary(event.target.value)} placeholder="Result summary" value={experimentResultSummary} />
+                                    {selectedExperiment?.readbackPlan ? (
+                                        <div className={styles.statusList}>
+                                            <div className={styles.statusRow}><span>Primary metric</span><span>{selectedExperiment.readbackPlan.primaryMetric}</span></div>
+                                            <div className={styles.statusRow}><span>Baseline</span><span>{selectedExperiment.readbackPlan.baselineWindow.startAt} → {selectedExperiment.readbackPlan.baselineWindow.endAt}</span></div>
+                                            <div className={styles.statusRow}><span>Candidate</span><span>{selectedExperiment.readbackPlan.candidateWindow.startAt} → {selectedExperiment.readbackPlan.candidateWindow.endAt}</span></div>
+                                            <div className={styles.statusRow}><span>Next readback</span><span>{selectedExperiment.readbackPlan.nextReadbackAt}</span></div>
+                                            <div className={styles.statusRow}><span>Confounders</span><span>{selectedExperiment.readbackPlan.confounders.join(", ") || "None recorded"}</span></div>
+                                        </div>
+                                    ) : selectedExperiment ? <div className={styles.empty}>Legacy card: no readback plan was recorded.</div> : null}
+                                    <WorkspaceTextarea className={styles.textarea} disabled={experimentActionDisabled} maxLength={1000} minLength={2} onChange={(event) => setExperimentResultSummary(event.target.value)} placeholder="Result summary required before a decision" required value={experimentResultSummary} />
                                     <div className={styles.rowActions}>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("repeat")} type="button">Repeat</WorkspaceButton>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("narrow")} type="button">Narrow</WorkspaceButton>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("hold")} type="button">Hold</WorkspaceButton>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("stop")} type="button">Stop</WorkspaceButton>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !resolvedExperimentCardId} onClick={() => reviewExperimentCard("complete")} type="button">Complete</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={experimentReviewDisabled} onClick={() => reviewExperimentCard("repeat")} type="button">Repeat</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={experimentReviewDisabled} onClick={() => reviewExperimentCard("narrow")} type="button">Narrow</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={experimentReviewDisabled} onClick={() => reviewExperimentCard("hold")} type="button">Hold</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={experimentReviewDisabled} onClick={() => reviewExperimentCard("stop")} type="button">Stop</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={experimentReviewDisabled} onClick={() => reviewExperimentCard("complete")} type="button">Complete</WorkspaceButton>
                                     </div>
                                 </>
                             ) : null}
@@ -2623,17 +3099,22 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={handleImport}>
                         <div className={styles.panelHeader}>
                             <h2>Manual Import</h2>
-                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedPolicyId} type="submit">Import</WorkspaceButton>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedManualImportPolicyId} type="submit">Import</WorkspaceButton>
                         </div>
                         <div className={styles.formGrid}>
                             <WorkspaceInput className={styles.input} onChange={(event) => setSourceName(event.target.value)} value={sourceName} />
-                            <WorkspaceSelect className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedPolicyId}>
-                                {data.workspace.policies.map((policy) => (
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedManualImportPolicyId}>
+                                {manualImportPolicies.map((policy) => (
                                     <option key={policy.sourcePolicyId} value={policy.sourcePolicyId}>{policy.name}</option>
                                 ))}
                             </WorkspaceSelect>
                         </div>
-                        <WorkspaceTextarea className={styles.textarea} onChange={(event) => setImportRows(event.target.value)} value={importRows} />
+                        <div className={styles.empty}>Use exactly 10 columns in this order: {SIGNALDESK_IMPORT_CSV_COLUMNS.join(", ")}. The optional first row is treated as a header only when it matches these names exactly. Quote fields that contain commas, quotes, or line breaks.</div>
+                        {importValidationError ? <Alert message={importValidationError} showIcon type="error" /> : null}
+                        <WorkspaceTextarea className={styles.textarea} onChange={(event) => {
+                            setImportRows(event.target.value);
+                            setImportValidationError(null);
+                        }} value={importRows} />
                     </form>
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}><h2>Targets</h2><span className={styles.tag}>{data.workspace.targets.length}</span></div>
@@ -2678,6 +3159,14 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             <option value="provider">provider</option>
                             <option value="other">other</option>
                         </WorkspaceSelect>
+                        {policySourceType === "provider" ? (
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setPolicyProvider(event.target.value)} value={policyProvider}>
+                                <option value="google-places">Google Places</option>
+                                <option value="apify">Apify</option>
+                                <option value="fhrs-fhis">FHRS/FHIS UK</option>
+                                <option value="foursquare">Foursquare</option>
+                            </WorkspaceSelect>
+                        ) : null}
                         <div className={styles.checkboxGrid}>
                             <WorkspaceInput className={styles.checkboxLabel} checked={policyAllowContact} onChange={(event) => setPolicyAllowContact(event.target.checked)} type="checkbox">
                                 Contact use
@@ -2689,7 +3178,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 Personalization
                             </WorkspaceInput>
                         </div>
-                        <div className={styles.empty}>Public-business research should stay evidence-only. Enable contact use only for a permissioned manual introduction or referral.</div>
+                        <div className={styles.empty}>Public-business research should stay evidence-only. Enable contact use only for a permissioned manual introduction or referral, and include a permission evidence reference in column 10 of each contact row.</div>
                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canConfigureSignalDesk} onClick={handleSeed} type="button">Seed Defaults</WorkspaceButton>
                     </form>
                     <div className={styles.panel}>
@@ -2804,26 +3293,30 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                             />
                         </div>
                         <div className={styles.table}>
-                            {data.workspace.approvals.map((approval) => (
-                                <div className={styles.tableRow} key={approval.approvalId}>
-                                    <div><strong>{approval.targetName}</strong><span>{approval.rejectionReason || approval.reviewReason}</span></div>
-                                    <span className={tagClass(approval.status)}>{approval.status}</span>
-                                    <span>{approval.priority}</span>
-                                    <div className={styles.rowActions}>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => createApprovalPacket(approval)} type="button">Packet</WorkspaceButton>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "pending"} onClick={() => reviewApproval(approval, "approved")} type="button">Approve</WorkspaceButton>
-                                        <WorkspaceButton
-                                            className={styles.ghostButton}
-                                            disabled={actionDisabled || approval.status !== "pending" || !approvalRejectionReason || (approvalRejectionReason === "other" && !approvalRejectionNote.trim())}
-                                            onClick={() => reviewApproval(approval, "rejected")}
-                                            type="button"
-                                        >
-                                            Reject
-                                        </WorkspaceButton>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "approved"} onClick={() => exportMessage(approval.approvalId)} type="button">Export</WorkspaceButton>
+                            {data.workspace.approvals.map((approval) => {
+                                const packet = data.workspace.approvalPackets.find((item) => item.approvalId === approval.approvalId);
+                                const packetActionReady = packet?.recommendedAction === "approve" && packet.allowedRoute !== "none";
+                                return (
+                                    <div className={styles.tableRow} key={approval.approvalId}>
+                                        <div><strong>{approval.targetName}</strong><span>{approval.rejectionReason || approval.reviewReason}</span></div>
+                                        <span className={tagClass(approval.status)}>{approval.status}</span>
+                                        <span>{approval.priority}</span>
+                                        <div className={styles.rowActions}>
+                                            <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => createApprovalPacket(approval)} type="button">Packet</WorkspaceButton>
+                                            <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "pending" || !packetActionReady} onClick={() => reviewApproval(approval, "approved")} type="button">Approve</WorkspaceButton>
+                                            <WorkspaceButton
+                                                className={styles.ghostButton}
+                                                disabled={actionDisabled || approval.status !== "pending" || !approvalRejectionReason || (approvalRejectionReason === "other" && !approvalRejectionNote.trim())}
+                                                onClick={() => reviewApproval(approval, "rejected")}
+                                                type="button"
+                                            >
+                                                Reject
+                                            </WorkspaceButton>
+                                            <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || approval.status !== "approved"} onClick={() => exportMessage(approval.approvalId)} type="button">Export</WorkspaceButton>
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                     {pendingApproval ? <div className={styles.alert}>Next review: {pendingApproval.targetName}</div> : null}
@@ -2835,6 +3328,18 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <div className={styles.listItem} key={packet.approvalPacketId}>
                                     <strong>{packet.targetName}</strong>
                                     <span>{packet.riskSummary}</span>
+                                    <span>{packet.evidenceSummary || "Evidence summary unavailable; refresh the packet."}</span>
+                                    {packet.currentMenuPresence ? (
+                                        <span>
+                                            Current menu: {packet.currentMenuPresence.truthGap.replace(/-/g, " ")} / {packet.currentMenuPresence.observedFormat}; owner control {packet.currentMenuPresence.ownerControlState}; mobile access {packet.currentMenuPresence.mobileAccessState}.
+                                        </span>
+                                    ) : <span>Current-menu diagnostic missing; packet cannot be approved.</span>}
+                                    <span>Allowed route: {packet.allowedRoute || "none"}. {packet.allowedRouteReason}</span>
+                                    <span>Message: {packet.messageSubject || "No subject"} / {packet.messageBody || "No body"}</span>
+                                    <span>Expected outcome: {packet.expectedOutcome || "Not recorded"}</span>
+                                    <span>Rejected facts: {packet.evidenceRejectedFacts?.join(" ") || "None recorded"}</span>
+                                    <span>Unsupported claims: {packet.unsupportedClaims?.length ? packet.unsupportedClaims.join(" ") : "none"}</span>
+                                    <span>Action fingerprint: {packet.actionFingerprintHash?.slice(0, 12) || "missing"}</span>
                                     <div className={styles.rowActions}>
                                         <span className={tagClass(packet.status)}>{packet.status}</span>
                                         <span className={tagClass(packet.channelReadiness)}>{packet.channelReadiness}</span>
@@ -2915,7 +3420,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
             return (
                 <section className={styles.contentGrid}>
                     <form className={styles.panel} onSubmit={recordOutcome}>
-                        <div className={styles.panelHeader}><h2>Outcome</h2><WorkspaceButton className={styles.button} disabled={actionDisabled || activationOutcomeIncomplete} type="submit">Record</WorkspaceButton></div>
+                        <div className={styles.panelHeader}><h2>Outcome</h2><WorkspaceButton className={styles.button} disabled={actionDisabled || manualOutcomeIncomplete} type="submit">Record</WorkspaceButton></div>
                         <TargetSelect data={data} onChange={setSelectedTargetId} value={resolvedTargetId} />
                         <WorkspaceSelect className={styles.input} onChange={(event) => setOutcomeType(event.target.value)} value={outcomeType}>
                             <option value="route_created">route_created</option>
@@ -3075,7 +3580,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                         </div>
                         <WorkspaceSelect className={styles.input} onChange={(event) => setSourcePolicyId(event.target.value)} value={resolvedProviderPolicyId}>
                             {providerPolicies.length ? providerPolicies.map((policy) => (
-                                <option key={policy.sourcePolicyId} value={policy.sourcePolicyId}>{policy.name} / {policy.sourceType}</option>
+                                <option key={policy.sourcePolicyId} value={policy.sourcePolicyId}>{policy.name} / {policy.provider}</option>
                             )) : <option value="">No provider source policy</option>}
                         </WorkspaceSelect>
                     </form>
@@ -3530,7 +4035,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 </WorkspaceInput>
                             ))}
                         </div>
-                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedProofPermissionId(event.target.value)} value={resolvedProofPermissionId}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => selectProofPermissionForEdit(event.target.value)} value={resolvedProofPermissionEditorId}>
                             <option value="">New permission</option>
                             {data.workspace.proofPermissions.map((permission) => (
                                 <option key={permission.proofPermissionId} value={permission.proofPermissionId}>{permission.targetName || permission.targetId} / {permission.status}</option>
@@ -3540,11 +4045,11 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={upsertContentSource}>
                         <div className={styles.panelHeader}>
                             <h2>Source</h2>
-                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentSourceTitle.trim()} type="submit">Save</WorkspaceButton>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentSourceTitle.trim() || Boolean(selectedContentSourceId && !selectedContentSource) || Boolean(contentSourceStatus === "active" && contentSourceDefaultMarketPodId && !approvedContentMarketPods.some((pod) => pod.marketPodId === contentSourceDefaultMarketPodId))} type="submit">Save</WorkspaceButton>
                         </div>
                         <WorkspaceInput className={styles.input} onChange={(event) => setContentSourceTitle(event.target.value)} value={contentSourceTitle} />
                         <div className={styles.formGrid}>
-                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentSourceType(event.target.value)} value={contentSourceType}>
+                            <WorkspaceSelect className={styles.input} disabled={Boolean(selectedContentSource)} onChange={(event) => setContentSourceType(event.target.value as SignalDeskContentSourceType)} value={contentSourceType}>
                                 <option value="manual">manual</option>
                                 <option value="blog">blog</option>
                                 <option value="changelog">changelog</option>
@@ -3556,7 +4061,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <option value="podcast">podcast</option>
                                 <option value="other">other</option>
                             </WorkspaceSelect>
-                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentSourceAudience(event.target.value)} value={contentSourceAudience}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentSourceAudience(event.target.value as SignalDeskContentSourceSummary["defaultAudience"])} value={contentSourceAudience}>
                                 <option value="restaurant-owner">restaurant-owner</option>
                                 <option value="agency-partner">agency-partner</option>
                                 <option value="trust-partner">trust-partner</option>
@@ -3564,9 +4069,26 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <option value="general">general</option>
                             </WorkspaceSelect>
                         </div>
-                        <WorkspaceInput className={styles.input} onChange={(event) => setContentSourceUrl(event.target.value)} value={contentSourceUrl} />
-                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentSourceId(event.target.value)} value={resolvedContentSourceId}>
-                            <option value="">No source selected</option>
+                        <WorkspaceInput className={styles.input} disabled={Boolean(selectedContentSource)} onChange={(event) => setContentSourceUrl(event.target.value)} value={contentSourceUrl} />
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentSourceStatus(event.target.value as SignalDeskControlStatus)} value={contentSourceStatus}>
+                                <option value="active">active</option>
+                                <option value="inactive">inactive</option>
+                                <option value="hold">hold</option>
+                                <option value="blocked">blocked</option>
+                            </WorkspaceSelect>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentSourceDefaultMarketPodId(event.target.value)} value={contentSourceDefaultMarketPodId}>
+                                <option value="">No default market pod</option>
+                                {contentSourceDefaultMarketPodId && !approvedContentMarketPods.some((pod) => pod.marketPodId === contentSourceDefaultMarketPodId) ? (
+                                    <option disabled value={contentSourceDefaultMarketPodId}>Current pod is not founder-approved</option>
+                                ) : null}
+                                {approvedContentMarketPods.map((pod) => (
+                                    <option key={pod.marketPodId} value={pod.marketPodId}>{pod.name}</option>
+                                ))}
+                            </WorkspaceSelect>
+                        </div>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => selectContentSourceForEdit(event.target.value)} value={selectedContentSourceId}>
+                            <option value="">New source</option>
                             {data.workspace.contentSources.map((source) => (
                                 <option key={source.contentSourceId} value={source.contentSourceId}>{source.title}</option>
                             ))}
@@ -3575,12 +4097,38 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <form className={styles.panel} onSubmit={createContentAsset}>
                         <div className={styles.panelHeader}>
                             <h2>Asset</h2>
-                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentAssetTitle.trim() || !contentAssetMessage.trim() || (contentAssetProofLevel === "customer-proof" && (!resolvedProofPermissionId || !resolvedPublicProofScopes.length))} type="submit">Create</WorkspaceButton>
+                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !contentAssetTitle.trim() || !contentAssetMessage.trim() || Boolean(selectedContentAssetSourceId && !selectedContentAssetSourceUsable) || (contentAssetProofLevel === "customer-proof" && (!resolvedContentAssetProofPermissionId || !resolvedContentAssetPublicProofScopes.length))} type="submit">Create</WorkspaceButton>
                         </div>
                         <WorkspaceInput className={styles.input} onChange={(event) => setContentAssetTitle(event.target.value)} value={contentAssetTitle} />
                         <WorkspaceTextarea className={styles.textareaSmall} onChange={(event) => setContentAssetMessage(event.target.value)} value={contentAssetMessage} />
+                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentAssetSourceId(event.target.value)} value={selectedContentAssetSourceId}>
+                            <option value="">Standalone asset</option>
+                            {data.workspace.contentSources.map((source) => {
+                                const usable = source.status === "active" && (!source.defaultMarketPodId || approvedContentMarketPods.some((pod) => pod.marketPodId === source.defaultMarketPodId));
+                                return <option disabled={!usable} key={source.contentSourceId} value={source.contentSourceId}>{source.title}{usable ? "" : " / unavailable"}</option>;
+                            })}
+                        </WorkspaceSelect>
                         <div className={styles.formGrid}>
-                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentAssetSourceType(event.target.value)} value={contentAssetSourceType}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentCtaId(event.target.value)} value={selectedContentCtaId}>
+                                <option value="">Use canonical active CTA</option>
+                                {data.workspace.selfServiceCtas.filter((cta) => cta.status === "active").map((cta) => (
+                                    <option key={cta.ctaId} value={cta.ctaId}>{cta.label}</option>
+                                ))}
+                            </WorkspaceSelect>
+                            <WorkspaceSelect
+                                className={styles.input}
+                                disabled={Boolean(selectedContentAssetSource)}
+                                onChange={(event) => setSelectedContentMarketPodId(event.target.value)}
+                                value={selectedContentAssetSource?.defaultMarketPodId || resolvedContentMarketPodId}
+                            >
+                                <option value="">No market pod</option>
+                                {approvedContentMarketPods.map((pod) => (
+                                    <option key={pod.marketPodId} value={pod.marketPodId}>{pod.name}</option>
+                                ))}
+                            </WorkspaceSelect>
+                        </div>
+                        <div className={styles.formGrid}>
+                            <WorkspaceSelect className={styles.input} disabled={Boolean(selectedContentAssetSource)} onChange={(event) => setContentAssetSourceType(event.target.value as SignalDeskContentSourceType)} value={selectedContentAssetSource?.sourceType || contentAssetSourceType}>
                                 <option value="manual">manual</option>
                                 <option value="proof-page">proof-page</option>
                                 <option value="demo">demo</option>
@@ -3589,7 +4137,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <option value="blog">blog</option>
                                 <option value="other">other</option>
                             </WorkspaceSelect>
-                            <WorkspaceSelect className={styles.input} onChange={(event) => setContentAssetAudience(event.target.value)} value={contentAssetAudience}>
+                            <WorkspaceSelect className={styles.input} disabled={Boolean(selectedContentAssetSource)} onChange={(event) => setContentAssetAudience(event.target.value as SignalDeskContentSourceSummary["defaultAudience"])} value={selectedContentAssetSource?.defaultAudience || contentAssetAudience}>
                                 <option value="restaurant-owner">restaurant-owner</option>
                                 <option value="agency-partner">agency-partner</option>
                                 <option value="trust-partner">trust-partner</option>
@@ -3604,19 +4152,24 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                 <option value="market-research">market-research</option>
                                 <option value="internal-note">internal-note</option>
                             </WorkspaceSelect>
-                            <WorkspaceInput className={styles.input} onChange={(event) => setContentAssetUrl(event.target.value)} value={contentAssetUrl} />
+                            <WorkspaceInput className={styles.input} disabled={Boolean(selectedContentAssetSource)} onChange={(event) => setContentAssetUrl(event.target.value)} value={selectedContentAssetSource?.sourceUrl || contentAssetUrl} />
                         </div>
-                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentAssetId(event.target.value)} value={resolvedContentAssetId}>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => selectContentAsset(event.target.value)} value={resolvedContentAssetId}>
                             <option value="">No asset selected</option>
                             {data.workspace.contentAssets.map((asset) => (
                                 <option key={asset.contentAssetId} value={asset.contentAssetId}>{asset.title}</option>
                             ))}
                         </WorkspaceSelect>
                         {contentAssetProofLevel === "customer-proof" ? (
-                            <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedProofPermissionId(event.target.value)} value={resolvedProofPermissionId}>
+                            <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentAssetProofPermissionId(event.target.value)} value={resolvedContentAssetProofPermissionId}>
                                 <option value="">Select proof permission</option>
-                                {data.workspace.proofPermissions.filter((permission) => permission.status === "active").map((permission) => (
-                                    <option key={permission.proofPermissionId} value={permission.proofPermissionId}>{permission.targetName || permission.targetId}</option>
+                                {data.workspace.proofPermissions.filter((permission) => (
+                                    isProofPermissionCurrentlyActive(permission)
+                                    && permission.scopes.some((scope) => SIGNALDESK_PUBLIC_PROOF_SCOPES.has(scope))
+                                )).map((permission) => (
+                                    <option key={permission.proofPermissionId} value={permission.proofPermissionId}>
+                                        {permission.targetName || permission.targetId} / {permission.scopes.filter((scope) => SIGNALDESK_PUBLIC_PROOF_SCOPES.has(scope)).join(", ")}
+                                    </option>
                                 ))}
                             </WorkspaceSelect>
                         ) : null}
@@ -3638,14 +4191,36 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                     <div className={styles.panel}>
                         <div className={styles.panelHeader}>
                             <h2>Performance</h2>
-                            <WorkspaceButton className={styles.button} disabled={actionDisabled || !resolvedContentAssetId} onClick={recordContentPerformance} type="button">Record</WorkspaceButton>
+                            <WorkspaceButton
+                                className={styles.button}
+                                disabled={actionDisabled
+                                    || !resolvedContentAssetId
+                                    || !resolvedContentPerformanceChannel
+                                    || contentPerformancePublicationIncomplete
+                                    || ((contentPerformanceHasObservedMetrics || contentPerformanceHasPublicationEvidence) && !contentPerformanceDraftEligible)}
+                                onClick={recordContentPerformance}
+                                type="button"
+                            >Record</WorkspaceButton>
                         </div>
-                        <WorkspaceSelect className={styles.input} onChange={(event) => setSelectedContentDraftId(event.target.value)} value={resolvedContentDraftId}>
-                            <option value="">No draft selected</option>
-                            {data.workspace.contentDistributionDrafts.map((draft) => (
-                                <option key={draft.contentDraftId} value={draft.contentDraftId}>{draft.title}</option>
+                        <WorkspaceSelect
+                            className={styles.input}
+                            disabled={Boolean(selectedContentPerformanceDraft)}
+                            onChange={(event) => selectContentPerformanceChannel(event.target.value as SignalDeskContentChannel | "")}
+                            value={resolvedContentPerformanceChannel}
+                        >
+                            <option value="">Select channel</option>
+                            {contentChannelOptions.map((channelOption) => (
+                                <option key={channelOption} value={channelOption}>{channelOption}</option>
                             ))}
                         </WorkspaceSelect>
+                        <WorkspaceSelect className={styles.input} onChange={(event) => selectContentDraft(event.target.value)} value={resolvedContentDraftId}>
+                            <option value="">No draft selected</option>
+                            {contentDraftsForSelectedAsset.map((draft) => (
+                                <option key={draft.contentDraftId} value={draft.contentDraftId}>{draft.title} / {draft.status}</option>
+                            ))}
+                        </WorkspaceSelect>
+                        <WorkspaceInput className={styles.input} onChange={(event) => setContentPerformancePublicationUrl(event.target.value)} placeholder="Published post URL" type="url" value={contentPerformancePublicationUrl} />
+                        <WorkspaceInput className={styles.input} onChange={(event) => setContentPerformancePublishedAt(event.target.value)} placeholder="Published time, for example 2026-07-15T10:30:00+05:30" value={contentPerformancePublishedAt} />
                         <div className={styles.formGrid}>
                             <WorkspaceInput className={styles.input} min={0} onChange={(event) => setContentPerformanceViews(Number(event.target.value))} type="number" value={contentPerformanceViews} />
                             <WorkspaceInput className={styles.input} min={0} onChange={(event) => setContentPerformanceClicks(Number(event.target.value))} type="number" value={contentPerformanceClicks} />
@@ -3664,7 +4239,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <div><strong>{source.title}</strong><span>{source.sourceType} / {source.defaultAudience}</span></div>
                                     <span className={tagClass(source.status)}>{source.status}</span>
                                     <span>{source.lastAssetAt || source.lastCheckedAt || "pending"}</span>
-                                    <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => setSelectedContentSourceId(source.contentSourceId)} type="button">Select</WorkspaceButton>
+                                    <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled} onClick={() => selectContentSourceForEdit(source.contentSourceId)} type="button">Edit</WorkspaceButton>
                                 </div>
                             ))}
                             {!data.workspace.contentSources.length ? <div className={styles.empty}>No content source yet.</div> : null}
@@ -3678,7 +4253,12 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <div><strong>{asset.title}</strong><span>{asset.primaryAudience} / {asset.proofLevel}</span></div>
                                     <span className={tagClass(asset.status)}>{asset.status}</span>
                                     <span>{asset.sourceType}</span>
-                                    <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => setSelectedContentAssetId(asset.contentAssetId)} type="button">Select</WorkspaceButton>
+                                    <div className={styles.rowActions}>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => selectContentAsset(asset.contentAssetId)} type="button">Select</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canApproveContent || asset.status === "ready" || asset.status === "distributed" || asset.status === "archived"} onClick={() => reviewContentAsset(asset.contentAssetId, "ready")} type="button">Ready</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || !canApproveContent || asset.status === "hold" || asset.status === "archived"} onClick={() => reviewContentAsset(asset.contentAssetId, "hold")} type="button">Hold</WorkspaceButton>
+                                        <WorkspaceButton className={styles.dangerButton} disabled={actionDisabled || data.access.role !== "founder-admin" || asset.status === "archived"} onClick={() => reviewContentAsset(asset.contentAssetId, "archived")} type="button">Archive</WorkspaceButton>
+                                    </div>
                                 </div>
                             ))}
                             {!data.workspace.contentAssets.length ? <div className={styles.empty}>No content asset yet.</div> : null}
@@ -3693,7 +4273,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <span className={tagClass(draft.approvalStatus)}>{draft.approvalStatus}</span>
                                     <span className={tagClass(draft.status)}>{draft.status}</span>
                                     <div className={styles.rowActions}>
-                                        <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => setSelectedContentDraftId(draft.contentDraftId)} type="button">Select</WorkspaceButton>
+                                        <WorkspaceButton className={styles.ghostButton} disabled={saving} onClick={() => selectContentDraft(draft.contentDraftId)} type="button">Select</WorkspaceButton>
                                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || draft.approvalStatus === "approved"} onClick={() => reviewContentDraft(draft.contentDraftId, "approved")} type="button">Approve</WorkspaceButton>
                                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || draft.approvalStatus === "rejected"} onClick={() => reviewContentDraft(draft.contentDraftId, "rejected")} type="button">Reject</WorkspaceButton>
                                         <WorkspaceButton className={styles.ghostButton} disabled={actionDisabled || draft.approvalStatus !== "approved"} onClick={() => scheduleContentDraft(draft.contentDraftId)} type="button">Schedule</WorkspaceButton>
@@ -3711,7 +4291,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <div><strong>{item.channel}</strong><span>{item.contentDraftId}</span></div>
                                     <span className={tagClass(item.status)}>{item.status}</span>
                                     <span>{item.scheduledFor}</span>
-                                    <span>{item.publishedAt || "not published"}</span>
+                                    <span>{item.publicationUrl || item.publishedAt || "not published"}</span>
                                 </div>
                             ))}
                             {!data.workspace.contentCalendarItems.length ? <div className={styles.empty}>No calendar item yet.</div> : null}
@@ -3726,6 +4306,7 @@ export default function SignalDeskWorkspace({ activeSection }: { activeSection: 
                                     <span>{record.views} views</span>
                                     <span>{record.clicks} clicks</span>
                                     <span>{record.ownerLeads + record.currentListSubmissions + record.activations} owner signals</span>
+                                    <span>{record.publicationUrl || "no publication"}</span>
                                 </div>
                             ))}
                             {!data.workspace.contentPerformanceSummaries.length ? <div className={styles.empty}>No performance record yet.</div> : null}

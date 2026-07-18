@@ -1,15 +1,22 @@
 # Reviews & Reputation — Firebase Cost Tracking
 
 **Feature:** Silent Reputation Defense Layer  
-**Status:** 🔒 SPEC LOCKED — Implementation blocked until GBP API access granted  
-**Last Updated:** July 11, 2026
+**Status:** DORMANT SOURCE FRAGMENTS — no ingestion or product write path
+**Last Updated:** July 17, 2026
 **Priority:** LOW (currently) — Not yet implemented. Document for future cost planning.
 
 ---
 
 ## Summary
 
-> **Note:** This feature is spec-locked pending Google Business Profile API access. Firebase operations below are PLANNED, not yet in production.
+> **Current source truth:** `reviewsState/{reviewId}` is a flat, server-written state contract with embedded `tId`/`sId`, active rules/indexes, and a disabled authenticated read route. No source writes this collection today. The collections and functions below are future planning only.
+
+### July 17, 2026 Cost and Scale Recheck
+
+- Both flags are false, both server routes reject before rate limiting, Firestore, SAFE_MODE, capacity, or provider work, and the unmounted components cannot create browser traffic. Current runtime cost is therefore zero.
+- The two `reviewsState` composites exactly match the two bounded `limit(1)` state queries. They are intentionally retained: an empty dormant collection has no growing index fanout, and deleting the query-required definitions would only make an accidental flag activation fail at runtime.
+- No cache, summary document, listener, scheduler, TTL policy, or extra collection is justified while there is no ingestion or writer. Activation must define bounded retention and provider polling/webhook economics before any review document is persisted.
+- `npm run verify:reviews-reputation-boundary` protects the zero-work-while-disabled ordering, exact rules/index/query shape, missing writer/posting runtime, and publication hold. `npm run test:reviews:rules` remains the local authorization proof.
 
 - **Collections (Planned):** `reviewAlerts/{tId}/{sId}`, `replyDrafts/{tId}/{sId}`, `reputationConfig/{tId}/{sId}`
 - **Storage Buckets:** None planned
@@ -85,4 +92,4 @@ Minimal — reviews arrive at ~5-20 per store per month. Total Firestore operati
 
 ## Implementation Status
 
-❌ **Not yet implemented.** Blocked on GBP API access. This document is a pre-implementation cost plan to be updated when implementation begins.
+❌ **Not implemented as a product.** GBP access is only one prerequisite. Re-enter docs-first implementation for ingestion, state writer, retention, DAL/inbox, desktop/mobile mounts, provider behavior, rules/index verification, deployment, and production smoke before activation.

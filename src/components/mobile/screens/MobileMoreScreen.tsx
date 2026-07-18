@@ -269,6 +269,7 @@ interface MobileMoreScreenProps {
 
 export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab, onOpenShareTab, onRootStateChange, onScreenChange }: MobileMoreScreenProps) {
     const t = useTranslations('MobileMore');
+    const tAppSettings = useTranslations('AppSettings');
     const tBusiness = useTranslations('BusinessSettings');
     const tFeedback = useTranslations('FeedbackInbox');
     const tShare = useTranslations('MobileShare');
@@ -346,7 +347,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
     const menuSetupSummary = useMemo(
         () => {
             if (!FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS) return null;
-            if (projectsLoading && selectedProjectId && !selectedProject) return null;
+            if (projectsLoading) return null;
             return buildMenuSetupProgress({ project: selectedProject as any, storeDetails: storeDetails as any });
         },
         [projectsLoading, selectedProject, selectedProjectId, storeDetails],
@@ -557,7 +558,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         ...(FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING && canManageMenu ? [{ key: 'specialMenus', icon: <LuSparkles color={token.colorWarning} size={20} />, keywords: ['seasonal menu', 'festival menu', 'limited time', 'brunch', 'special menu'], label: t('specialMenus'), description: t('specialMenusDesc'), onClick: () => openSubScreen('specialMenus') }] : []),
         ...(canManageMenuDesign ? [{ key: 'designEditor', icon: <LuPalette color={token.colorPrimary} size={20} />, keywords: ['theme', 'colors', 'fonts', 'layout', 'images', 'design'], label: t('menuDesign'), description: t('menuDesignDesc'), onClick: () => openSubScreen('designEditor') }] : []),
         ...(FEATURE_FLAGS.ENABLE_OBP && canManagePublicPresence ? [{ key: 'officialPageTop', icon: <LuGlobe color={token.colorPrimary} size={20} />, keywords: ['official page', 'business page', 'whatsapp', 'google maps', 'reviews', 'reservation link', 'order link'], label: tBusiness('officialPage'), description: 'Menu, actions, photos, and business facts on the public page.', onClick: () => openOfficialPage('main') }] : []),
-        ...(canManageDigitalScreens ? [{ key: 'digitalScreens', icon: <LuTv color={token.colorInfo} size={20} />, keywords: ['tv', 'screen', 'menu board', 'highlights', 'slides', 'display'], label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') }] : []),
+        ...(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED && canManageDigitalScreens ? [{ key: 'digitalScreens', icon: <LuTv color={token.colorInfo} size={20} />, keywords: ['tv', 'screen', 'menu board', 'highlights', 'slides', 'display'], label: t('digitalScreens'), description: t('digitalScreensDesc'), onClick: () => openSubScreen('digitalScreens') }] : []),
         ...(canAccessBilling ? [
             { key: 'billing', icon: <LuCreditCard color={token.colorPrimary} size={20} />, keywords: ['plan', 'subscription', 'payment', 'invoice', 'upgrade'], label: t('billing'), description: t('billingDesc'), onClick: () => openSubScreen('billing') },
             { key: 'transactions', icon: <LuReceipt color={token.colorInfo} size={20} />, keywords: ['payments', 'receipts', 'history', 'billing history', 'charges'], label: t('transactions'), description: t('transactionsDesc'), onClick: () => openSubScreen('transactions') },
@@ -691,7 +692,7 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
         if (screen === 'analyticsSettings') return canManageStore;
         if (screen === 'feedback' || screen === 'feedbackSettings') return canManageFeedback;
         if (screen === 'designEditor') return canManageMenuDesign;
-        if (screen === 'digitalScreens') return canManageDigitalScreens;
+        if (screen === 'digitalScreens') return FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED && canManageDigitalScreens;
         if (screen === 'specialMenus') return canManageMenu;
         if (screen === 'todayHistory') return canManageDailyActions && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY;
         if (canUseResellerScreens && ['resellerHub', 'resellerDashboard', 'resellerManagement', 'resellerOnboarding'].includes(screen)) return true;
@@ -1100,10 +1101,10 @@ export default function MobileMoreScreen({ initialScreen = 'main', onOpenMenuTab
                 <List>
                     <List.Item
                         arrow
-                        description={<Text type="secondary">{t('appSettingsDesc')}</Text>}
+                        description={<Text type="secondary">{tAppSettings('summary')}</Text>}
                         onClick={() => setIsAppSettingsOpen(true)}
                         prefix={<LuSettings color={token.colorTextSecondary} size={20} />}
-                        title={<Text strong>{t('appSettings')}</Text>}
+                        title={<Text strong>{tAppSettings('title')}</Text>}
                     />
                     <List.Item
                         description={<Text type="secondary">{t('refreshAppDesc')}</Text>}

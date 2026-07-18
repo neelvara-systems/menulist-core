@@ -2,7 +2,7 @@
 
 **Status:** Governed source/research/content/partner rails, solo-founder Operating Layer, bounded Revenue Operating Layer, founder-controlled AI Volume Mode, hard mobile read-only enforcement, deterministic local E2E, and Firestore/Storage semantic rules tests implemented and locally validated.
 **Created:** June 23, 2026
-**Last Updated:** July 11, 2026
+**Last Updated:** July 15, 2026
 **Scope:** Product identity, protected app shell, guarded APIs, internal acquisition and revenue workflow, gated provider/channel runtime, dedicated Firebase config/rules/indexes/storage rules, and functions skeleton.
 
 ## Current Verdict
@@ -10,6 +10,236 @@
 **PASS WITH EXTERNAL BLOCKERS.** The SignalDesk internal workflow, gated runtime expansion, bounded commercial lifecycle, product-local auth gateway, and deterministic safety paths are implemented and locally validated. It is safe for a local desktop trial and a mobile observe/emergency-pause trial after signing in with a seeded active member. It is not cleared for real outreach or cloud production use.
 
 The implemented flow covers the existing access, source, target, evidence, draft, approval, inbox, outcome, demand, content, partner, provider/budget/model, mission, and control-room rails plus revenue accounts, deterministic commercial qualification, commercial opportunities, immutable standard offer versions, bounded operating envelopes, interested-reply revenue projection, automatic outcome-to-activation projection, read-time seven-day stall detection, compact revenue/founder-attention/spend summaries, and cost-capped multi-pass AI batches for internal review work.
+
+## Content Source Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API/browser/server require one actor-bound key. Concurrent exact updates converge; changed-input reuse conflicts without duplicate workflow/accounting effects. |
+| URL and identity | Credential-free HTTP(S) URLs are canonicalized without lowercasing path/query. Matching legacy IDs remain in place; case-sensitive URLs receive distinct v2 identities. Existing source type/URL provenance is immutable. |
+| Current authority | One transaction reads the current content pause, candidate/explicit source, optional market pod and operation claim. Active pod-bound sources require an active founder-approved pod with recorded approver. |
+| Seed and legacy lifecycle | Default seeding creates at most one source after reading the current pause/pod/source; it starts held without founder approval, never auto-promotes an existing row, and preserves `createdAt`/`lastAssetAt`. Explicit `null` clears an optional pod. |
+| Browser/consumer parity | Source editing hydrates the selected row and submits its explicit ID with a stable retry key. Asset source selection is separate; selected-source URL/type/audience/pod values are derived and enforced server-side. |
+| Runtime shape/error boundary | Persisted source rows are projected through bounded enum/ID/URL checks; invalid rows are omitted with aggregate diagnostics. Content source/asset/draft/review/schedule/proof business conflicts are safe action errors rather than generic HTTP 500s. |
+| Evidence | `npm run verify:signaldesk` passes 2,706 assertions; exact root TypeScript, scoped ESLint and the complete local Firestore E2E pass. One post-refinement E2E attempt failed only after emulator lock-timeout records with a bare emulator `Transaction is invalid or closed`; Firebase documents that concurrent writes to one document can retain emulator locks for up to 30 seconds. A fresh unchanged complete run passed, and concurrency assertions were not serialized or weakened. See [Firebase emulator transaction differences](https://firebase.google.com/docs/emulator-suite/connect_firestore#how_the_cloud_firestore_emulator_differs_from_production). |
+
+## Content Asset Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API/browser/server require one actor-bound key for exact normalized asset input. Concurrent retries return one asset; changed-input reuse conflicts. |
+| Current authority | The transaction reads the current content pause, optional selected source, proof permission and proof target, explicit/default CTA, and effective market pod before writes. Selected sources must be active and type-compatible; pods must be active and founder-approved. |
+| Atomic effects | Asset, optional source recency, claim, timeline, audit, and cost truth commit together. Existing asset creation timestamps remain compatible. |
+| Evidence | `npm run verify:signaldesk` passes 2,671 assertions; scoped ESLint, exact root TypeScript, full local Firestore E2E and diff integrity pass. The first post-change E2E attempt exposed a test-only variable-scope error in the newly added pause assertion; moving that assertion into its owning content fixture made the unchanged runtime pass on the next complete run. |
+
+## Proof Permission Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API/browser/server require one actor-bound key for exact target/permission/status/scopes/evidence input. Concurrent retries converge and changed-input reuse conflicts. |
+| Current authority | The founder-only transaction reads and requires the current target and reads the existing permission before enforcing immutable target ownership. |
+| Atomic effects | Permission, claim, audit, and cost truth commit together. Existing grant timestamps and creation timestamps remain compatible. |
+| Evidence | `npm run verify:signaldesk` passes 2,661 assertions; scoped ESLint, exact root TypeScript, full local Firestore E2E and diff integrity pass. |
+
+## Content Draft Generation Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API/browser/server require one actor-bound key for normalized asset/channel input. Concurrent retries return the same drafts; changed-input reuse conflicts. |
+| Current authority | The transaction reads the current content pause, asset readiness, proof permission/scopes, and explicit/default CTA before writes. |
+| Atomic effects | Drafts, claim, human-review queue increment, timeline, audit, and cost commit together. |
+| Evidence | `npm run verify:signaldesk` passes 2,654 assertions; scoped ESLint, exact root TypeScript, full local Firestore E2E and diff integrity pass. |
+
+## Content Draft Review Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API/browser/server require one actor-bound key for exact draft/decision/reason input. Concurrent retries converge; changed-input reuse conflicts. |
+| Current authority | The transaction reads the current content-distribution pause and current draft before writes. |
+| Atomic effects | Draft review, claim, timeline, audit, and cost truth commit together. |
+| Evidence | `npm run verify:signaldesk` passes 2,647 assertions; scoped ESLint, exact root TypeScript, full local Firestore E2E and diff integrity pass. |
+
+## Content Schedule Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API/browser/server require one actor-bound key for exact draft/time/status input. Concurrent retries return one calendar ID; changed-input reuse conflicts. |
+| Current authority | The transaction reads the current content-distribution pause and current draft approval before writes. |
+| Atomic effects | Draft schedule state, calendar item, claim, timeline, audit, and cost commit together. Legacy calendar rows remain update-compatible. |
+| Evidence | `npm run verify:signaldesk` passes 2,641 assertions; scoped ESLint, exact root TypeScript and the unchanged full local Firestore E2E rerun pass. The first E2E attempt failed later in the unrelated timing-sensitive direct-AI-assist convergence fixture; it passed unchanged on retry. |
+
+## Enrichment Waterfall Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API/browser/server require one actor-bound key for exact target/waterfall input. Concurrent retries return one durable result; changed-input key reuse conflicts. |
+| Current authority | The transaction reads the current source-provider pause, target/detail, prior conversation, waterfall, source policy, and bounded provider account/budget state before writes. |
+| Atomic effects | Result, vendor readiness, claim, timeline, audit, and daily cost truth commit together. No external provider is called. |
+| Type boundary | The action route passes an explicit validated DTO; the prior `as any` schema bypass is removed for this action. |
+| Evidence | `npm run verify:signaldesk` passes 2,633 assertions; scoped ESLint and exact root TypeScript pass. The first full local Firestore E2E ended with an emulator `Transaction is invalid or closed` without an application frame; one unchanged rerun passed, including concurrency, conflict, existing-value reuse, one vendor row, and active-pause rejection. |
+
+## Content Performance Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Retry identity | API, browser, and server carry one bounded actor-bound key for unchanged asset/draft/channel/metric input. Exact and concurrent retries return one durable performance record; changed-input key reuse conflicts. |
+| Current authority | Settlement reads the content-distribution pause, current asset, approved draft, deterministic calendar item, and operation claim inside its transaction. An active pause or stale authority fails before writes. |
+| Publication evidence | Non-zero metrics require a credential-free publication URL and valid timestamp. Matching evidence atomically marks the draft/calendar published and asset distributed; mismatched later evidence fails closed. No adapter publishes content. |
+| Draft coupling | The draft must match the selected asset/channel and its calendar identity; unrelated evidence fails before performance or publication writes. |
+| Incremental aggregation | Independently claimed owner-signal observations increment the daily demand summary. The emulator records one- and two-signal observations and proves a total of three. |
+| Atomic effects | Performance, draft/calendar publication, asset distribution, demand, control, claim, timeline, audit, and cost truth commit in one transaction. |
+| Evidence | The current cross-check passes `npm run verify:signaldesk` with 2,844 assertions, exact TypeScript, scoped ESLint, and the complete local Firestore E2E. No provider or publication adapter was called. |
+
+## Research Agent Idempotency - July 14, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Atomic provider admission | One Firestore transaction creates the research run, initial timeline, and idempotency record before any provider call. Concurrent exact requests cannot both start provider work. |
+| Reachable owner retry | API and server require a bounded key. Desktop retains it only for unchanged prompt/provider/type/policy/result-cap input after failure and clears it after success. |
+| Identity | The key is bound to the founder actor and resolved city/country, market pod, result cap, normalized query, provider, research type, and source policy. Changed input fails with `RESEARCH_IDEMPOTENCY_CONFLICT`. |
+| Run namespace | New run IDs derive from actor plus required key hash. Independent keys cannot collide through same-millisecond wall-clock identity; legacy exact claims replay their stored run ID. |
+| Replay status truth | Exact replay returns the persisted `running`, `completed`, or `blocked` run status unchanged; the separate response `duplicate` flag identifies replay. |
+| Ambiguous commit | If the start transaction commits and acknowledgement is lost, an exact key/run probe resumes the committed owner; it does not create a second run. |
+| Ambiguous completion | If the final rows/run/pod batch commits and acknowledgement is lost, a bounded run/rows probe returns completed truth before blocked compensation. |
+| Founder-authority serialization | Final rows/run/pod/timeline/audit/cost settle transactionally after reading the current pod. Founder review committed during provider work cannot be overwritten by stale completion fields. |
+| Evidence | The 2,470-check source verifier, local Firestore E2E changed-input case, concurrent same-key provider-count case, exact root TypeScript, and scoped lint pass. No Firebase infrastructure source changed. |
+
+## Transactional Target Scoring - July 14, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current authority | Target and source policy are read inside the score transaction; expired, blocked, incomplete, or disallowed policy stops all score effects. |
+| Exact convergence | A content hash of target scoring facts plus `rules-v1` owns deterministic score/snapshot/ledger IDs. Concurrent identical calls return one durable score. |
+| Coupled effects | Score, snapshot, ledger, target projection, audit, and daily cost commit together. |
+| Evidence | Local E2E races two identical scores and proves one score ID, snapshot, and ledger; expired-policy scoring fails before score effects. |
+
+## Transactional Evidence Packets - July 14, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current rights | Target and policy are read transactionally; evidence/personalization rights are derived at settlement. |
+| Exact convergence | Packet identity includes allowed use and all projected target evidence facts. Concurrent identical calls return one packet. |
+| Coupled effects | Detail, summary, target next action, audit, and cost commit together. |
+| Evidence | Local E2E races identical requests and proves one packet ID and summary; expired-policy evidence remains rejected. |
+
+## Transactional Draft Creation - July 14, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current authority | One transaction re-reads target, policy, template, selected evidence, CTA, sender domain, and any prior conversation before draft settlement. Revoked rights, inactive inputs, suppression, or prior contact fail before effects. |
+| Exact convergence | Rendered subject/body plus evidence, policy rights/expiry, CTA, sender readiness, target, and template own deterministic draft/approval/packet IDs. Concurrent identical calls return the same durable truth. |
+| Coupled effects | Draft, approval, approval packet, target next action, timeline, audit, queue increments, and cost commit together. Exact replay returns before every repeated side effect. |
+| Evidence | The 2,535-check verifier and local Firestore E2E pass. E2E races identical requests and proves one draft, approval, packet, approval-backlog increment, and human-review increment. |
+
+## Transactional Approval Settlement - July 14, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current authority | Approval reads the pending item, target, source policy, latest conversation, draft, and packet in its settlement transaction. Expired rights, suppression/prior contact, or an ineligible target fail before status or queue effects. |
+| Coupling | Approval requires a queued draft linked to the same approval/target, a packet linked to the same approval/target/evidence, and target `latestApprovalId`/`latestDraftId` pointers to that exact pair. |
+| Supersession | A newly rendered draft creates a new content-addressed review unit. The older pending approval cannot be approved after the target points to the newer unit. |
+| Evidence | The 2,543-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass. E2E covers expired policy, missing draft, transaction-current suppression, superseded approval, unsupported claims, and concurrent terminal arbitration. |
+
+## Transactional Approval Packet Refresh - July 14, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Selector | API and server require exactly one approval or target ID; missing and ambiguous ownership are rejected. |
+| Current projection | Approval, target, draft, latest/exact evidence, CTA, sender, policy, and prior-contact state are transaction reads. Terminal approval changes force retry against current truth. |
+| Identity/replay | An approval's existing packet ID is retained. Exact content refresh returns before audit, timeline, and cost effects. |
+| Evidence | The 2,548-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass; concurrent exact refreshes retain one packet. |
+
+## Transactional Export Preparation - July 14, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current authority | Approval, draft, target, source policy, global/email pauses, active sender, and prior conversation are read in the export transaction. Exact approval/draft/target latest-pointer coupling is required. |
+| Exact replay | `approvalId + email-export-v1` owns one deterministic export record. Existing durable truth returns before validation and repeated effects, recovering a lost acknowledgement safely. |
+| Coupled effects | Export, conversation, approval, draft, target, audit, and daily cost commit together. |
+| Evidence | The 2,552-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass; two concurrent preparations return one export ID and record. |
+
+## Provider Send Claim And Recovery - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | A deterministic approval/channel claim transaction validates current approval/draft/target coupling, source rights, pauses, suppression, prior contact, recipient, sender/contactability or assisted-channel window, and provider readiness before any provider call. |
+| Single execution | Existing `running` or `unresolved` claims fail with `PROVIDER_SEND_REVIEW_REQUIRED`; concurrent requests cannot both call SMTP/Meta. |
+| Completion | Provider success settles one deterministic export, conversation/lifecycle truth, provider message ID, claim, audit, and cost transactionally. Lost final acknowledgement probes claim plus export before reporting failure. |
+| Ambiguity | Provider exceptions and unconfirmed final persistence write bounded unresolved truth. Automatic retry never repeats a possibly accepted delivery. |
+| Evidence | The 2,559-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass. E2E proves one provider call under concurrency, completed replay, one sent export, and no repeated provider call after ambiguity. |
+
+## Owned Sequence Send Claim And Recovery - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | One deterministic handoff claim transaction revalidates the exact queued approval, draft, target, sequence step, source rights, global/email/campaign pauses, suppression, prior contact, provider account, bound sender domain, recipient/contactability, due time, and SMTP readiness before delivery. |
+| Single execution | A running or unresolved claim returns `OWNED_SEQUENCE_SEND_REVIEW_REQUIRED`; concurrent calls cannot both reach the provider. Completed replay returns the deterministic export and provider message ID. |
+| Completion | The sent export, conversation and target lifecycle, approval/draft, step, handoff, timeline, audit, cost, and claim settle in one transaction. A lost final acknowledgement probes the durable claim/export pair. |
+| Ambiguity | Provider exceptions or unconfirmed final persistence write bounded unresolved truth and return `OWNED_SEQUENCE_SEND_OUTCOME_UNRESOLVED`; automatic retry is refused. |
+| Evidence | The 2,567-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass. E2E proves one provider call under concurrency, completed replay, one sent export, no retry after ambiguity, and rejection before provider execution after sender authority is revoked. |
+
+## Transactional Sequencer Handoff - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current authority | Approval, draft, target, source policy, global/email/campaign pauses, prior conversation, recipient/contactability, provider account, and exact or active sender domain are read in the handoff transaction. Current approval/draft/target latest-pointer coupling is required. |
+| Exact replay | The deterministic provider/approval handoff returns existing non-blocked truth without repeated effects. Blocked handoffs compare a current authority fingerprint so unchanged retries no-op while repaired provider/sender readiness can advance the same handoff. |
+| Changed input | A caller cannot silently replace the sender on an existing queued/ready handoff; changed sender identity conflicts with durable truth. |
+| Coupled effects | Handoff, optional owned-email step, approval/draft queue state, timeline, audit, and cost commit together. |
+| Evidence | The 2,573-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass. Concurrent creation returns one handoff, writes one step, and emits one handoff audit/cost effect. |
+
+## Transactional Assisted Channel Handoff - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current authority | Approval, draft, target, source policy, global/channel pauses, prior conversation, recipient, email sender/contactability, and target/global assisted-channel windows are read in one transaction before prepared truth is written. |
+| Exact replay | `approvalId + channel + assisted-handoff-v1` owns one deterministic export. Existing durable truth returns before validation and effects, with `recipient: null` so a retry does not re-expose contact data. |
+| Coupled effects | Export, conversation, approval, draft, target, channel health, audit, and cost commit together. The retired pre-transaction outbound context/window helpers were removed. |
+| Evidence | The 2,580-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass. Two concurrent email handoffs return one export ID/record and exact replay remains redacted. |
+
+## Transactional Reply Capture - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | API and browser require one bounded actor/request retry key. The browser retains it after failure only while target, channel, and trimmed message remain unchanged. |
+| Atomic event | Claim, inbound message, classification, conversation, target lifecycle, suppression, optional incident/pause, queue, audit, and cost settle in one transaction against the current target. |
+| Replay/conflict | Concurrent and exact retries return one durable conversation/state without another message, classification, incident, backlog, audit, or cost effect. Changed facts under the same key fail with `Reply idempotency conflict`. |
+| Lifecycle | Transaction-current `converted` status is preserved while reply/suppression truth still updates. Interested-reply revenue sync remains post-commit best effort and its claim status is updated when confirmed. |
+| Evidence | The 2,589-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass. E2E races complaint capture, proves one incident/message, rejects changed-key reuse, and preserves converted status after a later reply. |
+
+## Outcome Route Token Admission - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Current authority | Route-token creation reads the MenuList bridge pause, target suppression/current conversation pointer, source-policy status/retention/use authority, and interested-conversation qualification inside one Firestore transaction. |
+| Atomic settlement | The active token, audit event, and cost entry commit in that transaction; an authority change forces Firestore retry and fail-closed reevaluation. |
+| Evidence | The 2,593-check verifier, exact TypeScript, scoped lint, and local Firestore E2E pass. E2E proves a suppressed target receives no token, then restores the fixture and confirms valid issuance. The first broad E2E attempt hit the known nondeterministic direct-AI convergence assertion; one unchanged retry passed. |
+
+## Outcome Event Idempotency - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | API and server require one bounded operation key for every outcome type, not only verified two-surface activation. |
+| Reachable retry | The owner workspace retains one UUID while target and normalized outcome facts remain unchanged after failure, and clears it only after confirmed success. |
+| Atomic effects | The existing transaction claim now covers every outcome event, summary increment, target and attribution projection, optional route-token use, audit, control summary, and cost entry. Exact/concurrent replay returns durable truth; changed facts conflict. |
+| Evidence | The 2,599-check verifier, exact TypeScript, scoped lint, and full local Firestore E2E pass. E2E races a non-activation route outcome, proves one owner/one replay and one summary increment, then rejects changed-outcome key reuse. |
+
+## Channel Window Admission - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Admission | Target-scoped WhatsApp, Instagram, and Messenger windows require a current target plus a bounded actor/request key. |
+| Atomic effects | Window, channel-health summary, claim, timeline, audit, and cost settle in one transaction. Exact/concurrent replay returns durable truth; changed facts conflict. |
+| Reachable retry | Desktop retains one UUID only while channel, source, status, and target remain unchanged after failure. |
+| Evidence | Exact TypeScript, scoped lint, the 2,611-check verifier, and full local Firestore E2E pass. E2E proves concurrent convergence, changed-input conflict, and nonexistent-target rejection. |
+
+## Trust Partner Metrics Settlement - July 15, 2026
+
+| Area | Verified result |
+| --- | --- |
+| Identity and coupling | Every observation requires an actor/request key; optional deliverable must exist and belong to the selected partner. |
+| Aggregation | Rows remain incremental renewal evidence. Independent owner outcomes increment the daily demand summary; exact/concurrent replay adds nothing. |
+| Evidence | Scoped lint, the 2,617-check verifier, and full local Firestore E2E pass. The prior unrelated descriptions mismatch was later resolved by its concurrent owner and exact root TypeScript passes in restart 352. |
 
 ## Manual Contact Completion And Rejection Reasons - July 11, 2026
 
@@ -26,17 +256,29 @@ The implemented flow covers the existing access, source, target, evidence, draft
 
 ## AI Volume Mode Runtime - July 11, 2026
 
+Standalone AI Assist is also paid-run idempotent: the route requires a bounded key, the server independently validates it, and an actor/request-bound Firestore claim commits before provider work. Local E2E proves two concurrent exact calls produce one model call and one run, completed replay adds no call, and changed-input reuse fails closed.
+
+Standalone and volume-child provider/multi-pass failures settle once as `unresolved` under exact claim ownership with a stable code/audit event; exact retry does not repeat the model. A final transaction acknowledgement loss probes the completed claim plus deterministic worker and returns durable success.
+
+Provider budget admission is transaction-owned at the external-effect boundary. Source-provider claims reserve estimated spend before calling the provider; standalone AI Assist claims reserve the initial Gemini call; AI Volume rechecks its complete projected envelope inside the global-lock transaction. Local E2E gives two distinct Apify requests and two distinct Gemini requests one remaining USD 0.05 slot and proves exactly one provider/model call and one spend increment. Enrichment-waterfall readiness performs no external call or spend and therefore remains a non-reserving advisory check.
+
+Provider-budget policy documents remain optional throughout AI completion. The final claim-owned transaction re-reads the policy, always records provider-account spend, and increments policy spend only when the policy exists. E2E deletes the Gemini policy before a direct assist and proves exact account spend without creating a malformed partial policy.
+
+Source-provider persistence is one post-provider batch: target/source truth, provider health, deterministic vendor row, each allowed provider-record retention row, claim completion, timeline, audit, and cost truth cannot split across commits. The E2E injects an exception after that batch commits and proves the exact completed claim is returned without a second provider request. A two-row FHRS fixture with one deduplicated business identity also proves both provider record IDs remain aligned to the same target rather than shifting or disappearing.
+
+When an external provider throws or import cannot prove a completed atomic batch, exact claim ownership transitions once to `unresolved` with a stable non-sensitive code and audit event. E2E proves exact retry is review-required, performs no second provider request, and leaves the conservative reservation intact for manual reconciliation.
+
 | Area | Verified result |
 | --- | --- |
 | Founder envelope | Only a founder-admin with `signaldesk.configure` can start a desktop batch. Each request is limited to five targets, three approved tasks, a maximum estimated cost of USD 5, and a founder-scoped idempotency key. API and server validate the limits independently. |
 | Model cascade | Score, evidence, draft, and reply-classification use `gemini-2.5-flash-lite`; an independent critic checks every child; only exceptions may escalate through the same executable Gemini adapter to `gemini-2.5-flash`. OpenAI and Anthropic remain non-executable policy records. |
 | Output integrity | Generation and critic responses are strict Zod-validated JSON. Any low confidence, non-pass critic result, or rejected fact remains review-required; a final rejected fact always forces low confidence. |
-| Cost and retry | The complete worst-case call estimate is checked against founder authority and remaining provider daily/monthly budget before the parent is written. The protected route uses batch rate limiting, has a finite 300-second window, runs no more than three children concurrently, holds one six-minute global batch lock, records all model-call estimates through the existing provider budget and AI ledgers, and returns the original parent on the same paid-request key. |
+| Cost and retry | The complete worst-case call estimate is checked against founder authority and remaining provider daily/monthly budget before the parent is written. The protected route uses batch rate limiting, has a finite 300-second window, runs no more than three children concurrently, holds one six-minute global batch lock, records all model-call estimates through the existing provider budget and AI ledgers, and returns the original parent only when the same paid-request key carries the exact founder/targets/tasks/instruction/cost fingerprint. Changed input conflicts before model use, legacy exact requests remain compatible, and ambiguous claim acknowledgement continues only for the committing worker. |
 | Failure recovery | Successful children remain reviewable when a sibling fails. Normal parent state becomes `completed`, `partial`, or `blocked`. A retry of an expired running parent reconstructs at most fifteen children from a bounded twenty-row read, restores calls/cost, writes one recovery audit/timeline, and finalizes without provider calls. Incomplete work stores only `ai_volume_run_interrupted`; lock release is conditional on ownership. |
 | Reachable retry | Desktop persists only the bounded batch request in browser-local storage, reuses the same idempotency key after request failure/page reload, locks scope edits while retrying, clears on terminal state, and exposes an explicit clear action for pre-parent failures. |
 | Evidence and UI | Parent and child summaries, critic verdict, escalation state, model-call count, cost, audit events, and run timeline are visible in the private desktop AI workspace. Mobile classifies the action as blocked provider work. |
 | Authority boundary | The mode produces internal recommendations only. It cannot infer source rights or consent, override suppression, send/export/publish, create commercial truth, approve external spend, change autonomy, or write MenuList truth. |
-| Local proof | `npm run verify:signaldesk` passes 2,302 checks; `npx tsc --noEmit --pretty false`, `npm run test:signaldesk:e2e:local`, `npm run test:signaldesk:rules`, `npm run docs:check-links`, scoped diff/whitespace/action-ID checks, and the 45-check local route/API smoke pass after stale recovery implementation. Static/UI contracts cover persisted payload validation, same-key retry, terminal clearing, and explicit clearing. The E2E covers partial reconstruction, blocked recovery with no children, recovery replay without duplicate audit writes, calls/cost restoration, stable interruption evidence, recovery timeline, and owned-lock release in addition to founder/non-founder, cost, critic, escalation, idempotency, partial-failure, workspace, and zero-export paths. |
+| Local proof | The current SignalDesk source verifier passes 2,473 checks; exact root TypeScript, scoped lint, and `npm run test:signaldesk:e2e:local` pass. Static/UI contracts cover persisted payload validation, same-key retry, terminal clearing, and explicit clearing. The E2E covers exact replay, changed-input conflict, concurrent same-key single paid execution, partial reconstruction, blocked recovery with no children, recovery replay without duplicate audit writes, calls/cost restoration, stable interruption evidence, recovery timeline, and owned-lock release in addition to founder/non-founder, cost, critic, escalation, partial-failure, workspace, and zero-export paths. |
 
 ## AI Shadow Review Runtime - July 11, 2026
 
@@ -264,7 +506,7 @@ SignalDesk now includes an Origami-style prompt-to-table workflow inside the pri
 | Types | `src/types/signaldesk/index.ts` adds `SignalDeskResearchRunSummary`, `SignalDeskResearchTableRowSummary`, and `SignalDeskResearchProviderId`. |
 | Collections | `src/constants/signaldesk/database.ts` adds `signaldeskResearchRuns` and `signaldeskResearchTableRows`; Firestore rules keep them internal-read/server-write only. |
 | API | `src/app/api/signaldesk/actions/route.ts` adds protected `create-research-agent-run` validation, permission mapping, mobile read-only classification, and safe errors. |
-| Workflow | `src/lib/signaldesk/workflowServer.ts` adds `createSignalDeskResearchAgentRunServer`, deterministic prompt parsing, provider policy resolution, optional idempotency, source-provider execution, row scoring, source transparency, and market-pod update. |
+| Workflow | `src/lib/signaldesk/workflowServer.ts` adds `createSignalDeskResearchAgentRunServer`, deterministic prompt parsing, provider policy resolution, required bounded idempotency, source-provider execution, row scoring, source transparency, and market-pod update. |
 | UI | `src/components/signaldesk/SignalDeskWorkspace.tsx` adds Dashboard `Market Search`, Bengaluru prompt presets with a 25-row first-trial default and 30-row hard cap, Dashboard/Mission `Today's Lead Batch`, and the Mission `Research Agent Table`, with prompt, provider, research type, latest run summary, structured evidence/contact/share/next cards, failed-row exclusion from the daily batch, contact path, share message, and next action. |
 | Verification | `scripts/verification/verify-signaldesk-runtime.js` checks flag/action/type/collection/UI/rules/index contracts; `scripts/verification/e2e-signaldesk-local.js` mocks FHRS/FHIS, creates a research table, verifies idempotency, row source refs, market-pod update, and no source-only contact identities. |
 | Documentation | `__docs__/menulist-signaldesk/signaldesk-operating-layer/signaldesk-operating-layer_research-agent-table.md` records the workflow, row contract, boundaries, and verification. |
@@ -484,7 +726,7 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 | Overview API | `src/app/api/signaldesk/overview/route.ts:14` through `src/app/api/signaldesk/overview/route.ts:35` protect the route, rate-limit it, and return no-store overview data. |
 | Kill switch API | `src/app/api/signaldesk/kill-switches/route.ts:18` through `src/app/api/signaldesk/kill-switches/route.ts:31` validate input, and `src/app/api/signaldesk/kill-switches/route.ts:33` through `src/app/api/signaldesk/kill-switches/route.ts:73` protect, permission-check, rate-limit, and execute the update. |
 | Summary-first server read | `src/lib/signaldesk/server.ts:193` through `src/lib/signaldesk/server.ts:247` read control-room, queue, cost, kill-switch, and incident summaries only. |
-| Kill-switch write path | `src/lib/signaldesk/server.ts:254` through `src/lib/signaldesk/server.ts:315` writes the kill switch, audit event, and control-room summary in bounded operations. |
+| Kill-switch write path | `setSignalDeskKillSwitchServer()` transactionally writes the strict scope document, one audit event, and one actor/request-bound idempotency claim. It does not rewrite provider-derived control-room channel health. |
 | Workspace API | `src/app/api/signaldesk/workspace/route.ts` protects section-specific bounded reads behind `withAuth()`, permission checks, and `DATA_READ` rate limits. |
 | Action API | `src/app/api/signaldesk/actions/route.ts` validates every workflow action with Zod, gates each action by permission, and applies write/AI rate limits. |
 | Workflow service | `src/lib/signaldesk/workflowServer.ts` implements source policies, target import, dedupe, scoring, evidence, drafts, approvals, exports, replies, outcomes, demand signals, summaries, and audit writes. |
@@ -607,8 +849,8 @@ This audit treated MenuList as the operator's own product and SignalDesk as the 
 - No real source import ran during local verification.
 - No real Apify run was executed during local verification.
 - No persistent or real target/contact/message/suppression data was created; deterministic E2E fixtures existed only inside the local Firestore emulator and were discarded at shutdown.
-- No provider send was enabled or executed.
-- Owned email sequencer queue was implemented, but no owned email was sent because provider send remains disabled.
+- No real or external provider send was enabled or executed. Local E2E temporarily enables the runtime flag only while replacing the provider adapter with an in-process mock.
+- Owned email sequencer delivery is exercised only against that local mock; no owned email left the emulator/test process and the tracked provider-send default remains disabled.
 - No paid provider account was purchased, connected, or configured.
 - No new AI model provider beyond the existing gated Gemini assist path was implemented; OpenAI/Anthropic routes are held as policy records only.
 - No external sequencer API was connected or called; Smartlead/Instantly/lemlist remain optional blocked/ready handoff records behind the owned email rail.
@@ -690,7 +932,7 @@ The prior static verifier passed while several cross-object lifecycle defects re
 | Client isolation | SignalDesk now uses the lightweight NextAuth provider already used by a separate protected product shell. The MenuList store/tenant/subscription Firebase bootstrap no longer enters an authenticated SignalDesk client bundle. |
 | Internal auth gateway | `/signaldesk/signin` and the `/sd/signin` alias render a noindex, Ant Design credentials screen under lightweight product-local providers. Callback paths are limited to `/signaldesk` or `/sd`, and the protected layout still rechecks active SignalDesk access after authentication. |
 
-No provider-send flag was enabled, no external provider was called, no public SignalDesk route was added, and no MenuList runtime or truth collection was changed.
+No tracked/default provider-send flag was enabled and no external provider was called. The local E2E temporarily enables the mutable test flag only with a mocked adapter; no public SignalDesk route was added and no MenuList runtime or truth collection was changed.
 
 ### Final local verification evidence
 
@@ -731,3 +973,184 @@ Build order:
 6. build the MenuList-side Activation Concierge only after the SignalDesk route-to-outcome bridge has a clean smoke and the owner approves the feature boundary;
 7. choose a narrow provider eval set only after one pod exposes a real source/contact-quality bottleneck;
 8. keep provider send, paid campaign automation, auto-publish, public SignalDesk pages, cold WhatsApp, cold Meta DMs, Reddit/X auto-replies, LinkedIn automation, and Firebase deploy deferred until the owner explicitly asks for them and the related policy gates are satisfied.
+
+## Exact Evidence And Approval Packet Validation - July 15, 2026
+
+| Contract | Verification |
+| --- | --- |
+| Current-menu evidence | New evidence packets store `current-menu-presence-v1`, observed format, source refs, contradiction state, two-surface feasibility, and explicit `unverified` owner-control and mobile-access states. |
+| Rejected facts | Packets explicitly reject unverified owner control, mobile accessibility, customer-loss, sales-impact, ranking, and platform-partnership claims. |
+| Allowed route | Packet preparation derives the route from current source rights, suppression, and ready contactability. Evidence-only targets remain `none` and `hold`. |
+| Exact action | Approval packets snapshot evidence, policy state and expiry, sender, CTA, subject and body, expected outcome, unsupported claims, and risk, then bind them with a SHA-256 fingerprint. |
+| Mutation safety | Approval recomputes the packet from transaction-current records. A changed action fingerprint, missing diagnostic, unsupported claim, or unavailable route blocks approval without changing the pending approval state. |
+| Founder UI | Approval is disabled unless the associated packet recommends `approve` and exposes a non-`none` route. The packet view shows evidence, diagnosis, route, exact message, expected outcome, rejected facts, unsupported claims, and fingerprint. |
+
+The existing Bengaluru candidate board remains evidence-only by default. This change does not grant contact permission, enable sending, or authorize a real outreach trial.
+
+### July 15 Local Proof
+
+| Check | Result |
+| --- | --- |
+| `npm run verify:signaldesk` | PASS - 2,706 SignalDesk runtime and boundary assertions. |
+| `npm run test:signaldesk:e2e:local` | PASS - full deterministic workflow, including current-menu diagnostic, exact-action mutation rejection, evidence-only approval hold, activation outcomes, safety negatives, and no MenuList truth writes. |
+| `npm run test:signaldesk:rules` | PASS - Firestore and Storage semantic access tests. Expected denied client operations remained denied. |
+| `SIGNALDESK_SMOKE_BASE_URL=http://localhost:3000 SIGNALDESK_SMOKE_ALLOW_RATE_LIMIT_UNAVAILABLE=1 node scripts/verification/smoke-signaldesk-routes.js` | PASS - 75 private route, alias, auth, API, and fail-closed local rate-limiter checks. The first cold request exceeded the 15-second compile timeout; the warmed route set passed. |
+| `npx next lint --file ...` for the five changed SignalDesk runtime/test files | PASS - no warnings or errors. |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS. |
+| `npm run docs:check-links -- --root __docs__/menulist-signaldesk` | PASS - 0 broken links. The checker also reported 21 pre-existing naming warnings under unrelated `__docs__/videos/` paths; those files were not changed. |
+| `git diff --check` | PASS on the full current worktree. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` | PASS - emulator configuration/startup only; no deployment. |
+
+No real contact, export, send, paid API call, Firebase deploy, Vercel deploy, public SignalDesk route, or MenuList runtime change occurred.
+
+## Published-Authority And Proof-Expiry Validation - July 15, 2026
+
+| Validation | Result |
+| --- | --- |
+| Functions compilation | PASS - `npm --prefix functions-signaldesk run build`. |
+| Focused lifecycle emulator | PASS - isolated Firestore port `8181`; overlap/lease, crash resume, pId starvation and transaction-current foreign no-effect behavior, poison/diagnostic-collision continuation, strict dependency/marker contracts, deterministic incidents, monotonic publication evidence, retry/backoff/reopen, renewed-grant reset, scheduler activity, and prior-completion preservation. |
+| Focused app authority emulator | PASS - `SIGNALDESK_E2E_FOCUS=authority`; published marker/draft/calendar preservation, exact incident/control counts, idempotent replay, later-token reopen, control/incident collision recovery, scheduler-token ownership, and direct CTA legacy links. |
+| Functions scoped lint | PASS - lifecycle, scheduler, and focused test files. |
+| App/static scoped lint | PASS - workflow server, SignalDesk E2E, and runtime verifier files. |
+| TypeScript | PASS - exact root `npx tsc --noEmit --incremental false` and SignalDesk Functions build at the recorded source checkpoint; rerun in final aggregate validation after concurrent work settles. |
+| Temporary infrastructure | Both port-`8181` test configs were created and removed with `apply_patch`; no emulator remains from this validation. |
+
+Operational verdict: source-level authority reduction and natural proof expiry now preserve published truth, fail visibly on malformed/cross-product/colliding state, resume after interruption, and converge under duplicate/retry cycles. Production effect is not claimed: the updated Functions and three proof-permission indexes were not deployed.
+
+## Final Aggregate Local Runtime Revalidation - July 15, 2026
+
+### Corrections Proven In This Pass
+
+| Area | Current contract |
+| --- | --- |
+| Sender defaults | Default seeding creates no invalid `pending` sender authority. Exact legacy sentinels remain non-executable and are filtered from workspace DTOs. |
+| Replay authority | CTA, sender, target, source-policy, approval, export, handoff, and sequencer retries are bound to exact transaction-current authority; changed reuse fails closed. |
+| AI admission | Direct paid AI assist uses one deterministic claim, bounded concurrent completion polling, and exact-claim ambiguous-admission recovery; duplicate provider work is not admitted. |
+| Proof/content lifecycle | Revoked or held authority cannot reopen terminal drafts. Published assets retain durable distributed truth, receive one review incident on authority removal, and require explicit restoration that resolves the incident exactly once. |
+| Founder priority | Complaint/privacy/legal replies still suppress and pause immediately, and now transactionally prepend a critical action to an existing unreviewed daily mission without rewriting reviewed mission history. |
+| Secret scan | Firestore-wide inspection still blocks raw payloads and credential-bearing keys. Only an exact allowlist of deterministic reconciliation/lifecycle coordination identifiers is non-secret. |
+| Product boundary | Full E2E confirms no write to MenuList `stores`, `menus`, `projects`, or `billing`; no external provider or send adapter is invoked. |
+
+### Exact Final Commands
+
+| Command | Result |
+| --- | --- |
+| `npm run verify:signaldesk` | PASS - `SignalDesk runtime verifier passed (3266 checks)`. |
+| `npm run test:signaldesk:e2e:local` | PASS - complete authenticated Firestore-emulator workflow finished with `SignalDesk local E2E passed`; expected malformed-row diagnostics remained bounded. |
+| `npm run test:signaldesk:rules` | PASS - Firestore and Storage semantic verifier passed; expected denied client operations remained denied. |
+| `SIGNALDESK_SMOKE_ALLOW_RATE_LIMIT_UNAVAILABLE=1 node scripts/verification/smoke-signaldesk-routes.js` against warmed `npm run dev -- --port 3000` | PASS - 75 private route, alias, auth, API, webhook/outcome fail-closed, and noindex checks. The first cold request compiled `/signaldesk` for 17.3 seconds and exceeded the smoke timeout. Without the explicit local allowance, the unavailable Upstash limiter safely returned HTTP 503 before webhook signature evaluation. |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS - no diagnostics. |
+| `git diff --check` | PASS - no whitespace errors in the current worktree. |
+| `firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "true"` | PASS - Firestore emulator configuration/startup only; no deployment. |
+
+### Readiness
+
+**Safe for a local desktop controlled trial and a local mobile observe-only trial.** The authenticated first-build loop and mandatory negatives are code-proven locally. This is not production or real-outreach clearance: SignalDesk QA Firebase access/deployment approval, a permissioned introduction/source list, and real owner activation evidence remain external blockers. Email additionally requires approved sender identity, physical-address policy, SPF/DKIM, DMARC before scale, unsubscribe, bounce/complaint processing, and separate legal/provider review.
+
+No Firebase or Vercel deploy, real contact, export delivery, provider send, paid API call, content publication, partner payment, or MenuList runtime change occurred in this pass.
+
+## Transactional Default-Seed Convergence - July 15, 2026
+
+### Closed Contracts
+
+| Area | Current behavior |
+| --- | --- |
+| Registry cardinality | Foundation seeding asserts 53 unique business defaults: 18 provider account/use identities, 17 deduplicated provider budgets, and 18 other policy/template/route/pod/segment/Offer/playbook/waterfall/trust-budget rows. The current preview CTA is the 54th foundation read. |
+| Create-only preservation | Missing defaults use transaction `create`. Existing rows must pass product and shape validation and are then preserved, including spend, caps, status, disable reason, creation time, update time, and owner. Wrong-product or malformed collisions fail closed. |
+| Conditional effects | A clean foundation replay writes zero business rows, zero seed audits, zero timelines, and zero daily-cost increments. One missing or exact-legacy row produces that one business write plus one seed audit, one deterministic timeline write, and one daily-cost merge; a concurrent loser retries against current truth and produces no effect. |
+| Legacy migration | Only exact historical score/evidence routes, the unapproved Mumbai first pod, and the active current-list Offer CTA migrate. Extra keys or founder markers make the row a near-match and preserve it. All migrations preserve `createdAt`. |
+| Sender authority | `provider_owned-email_sender` exists as disabled, credential-missing, unapproved, and zero-budget. No invalid `sender_domain_pending_v1` authority is created. The shared owned-email provider budget is conservatively held when first created because sender and sequencer admission are combined. |
+| Source authority | Default content source is create-only, is not created during a distribution pause, strictly validates existing product/provenance, and can activate only from a strictly projected transaction-current active, founder-approved pod. |
+| CTA identity | Ambiguous dual CTA truth remains held with `identityMigrationState: operator-review-required`. Seed replay does not clear it. Explicit current CTA resolution alone records `identityMigrationState: migrated`, resolver, and resolution timestamp. |
+
+### Local Evidence
+
+| Command | Result |
+| --- | --- |
+| `SIGNALDESK_E2E_FOCUS=seed firebase emulators:exec --only firestore --project demo-signaldesk --config firebase-signaldesk.json "node scripts/verification/e2e-signaldesk-local.js"` | PASS - exact registry counts, concurrent one-row convergence, clean replay, operational-row preservation, wrong-product/malformed collisions, exact/near legacy cases, strict source/pod authority, and explicit CTA marker closure. No deployment. |
+| `npm run verify:signaldesk` | PASS - `SignalDesk runtime verifier passed (3299 checks)`. |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS - no diagnostics. |
+| Scoped ESLint over workflow, action route, shared type, E2E, and verifier files | PASS - no warnings or errors. |
+| Scoped `git diff --check` over runtime, tests, verifier, and seed documentation | PASS - no whitespace errors. |
+| `npm run docs:check-links -- --root __docs__/menulist-signaldesk` | PASS - 0 broken links; 27 pre-existing naming warnings are under unrelated video asset paths. |
+
+The complete SignalDesk E2E remains the aggregate audit rail; this checkpoint intentionally ran the focused seed mode against an empty isolated emulator lifecycle. No Firebase/Vercel deploy, provider call, contact, send, publication, or MenuList truth write occurred.
+
+## Source Authority, Transactional Import, And Runtime Shape Closure - July 15, 2026
+
+### Closed Contracts
+
+| Area | Current behavior |
+| --- | --- |
+| Source authority | Persisted source-policy reads use one strict six-rights contract with explicit channel, provider, refresh, and expiry semantics. Malformed or semantically incoherent policies fail closed. Research requires an explicit policy ID; manual import cannot assert trusted provider lineage. |
+| Transactional import | Target, detail, identity, contact-identity, source-candidate, suppression, run, audit, and timeline effects converge in one read-before-write transaction. Exact actor-bound retries replay; changed reuse conflicts; mature target state is preserved. |
+| Runtime projection | Target, target-detail, score, source-policy, research, identity-index, contact-identity, and source-candidate readers validate product, document identity, timestamps, score ranges, provider lineage, and public DTO shape. Unknown persisted keys are not projected. |
+| Provider normalization | Provider identities are stable and versioned. Maps profile URLs do not become business websites; current-list truth comes only from explicit menu fields; malformed optional fields are dropped independently; identity-bearing fields are not truncated. |
+| Lifecycle timestamps | Qualification and activation timestamps remain Firestore timestamps in persistence and ISO strings only at the DTO boundary. Reply capture preserves the raw stored timestamp type. |
+| Latest-list safety | Strict list readers scan bounded `updatedAt desc` pages and fail with a diagnostic if the valid result cannot be established within the cap, preventing an old invalid page from starving current valid rows. |
+| CSV handling | Manual CSV parsing uses a quoted-field state machine, validates headers and row shape, and keeps a stable retry key across an ambiguous retry. |
+
+### Local Evidence
+
+| Command or rail | Result |
+| --- | --- |
+| Focused `happy-path`, `source-negatives`, `fhrs-fhis`, `manual-contact`, `limited-route`, and `webhook-dnc` Firestore-emulator modes | PASS - strict source/import behavior, provider normalization, manual/provider separation, outcome timestamp round-trip, reply visibility, private-field filtering, DTO replay parity, and bounded latest-scan behavior were exercised independently. |
+| Full isolated E2E | PASS on July 15, 2026 - `npm run test:signaldesk:e2e:local` completed with `SignalDesk local E2E passed`. The prior port-`8182` emulator interruption is superseded by this complete aggregate run. The strict-projection secret sentinel is removed at its fixture boundary and checked after every subsequent E2E stage. |
+| `npm run verify:signaldesk` | PASS - `SignalDesk runtime verifier passed (3469 checks)`. |
+| `npx next lint --file src/lib/signaldesk/sourcePolicyContracts.ts --file src/lib/signaldesk/targetContracts.ts --file src/lib/signaldesk/csvImport.ts --file src/types/signaldesk/index.ts --file src/lib/signaldesk/workflowServer.ts --file src/lib/signaldesk/sourceProviders.ts --file src/app/api/signaldesk/actions/route.ts --file src/components/signaldesk/SignalDeskWorkspace.tsx` | PASS - no warnings or errors. |
+| `npx eslint scripts/verification/e2e-signaldesk-local.js scripts/verification/smoke-signaldesk-workflow.js scripts/verification/verify-signaldesk-runtime.js` | PASS - no warnings or errors. |
+| `npx tsc --noEmit --incremental false --pretty false` | PASS on the current integrated worktree - no diagnostics. |
+| `npm run docs:check-links -- --root __docs__/menulist-signaldesk` | PASS at the documentation checkpoint - 0 broken links; 27 naming warnings remained under unrelated video-asset paths. |
+| Scoped `git diff --check` over this patch's runtime, tests, verifier, and audit documentation | PASS - no whitespace errors. |
+
+The temporary port-`8182` emulator configuration was removed. A product-local SignalDesk source-data lifecycle Functions compile defect was corrected after this section's original checkpoint; no Firebase deployment applied. No Vercel deploy, real provider call, contact, send, export delivery, publication, paid API call, or MenuList truth write occurred.
+
+One adjacent persistence risk remains explicitly outside this patch: the control-room, queue, and daily-cost summary helpers now write their product/identity fields, but their blind merge behavior still requires the accounting/control-room integration pass to prove transaction-current wrong-product collision handling. `AUDIT-SD-DAILY-COST-SHAPE-001` remains open for that owner.
+
+## Current-Worktree Cross-Check - July 15, 2026
+
+| Gate | Current result |
+| --- | --- |
+| Runtime verifier | PASS - `npm run verify:signaldesk` completed with 3,521 assertions. |
+| Authenticated aggregate E2E | PASS - the exact `npm run test:signaldesk:e2e:local` command completed the authenticated local workflow and mandatory negatives. A clean rerun was required after an orphaned pre-checkpoint emulator occupied the test ports; the clean isolated aggregate finished with `SignalDesk local E2E passed`. |
+| First-build workflow smoke | PASS - import through export-only handoff, reply, two-surface outcome, summaries, audits, and MenuList-truth non-mutation. |
+| Semantic Firebase rules | PASS - Firestore and Storage rules-unit verification completed; expected client denials remained denied. |
+| Private route/API smoke | PASS - 75 warmed-server checks, including `/signaldesk`, `/sd` aliases, public-host 404, noindex, auth denial, and safe local rate-limiter unavailability. The first cold `/signaldesk` request compiled for 16.5 seconds and exceeded the script's 15-second timeout; the required warmed rerun passed. |
+| SignalDesk Functions | PASS - `npx tsc -p functions-signaldesk/tsconfig.json --noEmit --pretty false` completed without diagnostics. |
+| Client response contracts | PASS - strict workspace/server and workspace/client projection suites passed, including all 43 generic workspace collections. |
+| Focused contracts | PASS - focused AI volume/provider accounting and happy-path emulator modes passed after the aggregate issues were isolated. |
+| Root TypeScript, lint, dependency freeze, and diff hygiene | PASS - root TypeScript, scoped SignalDesk ESLint, dependency freeze, and repository-wide `git diff --check` completed without errors. |
+| Emulator configuration | PASS - Firestore emulator startup/configuration command completed; no deployment. |
+
+Current verdict: safe for a local desktop controlled trial and local mobile observe-only trial. It is not cleared for production deployment or real outreach. QA Firebase access/deployment approval, permissioned source/contact authority, real owner activation evidence, and sender/legal/provider readiness remain external gates. Provider sending stays disabled.
+
+The current-source cross-check closed additional SignalDesk-local contract defects without weakening a gate: persisted Firestore timestamps now project correctly; paused/expired operating envelopes retain coherent founder-approval history; zero-value revenue summaries may retain their established pipeline currency; every revenue-control summary mutation preserves `SD` product and document identity; manual imports preserve source lifecycle authority; AI finalization recovers a committed lost acknowledgement; and deterministic test scripts ignore stale host application-default credentials. The aggregate E2E now asserts revenue-summary projection directly, uses strict budget upserts for AI fixtures, preserves route-token idempotency, and verifies no raw secrets, provider payloads, or MenuList truth writes. No temporary emulator configuration remains.
+
+## Excluded-Scope Recheck - July 17, 2026
+
+SignalDesk was rechecked as its own internal product boundary rather than being
+treated as a MenuList feature. The static runtime verifier completed 3,534
+assertions, the dedicated Functions TypeScript build passed, environment/project
+separation passed, and the accounting, action-client, provider-adapter, workspace
+client, and workspace contract suites passed.
+
+The complete sequential Firestore-emulator rail also passed: semantic Firestore
+and Storage rules, access, fresh lineage, authenticated local E2E,
+proof-permission lifecycle, and source-data lifecycle.
+
+The workspace fixture was brought back into parity with the strict runtime
+contract by supplying `accountingMonth` and `populationTruncated`; production
+runtime behavior did not change. Project-boundary verification must ignore a
+stale host `GOOGLE_APPLICATION_CREDENTIALS` value so it tests SignalDesk's
+declared target rather than an unrelated local ADC file.
+
+The shared auth/security matrix now enforces the same product boundary:
+SignalDesk app-server Admin initialization must use its explicit product-scoped
+env/file credentials or emulator identity and must not gain a generic local ADC
+fallback. Answerlattice and CampaignCue retain their separately documented
+bounded local ADC diagnostics.
+
+No provider send, real contact, publication, spend, Firebase deploy, Vercel
+deploy, or MenuList truth mutation occurred. Production activation remains
+blocked on the already-recorded QA IAM, permissioned-source, sender, legal,
+provider, and owner-controlled evidence.

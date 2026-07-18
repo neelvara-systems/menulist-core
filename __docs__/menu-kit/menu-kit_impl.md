@@ -1,8 +1,8 @@
 # Menu Kit — Implementation Blueprint
 
-**Version:** 1.5
+**Version:** 1.6
 **Status:** ✅ IMPLEMENTED — All code complete, feature flags ON
-**Last Updated:** June 30, 2026 — Share-message copy acknowledgement and premium branded output tokens plus four-module QR quiet-zone hardening
+**Last Updated:** July 16, 2026 — Native file-share cancellation and failure acknowledgement
 **Companion:** `menu-kit_spec.md` (business requirements)
 
 ---
@@ -52,6 +52,8 @@ src/lib/menu-kit/
 │   └── placementGuideTemplate.ts  # 1080×1080 guide image
 └── types.ts                        # MenuKit types, UTM helpers, print instructions, surface constants
 ```
+
+`src/lib/export/browserFileShare.ts` is the shared native file-delivery boundary used by Menu Kit and Menu Card Export. It returns `shared`, `unsupported`, or `cancelled`; unsupported file sharing falls back to download, cancellation stays quiet, and a real share failure is surfaced instead of being mislabeled as a successful download.
 
 ```
 src/lib/print-menu-surfaces/

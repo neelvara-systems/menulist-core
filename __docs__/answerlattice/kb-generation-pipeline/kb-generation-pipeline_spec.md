@@ -139,15 +139,15 @@ Active jobs use Firestore `onSnapshot` listener via `useIngestionJobsListener` h
 
 ---
 
-## 6. Job Deletion (Recoverable Cleanup)
+## 6. Job Deletion (Shared-Reference-Safe Retention)
 
 When a job is deleted (`deleteIngestionJob()`):
 
 1. The caller must be a platform administrator and the job must be `needs_review`, `failed`, or `cancelled`. Published/active jobs and embedding-failed jobs are refused.
 2. The job, every related article query, and every compatibility read are checked against exact positive-integer `pId`/`tId`/`sId` scope. Coercible or malformed legacy scope does not match.
 3. A transaction rechecks job status and `modifiedOn`, refuses active deletion ownership, deletes only unpublished/inactive article drafts, and writes a bounded `deletionRun` lease to the retained job.
-4. Firebase Storage source deletion runs after the lease is owned. Both thrown failures and fulfilled `{ success: false }` results count as failures.
-5. If any source cleanup fails, the retained job records `deletionRun.status = failed` and remains available for an explicit delete retry. If all cleanup succeeds, a final transaction proves the same deletion-run ownership before deleting the job.
+4. Persisted source objects are retained because a second job may legally reference another valid path inside the same workspace. A bounded diagnostic records the deferred lifecycle without logging paths or URLs.
+5. A final transaction proves the same deletion-run ownership before deleting the job. Immediate Storage cleanup remains limited to attempt-owned uploads that fail before any job persistence attempt.
 
 Published jobs and any job with a published/active article remain durable so `jobId` provenance cannot be orphaned. Category documents are not deleted by this DAL path; article publication owns category placement.
 
@@ -160,7 +160,7 @@ Published jobs and any job with a published/active article remain durable so `jo
 | 1   | Deprecated `getIngestionJobs()` compatibility helper could read globally                              | ✅ RESOLVED — non-platform reads are tenant/store scoped; platform admins keep the administrative list path. |
 | 2   | No retry mechanism for failed jobs                                                                     | ✅ RESOLVED — `retryJob()` DAL + UI button implemented                              |
 | 3   | No job timeout (stuck in processing forever)                                                           | ✅ RESOLVED — Watchdog in hourly scheduler auto-fails after 30 min                  |
-| 4   | Source files not cleaned up on job failure or cancellation                                             | By design — preserves files for retry, audit, and review. Explicit delete is restricted to unpublished safe states and retains a retryable job record if Storage cleanup fails. |
+| 4   | Source files not cleaned up on job failure, cancellation, or deletion                                | By design — preserves files for retry, audit, review, and other jobs that may share the path. Reclamation requires a bounded workspace-wide non-reference inventory. |
 | 5   | No progress granularity during processing stage                                                        | Status is binary (processing or not)                                                |
 | 6   | Dev/prod behavior difference: dev manually triggers CF, prod uses Firestore trigger                    | By design — documented in code                                                      |
 | 7   | Failed or stale embedding tasks could previously satisfy a counter-only finalizer                       | ✅ RESOLVED — durable pending/completed/failed ID sets, exact run identity, and set-based finalization prevent incomplete publication. |

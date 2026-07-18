@@ -1,31 +1,31 @@
 # Special Menu Switching — Validation Report
 
-**Status:** ✅ IMPLEMENTED  
-**Validated:** February 20, 2026  
+**Status:** ✅ LOCAL SOURCE COMPLETE — Firebase deployment and deployed QA smoke remain pending
+**Validated:** July 16, 2026
 **Feature Flag:** `ENABLE_SPECIAL_MENU_SWITCHING: true` in frontend and Functions
 
 ---
 
 ## Engineering Checklist
 
-| #     | Spec Requirement                                   | Implementation                                                                      | File:Line                                                               | Status |
+| #     | Spec Requirement                                   | Implementation                                                                      | Evidence                                                                | Status |
 | ----- | -------------------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ------ |
-| FR-01 | Create special menu (duplicate from base + edit)   | DAL `createSpecialMenuProject()` clones base + attaches `_specialMenu` metadata     | `src/database/projects/index.ts:1276`                                   | ✅     |
-| FR-02 | Schedule activation date/time                      | `startsAt` ISO 8601 field on `_specialMenu`                                         | `src/components/templates/main-app/projects/types/project.types.ts:249` | ✅     |
-| FR-03 | Schedule deactivation date/time (auto-revert)      | `endsAt` ISO 8601 + nightly scheduler deactivation                                  | `functions/src/decisionBlocksScoring.ts:871-904`                        | ✅     |
-| FR-04 | Replace mode (full menu swap)                      | `resolveSpecialMenuOverride` returns special project for `mode=replace`             | `src/app/_client/[[...slug]]/page.tsx:361-371`                          | ✅     |
-| FR-05 | Overlay mode (add section to base)                 | `mergeOverlayMenu` appends special categories/items to base                         | `src/app/_client/[[...slug]]/page.tsx:399-441`                          | ✅     |
-| FR-06 | One-active constraint enforcement                  | Conflict check in DAL `createSpecialMenuProject()` (date overlap detection)         | `src/database/projects/index.ts:1312-1326`                              | ✅     |
+| FR-01 | Create special menu (clone base + edit)       | Transactional DAL clones replace menus or creates an empty-row overlay project with shared editor context | `src/database/projects/index.ts` | ✅ |
+| FR-02 | Schedule activation date/time                 | Validated ISO `startsAt` on project metadata and compact summary | project types + DAL | ✅ |
+| FR-03 | Schedule deactivation date/time (auto-revert) | Indexed two-minute due task; nightly path repairs missing markers and missed transitions | `functions/src/schedulers/menulistMaintenanceScheduler.ts`, `functions/src/decisionBlocksScoring.ts` | ✅ |
+| FR-04 | Replace mode (full menu swap)                 | Public and configured-screen resolvers return the validated active special project | `src/app/client/[[...slug]]/page.tsx`, `src/database/campaigns/serverScreen.ts` | ✅ |
+| FR-05 | Overlay mode (add section to base)            | Shared deterministic resolver namespaces and merges only valid overlay rows | `src/lib/menu/specialMenuOverlay.ts` | ✅ |
+| FR-06 | One-active constraint enforcement             | Create/edit conflict checks plus transactional exact-project validation of a different store pointer; live contention blocks and stale pointer targets recover | client and Admin lifecycle helpers + Admin emulator | ✅ |
 | FR-07 | Feature flag `ENABLE_SPECIAL_MENU_SWITCHING`       | Added to `features.ts` (frontend) + `functions/src/constants/features.ts` (backend) | Both files                                                              | ✅     |
-| FR-08 | Auto-set temp status banner on activation          | DAL `activateSpecialMenuInternal()` sets `tempStatus.type='special_menu'`           | `src/database/projects/index.ts:1413-1420`                              | ✅     |
-| FR-09 | Business-type-aware mode availability              | `getSpecialMenuCapabilities()` maps businessType → template → modes                 | `src/config/specialMenuConfig.ts:85-89`                                 | ✅     |
-| FR-10 | MCE validation before activation                   | MCE already validates all projects on save (no special handling needed)             | Existing MCE infrastructure                                             | ✅     |
+| FR-08 | Auto-set temp status banner on activation          | Transaction helpers set an owned `tempStatus` with `sourceProjectId` | client and Admin lifecycle helpers | ✅ |
+| FR-09 | Business-type-aware mode availability              | `getSpecialMenuCapabilities()` maps current business type/category to available modes | `src/config/specialMenuConfig.ts` | ✅ |
+| FR-10 | Menu correctness before activation                 | Special projects use the normal editor/persistence guards; there is no separate scheduler-time MCE call | Existing editor and project persistence paths | ✅ |
 | FR-11 | Mobile support for management                      | `MobileSpecialMenuScreen` — create, edit metadata/schedule, translate public copy, view, end, cancel | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | ✅     |
 | FR-12 | Clear dashboard status indicator                   | `SpecialMenuCard` shows active/scheduled with status badges                         | `src/components/templates/main-app/projects/SpecialMenuCard.tsx`        | ✅     |
-| FR-13 | Cancel/delete scheduled special menu               | DAL `cancelSpecialMenu()` + UI button with confirmation                             | `src/database/projects/index.ts:1522`                                   | ✅     |
-| FR-14 | Edit scheduled (not yet active) special menu       | Owner edits in same project editor (it's a regular project)                         | Existing editor infrastructure                                          | ✅     |
-| FR-15 | Manual early deactivation ("End special menu now") | DAL `deactivateSpecialMenu()` + "End Now" button                                    | `src/database/projects/index.ts:1472`                                   | ✅     |
-| FR-16 | Cache invalidation on activation/deactivation      | `revalidateTag('menu-store-{sId}')` + `revalidateTag('client-stores')`              | All activate/deactivate paths                                           | ✅     |
+| FR-13 | Cancel scheduled; delete only after terminal state | Cancel uses lifecycle DAL; generic delete rejects active/scheduled special menus | lifecycle helper + `deleteProject()` | ✅ |
+| FR-14 | Edit scheduled special menu                       | Mobile Special Menus and alternate mobile/desktop project editors route metadata through `updateSpecialMenuProject()` | owner UI paths | ✅ |
+| FR-15 | Manual early deactivation                         | Shared lifecycle DAL + desktop/mobile End Now actions | hook/UI + lifecycle helper | ✅ |
+| FR-16 | Cache/screen invalidation after lifecycle change   | Client cache helper and Functions store revalidation run post-commit; scheduled path also requests initialized-screen touch | cache helpers | ✅ |
 
 ---
 
@@ -39,6 +39,7 @@
 | `src/components/templates/main-app/projects/CreateSpecialMenuModal.tsx` | Creation modal (name, mode, schedule)    | ~190 |
 | `src/components/templates/main-app/projects/SpecialMenuCard.tsx`        | Dashboard card with management actions   | ~220 |
 | `src/components/mobile/screens/MobileSpecialMenuScreen.tsx`             | Mobile management screen                 | ~230 |
+| `src/data/shared/specialMenuSchedule.ts`                                | Canonical next-transition calculation    | Small |
 
 ## Files Modified
 
@@ -47,9 +48,11 @@
 | `src/components/templates/main-app/projects/types/project.types.ts` | Added `SpecialMenuMetadata`, `_specialMenu` on `Project`, special menu fields on `ProjectSummaryData` | Low — additive only                                      |
 | `src/types/platform/store.ts`                                       | Added `activeSpecialMenuId` on `StoreDataType` (mode derived from project)                            | Low — additive only                                      |
 | `src/config/features.ts`                                            | `ENABLE_SPECIAL_MENU_SWITCHING: true`                                                                 | Low — guarded active runtime                             |
-| `src/app/_client/[[...slug]]/page.tsx`                              | Added `resolveSpecialMenuOverride()`, `mergeOverlayMenu()`, wired into `MenuContent`                  | Medium — new resolver step after base project resolution |
+| `src/app/client/[[...slug]]/page.tsx`                               | Resolves validated replace/overlay output through the shared overlay helper                           | Medium — resolver step after base project resolution |
 | `src/components/templates/main-app/projects/index.tsx`              | Added `SpecialMenuCard` import + render in upload view                                                | Low — additive, feature-flagged                          |
-| `functions/src/decisionBlocksScoring.ts`                            | Added special menu activation/deactivation check in nightly scheduler                                 | Medium — new task in existing scheduler                  |
+| `functions/src/schedulers/menulistMaintenanceScheduler.ts`          | Added indexed two-minute lifecycle task                                                               | Medium — new task in existing scheduler                  |
+| `functions/src/schedulers/specialMenuLifecycle.ts`                  | Admin transaction + due-marker repair                                                                 | Medium                                                   |
+| `functions/src/decisionBlocksScoring.ts`                            | Nightly marker and missed-transition recovery                                                         | Low                                                      |
 | `functions/src/constants/features.ts`                               | Added `ENABLE_SPECIAL_MENU_SWITCHING`, `ENABLE_TEMP_STATUS` flags                                     | Low — additive                                           |
 | `src/components/mobile/screens/MobileMoreScreen.tsx`                | Added `MobileSpecialMenuScreen` route + menu item                                                     | Low — additive, feature-flagged                          |
 | `__docs__/changelog.md`                                             | Added Session 4 entry                                                                                 | Low                                                      |
@@ -61,7 +64,7 @@
 
 | Bug                                                   | Impact                                                        | Fix                                                                              | File                                       |
 | ----------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
-| Special menu projects visible in normal slug matching | Customer could navigate to a raw special menu project via URL | Added `!data.isSpecialMenu` filter in `getProjectBySlugOrDefault` summary filter | `src/app/_client/[[...slug]]/page.tsx:216` |
+| Special menu projects visible in normal slug matching | Customer could navigate to a raw special menu project via URL | Normal slug matching excludes special-menu summary rows | `src/app/client/[[...slug]]/page.tsx` |
 
 ---
 
@@ -77,6 +80,8 @@
 | Graceful degradation                      | ✅     | Resolver returns base project if special menu not found or errored |
 | Base deletion guard                       | ✅     | `deleteProject` blocks if non-expired special menu references base |
 | Default project guard                     | ✅     | `updateProjectMetadata` blocks special menu from `isDefault: true` |
+| Generic lifecycle mutation guards         | ✅     | Generic deactivate/delete reject active or scheduled special menus |
+| Alternate mobile/desktop edit parity      | ✅     | Managed special metadata uses `updateSpecialMenuProject()` instead of partial `_specialMenu` writes |
 
 ---
 
@@ -87,7 +92,7 @@
 | Full feature behind feature flag                    | ✅ `ENABLE_SPECIAL_MENU_SWITCHING: true` in frontend and Functions |
 | No dependency on future features                    | ✅ Standalone, reuses existing infrastructure |
 | Can be toggled without code changes                 | ✅ Feature flag in `features.ts`              |
-| Architecture extensible (recurring schedules, etc.) | ✅ `_specialMenu` metadata is extensible      |
+| No unsupported recurring contract                   | ✅ Current metadata represents one start/end window only |
 | No new collections or indexes                       | ✅ Zero new Firestore collections             |
 
 ---
@@ -97,7 +102,7 @@
 | ID    | Invariant                       | Verified                                                        |
 | ----- | ------------------------------- | --------------------------------------------------------------- |
 | INV-1 | Base menu is NEVER modified     | ✅ Special menu is a separate project document                  |
-| INV-2 | Auto-revert guaranteed          | ✅ Nightly scheduler + resolver expiry check                    |
+| INV-2 | Auto-revert protected           | ✅ Indexed due task + nightly recovery + fail-safe public/screen expiry checks |
 | INV-3 | Owner always sees current state | ✅ Dashboard card + mobile screen show status                   |
 | INV-4 | Zero learning required          | ✅ Same editor, only new thing is schedule picker               |
 | INV-5 | One active at a time            | ✅ Overlap check in create route                                |
@@ -123,13 +128,16 @@
 | #   | Control                                                  | Status | Evidence |
 | --- | -------------------------------------------------------- | ------ | -------- |
 | L1  | Activation atomicity (Firestore transaction)             | ✅ | Browser and Admin transaction helpers plus concurrent emulator cases |
+| L1a | Stale active-pointer recovery                             | ✅ | Admin emulator proves an expired pointer target is replaced while a real concurrent active target remains blocked |
 | L2  | Public/cache and initialized-screen version refresh      | ✅ | Shared public cache invalidation and scheduled screen-version touch |
-| L3  | Hourly dispatcher with one per-store local-nightly window | ✅ | Existing consolidated scheduler; no standalone high-frequency function |
+| L3  | Precise, bounded dispatcher                            | ✅ | Existing consolidated maintenance function, two-minute indexed due query, 50-summary page limit |
 | L4  | Overlay runtime ID namespacing and legacy deduplication   | ✅ | `specialMenuOverlay.ts` plus pure projection regression |
 | L5  | Process expiries before due activations                   | ✅ | Deterministic scheduler transition ordering and Admin emulator |
 
-## FINAL STATUS: READY
+## FINAL STATUS: LOCAL SOURCE READY; DEPLOYED QA EVIDENCE PENDING
+
+The July 16, 2026 scoped QA deploy for `menulistMaintenanceScheduler` and `computeDecisionBlocksScores` passed predeploy lint/build, then stopped before upload because Cloud Resource Manager returned HTTP 403 for `menulist-qa`. No Functions runtime changed.
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026

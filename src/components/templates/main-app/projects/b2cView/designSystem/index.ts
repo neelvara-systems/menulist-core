@@ -144,7 +144,7 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         spacing: 'relaxed',
         // Visual - High contrast on light
         contrast: 'high',
-        accentColor: '#059669',
+        accentColor: '#047857',
         // Animation - Fast
         animationSpeed: 'fast',
         // Category - Minimal
@@ -193,7 +193,7 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         spacing: 'medium',
         // Visual - Medium contrast
         contrast: 'medium',
-        accentColor: '#ea580c',
+        accentColor: '#c2410c',
         // Animation - Medium
         animationSpeed: 'medium',
         // Category - Warm
@@ -334,13 +334,13 @@ export const MENU_MOODS: Record<MenuMood, MenuMoodConfig> = {
         bodyFont: '"Inter", sans-serif',
         headingColor: '#1f2937',
         bodyColor: '#4b5563',
-        priceColor: '#ef4444',
-        descriptionColor: '#6b7280',
+        priceColor: '#b91c1c',
+        descriptionColor: '#5f6775',
         // Spacing - DENSE for speed (Constitutional enforcement)
         spacing: 'tight',
         // Visual - High contrast
         contrast: 'high',
-        accentColor: '#ef4444',
+        accentColor: '#b91c1c',
         // Animation - Fast
         animationSpeed: 'fast',
         // Category - Compact (STRUCTURAL: Minimal padding)
@@ -432,11 +432,11 @@ export const MENU_LAYOUTS: Record<MenuLayout, MenuLayoutConfig> = {
 // Constitutional Mood × Layout Compatibility Matrix
 // Per Digital Menu Output Constitution Part III
 export const MOOD_LAYOUT_COMPATIBILITY: Record<MenuMood, MenuLayout[]> = {
-    [MenuMood.CLEAN]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
+    [MenuMood.CLEAN]: [MenuLayout.LIST, MenuLayout.GRID],
     [MenuMood.WARM]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
-    [MenuMood.PREMIUM]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
-    [MenuMood.BOLD]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
-    [MenuMood.FAST]: [MenuLayout.LIST, MenuLayout.CARD, MenuLayout.GRID],
+    [MenuMood.PREMIUM]: [MenuLayout.LIST, MenuLayout.CARD],
+    [MenuMood.BOLD]: [MenuLayout.CARD, MenuLayout.GRID],
+    [MenuMood.FAST]: [MenuLayout.LIST],
 };
 
 export function isLayoutCompatible(mood: MenuMood, layout: MenuLayout): boolean {
@@ -454,8 +454,8 @@ export function getDefaultLayout(mood: MenuMood): MenuLayout {
 export function normalizeMenuMood(value: unknown): MenuMood {
     if (typeof value !== 'string') return DEFAULTS.menu.mood;
 
-    const normalizedValue = value.toLowerCase();
-    if (normalizedValue in MENU_MOODS) {
+    const normalizedValue = value.trim().toLowerCase();
+    if (Object.prototype.hasOwnProperty.call(MENU_MOODS, normalizedValue)) {
         return normalizedValue as MenuMood;
     }
 
@@ -466,8 +466,11 @@ export function normalizeMenuLayout(value: unknown, mood: MenuMood): MenuLayout 
     const compatibleLayouts = getCompatibleLayouts(mood);
 
     if (typeof value === 'string') {
-        const normalizedValue = value.toLowerCase() as MenuLayout;
-        if (normalizedValue in MENU_LAYOUTS && compatibleLayouts.includes(normalizedValue)) {
+        const normalizedValue = value.trim().toLowerCase() as MenuLayout;
+        if (
+            Object.prototype.hasOwnProperty.call(MENU_LAYOUTS, normalizedValue)
+            && compatibleLayouts.includes(normalizedValue)
+        ) {
             return normalizedValue;
         }
     }
@@ -486,20 +489,23 @@ export interface ResolvedMenuDesignConfig extends Record<string, any> {
 }
 
 export function resolveMenuDesignConfig(menuConfig: Record<string, any> | null | undefined): ResolvedMenuDesignConfig {
-    const rawConfig = menuConfig || {};
-    const mood = normalizeMenuMood(menuConfig?.mood);
-    const hasLegacyTabsLayout = typeof menuConfig?.layout === 'string'
-        && menuConfig.layout.toLowerCase() === MenuLayout.TABS;
-    const layout = normalizeMenuLayout(menuConfig?.layout, mood);
+    const rawConfig = menuConfig && typeof menuConfig === 'object' && !Array.isArray(menuConfig)
+        ? menuConfig
+        : {};
+    const mood = normalizeMenuMood(rawConfig.mood);
+    const hasLegacyTabsLayout = typeof rawConfig.layout === 'string'
+        && rawConfig.layout.trim().toLowerCase() === MenuLayout.TABS;
+    const layout = normalizeMenuLayout(rawConfig.layout, mood);
 
     return {
         ...rawConfig,
+        backgroundImage: typeof rawConfig.backgroundImage === 'string' ? rawConfig.backgroundImage : undefined,
         mood,
         layout,
-        showItemPrices: rawConfig.showItemPrices ?? true,
-        showImages: rawConfig.showImages ?? true,
-        showCategoryIcons: rawConfig.showCategoryIcons ?? true,
-        showCategoryTabs: rawConfig.showCategoryTabs ?? hasLegacyTabsLayout,
+        showItemPrices: typeof rawConfig.showItemPrices === 'boolean' ? rawConfig.showItemPrices : true,
+        showImages: typeof rawConfig.showImages === 'boolean' ? rawConfig.showImages : true,
+        showCategoryIcons: typeof rawConfig.showCategoryIcons === 'boolean' ? rawConfig.showCategoryIcons : true,
+        showCategoryTabs: typeof rawConfig.showCategoryTabs === 'boolean' ? rawConfig.showCategoryTabs : hasLegacyTabsLayout,
     };
 }
 

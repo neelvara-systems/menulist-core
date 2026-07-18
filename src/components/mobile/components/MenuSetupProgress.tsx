@@ -44,7 +44,7 @@ export default function MobileMenuSetupProgress({
     );
 
     if (!FEATURE_FLAGS.ENABLE_MENU_SETUP_PROGRESS || !summary.shouldShow) return null;
-    if (hideUntilPublished && summary.phase !== 'place' && summary.phase !== 'improve') return null;
+    if (hideUntilPublished && summary.phase !== 'place') return null;
 
     const getColor = (step: MenuSetupProgressStep) => {
         if (step.status === 'done') return token.colorSuccess;

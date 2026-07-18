@@ -3,7 +3,7 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Internal
 
 ---
@@ -22,7 +22,7 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 
 ### Gate 2: Speed — ✅ PASS
 **Question:** Completes in <5 seconds on mobile?  
-**Answer:** Individual actions such as view client, confirm payment, copy link, and open payment link complete in the current mobile UI. Full account/payment handoff timing depends on the payment path and network conditions.
+**Answer:** Individual actions such as view current client state, confirm prepaid onboarding, renew manual access, add prepaid capacity, copy a link, and open a link complete in the current mobile UI. Full provider/account handoff timing depends on network and Razorpay.
 
 ### Gate 3: Touch — ✅ PASS
 **Question:** Works with thumb-only interaction?  
@@ -43,29 +43,29 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 | Reseller Home | P0 | Stats overview + "Onboard New Client" CTA |
 | Onboarding Wizard | P0 | Multi-step form (business details → plan selection → recurring online or one-time prepaid offline confirmation) |
 | My Clients List | P0 | Scrollable list with status badges |
-| Client Detail | P0 | Read-only detail with renewal and prepaid-location actions |
-| Confirm Payment | P0 | Single-action confirmation for offline payments |
+| Client Actions | P0 | Renewal and prepaid-location actions embedded in each current client card; no separate detail route |
+| Confirm Payment | P0 | Offline confirmation is the final onboarding action; the standalone API remains for legacy pending-manual records rather than a separate screen |
 | Add Prepaid Location | P0 | Record cash/UPI collection for extra manual location capacity |
 
 ### Mobile-Specific Considerations
 
 1. **Menu-source handoff** — The reseller onboarding mobile path does not upload menu files; owners add menu sources later through the normal MenuList mobile/desktop import flow.
 2. **Large touch targets** — 44px minimum for all action buttons (confirm payment, submit onboarding)
-3. **Optimistic updates** — Show "Creating store..." immediately, sync in background
-4. **Offline indicator** — If reseller has poor connectivity at client location, show clear status
-5. **Share payment link** — Native share sheet for sending Razorpay link via WhatsApp/SMS, plus dashboard copy/open actions for pending online payments if the initial link is lost. Copy/share/open failures use bounded mobile diagnostics and fixed owner-facing copy.
-6. **Billing parity** — Mobile Billing must show pending reseller-online subscriptions with Pay Now, and manual reseller-offline subscriptions as one-time prepaid access with no Razorpay pause/cancel/upgrade controls.
-7. **Manual location capacity** — Mobile reseller dashboard exposes "Add prepaid location" for active offline clients, using the same `/api/reseller/add-location-capacity` route as desktop. This is required so field resellers can collect cash/UPI and unlock paid owner outlet capacity from the client's phone after the write is acknowledged.
+3. **Payment mutation feedback** — Show an immediate loading state, but do not claim onboarding/renewal/capacity success until the bounded server acknowledgement is validated.
+4. **Share payment link** — Native share sheet for the initial Razorpay link, plus dashboard copy/open recovery. Both server and browser normalize the URL to HTTPS `rzp.io`; failures use bounded diagnostics and fixed copy.
+5. **Billing parity** — Mobile Billing shows pending reseller-online subscriptions with Pay Now, and manual reseller-offline subscriptions as one-time prepaid access with no Razorpay pause/cancel/upgrade controls.
+6. **Manual location capacity** — Active offline clients use `/api/reseller/add-location-capacity` with a retained UUID across timeout/retry.
+7. **Manual renewal** — Active or expired offline clients use `/api/reseller/renew`, select 3/6/12 months, see the exact collection amount, and clear the UUID only after store/tenant/subscription/operation acknowledgement matches.
 
 ---
 
 ## Architecture
 
 - **Shell:** Uses existing `MobileShell` when `ENABLE_MOBILE_UI` is ON
-- **DAL:** Same `src/database/reseller/index.ts` as desktop
+- **Data boundary:** Same authenticated server APIs and `src/database/reseller/server.ts`; no browser Firestore mutation DAL
 - **Hooks:** Same `useResellerDashboard.ts` as desktop
 - **Icons:** `react-icons/lu` (Lucide) only
-- **Styling:** antd-mobile + Tailwind CSS (mobile layer)
+- **Styling:** Current Tailwind-driven mobile shell/screens; no `antd-mobile` dependency
 - **Auth:** Same NextAuth session, `platformRole === 'RESELLER'` check
 - **Settings Inheritance:** Theme, language, timezone from `clientThemeConfig` Redux slice
 
@@ -73,22 +73,14 @@ The reseller dashboard is primarily a **field-sales tool**. Resellers onboard cl
 
 ## Mobile Navigation
 
-Reseller mobile shell has simplified bottom tabs:
-
-| Tab | Icon | Screen |
-|-----|------|--------|
-| Home | `LuLayoutDashboard` | Reseller dashboard stats |
-| Onboard | `LuPlus` | New client onboarding wizard |
-| Clients | `LuUsers` | Client list with search/filter |
-| Profile | `LuUser` | Reseller profile, caps, logout |
+Reseller screens stay inside `MobileShell`. Feature-flagged entries in Mobile More open the reseller dashboard and onboarding sub-screens; platform users also receive reseller management. Direct `/reseller`, `/reseller/onboard`, and `/reseller/manage` routes map back into those shell states.
 
 ---
 
 ## Localization
 
-- Inherits from desktop — same `next-intl`, same locale files
-- Primary locale: `hi-IN` (Hindi) — most resellers are in India
-- RTL support if `ar-SA` locale selected (inherited from settings)
+- Shell-level theme, locale direction, and formatting are inherited.
+- Reseller-specific operational copy is currently English and internal. Do not claim a Hindi/RTL reseller catalog until those strings move into maintained locale files.
 
 ---
 
@@ -103,15 +95,18 @@ Reseller mobile shell has simplified bottom tabs:
 
 ## June 11, 2026 Parity Notes
 
-- Mobile uses the same `/api/reseller/clients`, `/api/reseller/monthly-summary`, `/api/reseller/onboard`, and `/api/reseller/add-location-capacity` routes as desktop.
+- Mobile uses the same `/api/reseller/clients`, `/api/reseller/monthly-summary`, `/api/reseller/onboard`, `/api/reseller/renew`, and `/api/reseller/add-location-capacity` routes as desktop.
 - The shared mobile/desktop reseller dashboard hook uses `no-store`, same-origin credentials, manual redirect handling, a 64KB response cap, and bounded parse/shape diagnostics before fixed load failure copy for profile, clients, and monthly-summary reads.
 - Mobile platform reseller management sends `/api/reseller/manage` and `/api/reseller/monthly-summary` with no-store cache, same-origin credentials, and manual redirect handling, then caps response parsing at 64KB and requires valid profile-list, monthly-summary, and save acknowledgement shapes before updating the management screen.
-- Mobile onboarding sends `/api/reseller/onboard` with the same request policy, then parses acknowledgements through a 16KB cap and requires store, tenant, subscription, and status fields before returned login/link details are rendered.
+- Mobile onboarding retains an input-specific UUID, sends it to `/api/reseller/onboard`, parses through a 16KB cap, and requires the exact returned operation ID plus store, tenant, subscription, and status before clearing the UUID or rendering success.
 - Mobile platform reseller management no longer imports or compares a client-bundled platform password. It loads only for `platformRole === 'PLATFORM'` and relies on the same platform-only APIs as desktop.
 - Monthly summary profile reads are now scoped: normal resellers read only their own profile docs; platform users keep the aggregate view.
 - Pending online clients expose copy/open payment-link actions on mobile.
 - Active manual/offline clients expose "Add prepaid location" on mobile with the same bounded server route as desktop.
+- Active or expired manual clients expose renewal with 3/6/12-month selection. The 8KB response must match store, tenant, subscription, operation ID, amount, and valid-until date before success.
 - Mobile add-location sends `/api/reseller/add-location-capacity` with the same request policy, then parses acknowledgements through an 8KB cap and must include `success: true`, positive numeric `amountExpected`, the requested store id, requested tenant id, and requested location count before the collect-amount toast is shown.
+- Desktop and mobile use the shared input-specific `getResellerOperationIntentKey()` plus `getOrCreateResellerOperationId()` session-storage boundary for onboarding, renewal, and add-location. The same operation is resent after transport/parse failure and cleared only after a valid scoped result.
+- The client-list API now returns current subscription projections directly with `isPartial`; mobile displays the bounded-result notice instead of rendering each renewal/location ledger row as another client.
 - Mobile reseller management saves use the same bounded 64KB `/api/reseller/manage` response parser as desktop. Update acknowledgements must return the edited profile id before the editor closes or saved copy appears; create acknowledgements must return a non-empty profile id with `action: "created"`.
 - Mobile reseller write actions use the same `DATA_WRITE` throttled, 16KB bounded JSON API routes as desktop.
 

@@ -1,8 +1,12 @@
+import { createHash, randomUUID } from 'crypto';
+import { DB_COLLECTIONS } from '@constant/database';
 import { Currency, PlanInterval, UserType } from "../../types/razorpay";
 import { DEFAULT_PRODUCT_ID, type ProductId } from "@constant/product";
 import { getBoundedRazorpayStringContext, getRazorpayFailureLogData } from "@lib/billing/razorpayDiagnostics";
+import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from "@lib/monitoring/logger";
 import { secureError } from "@lib/security/secureLogger";
+import { Timestamp } from 'firebase-admin/firestore';
 import { razorpayClient } from "./razorpay";
 
 interface PlanInfo {
@@ -13,6 +17,12 @@ interface PlanInfo {
     planId: string; // e.g., 'pro', 'starter'
     productId?: ProductId;
 }
+
+const RAZORPAY_PLAN_PAGE_SIZE = 100;
+const RAZORPAY_PLAN_MAX_PAGES = 20;
+const RAZORPAY_PLAN_REGISTRY_LEASE_MS = 2 * 60 * 1000;
+const RAZORPAY_PLAN_REGISTRY_WAIT_ATTEMPTS = 20;
+const RAZORPAY_PLAN_REGISTRY_WAIT_MS = 250;
 
 type RazorpayPlanLogContextInput = {
     currency?: unknown;
@@ -48,6 +58,86 @@ const getRazorpayPlanLogContext = ({
     price,
 });
 
+type ProviderPlanMatch = { id: string };
+
+async function findProviderPlan(lookupKey: string, legacyLookupKey: string, productId: ProductId): Promise<ProviderPlanMatch | null> {
+    let providerSearchComplete = false;
+    for (let page = 0; page < RAZORPAY_PLAN_MAX_PAGES; page += 1) {
+        const existingPlans = await razorpayClient.plans.all({
+            count: RAZORPAY_PLAN_PAGE_SIZE,
+            skip: page * RAZORPAY_PLAN_PAGE_SIZE,
+        });
+        const foundPlan = existingPlans.items.find((plan) => (
+            plan.notes?.lookupKey === lookupKey
+            || (productId === DEFAULT_PRODUCT_ID && plan.notes?.lookupKey === legacyLookupKey)
+        ));
+        if (foundPlan) return { id: foundPlan.id };
+        if (existingPlans.items.length < RAZORPAY_PLAN_PAGE_SIZE) {
+            providerSearchComplete = true;
+            break;
+        }
+    }
+    if (!providerSearchComplete) {
+        throw new Error('Razorpay plan lookup exceeded the safe pagination boundary.');
+    }
+    return null;
+}
+
+function getProviderPlanRegistryRef(lookupKey: string) {
+    const registryId = createHash('sha256').update(lookupKey).digest('hex');
+    return firestoreAdmin.collection(DB_COLLECTIONS.BILLING_PROVIDER_PLANS).doc(registryId);
+}
+
+async function waitForProviderPlanRegistry(lookupKey: string): Promise<string | null> {
+    const registryRef = getProviderPlanRegistryRef(lookupKey);
+    for (let attempt = 0; attempt < RAZORPAY_PLAN_REGISTRY_WAIT_ATTEMPTS; attempt += 1) {
+        const snapshot = await registryRef.get();
+        const data = snapshot.data();
+        if (
+            data?.status === 'ready'
+            && data.lookupKey === lookupKey
+            && typeof data.providerPlanId === 'string'
+            && data.providerPlanId.length > 0
+        ) return data.providerPlanId;
+        await new Promise((resolve) => setTimeout(resolve, RAZORPAY_PLAN_REGISTRY_WAIT_MS));
+    }
+    return null;
+}
+
+async function completeProviderPlanRegistry(params: {
+    attemptId: string;
+    lookupKey: string;
+    productId: ProductId;
+    providerPlanId: string;
+}): Promise<string> {
+    const registryRef = getProviderPlanRegistryRef(params.lookupKey);
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(registryRef);
+        const current = snapshot.data();
+        if (
+            current?.status === 'ready'
+            && current.lookupKey === params.lookupKey
+            && typeof current.providerPlanId === 'string'
+            && current.providerPlanId.length > 0
+        ) return current.providerPlanId;
+        if (
+            current?.status !== 'processing'
+            || current.lookupKey !== params.lookupKey
+            || current.attemptId !== params.attemptId
+        ) throw new Error('Razorpay plan registry ownership changed.');
+
+        transaction.set(registryRef, {
+            attemptId: params.attemptId,
+            lookupKey: params.lookupKey,
+            productId: params.productId,
+            providerPlanId: params.providerPlanId,
+            status: 'ready',
+            updatedAt: Timestamp.now(),
+        });
+        return params.providerPlanId;
+    });
+}
+
 /**
  * Finds an existing Razorpay plan or creates a new one to avoid duplicates.
  * It uses a unique key stored in the plan's 'notes' for lookups.
@@ -71,24 +161,68 @@ export async function getOrCreateRazorpayPlan(planInfo: PlanInfo): Promise<strin
         userType,
     });
     try {
-        // 2. Search for an existing plan with this lookupKey.
-        // Razorpay API returns plans paginated, fetching a reasonable number to check.
-        const existingPlans = await razorpayClient.plans.all({ count: 100 });
-        const foundPlan = existingPlans.items.find((p) => (
-            p.notes?.lookupKey === lookupKey
-            || (productId === DEFAULT_PRODUCT_ID && p.notes?.lookupKey === legacyLookupKey)
-        ));
+        const registryRef = getProviderPlanRegistryRef(lookupKey);
+        const registrySnapshot = await registryRef.get();
+        const registry = registrySnapshot.data();
+        if (
+            registry?.status === 'ready'
+            && registry.lookupKey === lookupKey
+            && typeof registry.providerPlanId === 'string'
+            && registry.providerPlanId.length > 0
+        ) return registry.providerPlanId;
 
-        // 3. If a plan is found, return its ID.
-        if (foundPlan) {
-            logger.info('Existing Razorpay plan found', {
-                ...planLogContext,
-                ...getBoundedRazorpayStringContext('providerPlanId', foundPlan.id),
+        const attemptId = randomUUID();
+        const nowMillis = Date.now();
+        const claim = await firestoreAdmin.runTransaction(async (transaction) => {
+            const snapshot = await transaction.get(registryRef);
+            const current = snapshot.data();
+            if (
+                current?.status === 'ready'
+                && current.lookupKey === lookupKey
+                && typeof current.providerPlanId === 'string'
+                && current.providerPlanId.length > 0
+            ) return { outcome: 'ready' as const, providerPlanId: current.providerPlanId };
+
+            const leaseExpiresAt = current?.leaseExpiresAt?.toMillis?.() || 0;
+            if (current?.status === 'processing' && leaseExpiresAt > nowMillis) {
+                return { outcome: 'waiting' as const };
+            }
+
+            transaction.set(registryRef, {
+                attemptId,
+                leaseExpiresAt: Timestamp.fromMillis(nowMillis + RAZORPAY_PLAN_REGISTRY_LEASE_MS),
+                lookupKey,
+                productId,
+                status: 'processing',
+                updatedAt: Timestamp.fromMillis(nowMillis),
             });
-            return foundPlan.id;
+            return { outcome: 'acquired' as const };
+        });
+
+        if (claim.outcome === 'ready') return claim.providerPlanId;
+        if (claim.outcome === 'waiting') {
+            const providerPlanId = await waitForProviderPlanRegistry(lookupKey);
+            if (providerPlanId) return providerPlanId;
+            throw new Error('Razorpay plan creation is already in progress.');
         }
 
-        // 4. If no plan is found, create a new one.
+        // The lease owner performs a complete bounded provider search. This
+        // recovers stale/ambiguous creates and prevents concurrent duplicates.
+        const existingPlan = await findProviderPlan(lookupKey, legacyLookupKey, productId);
+        if (existingPlan) {
+            const providerPlanId = await completeProviderPlanRegistry({
+                attemptId,
+                lookupKey,
+                productId,
+                providerPlanId: existingPlan.id,
+            });
+            logger.info('Existing Razorpay plan found', {
+                ...planLogContext,
+                ...getBoundedRazorpayStringContext('providerPlanId', providerPlanId),
+            });
+            return providerPlanId;
+        }
+
         logger.info('Creating new Razorpay plan', planLogContext);
 
         const planPayload = {
@@ -106,13 +240,26 @@ export async function getOrCreateRazorpayPlan(planInfo: PlanInfo): Promise<strin
             },
         };
 
-        const newPlan = await razorpayClient.plans.create(planPayload);
+        let newPlan: ProviderPlanMatch;
+        try {
+            newPlan = await razorpayClient.plans.create(planPayload);
+        } catch (createError) {
+            const recoveredPlan = await findProviderPlan(lookupKey, legacyLookupKey, productId);
+            if (!recoveredPlan) throw createError;
+            newPlan = recoveredPlan;
+        }
+        const providerPlanId = await completeProviderPlanRegistry({
+            attemptId,
+            lookupKey,
+            productId,
+            providerPlanId: newPlan.id,
+        });
         logger.info('Razorpay plan created successfully', {
             ...planLogContext,
-            ...getBoundedRazorpayStringContext('providerPlanId', newPlan.id),
+            ...getBoundedRazorpayStringContext('providerPlanId', providerPlanId),
         });
 
-        return newPlan.id;
+        return providerPlanId;
     } catch (error) {
         secureError(
             '[Razorpay] Plan lookup or create failed',

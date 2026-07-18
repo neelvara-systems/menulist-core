@@ -2,7 +2,7 @@
 
 **Status:** Production checklist - initial registry implemented
 **Audience:** Engineering / Product / QA
-**Last Updated:** June 27, 2026
+**Last Updated:** July 15, 2026
 **Owner:** MenuList AMM action registry
 
 ---
@@ -12,6 +12,8 @@
 This document is the production checklist for AI Menu Manager action types.
 
 AMM must stay a conversational entry point over existing MenuList operations. It can prepare work and speak naturally, but it can execute only through registered, previewable, approved action adapters.
+
+All executable project adapters now inherit the transaction-current project-version precondition from the existing project save path. Compound approval additionally requires the complete same-scope group before mutation. Checklist presence still does not make an adapter executable.
 
 This checklist answers four questions for every supported owner command:
 
@@ -37,8 +39,8 @@ The first checklist pass was grounded in these current manual flows:
 | Editor item/category modals | `src/components/templates/main-app/projects/editorView/editItemModal.tsx:85`, `src/components/templates/main-app/projects/editorView/editCategoryModal.tsx:41` | Single item, category, price, metadata, translation, availability, and visibility actions. |
 | Editor operation helpers | `src/components/templates/main-app/projects/editorView/utils/editorOperations.ts:28` | Create/delete item/category/attribute operations. |
 | Editor save/persist path | `src/components/templates/main-app/projects/editorView/Editor.tsx:462`, `src/components/templates/main-app/projects/editorView/Editor.tsx:506` | AMM project mutations must end in existing project save behavior. |
-| `updateProject()` invariant | `src/database/projects/index.ts:945`, `src/database/projects/index.ts:995`, `src/database/projects/index.ts:1000` | All customer-facing menu truth must pass through this DAL path. |
-| Linked outlet save path | `src/database/projects/index.ts:973`, `src/app/api/projects/outlet-save/route.ts:329`, `src/app/api/projects/outlet-save/route.ts:433` | Outlet actions must preserve outlet policy checks and cache invalidation. |
+| `updateProject()` invariant | `src/database/projects/index.ts:1626`, `src/database/projects/index.ts:1789`, `src/database/projects/index.ts:1970` | All customer-facing menu truth must pass through this DAL path. AMM approvals additionally enforce the prepared project version inside that transaction. |
+| Linked outlet save path | `src/database/projects/index.ts:1715`, `src/app/api/projects/outlet-save/route.ts:829` | Outlet actions must preserve outlet policy checks, the AMM project-version precondition, and cache invalidation. |
 | Publish path | `src/database/projects/index.ts:1315`, `src/database/projects/index.ts:1395`, `src/database/projects/index.ts:1408`, `src/database/projects/index.ts:1428` | Publish cards must reuse publish version, cache, MOL, and snapshot behavior. |
 | Command Center bulk operations | `src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx:1`, `src/components/templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations.ts:1` | Bulk price, availability, visibility, category move, text-case, and repair cards. |
 | Description generation | `src/components/templates/main-app/projects/editorView/DescriptionGenerationModal.tsx:86` | AMM can wrap existing description-generation flow. |

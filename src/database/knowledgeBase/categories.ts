@@ -1,16 +1,28 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { collection, doc, getDoc, setDoc } from "@firebase/firestore";
+import { doc, getDoc, runTransaction } from "@firebase/firestore";
 import { getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
-import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
+import { appendAnswerlatticeCacheInvalidation } from "@lib/answerlattice/cacheVersionClient";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
 import { normalizeAnswerlatticeScopeDocumentId } from "@lib/answerlattice/sessionScope";
 import { revalidateAnswerlatticePublicClientCache } from "@lib/cache/answerlatticePublicClientCache";
 import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebaseClient";
-import { KnowledgeBaseArticleMeta, KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseSection } from "@type/knowledgeBase";
-import { updateList } from "@util/utils";
+import {
+    addKnowledgeBaseCategory,
+    deleteKnowledgeBaseArticleMeta,
+    deleteKnowledgeBaseCategory,
+    deleteKnowledgeBaseSection,
+    normalizeKnowledgeBaseArticleMetaInput,
+    normalizeKnowledgeBaseCategoryInput,
+    normalizeKnowledgeBaseSectionInput,
+    requireKnowledgeBaseNavigationId,
+    updateKnowledgeBaseCategoryMetadata,
+    upsertKnowledgeBaseArticleMeta,
+    upsertKnowledgeBaseSection,
+} from '@lib/answerlattice/knowledgeBaseCategoryMutations';
+import { KnowledgeBaseArticleType, KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
 
 const COLLECTION = DB_COLLECTIONS.KB_CATEGORIES;
 const LEGACY_CATEGORIES_DOC_ID = 'categories';
@@ -27,12 +39,13 @@ type KnowledgeBaseCategoryScope = {
 
 export type KnowledgeBaseCategoryWriteResult = KnowledgeBaseCategoriesType['categories'][string] & {
     success: true;
+    categories: KnowledgeBaseCategoriesType['categories'];
 };
 
 export type KnowledgeBaseCategoriesMutationResult = KnowledgeBaseCategoriesType & {
     success: true;
     categoryCount: number;
-    mutation: 'deleteCategory' | 'updateArticleInParent' | 'deleteArticleFromParent';
+    mutation: 'deleteCategory' | 'upsertSection' | 'deleteSection' | 'updateArticleInParent' | 'deleteArticleFromParent';
     categoryId?: string;
     articleId?: string;
     sectionId?: string | null;
@@ -55,10 +68,6 @@ const getKnowledgeBaseCategoryScope = (source: unknown): KnowledgeBaseCategorySc
     return { tId, sId };
 };
 
-const getCollectionRef = async () => {
-    return collection(answerlatticeFirebaseClient, `${COLLECTION}`)
-}
-
 const resolveKnowledgeBaseCategorySession = async (operation: string): Promise<KnowledgeBaseCategorySessionLookup> => {
     try {
         return {
@@ -78,25 +87,16 @@ const resolveKnowledgeBaseCategorySession = async (operation: string): Promise<K
     }
 };
 
-const getDocRef = async () => {
-    const { session } = await resolveKnowledgeBaseCategorySession('doc_ref');
-    const scope = getKnowledgeBaseCategoryScope(session);
-    return doc(answerlatticeFirebaseClient, `${COLLECTION}`, getKnowledgeBaseCategoriesDocId(scope?.tId, scope?.sId))
-}
+const getDocRef = (scope: KnowledgeBaseCategoryScope) => doc(
+    answerlatticeFirebaseClient,
+    `${COLLECTION}`,
+    getKnowledgeBaseCategoriesDocId(scope.tId, scope.sId),
+);
 
-const bumpKnowledgeBaseVersionForSession = async (reason: string, sourceId?: string) => {
-    const { session } = await resolveKnowledgeBaseCategorySession('cache_version_bump');
-    const scope = getKnowledgeBaseCategoryScope(session);
-    if (!scope) {
-        throw new Error('Cannot update Answerlattice KB cache version without tenant and store scope.');
-    }
-
-    await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
-        reason,
-        sourceId,
-        sourceType: 'kb_category',
-    });
-
+const getRequiredKnowledgeBaseCategoryScope = async (operation: string): Promise<KnowledgeBaseCategoryScope> => {
+    const { failed, session } = await resolveKnowledgeBaseCategorySession(operation);
+    const scope = failed ? null : getKnowledgeBaseCategoryScope(session);
+    if (!scope) throw new Error('answerlattice_kb_category_scope_invalid');
     return scope;
 };
 
@@ -114,6 +114,36 @@ const withCategoriesMutationResult = (
     categoryCount: Object.keys(data.categories || {}).length,
     mutation,
     ...metadata,
+});
+
+const requireCategoriesMap = (value: unknown): KnowledgeBaseCategoriesType['categories'] => {
+    if (!isRecord(value)) throw new Error('answerlattice_kb_categories_document_invalid');
+    return value as KnowledgeBaseCategoriesType['categories'];
+};
+
+const mutateCategories = async (
+    scope: KnowledgeBaseCategoryScope,
+    invalidation: { reason: string; sourceId?: string },
+    mutate: (current: KnowledgeBaseCategoriesType['categories']) => KnowledgeBaseCategoriesType['categories'],
+): Promise<KnowledgeBaseCategoriesType> => runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+    const categoryRef = getDocRef(scope);
+    const snapshot = await transaction.get(categoryRef);
+    const current = snapshot.exists()
+        ? requireCategoriesMap(snapshot.data().categories)
+        : {};
+    const next = mutate(current);
+    if (!isRecord(next) || Object.keys(next).length > 500) {
+        throw new Error('answerlattice_kb_categories_document_invalid');
+    }
+    const byteLength = new TextEncoder().encode(JSON.stringify({ categories: next })).length;
+    if (byteLength > 900 * 1024) throw new Error('answerlattice_kb_categories_document_too_large');
+    appendAnswerlatticeCacheInvalidation(transaction, ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
+        ...invalidation,
+        sourceType: 'kb_category',
+    });
+    if (snapshot.exists()) transaction.update(categoryRef, { categories: next });
+    else transaction.set(categoryRef, { categories: next });
+    return { categories: next };
 });
 
 export function assertKnowledgeBaseCategoryWriteSucceeded(
@@ -186,30 +216,39 @@ export const getCategories = async () => {
     );
 }
 
-export const deleteCategory = async (data: any) => {
+export const deleteCategory = async (data: { categoryId: string }) => {
     return await apiCallComposer(
         async () => {
-            const scope = await bumpKnowledgeBaseVersionForSession('category_delete');
-            await setDoc(await getDocRef(), data);
+            const scope = await getRequiredKnowledgeBaseCategoryScope('category_delete');
+            const categoryId = requireKnowledgeBaseNavigationId(data?.categoryId);
+            const updated = await mutateCategories(scope, { reason: 'category_delete', sourceId: categoryId }, (current) => {
+                if (!current[categoryId]) throw new Error('answerlattice_kb_category_not_found');
+                return deleteKnowledgeBaseCategory(current, categoryId);
+            });
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteCategory');
-            return withCategoriesMutationResult(data, 'deleteCategory');
+            return withCategoriesMutationResult(updated, 'deleteCategory', { categoryId });
         },
         data,
         "deleteCategory"
     );
 }
 
-export const addCategory = async (category: any) => {
+export const addCategory = async (category: KnowledgeBaseCategory) => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getDocRef();
-            const composedCategory = await answerlatticeRequestBodyComposer(category, { isNew: true });
-            const scope = await bumpKnowledgeBaseVersionForSession('category_create', composedCategory.id);
-            await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
+            const normalizedCategory = normalizeKnowledgeBaseCategoryInput(category);
+            const composedCategory = await answerlatticeRequestBodyComposer(normalizedCategory, { isNew: true });
+            const categoryId = normalizedCategory.id;
+            const scope = await getRequiredKnowledgeBaseCategoryScope('category_create');
+            const updated = await mutateCategories(scope, { reason: 'category_create', sourceId: categoryId }, (current) => addKnowledgeBaseCategory(
+                current,
+                composedCategory as KnowledgeBaseCategory,
+            ));
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'addCategory');
             return {
                 ...composedCategory,
                 success: true,
+                categories: updated.categories,
             } satisfies KnowledgeBaseCategoryWriteResult;
         },
         category,
@@ -217,17 +256,22 @@ export const addCategory = async (category: any) => {
     );
 }
 
-export const updateCategory = async (category: any) => {
+export const updateCategory = async (category: KnowledgeBaseCategory) => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getDocRef();
-            const composedCategory = await answerlatticeRequestBodyComposer(category, { isNew: false });
-            const scope = await bumpKnowledgeBaseVersionForSession('category_update', composedCategory.id);
-            await setDoc(docRef, { categories: { [composedCategory.id]: composedCategory } }, { merge: true });
+            const normalizedCategory = normalizeKnowledgeBaseCategoryInput(category);
+            const composedCategory = await answerlatticeRequestBodyComposer(normalizedCategory, { isNew: false });
+            const categoryId = normalizedCategory.id;
+            const scope = await getRequiredKnowledgeBaseCategoryScope('category_update');
+            const updated = await mutateCategories(scope, { reason: 'category_update', sourceId: categoryId }, (current) => updateKnowledgeBaseCategoryMetadata(
+                current,
+                composedCategory as KnowledgeBaseCategory,
+            ));
             await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateCategory');
             return {
                 ...composedCategory,
                 success: true,
+                categories: updated.categories,
             } satisfies KnowledgeBaseCategoryWriteResult;
         },
         category,
@@ -235,87 +279,67 @@ export const updateCategory = async (category: any) => {
     );
 }
 
-const _updateSectionArticles = async (
-    categoriesData: KnowledgeBaseCategoriesType,
-    categoryId: string,
-    sectionIndex: number,
-    articles: KnowledgeBaseArticleMeta[],
-    docRef: any
-) => {
-    const category = categoriesData.categories[categoryId];
-    const updatedSections = [...category.sections];
-    const updatedSection = {
-        ...updatedSections[sectionIndex],
-        articles: articles,
-    };
-    updatedSections[sectionIndex] = updatedSection;
-
-    const updatedCategory = {
-        ...category,
-        sections: updatedSections,
-    };
-    const scope = await bumpKnowledgeBaseVersionForSession('category_section_articles_update', categoryId);
-    await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
-    await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateSectionArticles');
-
-    const updatedData = { ...categoriesData };
-    updatedData.categories[categoryId] = updatedCategory;
-    return withCategoriesMutationResult(updatedData, 'updateArticleInParent', { categoryId });
-};
-
-export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategoriesType, categoryId: string, article: KnowledgeBaseArticleType, sectionId?: string | null) => {
+export const upsertSectionInCategory = async (categoryId: string, section: KnowledgeBaseSection) => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getDocRef();
-            const category = categoriesData.categories[categoryId];
+            const normalizedCategoryId = requireKnowledgeBaseNavigationId(categoryId);
+            const normalizedSection = normalizeKnowledgeBaseSectionInput(section);
+            const scope = await getRequiredKnowledgeBaseCategoryScope('category_section_upsert');
+            const updated = await mutateCategories(scope, { reason: 'category_section_upsert', sourceId: normalizedCategoryId }, (current) => upsertKnowledgeBaseSection(
+                current,
+                normalizedCategoryId,
+                normalizedSection,
+            ));
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'upsertSectionInCategory');
+            return withCategoriesMutationResult(updated, 'upsertSection', {
+                categoryId: normalizedCategoryId,
+                sectionId: normalizedSection.id,
+            });
+        },
+        { categoryId, section },
+        'upsertSectionInCategory',
+    );
+};
 
-            if (category) {
-                if (sectionId) {
-                    const sectionIndex = category.sections.findIndex((s: KnowledgeBaseSection) => s.id === sectionId);
-                    if (sectionIndex !== -1) {
-                        const section = category.sections[sectionIndex];
-                        let articles = section.articles ? [...section.articles] : [];
-                        const articleMeta: KnowledgeBaseArticleMeta = {
-                            id: article.id,
-                            active: article.active,
-                            title: article.title,
-                            index: article.index,
-                            url: article.url,
-                        };
+export const deleteSectionFromCategory = async (categoryId: string, sectionId: string) => {
+    return await apiCallComposer(
+        async () => {
+            const normalizedCategoryId = requireKnowledgeBaseNavigationId(categoryId);
+            const normalizedSectionId = requireKnowledgeBaseNavigationId(sectionId);
+            const scope = await getRequiredKnowledgeBaseCategoryScope('category_section_delete');
+            const updated = await mutateCategories(scope, { reason: 'category_section_delete', sourceId: normalizedCategoryId }, (current) => deleteKnowledgeBaseSection(
+                current,
+                normalizedCategoryId,
+                normalizedSectionId,
+            ));
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteSectionFromCategory');
+            return withCategoriesMutationResult(updated, 'deleteSection', {
+                categoryId: normalizedCategoryId,
+                sectionId: normalizedSectionId,
+            });
+        },
+        { categoryId, sectionId },
+        'deleteSectionFromCategory',
+    );
+};
 
-                        articles = updateList(articles, articleMeta, "last", "id");
-                        return await _updateSectionArticles(categoriesData, categoryId, sectionIndex, articles, docRef);
-                    }
-                } else {
-                    // Handle articles directly under a category
-                    let articles = category.articles ? [...category.articles] : [];
-                    const articleMeta: KnowledgeBaseArticleMeta = {
-                        id: article.id,
-                        active: article.active,
-                        title: article.title,
-                        index: article.index,
-                        url: article.url,
-                    };
-
-                    articles = updateList(articles, articleMeta, "last", "id");
-                    const updatedCategory = {
-                        ...category,
-                        articles,
-                    };
-                    const scope = await bumpKnowledgeBaseVersionForSession('category_article_link_update', categoryId);
-                    await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
-                    await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateArticleInParent');
-
-                    const updatedData = { ...categoriesData };
-                    updatedData.categories[categoryId] = updatedCategory;
-                    return withCategoriesMutationResult(updatedData, 'updateArticleInParent', {
-                        articleId: article.id,
-                        categoryId,
-                        sectionId,
-                    });
-                }
-            }
-            return null;
+export const updateArticleInParent = async (_categoriesData: KnowledgeBaseCategoriesType, categoryId: string, article: KnowledgeBaseArticleType, sectionId?: string | null) => {
+    return await apiCallComposer(
+        async () => {
+            const normalizedCategoryId = requireKnowledgeBaseNavigationId(categoryId);
+            const articleMeta = normalizeKnowledgeBaseArticleMetaInput(article);
+            const articleId = articleMeta.id;
+            const normalizedSectionId = sectionId ? requireKnowledgeBaseNavigationId(sectionId) : null;
+            const scope = await getRequiredKnowledgeBaseCategoryScope('category_article_link_update');
+            const updated = await mutateCategories(scope, { reason: 'category_article_link_update', sourceId: normalizedCategoryId }, (current) => {
+                return upsertKnowledgeBaseArticleMeta(current, normalizedCategoryId, articleMeta, normalizedSectionId);
+            });
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'updateArticleInParent');
+            return withCategoriesMutationResult(updated, 'updateArticleInParent', {
+                articleId,
+                categoryId: normalizedCategoryId,
+                sectionId: normalizedSectionId,
+            });
         },
         { categoryId, sectionId, article },
         "updateArticleInParent"
@@ -323,50 +347,31 @@ export const updateArticleInParent = async (categoriesData: KnowledgeBaseCategor
 };
 
 export const deleteArticleFromParent = async (
-    categoriesData: KnowledgeBaseCategoriesType,
+    _categoriesData: KnowledgeBaseCategoriesType,
     categoryId: string,
     articleId: string,
     sectionId?: string | null
 ) => {
     return await apiCallComposer(
         async () => {
-            const docRef = await getDocRef();
-            const category = categoriesData.categories[categoryId];
-
-            if (category) {
-                if (sectionId) {
-                    const sectionIndex = category.sections.findIndex((s: KnowledgeBaseSection) => s.id === sectionId);
-                    if (sectionIndex !== -1) {
-                        const section = category.sections[sectionIndex];
-                        const articles = section.articles ? section.articles.filter((a: KnowledgeBaseArticleMeta) => a.id !== articleId) : [];
-                        const updatedData = await _updateSectionArticles(categoriesData, categoryId, sectionIndex, articles, docRef);
-                        return {
-                            ...updatedData,
-                            mutation: 'deleteArticleFromParent',
-                            articleId,
-                            sectionId,
-                        } satisfies KnowledgeBaseCategoriesMutationResult;
-                    }
-                } else {
-                    const articles = category.articles ? category.articles.filter((a: KnowledgeBaseArticleMeta) => a.id !== articleId) : [];
-                    const updatedCategory = {
-                        ...category,
-                        articles,
-                    };
-                    const scope = await bumpKnowledgeBaseVersionForSession('category_article_link_delete', categoryId);
-                    await setDoc(docRef, { categories: { [categoryId]: updatedCategory } }, { merge: true });
-                    await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteArticleFromParent');
-
-                    const updatedData = { ...categoriesData };
-                    updatedData.categories[categoryId] = updatedCategory;
-                    return withCategoriesMutationResult(updatedData, 'deleteArticleFromParent', {
-                        articleId,
-                        categoryId,
-                        sectionId,
-                    });
-                }
-            }
-            return null;
+            const normalizedCategoryId = requireKnowledgeBaseNavigationId(categoryId);
+            const normalizedArticleId = requireKnowledgeBaseNavigationId(articleId);
+            const normalizedSectionId = sectionId ? requireKnowledgeBaseNavigationId(sectionId) : null;
+            const scope = await getRequiredKnowledgeBaseCategoryScope('category_article_link_delete');
+            const updated = await mutateCategories(scope, { reason: 'category_article_link_delete', sourceId: normalizedCategoryId }, (current) => {
+                return deleteKnowledgeBaseArticleMeta(
+                    current,
+                    normalizedCategoryId,
+                    normalizedArticleId,
+                    normalizedSectionId,
+                );
+            });
+            await revalidateAnswerlatticePublicClientCache(scope, ['kb', 'context'], 'deleteArticleFromParent');
+            return withCategoriesMutationResult(updated, 'deleteArticleFromParent', {
+                articleId: normalizedArticleId,
+                categoryId: normalizedCategoryId,
+                sectionId: normalizedSectionId,
+            });
         },
         { categoryId, sectionId, articleId },
         "deleteArticleFromParent"

@@ -13,6 +13,10 @@ const requiredFiles = [
   'src/lib/menu-card-export/render/artifactMetadata.ts',
   'src/lib/menu-card-export/render/renderPdf.ts',
   'src/lib/menu-card-export/render/renderPreviewModel.ts',
+  'src/lib/menu-card-export/repository/artifactStorage.ts',
+  'src/lib/menu-card-export/repository/menuCardExportRepository.ts',
+  'src/lib/export/browserFileShare.ts',
+  'src/lib/export/localExportHistory.ts',
   'src/lib/export/menuPdfGenerator.ts',
   'src/lib/menu-kit/brandTokens.ts',
   'src/lib/menu-kit/canvasPrimitives.ts',
@@ -40,6 +44,7 @@ const requiredFiles = [
   'src/components/mobile/screens/MobileMenuScreen.tsx',
   'src/components/mobile/components/MobileMenuCommandSheet.tsx',
   'src/components/templates/main-app/useMenuList/useMenuListDiagnostics.ts',
+  'scripts/verification/test-print-export-browser-boundaries.ts',
   'src/components/mobile/screens/MobileMoreScreen.tsx',
   'src/app/(main)/use-menulist/print-assets/page.tsx',
   '__docs__/menu-card-export/menu-card-export_firebase.md',
@@ -383,7 +388,9 @@ menuCardExportCollateralDocs.forEach(({ label, content }) => {
 [
   '⚠️ LEGACY — Superseded by [Menu Kit]',
   'For all new physical surface work, use Menu Kit.',
-  'Maintenance note: the legacy Today/mobile Hours download buttons are still active',
+  'Maintenance note: the legacy Today/mobile Hours download buttons remain as a read-only compatibility surface',
+  'Current source has no active writer that computes or persists that field',
+  'calculatePhysicalSurfaceEligibility()` is not called by the current campaign mutation path',
 ].forEach((token) => {
   if (!physicalSurfacesReadme.includes(token)) failures.push(`Physical Surfaces README missing legacy boundary token: ${token}`);
 });
@@ -557,6 +564,12 @@ const designAdvisorClient = fs.readFileSync(path.join(root, 'src/services/ai/men
   'saveLocalMenuCardExport',
   'MENU_CARD_ADVICE_PLAN_REQUIRED_MESSAGE',
   'MENU_CARD_ADVICE_CAPACITY_MESSAGE',
+  'historyStorageScope',
+  'resolveLocalExportStorageScope',
+  'shareResult === \'cancelled\'',
+  "content: 'Share cancelled'",
+  "share ? 'Could not share file' : 'Could not create file'",
+  'storeRouteKey',
 ].forEach((token) => {
   if (!controller.includes(token)) failures.push(`Shared controller missing token: ${token}`);
 });
@@ -711,8 +724,22 @@ const mobileShare = fs.readFileSync(path.join(root, 'src/components/mobile/scree
   'brandColor: storeBrandColor',
   'currencyCode: (storeDetails as any)?.currencyCode',
   'downloadBlob(result.zipBlob, result.zipFilename)',
+  "if (shareResult === 'cancelled') return;",
+  "if (shareResult === 'shared')",
 ].forEach((token) => {
   if (!mobileShare.includes(token)) failures.push(`Mobile Share entry missing token: ${token}`);
+});
+[
+  'recordLocalPdfDownload(',
+  'resolveLocalExportStorageScope(storeDetails as any)',
+].forEach((token) => {
+  if (!mobileShare.includes(token)) failures.push(`Mobile Share local PDF history missing token: ${token}`);
+});
+[
+  '`menulist_last_pdf_download_${data.projectId}`',
+  '`menulist_last_pdf_version_${data.projectId}`',
+].forEach((token) => {
+  if (mobileShare.includes(token)) failures.push(`Mobile Share must not use project-only PDF history key: ${token}`);
 });
 
 if (mobileShare.includes('<iframe') || mobileShare.includes('previewAsset?.isPdf') || mobileShare.includes('isPdf:')) {
@@ -830,6 +857,10 @@ const pdfRenderer = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/re
   'doc.setCreationDate(generatedAt)',
   'doc.setProperties(buildPdfDocumentProperties',
   'logoDataUrlCache',
+  'window.setTimeout(() =>',
+  'image.src = \'\';',
+  '}, 5000);',
+  'if (dataUrl) logoDataUrlCache.set(url, dataUrl);',
   'imageUrlToPngDataUrl(source.business.logoUrl)',
   'doc.addImage(',
   'source.business.brandTokens.accentColor',
@@ -1016,6 +1047,21 @@ const projectShareModal = fs.readFileSync(path.join(root, 'src/components/templa
   if (!projectShareModal.includes(token)) failures.push(`Project Share modal export diagnostics missing token: ${token}`);
 });
 [
+  'resolveLocalExportStorageScope',
+  'readLocalPdfDownloadAt',
+  'setLastPdfDownloadAt(readLocalPdfDownloadAt(pdfHistoryScope, projectId))',
+  'recordLocalPdfDownload(pdfHistoryScope, projectId, pdfResult.snapshotHash)',
+  'setLastPdfDownloadAt(Date.now())',
+].forEach((token) => {
+  if (!projectShareModal.includes(token)) failures.push(`Project Share modal local PDF history missing token: ${token}`);
+});
+[
+  '`menulist_last_pdf_download_${projectId}`',
+  '`menulist_last_pdf_version_${projectId}`',
+].forEach((token) => {
+  if (projectShareModal.includes(token)) failures.push(`Project Share modal must not use project-only PDF history key: ${token}`);
+});
+[
   "console.error('[ShareModal] Structured export failed:'",
   "console.error('[ShareModal] PDF generation failed:'",
 ].forEach((token) => {
@@ -1026,12 +1072,21 @@ const menuKitSection = fs.readFileSync(path.join(root, 'src/components/templates
 [
   'generateMenuKitAsset',
   'downloadBlob(result.zipBlob, result.zipFilename)',
+  "if (shareResult === 'cancelled') return;",
+  "if (shareResult === 'shared')",
+  'message.success(`${label} shared`)',
   "handleShareAsset('instagram_story'",
   "handleShareAsset('whatsapp_status'",
   "handleShareAsset('google_maps'",
 ].forEach((token) => {
   if (!menuKitSection.includes(token)) failures.push(`Project Share Menu Kit section missing key-based asset token: ${token}`);
 });
+if (!menuKitSection.includes("if (actionMap[assetKey]) trackMenuKitDownload(actionMap[assetKey]!);")) {
+  failures.push('Project Share Menu Kit download fallback must retain successful asset delivery tracking');
+}
+if (!mobileShare.includes('if (trackingAction) void trackMenuKitDownload(trackingAction);')) {
+  failures.push('Mobile Share Menu Kit download fallback must retain successful asset delivery tracking');
+}
 [
   'logExportFailure',
   'project_share_menu_kit_generation_failed',
@@ -1122,6 +1177,7 @@ const qrCodeUtil = fs.readFileSync(path.join(root, 'src/lib/utils/qrCode.ts'), '
   'fitCanvasText',
   'drawMenuListAttribution',
   'activePlanType',
+  "return `${sanitized || 'menu'}-${suffix}`",
 ].forEach((token) => {
   if (!qrCodeUtil.includes(token)) failures.push(`Branded QR helper missing token: ${token}`);
 });
@@ -1132,6 +1188,9 @@ if (qrCodeUtil.includes('drawQrCornerBrackets')) {
 const feedbackQrCode = fs.readFileSync(path.join(root, 'src/lib/utils/feedbackQrCode.ts'), 'utf8');
 if (!feedbackQrCode.includes('generateBrandedFeedbackQrCode')) {
   failures.push('Feedback QR utility missing branded feedback QR helper');
+}
+if (!feedbackQrCode.includes("return `${sanitized || 'menu'}-feedback-qr`")) {
+  failures.push('Feedback QR utility missing non-Latin/empty filename fallback');
 }
 
 const businessTypeLabels = fs.readFileSync(path.join(root, 'src/lib/menu-kit/businessTypeLabels.ts'), 'utf8');
@@ -1307,8 +1366,52 @@ const menuKitGenerator = fs.readFileSync(path.join(root, 'src/lib/menu-kit/menuK
   'Table Tent (A5 fold)',
   'SingleTableCard_A6.pdf',
   'Single Table / Counter Card (A6)',
+  'shareBrowserFile',
+  'Promise<BrowserFileShareResult>',
 ].forEach((token) => {
   if (!menuKitGenerator.includes(token)) failures.push(`Menu Kit generator missing Print Menu Surfaces token: ${token}`);
+});
+
+const browserFileShare = fs.readFileSync(path.join(root, 'src/lib/export/browserFileShare.ts'), 'utf8');
+[
+  "BrowserFileShareResult = 'shared' | 'unsupported' | 'cancelled'",
+  "typeof navigator.share !== 'function'",
+  "typeof navigator.canShare !== 'function'",
+  "typeof File === 'undefined'",
+  "error.name === 'AbortError'",
+  "return 'cancelled'",
+  'throw error',
+].forEach((token) => {
+  if (!browserFileShare.includes(token)) failures.push(`Browser file-share boundary missing token: ${token}`);
+});
+
+const localExportHistory = fs.readFileSync(path.join(root, 'src/lib/export/localExportHistory.ts'), 'utf8');
+[
+  'resolveLocalExportStorageScope',
+  "return tenantId && storeId ? `${tenantId}:${storeId}` : ''",
+  'readLocalPdfDownloadAt',
+  'recordLocalPdfDownload',
+  "localPdfKey('download', storageScope, projectId)",
+  'storage rejection must not become a download failure',
+].forEach((token) => {
+  if (!localExportHistory.includes(token)) failures.push(`Local export-history boundary missing token: ${token}`);
+});
+
+const artifactStorage = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/repository/artifactStorage.ts'), 'utf8');
+['shareBrowserFile', 'Promise<BrowserFileShareResult>'].forEach((token) => {
+  if (!artifactStorage.includes(token)) failures.push(`Menu Card artifact share boundary missing token: ${token}`);
+});
+
+const menuCardHistoryRepository = fs.readFileSync(path.join(root, 'src/lib/menu-card-export/repository/menuCardExportRepository.ts'), 'utf8');
+[
+  'storageScope: string',
+  'encodeURIComponent(storageScope)',
+  'isMenuCardLocalHistoryRecord',
+  'isMenuCardLocalHistoryRecord(record) && record.projectId === projectId',
+  'localStorage.setItem(key(params.projectId, params.storageScope)',
+  'must never turn a successful export into an owner-visible failure',
+].forEach((token) => {
+  if (!menuCardHistoryRepository.includes(token)) failures.push(`Menu Card local-history boundary missing token: ${token}`);
 });
 [
   "input.assetTypeId === 'complete_menu_kit'",

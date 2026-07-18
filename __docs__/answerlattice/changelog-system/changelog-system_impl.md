@@ -225,6 +225,10 @@ const newPageId = `page_${String(newPageNumber).padStart(6, "0")}`;
 
 ## 8. Reverse Engineering Validation
 
+### Founder Release Entry
+
+The existing changelog management screen consumes `?create=1` once, opens the existing Add/Edit drawer with no pre-write side effect, and clears the query without a page reload. Daily Brief uses this entry for `I shipped a change`. Saving remains the only mutation point; a versioned published entry continues through the existing release activation, entity/surface binding, drift evaluation, cache, and summary paths.
+
 | Category            |         Count         |  Verified   |
 | ------------------- | :-------------------: | :---------: |
 | Owner components    |           2           |     ✅      |

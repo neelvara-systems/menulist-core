@@ -6,11 +6,15 @@ import {
   MENULIST_SITE_TITLE,
   MENULIST_SITE_URL,
 } from '@constant/menulist/website';
+import { B2CplansList } from '@data/PlatformPlansList';
+import { WEBSITE_LANGUAGES } from '@config/websiteLanguages';
 
 const SITE_URL = MENULIST_SITE_URL;
 const SITE_DESCRIPTION = MENULIST_ENTITY_DESCRIPTION;
 const SITE_IMAGE = `${SITE_URL}${MENULIST_SITE_IMAGE}`;
 const SITE_LOGO = `${SITE_URL}/apple-touch-icon.png`;
+const monthlyWebsitePlans = B2CplansList.filter((plan) => plan.billingInterval === 'MONTH');
+const monthlyInrPrices = monthlyWebsitePlans.map((plan) => plan.priceINR.price / 100);
 
 const graph = {
   '@context': 'https://schema.org',
@@ -37,6 +41,7 @@ const graph = {
         email: 'hello@menulist.ai',
       },
       sameAs: [
+        'https://twitter.com/menulistai',
         'https://instagram.com/menulistai',
         'https://linkedin.com/company/menulistai',
       ],
@@ -48,7 +53,7 @@ const graph = {
       url: SITE_URL,
       description: 'Official website for MenuList, a public menu and business information source for SMBs.',
       publisher: { '@id': `${SITE_URL}/#organization` },
-      inLanguage: ['en-IN', 'hi-IN'],
+      inLanguage: WEBSITE_LANGUAGES.map((language) => language.code),
     },
     {
       '@type': 'SoftwareApplication',
@@ -62,10 +67,10 @@ const graph = {
       publisher: { '@id': `${SITE_URL}/#organization` },
       offers: {
         '@type': 'AggregateOffer',
-        lowPrice: '4990',
-        highPrice: '39990',
+        lowPrice: String(Math.min(...monthlyInrPrices)),
+        highPrice: String(Math.max(...monthlyInrPrices)),
         priceCurrency: 'INR',
-        offerCount: '3',
+        offerCount: String(monthlyWebsitePlans.length),
         url: `${SITE_URL}/pricing`,
       },
     },

@@ -42,13 +42,13 @@ They are not loaded by default.
 ## Storage Paths
 
 ```text
-campaigncue/templates/platform/{businessCategory}/{templateId}/pack-template.json
-campaigncue/templates/platform/{businessCategory}/{templateId}/editor-document.json
-campaigncue/templates/platform/{businessCategory}/{templateId}/preview.webp
-campaigncue/templates/platform/shared/{templateId}/pack-template.json
-campaigncue/templates/workspaces/{workspaceId}/{templateId}/pack-template.json
-campaigncue/templates/workspaces/{workspaceId}/{templateId}/editor-document.json
-campaigncue/templates/workspaces/{workspaceId}/{templateId}/preview.webp
+campaigncue/templates/platform/{businessCategory}/{templateId}/pack-template-{contentHash}.json
+campaigncue/templates/platform/{businessCategory}/{templateId}/editor-document-{contentHash}.json
+campaigncue/templates/platform/{businessCategory}/{templateId}/preview-{contentHash}.webp
+campaigncue/templates/platform/shared/{templateId}/pack-template-{contentHash}.json
+campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/pack-template.json
+campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/editor-document.json
+campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/preview.webp
 ```
 
 ## Operation Ledger
@@ -58,14 +58,15 @@ campaigncue/templates/workspaces/{workspaceId}/{templateId}/preview.webp
 | Resolve owner category | 0 | 0 | 0 | 0 | Uses already-loaded business type/category from overview/session state. |
 | Load platform templates | 1 | 0 | 0 | 0 | Reads one `campaigncuePlatformPackTemplates/{businessCategory}` doc. |
 | Search/filter templates | 0 | 0 | 0 | 0 | In-memory filtering over loaded summary metadata. |
-| Choose campaign output intent | 0 | 0 | 0 | 0 | In-memory filter over loaded category and workspace summaries; the selected intent is passed into the local editor context or campaign creation request. |
+| Choose campaign output intent | 0 | 0 | 0 | 0 | In-memory filter plus deterministic requirement/decision preflight over already-loaded overview and template summaries. |
+| Create campaign from output intent | Existing campaign-create reads | Existing campaign batch only | 0 | 0 | Server rechecks canonical intent requirements/decision/channels and stores bounded intent, requested-output, and optional template provenance in the existing campaign document. No extra document or write. |
 | Choose Campaign Proof Deck intent | 0 | 0 | 0 | 0 | Uses the same in-memory output picker and existing output-pack proof deck field. |
 | Open platform template | 0 | 0 | 1-2 downloads | 0 | Downloads pack payload and optional editor document from Storage. |
 | Load saved workspace templates | 1 | 0 | 0 | 0 | Reads `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` only when saved templates are shown. |
-| Save workspace template | 1 | 1 | 1-3 uploads | 0 | Reads current index, writes bounded summary array, uploads payload/editor/optional preview, and cleans up newly-created uploaded artifacts if the index write fails. Unexpected cleanup failures log bounded diagnostics; missing Storage objects are expected no-ops. |
-| Delete workspace template | 1 | 1 | Up to 3 deletes | 0 | Rewrites index without summary and deletes workspace payloads. Unexpected cleanup failures log bounded diagnostics after the visible index removal; missing Storage objects are expected no-ops. |
+| Save workspace template | 1 baseline | 1 | 1-3 uploads | 0 | A Firestore transaction reads/writes the bounded index; contention may retry the transaction read. Immutable payload/editor/preview artifacts upload first. Ambiguous write failures probe the index before cleanup. Unexpected cleanup failures log bounded diagnostics; missing objects are expected no-ops. |
+| Delete workspace template | 1 baseline | 0-1 | Up to 3 deletes | 0 | A transaction removes the summary only when present; contention may retry the read. Storage cleanup follows visible index removal, with an ambiguity probe on failure. |
 | Load overflow templates | 1 | 0 | 0 | 0 | Only after explicit owner action such as "More templates". |
-| Admin seed platform category | 1 | 1 | N uploads | 0 | Platform/admin tooling only; validates soft limits before write. |
+| Admin seed platform catalogs | 0 | One batched write per category doc | Up to N create attempts | 0 | Platform/admin tooling only; explicit project/bucket target, create-only content-hashed payloads first, then one atomic catalog batch. Existing hash objects are not overwritten on rerun. |
 
 ## Default Owner Cost
 
@@ -96,7 +97,7 @@ Changing the selected output intent after the templates are loaded, including So
 0 provider calls
 ```
 
-When a selected template opens a saved editor document, the output intent still stays local: CampaignCue adds the intent as editor context, task guidance, output/print format focus, and manual delivery instruction after the template payload is hydrated. It does not read a separate output catalog or persist a new document until the owner explicitly saves or creates a campaign pack.
+When a selected template opens a saved editor document, the output intent stays local: CampaignCue adds the intent as editor context, task guidance, output/print format focus, and manual delivery instruction after the template payload is hydrated. It does not read a separate output catalog. If the owner creates a campaign, the existing campaign write stores only compact intent/provenance fields.
 
 ## Why Category Docs Instead Of One Global Doc
 
@@ -135,6 +136,9 @@ Not allowed:
 - No generated PNG/PDF in Firestore.
 - No base64 thumbnail in Firestore.
 - No signed URL in Firestore.
+- No external/signed URL, old visible business text, QR destination, or image layer in a saved workspace layout artifact.
+- Storage downloads enforce payload/editor byte limits before the full object is returned.
+- Workspace saves use immutable `{saveId}` paths, then transactionally replace the one bounded index summary.
 - Enforce a soft byte limit in seed/admin tooling before publish.
 - Cap active templates per category.
 - Move retired templates out of active docs.
@@ -146,9 +150,9 @@ Not allowed:
 | Path | Read | Write |
 | --- | --- | --- |
 | `campaigncuePlatformPackTemplates/{businessCategory}` | Signed-in CampaignCue workspace user or platform user | Platform/admin only |
-| `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` | Workspace member | Workspace member with edit permission |
+| `campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default` | Workspace member | Workspace member under the current workspace-claim rule |
 | `campaigncue/templates/platform/...` | Signed-in CampaignCue workspace user or platform user | Platform/admin only |
-| `campaigncue/templates/workspaces/{workspaceId}/...` | Workspace member | Workspace member with edit permission |
+| `campaigncue/templates/workspaces/{workspaceId}/...` | Workspace member | Workspace member under the current workspace-claim rule and exact artifact allowlist |
 
 ## Rejected Cost Patterns
 

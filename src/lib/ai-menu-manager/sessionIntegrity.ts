@@ -33,6 +33,8 @@ const MAX_PENDING_OPERATIONS = 25;
 const MAX_RECEIPTS = 20;
 const MAX_ARTIFACT_REFS = 20;
 const MAX_COUNTER_VALUE = 1_000_000_000;
+export const AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES = 700 * 1024;
+const SESSION_TOO_LARGE_MESSAGE = 'Finish or cancel an existing Menu Manager card before preparing another update';
 
 const ACTION_TYPES = new Set<string>(Object.values(AI_MENU_MANAGER_ACTION_TYPES));
 const APPROVAL_LEVELS = new Set<AiMenuManagerApprovalLevel>([
@@ -513,6 +515,77 @@ function parseArtifactRefs(value: unknown): Array<Record<string, unknown>> | und
         .filter(isRecord);
 }
 
+export function buildAiMenuManagerPendingState(params: {
+    pendingCardSummaries?: Array<{ proposalId?: unknown }>;
+    pendingOperations?: Array<{ operationId?: unknown }>;
+}) {
+    const pendingIds = new Set<string>();
+    (params.pendingOperations || []).forEach((operation) => {
+        if (typeof operation.operationId === 'string' && operation.operationId) {
+            pendingIds.add(operation.operationId);
+        }
+    });
+    (params.pendingCardSummaries || []).forEach((summary) => {
+        if (typeof summary.proposalId === 'string' && summary.proposalId) {
+            pendingIds.add(summary.proposalId);
+        }
+    });
+    if (pendingIds.size > MAX_PENDING_OPERATIONS) {
+        throw new Error(SESSION_TOO_LARGE_MESSAGE);
+    }
+    return {
+        hasPendingOperations: pendingIds.size > 0,
+        pendingCount: pendingIds.size,
+    };
+}
+
+export function estimateAiMenuManagerSessionBytes(value: unknown): number {
+    try {
+        return new TextEncoder().encode(JSON.stringify(value)).byteLength;
+    } catch {
+        return Number.MAX_SAFE_INTEGER;
+    }
+}
+
+export function prepareAiMenuManagerSessionWrite<T extends Partial<AiMenuManagerSessionDoc>>(
+    session: T,
+    previousSession?: AiMenuManagerSessionDoc | null,
+): T & { hasPendingOperations: boolean; pendingCount: number } {
+    const next = {
+        ...session,
+        compactMessages: [...(session.compactMessages || [])],
+        pendingCardSummaries: [...(session.pendingCardSummaries || [])],
+        pendingOperations: [...(session.pendingOperations || [])],
+        recentReceiptSummaries: [...(session.recentReceiptSummaries || [])],
+        ...(session.artifactRefs ? { artifactRefs: [...session.artifactRefs] } : {}),
+        ...buildAiMenuManagerPendingState(session),
+    } as T & { hasPendingOperations: boolean; pendingCount: number };
+
+    while (
+        estimateAiMenuManagerSessionBytes(next) > AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES
+        && next.artifactRefs?.length
+    ) {
+        next.artifactRefs.pop();
+    }
+    while (
+        estimateAiMenuManagerSessionBytes(next) > AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES
+        && next.recentReceiptSummaries.length
+    ) {
+        next.recentReceiptSummaries.pop();
+    }
+    while (
+        estimateAiMenuManagerSessionBytes(next) > AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES
+        && next.compactMessages.length
+    ) {
+        next.compactMessages.shift();
+    }
+
+    const nextBytes = estimateAiMenuManagerSessionBytes(next);
+    if (nextBytes <= AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES) return next;
+    if (previousSession && nextBytes < estimateAiMenuManagerSessionBytes(previousSession)) return next;
+    throw new Error(SESSION_TOO_LARGE_MESSAGE);
+}
+
 /**
  * Converts untrusted Firestore/session payloads into compact canonical truth.
  * Invalid top-level identity rejects the document; invalid nested entries are discarded.
@@ -572,6 +645,11 @@ export function normalizeAiMenuManagerSessionSnapshot(value: unknown): AiMenuMan
         (entry) => entry.receiptId,
     );
     const artifactRefs = parseArtifactRefs(value.artifactRefs);
+    const pendingState = buildAiMenuManagerPendingState({ pendingCardSummaries, pendingOperations });
+    if (
+        (value.hasPendingOperations !== undefined && value.hasPendingOperations !== pendingState.hasPendingOperations)
+        || (value.pendingCount !== undefined && value.pendingCount !== pendingState.pendingCount)
+    ) return null;
     return {
         sessionId,
         tId: tenant.documentId,
@@ -583,6 +661,7 @@ export function normalizeAiMenuManagerSessionSnapshot(value: unknown): AiMenuMan
         compactMessages,
         pendingCardSummaries,
         pendingOperations,
+        ...pendingState,
         recentReceiptSummaries,
         counters: parseCounters(value.counters),
         ...(artifactRefs !== undefined ? { artifactRefs } : {}),

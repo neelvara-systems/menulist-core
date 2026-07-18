@@ -1,42 +1,31 @@
-# Pricing Integrity System - Website Content Boundary
+# Pricing Integrity System - Website Boundary
 
-**Status:** Source-backed website copy boundary, not current launch certification
+**Status:** Source-backed public-copy direction, not current launch certification
+**Last updated:** July 16, 2026
 
-## Current Source Boundary
+## Approved direction
 
-This is not active public website copy for a launch-certified automatic pricing engine. Use only source-backed claims:
+- **Headline:** Keep menu prices tied to one saved source
+- **Subheadline:** Save numbers, ranges, option prices, or business-specific wording in MenuList, then generate customer and print output from that menu truth.
+- **CTA:** Review your menu output
+- **CTA route:** `/use-menulist`
 
-- MenuList keeps saved menu data as the source for prices.
-- Customer menu links and staff-facing views read saved project truth.
-- Public cache is revalidated after project saves.
-- Configured Digital Screens receive a content-version refresh signal.
-- PDF downloads are generated from current menu data on demand.
+## Approved supporting copy
+
+MenuList keeps customer-facing prices anchored to the saved menu. Active option prices appear as current choices, valid price wording stays intact, configured screens receive the existing refresh signal, and a fresh PDF can be generated from current menu data.
+
+## Prohibited claims
+
 - Background PDF regeneration is not active runtime.
+- Do not say previously shared PDFs update automatically.
+- Do not promise instant all-surface propagation or external certification.
+- Do not present `runPricingIntegrity()` as an active save-path engine.
+- Do not imply MenuList guesses a numeric value from text/range prices.
 
-## Approved Hero Direction
+## SEO boundary
 
-- **Headline:** Keep saved prices consistent across MenuList surfaces
-- **Subheadline:** Edit prices in MenuList, then use the saved menu as the source for customer links, staff views, configured screens, and fresh PDF downloads.
-- **CTA Text:** Review menu output
-- **CTA Link:** /use-menulist
+- **Title:** Menu Price Consistency | MenuList
+- **Description:** Keep numeric, range, text, and option prices tied to saved MenuList truth across customer links, configured screens, and fresh PDF downloads.
+- **Keywords:** menu price consistency, menu option prices, digital menu price update, menu PDF download
 
-## Approved Copy
-
-MenuList keeps price changes tied to the saved menu source. Customer menu links and staff-facing views use that saved truth, configured Digital Screens get a refresh signal, and PDF downloads are generated from the current menu data.
-
-## Current Release Gate
-
-Do not publish this as launch-certified feature copy without the active production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile price-change QA, public menu and PDF artifact QA, configured-screen QA where applicable, target deploy evidence, and production-host smoke.
-
-## Do Not Say
-
-- "Background PDF refresh runs after every edit."
-- "All surfaces are always certified within seconds."
-- "Background PDF regeneration is live."
-- "The dormant pricing engine runs on every editor save."
-
-## SEO Meta
-
-- **Page Title:** Menu Price Consistency | MenuList
-- **Meta Description:** Keep MenuList price changes tied to saved menu truth for customer links, staff views, configured screens, and current PDF downloads.
-- **Target Keywords:** menu price consistency, restaurant menu prices, digital menu price update, menu PDF download
+This direction is not current launch certification and is not authorization to publish a new page. Release approval requires the production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/MobileShell checks, public menu and PDF artifact QA, configured-screen QA, target deploy evidence, and production-host smoke.

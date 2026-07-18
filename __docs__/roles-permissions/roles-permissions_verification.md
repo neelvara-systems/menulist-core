@@ -1,8 +1,8 @@
 # Roles & Permissions — Final Verification
 
 **Feature:** Staff management and permissions
-**Status:** Code path passed; environment action noted
-**Last Updated:** July 1, 2026
+**Status:** Local source complete; release/operator evidence pending
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -17,6 +17,24 @@ This verification covered the end-to-end staff and permissions flow from the cur
 - Role create/edit/deactivate flow and mobile role detail edit sheet.
 - Permission taxonomy, default role data, UI categories, labels, route guards, and mobile screen/tab filtering.
 - Staff login detail copy, native share, and WhatsApp Web share actions.
+- Manager-versus-Owner target authority across create, edit, reset, sign-out, deactivate, remove, desktop and MobileShell.
+- Existing platform placeholder verification, Firebase Auth email collision refusal, same-user UID binding, and failed-commit compensation.
+- Mutation commit ordering, default-role repair concurrency, tenant/store lifecycle session checks, and bounded response shape validation.
+
+## July 16, 2026 Code-First Cross-Check
+
+| Finding | Resolution |
+| --- | --- |
+| Default Manager had `canManageUsers` and could target an Owner account for edit, reset/passcode exposure, force-sign-out, deactivate, or remove. | Added shared Owner-target detection, fresh transaction rechecks, fixed 403 response, and desktop/mobile read-only actions unless the actor also has `canAssignRoles`. |
+| Staff mutation flows revoked Firebase refresh tokens before the Firestore transaction; a rejected last-owner/concurrency action could still sign staff out. | Authoritative revocation metadata now commits first. Refresh-token revocation runs only after a successful commit and is observed as a bounded post-commit side effect. |
+| Generic create-staff code adopted a pre-existing Firebase Auth email and could bind it to a new Firestore staff record. | Auth email collisions now fail closed as `EMAIL_EXISTS` or `STAFF_LOGIN_COLLISION`; no existing Auth UID is adopted. |
+| Platform Users accepted `EMAIL_EXISTS` and generic same-store success as verification, then client-wrote `isVerified` without proving Auth creation. | Existing placeholders now return only `existing_user_auth_bound` after new Auth creation and a same-user transactional UID/mapping commit. Platform UI matches returned user ID, email, mode, and `isVerified`; collision is rejection. |
+| Password setup email/network or audit-metadata failure after a committed staff account could return a false 500 and make a retry look like a failed create. | Provider wait is capped at 10 seconds and converted to a bounded email result; post-commit metadata failure is logged but cannot reverse successful account creation/verification. |
+| Legacy default-role repair wrote `stores.roles` from a stale snapshot. | Repair now recomputes inside the existing role/access-state transaction, preserving concurrent edits. |
+| Access-status handled user lifecycle/block/revocation state but did not fail closed for inactive/deleted tenant or store documents. | Added `TENANT_DELETED`, `TENANT_INACTIVE`, `STORE_DELETED`, and `STORE_INACTIVE` invalidation reasons. |
+| Private active-assignment initialization could count an explicitly unverified Owner placeholder toward last-owner safety even though it cannot sign in. | Explicitly unverified users are excluded from active assignment state; the Auth-binding upsert activates the assignment atomically with `isVerified: true`. Emulator coverage proves an unverified placeholder cannot satisfy last-owner protection. |
+| Staff/role client success checks accepted underspecified nested data. | List, store option, role definition, permission booleans, staff mappings, owner-protection, and mutation identity are validated before UI state changes. |
+| Staff updates capped store mappings at 25 even though the existing multi-location contract allows one master plus 30 outlets; the master staff-list store query was unbounded. | Mapping admission now derives 31 from `MAX_OUTLETS_PER_TENANT + 1`. Tenant store discovery reads at most 32 active rows and fails closed on active overflow. Historical deactivated outlets are filtered by the query before the sentinel; the authorized target is merged back only for legacy rows missing `active`, under the same bound. |
 
 ---
 
@@ -56,15 +74,22 @@ This verification covered the end-to-end staff and permissions flow from the cur
 | Staff client response boundary | Passed by source verifier: shared staff/role client responses are capped at 256KB, parse failures and invalid successful envelopes have bounded diagnostic codes, and direct `response.json().catch(() => ({}))` parsing is absent. |
 | Staff mutation identity boundary | Passed by source verifier: create/update/remove/reset/sign-out acknowledgements require returned `user.id` to match returned `userId` before desktop or mobile staff state can advance. |
 | Staff/Roles route parity source gate | Passed by source verifier: `npm run verify:staff-roles-route-parity` locks desktop aliases, mobile More permission gates, shared client usage, and docs/audit parity. |
+| Staff scope/taxonomy source test | Passed: `env -u GOOGLE_APPLICATION_CREDENTIALS npm run verify:staff-scope-boundary` covers exact scope normalization, 29 unique permissions, category/label/default-role completeness, and Owner-target helpers. Local Upstash warnings are expected when target credentials are intentionally absent. |
+| Staff concurrency source gate | Passed: `npm run verify:staff-concurrency-boundary` locks deterministic creation, owner preservation, transactional role repair, Auth-binding upsert/compensation, and post-commit token ordering. |
+| Staff concurrency emulator | Passed: `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:staff-concurrency:emulator` covers concurrent adds, Auth-binding upsert, deterministic create, last-owner races, blocked owners, role assignment/deactivation, and concurrent role edits. |
+| Staff Prompt boundary | Passed: `npm run verify:staff-prompt-runtime` confirms the separate Today read-only staff summary has no generator/provider/write route. |
+| Session and workspace role semantics | Passed: set-claims workspace, store-switch access, auth-session user, and auth-session response boundary tests preserve separate account-level `platformRole` and current-store `role` truth. |
 | Sensitive log sweep for touched staff routes | Passed: no direct `console.error`, `console.log`, `secureLog`, or manual `getServerSession()` remains in `change-password` / staff API code paths. |
-| `npm run lint` | Passed. |
-| `npx tsc --noEmit --incremental false --pretty false` | Passed. |
+| Focused ESLint for changed staff/platform/API/verifier files | Passed. |
+| `npx tsc --noEmit` | Passed. |
 | `git diff --check` | Passed. |
-| `npm run build` | Previously passed on May 19. Not rerun on May 27 per repo no-build rule. |
+| Production build | Not run. Repo policy prefers focused source/type/lint/emulator gates unless the owner explicitly requests a build/release. |
 
 ---
 
-## Live API-Level Smoke
+## Historical Live API-Level Smoke (May 2026)
+
+The following earlier local smoke remains useful regression context but is not current target certification and was not rerun as July 16 hosted evidence.
 
 Executed against `http://localhost:3000` using the configured Firebase project and owner credentials for tenant `14`, store `15`.
 
@@ -88,17 +113,17 @@ Executed against `http://localhost:3000` using the configured Firebase project a
 
 | Item | Status | Detail |
 | --- | --- | --- |
-| Auth and tenant isolation | Passed | Staff APIs validate active authenticated sessions, tenant/store scope, role assignment authority, and last-owner protection. |
-| Session revocation | Passed | Owner reset, owner force sign-out, deactivate/remove, and platform block flow converge on session revocation fields plus Firebase Auth token revocation/disabled state where needed. |
+| Auth and tenant isolation | Local source passed | Staff APIs validate active sessions, current tenant/store lifecycle, mapping scope, role authority, Owner-target authority, and last-owner preservation. |
+| Session revocation | Local source passed | User revocation truth commits before post-commit Firebase token work; reset, sign-out, deactivate/remove, and platform block remain covered. Hosted multi-session behavior is pending. |
 | Permission completeness | Passed | The 29-permission taxonomy is present across constants, UI categories, labels, initial data, and default roles. |
-| Mobile parity | Passed by code/build/source gates | Mobile staff, roles, More screen, and shell filtering share the same permission contract as desktop. |
+| Mobile parity | Passed by source/type gates | Mobile staff, roles, More screen, and shell filtering share desktop contracts. Hosted iOS/Android/PWA interaction remains pending. |
 | Firebase cost | Passed with update | Docs now account for staff list/admin reads, rare writes, access-status reads while visible, and zero-cost copy/share actions. |
-| Rate-limit environment | Action needed | Local `.env` has an Upstash Redis host that does not resolve: `prepared-ant-28434.upstash.io`. The current rate limiter fails open by design on Upstash errors, so staff flow testing completed, but production `UPSTASH_REDIS_REST_URL` / token must be verified or replaced before relying on auth-sensitive rate limiting in production. |
+| Rate-limit environment | Owner/release action | Verify target `UPSTASH_REDIS_REST_URL` and token in the approved environment and exercise normal, exhausted, and provider-failure behavior. Local source tests intentionally run without target credentials. |
 
 ---
 
 ## Release Verdict
 
-The staff management and permissions code path is ready from a code, build, and live staff-lifecycle perspective.
+Item 8 is complete at the local source boundary: required code fixes, maintained docs, focused type/lint/source/emulator checks, desktop/mobile parity, and owner-task capture are complete.
 
-The remaining production action is environment-level: verify the deployed Upstash Redis rate-limit credentials resolve and accept requests. Without that, auth-sensitive operations still work, but rate limiting falls back open during Redis failures.
+This is not production certification. The approved app bundle must be released, target rate-limit/Firebase Auth behavior must be exercised, and the hosted owner/manager/staff/custom-role matrix must cover Owner-target refusal, self-service password change, last-owner races, session revocation, inactive/deleted tenant/store state, exact retries, collision refusal, desktop, and MobileShell. Those tasks remain pending in `__docs__/owner-action-items.md`.

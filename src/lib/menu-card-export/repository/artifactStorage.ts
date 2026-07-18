@@ -1,4 +1,5 @@
 import type { MenuCardGeneratedArtifact } from '../models/exportTypes';
+import { shareBrowserFile, type BrowserFileShareResult } from '../../export/browserFileShare';
 
 export function downloadMenuCardArtifact(artifact: MenuCardGeneratedArtifact | { blob: Blob; filename: string }): void {
     const url = URL.createObjectURL(artifact.blob);
@@ -11,11 +12,13 @@ export function downloadMenuCardArtifact(artifact: MenuCardGeneratedArtifact | {
     URL.revokeObjectURL(url);
 }
 
-export async function shareMenuCardArtifact(artifact: MenuCardGeneratedArtifact | { blob: Blob; filename: string }, title: string): Promise<boolean> {
-    if (!navigator.share || !navigator.canShare) return false;
-    const file = new File([artifact.blob], artifact.filename, { type: artifact.blob.type || 'application/pdf' });
-    const shareData = { files: [file], title };
-    if (!navigator.canShare(shareData)) return false;
-    await navigator.share(shareData);
-    return true;
+export async function shareMenuCardArtifact(
+    artifact: MenuCardGeneratedArtifact | { blob: Blob; filename: string },
+    title: string,
+): Promise<BrowserFileShareResult> {
+    return shareBrowserFile({
+        blob: artifact.blob,
+        filename: artifact.filename,
+        title,
+    });
 }

@@ -58,14 +58,16 @@ No index is required. Challenge and token reads use document IDs. User reuse use
 
 Per successful OTP send:
 
-- IP throttle and 1KB body cap happen before phone normalization or challenge writes.
+- Fail-closed IP throttle and 1KB body cap happen before phone normalization or challenge writes.
+- Fail-closed phone-hash throttle happens before challenge creation or WhatsApp delivery.
 - 1 challenge write
 - 1 WhatsApp outbound message
 - 1 delivery-status write
 
 Per verification:
 
-- IP throttle and 1KB body cap happen before challenge lookup or login-token writes.
+- Fail-closed IP throttle and 1KB body cap happen before challenge lookup or login-token writes.
+- Fail-closed challenge throttle happens before challenge verification, user resolution, or login-token writes.
 - 1 challenge reservation transaction read/update for valid, invalid, or expired attempts
 - bounded existing-user lookup queries in the documented login-identifier order; a missing user also uses one deterministic document read
 - 1 user update or create
@@ -76,6 +78,8 @@ Per NextAuth token consumption:
 - 1 transaction with exact token and `users/{userId}` reads, then 1 token update only after the stored email binding matches
 
 The expensive operation is WhatsApp delivery, so send is separately rate-limited by IP and phone hash.
+
+Limiter-provider unavailability returns 503 and produces no OTP Firestore/Auth/WhatsApp operation after the unavailable check. A normal exhausted limit returns 429. This changes outage behavior only; valid accepted requests keep the documented operation count and no rule, index, schema, Cloud Function, Storage, or deploy target changes.
 
 The June 27 start-route error response hardening adds no Firestore reads/writes and no WhatsApp calls. It only changes failed response text selection so internal custom error messages are not returned directly to the browser.
 

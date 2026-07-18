@@ -18,6 +18,13 @@ import type {
 } from "@type/campaigncuePackTemplates";
 import { resolveCampaignCuePackTemplateCategory } from "./category";
 import type { CreativeEditorDocument } from "@/modules/creative-editor/types";
+import { CampaignCuePackTemplateEditorDocumentSchema } from "@lib/validation/campaigncueCueLayersSchemas";
+import {
+    assertCampaignCuePackTemplatePayloadIdentity,
+    assertCampaignCuePackTemplateSummaryScope,
+    assertCampaignCuePlatformTemplateCatalogScope,
+    assertCampaignCueWorkspaceTemplateIndexScope,
+} from "./templateScopeBoundary";
 
 const ACTIVE_STATUS = "active";
 
@@ -55,10 +62,7 @@ const activeTemplates = (templates: CampaignCuePackTemplateSummary[]) => (
 );
 
 async function readJsonFromStorage<T>(path: string, maxBytes: number, parser: (value: unknown) => T): Promise<T> {
-    const blob = await getBlob(ref(firebaseStorage, path));
-    if (blob.size > maxBytes) {
-        throw new Error("Template payload is too large");
-    }
+    const blob = await getBlob(ref(firebaseStorage, path), maxBytes);
     const raw = await blob.text();
     return parser(JSON.parse(raw));
 }
@@ -70,6 +74,7 @@ async function loadPlatformTemplates(
     const catalogDoc = await getDoc(catalogRef);
     if (!catalogDoc.exists()) return [];
     const catalog = campaignCuePlatformPackTemplateCatalogSchema.parse(catalogDoc.data()) as CampaignCuePlatformPackTemplateCatalog;
+    assertCampaignCuePlatformTemplateCatalogScope(catalog, businessCategory);
     if (catalog.catalogStatus !== "active") return [];
     return activeTemplates(catalog.data.filter((template) => template.businessCategory === businessCategory));
 }
@@ -85,6 +90,7 @@ async function loadWorkspaceTemplates(workspaceId: string): Promise<CampaignCueP
     const indexDoc = await getDoc(indexRef);
     if (!indexDoc.exists()) return [];
     const index = campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex;
+    assertCampaignCueWorkspaceTemplateIndexScope(index, workspaceId);
     return activeTemplates(index.data);
 }
 
@@ -120,17 +126,20 @@ export function searchCampaignCuePackTemplates(input: {
 
 export async function getCampaignCuePackTemplate(
     summary: CampaignCuePackTemplateSummary,
+    options: { workspaceId?: string } = {},
 ): Promise<CampaignCuePackTemplateHydrated> {
+    assertCampaignCuePackTemplateSummaryScope(summary, options.workspaceId);
     const payload = await readJsonFromStorage(
         summary.payloadPath,
         CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_PAYLOAD_BYTES,
         (value) => campaignCuePackTemplatePayloadSchema.parse(value) as CampaignCuePackTemplatePayload,
     );
+    assertCampaignCuePackTemplatePayloadIdentity(summary, payload);
     const editorDocument = summary.editorDocumentPath
         ? await readJsonFromStorage<CreativeEditorDocument>(
             summary.editorDocumentPath,
             CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_EDITOR_DOCUMENT_BYTES,
-            (value) => value as CreativeEditorDocument,
+            (value) => CampaignCuePackTemplateEditorDocumentSchema.parse(value) as CreativeEditorDocument,
         )
         : undefined;
     return {

@@ -1,8 +1,8 @@
 # Compliance Pages — Implementation Plan
 
 **Status:** Runtime implemented source evidence; not current launch or legal certification
-**Version:** 1.3
-**Date:** July 10, 2026
+**Version:** 1.4
+**Date:** July 16, 2026
 **Audience:** Developers
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
@@ -12,17 +12,25 @@
 
 ## 1. Architecture Overview
 
+## July 16, 2026 - End-to-End Scope, Cache, and Template Truth
+
+The owner GET path verifies that the canonical store document belongs to the authenticated tenant/store scope before returning previews. Public override reads use `getCachedComplianceOverridesServer()` with a store-scoped key and tagged 60-second cache. Successful save/reset writes invalidate `compliance-store-{sId}`; if invalidation fails after the authoritative write, the API returns `refreshPending: true`, logs bounded diagnostics, and the public page remains bounded by the 60-second fallback instead of reporting the committed write as failed.
+
+Template generation is deterministic. `Last Updated` and `Effective Date` use the store modification timestamp when available and fall back to the versioned template effective date when it is absent, invalid, or a malformed legacy timestamp; page reload time is never used. The refund baseline no longer invents a seven-day eligibility window, five-to-seven-day processing promise, subscription cancellation rule, or non-refundable category. It states that the public page is non-transactional, the business owns customer refund decisions and processing, and MenuList cannot approve or process those refunds.
+
+Cost impact: public override reads are now at most one `compliancePages/{sId}` read per populated cache key per 60 seconds, plus an immediate refill after save/reset invalidation. Valid owner load/save/reset operation counts otherwise stay unchanged. No Firestore rules, indexes, Storage rules, Cloud Functions, schema, provider call, owner toggle, or public route was added.
+
 ## July 6, 2026 - Public Override Document-ID Boundary
 
-Public compliance override document-ID boundary: public compliance pages still generate system policy text first, then optionally read owner overrides from `compliancePages/{sId}`. `src/app/client/compliance/CompliancePageContent.tsx` now normalizes that public override document ID with `normalizePublicComplianceStoreDocumentId()` before the Admin SDK read. The renderer uses the store record's `storeId` first and the returned Firestore doc id only when `storeId` is absent, then requires exact positive numeric Firestore document-ID scope. Malformed, reserved, empty, whitespace-mutated, path-shaped, zero, negative, unsafe, or nonnumeric store scope skips the override read, logs bounded `public_compliance_override_read_failed` diagnostics with the fixed `public_compliance_invalid_store_scope` source error, and keeps the generated policy fallback.
+Public compliance override document-ID boundary: public compliance pages still generate system policy text first, then optionally read owner overrides from the tagged 60-second `compliancePages/{sId}` cache. `src/app/client/compliance/CompliancePageContent.tsx` normalizes that public override document ID with `normalizePublicComplianceStoreDocumentId()` before the server DAL read. The renderer uses the store record's `storeId` first and the returned Firestore doc id only when `storeId` is absent, then requires exact positive numeric Firestore document-ID scope. Malformed, reserved, empty, whitespace-mutated, path-shaped, zero, negative, unsafe, or nonnumeric store scope skips the override read, logs bounded `public_compliance_override_read_failed` diagnostics with the fixed `public_compliance_invalid_store_scope` source error, and keeps the generated policy fallback.
 
 Cost impact: `$0.00` for valid requests. This changes public compliance override-read admission only. It adds no Firestore reads/writes/deletes for valid public compliance pages, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, public route shape changes, or deploy requirement.
 
 ## July 5, 2026 - Public Override-Read Diagnostics
 
-Public compliance pages still generate system policy text first, then read `compliancePages/{sId}` for optional owner overrides. If that override read fails, `src/app/client/compliance/CompliancePageContent.tsx` now keeps the generated policy fallback: public compliance override read failures log `public_compliance_override_read_failed` with bounded diagnostics. The diagnostic includes only store/page/tenant-type presence-length metadata, subdomain/custom-domain presence booleans, and normalized source error metadata. It must not log raw store IDs, custom domains, subdomains, policy text, override text, or browser/provider exception payloads.
+Public compliance pages still generate system policy text first, then read the tagged 60-second `compliancePages/{sId}` cache for optional owner overrides. If that cache fill fails, `src/app/client/compliance/CompliancePageContent.tsx` keeps the generated policy fallback: public compliance override read failures log `public_compliance_override_read_failed` with bounded diagnostics. The diagnostic includes only store/page/tenant-type presence-length metadata, subdomain/custom-domain presence booleans, and normalized source error metadata. It must not log raw store IDs, custom domains, subdomains, policy text, override text, or browser/provider exception payloads.
 
-Cost impact: `$0.00`. This changes public compliance page observability only. It adds no Firestore reads/writes/deletes beyond the existing direct compliance override doc read, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public page route shape.
+Cost impact: `$0.00`. This historical diagnostics change added no operation; the current read is served through the tagged cache described above.
 
 ## July 5, 2026 - Owner Store-Lookup Diagnostics
 
@@ -98,8 +106,8 @@ Server Component: src/app/client/compliance/CompliancePageContent.tsx
      │
      ├── Resolve store from headers (same pattern as OBP)
      ├── Generate system content from template (pure function, always)
-     ├── Check compliancePages/{sId} for custom override
-     │     ├── If override exists → use override content
+     ├── Check tagged 60-second compliancePages/{sId} cache for custom override
+     │     ├── If override exists → prepend override to required baseline
      │     └── If no override → use system content
      ├── Render static HTML page (SSR)
      └── Return minimal, text-first page
@@ -122,7 +130,7 @@ Only custom overrides are stored in Firestore. This eliminates:
 ### Collection: `compliancePages`
 
 **Document ID:** `{sId}` (storeId — one doc per store)
-**Doc only exists if owner has pasted custom content.**
+**Document lifecycle:** normally created by the first override; a reset may retain a metadata-only document with no override fields. Rendering treats missing/empty override fields as baseline-only.
 
 ```typescript
 interface ComplianceOverrideDoc {
@@ -138,7 +146,7 @@ interface ComplianceOverrideDoc {
 
 ```
 match /compliancePages/{docId} {
-  // Public read — required for verification bots
+  // Public read compatibility; verification bots consume the SSR route, not Firestore directly.
   allow read: if true;
   // Writes are server-owned. Owner mutations must use /api/compliance.
   allow write: if false;
@@ -159,7 +167,7 @@ The browser mutation DAL is intentionally absent. Authenticated Firebase clients
 | `src/lib/compliance/templates.ts`                      | Privacy, Terms, and Refund template generation + input extraction | ~200 |
 | `src/lib/compliance/sanitizer.ts`                      | Content sanitization for custom overrides              | ~55  |
 | `src/app/api/compliance/route.ts`                      | GET (read) + POST (override/reset) with withAuth + Zod | ~165 |
-| `src/database/compliance/server.ts`                    | Admin-only override read/save/reset DAL                | ~80  |
+| `src/database/compliance/server.ts`                    | Admin-only override read/save/reset plus tagged public cache | ~100 |
 | `scripts/verification/test-compliance-pages-rules.ts`  | Public-read and client-write-denial emulator regression | ~80  |
 
 ### Modified Files (5)
@@ -188,6 +196,7 @@ function generateComplianceContent(
     country: string;
     contactEmail: string | null;
     contactPhone: string | null;
+    lastUpdated: string;
   },
 ): string;
 ```
@@ -200,7 +209,7 @@ function generateComplianceContent(
 - Contact: email preferred, phone as fallback
 - Soft legal language only ("may", "generally", "reasonable steps")
 - Dual-entity clause: business = content owner, MenuList = technology provider
-- "Last Updated" and "Effective Date" derived from generation time
+- "Last Updated" and "Effective Date" derived from stable store modification time, then the versioned template effective-date fallback
 
 ### Template Variables
 
@@ -230,14 +239,14 @@ function generateComplianceContent(
   "privacy": {
     "content": "...",
     "source": "system",
-    "version": 1,
-    "lastUpdated": "..."
+    "customContent": "",
+    "systemContent": "..."
   },
   "terms": {
     "content": "...",
     "source": "system",
-    "version": 1,
-    "lastUpdated": "..."
+    "customContent": "",
+    "systemContent": "..."
   }
 }
 ```
@@ -275,9 +284,9 @@ function generateComplianceContent(
 
 1. Get tenant info from headers (same as `OBPContent.tsx`)
 2. Resolve store (subdomain or custom domain lookup)
-3. Check `compliancePages/{sId}` doc
-4. If custom → render custom content
-5. If system or missing → generate from template using store data
+3. Read the optional override through the tagged 60-second `compliancePages/{sId}` cache
+4. Generate baseline content from current store data
+5. If custom text exists, render it before the non-removable baseline; otherwise render baseline only
 6. If missing store data (no contact) → show "Page not available" message
 7. Render minimal HTML page
 
@@ -345,7 +354,7 @@ No middleware changes are needed for this feature — the current `[[...slug]]` 
 
 The middleware rewrites `abc.com/privacy` to `/client/privacy`. The `[[...slug]]` page receives `slug = "privacy"` and renders `CompliancePageContent`.
 
-**Best approach:** Handle inside the existing `[[...slug]]/page.tsx` — detect if slug is "privacy" or "terms", and render the compliance page instead of menu resolution.
+**Current approach:** Handle inside the existing `[[...slug]]/page.tsx` — detect `privacy`, `terms`, or `refund`, and render the compliance page instead of menu resolution.
 
 ---
 
@@ -359,10 +368,7 @@ When store data changes that affects compliance templates:
 - Address
 - Country
 
-If `source === 'system'` → regenerate content on next page access.  
-If `source === 'custom'` → do NOT regenerate (user owns content).
-
-Detection: Compare `generationInputs` snapshot in doc with current store data. If different, regenerate.
+System baseline content is always regenerated from the current resolved store record. A custom override does not freeze or replace the baseline; it is composed before the regenerated baseline. No `generationInputs` snapshot or generated system copy is persisted. Owner save/reset invalidates the store-scoped compliance cache so override changes are immediate when invalidation succeeds and otherwise visible within the 60-second bound.
 
 ---
 

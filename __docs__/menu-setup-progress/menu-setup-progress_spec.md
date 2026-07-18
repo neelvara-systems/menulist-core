@@ -1,82 +1,33 @@
-# Menu Setup Progress — Specification
+# Menu Setup Progress - Specification
 
-> **Feature Flag:** `ENABLE_MENU_SETUP_PROGRESS`
-> **Owner-facing name:** Menu setup
+**Status:** Local source complete
+**Last reviewed:** July 16, 2026
 
-## 1. Problem
+## Goal
 
-Owners can create/import a menu, improve it, publish it, and place the link through several existing MenuList surfaces. The pieces are implemented, but first-time owners do not always know which step is done and which step matters next.
+Give an owner one quiet next step from source to a published, placed customer link without creating a second onboarding system.
 
-## 2. Product Decision
+## Requirements
 
-Create a MenuList-specific setup progress layer. It tracks the menu lifecycle, not business/profile completion.
+| Requirement | Current rule |
+| --- | --- |
+| Source | Done only when the selected project is loaded with a non-empty ID. |
+| Import | Done only when active extracted items exist; categories alone are insufficient. |
+| Details | Price and price-outlier warnings must be clear. |
+| Publish | A valid `lastPublishedAt` timestamp is required. |
+| Placement | Starter: published plus two validated distinct activation actions. Non-starter: published link is ready. |
+| Optional content | Descriptions, images, Translations ready, public links, and photos do not block required completion. |
+| Suppression | Hide immediately after all required steps are complete; optional improvements never become a hidden completion gate. |
+| Loading/error | Wait for selected-project loading; missing/malformed truth stays incomplete and routes to recovery. |
+| Routing | Desktop uses current routes; mobile uses Menu/Share/Official Page callbacks inside MobileShell. |
 
-## 3. Required Outcomes
+## Non-goals
 
-1. Show required menu setup progress without duplicating Public Presence.
-2. Treat descriptions, images, OBP photos, and social links as optional polish.
-3. Reuse existing Menu Check and Presence Monitor data.
-4. Avoid new collections, backend jobs, or owner-facing settings.
-5. Work on desktop and mobile through shared computation.
+- A persisted progress percentage or completion flag.
+- An API route, background worker, scheduler, or new Firestore collection.
+- A profile-completion checklist or duplicate Menu Correctness system.
+- Customer-use verification; recorded owner actions and owner-confirmed placements are evidence of setup action only.
 
-## 4. Required Steps
+## Permissions
 
-| Step | Done When | Owner Copy |
-| --- | --- | --- |
-| Source added | a project exists or setup source is known | "Source added" |
-| Menu imported | active extracted items exist | "Menu imported" |
-| Key details checked | no critical Menu Check price/review warnings | "Key details checked" |
-| Menu published | selected project has `lastPublishedAt` | "Menu published" |
-| Link placed | starter activation target is met | "Link placed" |
-
-## 5. Optional Steps
-
-| Step | Done When | Owner Copy |
-| --- | --- | --- |
-| Descriptions | description signal is clear | "Descriptions ready" |
-| Images | image signal is clear | "Images ready" |
-| Translations | selected menu language signals are clear | "Translations ready" |
-| OBP links | social/public action fields exist | "Public links added" |
-| OBP photo | cover/gallery/logo/project image exists | "Public photo added" |
-
-## 6. Non-Goals
-
-- Profile completion percentage
-- Business setup wizard
-- Public Presence replacement
-- New onboarding collection
-- New analytics panel
-- Required AI descriptions before publish
-- Required item images before publish
-- Required translations before publish
-- Expanding Menu Presence Monitor beyond its fixed surfaces
-
-## 7. Owner Language
-
-Use calm copy:
-
-- "Menu setup"
-- "Next step"
-- "Required setup"
-- "Optional improvements"
-- "No action needed"
-
-Avoid:
-
-- "You're doing great"
-- "Profile complete"
-- "Business setup"
-- score-like or celebratory language
-
-## 8. Acceptance Criteria
-
-1. Dashboard shows a setup card when setup is not fully running.
-2. Mobile Menu shows the setup card before/near Menu Check.
-3. Mobile Share shows placement progress after publish.
-4. Menu Check still owns content quality actions.
-5. Presence Monitor still owns external placement confirmation.
-6. No new Firestore collection, route, Cloud Function, or API route is added.
-
----
-
-**Created:** July 7, 2026
+Destination screens remain authoritative. Mobile More only shows its shortcut when the current permission set can open the selected next destination. The pure summary itself contains no authorization decision.

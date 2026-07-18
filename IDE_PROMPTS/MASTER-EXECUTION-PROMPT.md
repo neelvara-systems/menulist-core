@@ -457,30 +457,28 @@ The Use MenuList page (`/use-menulist`) is the **single hub** where owners find 
 
 ---
 
-### Website Hype & Domination Strategy (Pattern 10 — added March 2026)
+### Website Owner-Trust Acquisition Strategy (Pattern 10 — updated July 2026)
 
-**Context:** MenuList website is in v2 "Hype/Domination" mode for customer acquisition. Infrastructure positioning (v1) is backed up for future restoration after 10K+ businesses.
+**Context:** The MenuList website sells one practical outcome to non-technical SMB owners: start from the customer list they already use, review a private prepared version, and publish one official customer link with connected MenuList outputs.
 
-**Active version:** v2 — documented in `__docs__/main-website/main-website_v2-hype-strategy.md`
-**Marketing playbook:** `__docs__/main-website/main-website_hype-marketing-playbook.md`
-**Workflow:** `.windsurf/workflows/website.md`
+**Canonical docs:** `__docs__/main-website/README.md`, `main-website_content.md`, `main-website_impl.md`, and the active production-readiness audit
+**Workflow:** `.codex/workflows/website.md`
 
-**Core narrative:** Menu → Internet Presence (transformation)
-**Hero message:** "Upload your menu. Your business is online."
-**Key phrases:** "One menu. Everywhere customers look." / "Businesses update menus. The internet doesn't."
+**Core narrative:** Existing menu or service list → owner-reviewed customer link → supported MenuList public outputs
+**Primary promise:** "One approved customer list. One link customers can trust."
 
 **Rules for ANY website work:**
 
-1. **Transformation over features** — Never lead with features. Lead with the transformation: menu → online presence. Show the magic, don't explain the tech.
+1. **Owner outcome over feature inventory** — Lead with the existing-list-to-customer-link job. Feature detail follows only where it resolves an owner question.
 2. **"Business" not "restaurant"** — MenuList serves 60+ business types (restaurants, salons, gyms, retail, etc.). Never narrow to "restaurant" in website copy. Use "business" or "your business."
-3. **No AI language in public copy** — Never say "AI-powered", "AI extract", "AI menu creation", "let AI do the work." Show outcomes ("structured in minutes", "prepared for you"), not technology.
-4. **Action-oriented CTAs** — "Upload Your Menu →" not "Create your MenuList →". CTA matches the hero promise.
-5. **Speed emphasis** — "In minutes, not months", "under 10 minutes", "in seconds". Speed is the magic trigger.
-6. **Feature preservation** — NEVER remove existing feature sections (Prepared, Surfaces, SmartFeatures, etc.). ChatGPT/external AI is unaware of 14+ unique features. These are competitive advantages.
-7. **Built-in distribution awareness** — Every OBP page, QR menu, and shared link is a marketing surface. "Powered by MenuList" is the #1 growth engine. Protect and enhance it.
-8. **Meta tags must match v2** — All page titles and descriptions must align with transformation narrative. No "Official Menu System", no "AI-powered", no "restaurant-only" framing.
-9. **3 growth engines** — (a) Product-led distribution (Powered by MenuList), (b) Transformation demo content, (c) Geographic density. All website decisions should support these.
-10. **Version discipline** — Changes are locale-based (en-US.json, hi-IN.json) + section order (HomePage.tsx). Components are version-agnostic. Always update both en-US and hi-IN when changing website copy.
+3. **Codebase truth first** — Public inputs, plan entitlements, setup deadlines, payment behavior, external-platform behavior, and owner actions must match current runtime. Never advertise a planned or dormant path as live.
+4. **Approval before public truth** — Automated preparation is allowed; important public content stays owner-reviewed before publication.
+5. **No generic AI hype** — Named shipped products such as AI Menu Manager are allowed. Do not use "AI-powered," invented intelligence claims, or model language as the value proposition.
+6. **No unsupported speed or outcome claim** — Use measured setup facts only when source-backed. Do not promise rankings, revenue, automatic external posting, or universal freshness.
+7. **Supported intake only** — The public create flow accepts a supported photo/image upload or an owned public link. A PDF may be provided through an owned public link; direct typed-list or direct PDF upload must not be promised unless runtime changes first.
+8. **Useful proof, not placeholders** — Public proof must use approved AssetOS media, honest product UI, or a clearly bounded product illustration. Internal editorial notes and replacement instructions never render publicly.
+9. **One navigable owner journey** — Header, footer, homepage, pricing, contact, feature pages, About, FAQ, and create-menu routes must agree on the same promise and remain usable on mobile and keyboard.
+10. **Locale and version discipline** — Update English and Hindi global website copy together, preserve reviewed resource locale routing, update docs/changelog, and run website copy, locale, path, accessibility, and discovery verifiers.
 
 **When to load:** Any work on `src/app/(website)/`, `src/components/website/`, or `public/locales/menulist.ai/` locale files (Website namespace).
 

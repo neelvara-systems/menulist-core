@@ -48,6 +48,22 @@ function verifyPackageScript() {
   );
 }
 
+function verifyFirestoreCostBoundary() {
+  const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
+  const exemptStoreFields = new Set(
+    (firestoreIndexes.fieldOverrides || [])
+      .filter((entry) => entry.collectionGroup === 'stores' && Array.isArray(entry.indexes) && entry.indexes.length === 0)
+      .map((entry) => entry.fieldPath),
+  );
+
+  for (const fieldPath of ['publicPresence', 'businessCopyMeta', 'businessAttributes', 'workingHours']) {
+    assert(
+      exemptStoreFields.has(fieldPath),
+      `stores.${fieldPath} must stay exempt from unused automatic single-field indexes`,
+    );
+  }
+}
+
 function verifyPublicLinkHelperRuntime() {
   const {
     normalizeOBPExternalHttpsUrl,
@@ -88,6 +104,95 @@ function verifyPublicLinkHelperRuntime() {
   for (const [label, actual] of rejected) {
     assert(actual === null, `${label}: expected null, received ${actual}`);
   }
+}
+
+function verifyOwnerMutationBoundary() {
+  const { normalizeGeoCoordinateDraft } = require(path.join(root, 'src/lib/businessIdentity/geoCoordinates.ts'));
+  const { normalizeOwnerPublicPresenceLinks } = require(path.join(root, 'src/lib/obp/ownerPublicPresenceBoundary.ts'));
+  const { buildVisualProfileCompletion } = require(path.join(root, 'src/lib/visualProfile/visualProfileCompletion.ts'));
+
+  assert(JSON.stringify(normalizeGeoCoordinateDraft('', '')) === JSON.stringify({ ok: true, geo: null }), 'blank geo pair must clear geo');
+  assert(JSON.stringify(normalizeGeoCoordinateDraft('0', '0')) === JSON.stringify({ ok: true, geo: { latitude: 0, longitude: 0 } }), 'zero geo pair must remain valid');
+  assert(normalizeGeoCoordinateDraft('12', '').ok === false, 'partial geo pair must fail');
+  assert(normalizeGeoCoordinateDraft('91', '20').ok === false, 'out-of-range latitude must fail');
+  assert(normalizeGeoCoordinateDraft('20', '-181').ok === false, 'out-of-range longitude must fail');
+
+  const normalizedLinks = normalizeOwnerPublicPresenceLinks({
+    googleMapsUrl: 'https://www.google.com/maps/place/example',
+    googleReviewUrl: 'https://g.page/example/review',
+    orderUrl: 'order.example.com/menu',
+    reservationUrl: '',
+  });
+  assert(normalizedLinks.invalidKeys.length === 0, 'valid owner public links must normalize');
+  assert(normalizedLinks.presence.orderUrl === 'https://order.example.com/menu', 'generic owner URL must normalize to HTTPS');
+  assert(
+    normalizeOwnerPublicPresenceLinks({ googleMapsUrl: 'https://example.com/not-maps' }).invalidKeys.includes('googleMapsUrl'),
+    'invalid owner Maps URL must fail before persistence',
+  );
+
+  const duplicatePhotoCompletion = buildVisualProfileCompletion({
+    businessCategory: 'food',
+    businessCover: ' cover.webp ',
+    photos: ['one.webp', ' one.webp ', 'two.webp'],
+    projects: [
+      { active: false, projectImage: 'inactive.webp' },
+      { active: true, isSpecialMenu: true, projectImage: 'special.webp' },
+    ],
+  });
+  assert(duplicatePhotoCompletion.photoCount === 2, 'visual completion must count unique trimmed gallery URLs');
+  assert(duplicatePhotoCompletion.status === 'needs-attention', 'duplicate and ineligible project photos must not complete the profile');
+
+  const locationTab = read('src/components/templates/main-app/businessSettings/tabs/LocationInfoTab.tsx');
+  const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
+  const mobileBasic = read('src/components/mobile/screens/MobileBasicSettingsScreen.tsx');
+  const mobileOfficial = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
+  const officialTab = read('src/components/templates/main-app/businessSettings/tabs/OfficialPageTab.tsx');
+  const b2cView = read('src/components/templates/main-app/projects/b2cView/index.tsx');
+  const storageHelper = read('src/database/stores/uploadOBPPhoto.ts');
+  const obpContent = read('src/app/client/obp/OBPContent.tsx');
+  const brandContent = read('src/app/client/obp/BrandOBPContent.tsx');
+  const resolvedSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
+  const actions = read('src/app/client/obp/OBPActions.tsx');
+  const visualCompletion = read('src/lib/visualProfile/visualProfileCompletion.ts');
+
+  assertIncludes(locationTab, 'name="addressLine"', 'desktop canonical address field');
+  assertIncludes(locationTab, 'name="postalCode"', 'desktop canonical postal field');
+  assertNotIncludes(locationTab, 'name="address"', 'desktop legacy address field');
+  assertNotIncludes(locationTab, 'name="pincode"', 'desktop legacy postal field');
+  assertIncludes(businessSettings, "addressLine: storeDetails?.addressLine || storeDetails?.address || ''", 'desktop legacy address hydration');
+  assertIncludes(businessSettings, "postalCode: storeDetails?.postalCode || storeDetails?.pincode || ''", 'desktop legacy postal hydration');
+  assertIncludes(businessSettings, 'normalizeGeoCoordinateDraft(latitudeInput, longitudeInput)', 'desktop shared geo boundary');
+  assertIncludes(businessSettings, 'normalizeOwnerPublicPresenceLinks(changesToUpload.publicPresence)', 'desktop owner public-link boundary');
+  assertIncludes(mobileBasic, "storeDetails?.geo?.latitude !== undefined", 'mobile zero latitude hydration');
+  assertIncludes(mobileBasic, 'normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)', 'mobile shared geo boundary');
+  for (const rollbackField of ['countryCode', 'dialCode', 'phoneNumber']) {
+    assertIncludes(mobileBasic, `${rollbackField}: storeDetails.${rollbackField}`, `mobile phone rollback ${rollbackField}`);
+  }
+  assertIncludes(mobileBasic, 'phone: (storeDetails as any).phone', 'mobile canonical phone rollback');
+  assertIncludes(mobileOfficial, 'normalizeOwnerPublicPresenceLinks(publicPresenceDraft)', 'mobile owner public-link boundary');
+  assertIncludes(mobileOfficial, 'businessCopyMeta: storeDetails.businessCopyMeta', 'mobile optimistic metadata rollback');
+  assertIncludes(b2cView, 'normalizeOwnerPublicPresenceLinks(storeDraft?.publicPresence || {})', 'embedded editor owner public-link boundary');
+
+  assertIncludes(officialTab, 'queuePhotoDelete(url);', 'desktop new upload cleanup candidate');
+  assertIncludes(mobileOfficial, 'queuePhotoDelete(url);', 'mobile new upload cleanup candidate');
+  assertIncludes(storageHelper, '): Promise<string[]>', 'OBP cleanup retry result contract');
+  assertIncludes(storageHelper, 'return failedPhotoUrls;', 'OBP cleanup failed URL retention');
+  assertIncludes(businessSettings, 'reconcileOBPPhotoDeleteQueue(', 'desktop failed cleanup retry queue');
+  assertIncludes(mobileOfficial, 'setPhotoDeleteQueue(failedPhotoDeletes)', 'mobile failed cleanup retry queue');
+  assertIncludes(mobileOfficial, 'persistedPublicPresenceRef.current = nextPublicPresence', 'mobile acknowledged media retention race boundary');
+  assertIncludes(mobileOfficial, 'photoDeleteQueueRef.current = failedPhotoDeletes', 'mobile synchronous cleanup retry ref');
+  assertIncludes(b2cView, 'setObpPhotoDeleteQueue(failedPhotoDeletes)', 'embedded failed cleanup retry queue');
+  assertIncludes(b2cView, 'persistedPublicPresenceRef.current = nextStoreDetails.publicPresence', 'embedded acknowledged media retention race boundary');
+  assertIncludes(b2cView, 'obpPhotoDeleteQueueRef.current = failedPhotoDeletes', 'embedded synchronous cleanup retry ref');
+
+  assertIncludes(obpContent, '.limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)', 'single-outlet OBP bounded tenant read');
+  assertIncludes(brandContent, '.limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)', 'brand OBP bounded tenant read');
+  assertIncludes(resolvedSurface, 'normalizeGeoCoordinateDraft(params.geo?.latitude, params.geo?.longitude)', 'public map shared geo boundary');
+  assertIncludes(resolvedSurface, 'const safeCallHref = buildTelHref({', 'public safe call admission');
+  assertIncludes(resolvedSurface, 'const safeWhatsAppPhoneParam = buildWhatsAppPhoneParam({', 'public safe WhatsApp admission');
+  assertIncludes(actions, '{showCall && callHref && (', 'OBP action nonempty call href guard');
+  assertIncludes(actions, '{showWhatsApp && whatsappHref && (', 'OBP action nonempty WhatsApp href guard');
+  assertIncludes(visualCompletion, 'const photoCount = new Set(', 'visual completion unique gallery count');
 }
 
 function verifyPublicRenderingBoundary() {
@@ -274,6 +379,12 @@ function verifyDocsParity() {
   assertIncludes(docs.changelog, 'Official Business Page Freshness Copy Boundary', 'Changelog OBP freshness checkpoint');
   assertIncludes(docs.changelog, 'Official Business Page Server Fallback Diagnostics', 'Changelog OBP server fallback checkpoint');
   assertIncludes(docs.changelog, 'OBP Public Link Parse Diagnostics', 'Changelog OBP public link parse diagnostics checkpoint');
+  assertIncludes(docs.readme, 'Owner mutation integrity boundary', 'OBP README owner mutation boundary');
+  assertIncludes(docs.impl, 'retryable cleanup candidates', 'OBP implementation retryable media cleanup');
+  assertIncludes(docs.firebase, '`MAX_OUTLETS_PER_TENANT + 1`', 'OBP Firebase bounded public outlet read');
+  assertIncludes(docs.mobile, 'shared coordinate and public-link validators', 'OBP mobile mutation parity');
+  assertIncludes(docs.audit, 'Official Business Page owner-mutation integrity checkpoint', 'Production audit owner mutation checkpoint');
+  assertIncludes(docs.changelog, 'Official Business Page Owner Mutation Integrity', 'Changelog owner mutation checkpoint');
 }
 
 function verifyFreshnessBoundary() {
@@ -351,7 +462,9 @@ function verifyFreshnessBoundary() {
 }
 
 verifyPackageScript();
+verifyFirestoreCostBoundary();
 verifyPublicLinkHelperRuntime();
+verifyOwnerMutationBoundary();
 verifyPublicRenderingBoundary();
 verifyDocsParity();
 verifyFreshnessBoundary();

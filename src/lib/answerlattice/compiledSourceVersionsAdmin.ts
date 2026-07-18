@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, type WriteBatch } from 'firebase-admin/firestore';
 import type { AnswerlatticeCompiledSourceVersions, AnswerlatticeContextSourceKey } from '@type/answerlattice';
 import {
     areAnswerlatticeCompiledSourceVersionsValid,
@@ -122,7 +122,8 @@ export const initializeAnswerlatticeCompiledContextControlPlaneAdmin = async (
     await batch.commit();
 };
 
-export const markAnswerlatticeCompiledContextSourceChangedAdmin = async (
+export const appendAnswerlatticeCompiledContextSourceChangeAdmin = (
+    batch: WriteBatch,
     source: AnswerlatticeContextSourceKey,
     tId: number,
     sId: number,
@@ -132,7 +133,6 @@ export const markAnswerlatticeCompiledContextSourceChangedAdmin = async (
     const db = getDb();
     const now = FieldValue.serverTimestamp();
     const metadataFields = sanitizeMetadata(metadata);
-    const batch = db.batch();
     batch.set(db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tenantId, storeId)), {
         schemaVersion: 1,
         pId: PRODUCT_IDS.ANSWERLATTICE,
@@ -152,5 +152,15 @@ export const markAnswerlatticeCompiledContextSourceChangedAdmin = async (
         updatedAt: now,
         ...metadataFields,
     }, { merge: true });
+};
+
+export const markAnswerlatticeCompiledContextSourceChangedAdmin = async (
+    source: AnswerlatticeContextSourceKey,
+    tId: number,
+    sId: number,
+    metadata?: SourceVersionBumpMetadata,
+) => {
+    const batch = getDb().batch();
+    appendAnswerlatticeCompiledContextSourceChangeAdmin(batch, source, tId, sId, metadata);
     await batch.commit();
 };

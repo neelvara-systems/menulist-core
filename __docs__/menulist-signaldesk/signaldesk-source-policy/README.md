@@ -31,3 +31,5 @@ It exists because source providers are not truth providers, and data availabilit
 | --- | --- | --- |
 | 0.1 | 2026-06-23 | Created initial source policy doc set. |
 | 0.2 | 2026-06-23 | Updated Apify from blocked-only planning to gated Source Broker use after source policy, provider approval, env Actor review, and budget cap. |
+| 0.3 | 2026-07-15 | Added the locally implemented, deploy-gated source-data retention lifecycle, root-writer contract, Firebase query/cost model, and focused emulator coverage. |
+| 0.4 | 2026-07-15 | Closed the public-capability gap by making target retention revoke active outcome route tokens and scrub retained token display names. |

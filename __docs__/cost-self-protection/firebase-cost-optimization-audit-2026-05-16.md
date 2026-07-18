@@ -1,5 +1,12 @@
 # Firebase Cost Optimization Audit — May 16, 2026
 
+> **Historical audit:** This remains useful evidence for its May 2026 changes,
+> but current repository-wide counts, index posture, scheduler cadence, and
+> residual release work are maintained in
+> [`__docs__/firebase-scale-cost-closeout/README.md`](../firebase-scale-cost-closeout/README.md).
+> Do not use the older currency examples or risk counts as current billing
+> forecasts.
+
 **Scope:** MenuList runtime code and MenuList documentation. Answerlattice-specific paths are excluded because Answerlattice is a separate product under the repository doctrine.
 
 **Audit stance:** Cost reduction is valuable only where public truth, routing permanence, multi-outlet inheritance, and deterministic rendering remain unchanged.
@@ -160,6 +167,7 @@ Scope: validated ChatGPT Firebase/GCP cost suggestions against the live MenuList
 | --- | --- | --- | --- |
 | Custom-domain availability query bound | `src/database/stores/index.tsx` | Adds `limit(1)` to a lookup that only consumes the first matching store. | Availability logic already branches only on `snapshot.docs[0]`; no list behavior changes. |
 | Prepared public media cache metadata | `src/database/storage/uploadBlobToStorage.ts`, `src/database/storage/uploadPreparedMediaImage.ts` | Adds long-lived immutable cache metadata to profile-aware generated public media variants. | Prepared media paths include checksum/fingerprint-based media IDs, so changed content receives a changed path. |
+| Prepared public media create-or-reuse boundary | `storage.rules`, `src/database/storage/uploadBlobToStorage.ts`, `src/database/storage/uploadPreparedMediaImage.ts` | Denies overwrite of an existing content-addressed prepared-media object and reuses it on duplicate/retry. Adds no Firestore ledger/read and avoids duplicate bytes. | Rollback paths no longer delete deterministic objects because another concurrent or retried save may reference the same path. A dedicated Storage emulator pins overwrite denial and original-byte preservation. |
 | OBP fallback image cache metadata | `src/database/stores/uploadOBPPhoto.ts` | Adds long-lived immutable cache metadata to non-prepared OBP photo/cover fallback uploads. | Fallback OBP paths use timestamped file IDs and are stored as public image URLs. |
 | MenuList Function max-instance guards | `functions/src/config/secrets.ts`, `functions/src/decisionBlocksScoring.ts`, manual aggregation/scheduler/operations functions | Caps expensive AI, scheduler, webhook, and manual-recovery function scaling to prevent runaway concurrency while preserving existing memory/timeout choices. | No memory reductions were applied; AI functions keep their existing 2GiB and long timeout settings. |
 | Answerlattice Function region pinning | `functions-answerlattice/src/index.ts` | Pins Answerlattice Functions to `us-central1` explicitly instead of relying on defaults. | Existing max-instance limits remain unchanged; no Answerlattice data model or retrieval behavior changes. |

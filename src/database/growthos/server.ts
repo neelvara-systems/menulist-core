@@ -3,6 +3,7 @@ import { GROWTHOS_SUMMARY_DOC_PREFIX } from "@constant/growthos";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { randomUUID } from "node:crypto";
 import type {
     GrowthOSExportMethod,
     GrowthOSKit,
@@ -135,14 +136,36 @@ export async function writeGrowthOSSummaryServer(
         }), { merge: true });
 }
 
-export async function writeGrowthOSKitServer(kit: GrowthOSKit): Promise<void> {
+export async function writeGrowthOSKitAndSummaryServer(
+    kit: GrowthOSKit,
+    summary: GrowthOSSummaryDocument,
+): Promise<void> {
     const kitId = requireGrowthOSDocumentId(kit.id, "kit");
     const tenantDocumentId = requireGrowthOSScopeDocumentId(kit.tId, "tenant");
     const storeDocumentId = requireGrowthOSScopeDocumentId(kit.sId, "store");
-    await firestoreAdmin
+    const summaryTenantDocumentId = requireGrowthOSScopeDocumentId(summary.tId, "summary tenant");
+    const summaryStoreDocumentId = requireGrowthOSScopeDocumentId(summary.sId, "summary store");
+    const summaryKitId = requireGrowthOSDocumentId(summary.latestKit?.id, "summary kit");
+    if (
+        summaryTenantDocumentId !== tenantDocumentId
+        || summaryStoreDocumentId !== storeDocumentId
+        || summaryKitId !== kitId
+    ) {
+        throw new Error("GrowthOS kit and summary scope mismatch");
+    }
+    const kitRef = firestoreAdmin
         .collection(`${DB_COLLECTIONS.GROWTHOS_KITS}/${tenantDocumentId}/${storeDocumentId}`)
-        .doc(kitId)
-        .set(sanitizeForAdminFirestore({ ...kit, id: kitId }));
+        .doc(kitId);
+    const summaryRef = firestoreAdmin
+        .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
+        .doc(summaryDocId(summaryStoreDocumentId));
+    const batch = firestoreAdmin.batch();
+    batch.set(kitRef, sanitizeForAdminFirestore({ ...kit, id: kitId }));
+    batch.set(summaryRef, sanitizeForAdminFirestore({
+        ...summary,
+        lastUpdated: admin.firestore.Timestamp.now(),
+    }), { merge: true });
+    await batch.commit();
 }
 
 export async function readGrowthOSKitServer(params: {
@@ -227,7 +250,7 @@ export function findGrowthOSKitOutput(params: {
 }
 
 export function buildGrowthOSKitId(tId: string | number, sId: string | number): string {
-    return `growthos_${tId}_${sId}_${Date.now().toString(36)}`;
+    return `growthos_${tId}_${sId}_${randomUUID()}`;
 }
 
 export function buildGrowthOSSummaryDocId(storeId: string | number): string {

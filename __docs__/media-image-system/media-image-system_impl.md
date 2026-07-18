@@ -58,7 +58,7 @@ Modify:
 7. Replace per-surface ad hoc upload rules with the shared preparation function.
 8. Restrict AI image shape selectors to the menu item media profile and keep system-native ratio order first.
 9. Preserve existing Firebase Storage writes and public cache invalidation paths.
-10. Keep prepared outputs immutable. Profile-aware public media saves must upload through Blob storage to `media/{profile}/{tenantId}/{storeId}/{entityId}/{mediaId}_{variant}.{extension}`.
+10. Keep prepared outputs immutable. Profile-aware public media saves must upload the selected persisted variant through Blob storage to `media/{profile}/{tenantId}/{storeId}/{entityId}/{mediaId}_{variant}.{extension}`.
 
 ## Key Decisions
 
@@ -85,7 +85,7 @@ Profiles expose named variants:
 - Digital screen slide: `desktop`, `full`
 - Gallery image: `thumb`, `full`
 
-`uploadPreparedMediaImage` uploads every prepared named variant to deterministic Storage paths and returns the selected primary variant URL for existing single-field save contracts. The variant map is prepared and stored under predictable sibling paths now, so future renderers can stop serving oversized single URLs without changing the media profile contract.
+`uploadPreparedMediaImage` uploads only the selected allowed variant and returns that URL for the existing single-field save contract. The full variant map remains available in the prepared in-memory object, but unused siblings are not written to Storage. A future multi-variant renderer must add an explicit persisted URL-map/read contract before enabling additional uploads.
 
 ### Data URL boundary
 
@@ -137,13 +137,25 @@ Official Business Page cover and gallery images upload immediately because the e
 
 When a replacement upload fails, removing the visible failed draft only discards the draft and reveals the last saved public image. It must not queue deletion for the still-saved public asset.
 
+Prepared-media paths are content-addressed and may be reused by concurrent or retried saves. Firebase Storage rules therefore allow creation but deny overwrite of an existing `media/{profile}/...` object. The upload helper reuses the existing download URL after a create conflict. A failed Firestore save must not delete the shared path because another successful mutation may already reference it. This keeps duplicate retries to one stored object and avoids a Firestore reference ledger; unreferenced content-addressed objects remain eligible for later bounded retention tooling.
+
+Server/Admin media writes follow the same create-once rule. Batch generation and prompt-cache destination copies use a generation-match precondition, compare existing size/cache policy/content type/checksummed custom identity metadata after a create conflict, and reuse the existing Firebase download token. They never overwrite deterministic bytes or rotate a token already persisted in project truth.
+
+Batch review state, one job row, and one project document are not deletion authority. A generated URL may survive an acknowledgement retry, project duplication, or outlet projection. Browser batch actions and the batch-retention scheduler therefore retain public media objects; job metadata is still pruned after seven days and terminal job rows after 30 days. A future physical-media cleanup requires a global reference ledger or equivalent cross-project/outlet proof and measured orphan growth.
+
 ### Immutable cache behavior
 
-Prepared media outputs should be immutable. Current project, item, menu background, logo, OBP business cover, OBP gallery, and digital screen uploads route through the profile-aware media uploader, so a changed image gets a new public Storage object instead of overwriting an old one.
+Prepared media outputs are immutable. Current project, item, menu background, logo, OBP business cover, OBP gallery, and digital screen uploads route through the profile-aware media uploader. Changed content gets a new public Storage object; retrying the same content reuses the existing object without overwriting its bytes or token.
 
 ### Static output and transparency
 
 Animated public images are unsupported. GIF is rejected, and accepted formats are prepared into static canvas outputs. Transparency is preserved only for `businessLogo`; all other profiles are flattened against the profile background color before compression so public rendering stays predictable.
+
+The Storage rule mirrors that static contract for direct SDK access: `media/{profile}/...` accepts JPEG, PNG, or WebP and rejects GIF even when an authenticated owner bypasses the normal preparation UI.
+
+### Generated project image authority
+
+Auto-generated project images are default-only. The initial browser check avoids unnecessary generation when the loaded project already has an image, but final authority remains the `updateProjectMetadata()` summary transaction. That transaction removes the generated `projectImage` patch when transaction-current summary truth already has an owner image. The returned authoritative summary is compared with the generated URL before desktop or mobile installs it locally, so an owner upload that completes during provider generation or Storage upload cannot be overwritten by the late generated result.
 
 ## Validation
 

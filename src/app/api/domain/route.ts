@@ -39,6 +39,7 @@ import {
     CustomDomainReservation,
     getCustomDomainClaimDocumentId,
     isCustomDomainUnavailableError,
+    isReservedCustomDomainClaimCandidate,
     normalizeCustomDomainClaimCandidate,
     readCustomDomainReservationInTransaction,
     writeCurrentCustomDomainClaim,
@@ -123,23 +124,60 @@ async function checkDomainManagementRateLimit(session: any, storeId: string) {
     const userRateLimitHash = hashPublicRateLimitValue(userId || session.user?.id || 'unknown');
     const storeRateLimitHash = hashPublicRateLimitValue(storeId);
     const result = await checkRateLimit({
+        failClosedOnProviderError: true,
         key: `domain-management:${userRateLimitHash}:${storeRateLimitHash}`,
         ...config,
     });
 
     if (result.allowed) return null;
 
+    const providerUnavailable = result.reason === 'provider_unavailable';
     const waitSeconds = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
     return NextResponse.json(
-        { error: "Too many domain requests. Please try again later.", retryAfter: waitSeconds },
         {
-            status: 429,
+            error: providerUnavailable
+                ? "Domain service temporarily unavailable. Please try again shortly."
+                : "Too many domain requests. Please try again later.",
+            retryAfter: waitSeconds,
+        },
+        {
+            status: providerUnavailable ? 503 : 429,
             headers: {
                 'Retry-After': String(waitSeconds),
                 'X-RateLimit-Limit': String(config.limit),
                 'X-RateLimit-Remaining': '0',
                 'X-RateLimit-Reset': String(result.resetAt),
             },
+        },
+    );
+}
+
+async function checkDomainAvailabilityRateLimit(session: any, storeId: string) {
+    const config = getRateLimitForFeature('DATA_READ');
+    const userId = session?.uId || session?.user?.id || session?.userId || 'unknown';
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
+    const storeRateLimitHash = hashPublicRateLimitValue(storeId);
+    const result = await checkRateLimit({
+        failClosedOnProviderError: true,
+        key: `domain-availability:${userRateLimitHash}:${storeRateLimitHash}`,
+        ...config,
+    });
+
+    if (result.allowed) return null;
+
+    const providerUnavailable = result.reason === 'provider_unavailable';
+    const waitSeconds = Math.max(1, Math.ceil((result.resetAt - Date.now()) / 1000));
+    return NextResponse.json(
+        {
+            available: false,
+            reason: providerUnavailable
+                ? "Domain availability is temporarily unavailable. Please try again shortly."
+                : "Too many requests. Please try again later.",
+            retryAfter: waitSeconds,
+        },
+        {
+            status: providerUnavailable ? 503 : 429,
+            headers: { 'Retry-After': String(waitSeconds) },
         },
     );
 }
@@ -365,6 +403,12 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     if (!normalizeCustomDomainClaimCandidate(normalizedDomain)) {
         return NextResponse.json({ error: "Invalid domain" }, { status: 400 });
     }
+    if (isReservedCustomDomainClaimCandidate(normalizedDomain)) {
+        return NextResponse.json(
+            { error: "This domain is reserved for MenuList services" },
+            { status: 409 },
+        );
+    }
 
     const db = admin.firestore();
     const reservationId = randomUUID();
@@ -433,6 +477,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
         providerAdded = result.ok;
+        let projectDomainData = result.ok ? result.data : null;
         if (!result.ok) {
             const providerConflictHasMenuListProvenance = reservationResult.storeAlreadyUsesDomain
                 || Boolean(reservation.claimStatus);
@@ -459,6 +504,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                     { status: 409 },
                 );
             }
+            projectDomainData = existingProjectDomain.data;
         }
 
         const configResult = await getVercelDomainConfig(normalizedDomain);
@@ -641,6 +687,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             verifiedAt: finalizeResult.verifiedAt,
             verification: configResult.ok ? configResult.data : null,
             message: "Domain added. Configure your DNS records to complete setup.",
+            projectDomain: projectDomainData,
         });
     } catch (error) {
         if (reservation && !finalized) {
@@ -693,6 +740,72 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
     const { tenantId, storeId } = scope;
+
+    const candidateParam = request.nextUrl.searchParams.get('candidate');
+    if (candidateParam !== null) {
+        const rateLimitResponse = await checkDomainAvailabilityRateLimit(session, storeId);
+        if (rateLimitResponse) return rateLimitResponse;
+
+        const candidate = normalizeCustomDomainClaimCandidate(candidateParam);
+        if (!candidate) {
+            return NextResponse.json({
+                available: false,
+                normalized: candidateParam.toLowerCase().trim().slice(0, 253),
+                reason: "Invalid domain format. Example: yourbusiness.com",
+            });
+        }
+        if (isReservedCustomDomainClaimCandidate(candidate)) {
+            return NextResponse.json({
+                available: false,
+                normalized: candidate,
+                reason: "This domain is reserved for MenuList services",
+            });
+        }
+
+        const db = admin.firestore();
+        try {
+            const availability = await db.runTransaction(async (transaction) => {
+                const authorizedState = await readAuthorizedDomainStateInTransaction({
+                    db,
+                    request,
+                    scope,
+                    session,
+                    transaction,
+                });
+                if (authorizedState.permissionError) {
+                    return { permissionError: authorizedState.permissionError };
+                }
+                await readCustomDomainReservationInTransaction({
+                    db,
+                    domain: candidate,
+                    nowMillis: Date.now(),
+                    storeId,
+                    tenantId,
+                    transaction,
+                });
+                return { permissionError: null };
+            });
+            if (availability.permissionError) return availability.permissionError;
+            return NextResponse.json({ available: true, normalized: candidate });
+        } catch (error) {
+            if (isCustomDomainUnavailableError(error)) {
+                return NextResponse.json({
+                    available: false,
+                    normalized: candidate,
+                    reason: "This domain is already linked to another store",
+                });
+            }
+            secureError(
+                "[Domain] Error checking domain availability",
+                normalizeDomainRouteFailure(error, "Domain availability check failed"),
+                buildDomainRouteLogContext(candidate, storeId, tenantId),
+            );
+            return NextResponse.json(
+                { available: false, reason: "Could not check domain right now." },
+                { status: 500 },
+            );
+        }
+    }
 
     const rateLimitResponse = await checkDomainManagementRateLimit(session, storeId);
     if (rateLimitResponse) return rateLimitResponse;
@@ -897,6 +1010,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             verified: nextVerified,
             verifiedAt,
             config: configResult?.ok ? configResult.data : null,
+            projectDomain: projectDomainResult?.ok ? projectDomainResult.data : null,
         }, { status: providerStatusPending ? 502 : 200 });
     } catch (error) {
         if (isCustomDomainUnavailableError(error)) {

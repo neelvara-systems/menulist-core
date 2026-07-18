@@ -2,7 +2,7 @@
 
 **Feature:** #4 — Multi-Outlet Brand Consistency  
 **Original Verification Date:** February 5, 2026  
-**Last Reviewed:** July 1, 2026
+**Last Reviewed:** July 16, 2026
 
 **Verified By:** Cascade AI Assistant  
 **Status:** Source-verified evidence; not current launch certification
@@ -42,6 +42,22 @@
 > **Note (July 1, 2026 — multi-location source gate):** Multi-location boundary source gate: `npm run verify:multi-location-boundary` locks server-owned outlet lifecycle routes, linked outlet save acknowledgement, desktop/mobile bounded outlet action parsing, MobileShell Locations routing, and this docs/audit parity. This is source-only and does not replace browser, Razorpay sandbox, Firebase deploy, or live Firestore certification.
 >
 > **Note (July 1, 2026 — desktop rename failure path):** The source gate found that desktop outlet rename parsed only successful acknowledgements. `OutletRenameModal` now reads the bounded response body before the non-OK branch, records the safe `currentSlug` field for same-slug rejection diagnostics, and keeps fixed owner copy instead of echoing server text. The same gate now checks `client-stores` and `screen-data` invalidation independent of quote style.
+>
+> **Note (July 14, 2026 — brand post-commit isolation):** `/api/outlets/brand-propagation` acknowledges the committed master/outlet/summary transaction even when a later cache, Digital Screens, or Owner Business Assistant effect fails. The shared bounded all-settled helper attempts the master, every committed target, and required global tags; the response exposes pending/count metadata and the route emits one stable bounded diagnostic. Focused helper tests plus multi-location, public-truth, Digital Screens, and Customer App PWA source gates cover continuation and field-sensitive screen invalidation.
+>
+> **Note (July 14, 2026 — policy post-commit isolation):** `/api/outlets/policy` now uses that shared helper after its current master policy/list/summary transaction. A derived failure cannot turn the committed policy into HTTP 500 or skip the other cache/screen/assistant effects; pending/count response fields and `outlet_policy_post_commit_effect_failed` preserve observability.
+>
+> **Note (July 14, 2026 — lifecycle commit/billing isolation):** outlet create, rename, and deactivate now isolate derived effects after durable mutation. Creation no longer reaches provider/internal quantity revert when only cache, screen, or assistant work failed after store creation. The shared helper's failure-injection regression plus lifecycle source gates prove non-throwing continuation, committed store selection, stable diagnostics, and pending/count acknowledgements.
+>
+> **Note (July 14, 2026 — provider quantity reconciliation):** `subscription.updated` remains the immediate event-keyed quantity sync. The leased subscription reconciler now also validates and repairs provider/local quantity mismatch inside its existing transaction, so a missed webhook cannot leave paid outlet capacity stale. Root TypeScript, scoped ESLint, Functions lint/build/preflight, billing, reseller, tenant-safety, pricing, and multi-location gates passed. The scoped `menulistMaintenanceScheduler` QA deploy completed predeploy lint/build but stopped before upload because Cloud Resource Manager returned HTTP 403 for the current caller.
+>
+> **Note (July 14, 2026 — master-only atomic project propagation):** `propagateNewProjectToOutlets()` now requires a bounded unique compact store list, proves source authority/status against canonical `stores/{source}`, supports a legacy compact source row without `isMaster`, and validates the current master project before selecting targets. Outlet-local, linked, deleted, cross-scope, malformed, duplicate, or oversized sources fail closed, and every target store is rechecked transactionally. Each eligible outlet project and its public summary commit in one transaction using a deterministic retry ID or one compatible legacy summary link. `npm run test:project-propagation-boundary`, the multi-location gate, and the public-truth gate cover source admission, retry identity, atomic source tokens, and removal of the prior timestamp/sequential-write pattern.
+>
+> **Note (July 16, 2026 — end-to-end multi-location authority cross-check):** Outlet create, policy, rename, deactivate, linked outlet save, and brand propagation now bind their writes to current master permission, active/unblocked store and tenant documents, and canonical compact tenant membership. Creation reads the current master-project set inside its transaction and caps replication at 200 projects. Linked saves reject inactive/deleted/local-only master menus. Public linked-menu resolution rejects malformed cross-tenant or same-store master references and inactive/deleted masters. Mobile Locations uses active outlet context for its Current/View labels.
+>
+> **Note (July 16, 2026 — deactivation billing acknowledgement):** Deactivation remains a durable store/tenant/summary commit even if provider reduction fails. The route can re-attempt reduction for an already-inactive outlet, but every unresolved provider/local reduction now returns `billingReductionPending: true` with `billingActionRequired: "CONTACT_SUPPORT"`; desktop/mobile Locations show that action instead of claiming an automatic background update. Manual/offline quantity remains prepaid capacity and is not reduced.
+>
+> **Note (July 16, 2026 — second-pass override reset hardening):** Direct item/category override reset now deletes only `overrides.items.{itemId}` or `overrides.categories.{categoryId}` and stamps `outletLocalState` in the same write. The old read-modify-write of the whole override map was removed, saving one read per reset and preventing concurrent resets from restoring stale sibling entries. The guarded linked-outlet editor save route and owner UI behavior are unchanged.
 
 ## May 19, 2026 Final Review + Production Audit
 
@@ -73,7 +89,7 @@
 | Manual prepaid capacity | ✅ Reseller desktop and mobile screens can record extra prepaid location capacity through `/api/reseller/add-location-capacity` after cash/UPI collection. |
 | Razorpay-backed create | ✅ Real `sub_...` subscriptions still update provider quantity first when active store count exceeds paid quantity; provider failure returns "Billing needs attention before adding another location" instead of generic outlet failure. |
 | UPI quantity recovery | ✅ Production QA on the demo account confirmed Razorpay rejects quantity update for active UPI subscriptions. `/api/outlets/create` now returns `OUTLET_LOCATION_PAYMENT_REQUIRED`; desktop/mobile Locations route owners to Billing, and Billing creates a replacement same-plan subscription with the next paid-location quantity before outlet creation is retried. |
-| Deactivation/reconciliation | ✅ Outlet deactivation and subscription reconciliation skip manual/offline provider IDs. Razorpay-backed deactivation reduces provider/internal quantity; manual prepaid capacity is retained until expiry. |
+| Deactivation/reconciliation | ✅ Outlet deactivation and subscription reconciliation skip manual/offline provider IDs. Razorpay-backed deactivation attempts provider then local reduction; unresolved reduction is returned as a support action and can be retried without repeating the store mutation. Reconciliation repairs provider/local quantity drift but does not infer desired active-store count. Manual prepaid capacity is retained until expiry. |
 | Replacement cap | ✅ `POST /api/outlets/create` enforces the tenant max-outlet cap using active non-master outlets only, so inactive historical outlets do not consume replacement capacity. |
 | Mobile/desktop payment display | ✅ Add-outlet proration cards are hidden for manual/offline subscriptions, manual amount displays as prepaid total, and add buttons are disabled when prepaid capacity is exhausted. |
 

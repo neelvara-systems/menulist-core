@@ -10,6 +10,7 @@ import { UserDataType } from '@type/platform/user';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { SupportTicketType } from '@type/supportTicket';
 import type { PlatformStoreSummaryOption } from '@lib/platform/storeSummaryOptions';
+import { registerPosSyncDeliveryConfig, unregisterPosSyncDeliveryConfig } from '@lib/posSync/eventBuilder';
 import { Timestamp } from 'firebase/firestore';
 import { createContext, useEffect, useState } from 'react';
 
@@ -120,6 +121,18 @@ function PlatformGlobalDataProvider({ children, contextData }: { children: any, 
     useEffect(() => {
         setContextState(contextData)
     }, [contextData])
+
+    useEffect(() => {
+        const storeId = contextState?.storeDetails?.storeId;
+        const tenantId = contextState?.storeDetails?.tenantId;
+        registerPosSyncDeliveryConfig(storeId, tenantId, contextState?.storeDetails?.posSync);
+        return () => unregisterPosSyncDeliveryConfig(storeId, tenantId);
+    }, [
+        contextState?.storeDetails?.posSync?.enabled,
+        contextState?.storeDetails?.posSync?.webhookUrl,
+        contextState?.storeDetails?.storeId,
+        contextState?.storeDetails?.tenantId,
+    ])
 
     return (
         <PlatformGlobalDataContext.Provider value={contextState} >

@@ -19,14 +19,16 @@ import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBrandStoreLabel } from '@lib/businessIdentity/names';
 import { normalizeGuestFeedbackNumericDocumentId, normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { getBoundedPublicFeedbackStringContext, logPublicFeedbackPageFailure } from '@lib/feedback/publicFeedbackDiagnostics';
+import { getPublicStoreById } from '@lib/firestore/clientStoreLookup';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveOBPAccentColor } from '@lib/obp/accentColor';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
-import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { projectPublicClientStore } from '@lib/publicTruth/clientStoreProjection';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import { DEFAULT_FEEDBACK_SETTINGS, FeedbackDefaults } from '@type/guestFeedback';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 
 /**
  * Parse projectId to extract tId and sId
@@ -72,7 +74,7 @@ interface PageProps {
  * Get project data by projectId
  * Uses correct nested path: projects/{tId}/{sId}/{projectId}
  */
-async function getProjectData(projectId: string) {
+const getProjectData = cache(async (projectId: string) => {
     try {
         const normalizedProjectId = normalizeGuestFeedbackProjectId(projectId);
         if (!normalizedProjectId) {
@@ -123,7 +125,7 @@ async function getProjectData(projectId: string) {
         });
         return null;
     }
-}
+});
 
 interface StoreInfo {
     accentColor?: string;
@@ -141,63 +143,32 @@ interface StoreInfo {
  * Get store data including name and feedback settings
  * Uses direct doc fetch by sId (storeId is the document ID)
  */
-async function getStoreInfo(tId: number, sId: number, storeDocumentId: string): Promise<StoreInfo | null> {
+const getStoreInfo = cache(async (tId: number, sId: number, storeDocumentId: string): Promise<StoreInfo | null> => {
     try {
-        // Direct doc fetch - storeId is the document ID
-        const storeDoc = await firestoreAdmin
-            .collection(DB_COLLECTIONS.STORES)
-            .doc(storeDocumentId)
-            .get();
-
-        if (!storeDoc.exists) {
+        // Reuse the canonical public lookup so store/tenant activity, identity,
+        // blocking, request deduplication, and public cache invalidation stay
+        // aligned with the menu and official business page flows.
+        const storeData = await getPublicStoreById(storeDocumentId);
+        if (!storeData) {
             return null;
         }
 
-        const storeData = storeDoc.data() || {};
-        if (storeData.active === false || storeData.deleted === true || isPlatformEntityBlocked(storeData)) {
+        const storeTenantScope = normalizeGuestFeedbackNumericDocumentId(storeData.tenantId ?? storeData.tId);
+        if (!storeTenantScope || storeTenantScope.numericId !== tId) {
             return null;
         }
+
+        const storeDetails = projectPublicClientStore({
+            ...storeData,
+            storeId: sId,
+            tenantId: tId,
+        });
+        if (!storeDetails) return null;
 
         const contentLanguage = storeData.defaultLanguage || storeData.activeLanguages?.[0] || storeData.language || 'en';
         const tenantName = typeof storeData.tenantName === 'string' ? storeData.tenantName.trim() : '';
         const businessName = typeof storeData.name === 'string' ? storeData.name.trim() : '';
         const displayStoreName = getBrandStoreLabel(storeData, businessName || tenantName || undefined);
-        const storeDetails = {
-            storeId: Number(storeData.storeId || sId),
-            storeKey: String(storeData.storeKey || sId),
-            tenantId: Number(storeData.tenantId || tId),
-            tenantName,
-            active: storeData.active !== false,
-            deleted: storeData.deleted === true,
-            name: businessName || displayStoreName,
-            email: storeData.email || '',
-            countryCode: storeData.countryCode || '',
-            dialCode: storeData.dialCode || '',
-            phoneNumber: storeData.phoneNumber || '',
-            logo: storeData.logo || '',
-            addressLine: storeData.addressLine || '',
-            area: storeData.area || '',
-            city: storeData.city || '',
-            state: storeData.state || '',
-            postalCode: storeData.postalCode || '',
-            country: storeData.country || '',
-            currencyCode: storeData.currencyCode || 'INR',
-            currencySymbol: storeData.currencySymbol || '₹',
-            businessType: storeData.businessType || '',
-            businessCategory: storeData.businessCategory || '',
-            contactPersonName: storeData.contactPersonName || '',
-            contactPersonEmail: storeData.contactPersonEmail || '',
-            contactPersonNumber: storeData.contactPersonNumber || '',
-            roles: [],
-            socialMedia: storeData.socialMedia || {},
-            publicPresence: storeData.publicPresence || {},
-            feedbackEnabled: storeData.feedbackEnabled !== false,
-            subdomain: storeData.subdomain || '',
-            customDomain: storeData.customDomain || '',
-            domainVerified: Boolean(storeData.domainVerified),
-            timeZone: storeData.timeZone || '',
-            businessDayEndTime: storeData.businessDayEndTime || '',
-        };
 
         // Check if feedback is enabled at store level (default: true)
         const feedbackEnabled = storeData.feedbackEnabled !== false;
@@ -230,7 +201,7 @@ async function getStoreInfo(tId: number, sId: number, storeDocumentId: string): 
         });
         return null;
     }
-}
+});
 
 export default async function FeedbackPage({ params, searchParams }: PageProps) {
     // Check feature flag
@@ -311,7 +282,7 @@ export async function generateMetadata({ params }: PageProps) {
     const storeInfo = await getStoreInfo(project.tId, project.sId, project.storeDocumentId);
 
     return {
-        title: `Share Feedback | ${storeInfo?.storeName || 'Restaurant'}`,
+        title: `Share Feedback | ${storeInfo?.storeName || 'Business'}`,
         description: 'Share private feedback with the business.',
         robots: 'noindex, nofollow', // Don't index feedback pages
     };

@@ -38,6 +38,7 @@ import { TenantDataType } from '@type/platform/tenant';
 import { FirestoreSubscriptionDoc } from '@type/razorpay';
 import { SupportTicketType } from '@type/supportTicket';
 import { objectNullCheck, removeObjRef } from '@util/utils';
+import type { AIBalanceUpdate } from '@services/ai/balanceSync';
 import { Timestamp } from 'firebase/firestore';
 import { Session } from 'next-auth';
 import { SessionProvider as Provider } from 'next-auth/react';
@@ -228,12 +229,12 @@ export default function SessionProvider({ children, session }: Props) {
     // When any AI service gets a response with remainingBalance, it fires this event
     useEffect(() => {
         const handleBalanceUpdate = (e: Event) => {
-            const detail = (e as CustomEvent).detail;
-            if (detail) {
-                setActiveSubscription((prev: FirestoreSubscriptionDoc | null) =>
-                    prev ? { ...prev, monthlyCredits: detail.monthlyCredits, topUpCredits: detail.topUpCredits } : prev
-                );
-            }
+            const detail = (e as CustomEvent<AIBalanceUpdate>).detail;
+            if (!detail) return;
+            setActiveSubscription((prev: FirestoreSubscriptionDoc | null) => {
+                if (!prev || Number(prev.storeId ?? prev.sId) !== detail.billingStoreId) return prev;
+                return { ...prev, monthlyCredits: detail.monthlyCredits, topUpCredits: detail.topUpCredits };
+            });
         };
         window.addEventListener('ai-balance-update', handleBalanceUpdate);
         return () => window.removeEventListener('ai-balance-update', handleBalanceUpdate);
@@ -370,7 +371,22 @@ export default function SessionProvider({ children, session }: Props) {
             bootstrapStoreContext();
 
         } else if (!session) {
-            // Clear Sentry context on logout
+            // Remove in-memory authenticated state as soon as NextAuth ends.
+            setTenantDetails(null);
+            setStoreDetails(null);
+            setLoginStoreDetails(null);
+            setUserPermissions(null);
+            setUsersList(null);
+            setFontsList(null);
+            setAssetsList({ images: [] });
+            setActiveStoreContextRaw(null);
+            setCachedKBCategories({ cachedOn: null, kBCategories: null });
+            setCachedChangelog({ cachedOn: null, changelog: null });
+            setCachedTickets({ cachedOn: null, tickets: [] });
+            setCachedArticles({ cachedOn: null, articles: [] });
+            setPlatformStoreSummaryOptions([]);
+            setPlatformStoreSummaryLoadedAt(null);
+            setPlatformStoreSummaryLoading(false);
             activeSubscriptionStoreIdRef.current = null;
             activeSubscriptionRequestStoreIdRef.current = null;
             setActiveSubscription(null);
@@ -665,7 +681,11 @@ export default function SessionProvider({ children, session }: Props) {
         const storeId = storeDetails?.storeId ?? session?.user?.storeId ?? null;
         const storeName = storeDetails?.name || '';
 
-        if (!tenantId && !storeId && !tenantName && !storeName) return;
+        if (!tenantId && !storeId && !tenantName && !storeName) {
+            window.sessionStorage.removeItem(DEPLOYMENT_IDENTITY_STORAGE_KEY);
+            emitDeploymentIdentityUpdated();
+            return;
+        }
 
         window.sessionStorage.setItem(
             DEPLOYMENT_IDENTITY_STORAGE_KEY,

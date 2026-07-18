@@ -1,10 +1,10 @@
 # Owner Notifications - Internal Positioning
 
 **Status:** Internal guidance
-**Date:** 2026-07-13
+**Date:** 2026-07-16
 **Audience:** Product, sales, support
 
-July 13 verification: internal recovery authorization and bounded-read hardening do not change this positioning, owner channels, or customer claims.
+July 16 verification: internal recovery and provider hardening do not add an owner activity feed or settings screen. Messaging-onboarding replies keep their separate conversational session/delivery state rather than entering the owner-notification ledger.
 
 ## One-Line Positioning
 

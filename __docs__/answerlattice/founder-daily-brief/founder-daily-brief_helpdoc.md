@@ -14,6 +14,8 @@ It may point you to:
 - widget/setup verification;
 - support-credit or no-AI-cost boundaries.
 
+After launch verification is ready, Daily Brief becomes the normal management home. Before that, Answerlattice keeps you in Launch Setup.
+
 ## What It Does Not Do
 
 - It does not publish answers.
@@ -24,9 +26,9 @@ It may point you to:
 
 ## How To Use It
 
-1. Open Support Assistant.
-2. Review `Today's plan`.
-3. Open the first action.
+1. Review the factual launch-verification status.
+2. Start with the first action; it is the highest support-truth risk visible in current summaries.
+3. Review up to three secondary actions only when needed.
 4. Approve, edit, or reject work inside the linked governed screen.
-5. Return to Support Assistant after the next summary refresh.
-
+5. Use `I shipped a change` to record affected entities and surfaces before running the existing release checks.
+6. Return to Daily Brief after the next summary refresh.

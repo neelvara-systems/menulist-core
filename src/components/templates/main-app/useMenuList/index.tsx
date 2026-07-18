@@ -21,15 +21,23 @@
  */
 
 import { FEATURE_FLAGS } from '@config/features';
+import { PERMISSIONS } from '@constant/permissions';
 import { getScreenState } from '@database/campaigns';
 import { getExistingProjectsListWithoutLoader } from '@database/projects';
-import { recordStarterActivationSignal } from '@database/stores';
+import {
+    assertStarterActivationSignalUpdateSucceeded,
+    recordStarterActivationSignal,
+} from '@database/stores';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { resolveStoreBrandColor } from '@lib/menu-kit/brandTokens';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import { downloadBlob, generateMenuKit, generateMenuKitAsset } from '@lib/menu-kit/menuKitGenerator';
 import { buildMenuCardExportUrl } from '@lib/menu-card-export/navigation';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
+import {
+    hasFeedbackPresenceReadiness,
+    hasPublishedMenuProject,
+} from '@lib/menuPresence/presenceReadiness';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
 import { buildPrintableAssetsUrl } from '@lib/printable-asset-templates/navigation';
 import {
@@ -41,11 +49,13 @@ import {
 import { type MenuKitPrintAssetId } from '@lib/print-assets/printAssetCatalog';
 import {
     STARTER_ACTIVATION_SIGNALS,
+    applyStarterActivationSignalToStoreDetails,
     isStarterActivationSignal,
     shouldRecordStarterActivationSignal,
     type StarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
 import { buildScreenUrl } from '@lib/screen/utils';
+import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { isOwnerReferralAcquisitionEnabledForStore } from '@lib/ownerReferral/ownerReferralFeature';
 import { getFeedbackUrl } from '@lib/utils/feedbackQrCode';
 import { buildQrCodeFilename, downloadQrCode, generateBrandedQrCodeDataUrl } from '@lib/utils/qrCode';
@@ -143,7 +153,7 @@ interface UseMenuListProps {
 }
 
 export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
-    const { storeDetails, tenantDetails, isMasterUser } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails, tenantDetails, isMasterUser, userPermissions } = useContext(PlatformGlobalDataContext);
     const { token: themeToken } = theme.useToken();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -159,6 +169,8 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     const [isProjectSelectorOpen, setIsProjectSelectorOpen] = useState(false);
     const qrSectionRef = useRef<HTMLDivElement | null>(null);
     const recordedStarterSignalsRef = useRef(new Set<StarterActivationSignal>());
+    const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
+        && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
 
     const labels = useMemo(
         () => getOfferingLabels(storeDetails?.businessType, storeDetails?.businessCategory),
@@ -183,7 +195,22 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
     useEffect(() => {
         if (!FEATURE_FLAGS.ENABLE_USE_MENULIST) return;
         loadData();
-    }, [projectIdQuery, storeDetails]);
+    }, [
+        canAccessDigitalScreens,
+        labels.offeringTitle,
+        projectIdQuery,
+        storeDetails?.businessType,
+        storeDetails?.customDomain,
+        storeDetails?.feedbackEnabled,
+        storeDetails?.lastPublishedAt,
+        storeDetails?.logo,
+        storeDetails?.posSync?.enabled,
+        storeDetails?.posSync?.status,
+        storeDetails?.pwaSettings?.enableInstallableApp,
+        storeDetails?.storeId,
+        storeDetails?.subdomain,
+        storeDisplayName,
+    ]);
 
     useEffect(() => {
         const existingSignals = Object.keys(storeDetails?.starterActivationSignals?.actions || {})
@@ -203,14 +230,21 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
         if (recordedStarterSignalsRef.current.has(signal)) return;
 
         recordedStarterSignalsRef.current.add(signal);
-        recordStarterActivationSignal(storeDetails.storeId, signal).catch((error) => {
-            logUseMenuListFailure('use_menulist_starter_signal_failed', error, {
-                signal,
-                ...getBoundedUseMenuListStringContext('storeId', storeDetails.storeId),
+        recordStarterActivationSignal(storeDetails.storeId, signal)
+            .then((result) => {
+                assertStarterActivationSignalUpdateSucceeded(result, storeDetails.storeId, signal);
+                setStoreDetails((current: any) => (
+                    applyStarterActivationSignalToStoreDetails(current, signal, result.recordedAt, result.storeId)
+                ));
+            })
+            .catch((error) => {
+                logUseMenuListFailure('use_menulist_starter_signal_failed', error, {
+                    signal,
+                    ...getBoundedUseMenuListStringContext('storeId', storeDetails.storeId),
+                });
+                recordedStarterSignalsRef.current.delete(signal);
             });
-            recordedStarterSignalsRef.current.delete(signal);
-        });
-    }, [storeDetails]);
+    }, [setStoreDetails, storeDetails]);
 
     const getOutputDiagnosticContext = () => ({
         hasData: Boolean(data),
@@ -264,23 +298,25 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             // Get screen state
             let screenToken: string | null = null;
             let screenLastSeenAt: any = null;
-            try {
-                const screenState = await getScreenState();
-                if (screenState) {
-                    screenToken = screenState.screenToken;
-                    screenLastSeenAt = screenState.screenLastSeenAt || null;
+            if (canAccessDigitalScreens) {
+                try {
+                    const screenState = await getScreenState();
+                    if (screenState) {
+                        screenToken = screenState.screenToken;
+                        screenLastSeenAt = screenState.screenLastSeenAt || null;
+                    }
+                } catch (error) {
+                    logUseMenuListFailure('use_menulist_screen_links_load_failed', error, {
+                        hasCustomDomain: Boolean(customDomain),
+                        ...getBoundedUseMenuListStringContext('storeId', storeDetails.storeId),
+                        ...getBoundedUseMenuListStringContext('tenantId', (storeDetails as any).tenantId),
+                        ...getBoundedUseMenuListStringContext('projectId', defaultProject.projectId),
+                        ...getBoundedUseMenuListStringContext('subdomain', subdomain),
+                        ...getBoundedUseMenuListStringContext('obpLink', obpLink),
+                        ...getBoundedUseMenuListStringContext('menuLink', menuLink),
+                    });
+                    // Screen state is optional; keep non-screen outputs usable.
                 }
-            } catch (error) {
-                logUseMenuListFailure('use_menulist_screen_links_load_failed', error, {
-                    hasCustomDomain: Boolean(customDomain),
-                    ...getBoundedUseMenuListStringContext('storeId', storeDetails.storeId),
-                    ...getBoundedUseMenuListStringContext('tenantId', (storeDetails as any).tenantId),
-                    ...getBoundedUseMenuListStringContext('projectId', defaultProject.projectId),
-                    ...getBoundedUseMenuListStringContext('subdomain', subdomain),
-                    ...getBoundedUseMenuListStringContext('obpLink', obpLink),
-                    ...getBoundedUseMenuListStringContext('menuLink', menuLink),
-                });
-                // Screen not initialized or temporarily unavailable — keep non-screen outputs usable.
             }
 
             // Build feedback link
@@ -310,7 +346,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
             // POS Sync status (if enabled)
             const posSync = storeDetails.posSync;
             const hasPosSync = FEATURE_FLAGS.ENABLE_POS_SYNC && !!posSync?.enabled;
-            const hasPublishedMenu = projects.some((project: any) => project.deleted !== true && project.active !== false);
+            const hasPublishedMenu = hasPublishedMenuProject(projects);
 
             const outputData: UseMenuListData = {
                 obpLink,
@@ -336,7 +372,10 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 posSyncStatus: hasPosSync ? (posSync?.status || 'disabled') : null,
                 hasPublishedMenu,
                 hasScreen: !!screenToken,
-                hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+                hasFeedbackEnabled: hasFeedbackPresenceReadiness({
+                    feedbackEnabled: storeDetails.feedbackEnabled,
+                    hasPublishedMenu,
+                }),
             };
 
             setData(outputData);
@@ -987,7 +1026,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 styles={{ body: { padding: 16 } }}
             >
                 <Row gutter={[12, 12]}>
-                    <Col xs={24} sm={12} lg={6}>
+                    {canAccessDigitalScreens ? <Col xs={24} sm={12} lg={6}>
                         <Button
                             block
                             type="primary"
@@ -1002,7 +1041,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                         >
                             Copy {labels.offeringTitle} Link
                         </Button>
-                    </Col>
+                    </Col> : null}
                     <Col xs={24} sm={12} lg={6}>
                         <Button
                             block
@@ -1315,6 +1354,7 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
 
             <Divider />
 
+            {canAccessDigitalScreens ? <>
             {/* ─── Digital Screens ───────────────────────────────── */}
             <Title level={5} style={{ marginBottom: 12 }}>Digital Screens</Title>
             {data.hasScreen ? (
@@ -1422,10 +1462,11 @@ export default function UseMenuList({ view = 'overview' }: UseMenuListProps) {
                 >
                     <LuCheck size={14} style={{ flexShrink: 0, marginTop: 3, color: themeToken.colorSuccess }} />
                     <Text style={{ fontSize: 12 }}>
-                        <strong>Setup tip:</strong> Open the link on your TV browser and bookmark it. The screen refreshes automatically.
+                        <strong>Setup tip:</strong> Open the link on your TV browser and bookmark it. Saved changes reach the TV through the screen refresh path.
                     </Text>
                 </Flex>
             )}
+            </> : null}
 
             <Divider />
 

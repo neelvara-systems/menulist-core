@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { getCampaign } from "@database/campaigns";
 import { TODAY_FEATURE_GUIDE_SECTIONS, TODAY_FEATURE_GUIDE_TITLE } from "@constant/todayFeatureGuide";
 import { useOwnerActionPlan } from "@hook/useOwnerActionPlan";
+import { useActiveTempStatus } from "@hook/useActiveTempStatus";
 import { useTodayCampaigns } from "@hook/useTodayCampaigns";
 import { getStoreContextName } from "@lib/businessIdentity/names";
 import { getBoundedCampaignStringContext, logCampaignFailure } from "@lib/campaigns/campaignDiagnostics";
@@ -168,8 +169,8 @@ const TodayScreen = () => {
             selectedProjectDisplayName || undefined,
         )
     ), [selectedProjectDisplayName, storeDetails?.customDomain, storeDetails?.subdomain]);
-    const activeTempStatus = (storeDetails as any)?.tempStatus;
-    const hasActiveTempStatus = Boolean(activeTempStatus?.expiresAt && new Date(activeTempStatus.expiresAt).getTime() > Date.now());
+    const activeTempStatus = useActiveTempStatus((storeDetails as any)?.tempStatus);
+    const hasActiveTempStatus = Boolean(activeTempStatus);
     const weeklyGrowthPack = useMemo(() => {
         if (!FEATURE_FLAGS.ENABLE_TODAY_WEEKLY_GROWTH_PACK || !storeDetails) return null;
 

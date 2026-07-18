@@ -4,7 +4,14 @@ export const runtime = "nodejs";
 import { FEATURE_FLAGS } from "@config/features";
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { DB_COLLECTIONS } from "@constant/database";
+import { LANGUAGE_CONSTANTS } from "@constant/languages";
+import { PERMISSIONS } from "@constant/permissions";
 import GlobalLanguagesList from "@data/languages";
+import {
+  getBusinessTypeConfig,
+  normalizeBusinessCategory,
+  resolveStoreBusinessCategory,
+} from "@data/shared/businessTypes";
 import {
   buildMenuExtractionRoutingFields,
   buildProjectMenuExtractionDestination,
@@ -37,7 +44,9 @@ import {
   MENU_EXTRACTION_ACTIVE_JOB_STATUSES,
 } from "@lib/menu-extraction/activeJobClaim";
 import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
+import { normalizeProjectLanguages } from "@lib/localization/languagePolicy";
 import { checkSafeMode } from "@lib/ops/safeMode";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -76,10 +85,22 @@ const getMenuExtractionJobRouteLogContext = (params: {
 const JobFileSchema = z.object({
   uid: z.string().min(1).max(120).refine((value) => value.trim() === value),
   name: z.string().min(1).max(240),
-  size: z.number().min(0).max(MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE),
+  size: z.number().positive().max(MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE),
   type: z.string().min(1).max(120),
   url: z.string().min(1).max(4000),
 });
+
+const JobFilesSchema = z.array(JobFileSchema)
+  .min(1)
+  .max(MENU_EXTRACTION_JOB_LIMITS.MAX_FILES)
+  .superRefine((files, context) => {
+    if (findDuplicateMenuExtractionFileUids(files).length > 0) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Uploaded files must have unique identities.",
+      });
+    }
+  });
 
 const TargetLanguageSchema = z.object({
   code: z.string().min(1).max(16),
@@ -95,10 +116,10 @@ const MenuExtractionProjectIdSchema = z.string()
   .refine((value) => normalizeMenuExtractionProjectId(value) === value);
 
 const RequestSchema = z.object({
-  action: z.string().min(1).max(80).optional(),
+  action: z.literal(AI_ACTIONS_TYPES.IMAGE_PROCESSING).optional(),
   businessCategory: z.string().max(80).optional(),
   businessType: z.string().max(80).optional(),
-  files: z.array(JobFileSchema).min(1).max(MENU_EXTRACTION_JOB_LIMITS.MAX_FILES),
+  files: JobFilesSchema,
   forceReview: z.boolean().optional(),
   identityOverrideConfirmed: z.boolean().optional(),
   jobMode: z.enum(["SINGLE_STORE", "MASTER_PROJECT", "OUTLET_LINKED"]).optional(),
@@ -106,14 +127,6 @@ const RequestSchema = z.object({
   retriedFromJobId: MenuExtractionJobIdSchema.optional(),
   retryCount: z.number().int().min(0).max(10).optional(),
   targetLanguages: z.array(TargetLanguageSchema).min(1).max(12),
-}).superRefine((value, context) => {
-  if (findDuplicateMenuExtractionFileUids(value.files).length > 0) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Uploaded files must have unique identities.",
-      path: ["files"],
-    });
-  }
 });
 
 function requireMenuExtractionRetryJobId(value: unknown): string {
@@ -214,22 +227,16 @@ function isSupportedExtractionMimeType(type: string, source: "menu_link_import" 
 }
 
 function normalizeTargetLanguages(languages: Array<{ code: string; name: string }>): Array<{ code: string; name: string }> {
-  const deduped = Array.from(
-    new Map(
-      languages
-        .map((language) => ({
-          code: String(language.code || "").trim().toLowerCase(),
-          name: String(language.name || "").trim(),
-        }))
-        .filter((language) => language.code)
-        .map((language) => [
-          language.code,
-          GlobalLanguagesList.find((known) => known.code === language.code) || language,
-        ]),
-    ).values(),
-  );
+  const knownByCode = new Map(GlobalLanguagesList.map((language) => [language.code, language]));
+  const requestedCodes = languages
+    .map((language) => String(language.code || "").trim().toLowerCase())
+    .filter((code) => knownByCode.has(code));
 
-  return deduped.length ? deduped : [{ code: "en", name: "English" }];
+  return normalizeProjectLanguages(requestedCodes)
+    .slice(0, LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT)
+    .map((code) => knownByCode.get(code))
+    .filter(Boolean)
+    .map((language) => ({ code: language!.code, name: language!.name }));
 }
 
 function estimateJsonUtf8Bytes(value: unknown): number {
@@ -242,13 +249,40 @@ function estimateJsonUtf8Bytes(value: unknown): number {
 
 function getProjectedProjectDocumentSize(projectData: Record<string, any>, incomingFileCount: number) {
   const currentBytes = estimateJsonUtf8Bytes(projectData);
-  const projectedBytes = currentBytes +
-    (incomingFileCount * MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.PRE_AI_EXTRACTED_DATA_BYTES_PER_FILE);
+  const maximumReservedHeadroomBytes =
+    MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.SAVE_SAFE_BYTES -
+    MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.WARNING_BYTES;
+  const reservedHeadroomBytes = Math.min(
+    incomingFileCount * MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.PRE_AI_EXTRACTED_DATA_BYTES_PER_FILE,
+    maximumReservedHeadroomBytes,
+  );
+  const projectedBytes = currentBytes + reservedHeadroomBytes;
 
   return {
     currentBytes,
     projectedBytes,
     limitBytes: MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS.SAVE_SAFE_BYTES,
+    reservedHeadroomBytes,
+  };
+}
+
+function getTrustedBusinessContext(
+  projectData: Record<string, any>,
+  requestData: { businessCategory?: string; businessType?: string },
+): { businessCategory?: string; businessType?: string } {
+  const projectType = getBusinessTypeConfig(projectData.businessType);
+  const requestType = getBusinessTypeConfig(requestData.businessType);
+  const businessType = projectType?.value || requestType?.value;
+  const businessCategoryInput =
+    normalizeBusinessCategory(projectData.businessCategory) ||
+    normalizeBusinessCategory(requestData.businessCategory);
+  const businessCategory = businessType
+    ? resolveStoreBusinessCategory(businessType, businessCategoryInput)
+    : businessCategoryInput;
+
+  return {
+    ...(businessCategory ? { businessCategory } : {}),
+    ...(businessType ? { businessType } : {}),
   };
 }
 
@@ -329,7 +363,6 @@ async function getOwnerUploadFileFingerprint(
 }
 
 async function buildOwnerUploadSourceFingerprint(params: {
-  action?: string;
   businessCategory?: string;
   businessType?: string;
   files: MenuIntakeFileInput[];
@@ -349,7 +382,7 @@ async function buildOwnerUploadSourceFingerprint(params: {
     .filter(Boolean);
 
   const fingerprintInput = {
-    action: params.action || AI_ACTIONS_TYPES.IMAGE_PROCESSING,
+    action: AI_ACTIONS_TYPES.IMAGE_PROCESSING,
     businessCategory: normalizeDedupeText(params.businessCategory),
     businessType: normalizeDedupeText(params.businessType),
     files: fileFingerprints,
@@ -479,21 +512,17 @@ async function loadRetryContext(params: {
     throw new MenuIntakeIdentityServerError(403, "Original extraction job does not belong to this menu.");
   }
 
-  const retryFiles = Array.isArray(retryData.files)
-    ? retryData.files
-      .filter((file: any) => file?.uid && file?.url)
-      .map((file: any) => ({
-        uid: String(file.uid),
-        name: String(file.name || file.uid),
-        size: Number(file.size || 0),
-        type: String(file.type || "image/jpeg"),
-        url: String(file.url),
-      }))
-    : [];
-
-  if (!retryFiles.length) {
+  const retryFilesResult = JobFilesSchema.safeParse(retryData.files);
+  if (!retryFilesResult.success) {
     throw new MenuIntakeIdentityServerError(400, "Original extraction files are no longer available.");
   }
+  const retryFiles: MenuIntakeFileInput[] = retryFilesResult.data.map((file) => ({
+    uid: String(file.uid),
+    name: String(file.name),
+    size: Number(file.size),
+    type: String(file.type),
+    url: String(file.url),
+  }));
 
   return {
     files: retryFiles,
@@ -551,6 +580,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     return NextResponse.json({ success: false, error: "Menu does not belong to this store." }, { status: 403 });
   }
 
+  const permissionResponse = await requireAnyStorePermission(
+    request,
+    session,
+    [PERMISSIONS.USE_MENU_EXTRACTION],
+    "Menu extraction",
+  );
+  if (permissionResponse) return permissionResponse;
+
   let retryContext: RetryContext | null = null;
   if (validation.data.retriedFromJobId) {
     try {
@@ -601,6 +638,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       return NextResponse.json({ success: false, error: "Menu not found." }, { status: 404 });
     }
     const projectData = projectDoc.data() || {};
+    const trustedBusinessContext = getTrustedBusinessContext(projectData, validation.data);
     const projectLastUpdatedAtMillis = getJobTimestampMillis(
       projectData.lastUpdated || projectData.updatedAt || projectData.lastUpdatedAt,
     );
@@ -628,9 +666,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD &&
       validation.data.forceReview !== true
       ? await buildOwnerUploadSourceFingerprint({
-        action: validation.data.action,
-        businessCategory: validation.data.businessCategory,
-        businessType: validation.data.businessType,
+        businessCategory: trustedBusinessContext.businessCategory,
+        businessType: trustedBusinessContext.businessType,
         files: requestedFiles,
         ids,
         targetLanguages,
@@ -694,6 +731,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         fileCount: requestedFiles.length,
         limitBytes: documentSizeGate.limitBytes,
         projectedBytes: documentSizeGate.projectedBytes,
+        reservedHeadroomBytes: documentSizeGate.reservedHeadroomBytes,
       });
 
       return NextResponse.json(
@@ -757,9 +795,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
     if (ownerUploadFingerprint && filesForJob.length !== requestedFiles.length) {
       ownerUploadFingerprint = await buildOwnerUploadSourceFingerprint({
-        action: validation.data.action,
-        businessCategory: validation.data.businessCategory,
-        businessType: validation.data.businessType,
+        businessCategory: trustedBusinessContext.businessCategory,
+        businessType: trustedBusinessContext.businessType,
         files: filesForJob,
         ids,
         targetLanguages,
@@ -790,7 +827,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     };
 
     const jobData = {
-      action: validation.data.action || AI_ACTIONS_TYPES.IMAGE_PROCESSING,
+      action: AI_ACTIONS_TYPES.IMAGE_PROCESSING,
       createdAt: now,
       currentStep: "Queued",
       ...buildMenuExtractionRoutingFields(buildProjectMenuExtractionDestination(
@@ -808,8 +845,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       jobMode: validation.data.jobMode || "SINGLE_STORE",
       progress: 0,
       projectId,
-      ...(validation.data.businessCategory ? { businessCategory: validation.data.businessCategory } : {}),
-      ...(validation.data.businessType ? { businessType: validation.data.businessType } : {}),
+      ...trustedBusinessContext,
       ...(validation.data.retriedFromJobId ? { retriedFromJobId: validation.data.retriedFromJobId } : {}),
       ...(validation.data.retryCount != null ? { retryCount: validation.data.retryCount } : {}),
       sId: ids.sId,

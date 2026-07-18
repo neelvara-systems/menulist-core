@@ -1,6 +1,6 @@
 # Multi-Outlet Consistency — Mobile Support
 
-**Last Updated:** July 4, 2026 (v14 - master update acknowledgement snapshot hardening)
+**Last Updated:** July 16, 2026 (v16 - lifecycle authority and billing follow-up)
 
 **Decision:** ✅ MOBILE SUPPORTED — Owner can manage outlets and chain policy from phone
 
@@ -25,14 +25,22 @@
 | Billing summary (stores × price) | `MobileLocationsScreen`                            | ✅     |
 | Switch between stores            | `MobileMoreScreen` Branch dropdown + `MobileLocationsScreen` → `/api/auth/switch-store` | ✅     |
 | Add new outlet                   | `MobileLocationsScreen` → `/api/outlets/create`    | ✅     |
+| Rename outlet URL/name           | `MobileLocationsScreen` → `/api/outlets/rename`    | ✅     |
+| Deactivate outlet                | `MobileLocationsScreen` → `/api/outlets/deactivate` | ✅     |
 | Proration display                | `MobileLocationsScreen` → `calculateProration`     | ✅     |
 | Outlet Rules (15 toggles)        | `MobileLocationsScreen` → `updateOutletPolicy` → `/api/outlets/policy` | ✅     |
 | Master update review/history     | `MobileMasterUpdateNotice` → `useMasterUpdateAwareness` | ✅     |
 
 ## DAL Parity
 
+- Mobile and desktop master-brand changes share `/api/outlets/brand-propagation`. Once its master/outlet/summary transaction commits, cache, screen, and Owner Business Assistant failures are reported as pending derived effects instead of a false mutation failure; every committed outlet is still attempted through the bounded shared effect runner.
+- Mobile and desktop Outlet Rules share `/api/outlets/policy`; once policy truth commits, derived cache/screen/assistant failure is acknowledged as pending rather than shown as a failed policy save.
+- Mobile and desktop create, rename, and deactivate acknowledgements preserve committed lifecycle truth when a derived effect is pending. Creation cannot show failure and roll paid quantity back after the new outlet already exists.
+- When deactivation commits but Razorpay/local quantity reduction does not complete, mobile and desktop show the explicit "contact support" follow-up from `billingReductionPending` plus `billingActionRequired`. They do not imply that an unqueued background update will finish automatically. Manual/offline prepaid capacity remains unchanged by design.
+- Mobile and desktop linked-outlet saves receive the same pending/count effect metadata; all public cache tags are attempted independently after project commit.
 - Uses same `/api/outlets/create`, `/api/auth/switch-store`, and `/api/outlets/policy` endpoints as desktop
 - Mobile and desktop expose store switching only when the user has `canSwitchStores` and more than one active mapped store. Mobile keeps the primary branch dropdown in More, below the signed-in profile card.
+- Mobile Locations derives its `Current` and `View` labels from `activeStoreContext` (falling back to the login store), so switching to an outlet no longer leaves HQ incorrectly marked current. Selecting the already-current row is a no-op; returning to HQ refreshes HQ Firebase claims before clearing outlet context.
 - Mobile Locations treats rejected `/api/auth/switch-store` responses as fixed-copy switch failures and logs bounded `mobile_location_store_switch_failed` diagnostics. Outlet creation logs rejected API responses and network/client exceptions through `mobile_location_create_failed`.
 - Desktop header, desktop Billing, desktop Locations, mobile More, mobile Billing, and mobile Locations switch-store callers share the auth account browser request policy: no-store cache, same-origin credentials, and manual redirects before the existing rejected-response handling and Firebase claim refresh.
 - Switch-store scope document ID boundary: mobile and desktop callers inherit the server route guard that normalizes session tenant/current-store IDs and requested target-store IDs before store-switch Firestore refs or success acknowledgement.
@@ -53,7 +61,7 @@
 - Mobile and desktop disable add-outlet submission for manual/offline accounts when prepaid location capacity is exhausted. The owner sees a reseller-capacity message instead of hitting a generic "outlet creation failed" error.
 - Mobile and desktop also disable direct add-outlet submission for active UPI-backed Razorpay subscriptions when paid location capacity is exhausted. Razorpay does not allow quantity updates for that payment mode, so Locations shows "Paid location needed" and routes to Billing; Billing creates a replacement same-plan checkout with the next `quantity`.
 - Mobile and desktop parse outlet create, rename, and deactivate acknowledgements through the shared 16KB outlet action response guard before updating local tenant/store UI state. Malformed successful responses log bounded parse/shape diagnostics and show fixed failure copy instead of applying incomplete outlet IDs, slugs, or billing flags.
-- Mobile and desktop active outlet counters exclude inactive outlets, matching billing quantity, public visibility behavior, and the server-side maximum-outlet cap.
+- Mobile and desktop active outlet counters exclude inactive outlets, matching public visibility and the server-side maximum-outlet cap. Razorpay-managed quantity normally follows active count; manual/offline quantity is prepaid capacity and a failed provider reduction remains explicitly pending until support resolves it.
 - Inactive outlets remain visible for context, but switch, rename, and deactivation actions are blocked through the normal UI and server routes.
 - Same `canManageLocationSettings()` gate across mobile More, mobile Locations, desktop Locations, and desktop sidebars
 - Mobile More `Branch` dropdown refreshes Firebase auth claims for the selected mapped store. Switching back to HQ refreshes claims back to the master store before clearing the active outlet context, preventing stale outlet-claim permission errors.

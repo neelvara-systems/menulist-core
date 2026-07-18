@@ -231,7 +231,6 @@ export interface KnowledgeBaseArticleType {
     url: string;
     content: any; // JSON (Tiptap editor format)
     embedding?: any;
-    embeddingV2?: any;
     tags: string[];
     createdOn: Timestamp;
     modifiedOn: Timestamp;
@@ -253,11 +252,6 @@ export interface KnowledgeBaseArticleType {
     embeddingStatus?: 'pending' | 'processing' | 'embedded' | 'failed';
     embeddingCacheVersion?: string;
     embeddingSourceHash?: string;
-    embeddingV1CacheVersion?: string | null;
-    embeddingV1SourceHash?: string | null;
-    embeddingV2CacheVersion?: string;
-    embeddingV2SourceHash?: string;
-    embeddingVersion?: 'v1' | 'v2';
     embeddingRun?: {
         id: string;
         status: 'processing' | 'completed' | 'failed';

@@ -56,7 +56,8 @@ The Knowledge Base (KB) is MenuList's **hierarchical documentation system** — 
 
 ### Database Layer
 - `src/database/knowledgeBase/articles.ts` — 9 DAL functions (183 lines)
-- `src/database/knowledgeBase/categories.ts` — 6 DAL functions (178 lines)
+- `src/database/knowledgeBase/categories.ts` — scoped transactional category, section, and article-navigation mutations
+- `src/lib/answerlattice/knowledgeBaseCategoryMutations.ts` — deterministic navigation validation and lost-update-safe map operations
 
 ### Types
 - `src/types/knowledgeBase.ts` — All KB types (231 lines)

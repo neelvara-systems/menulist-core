@@ -80,7 +80,7 @@ export const MENU_DESIGN_PRESETS: MenuDesignPreset[] = [
         description: 'Clean, modern, and relaxed.',
         recommendedFor: 'Cafes, bakeries, brunch',
         mood: MenuMood.CLEAN,
-        layout: MenuLayout.CARD,
+        layout: MenuLayout.GRID,
         accentColor: '#22c55e',
         showItemPrices: true,
         showImages: true,

@@ -3,11 +3,13 @@
 **Feature:** Internal monitoring dashboard for the menu extraction pipeline
 **Status:** Enabled internal platform surface — not current launch or deploy certification
 **Feature Flag:** `ENABLE_EXTRACTION_MONITORING_DASHBOARD`
-**Last Updated:** July 10, 2026
+**Last Updated:** July 14, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI Extraction Monitoring evidence only. Current source sets `ENABLE_EXTRACTION_MONITORING_DASHBOARD=true` and exposes platform-only desktop routes at `/ops/extraction` and `/platform/extraction-monitor` plus `MobileExtractionMonitorScreen` inside `MobileShell`. Cross-tenant job reads and `MENULIST_AI_OPERATIONS` reads are Firestore-rule-gated to platform admins; ordinary authenticated users retain own-job reads only. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:menu-extraction-pipeline`, `npm run verify:agent-readiness`, `npm run verify:mobile-shell-route-map`, `npm run verify:auth-security-failure-matrix`, authenticated platform desktop/mobile browser QA, bounded read/cost and desktop retry smoke, current extraction/provider smoke, applicable target Firebase rules/index/Functions and Vercel deploy evidence, and production-host smoke.
 
 **Current surface boundary:** Desktop exposes health, quality, cost, recent jobs, Job Inspector, raw-data copy, and eligible failed-job retry. Mobile exposes manual-refresh health, cost, quality, and recent-job summaries only. The current snapshot does not read `platformSummary/extractionLearning` and no Ops Alerts panel is mounted.
+
+**Owner-history boundary:** The platform monitor continues to read detailed extraction telemetry from top-level `MENULIST_AI_OPERATIONS`. Successful/partial authenticated owner extraction additionally creates a compact zero-credit activity row in `menulistAiOperations/{tId}/{sId}` so desktop/mobile owner Transactions reflect the work. Both rows share one document ID and commit in one Cloud Functions Firestore batch; public/unscoped work keeps only the platform record.
 
 ---
 
@@ -48,7 +50,7 @@ src/
 
 ```typescript
 // src/app/(main)/ops/extraction/page.tsx
-// Access: platformRole === 'PLATFORM' only
+// Access: signed PLATFORM visibility + fresh current persisted authorization before browser reads
 // Pattern: Same as /ops/scheduler (existing)
 ```
 
@@ -153,6 +155,8 @@ Simple stat cards:
 Data source: Query `MENULIST_AI_OPERATIONS` collection for today's documents.
 
 The main dashboard passes cost metrics from the deduped snapshot, so normal monitor loads do not trigger a second cost query. `CostMonitor.tsx` keeps its standalone compatibility path for direct reuse; if that direct `getExtractionCostMetrics()` call rejects, it logs bounded `extraction_cost_monitor_load_failed` diagnostics with refresh-trigger metadata only and renders fixed "Cost metrics unavailable" copy. It does not collapse the failure into the "No extraction calls today" empty state.
+
+July 16 item-29 follow-up: every exported direct extraction monitor read and the shared dashboard snapshot uses `/api/platform/current-access` before browser Firestore work. Dashboard/job/health/quality/cost source failure throws after bounded diagnostics instead of returning an all-zero object. Desktop SWR and MobileShell show unavailable or explicitly stale state.
 
 ### 6. Quality Metrics (`QualityMetrics.tsx`)
 
@@ -335,16 +339,17 @@ export interface QualityMetrics {
 
 When clicking "Retry Extraction" on a failed job:
 
-1. Read original job document
-2. Verify `status === 'failed'` and `error.retryable === true`
-3. Create new job using `createMenuProcessingJob()` with:
-   - Same `projectId`, `files`, `targetLanguages`
-   - New `retriedFromJobId = originalJobId`
-   - New `retryCount = (original.retryCount || 0) + 1`
-4. Max retries: 3 (prevent infinite retry loops)
-5. Return new job ID for tracking
+1. The desktop DAL sends only the encoded job ID to `POST /api/ops/extraction/jobs/{jobId}/retry` with no-store, same-origin and manual-redirect policy. It caps the response at 4KB and accepts only a successful envelope containing a canonical Firestore auto-ID.
+2. `withAuth(..., { requiredPlatformRole: 'PLATFORM' })` admits the signed session, then `getCurrentPlatformUser()` re-reads current persisted platform authority before tenant data.
+3. The route applies a fail-closed `DATA_WRITE` limiter and SAFE_MODE, reads the original job, and runtime-validates failed/retryable state, the maximum of three retries, exact tenant/store/project/user identity, bounded files/languages, and duplicate file identities.
+4. Every source URL must resolve to the original tenant/store's private `projects/files/...` or exact `menuLinkImports/.../{projectId}/...` Storage prefix. The nested canonical project path must still exist.
+5. `createOrReuseActiveMenuExtractionJob()` transactionally rejects an already-active project job or creates one sanitized replacement with the original owner/scope, `retriedFromJobId`, and incremented `retryCount`.
 
-This reuses existing job creation infrastructure — no new server-side code needed.
+The previous client implementation re-read any platform-visible job and sent it through the ordinary owner create route. That route correctly required the current session tenant, store, and user to match the original job, so a normal platform session could not perform the documented cross-tenant recovery action. Platform recovery is now explicit and independently authorized rather than weakening owner-route isolation.
+
+The owner/mobile job listener also projects only a state value whose document ID equals the currently requested job ID. It clears the prior value before subscribing and on subscription error, preventing a previous completed job from being consumed during a project/job switch.
+
+Monitor aggregation treats Firestore documents as untrusted runtime data: malformed timestamp rows are isolated, page/count inputs are bounded, and health, quality, confidence, processing-time, and charge arithmetic accepts only finite non-negative values (quality scores are additionally bounded to 0–100).
 
 ---
 

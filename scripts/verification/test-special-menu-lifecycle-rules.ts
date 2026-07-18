@@ -104,6 +104,7 @@ async function run(): Promise<void> {
         assert.equal(storeData.activeSpecialMenuId, MENU_A);
         assert.equal(storeData.tempStatus?.sourceProjectId, MENU_A);
         assert.equal(summaryData[`projects.${MENU_A}.specialMenuStatus`], 'active');
+        assert.equal(summaryData.specialMenuNextTransitionAt, ENDS_AT);
 
         await assertSucceeds(transitionSpecialMenuLifecycle({
             action: 'activate',
@@ -193,7 +194,38 @@ async function run(): Promise<void> {
         assert.equal(storeData.tempStatus?.sourceProjectId, MENU_B);
 
         await testEnvironment.withSecurityRulesDisabled(async (context) => {
-            await deleteDoc(doc(context.firestore(), 'stores', S_ID));
+            const db = context.firestore();
+            await setDoc(doc(db, 'projects', T_ID, S_ID, MENU_D), specialMenuProject(MENU_D));
+            await setDoc(doc(db, 'stores', S_ID), {
+                storeId: Number(S_ID),
+                tenantId: Number(T_ID),
+                activeSpecialMenuId: MENU_D,
+                tempStatus: {
+                    type: 'special_menu',
+                    message: 'Menu D',
+                    expiresAt: ENDS_AT,
+                    createdAt: NOW.toISOString(),
+                    sourceProjectId: MENU_D,
+                },
+            });
+        });
+        await assertSucceeds(transitionSpecialMenuLifecycle({
+            action: 'cancel',
+            db: ownerDb,
+            enableTempStatus: true,
+            now: NOW,
+            projectId: MENU_D,
+            sId: S_ID,
+            tId: T_ID,
+        }));
+        storeData = (await getDoc(doc(ownerDb, 'stores', S_ID))).data() || {};
+        assert.equal(storeData.activeSpecialMenuId, undefined);
+        assert.equal(storeData.tempStatus, undefined);
+
+        await testEnvironment.withSecurityRulesDisabled(async (context) => {
+            const db = context.firestore();
+            await setDoc(doc(db, 'projects', T_ID, S_ID, MENU_D), specialMenuProject(MENU_D));
+            await deleteDoc(doc(db, 'stores', S_ID));
         });
         await assertSucceeds(transitionSpecialMenuLifecycle({
             action: 'cancel',

@@ -93,9 +93,9 @@ ENABLE_AI_REPLY_ASSIST: false; // Requires the parent flag
 
 | Dependency       | Status                                  |
 | ---------------- | --------------------------------------- |
-| GBP API Access   | 🔶 BLOCKED — Google approval pending    |
-| GBP Sync (OAuth) | ✅ Built (`ENABLE_GBP_SYNC: false`)     |
-| Guest Feedback   | ✅ Active (private reputation firewall) |
+| GBP API Access   | 🔶 BLOCKED — required, not sufficient   |
+| GBP Sync/OAuth   | 🔶 Separate disabled flow; revalidate before reuse |
+| Guest Feedback   | ✅ Active separate private correction channel |
 | Gemini AI        | ✅ Available (for reply suggestions)    |
 
 ## Future Success Test
@@ -105,4 +105,4 @@ ENABLE_AI_REPLY_ASSIST: false; // Requires the parent flag
 
 ---
 
-**Last Updated:** July 11, 2026
+**Last Updated:** July 16, 2026

@@ -15,6 +15,14 @@ export function hasMeaningfulDescription(value: unknown): boolean {
     return normalizeDescriptionQualityText(value).length >= MIN_DESCRIPTION_QUALITY_CHARS;
 }
 
+export function hasAnyNonEmptyDescription(descriptions: unknown): boolean {
+    if (!descriptions || typeof descriptions !== 'object' || Array.isArray(descriptions)) return false;
+
+    return Object.values(descriptions).some((description) => (
+        typeof description === 'string' && description.trim().length > 0
+    ));
+}
+
 export function hasMeaningfulDescriptionsForLanguages(
     descriptions: unknown,
     languageCodes: string[]
@@ -25,4 +33,3 @@ export function hasMeaningfulDescriptionsForLanguages(
         hasMeaningfulDescription((descriptions as Record<string, unknown>)[languageCode])
     ));
 }
-

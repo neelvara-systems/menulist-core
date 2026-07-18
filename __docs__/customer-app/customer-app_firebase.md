@@ -3,7 +3,7 @@
 **Feature Name:** Customer App (Installable Customer-Facing Menu)  
 **Document Type:** Firebase Cost Tracking  
 **Status:** Runtime implemented; manual device QA still required
-**Last Updated:** June 30, 2026
+**Last Updated:** July 13, 2026
 **Audience:** Engineering, Founder, Cost Auditors
 
 **Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc is source-gated runtime/cost evidence; Customer App release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:customer-app-pwa`, real browser/device Customer App QA, scoped scheduler deploy evidence where relevant, analytics rollup evidence, and production-host smoke.
@@ -19,7 +19,7 @@
 - **Analytics policy:** Customer App is a surface — surfaces get lifecycle analytics. Uses existing `trackEvent()` infrastructure, existing debounce/rate-limit, existing session system. Install events are deduped per-device via `localStorage` before firing (see `fireInstalledEventOnce` in `customer-app_impl.md`).
 - **Identity policy:** Customer App analytics are store-level. Route/source fields such as `pwaInstallSurface`, `installsBySurface`, and `appOpensBySurface` are attribution context only; they do not mean separate installed apps per OBP/menu/project surface.
 - **Diagnostics policy:** Desktop and mobile owner settings save failures plus desktop and mobile install-link copy failures use `src/lib/pwa/pwaDiagnostics.ts` with bounded store/tenant/install-link presence and length, toggle/icon/domain flags, language count, clipboard/fallback support booleans, and source error metadata only. Install-link copied feedback waits for Clipboard API success or acknowledged textarea fallback success. The diagnostic pass adds no Firestore read/write, Storage operation, route call, Cloud Function, index, rule, or cache-invalidation change.
-- **Acknowledgement policy:** Desktop and mobile Customer App settings require explicit `updatePWASettings()` and `updatePWAIconOverride()` acknowledgements before local state or saved copy changes. The icon acknowledgement must include `pwaIconUpdatedAt`; the pwaShortName metadata side write must also be acknowledged. This adds no new Firestore read/write/delete, Storage operation, API route, Cloud Function, rule, index, or cache invalidation.
+- **Acknowledgement policy:** Desktop and mobile Customer App settings require explicit `updatePWASettings()` and `updatePWAIconOverride()` acknowledgements before local state or saved copy changes. The icon acknowledgement must include `pwaIconUpdatedAt`; the pwaShortName metadata side write must also be acknowledged. Icon replacement performs one server-only store read only when the metadata write result is ambiguous/rejected, preventing cleanup from deleting an object that server truth already references. Successful replacement/removal performs one server-only store read before deleting the superseded object. No new write/delete, API route, Cloud Function, rule, index, or cache invalidation is added; indeterminate reads retain Storage rather than risking broken public truth.
 - **Public rate-limit key policy:** Dynamic icon, splash, and screenshot routes still use `PUBLIC_DYNAMIC_ASSET` before Firestore reads, but rate-limit keys hash client IPs through `hashPublicRateLimitValue()` so raw IP addresses are not stored in provider keys. This changes no reads/writes and only resets existing rate-limit buckets once.
 - **Manifest start-url lookup diagnostics:** The tenant manifest keeps the existing cached `platformSummary` project-summary read for choosing `/menu` versus `/`. If that cached read fails, the manifest falls back to `/` and logs capped `customer_app_manifest_start_url_lookup_failed` diagnostics with store-id and summary-doc presence/length metadata only. This adds no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
 - **Service-worker domain-resolution diagnostics:** Failed browser domain resolution in `src/components/ServiceWorkerRegister.tsx` logs bounded `service_worker_domain_resolution_failed` diagnostics once per browser session and registers no worker for the unknown origin. These diagnostics add no Firestore read/write/delete, analytics write, Storage operation, Cloud Function, API route, cache invalidation, rule, index, or deploy requirement.
@@ -42,12 +42,14 @@
 
 **Total reads per customer visit:** 0-1 net-new after cache. The manifest reuses the shared cached store lookup used by public pages, and its `/menu` start-url summary check is cached for 1 hour and invalidated by `menu-store-{sId}` / `store-{sId}` / `client-stores`. Browser-side owner update paths that call `src/lib/cache/publicClientCache.ts` keep the same cache refresh request and fail-open behavior; failed development diagnostics log only bounded cache context, status/error name, and store-id presence/length.
 
+The manifest selects `/menu` only when the cached summary contains an active, non-deleted, regular project whose immutable ID matches the resolved tenant/store and which either owns slug `menu` or is explicitly `isDefault`. Otherwise it launches `/` (OBP). This adds no reads beyond the existing summary read and prevents an installed app from targeting an alias the public resolver would reject.
+
 ### Writes
 
 | Operation                       | Collection | Trigger                   | Frequency                 | Docs Written                   | Fields                                                                | Notes                                            |
 | ------------------------------- | ---------- | ------------------------- | ------------------------- | ------------------------------ | --------------------------------------------------------------------- | ------------------------------------------------ |
 | Settings update                 | stores     | Owner saves               | Rare                      | 1                              | `pwaSettings`, `branding.pwa*`                                        | Merge update                                     |
-| Icon override upload            | stores     | Owner uploads             | Rare                      | 1                              | `branding.pwaIconOverrideUrl`, `branding.pwaIconMode`                 | Merge update                                     |
+| Icon override metadata update   | stores     | Owner uploads             | Rare                      | 1                              | `publicPresence.pwaIconOverrideUrl`, `publicPresence.pwaIconMode`, `publicPresence.pwaIconUpdatedAt` | Merge update after Storage URL acknowledgement   |
 | Icon regeneration trigger       | —          | Logo change               | Very rare                 | 0                              | —                                                                     | API call, no Firestore write                     |
 | `CUSTOMER_APP_PROMPT_SHOWN`     | analytics  | Install prompt render     | Per prompt (debounced)    | 1 (increment)                  | `totalPromptShown`, hourly breakdown                                  | Daily doc `{tId}_{sId}_customerApp_daily_{date}` |
 | `CUSTOMER_APP_PROMPT_DISMISSED` | analytics  | Dismiss tap               | Per dismiss               | 1 (increment)                  | `totalPromptDismissed`                                                | Same daily doc                                   |
@@ -73,26 +75,22 @@
 
 ### Operations
 
-| Operation   | Path Pattern                     | Trigger     | Size    | Notes             |
-| ----------- | -------------------------------- | ----------- | ------- | ----------------- |
-| Icon upload | `pwa-icons/{storeId}/192.png`    | Generation  | 5-15KB  | PNG, processed    |
-| Icon upload | `pwa-icons/{storeId}/512.png`    | Generation  | 20-50KB | PNG, processed    |
-| Icon upload | `pwa-icons/{storeId}/180.png`    | Generation  | 5-15KB  | Apple touch icon  |
-| Icon read   | `pwa-icons/{storeId}/{size}.png` | App install | —       | CDN cached        |
-| Icon delete | `pwa-icons/{storeId}/*`          | Logo change | —       | Cleanup old icons |
+| Operation | Path Pattern | Trigger | Size | Notes |
+| --------- | ------------ | ------- | ---- | ----- |
+| Owner override upload | `stores/pwa-icons/{tId}/{sId}/{pwa_icon_runtimeId}.png` | Owner saves custom icon | Up to 5 MB; prepared PNG only | Attempt-unique object. Upload URL must resolve before store metadata changes. |
+| Failed URL-resolution cleanup | Same exact attempt path | Upload completed but URL lookup failed | 1 best-effort delete | Opt-in shared helper cleanup; failed cleanup is bounded and observable. |
+| Replaced override cleanup | Previous owned URL | New metadata commit acknowledged | 1 best-effort delete | Current public truth changes before old bytes are removed. |
+| Dynamic generated icon | No Storage object | Public icon route request | N/A | `/api/app-icons/{storeId}/{size}` renders the generated fallback per request/cache contract. |
 
 ### Storage Estimates
 
-| Store                   | Icons             | Size per Store |
-| ----------------------- | ----------------- | -------------- |
-| With generated icon     | 3 (192, 512, 180) | ~50KB          |
-| With custom override    | 3 (192, 512, 180) | ~50-100KB      |
-| Total for 1000 stores   | 3000 files        | ~50MB          |
-| Total for 10,000 stores | 30,000 files      | ~500MB         |
+| Store state | Retained override objects | Size per Store |
+| ----------- | ------------------------- | -------------- |
+| Generated/default icon only | 0 | 0 bytes in Storage |
+| Custom override | Normally 1 current object | Up to 5 MB admission cap; prepared UI output is expected to be materially smaller |
+| Failed cleanup | Possible bounded orphan until operator cleanup | Logged with `firebase_storage_unreferenced_upload_cleanup_failed` or `pwa_icon_storage_cleanup_failed` |
 
-**Monthly Storage Cost:**
-
-- 500MB @ $0.026/GB = ~$0.01/month
+Monthly cost depends on the number and actual prepared size of current custom overrides. Generated icon sizes are not retained in Storage, so do not project three generated objects per store.
 
 ---
 

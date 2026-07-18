@@ -27,6 +27,13 @@ function forbidToken(source, token, label) {
   }
 }
 
+function requireOccurrenceAtLeast(source, token, minimum, label) {
+  const count = source.split(token).length - 1;
+  if (count < minimum) {
+    failures.push(`${label} requires ${token} at least ${minimum} times; found ${count}`);
+  }
+}
+
 function requireOrder(source, tokens, label) {
   let previousIndex = -1;
   for (const token of tokens) {
@@ -54,6 +61,29 @@ const pricingEngine = read('src/lib/pricing/integrityEngine.ts');
 const pricingPdfQueue = read('src/lib/pricing/pdfQueue.ts');
 const pricingIndex = read('src/lib/pricing/index.ts');
 const pricingFormatter = read('src/lib/pricing/formatMenuPrice.ts');
+const pricingSchema = read('src/lib/validation/pricing.schema.ts');
+const projectPriceTruth = read('src/lib/pricing/projectPriceTruth.ts');
+const outletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
+const desktopItemEditor = read('src/components/templates/main-app/projects/editorView/editItemModal.tsx');
+const mobileItemEditor = read('src/components/mobile/sheets/ItemEditSheet.tsx');
+const mobileMenuScreen = read('src/components/mobile/screens/MobileMenuScreen.tsx');
+const mobileCategoryManager = read('src/components/mobile/sheets/CategoryManagerSheet.tsx');
+const mobileBulkActions = read('src/components/mobile/sheets/BulkActionsSheet.tsx');
+const mobileTypes = read('src/components/mobile/types.ts');
+const bulkOperations = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/utils/bulkOperations.ts');
+const commandCenter = read('src/components/templates/main-app/projects/editorView/CommandCenterModal/index.tsx');
+const editorFilters = read('src/components/templates/main-app/projects/editorView/utils/itemFilters.ts');
+const editorLogic = read('src/components/templates/main-app/projects/editorView/hooks/useEditorLogic.ts');
+const aiMenuManagerResolver = read('src/lib/ai-menu-manager/commandResolver.ts');
+const aiMenuManagerHints = read('src/lib/ai-menu-manager/projectPromptHints.ts');
+const aiMenuManagerContext = read('src/lib/ai-menu-manager/contextPacket.ts');
+const aiMenuManagerConversation = read('src/lib/ai-menu-manager/domainConversationRouter.ts');
+const screenContent = read('src/lib/screen/screenContent.ts');
+const screenTypes = read('src/types/campaigns.ts');
+const screenDisplay = read('src/app/screen/[token]/ScreenDisplay.tsx');
+const menuBoardDisplay = read('src/app/screen/[token]/MenuBoardDisplay.tsx');
+const printSanitizer = read('src/lib/menu-card-export/source/sanitizeMenuForPrint.ts');
+const priceBoundaryTest = read('scripts/verification/test-menu-price-boundary.ts');
 const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
 const menuPdfGenerator = read('src/lib/export/menuPdfGenerator.ts');
 const readme = read('__docs__/pricing-integrity-system/README.md');
@@ -65,6 +95,7 @@ const websiteDoc = read('__docs__/pricing-integrity-system/pricing-integrity-sys
 const helpDoc = read('__docs__/pricing-integrity-system/pricing-integrity-system_helpdoc.md');
 const marketingDoc = read('__docs__/pricing-integrity-system/pricing-integrity-system_marketing.md');
 const validationDoc = read('__docs__/pricing-integrity-system/pricing-integrity-system_validation.md');
+const verificationDoc = read('__docs__/pricing-integrity-system/pricing-integrity-system_verification-2026-07-16.md');
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -72,9 +103,10 @@ const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,
-  '"verify:pricing-integrity-boundary": "node scripts/verification/verify-pricing-integrity-boundary.js"',
+  '"verify:pricing-integrity-boundary": "node scripts/verification/verify-pricing-integrity-boundary.js && npm run test:menu-price-boundary"',
   'package scripts',
 );
+requireToken(packageJson, '"test:menu-price-boundary":', 'menu price behavioral test script');
 requireToken(
   packageJson,
   '"test:pricing-plans:rules": "GCLOUD_PROJECT=demo-pricing-plans-rules firebase emulators:exec --only firestore',
@@ -114,9 +146,39 @@ forbidToken(pricingPlansUi, 'handleSavePlan = async (values: any)', 'Pricing pla
 
 [
   'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");',
-  'void detectAndLogChanges(data.projectId, oldProject, data, operationScope);',
+  'void detectAndLogChanges(\n                data.projectId,\n                oldProject,\n                buildProjectAfterPartialUpdate(oldProject, updateData),\n                operationScope,',
+  'void detectAndLogChanges(\n            data.projectId,\n            previousProject,\n            savedProject,\n            operationScope,',
 ].forEach((token) => requireToken(projectsDatabase, token, 'Project save path'));
+forbidToken(
+  projectsDatabase,
+  'void detectAndLogChanges(data.projectId, oldProject, data, operationScope);',
+  'Project save path stale partial-project change logging',
+);
 forbidToken(projectsDatabase, 'runPricingIntegrity', 'Project save path');
+requireOccurrenceAtLeast(
+  projectsDatabase,
+  'normalizeProjectPriceTruth(data);',
+  2,
+  'Project update and publish canonical price normalization',
+);
+
+[
+  'export const MENU_PRICE_TEXT_MAX_LENGTH = 40;',
+  'export const priceStringSchema = z',
+  'Price cannot be negative',
+  'export function normalizeOptionalMenuPrice(price: unknown)',
+  "if (!normalized) return { success: true, data: '' };",
+].forEach((token) => requireToken(pricingSchema, token, 'Canonical menu price schema'));
+[
+  'export function normalizeProjectPriceTruth<T extends object>(project: T): T',
+  "for (const bucketName of ['items', 'attributes'] as const)",
+  "if (!result.success) throw new Error('Invalid menu price');",
+].forEach((token) => requireToken(projectPriceTruth, token, 'Canonical project price truth'));
+[
+  'normalizeProjectPriceTruth(project);',
+  '.transform((value) => normalizeOptionalMenuPrice(value))',
+  ".transform((result) => result.data || '')",
+].forEach((token) => requireToken(outletSaveRoute, token, 'Linked outlet price boundary'));
 
 [
   'export const revalidatePublicClientCacheForProject = async (',
@@ -196,26 +258,133 @@ requireOrder(
 forbidToken(pricingPdfQueue, 'const ENABLE_BACKGROUND_PDF_REGEN = true;', 'Pricing PDF queue');
 
 [
-  'runPricingIntegrity, type IntegrityParams',
-  'logMOLEvent, logPDFEvent, logPriceChange',
-  'enqueuePDFRegen, getDebounceMs, isBackgroundPDFRegenEnabled',
-].forEach((token) => requireToken(pricingIndex, token, 'Pricing module exports'));
+  "export { formatMenuPrice, normalizeMenuPrice, parseSingleMenuPrice } from './formatMenuPrice';",
+  'getActivePublicItemPriceAttributes,',
+  'getPublicItemListPriceLabel,',
+  'hasPublicItemDisplayPrice,',
+].forEach((token) => requireToken(pricingIndex, token, 'Active pricing module exports'));
+[
+  'runPricingIntegrity',
+  'markPDFFailed',
+  'logPriceChange',
+  'enqueuePDFRegen',
+  'isBackgroundPDFRegenEnabled',
+].forEach((token) => forbidToken(pricingIndex, token, 'Dormant pricing barrel isolation'));
 
 [
   "if (typeof price === 'string')",
   'const rawPrice = price.trim();',
   'if (rawPrice && !isSingleNumericPrice)',
   "return rawPrice;",
-  "return `${currencySymbol || ''}${rangeCandidate.replace(/\\s*([-\\/])\\s*/g, '$1')}`;",
+  "return `${currencySymbol || ''}${rangeCandidate.replace(/\\s*([-\\/–—])\\s*/g, '$1')}`;",
 ].forEach((token) => requireToken(pricingFormatter, token, 'Menu price formatter'));
+
+[
+  'normalizeOptionalMenuPrice(itemData.price)',
+  'normalizeOptionalMenuPrice(attribute.price)',
+  'maxLength: MENU_PRICE_TEXT_MAX_LENGTH',
+  'getPublicItemListPriceLabel(itemData',
+].forEach((token) => requireToken(desktopItemEditor, token, 'Desktop item price editor'));
+[
+  'normalizeOptionalMenuPrice(draftItem.price)',
+  'price: attribute.priceResult.data ||',
+  'price: normalizedItemPrice.data ||',
+  'maxLength={MENU_PRICE_TEXT_MAX_LENGTH}',
+  'getPublicItemListPriceLabel(draftItem',
+].forEach((token) => requireToken(mobileItemEditor, token, 'Mobile item price editor'));
+forbidToken(mobileItemEditor, 'parseFloat(attribute.priceValue', 'Mobile option price coercion');
+forbidToken(mobileItemEditor, 'parseFloat(String(draftItem.price', 'Mobile base price coercion');
+[
+  'price: string | number;',
+].forEach((token) => requireOccurrenceAtLeast(mobileTypes, token, 2, 'Mobile canonical price type'));
+[
+  'function normalizeExtractedPriceDisplay(price: unknown): string | number',
+  'function hasMobileMenuPrice(item: MenuItemType): boolean',
+  'const numericPrice = parseSingleMenuPrice(item.price);',
+  'const price = normalizeExtractedPriceDisplay(item.price);',
+  'hasMobileMenuPrice(item)',
+  'attribute?.active !== false',
+].forEach((token) => requireToken(mobileMenuScreen, token, 'Mobile price display/quality parity'));
+[
+  'price: normalizeExtractedPriceDisplay(item.price)',
+  'currencySymbol={currencySymbol}',
+  'attribute.active !== false',
+].forEach((token) => requireToken(mobileMenuScreen, token, 'Mobile category price projection'));
+[
+  'price?: string | number;',
+  'hasPublicItemDisplayPrice(item)',
+  'getPublicItemListPriceLabel(item, currencySymbol)',
+].forEach((token) => requireToken(mobileCategoryManager, token, 'Mobile category price truth'));
+[
+  'hasPublicItemDisplayPrice(item)',
+  'price: String(item.price ?? \'\')',
+  'active: attr.active !== false',
+].forEach((token) => requireToken(mobileBulkActions, token, 'Mobile bulk price truth'));
+
+[
+  'const currentPrice = parseSingleMenuPrice(item.price);',
+  'if (!canForceFixedPrice && (currentPrice === null || currentPrice <= 0))',
+  'const attrPrice = parseSingleMenuPrice(attr.price);',
+].forEach((token) => requireToken(bulkOperations, token, 'Bulk price arithmetic boundary'));
+requireToken(commandCenter, 'if (!hasPublicItemDisplayPrice(item))', 'Desktop quality price truth');
+[
+  'parseSingleMenuPrice(item.price)',
+  'hasPublicItemDisplayPrice(item)',
+  '.filter((attribute) => attribute.active !== false)',
+].forEach((token) => {
+  requireToken(editorFilters, token, 'Desktop filter price boundary');
+  requireToken(editorLogic, token, 'Desktop editor price boundary');
+});
+
+[
+  'const currentPrice = parseSingleMenuPrice(item.price);',
+  'const items = params.setExact',
+  'text, range, or missing price',
+].forEach((token) => requireToken(aiMenuManagerResolver, token, 'AI Menu Manager price mutation boundary'));
+[
+  'parseSingleMenuPrice(item.price)',
+  '!hasPublicItemDisplayPrice(item)',
+].forEach((token) => requireToken(aiMenuManagerHints, token, 'AI Menu Manager price suggestion boundary'));
+requireToken(aiMenuManagerContext, 'hasDisplayPrice: hasPublicItemDisplayPrice(item)', 'AI Menu Manager context price truth');
+[
+  'parseSingleMenuPrice(value)',
+  "typeof item.hasDisplayPrice === 'boolean'",
+].forEach((token) => requireToken(aiMenuManagerConversation, token, 'AI Menu Manager diagnostic price truth'));
+
+[
+  'export function parseScreenPrice(value: unknown): number | string | undefined',
+  'export function hasScreenPrice(price: unknown): boolean',
+  'export function getScreenItemPrice(item: unknown): number | string | undefined',
+  'const parsedPrice = getScreenItemPrice(item);',
+].forEach((token) => requireToken(screenContent, token, 'Digital Screen price projection'));
+requireOccurrenceAtLeast(screenTypes, 'price?: number | string;', 2, 'Digital Screen canonical price types');
+requireToken(screenDisplay, 'hasScreenPrice(slide.price)', 'Highlights price display parity');
+requireToken(menuBoardDisplay, 'hasScreenPrice(item.price)', 'Menu Board price display parity');
+[
+  'if (!price && !attributes.some((attribute) => Boolean(attribute.price)))',
+  'normalizeOptionalMenuPrice(price)',
+].forEach((token) => requireToken(printSanitizer, token, 'Print/PDF variant price boundary'));
+[
+  "normalizeOptionalMenuPrice('Market Price')",
+  'normalizeProjectPriceTruth({',
+  'getScreenItemPrice({',
+  'missingPriceCount, 0',
+  "price: 'Market Price'",
+  'itemsSkipped, 2',
+].forEach((token) => requireToken(priceBoundaryTest, token, 'Menu price behavioral coverage'));
 
 [
   "const { generateMenuPdf, downloadPdf } = await import('@lib/export/menuPdfGenerator');",
   'const pdfResult = await generateMenuPdf({',
   'downloadPdf(pdfResult);',
-  'localStorage.setItem(PDF_DOWNLOAD_KEY, Date.now().toString());',
-  'localStorage.setItem(`menulist_last_pdf_version_${projectId}`, pdfResult.snapshotHash);',
+  'resolveLocalExportStorageScope(storeData)',
+  'readLocalPdfDownloadAt(pdfHistoryScope, projectId)',
+  'recordLocalPdfDownload(pdfHistoryScope, projectId, pdfResult.snapshotHash);',
 ].forEach((token) => requireToken(projectShareModal, token, 'Project share PDF path'));
+[
+  'localStorage.setItem(PDF_DOWNLOAD_KEY',
+  'menulist_last_pdf_version_${projectId}',
+].forEach((token) => forbidToken(projectShareModal, token, 'Project share PDF path unscoped legacy freshness key'));
 
 [
   'export async function generateMenuPdf(options: MenuPdfOptions): Promise<GeneratedPdf>',
@@ -256,11 +425,8 @@ for (const [label, content] of activeDocs) {
   ['Pricing README', readme, '`runPricingIntegrity()` has no current caller'],
   ['Pricing spec', spec, '`runPricingIntegrity()` has no current caller'],
   ['Pricing implementation', impl, 'No background PDF job is created by this share path.'],
-  ['Pricing implementation', impl, 'PDF failure reason persistence follow-up'],
   ['Pricing implementation', impl, '`pricingIntegrity.pdf.lastFailureReason`'],
   ['Pricing Firebase', firebaseDoc, 'There is no active background PDF queue cost.'],
-  ['Pricing Firebase', firebaseDoc, 'July 5, 2026 PDF failure reason persistence update'],
-  ['Pricing Firebase', firebaseDoc, '`pricing_pdf_generation_failed`'],
   ['Pricing mobile', mobileDoc, 'Mobile does not have a separate Pricing Integrity UI.'],
   ['Pricing website', websiteDoc, 'Background PDF regeneration is not active runtime.'],
   ['Pricing helpdoc', helpDoc, 'MenuList does not currently run a background PDF regeneration job after every price edit.'],
@@ -269,16 +435,26 @@ for (const [label, content] of activeDocs) {
 ].forEach(([label, content, token]) => requireToken(content, token, label));
 
 [
+  '## Audited flows',
+  'No read, write, delete, collection, index, Storage object, Function, scheduler, queue, or polling path was added.',
+  '`npm run verify:pricing-integrity-boundary`',
+  'External Certification Runbook evidence',
+].forEach((token) => requireToken(verificationDoc, token, 'Pricing verification evidence'));
+
+[
   ['inventory', inventory, 'pricing_integrity'],
-  ['inventory', inventory, 'pricing-integrity boundary source gate passed'],
+  ['inventory', inventory, 'July 16 price-boundary behavior/source gates passed'],
   ['report', report, '## Pricing Integrity Boundary'],
   ['report', report, '`npm run verify:pricing-integrity-boundary`'],
+  ['report', report, 'July 16 deep audit'],
   ['audit', audit, 'Pricing Integrity current-runtime public-claim checkpoint'],
   ['audit', audit, '`npm run verify:pricing-integrity-boundary`'],
+  ['audit', audit, 'Pricing Integrity Runtime Deep Audit'],
   ['audit', audit, 'Pricing Integrity PDF failure reason persistence checkpoint'],
   ['audit', audit, 'Pricing-plan public contract and atomic version checkpoint'],
   ['changelog', changelog, 'Pricing Integrity Current Runtime Boundary'],
   ['changelog', changelog, '`npm run verify:pricing-integrity-boundary`'],
+  ['changelog', changelog, 'Pricing Integrity Runtime Hardening'],
   ['changelog', changelog, 'Pricing Integrity PDF Failure Reason Persistence'],
   ['changelog', changelog, 'Pricing Plan Public Contract and Versioning'],
 ].forEach(([label, source, token]) => requireToken(source, token, `Pricing ledger ${label}`));

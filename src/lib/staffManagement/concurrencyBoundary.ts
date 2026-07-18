@@ -36,7 +36,8 @@ export class StaffConcurrencyError extends Error {
 
 type StaffUserMutation =
     | { kind: 'add'; mapping: UserStoreMappingType }
-    | { active?: boolean; kind: 'replace'; mappings?: UserStoreMappingType[] }
+    | { kind: 'upsert'; mapping: UserStoreMappingType; verified?: boolean }
+    | { active?: boolean; kind: 'replace'; mappings?: UserStoreMappingType[]; verified?: boolean }
     | { kind: 'remove'; storeId: number };
 
 type StaffUserMutationContext = {
@@ -158,7 +159,7 @@ const initializeAccessState = async (
     const users = await getUsersForStore(db, tenantId, storeId);
     const assignments = users.flatMap((document) => {
         const data = document.data();
-        if (data.active === false || data.deleted === true || isPlatformEntityBlocked(data)) return [];
+        if (data.active === false || data.deleted === true || data.isVerified === false || isPlatformEntityBlocked(data)) return [];
         const mapping = normalizePersistedStaffStoreMappings(data.stores).find((item) => item.storeId === storeId);
         return mapping ? [{ role: mapping.role, userId: document.id }] : [];
     });
@@ -223,7 +224,10 @@ export const writeStaffBlockedAccessStateInTransaction = (
         throw new StaffConcurrencyError('FORBIDDEN');
     }
     const mappingByStoreId = new Map(mappings.map((mapping) => [mapping.storeId, mapping]));
-    const canAssign = !blocked && currentData.active !== false && currentData.deleted !== true;
+    const canAssign = !blocked
+        && currentData.active !== false
+        && currentData.deleted !== true
+        && currentData.isVerified !== false;
 
     states.forEach(({ ref, snapshot, storeId }) => {
         if (!snapshot.exists) throw new StaffConcurrencyError('FORBIDDEN');
@@ -339,7 +343,7 @@ export const runStaffUserMutationTransaction = async (
     const preflightSnapshot = await params.db.collection(DB_COLLECTIONS.USERS).doc(params.userId).get();
     if (!preflightSnapshot.exists) throw new StaffConcurrencyError('USER_NOT_FOUND');
     const preflightMappings = normalizePersistedStaffStoreMappings(preflightSnapshot.data()?.stores);
-    const requestedStoreIds = params.mutation.kind === 'add'
+    const requestedStoreIds = params.mutation.kind === 'add' || params.mutation.kind === 'upsert'
         ? [params.mutation.mapping.storeId]
         : params.mutation.kind === 'remove'
             ? [params.mutation.storeId]
@@ -399,6 +403,11 @@ export const runStaffUserMutationTransaction = async (
                         throw new StaffConcurrencyError('ALREADY_ASSIGNED');
                     }
                     requestedMappings = [...currentMappings, mutation.mapping];
+                } else if (mutation.kind === 'upsert') {
+                    requestedMappings = [
+                        ...currentMappings.filter(({ storeId }) => storeId !== mutation.mapping.storeId),
+                        mutation.mapping,
+                    ];
                 } else if (mutation.kind === 'remove') {
                     if (!currentMappings.some(({ storeId }) => storeId === mutation.storeId)) {
                         throw new StaffConcurrencyError('STORE_MAPPING_NOT_FOUND');
@@ -420,11 +429,16 @@ export const runStaffUserMutationTransaction = async (
                     ? normalizeAndValidateMappings(params.tenantId, requestedMappings, storesById)
                     : [];
                 const shouldDeactivate = mutation.kind === 'remove' && nextMappings.length === 0;
-                const effectiveActive = mutation.kind === 'add'
+                const effectiveActive = mutation.kind === 'add' || mutation.kind === 'upsert'
                     ? true
                     : mutation.kind === 'replace' && mutation.active !== undefined
                         ? mutation.active
                         : shouldDeactivate ? false : currentData.active !== false;
+                const effectiveVerified = (
+                    mutation.kind === 'upsert' || mutation.kind === 'replace'
+                ) && mutation.verified !== undefined
+                    ? mutation.verified
+                    : currentData.isVerified !== false;
                 const assignmentMaps = new Map<number, Map<string, StaffAccessAssignment>>();
                 stateSnapshots.forEach((snapshot, index) => {
                     if (!snapshot.exists) throw new StaffAccessGuardExpansionError([orderedStoreIds[index]]);
@@ -433,14 +447,16 @@ export const runStaffUserMutationTransaction = async (
                     ));
                 });
                 assignmentMaps.forEach((assignments) => assignments.delete(params.userId));
-                if (effectiveActive) {
+                if (effectiveActive && effectiveVerified) {
                     nextMappings.forEach((mapping) => assignmentMaps.get(mapping.storeId)?.set(params.userId, {
                         role: mapping.role,
                         userId: params.userId,
                     }));
                 }
 
-                const currentOwnerStoreIds = currentData.active === false || currentData.deleted === true
+                const currentOwnerStoreIds = currentData.active === false
+                    || currentData.deleted === true
+                    || currentData.isVerified === false
                     ? []
                     : currentMappings.filter(({ role }) => role === DEFAULT_ROLE_IDS.OWNER).map(({ storeId }) => storeId);
                 currentOwnerStoreIds.forEach((storeId) => {

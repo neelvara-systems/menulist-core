@@ -55,7 +55,7 @@ It still does not create direct provider calls, billing checkout, ad spend mutat
 | Feature flags | Public shell, app shell, source context, deterministic generation, and analytics enabled. Publishing and billing disabled. |
 | Security | Server-side workspace, client, location, source, credit, trust checks. |
 | Firebase rules | Default deny with explicit CampaignCue product scopes. |
-| Jobs | Current runtime uses synchronous server APIs with idempotency. Async generation/render/sync/publish/report jobs remain blocked until provider mode is enabled. |
+| Jobs | Current runtime uses synchronous server APIs with actor/action/request-bound five-minute idempotency leases. Active work conflicts, completed work replays, abandoned legacy/malformed/expired claims recover, and terminal campaign/action writes prove exact claim ownership. Async generation/render/sync/publish/report jobs remain blocked until provider mode is enabled. |
 | Trust | Critical blockers and channel warnings enforced before export, handoff, and any future connected publish/direct send. |
 | Cost | Deterministic generation costs zero credits; paid generation remains disabled. |
 | Mobile | Owner critical actions remain within the responsive CampaignCue workspace; download/export, schedule, mark used, source input, asset metadata, and result recording use 44px touch targets. |

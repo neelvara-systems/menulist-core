@@ -6,6 +6,7 @@ import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { getStoreSourceLanguage } from '@lib/localization/storeContent';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getPublicBusinessDescription } from '@lib/obp/getPublicBusinessDescription';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import generateBusinessCopyViaAPI from '@services/ai/businessCopy/generateBusinessCopyViaAPI';
@@ -41,7 +42,8 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
     const tMenu = useTranslations('MobileMenu');
     const formatter = useFormatter();
     const { token } = theme.useToken();
-    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const canGenerateBusinessCopy = userPermissions?.canGenerateDescriptions === true;
     const [isGenerating, setIsGenerating] = useState(false);
     const [isGeneratingTranslations, setIsGeneratingTranslations] = useState(false);
     const contentLanguage = getStoreSourceLanguage();
@@ -88,6 +90,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
     );
 
     const handleGenerate = async () => {
+        if (!canGenerateBusinessCopy) return;
         if (!storeDetails?.name?.trim() || !storeDetails?.storeId) {
             Toast.show({ content: t('businessCopyMissingName'), duration: 1500 });
             return;
@@ -201,7 +204,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 storeId: storeDetails.storeId,
                 tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
             };
-            const writeResult = await updateStore(nextStoreUpdate);
+            const writeResult = await updateStore({
+                ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
+                storeId: storeDetails.storeId,
+            });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,
@@ -224,7 +230,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 tagline: nextStoreUpdate.tagline,
             }));
 
-            Toast.show({ content: t('businessCopySuccess'), duration: 1500 });
+            Toast.show({
+                content: t(localized.translationIncomplete ? 'businessCopyPartialSuccess' : 'businessCopySuccess'),
+                duration: localized.translationIncomplete ? 2400 : 1500,
+            });
         } catch (error) {
             logMobileOwnerFailure('mobile_business_copy_generation_failed', error, {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
@@ -244,6 +253,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
     };
 
     const handleGenerateMissingTranslations = async () => {
+        if (!canGenerateBusinessCopy) return;
         if (!storeDetails?.storeId) return;
 
         try {
@@ -300,7 +310,10 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                 storeId: storeDetails.storeId,
                 tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
             };
-            const writeResult = await updateStore(nextStoreUpdate);
+            const writeResult = await updateStore({
+                ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
+                storeId: storeDetails.storeId,
+            });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,
@@ -420,7 +433,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                                 />
                             ))}
                         </List>
-                        {coverage.repairableGapCount > 0 ? (
+                        {coverage.repairableGapCount > 0 && canGenerateBusinessCopy ? (
                             <Button
                                 block
                                 loading={isGeneratingTranslations}
@@ -450,7 +463,7 @@ export default function MobileBusinessCopySetupScreen({ onBack }: MobileBusiness
                     </Card>
                 ) : null}
 
-                {showFullGenerationCta ? (
+                {showFullGenerationCta && canGenerateBusinessCopy ? (
                     <Button
                         block
                         color="primary"

@@ -1,6 +1,6 @@
 # Menu Link Import Mobile Support
 
-**Boundary Reviewed:** July 10, 2026
+**Boundary Reviewed:** July 13, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
@@ -16,6 +16,7 @@ Mobile support is required because menu setup is an owner workflow and owners of
 - The API creates the extraction job.
 - The existing mobile processing/review flow continues from the job id.
 - Mobile exposes link import only from the select step; once files are selected, the sheet uses the normal file review/upload path.
+- Mobile requires `canUseMenuExtraction === true` before creating a missing project or submitting link import. The protected route independently rechecks the current persisted capability before project/source/provider work.
 
 ## Touch and Copy
 

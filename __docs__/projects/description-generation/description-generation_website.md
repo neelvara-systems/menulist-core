@@ -1,52 +1,38 @@
-# Description Generation — Website Content
+# Description Generation - Website Content Boundary
 
 **Status:** Source-backed website draft; not current publication or launch certification
-
-## Current Public Website Placement
-
-As of June 9, 2026, description generation is marketed on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with menu images and customer languages. Do not create a standalone public description-generator page unless acquisition evidence later justifies it. Public website copy should say descriptions are prepared for owner review before publishing; avoid `AI-written`, unchecked publishing, ranking promises, and generic copywriting-tool positioning.
+**Last cross-check:** July 15, 2026
 
 ## Current Website/Launch Boundary
 
-Do not publish numeric timing, every-item, language-count, quality, or no-editing claims without the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:ai-accounting`, target feature-flag/provider review, provider smoke for the target description model and environment, authenticated desktop/mobile editor QA for generation, editing, save, and publish behavior, target deploy evidence, production-host smoke, and release-specific evidence for the claim.
+### Suggested heading
 
-## Hero Section
-- **Headline:** Menu Descriptions That Make Customers Hungry
-- **Subheadline:** Description suggestions for selected menu items, prepared for owner review before publishing.
-- **CTA Text:** Try It Free
-- **CTA Link:** /signup
+Description suggestions for selected menu items
 
-## Problem Statement
-Writing menu descriptions is tedious. Many owners skip them, leave them blank, or write rushed text that does not help customers choose.
+### Suggested body
 
-## Solution Statement
-MenuList prepares description suggestions for selected menu items. Review the draft, edit anything that needs attention, and save the approved descriptions before publishing.
+MenuList can prepare a first description from the item name, category, variants, and menu language settings. Bulk generation saves after the complete action succeeds; a single-item result stays in the editor until you select Save. Review the saved menu and adjust wording when needed.
 
-## Feature Benefits
+For a single-item draft, save the approved descriptions before publishing that edit. This instruction does not change the bulk auto-save behavior above.
 
-### 1. Descriptions for Selected Items
-Choose the items that need descriptions, then review the prepared suggestions before saving.
-> **Visual:** Menu before (missing descriptions) → review draft → approved descriptions
+Generated descriptions can be refreshed using enhancements. Descriptions written by you stay protected.
 
-### 2. Customer-Language Support
-Serving international customers? Keep language claims tied to the configured project workflow and release evidence.
-> **Visual:** Same item showing descriptions in English, Hindi, and Arabic
+### Suggested support line
 
-### 3. Owner-Approved Tone
-Review the prepared text, adjust it for your menu, and save only the approved copy.
-> **Visual:** Example descriptions — draft text, owner edit, approved result
+Availability and timing depend on menu context, permissions, location policy, current system conditions, and the configured provider.
 
-## How It Works
-1. **Choose Mode** — Generate only for items missing descriptions, or rewrite everything
-2. **Generate Draft** — The system prepares suggestions for the selected items
-3. **Review & Save** — Check the results, edit any you want to adjust, and save
+## Claim limits
 
-## SEO Meta
-- **Page Title:** Menu Description Drafts | MenuList
-- **Meta Description:** Prepare menu item description drafts for owner review, editing, and approval before publishing.
-- **Target Keywords:** menu description generator, restaurant menu copy, food descriptions, menu writing
+Do not promise fixed timing, complete item coverage, automatic owner approval, matching quality between languages, or business results. Do not show unsupported screenshots or balances. Single-item copy remains a draft until Save.
 
-## Approved Language
-### USE: "Description suggestions", "owner review", "approved descriptions", "prepared draft"
-### NEVER USE: "AI-written", "Smart copywriting", "Machine-generated text"
-### NEVER USE unsupported speed, every-item, language-count, quality, or no-editing claims without release-specific evidence.
+## Publication prerequisites
+
+- External Certification Runbook evidence;
+- `npm run verify:agent-readiness`;
+- `npm run verify:ai-accounting`;
+- provider/model smoke in the target environment;
+- authenticated desktop/mobile editor QA;
+- deploy evidence and production-host smoke;
+- founder approval of the exact public copy and media.
+
+Until those checks are recorded, this is maintained source-backed draft text only.

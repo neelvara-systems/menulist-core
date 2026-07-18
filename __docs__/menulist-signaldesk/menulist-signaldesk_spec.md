@@ -269,6 +269,8 @@ Do not use these as north-star metrics:
 | SD-R047 | Export preparation and completed manual contact must remain separate states; only provider success or an idempotent, policy-gated manual confirmation may mark a target contacted. | P0 |
 | SD-R048 | Approval rejection must store a bounded reason and project a deterministic recovery or terminal action; `other` requires a bounded note. | P0 |
 | SD-R049 | Limited contactability does not authorize a form, phone, social, or messaging action. Manual completion is restricted to a fresh prepared email export or a permissioned-referral partner introduction. | P0 |
+| SD-R050 | Every new evidence packet must contain a versioned current-menu-presence diagnostic with source references, rejected facts, contradiction state, and explicit unverified states for owner control and mobile access. | P0 |
+| SD-R051 | Human approval must bind the exact target, evidence diagnostic, source-policy state, allowed route, sender, CTA, message, unsupported-claim result, expected outcome, and risk snapshot; any material change invalidates the packet and requires refresh. | P0 |
 
 ## Policy Decisions
 

@@ -3,7 +3,7 @@
 > **Feature:** MenuList Business Facts Copy Pack
 > **Route:** `/tools/business-facts-copy-pack`
 > **Status:** Implemented V0 public browser-local tool and V1 owner readiness module
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -38,6 +38,8 @@ The tool exists because SMB owners repeatedly rewrite the same facts across Goog
 ## Boundary
 
 V0 uses owner-entered fields only. It does not fetch, inspect, verify, update, or write to Google, WhatsApp, Instagram, Facebook, websites, directories, AI/search systems, or MenuList owner truth.
+
+The phone/WhatsApp contact row uses strict local shape validation. Arbitrary words such as "call" or "WhatsApp," or digits mixed with letters, do not prove that a customer contact destination exists. A `wa.me` contact must carry one valid digits-only phone path.
 
 The only network write is the optional consented follow-up through the existing `/api/public/contact` route.
 

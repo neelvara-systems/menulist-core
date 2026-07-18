@@ -311,3 +311,15 @@ Do not widen beyond the Pro/Premium paid gate until:
 - mobile Today is browser/device-tested at iPhone width
 - stale kit behavior is tested with changed menu facts
 - support copy is reviewed for paid rollout
+
+## Current-Worktree Concurrency Cross-Check - July 17, 2026
+
+`npm run verify:growthos` passed 150 source assertions after adding executable
+coverage for UUID-backed kit IDs and the atomic kit-plus-summary Firestore batch.
+Scoped ESLint and diff integrity also passed. The owner response contract,
+Pro/Premium admission, deterministic Sales Pack content, export accounting, and
+Firebase operation count remain unchanged.
+
+No Firebase rules, indexes, Storage rules, or Cloud Function source changed, so
+this GrowthOS fix has no Firebase deployment target. App/Vercel release remains
+owner-controlled.

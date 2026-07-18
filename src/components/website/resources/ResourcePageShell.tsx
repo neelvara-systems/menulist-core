@@ -1,6 +1,7 @@
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import IntlClientWrapper from '@/providers/IntlClientWrapper';
 import {
     WEBSITE_RESOURCE_DEFAULT_LOCALE,
@@ -53,7 +54,7 @@ export function buildResourceHubMetadata(locale?: string | null): Metadata {
         ? copy.hub.subtitle
         : 'Menu and service-list correctness, QR placement, Google links, PDFs, SEO, AI search discovery, worksheets, and checklists for business owners.';
 
-    return {
+    return completeWebsiteMetadata({
         title,
         description,
         alternates: {
@@ -65,7 +66,7 @@ export function buildResourceHubMetadata(locale?: string | null): Metadata {
             description,
             url: path,
         },
-    };
+    });
 }
 
 export function buildResourceArticleMetadata(slug: string, locale?: string | null): Metadata {
@@ -82,7 +83,7 @@ export function buildResourceArticleMetadata(slug: string, locale?: string | nul
 
     const path = buildWebsiteResourcePath(article.slug, locale);
 
-    return {
+    return completeWebsiteMetadata({
         title: article.metaTitle,
         description: article.metaDescription,
         alternates: {
@@ -97,7 +98,7 @@ export function buildResourceArticleMetadata(slug: string, locale?: string | nul
             publishedTime: article.publishedAt,
             modifiedTime: article.updatedAt,
         },
-    };
+    });
 }
 
 export function ResourceHubPageShell({ locale }: ResourceLocaleProps) {

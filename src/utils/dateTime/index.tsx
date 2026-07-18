@@ -1,15 +1,16 @@
 import {
     APP_LOCALE_COOKIES_KEY,
     APP_TIMEZONE_COOKIES_KEY,
-    TIME_FORMATS,
     defaultLocale,
-    defaultTimeFormat,
-    defaultTimezone
+    defaultTimezone,
+    getTimeFormatOptions,
+    normalizeLocalePreference,
+    normalizeTimeZone,
 } from '@lib/localization/config';
 import { getCookie } from 'cookies-next';
 import { Timestamp } from 'firebase/firestore';
 import { DateTimeFormatOptions } from 'next-intl';
-import { getUserTimeFormatOptions } from '../formatters';
+import { getUserDateFormatOptions, getUserTimeFormatOptions } from '../formatters';
 
 // ═══════════════════════════════════════════════════════════════
 // TIMEZONE
@@ -21,8 +22,7 @@ import { getUserTimeFormatOptions } from '../formatters';
  */
 export const getUserTimezone = (): string => {
     try {
-        const tz = getCookie(APP_TIMEZONE_COOKIES_KEY) as string;
-        if (tz) return tz;
+        return normalizeTimeZone(getCookie(APP_TIMEZONE_COOKIES_KEY) as string);
     } catch {
         // Cookie access might fail in certain contexts (SSR, middleware)
     }
@@ -46,7 +46,7 @@ export type DateLike = Timestamp | Date | string | number | {
  * Firestore Timestamp {seconds, nanoseconds}) into a plain JS Date.
  */
 export const toDate = (value: DateLike): Date => {
-    if (!value) return new Date(Number.NaN);
+    if (value === null || value === undefined || value === '') return new Date(Number.NaN);
     if (value instanceof Timestamp) return value.toDate();
     if (typeof (value as any).toDate === 'function') return (value as any).toDate();
     if (value instanceof Date) return value;
@@ -98,7 +98,7 @@ export type DateTimeDisplayMode = 'date' | 'time' | 'datetime';
  * Format date + time using next-intl formatter (respects user prefs)
  */
 export const getFormatedDateAndTime = (formatter: IntlFormatter, date: DateLike): string | null => {
-    if (!date) return null;
+    if (date === null || date === undefined || date === '') return null;
     const d = toDate(date);
     if (isNaN(d.getTime())) return null;
     return `${formatter.dateTime(d, 'date')} ${formatter.dateTime(d, 'time')}`;
@@ -108,7 +108,7 @@ export const getFormatedDateAndTime = (formatter: IntlFormatter, date: DateLike)
  * Format date-only using next-intl formatter (respects user prefs)
  */
 export const getFormatedDate = (formatter: IntlFormatter, date: DateLike): string | null => {
-    if (!date) return null;
+    if (date === null || date === undefined || date === '') return null;
     const d = toDate(date);
     if (isNaN(d.getTime())) return null;
     return formatter.dateTime(d, 'date');
@@ -118,7 +118,7 @@ export const getFormatedDate = (formatter: IntlFormatter, date: DateLike): strin
  * Format time-only using next-intl formatter (respects user prefs)
  */
 export const getFormatedTime = (formatter: IntlFormatter, date: DateLike): string | null => {
-    if (!date) return null;
+    if (date === null || date === undefined || date === '') return null;
     const d = toDate(date);
     if (isNaN(d.getTime())) return null;
     return formatter.dateTime(d, 'time');
@@ -126,19 +126,30 @@ export const getFormatedTime = (formatter: IntlFormatter, date: DateLike): strin
 
 /**
  * Universal date/time formatter — accepts Timestamp, Date, or ISO string.
- * Uses next-intl formatter when available, falls back to ISO string.
+ * Uses next-intl formatter when available, then a safe native Intl fallback.
  */
 export const formatDateTime = (
     value?: DateLike,
     mode: DateTimeDisplayMode = 'date',
     formatter?: IntlFormatter,
 ): string => {
-    if (!value) return 'N/A';
+    if (value === null || value === undefined || value === '') return 'N/A';
 
     const dateObj = toDate(value as any);
     if (isNaN(dateObj.getTime())) return 'N/A';
 
-    if (!formatter) return dateObj.toISOString();
+    if (!formatter) {
+        const locale = resolveLocalePreference();
+        const timeZone = getUserTimezone();
+        const dateOptions = getUserDateFormatOptions();
+        const timeOptions = getUserTimeFormatOptions();
+        const dateLabel = new Intl.DateTimeFormat(locale, { ...dateOptions, timeZone }).format(dateObj);
+        const timeLabel = new Intl.DateTimeFormat(locale, { ...timeOptions, timeZone }).format(dateObj);
+
+        if (mode === 'time') return timeLabel;
+        if (mode === 'datetime') return `${dateLabel} ${timeLabel}`;
+        return dateLabel;
+    }
 
     switch (mode) {
         case 'datetime':
@@ -215,12 +226,12 @@ export const formatInUserTimezone = (
     options: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' },
     specificTimezone?: string,
 ): string => {
-    const tz = specificTimezone || getUserTimezone();
-    return new Intl.DateTimeFormat('en-GB', { ...options, timeZone: tz }).format(d);
+    const tz = normalizeTimeZone(specificTimezone, getUserTimezone());
+    return new Intl.DateTimeFormat(resolveLocalePreference(), { ...options, timeZone: tz }).format(d);
 };
 
 const getZonedParts = (date: Date, timeZone?: string): Record<string, string> => {
-    const tz = timeZone || getUserTimezone();
+    const tz = normalizeTimeZone(timeZone, getUserTimezone());
     return Object.fromEntries(new Intl.DateTimeFormat('en-US', {
         day: '2-digit',
         hour: '2-digit',
@@ -261,6 +272,16 @@ const zonedDateTimeToUtc = (
     return new Date(utcGuess - secondOffset);
 };
 
+const isValidCalendarDate = (year: number, month: number, day: number): boolean => {
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return false;
+    if (year < 1 || year > 9999 || month < 1 || month > 12 || day < 1 || day > 31) return false;
+
+    const candidate = new Date(Date.UTC(year, month - 1, day));
+    return candidate.getUTCFullYear() === year
+        && candidate.getUTCMonth() === month - 1
+        && candidate.getUTCDate() === day;
+};
+
 export const toNativeDateInputValue = (value?: DateLike, timeZone?: string): string => {
     const date = toDate(value);
     if (Number.isNaN(date.getTime())) return '';
@@ -276,9 +297,12 @@ export const toNativeDateTimeInputValue = (value?: DateLike, timeZone?: string):
 };
 
 export const fromNativeDateInputValue = (value: string, timeZone?: string): string => {
-    if (!value) return '';
-    const [year, month, day] = value.split('-').map(Number);
-    if ([year, month, day].some(Number.isNaN)) return '';
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) return '';
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    if (!isValidCalendarDate(year, month, day)) return '';
     return zonedDateTimeToUtc(year, month, day, 0, 0, timeZone).toISOString();
 };
 
@@ -291,7 +315,7 @@ export const fromNativeDateTimeInputValue = (value: string, timeZone?: string): 
     const day = Number(match[3]);
     const hour = Number(match[4]);
     const minute = Number(match[5]);
-    if ([year, month, day, hour, minute].some(Number.isNaN)) return '';
+    if (!isValidCalendarDate(year, month, day) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return '';
     return zonedDateTimeToUtc(year, month, day, hour, minute, timeZone).toISOString();
 };
 
@@ -300,15 +324,14 @@ export const fromNativeDateTimeInputValue = (value: string, timeZone?: string): 
 // ═══════════════════════════════════════════════════════════════
 
 const resolveClockTimeFormatOptions = (timeFormat?: string): DateTimeFormatOptions => {
-    if (!timeFormat) return getUserTimeFormatOptions();
-    return TIME_FORMATS.find((format) => format.label === timeFormat)?.value || defaultTimeFormat;
+    return timeFormat ? getTimeFormatOptions(timeFormat) : getUserTimeFormatOptions();
 };
 
 const resolveLocalePreference = (locale?: string): string => {
-    if (locale) return locale;
+    if (locale) return normalizeLocalePreference(locale) || defaultLocale;
     try {
         const cookieValue = getCookie(APP_LOCALE_COOKIES_KEY) as string;
-        if (cookieValue) return cookieValue;
+        return normalizeLocalePreference(cookieValue) || defaultLocale;
     } catch {
         // Cookie access may fail outside browser contexts.
     }
@@ -316,8 +339,11 @@ const resolveLocalePreference = (locale?: string): string => {
 };
 
 const buildUtcReferenceDate = (time24: string): Date | null => {
-    const [hours, minutes] = time24.split(':').map(Number);
-    if (Number.isNaN(hours) || Number.isNaN(minutes)) return null;
+    const match = /^(\d{2}):(\d{2})$/.exec(time24);
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
     return new Date(Date.UTC(2000, 0, 1, hours, minutes, 0));
 };
 

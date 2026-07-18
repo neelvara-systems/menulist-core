@@ -17,6 +17,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 
 const tId = 71;
 const sId = 72;
+const inheritedOutletSId = 73;
 const action = AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION;
 const subscriptionId = 'sub_ai_reservation_concurrency';
 const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
@@ -24,6 +25,10 @@ const operationCollection = firestoreAdmin
     .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
     .doc(String(tId))
     .collection(String(sId));
+const inheritedOutletOperationCollection = firestoreAdmin
+    .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
+    .doc(String(tId))
+    .collection(String(inheritedOutletSId));
 
 function subscription(): FirestoreSubscriptionDoc {
     return {
@@ -105,7 +110,7 @@ async function run(): Promise<void> {
         logLabel: 'AI reservation emulator',
     });
     assert.equal(settled.transactionId, winningReservation.id);
-    assert.deepEqual(settled.remainingBalance, { monthlyCredits: 2, topUpCredits: 0 });
+    assert.deepEqual(settled.remainingBalance, { billingStoreId: sId, monthlyCredits: 2, topUpCredits: 0 });
     const consumedDoc = await operationCollection.doc(winningReservation.id).get();
     assert.equal(consumedDoc.data()?.accountingStatus, 'consumed');
     assert.ok(consumedDoc.data()?.createdOn, 'settled operations must enter transaction history');
@@ -115,18 +120,28 @@ async function run(): Promise<void> {
         input: { action, sId, tId, unitsConsumed: 10 },
         logLabel: 'AI reservation emulator replay',
     });
-    assert.deepEqual(settledReplay.remainingBalance, { monthlyCredits: 2, topUpCredits: 0 });
+    assert.deepEqual(settledReplay.remainingBalance, { billingStoreId: sId, monthlyCredits: 2, topUpCredits: 0 });
     assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 2);
+    const legacyIdempotentReplay = await finalizeAiOperationAccounting({
+        idempotencyKey: winningReservation.id,
+        input: { action, sId, tId, unitsConsumed: 10 },
+        logLabel: 'AI reservation legacy replay emulator',
+    });
+    assert.deepEqual(
+        legacyIdempotentReplay.remainingBalance,
+        { billingStoreId: sId, monthlyCredits: 2, topUpCredits: 0 },
+        'legacy replay responses retain the effective billing store scope',
+    );
     const consumedRefund = await refundAiCapacityReservation(winningReservation, 'must_not_refund_consumed');
     assert.equal(consumedRefund.alreadyTerminal, true);
     assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 2);
 
     await resetSubscription(7, 5);
     const refundable = await reserve('reservation-refundable', 9);
-    assert.deepEqual(refundable.remainingBalance, { monthlyCredits: 0, topUpCredits: 3 });
+    assert.deepEqual(refundable.remainingBalance, { billingStoreId: sId, monthlyCredits: 0, topUpCredits: 3 });
     const firstRefund = await refundAiCapacityReservation(refundable, 'provider_failed');
     assert.equal(firstRefund.alreadyTerminal, false);
-    assert.deepEqual(firstRefund.remainingBalance, { monthlyCredits: 7, topUpCredits: 5 });
+    assert.deepEqual(firstRefund.remainingBalance, { billingStoreId: sId, monthlyCredits: 7, topUpCredits: 5 });
     const secondRefund = await refundAiCapacityReservation(refundable, 'duplicate_failure_handler');
     assert.equal(secondRefund.alreadyTerminal, true, 'refund retries must be idempotent');
     assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 7);
@@ -150,6 +165,42 @@ async function run(): Promise<void> {
     );
     assert.equal((await operationCollection.doc(conflictReservation.id).get()).data()?.accountingStatus, 'reserved');
     await refundAiCapacityReservation(conflictReservation, 'conflict_cleanup');
+
+    await resetSubscription(8, 0);
+    const inheritedOutletReservation = await reserveAiCapacity({
+        action,
+        idempotencyKey: 'reservation-inherited-outlet',
+        recoveryMode: 'automatic_refund',
+        sId: inheritedOutletSId,
+        source: 'capacity_reservation_emulator',
+        subscription: subscription(),
+        tId,
+        unitsToReserve: 3,
+    });
+    assert.equal(inheritedOutletReservation.sId, String(inheritedOutletSId));
+    assert.equal(inheritedOutletReservation.billingStoreId, String(sId));
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 5, 'inherited outlet debits the effective HQ subscription');
+    const inheritedReservedDoc = await inheritedOutletOperationCollection.doc(inheritedOutletReservation.id).get();
+    assert.equal(inheritedReservedDoc.data()?.sId, inheritedOutletSId, 'history remains scoped to the outlet that requested the work');
+    assert.equal(inheritedReservedDoc.data()?.accountingBillingStoreId, sId, 'reservation records the distinct effective billing store');
+    const inheritedSettlement = await finalizeAiOperationAccounting({
+        capacityReservation: inheritedOutletReservation,
+        input: {
+            action,
+            billingMode: 'billable',
+            clientResponse: { responseSummaryKind: 'inherited_outlet_emulator' },
+            sId: inheritedOutletSId,
+            tId,
+            unitsConsumed: 3,
+        },
+        logLabel: 'Inherited outlet reservation emulator',
+    });
+    assert.deepEqual(inheritedSettlement.remainingBalance, {
+        billingStoreId: sId,
+        monthlyCredits: 5,
+        topUpCredits: 0,
+    });
+    assert.equal((await inheritedOutletOperationCollection.doc(inheritedOutletReservation.id).get()).data()?.accountingStatus, 'consumed');
 
     await assert.rejects(
         reserve('reservation-fractional', 0.5),
@@ -234,6 +285,31 @@ async function run(): Promise<void> {
     });
     assert.equal(deletion.deleted, 1, 'expired refunded reservation shells must be deleted');
     assert.equal((await operationCollection.doc(staleReservation.id).get()).exists, false);
+
+    await resetSubscription(6, 0);
+    const inheritedStaleReservation = await reserveAiCapacity({
+        action,
+        idempotencyKey: 'reservation-inherited-outlet-stale',
+        recoveryMode: 'automatic_refund',
+        sId: inheritedOutletSId,
+        source: 'capacity_reservation_emulator',
+        subscription: subscription(),
+        tId,
+        unitsToReserve: 2,
+    });
+    await inheritedOutletOperationCollection.doc(inheritedStaleReservation.id).update({
+        reservationRecoveryAt: Timestamp.fromMillis(Date.now() - 1_000),
+    });
+    const inheritedRecovery = await recoverAiCapacityReservationsInCollectionRef({
+        collectionRef: inheritedOutletOperationCollection,
+        db: firestoreAdmin,
+        limit: 10,
+        now: Timestamp.now(),
+        sId: String(inheritedOutletSId),
+        tId: String(tId),
+    });
+    assert.equal(inheritedRecovery.refunded, 1, 'stale inherited-outlet reservations refund the effective HQ subscription');
+    assert.equal((await subscriptionRef.get()).data()?.monthlyCredits, 6);
 
     const deadlineRaceReservation = await reserve('reservation-refunded-deadline-race', 1);
     await refundAiCapacityReservation(deadlineRaceReservation, 'deadline_race_setup');
@@ -338,6 +414,8 @@ async function run(): Promise<void> {
         deleteOperation('reservation-poison-row'),
         deleteOperation('reservation-durable-retry'),
         deleteOperation('reservation-stale'),
+        inheritedOutletOperationCollection.doc('reservation-inherited-outlet').delete(),
+        inheritedOutletOperationCollection.doc('reservation-inherited-outlet-stale').delete(),
     ]);
     await subscriptionRef.delete();
     console.log('AI capacity reservation emulator tests passed.');

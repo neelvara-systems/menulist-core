@@ -1,10 +1,11 @@
 # AI Image Generation - Website Content
 
 **Status:** Source-backed website draft; not current publication or launch certification
+**Last Updated:** July 14, 2026
 
 ## Current Public Website Placement
 
-As of June 9, 2026, menu image generation is marketed on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with descriptions and customer languages. Do not create a standalone public image-generation page unless acquisition evidence later justifies it. Public website copy should say menu images can be prepared where plan, credits, source quality, provider availability, and safety checks allow, then reviewed before publishing; avoid `AI-powered`, unchecked publishing, photoshoot-cost guarantees, professional-photography replacement claims, fixed speed claims, full-menu guarantees, and generic image-tool positioning.
+As of the July 14, 2026 source cross-check, menu image generation remains on the combined Menu Content Prep feature page at `/features/menu-content-prep` together with descriptions and customer languages. Do not create a standalone public image-generation page unless acquisition evidence later justifies it. Public website copy should say menu images can be prepared for selected items where plan, credits, source quality, provider availability, and safety checks allow, then reviewed before publishing; avoid `AI-powered`, unchecked publishing, photoshoot-cost guarantees, professional-photography replacement claims, fixed speed claims, full-menu guarantees, and generic image-tool positioning.
 
 ## Current Website/Launch Boundary
 
@@ -29,7 +30,7 @@ Choose items that need visual support and prepare image drafts for review.
 > **Visual:** Menu item without image -> image draft -> owner-approved image
 
 ### 2. Bounded Batch Preparation
-Prepare a bounded batch where the current release and plan support it. Review results as drafts before using them.
+Prepare up to 50 selected-item drafts where the deployed release, plan, credits, Cloud Tasks setup, and provider support it. Review results before using them.
 > **Visual:** Review queue with accepted, rejected, and pending draft images
 
 ### 3. Review And Refine

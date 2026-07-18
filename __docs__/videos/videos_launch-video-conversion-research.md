@@ -116,6 +116,59 @@ Do not publish any of these claims:
 - AI-generated visuals improve conversion.
 - A high completion rate means the viewer understood MenuList.
 - Platform-attributed conversions were caused only by the video.
+- A distribution algorithm has no choice but to push a high-retention video.
+- `70%` is a universal high-performance retention target.
+- Viewers who pass `30s` remain because of sunk-cost fallacy.
+- A cut every `1.7s` improves comprehension or conversion for every audience.
+- Speeding every final video by `10%` improves business results.
+
+## July 2026 Viral-Launch Article Review
+
+The July 16, 2026 article `The Psychology of Viral Launch Videos` is useful as a production-discipline input, not as a scientific or platform guarantee.
+
+### Adopt
+
+- earn the first seconds instead of using a long logo-only introduction;
+- keep the thumbnail, caption, opening frame, and hook promise consistent;
+- introduce the product and its value early;
+- show the product rather than describing it with generic sales adjectives;
+- storyboard every line against visible product proof;
+- make motion explain the workflow;
+- iterate and review the complete stitch before publishing;
+- use retention curves to diagnose where the story loses attention.
+
+### Adapt For MenuList
+
+- preserve the poster-safe frame-zero identity while combining it with the owner hook and real source/product evidence;
+- target one meaningful visual event every `1.5-2.5s` in the first `6s`, then allow readable `2-4s` proof holds;
+- make the first aha the existing-menu-to-private-preview transformation;
+- use owner approval as the trust payoff;
+- use one-link propagation only for verified MenuList outputs;
+- keep one focal movement at a time and prefer stillness over decorative breathing or drifting;
+- test native `9:16` hooks without changing the body, voice, music, CTA, destination, or audience.
+
+### Reject
+
+- `Virality is not luck` or `the algorithm has no choice` as operating claims;
+- retention as the only recommendation or business-success signal;
+- unsourced universal performance benchmarks;
+- sunk-cost manipulation as a design objective;
+- mandatory hyperactive cutting or constant stimulation;
+- automatic final-video speed increases;
+- using views or completion as a substitute for approved customer-link outcomes.
+
+Official platform guidance supports early promise delivery and product visibility, but it also describes recommendation and performance as multi-signal systems:
+
+- [YouTube recommendation performance guidance](https://support.google.com/youtube/answer/16559650?hl=en)
+- [YouTube audience retention guidance](https://support.google.com/youtube/answer/9314415?hl=en)
+- [Meta awareness video guidance](https://www.facebook.com/business/ads/ad-objectives/awareness)
+- [Meta Reels creative guidance](https://www.facebook.com/business/ads/facebook-instagram-reels-ads)
+- [Think with Google YouTube effectiveness guide](https://www.thinkwithgoogle.com/_qs/documents/5679/YT_Effectiveness_Guide.pdf)
+
+Research on editing supports using cuts and change to manage attention, but it also shows that discontinuous or excessive editing can divert attention from narrative understanding. The MenuList standard therefore optimizes meaningful progression rather than cut count:
+
+- [Cinematographic continuity edits and viewer attention](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2023.1173704/full)
+- [Attention and sunk-cost sensitivity](https://pubmed.ncbi.nlm.nih.gov/33692720/)
 
 The external numbers justify testing and measurement. They do not justify a MenuList performance promise.
 

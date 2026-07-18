@@ -44,8 +44,12 @@ export interface ExtractedItemInput {
         id: string;
         name: Record<string, string>;
         price?: string;
+        active?: boolean;
     }>;
     tags?: string[];
+    dietaryTags?: string[];
+    spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot';
+    duration?: number;
     sourceFileIndex?: number;
 }
 
@@ -77,8 +81,12 @@ export interface ExistingItem {
         id: string;
         name: Record<string, string>;
         price?: string;
+        active?: boolean;
     }>;
     tags?: string[];
+    dietaryTags?: string[];
+    spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot';
+    duration?: number;
     fileUid?: string; // Which file this item belongs to
     extractionIdAliases?: string[]; // Prior/new extraction IDs that resolve to this stable item ID
 }
@@ -284,7 +292,7 @@ export interface ApplyPlan {
         /** Local-only categories (L_C_ prefix) */
         upsertLocalCategories: ExistingCategory[];
         /** Local-only items (L_I_ prefix) */
-        upsertLocalItems: ExistingItem[];
+        upsertLocalItems: Array<Partial<ExistingItem> & Pick<ExistingItem, 'id'>>;
         /** Price overrides on master items */
         applyOverrides: Array<{
             masterItemId: string;

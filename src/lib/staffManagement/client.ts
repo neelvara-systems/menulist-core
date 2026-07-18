@@ -36,33 +36,81 @@ type CreateStaffCompatibilityRejectedResponse = {
 
 export type CreateStaffCompatibilityResponse = StaffMutationResponse | CreateStaffCompatibilityRejectedResponse;
 type CreateStaffCompatibilitySuccessResponse = StaffMutationResponse & {
-    mode: "new_user_created" | "existing_user_added_to_store";
+    mode: "existing_user_auth_bound";
     success: true;
     user: StaffMutationResponse["user"];
     userId: string;
 };
 
 const CREATE_STAFF_COMPATIBILITY_SUCCESS_MODES: Array<CreateStaffCompatibilitySuccessResponse["mode"]> = [
-    "new_user_created",
-    "existing_user_added_to_store",
+    "existing_user_auth_bound",
 ];
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === "object" && !Array.isArray(value)
 );
 
+const isPositiveSafeInteger = (value: unknown): value is number => (
+    typeof value === "number" && Number.isSafeInteger(value) && value > 0
+);
+
+const isStaffStoreMappingResponse = (value: unknown): boolean => (
+    isRecord(value)
+    && isPositiveSafeInteger(value.storeId)
+    && typeof value.name === "string"
+    && typeof value.role === "string"
+);
+
+const isStaffStoreOptionResponse = (value: unknown): boolean => (
+    isRecord(value)
+    && isPositiveSafeInteger(value.storeId)
+    && isPositiveSafeInteger(value.tenantId)
+    && typeof value.name === "string"
+    && Array.isArray(value.roles)
+    && value.roles.every((role) => (
+        isRecord(role)
+        && typeof role.active === "boolean"
+        && typeof role.id === "string"
+        && role.id.length > 0
+        && typeof role.name === "string"
+    ))
+);
+
+const isRoleDefinitionResponse = (value: unknown): boolean => (
+    isRecord(value)
+    && (value.active === undefined || typeof value.active === "boolean")
+    && typeof value.id === "string"
+    && value.id.length > 0
+    && typeof value.name === "string"
+    && isRecord(value.permissions)
+    && Object.values(value.permissions).every((permission) => typeof permission === "boolean")
+);
+
 const isStaffListResponse = (value: unknown): value is StaffListResponse => (
     isRecord(value)
     && Array.isArray(value.users)
-    && (value.stores === undefined || Array.isArray(value.stores))
+    && value.users.every(isStaffUserSummaryResponse)
+    && (
+        value.stores === undefined
+        || (Array.isArray(value.stores) && value.stores.every(isStaffStoreOptionResponse))
+    )
 );
 
 const isStaffUserSummaryResponse = (value: unknown): value is StaffMutationResponse["user"] => (
     isRecord(value)
+    && typeof value.active === "boolean"
+    && typeof value.deleted === "boolean"
+    && typeof value.email === "string"
     && typeof value.id === "string"
-    && Number.isFinite(Number(value.tenantId))
+    && value.id.length > 0
+    && typeof value.name === "string"
+    && isPositiveSafeInteger(value.tenantId)
     && Array.isArray(value.storeIds)
+    && value.storeIds.every(isPositiveSafeInteger)
     && Array.isArray(value.stores)
+    && value.stores.every(isStaffStoreMappingResponse)
+    && (value.isVerified === undefined || typeof value.isVerified === "boolean")
+    && (value.ownerProtected === undefined || typeof value.ownerProtected === "boolean")
 );
 
 const hasConsistentStaffMutationIdentity = (value: Record<string, unknown>): boolean => {
@@ -107,14 +155,25 @@ export const isCreateStaffCompatibilitySuccessResponse = (
     })
 );
 
-export const isCreateStaffCompatibilityEmailExistsResponse = (
+export const isCreateStaffCompatibilityVerificationResponse = (
     value: unknown,
-): value is CreateStaffCompatibilityRejectedResponse & { code: "EMAIL_EXISTS" } => (
-    isCreateStaffCompatibilityRejectedResponse(value) && value.code === "EMAIL_EXISTS"
+    expectedUserId: string,
+    expectedEmail: string,
+): value is CreateStaffCompatibilitySuccessResponse => (
+    isCreateStaffCompatibilitySuccessResponse(value)
+    && value.mode === "existing_user_auth_bound"
+    && value.userId === expectedUserId
+    && value.user?.id === expectedUserId
+    && value.user?.isVerified === true
+    && value.email?.trim().toLowerCase() === expectedEmail.trim().toLowerCase()
 );
 
 const isRoleMutationResponse = (value: unknown): value is RoleMutationResponse => (
-    isRecord(value) && value.success === true && Array.isArray(value.roles)
+    isRecord(value)
+    && value.success === true
+    && Array.isArray(value.roles)
+    && value.roles.every(isRoleDefinitionResponse)
+    && (value.role === undefined || isRoleDefinitionResponse(value.role))
 );
 
 const isExpectedStaffResponse = (
@@ -233,7 +292,7 @@ export const createStaffUser = async (payload: CreateStaffInput) => {
         headers: { "Content-Type": "application/json" },
         method: "POST",
     }), "staff_mutation", {
-        expectedModes: ["new_user_created", "existing_user_added_to_store"],
+        expectedModes: ["new_user_created", "existing_user_added_to_store", "existing_user_auth_bound"],
         requireUser: true,
         requireUserId: true,
     });

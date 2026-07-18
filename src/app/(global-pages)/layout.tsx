@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     title: 'MenuList - Authentication',
     description: 'Sign in or sign up to MenuList',
     // Owner PWA entry: installing from /signin should create the dashboard app,
-    // not a browser-only shortcut. The manifest start_url remains /dashboard.
+    // not a browser-only shortcut. The manifest start_url remains /today.
     manifest: '/manifest.json',
 }
 

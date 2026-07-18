@@ -73,9 +73,21 @@ export async function GET(request: NextRequest) {
     const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
     const ip = getRequestIp(request);
     const ipHash = hashPublicRateLimitValue(ip);
-    const rl = await checkRateLimit({ key: `auth-validate:${ipHash}`, ...getRateLimitForFeature('AUTH_SENSITIVE') });
+    const rl = await checkRateLimit({
+      key: `auth-validate:${ipHash}`,
+      ...getRateLimitForFeature('AUTH_SENSITIVE'),
+      failClosedOnProviderError: true,
+    });
     if (!rl.allowed) {
-      return NextResponse.json({ error: "Too many attempts. Please wait." }, { status: 429 });
+      const providerUnavailable = rl.reason === 'provider_unavailable';
+      return NextResponse.json(
+        {
+          error: providerUnavailable
+            ? "Account setup is temporarily unavailable. Please try again shortly."
+            : "Too many attempts. Please wait.",
+        },
+        { status: providerUnavailable ? 503 : 429 },
+      );
     }
 
     const { searchParams } = new URL(request.url);

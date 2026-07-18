@@ -8,7 +8,7 @@ export type StaffListResponse = {
 
 export type StaffMutationResponse = {
     success: boolean;
-    mode?: "new_user_created" | "existing_user_added_to_store" | "user_updated" | "store_mapping_removed" | "user_deactivated" | "session_revoked";
+    mode?: "new_user_created" | "existing_user_added_to_store" | "existing_user_auth_bound" | "user_updated" | "store_mapping_removed" | "user_deactivated" | "session_revoked";
     user?: StaffUserSummary;
     userId?: string;
     email?: string;
@@ -54,6 +54,7 @@ export type StaffUserSummary = {
     staffAuthMode?: StaffAuthMode;
     staffLoginId?: string;
     loginUsername?: string;
+    ownerProtected?: boolean;
     phoneUsername?: string;
     sessionRevokedAt?: unknown;
 };

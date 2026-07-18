@@ -26,6 +26,7 @@ The canonical output object is `CampaignCueOutputPack`.
 It contains:
 
 - decision card
+- optional owner-requested output focus with allowlisted intent id and requested output types
 - facts used and missing inputs
 - creative/editable source references
 - channel copy blocks
@@ -53,11 +54,12 @@ It contains:
 1. Owner opens Daily Campaign Desk.
 2. CampaignCue shows a recommended campaign and missing inputs.
 3. Owner answers required missing inputs before creating a full pack.
-4. Owner creates or opens the latest pack.
-5. Pack review shows readiness, trust status, approval state, and delivery cards.
-6. Owner downloads the campaign pack ZIP only when server trust gates allow public use.
-7. Owner copies or uses fields manually in WhatsApp, Google Business Profile, Instagram/Facebook, print, staff handoff, email/SMS, or ad/agency handoff.
-8. Owner records what happened; a useful result may nominate that recipe for a new current-truth pack.
+4. Owner may choose an output focus. CampaignCue checks its grouped fact requirements and pairs goal-specific focuses only with a compatible Decision Engine candidate.
+5. Owner creates or opens the latest pack.
+6. Pack review shows readiness, trust status, approval state, requested output focus, and delivery cards.
+7. Owner downloads the campaign pack ZIP only when server trust gates allow public use.
+8. Owner copies or uses fields manually in WhatsApp, Google Business Profile, Instagram/Facebook, print, staff handoff, email/SMS, or ad/agency handoff.
+9. Owner records what happened; a useful result may nominate that recipe for a new current-truth pack.
 
 ## Readiness Contract
 
@@ -104,6 +106,8 @@ When result memory shows that a completed campaign was useful, Campaign Rhythm m
 - No fake AI-avatar or fictional-customer UGC experience treated as a real testimonial.
 - No creator recruiting, contract management, payment processing, marketplace listing, or guaranteed reach/revenue claim.
 - No model-owned campaign decision.
+- No cosmetic output intent that silently relabels an unrelated campaign decision.
+- No campaign record for editor-only `custom_size` or CueLayers-only `reuse_old_asset` intents.
 - No automatic translation claim in the active export/download runtime.
 - No invented price, date, phone, location, claim, or offer.
 - No engagement, reach, ROI, or best-time prediction in the readiness score.

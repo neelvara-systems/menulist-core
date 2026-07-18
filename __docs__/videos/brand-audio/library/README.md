@@ -9,6 +9,8 @@
 
 These tracks are reusable pre-mix sources. They are not final video mixes and they do not replace the founder-frozen `Midnight Lo-Fi Focus` bed in Owner Ease 30s V4.
 
+The global selection authority is [`../track-policy.json`](../track-policy.json). `MenuList One Link Motion v2` is the primary default for new videos, while `MenuList Outlet Control v2` is the approved operational alternate. The two-minute tracks below remain the correct source pool when a longer runtime or a different narrative job requires them.
+
 Choose one track by story:
 
 | Track | Best use | Character | Master level | SHA-256 |
@@ -19,7 +21,9 @@ Choose one track by story:
 
 ## Selection Rules
 
-- Default to **Product Demo** when narration and UI comprehension are the priority.
+- Start with **One Link Motion v2** for a new general MenuList video when its 54-second source fits the runtime and story.
+- Use **Outlet Control v2** for multi-location and operational narratives when its firmer pulse is useful.
+- Use **Product Demo** for longer UI-led walkthroughs when narration and comprehension are the priority and the shorter default source does not fit the runtime.
 - Use **Owner Humanistic** when the story must feel easy and supportive for a non-technical SMB owner. Do not use it as the default infrastructure/authority sound.
 - Use **Launch Momentum** when the edit needs a clear build and stronger final CTA energy without trailer-style drama.
 - Do not select by genre alone. Audition under the real voiceover and picture edit.

@@ -1,7 +1,7 @@
 # QR WhatsApp Experiments Spec
 
-**Status:** Docs-ready
-**Last Updated:** June 25, 2026
+**Status:** PLANNING ONLY — NO RUNTIME
+**Last Updated:** July 17, 2026
 
 ## Problem
 

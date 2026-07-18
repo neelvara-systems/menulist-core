@@ -20,7 +20,6 @@ import { ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG } from "../sharedData/answerlatti
 export const AI_MODEL = "gemini-2.5-flash";
 export const OWNER_ANALYTICS_AI_MODEL = "gemini-2.5-flash-lite";
 export const AI_ADVANCED_MODEL = "gemini-2.5-pro";
-export const AI_EMBEDDING_MODEL = "text-embedding-004";
 export const ANSWERLATTICE_TEXT_MODEL = 'gemini-2.5-flash';
 export const ANSWERLATTICE_EMBEDDING_MODEL = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.model;
 export const ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY =

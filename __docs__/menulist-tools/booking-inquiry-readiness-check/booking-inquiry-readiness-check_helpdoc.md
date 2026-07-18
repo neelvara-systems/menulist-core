@@ -1,7 +1,7 @@
 # Booking Inquiry Readiness Check - Help Doc
 
 **Status:** Owner-facing draft
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 

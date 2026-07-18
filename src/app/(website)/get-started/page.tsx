@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -5,7 +6,7 @@ import GetStartedPage from '@/components/website/get-started/GetStartedPage';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
     title: 'Get Started - Create Your Customer Link',
     description: 'Sign in once, add your current menu, catalogue, price list, or service list, and review the prepared preview before publishing your MenuList link.',
     alternates: {
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
         description: 'Sign in once, add your current menu, catalogue, price list, or service list, and review the prepared preview before publishing your MenuList link.',
         url: '/get-started',
     },
-};
+});
 
 export default function Page() {
     return (

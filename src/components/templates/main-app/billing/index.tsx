@@ -84,7 +84,15 @@ function BillingPage() {
         () => tenantStoresList.find((store: any) => Number(store.storeId) === Number(activeSubscription?.storeId)),
         [activeSubscription?.storeId, tenantStoresList],
     );
+    const loginStore = useMemo(
+        () => tenantStoresList.find((store: any) => Number(store.storeId) === loginStoreId),
+        [loginStoreId, tenantStoresList],
+    );
     const isInheritedBilling = Boolean(activeSubscription && billingStoreId && Number(activeSubscription.storeId) !== billingStoreId);
+    const isSwitchedBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId !== billingStoreId);
+    const isSignedInBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId === billingStoreId);
+    const canManageSelectedSubscription = isSignedInBillingContext && !isInheritedBilling;
+    const canBuyEnhancementPacks = isSignedInBillingContext;
     const isManualBilling = activeSubscription?.billingMode === 'manual';
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(activeSubscription?.quantity || 1));
@@ -170,6 +178,10 @@ function BillingPage() {
     };
 
     const handleConfirmUpgrade = async (newPlan: Plan, currency: Currency) => {
+        if (!canManageSelectedSubscription) {
+            message.info(`Return to ${loginStore?.name || 'your signed-in store'} to change a subscription.`);
+            return;
+        }
         try {
             dispatch(startLoader("Upgrading Plan"));
             const paymentResponse = Boolean(activeSubscription) ? await onUpgradePlan(activeSubscription, newPlan, currency) : await onClickPaymentCard(newPlan, currency, () => { })
@@ -189,6 +201,10 @@ function BillingPage() {
     };
 
     const handleAddPaidLocation = async () => {
+        if (!canManageSelectedSubscription) {
+            message.info(`Return to ${loginStore?.name || 'your signed-in store'} to change paid locations.`);
+            return;
+        }
         if (!activeSubscription || !currentSubscriptionPlan) {
             message.error('Current plan details are not available.');
             return;
@@ -218,6 +234,10 @@ function BillingPage() {
     };
 
     const handleCreditsPurchase = async (packId: string) => {
+        if (!canBuyEnhancementPacks) {
+            message.info(`Return to ${loginStore?.name || 'your signed-in store'} to buy an enhancement pack.`);
+            return;
+        }
         try {
             const pack = aiEnhancementPacksList.find((pack: AIEnhancementPack) => pack.packId === packId);
             if (!pack) throw new Error('Enhancement pack not found');
@@ -293,17 +313,25 @@ function BillingPage() {
                 </Card>
             ) : null}
 
-            {isInheritedBilling ? (
+            {isSwitchedBillingContext ? (
+                <Alert
+                    message="This billing view is read-only."
+                    description={`Return to ${loginStore?.name || 'your signed-in store'} before changing a plan, adding paid locations, or buying an enhancement pack.`}
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                />
+            ) : isInheritedBilling ? (
                 <Alert
                     message="This outlet uses the HQ subscription."
-                    description={`Plan changes, payment retries, and enhancement packs apply to ${subscriptionStore?.name || 'the HQ store'} because outlet billing is inherited.`}
+                    description={`Plan controls stay with ${subscriptionStore?.name || 'the HQ store'}. Enhancement packs bought here are added to that shared HQ balance.`}
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
                 />
             ) : null}
 
-            {activeSubscription?.status === 'active' && !isManualBilling && !isInheritedBilling ? (
+            {activeSubscription?.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling ? (
                 <Card style={{ marginBottom: 16 }}>
                     <Flex align="center" justify="space-between" gap={16} wrap>
                         <Flex align="center" gap={10}>
@@ -345,7 +373,14 @@ function BillingPage() {
 
             {activeSubscription ? (
                 <>
-                    <ActiveSubscriptionCard activeSubscription={activeSubscription} refetchActiveSubscription={refetchActiveSubscription} setIsPricingModalOpen={setIsPricingModalOpen} setIsCreditsModalOpen={setIsCreditsModalOpen} />
+                    <ActiveSubscriptionCard
+                        activeSubscription={activeSubscription}
+                        allowCreditPackPurchase={canBuyEnhancementPacks}
+                        allowSubscriptionSelfService={canManageSelectedSubscription}
+                        refetchActiveSubscription={refetchActiveSubscription}
+                        setIsCreditsModalOpen={setIsCreditsModalOpen}
+                        setIsPricingModalOpen={setIsPricingModalOpen}
+                    />
                     <BillingHistory
                         billingHistory={billingHistory}
                         diagnosticContext={buildBillingPaymentLogContext('billing_history_invoice_open', {
@@ -369,9 +404,11 @@ function BillingPage() {
                             description={<Text type="secondary">{t('noSubscriptionFound')}</Text>}
                         >
                             <Flex justify="center" style={{ marginTop: '24px', width: '100%' }}>
-                                <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })} icon={<LuZap />}>
-                                    {t('viewPlans')}
-                                </Button>
+                                {canManageSelectedSubscription ? (
+                                    <Button type="primary" onClick={() => setIsPricingModalOpen({ action: "new", active: true })} icon={<LuZap />}>
+                                        {t('viewPlans')}
+                                    </Button>
+                                ) : null}
                             </Flex>
                         </Empty>
                     </Card>

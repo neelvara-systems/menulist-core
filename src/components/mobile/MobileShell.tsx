@@ -12,6 +12,7 @@ import { hasValidSubscriptionAccess } from '@util/razorpay';
 import { App as AntApp, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import dynamic from 'next/dynamic';
+import { useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import BrandedPageLoader from '@atoms/brandedPageLoader';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -277,6 +278,7 @@ function buildMobileRouteHash(tab: MobileTab, todayScreen: 'main' | 'dashboard' 
 }
 
 export default function MobileShell() {
+    const t = useTranslations('MobileShell');
     const {
         activeSubscription,
         activeSubscriptionLoading,
@@ -294,7 +296,6 @@ export default function MobileShell() {
     const [todayScreen, setTodayScreen] = useState<'main' | 'dashboard' | 'history'>(initialRoute.todayScreen);
     const [moreScreen, setMoreScreen] = useState<MoreSubScreen>(initialRoute.moreScreen);
     const [isMoreRootScreen, setIsMoreRootScreen] = useState(initialRoute.moreScreen === 'main');
-    const [isOffline, setIsOffline] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement | null>(null);
     const hasSubscription = hasValidSubscriptionAccess(activeSubscription);
     const hasStarterAccess = hasStarterWorkspaceAccess(storeDetails, hasSubscription);
@@ -346,18 +347,6 @@ export default function MobileShell() {
             'more',
         ];
     }, [canUseAiMenuManagerTab, canUseMenuTab, canUseShareTab, canUseTodayTab, hasStarterAccess]);
-
-    useEffect(() => {
-        const handleOnline = () => setIsOffline(false);
-        const handleOffline = () => setIsOffline(true);
-        setIsOffline(!navigator.onLine);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
 
     useEffect(() => {
         const handleHashChange = () => {
@@ -502,14 +491,14 @@ export default function MobileShell() {
     }, []);
 
     const handleOpenBusinessHealth = useCallback(() => {
-        if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH) {
+        if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !canViewAnalytics) {
             return;
         }
         setActiveTab('more');
         setMoreScreen('businessHealth');
         setIsMoreRootScreen(false);
         setTodayScreen('main');
-    }, []);
+    }, [canViewAnalytics]);
 
     const handleOpenMoreScreen = useCallback((target: MoreSubScreen) => {
         setActiveTab('more');
@@ -531,10 +520,27 @@ export default function MobileShell() {
         }
     }, [todayScreen]);
 
+    useEffect(() => {
+        if (!userPermissions) return;
+
+        if (todayScreen === 'dashboard' && !canViewAnalytics) {
+            setTodayScreen('main');
+        }
+        if (
+            moreScreen === 'businessHealth'
+            && (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !canViewAnalytics)
+        ) {
+            setMoreScreen('main');
+            setIsMoreRootScreen(true);
+        }
+    }, [canViewAnalytics, moreScreen, todayScreen, userPermissions]);
+
     const screen = activeTab === 'today'
         ? (
             todayScreen === 'dashboard'
-                ? (
+                ? !userPermissions
+                    ? <BrandedPageLoader page={t('loadingDashboard')} />
+                    : canViewAnalytics ? (
                     <MobileDashboardScreen
                         onBack={() => setTodayScreen('main')}
                         onOpenBusinessHealth={handleOpenBusinessHealth}
@@ -543,7 +549,7 @@ export default function MobileShell() {
                         onOpenMoreScreen={handleOpenMoreScreen}
                         onOpenShareTab={handleOpenShareTab}
                     />
-                )
+                    ) : <BrandedPageLoader page={t('loadingToday')} />
                 : todayScreen === 'history' && FEATURE_FLAGS.ENABLE_PAST_ACTIVITY_HISTORY
                     ? <MobileTodayHistoryScreen onBack={() => setTodayScreen('main')} />
                     : (
@@ -565,13 +571,17 @@ export default function MobileShell() {
         : activeTab === 'aiMenuManager'
             ? <MobileAiMenuManagerScreen />
         : activeTab === 'more' && moreScreen === 'businessHealth'
-            ? <MobileBusinessHealthScreen onBack={() => handleOpenMoreScreen('main')} onOpenMenuTab={handleOpenMenuTab} onOpenMoreScreen={handleOpenMoreScreen} onOpenShareTab={handleOpenShareTab} />
+            ? !userPermissions
+                ? <BrandedPageLoader page={t('loadingBusinessHealth')} />
+                : canViewAnalytics && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH
+                    ? <MobileBusinessHealthScreen onBack={() => handleOpenMoreScreen('main')} onOpenMenuTab={handleOpenMenuTab} onOpenMoreScreen={handleOpenMoreScreen} onOpenShareTab={handleOpenShareTab} />
+                    : <MobileMoreScreen initialScreen="main" onOpenMenuTab={handleOpenMenuTab} onOpenShareTab={handleOpenShareTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
         : activeTab === 'more'
             ? <MobileMoreScreen initialScreen={moreScreen} onOpenMenuTab={handleOpenMenuTab} onOpenShareTab={handleOpenShareTab} onRootStateChange={setIsMoreRootScreen} onScreenChange={setMoreScreen} />
                 : <MobileMenuScreen onOpenDesignEditor={handleOpenDesignEditor} onOpenOfficialPage={() => handleOpenMoreScreen('officialPage')} onOpenPrintMenu={handleOpenPrintMenu} onOpenShare={handleOpenShareTab} />;
 
     if (activeSubscriptionLoading && !hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {
-        return <BrandedPageLoader page="Mobile App" />;
+        return <BrandedPageLoader page={t('loadingMobileApp')} />;
     }
 
     if (!hasSubscription && !hasStarterAccess && !shouldBypassSubscriptionGate) {
@@ -589,9 +599,9 @@ export default function MobileShell() {
                     <Card style={{ maxWidth: 420, width: '100%' }}>
                         <Flex align="center" gap={16} vertical>
                             <LuCreditCard color={token.colorPrimary} size={48} />
-                            <Title level={4} style={{ margin: 0, textAlign: 'center' }}>Subscribe to Get Started</Title>
+                            <Title level={4} style={{ margin: 0, textAlign: 'center' }}>{t('subscribeTitle')}</Title>
                             <Text style={{ textAlign: 'center' }}>
-                                Choose a plan to start creating your digital menu and managing your business.
+                                {t('subscribeDescription')}
                             </Text>
                             <Button
                                 block
@@ -602,7 +612,7 @@ export default function MobileShell() {
                                 size="large"
                                 style={{ minHeight: 44 }}
                             >
-                                View Plans
+                                {t('viewPlans')}
                             </Button>
                         </Flex>
                     </Card>
@@ -622,11 +632,6 @@ export default function MobileShell() {
                 }}
                 vertical
             >
-                {isOffline ? (
-                    <Card style={{ background: token.colorWarning, borderRadius: 0, color: token.colorTextLightSolid, margin: 0 }}>
-                        <Text style={{ color: token.colorTextLightSolid }}>You&apos;re offline. Some features may be limited.</Text>
-                    </Card>
-                ) : null}
                 <StarterActivationBanner />
                 <Flex
                     data-mobile-shell-scroll="true"

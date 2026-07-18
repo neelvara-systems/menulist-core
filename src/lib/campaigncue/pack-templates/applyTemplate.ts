@@ -28,6 +28,8 @@ const compactUnique = (values: Array<string | undefined | null>, limit = 60) => 
         .slice(0, limit)
 );
 
+const ownerGoalLabel = (ownerGoal: string) => ownerGoal.replace(/_/g, " ");
+
 const outputTypeForPostType = (postType?: string): CampaignCueDecisionOutputType => {
     switch (postType) {
         case "whatsapp_message":
@@ -81,12 +83,8 @@ export function buildCampaignCuePackTemplatePayloadFromCampaign(input: {
         decisionSeed: {
             ownerGoal,
             recipeId,
-            whyNow: input.outputPack?.decision.whyNow?.length
-                ? input.outputPack.decision.whyNow
-                : ["This campaign pack was saved from an approved workspace campaign."],
-            whyThis: input.outputPack?.decision.whyThis?.length
-                ? input.outputPack.decision.whyThis
-                : [input.campaign.pack?.reason || input.campaign.brief],
+            whyNow: ["Use only after current campaign timing and availability are confirmed."],
+            whyThis: ["Reusable structure from an owner-saved CampaignCue pack."],
         },
         factSlots: (input.outputPack?.facts.missingInputs || []).map((missingInput) => ({
             ownerQuestion: missingInput.ownerQuestion,
@@ -139,6 +137,7 @@ export function buildCampaignCueWorkspaceTemplateSaveInput(input: {
     const requiredFactTypes = compactUnique(input.outputPack?.facts.missingInputs
         .filter((missingInput) => missingInput.required)
         .map((missingInput) => missingInput.type) || [], 20);
+    const reusableGoal = ownerGoalLabel(payload.decisionSeed.ownerGoal);
 
     return {
         businessCategory,
@@ -148,7 +147,7 @@ export function buildCampaignCueWorkspaceTemplateSaveInput(input: {
         summary: {
             businessCategory,
             channels: input.campaign.channels,
-            description: input.campaign.brief,
+            description: `Reusable ${reusableGoal} pack. Current business facts are checked before use.`,
             eventTags: [],
             optionalFactTypes: compactUnique(input.outputPack?.facts.missingInputs
                 .filter((missingInput) => !missingInput.required)
@@ -161,9 +160,6 @@ export function buildCampaignCueWorkspaceTemplateSaveInput(input: {
             requiredFactTypes,
             schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
             searchTokens: compactUnique([
-                input.campaign.title,
-                input.campaign.brief,
-                input.businessBrain.name,
                 input.businessBrain.businessType,
                 businessCategory,
                 ...input.campaign.channels,
@@ -185,17 +181,19 @@ export function buildCampaignCueWorkspaceTemplateSaveInput(input: {
             templateId: payload.templateId,
             templateKind: "campaign_pack",
             templateType: "workspace",
-            title: input.campaign.title,
+            title: `Saved ${reusableGoal} pack`,
             trustChecks: payload.trustChecks,
         },
         workspaceId: input.workspaceId,
     };
 }
 
-export function summarizeCampaignCuePackTemplateApplication(template: CampaignCuePackTemplateHydrated): string {
-    const missingRequired = template.payload.factSlots.filter((slot) => slot.required);
-    if (missingRequired.length) {
-        return `Template loaded. Confirm ${missingRequired.length} required detail${missingRequired.length === 1 ? "" : "s"} before using this pack.`;
+export function summarizeCampaignCuePackTemplateApplication(
+    template: CampaignCuePackTemplateHydrated,
+    unresolvedRequiredCount = template.payload.factSlots.filter((slot) => slot.required).length,
+): string {
+    if (unresolvedRequiredCount) {
+        return `Template loaded. Confirm ${unresolvedRequiredCount} required detail${unresolvedRequiredCount === 1 ? "" : "s"} before using this pack.`;
     }
     if (template.editorDocument) {
         return "Template loaded in the editor. Check facts before exporting.";

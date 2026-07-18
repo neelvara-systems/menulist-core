@@ -9,9 +9,20 @@ export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
 import { FEATURE_FLAGS } from '@config/features';
-import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import {
+  isNonNegativeSafeInteger,
+  MESSAGING_ONBOARDING_RECENT_ALERT_LIMIT,
+  MESSAGING_ONBOARDING_RECENT_EVENT_LIMIT,
+  MESSAGING_ONBOARDING_RECENT_SESSION_LIMIT,
+  normalizeMessagingHealthSnapshotId,
+  normalizeMessagingOnboardingOpsAlert,
+  normalizeMessagingOnboardingOpsEvent,
+  normalizeMessagingOnboardingOpsHealth,
+  normalizeMessagingOnboardingOpsSession,
+} from '@lib/ops/messagingOnboardingOpsBoundary';
 import type {
   MessagingOnboardingOpsAlert,
   MessagingOnboardingOpsEvent,
@@ -31,11 +42,6 @@ const db = firestoreAdmin;
 
 const HEALTH_CONTROL_DOC = 'messaging_onboarding_control';
 const EVENT_WINDOW_HOURS = 24;
-const RECENT_EVENT_LIMIT = 12;
-const RECENT_SESSION_LIMIT = 8;
-const RECENT_ALERT_LIMIT = 8;
-const MAX_METADATA_KEYS = 40;
-const MAX_METADATA_STRING_LENGTH = 96;
 const MESSAGING_ONBOARDING_OPS_RATE_LIMIT_KEY = 'messaging-onboarding-ops';
 
 const getOperatorId = (session: any) => session?.uId || session?.user?.id || 'platform';
@@ -63,72 +69,6 @@ const WEBHOOK_EVENT_COUNTS = [
   { key: 'providerMediaDownloadFailed', eventType: 'PROVIDER_MEDIA_DOWNLOAD_FAILED' },
 ] as const;
 
-const SAFE_METADATA_KEYS = new Set([
-  'attempts',
-  'businessType',
-  'categoryCount',
-  'completeness',
-  'confidence',
-  'currentCount',
-  'exhausted',
-  'fileCount',
-  'fileSize',
-  'fromState',
-  'hasMedia',
-  'invalidCount',
-  'itemCount',
-  'maxSize',
-  'menuCompleteness',
-  'messageLength',
-  'messageType',
-  'metadataDroppedCount',
-  'mimeType',
-  'processingRuns',
-  'processingTime',
-  'qualityScore',
-  'reason',
-  'reportedSize',
-  'runs',
-  'targetPublishRate',
-  'toState',
-  'trigger',
-  'uploadCount',
-  'uploadIndex',
-  'validCount',
-]);
-
-const BOUNDED_METADATA_KEYS = new Set([
-  'businessName',
-  'dashboardUrl',
-  'extractionJobId',
-  'imageUrl',
-  'ip',
-  'messageId',
-  'path',
-  'phone',
-  'phoneNumber',
-  'previewUrl',
-  'projectId',
-  'providerMessageId',
-  'providerUserId',
-  'publicUrl',
-  'sessionId',
-  'sha256',
-  'storagePath',
-  'storageUrl',
-  'storeId',
-  'tempProjectId',
-  'tenantId',
-]);
-
-function getBoundedMetadataContext(label: string, value: unknown): Record<string, boolean | number> {
-  const normalized = value === undefined || value === null ? '' : String(value);
-  return {
-    [`${label}Present`]: normalized.length > 0,
-    [`${label}Length`]: normalized.length,
-  };
-}
-
 function cleanOpsText(value: unknown, max = 260): string {
   return String(value || '')
     .replace(/[\u0000-\u001f\u007f]/g, ' ')
@@ -137,94 +77,9 @@ function cleanOpsText(value: unknown, max = 260): string {
     .slice(0, max);
 }
 
-function normalizeMessagingHealthSnapshotId(value: unknown): string | null {
-  const snapshotId = cleanOpsText(value, 160);
-  return isValidFirestoreDocumentId(snapshotId) ? snapshotId : null;
-}
-
 function buildMessagingOpsResponseId(prefix: string, value: unknown): string {
   const normalized = cleanOpsText(value, 1000) || 'missing';
   return `${prefix}-${createHash('sha256').update(normalized).digest('hex').slice(0, 12)}`;
-}
-
-function getMessagingAlertStringContext(label: string, value: unknown): Record<string, boolean | number> {
-  const normalized = cleanOpsText(value, 1000);
-  return {
-    [`${label}Present`]: normalized.length > 0,
-    [`${label}Length`]: normalized.length,
-  };
-}
-
-function normalizeMessagingAlertSeverity(value: unknown): 'info' | 'warning' | 'critical' {
-  const normalized = cleanOpsText(value, 40).toLowerCase();
-  if (normalized === 'critical') return 'critical';
-  if (normalized === 'warning') return 'warning';
-  return 'info';
-}
-
-function normalizeMessagingHealthAlertSeverity(value: unknown): 'warning' | 'critical' {
-  return normalizeMessagingAlertSeverity(value) === 'critical' ? 'critical' : 'warning';
-}
-
-function buildMessagingAlertTitle(severity: 'info' | 'warning' | 'critical'): string {
-  return `Messaging onboarding ${severity} alert`;
-}
-
-function buildMessagingAlertMessage(data: Record<string, unknown>): string {
-  const context = {
-    ...getMessagingAlertStringContext('key', data.key),
-    ...getMessagingAlertStringContext('title', data.title),
-    ...getMessagingAlertStringContext('message', data.message),
-  };
-  const parts = [
-    context.keyPresent ? `key=${context.keyLength}` : null,
-    context.titlePresent ? `title=${context.titleLength}` : null,
-    context.messagePresent ? `message=${context.messageLength}` : null,
-  ].filter(Boolean);
-
-  return parts.length > 0
-    ? `Stored alert text present (${parts.join(', ')} chars).`
-    : 'No stored alert text.';
-}
-
-function serializeHealthAlerts(alerts: unknown): MessagingOnboardingOpsHealth['alerts'] {
-  if (!Array.isArray(alerts)) return [];
-  return alerts.map((alert, index) => {
-    const data = alert && typeof alert === 'object' ? alert as Record<string, unknown> : {};
-    const severity = normalizeMessagingHealthAlertSeverity(data.severity);
-    return {
-      key: `health-alert-${index}`,
-      severity,
-      title: buildMessagingAlertTitle(severity),
-      message: buildMessagingAlertMessage(data),
-    };
-  });
-}
-
-function isSafeMetadataKey(key: string): boolean {
-  return SAFE_METADATA_KEYS.has(key) || /^[A-Za-z][A-Za-z0-9]*(Present|Length)$/.test(key);
-}
-
-function toIso(value: any): string | null {
-  if (!value) return null;
-  try {
-    if (typeof value.toDate === 'function') {
-      return value.toDate().toISOString();
-    }
-    if (typeof value.seconds === 'number') {
-      return new Date(value.seconds * 1000).toISOString();
-    }
-    if (value instanceof Date) {
-      return value.toISOString();
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
-      const date = new Date(value);
-      return Number.isNaN(date.getTime()) ? null : date.toISOString();
-    }
-  } catch {
-    return null;
-  }
-  return null;
 }
 
 async function getLatestHealthSnapshot(): Promise<MessagingOnboardingOpsHealth> {
@@ -236,36 +91,22 @@ async function getLatestHealthSnapshot(): Promise<MessagingOnboardingOpsHealth> 
     : null;
 
   if (!latest?.exists) {
-    return {
-      id: null,
-      status: 'unknown',
-      windowStart: null,
-      windowEnd: null,
-      runMetrics: {},
-      metrics: {},
-      costs: {},
-      retention: {},
-      alerts: [],
-    };
+    return normalizeMessagingOnboardingOpsHealth({}, null);
   }
 
-  const data = latest.data() || {};
-  return {
-    id: buildMessagingOpsResponseId('health', latest.id),
-    status: data.status || 'unknown',
-    windowStart: toIso(data.windowStart),
-    windowEnd: toIso(data.windowEnd),
-    runMetrics: data.runMetrics || {},
-    metrics: data.metrics || {},
-    costs: data.costs || {},
-    retention: data.retention || {},
-    alerts: serializeHealthAlerts(data.alerts),
-  };
+  return normalizeMessagingOnboardingOpsHealth(
+    latest.data(),
+    buildMessagingOpsResponseId('health', latest.id),
+  );
 }
 
 async function countQuery(query: FirebaseFirestore.Query): Promise<number> {
   const snapshot = await query.count().get();
-  return snapshot.data().count || 0;
+  const count = snapshot.data().count;
+  if (!isNonNegativeSafeInteger(count)) {
+    throw new Error('MESSAGING_ONBOARDING_OPS_COUNT_INVALID');
+  }
+  return count;
 }
 
 async function getInboundQueueCounts(): Promise<MessagingOnboardingOpsSnapshot['inboundQueue']> {
@@ -301,53 +142,6 @@ async function getSessionStateCounts(): Promise<Record<string, number>> {
   return Object.fromEntries(entries);
 }
 
-function sanitizeMetadata(metadata: any): Record<string, unknown> {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return {};
-
-  const sanitized: Record<string, unknown> = {};
-  let droppedCount = 0;
-
-  for (const [key, value] of Object.entries(metadata)) {
-    if (Object.keys(sanitized).length >= MAX_METADATA_KEYS) {
-      droppedCount += 1;
-      continue;
-    }
-
-    if (BOUNDED_METADATA_KEYS.has(key)) {
-      Object.assign(sanitized, getBoundedMetadataContext(key, value));
-      continue;
-    }
-
-    if (!isSafeMetadataKey(key)) {
-      droppedCount += 1;
-      continue;
-    }
-
-    if (value === null || typeof value === 'boolean') {
-      sanitized[key] = value;
-      continue;
-    }
-
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      sanitized[key] = value;
-      continue;
-    }
-
-    if (typeof value === 'string') {
-      sanitized[key] = value.slice(0, MAX_METADATA_STRING_LENGTH);
-      continue;
-    }
-
-    droppedCount += 1;
-  }
-
-  if (droppedCount > 0 && Object.keys(sanitized).length < MAX_METADATA_KEYS) {
-    sanitized.metadataDroppedCount = droppedCount;
-  }
-
-  return sanitized;
-}
-
 async function checkMessagingOnboardingOpsRateLimit(session: any) {
   const rateLimitConfig = getRateLimitForFeature('DATA_READ');
   const userId = getOperatorId(session);
@@ -356,6 +150,7 @@ async function checkMessagingOnboardingOpsRateLimit(session: any) {
   const rateLimit = await checkRateLimit({
     key: `${MESSAGING_ONBOARDING_OPS_RATE_LIMIT_KEY}:${userRateLimitHash}`,
     ...rateLimitConfig,
+    failClosedOnProviderError: true,
   });
 
   if (rateLimit.allowed) return null;
@@ -363,7 +158,9 @@ async function checkMessagingOnboardingOpsRateLimit(session: any) {
   const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
   return NextResponse.json(
     {
-      error: 'Too many requests. Please try again later.',
+      error: rateLimit.reason === 'provider_unavailable'
+        ? 'Messaging onboarding ops is temporarily unavailable.'
+        : 'Too many requests. Please try again later.',
       retryAfter: waitSeconds,
       resetAt: rateLimit.resetAt,
     },
@@ -375,38 +172,28 @@ async function checkMessagingOnboardingOpsRateLimit(session: any) {
         'X-RateLimit-Remaining': String(rateLimit.remaining),
         'X-RateLimit-Reset': String(rateLimit.resetAt),
       },
-      status: 429,
+      status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
     },
   );
 }
 
 function serializeEvent(doc: FirebaseFirestore.QueryDocumentSnapshot): MessagingOnboardingOpsEvent {
   const data = doc.data();
-  return {
-    id: buildMessagingOpsResponseId('event', doc.id),
-    eventType: String(data.eventType || 'UNKNOWN'),
-    provider: String(data.provider || '-'),
-    sessionId: buildMessagingOpsResponseId('session', data.sessionId || doc.id),
-    sessionState: String(data.sessionState || '-'),
-    userIdMasked: String(data.userIdMasked || '****'),
-    timestamp: toIso(data.timestamp),
-    metadata: sanitizeMetadata(data.metadata),
-    ...(data.error ? {
-      error: {
-        code: data.error.code,
-        retryable: data.error.retryable,
-      },
-    } : {}),
-  };
+  return normalizeMessagingOnboardingOpsEvent(
+    data,
+    buildMessagingOpsResponseId('event', doc.id),
+    buildMessagingOpsResponseId('session', data.sessionId || doc.id),
+  );
 }
 
-async function getWebhookWindow() {
-  const windowStart = Timestamp.fromMillis(Date.now() - EVENT_WINDOW_HOURS * 60 * 60 * 1000);
+async function getWebhookWindow(windowEnd: Timestamp) {
+  const windowStart = Timestamp.fromMillis(windowEnd.toMillis() - EVENT_WINDOW_HOURS * 60 * 60 * 1000);
   const recentSnapshot = await db
     .collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
     .where('timestamp', '>=', windowStart)
+    .where('timestamp', '<=', windowEnd)
     .orderBy('timestamp', 'desc')
-    .limit(RECENT_EVENT_LIMIT)
+    .limit(MESSAGING_ONBOARDING_RECENT_EVENT_LIMIT)
     .get();
 
   const events = recentSnapshot.docs.map(serializeEvent);
@@ -417,6 +204,7 @@ async function getWebhookWindow() {
           .collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_EVENTS)
           .where('eventType', '==', eventType)
           .where('timestamp', '>=', windowStart)
+          .where('timestamp', '<=', windowEnd)
           .orderBy('timestamp', 'desc'),
       );
       return [key, count] as const;
@@ -434,55 +222,34 @@ async function getWebhookWindow() {
   };
 }
 
-function maskDisplayId(value: string | undefined): string {
-  if (!value) return '****';
-  return `****${value.slice(-4)}`;
-}
-
 async function getRecentSessions(): Promise<MessagingOnboardingOpsSession[]> {
   const snapshot = await db
     .collection(DB_COLLECTIONS.MESSAGING_ONBOARDING_SESSIONS)
     .orderBy('updatedAt', 'desc')
-    .limit(RECENT_SESSION_LIMIT)
+    .limit(MESSAGING_ONBOARDING_RECENT_SESSION_LIMIT)
     .get();
 
   return snapshot.docs.map((doc) => {
-    const data = doc.data();
-    return {
-      id: buildMessagingOpsResponseId('session', doc.id),
-      provider: String(data.provider || '-'),
-      state: String(data.state || '-'),
-      providerDisplayIdMasked: maskDisplayId(data.providerDisplayId),
-      uploadCount: Array.isArray(data.uploads) ? data.uploads.length : 0,
-      processingRuns: Number(data.processingRuns || 0),
-      updatedAt: toIso(data.updatedAt),
-      createdAt: toIso(data.createdAt),
-    };
+    return normalizeMessagingOnboardingOpsSession(
+      doc.data(),
+      buildMessagingOpsResponseId('session', doc.id),
+    );
   });
 }
 
 async function getRecentAlerts(): Promise<MessagingOnboardingOpsAlert[]> {
   const snapshot = await db
     .collection(DB_COLLECTIONS.SYSTEM_ALERTS)
+    .where('metadata.subsystem', '==', 'messaging_onboarding')
     .orderBy('timestamp', 'desc')
-    .limit(30)
+    .limit(MESSAGING_ONBOARDING_RECENT_ALERT_LIMIT)
     .get();
 
   return snapshot.docs
-    .filter((doc) => doc.data()?.metadata?.subsystem === 'messaging_onboarding')
-    .slice(0, RECENT_ALERT_LIMIT)
-    .map((doc) => {
-      const data = doc.data();
-      const severity = normalizeMessagingAlertSeverity(data.severity);
-      return {
-        id: buildMessagingOpsResponseId('alert', doc.id),
-        severity,
-        title: buildMessagingAlertTitle(severity),
-        message: buildMessagingAlertMessage(data),
-        timestamp: toIso(data.timestamp),
-        acknowledged: data.acknowledged === true,
-      };
-    });
+    .map((doc) => normalizeMessagingOnboardingOpsAlert(
+      doc.data(),
+      buildMessagingOpsResponseId('alert', doc.id),
+    ));
 }
 
 export const GET = withAuth(async (request, session) => {
@@ -493,24 +260,29 @@ export const GET = withAuth(async (request, session) => {
   try {
     const rateLimitResponse = await checkMessagingOnboardingOpsRateLimit(session);
     if (rateLimitResponse) return rateLimitResponse;
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+    const generatedAt = Timestamp.now();
 
     const [health, inboundQueue, sessionsByState, webhook, recentSessions, recentAlerts] =
       await Promise.all([
         getLatestHealthSnapshot(),
         getInboundQueueCounts(),
         getSessionStateCounts(),
-        getWebhookWindow(),
+        getWebhookWindow(generatedAt),
         getRecentSessions(),
         getRecentAlerts(),
       ]);
 
     return NextResponse.json(
       {
-        generatedAt: new Date().toISOString(),
+        generatedAt: generatedAt.toDate().toISOString(),
         feature: {
           dashboardEnabled: true,
           providerMode: 'official_cloud_api',
-          accessModel: 'platform_role',
+          accessModel: 'current_persisted_platform_user',
         },
         health,
         webhookWindow: webhook.stats,

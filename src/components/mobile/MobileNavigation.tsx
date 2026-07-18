@@ -1,6 +1,7 @@
 'use client'
 
 import { theme } from 'antd';
+import { useTranslations } from 'next-intl';
 import { useEffect, useRef } from 'react';
 import { Button, Flex, Text } from './antd';
 import { LuCalendarCheck, LuMessageCircle, LuMoreHorizontal, LuQrCode, LuUtensilsCrossed } from 'react-icons/lu';
@@ -17,14 +18,15 @@ interface MobileNavigationProps {
 }
 
 const tabs = [
-    { key: 'today' as MobileTab, title: 'Today', icon: <LuCalendarCheck size={20} /> },
-    { key: 'menu' as MobileTab, title: 'Menu', icon: <LuUtensilsCrossed size={20} /> },
-    { key: 'aiMenuManager' as MobileTab, title: 'Menu help', icon: <LuMessageCircle size={20} /> },
-    { key: 'share' as MobileTab, title: 'Share', icon: <LuQrCode size={20} /> },
-    { key: 'more' as MobileTab, title: 'More', icon: <LuMoreHorizontal size={20} /> },
+    { key: 'today' as MobileTab, titleKey: 'today', icon: <LuCalendarCheck size={20} /> },
+    { key: 'menu' as MobileTab, titleKey: 'menu', icon: <LuUtensilsCrossed size={20} /> },
+    { key: 'aiMenuManager' as MobileTab, titleKey: 'menuHelp', icon: <LuMessageCircle size={20} /> },
+    { key: 'share' as MobileTab, titleKey: 'share', icon: <LuQrCode size={20} /> },
+    { key: 'more' as MobileTab, titleKey: 'more', icon: <LuMoreHorizontal size={20} /> },
 ];
 
 export default function MobileNavigation({ activeTab, onTabChange, feedbackCount, onMoreTabLongPress, visibleTabs }: MobileNavigationProps) {
+    const t = useTranslations('MobileNavigation');
     const { token } = theme.useToken();
     const { isCompactHandheld } = useViewportInfo();
     const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,7 +54,7 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
 
     return (
         <div
-            aria-label="Primary mobile navigation"
+            aria-label={t('ariaLabel')}
             role="navigation"
             style={{
                 backgroundColor: token.colorBgElevated,
@@ -78,9 +80,10 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                 {tabs.filter((tab) => !visibleTabs || visibleTabs.includes(tab.key)).map((tab) => {
                     const isActive = activeTab === tab.key;
                     const isMoreTab = tab.key === 'more';
+                    const title = t(tab.titleKey);
                     const tabButton = (
                         <Button
-                            aria-label={tab.title}
+                            aria-label={title}
                             aria-pressed={isActive}
                             key={tab.key}
                             fill="none"
@@ -126,7 +129,7 @@ export default function MobileNavigation({ activeTab, onTabChange, feedbackCount
                                         lineHeight: 1.1,
                                     }}
                                 >
-                                    {tab.title}
+                                    {title}
                                 </Text>
                             </Flex>
                         </Button>

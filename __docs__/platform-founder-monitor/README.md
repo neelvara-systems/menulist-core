@@ -6,7 +6,7 @@ The Founder Monitor is a platform-only operating dashboard for MenuList founders
 
 > Are more stores becoming trusted, live, paid, and operationally reliable?
 
-It is intentionally separate from the normal restaurant owner dashboard. The owner dashboard is store-facing and tenant-scoped. The Founder Monitor is platform-wide and requires `platformRole === PLATFORM`.
+It is intentionally separate from the normal restaurant owner dashboard. The owner dashboard is store-facing and tenant-scoped. The Founder Monitor is platform-wide: it requires a signed `platformRole === PLATFORM`, a fail-closed DATA_READ limit, and an exact current persisted platform-user check before summary/ledger reads.
 
 ## Runtime Surface
 

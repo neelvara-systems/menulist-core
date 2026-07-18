@@ -1,6 +1,6 @@
 # Official Business Page (OBP) — Firebase Cost Tracking
 
-**Date:** June 30, 2026
+**Date:** July 17, 2026
 **Audience:** Founder, developers, cost auditors
 
 ---
@@ -22,6 +22,8 @@
 | ----------------------------- | ------------------------------- | ---------------------------- | ---------------------- | --------- | -------- | ------------------------------------------------------------------ |
 | Load OBP page                 | `stores`                        | Customer visits OBP URL      | Per visit (cached 60s) | 1 store query + optional tenant-block doc on cache miss | Yes | Uses shared `src/lib/firestore/clientStoreLookup.ts` helpers for subdomain, verified custom domain, and outlet slug lookup. |
 | Check published menu exists   | `projects/{tId}/{sId}/metadata` | OBP render                   | Per visit (cached 60s) | 1         | Yes      | `where("deleted","==",false), where("active","==",true), limit(1)` |
+| Resolve single vs multi-outlet root | `stores` | Root OBP render | Per root render (cached 60s) | At most `MAX_OUTLETS_PER_TENANT + 1` rows | Yes | Canonical active-store query; blocked rows are removed after the bounded read. |
+| Load multi-outlet selector | `stores` | Multi-outlet brand root | Per brand render (cached 60s) | At most `MAX_OUTLETS_PER_TENANT + 1` rows | Yes | Canonical active-store query; only safe outlet slugs are rendered. |
 | Load OBP settings (dashboard) | `stores`                        | Owner opens Business Profile | On demand              | 0         | —        | Already loaded as part of store data in Redux                      |
 | Load OBP metrics (dashboard)  | `analytics`                     | Owner opens Dashboard / opens a settled analytics tab | Today: 10 min TTL. Settled: scheduler-window cached | Today: 1 doc. Settled: 1 dashboard summary doc when requested | Yes | The `Today` tab reads the current store-local OBP daily doc when the dashboard opens. `Overview`, `Daily`, `Weekly`, `Monthly`, and `Overall` read `{tId}_{sId}_obp_dashboard_summary` only after the owner opens a settled tab, then cache on the device until the next store-local settlement cycle. |
 
@@ -43,7 +45,7 @@
 | Track OBP link click | `analytics` | Customer clicks Google review, Instagram, Facebook, or website from OBP | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPLinkClicks`, `obpLinkClicks.{google_review,instagram,facebook,website}`, and `obpLinkClicksByOpenHoursState.{open|closed|unknown}` on the same write. |
 | Track OBP share action | `analytics` | Owner shares official business link from settings | Per click (debounced) | 1 | merge update | Same daily doc. Tracks `totalOBPShares` and `obpShares.{whatsapp,copy_link,copy_message}`. |
 | Track OBP language adoption | `analytics` | Customer switches language on a multi-language OBP and stays after the dwell window | Per accepted switch | 1 | merge update | Same daily doc. Tracks `obpLanguageAdoptions.{language}`. Single-language OBPs do not track language usage. Quick taps before dwell are ignored. |
-| Apply extraction-derived business attribute defaults | `stores` | First extraction auto-save or owner-approved re-extraction | Once per applicable extraction | 0-1 | merge update | Only fills missing `businessAttributes` keys. Existing owner-set `true`/`false` values are never overwritten. First extraction runs in Cloud Functions; re-extraction approval runs through desktop/mobile client paths, which require `assertStoreUpdateSucceeded()` before local public attribute state changes. |
+| Apply extraction-derived business attribute defaults | `stores` | First extraction auto-save or owner-approved re-extraction | Once per applicable extraction | 1 | 0-1 transactional update | Only fills allowed missing `businessAttributes` keys against transaction-current store truth. Existing owner-set `true`/`false` values and unrelated keys are never overwritten. First extraction runs in one Admin transaction; re-extraction approval runs through one scoped client transaction, requires `assertStoreUpdateSucceeded()`, and installs the acknowledged merged map before local public attribute state changes. |
 | Connect custom domain | `stores` | Owner connects or removes custom domain | Rare | 1 | `customDomain`, `domainVerified`, domain timestamps | `/api/domain` owns the Firestore write and revalidates `menu-store-{storeId}`, `store-{storeId}`, and `client-stores`. It validates session tenant/store IDs with the shared Firestore document-ID guard before permission checks, limiter keys, store refs, Vercel-flow diagnostics, and cache invalidation. Desktop and mobile UI call the route with same-origin credentials, no-store cache policy, and manual redirect handling, then update local domain state only after the existing route response shape is acknowledged. |
 
 **Key point:** OBP settings are saved as part of the existing store document update. OBP analytics use the same `analytics` collection as digital menu with virtual `projectId='obp'`. Rate limiting prevents abuse.
@@ -90,7 +92,7 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Deleted | Soft/Hard | Notes                                                                  |
 | --------- | ---------- | ------- | --------- | ------------ | --------- | ---------------------------------------------------------------------- |
-| Delete replaced OBP cover/gallery object | Firebase Storage | Owner saves after removing or replacing cover/gallery image | Rare | 1 object per replaced URL | Hard | Store update succeeds first; failed object cleanup is logged and does not roll back the saved publicPresence field. |
+| Delete replaced OBP cover/gallery object | Firebase Storage | Owner saves after removing or replacing cover/gallery image | Rare | 1 object per unreferenced replaced URL | Hard | Store update succeeds first. Delete candidates are deduplicated and filtered against the final saved `businessCover` and `photos[]`; a still-referenced prepared-media URL is never deleted. Failed object cleanup is logged and does not roll back the saved `publicPresence` field. |
 
 ---
 
@@ -109,6 +111,8 @@
 | ----------------------------------- | ------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `aggregateOBPAnalyticsForStoreDate` (via `computeDecisionBlocksScores`) | Shared timezone-aware nightly store flow | Steady state: validated OBP dashboard-summary cache + exact settled daily doc. Rebuild fallback: one bounded ID-range query whose returned rows must match document and embedded scope/date/type identity. | Weekly/monthly/summary/dashboard-summary docs only when data exists | OBP is settled first for the store-local date. Menu/customer-app analytics run only after OBP succeeds for that same date. Late correction moves lifetime delta and compact baseline in one transaction. Lifetime settlement validates summary state and uses a bounded 120-date receipt map so concurrent/out-of-order retained dates contribute once; a dashboard write transaction refuses to regress a newer settled date. Writes `_obp_weekly_{week}`, `_obp_monthly_{month}`, `_obp_overall_summary`, and `_obp_dashboard_summary`. Flag: `ENABLE_OBP_ANALYTICS`. |
 | `processMenuImagesJobLogic` | First menu extraction job | Existing extraction/project reads plus 1 `stores/{storeId}` read only when defaults are evaluated | 1 project write; optional 1 store write | Auto-saves first extraction output, then applies missing OBP business attribute defaults from high-confidence `businessAttributeSuggestions` and deterministic dietary tags. Uses the existing `/api/revalidate/menu` endpoint for `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` tags when `NEXT_PUBLIC_APP_URL` and `REVALIDATION_SECRET` are configured in the Functions environment. |
+
+The optional Functions store read/write is one Admin transaction so defaults are evaluated against transaction-current store truth. Existing explicit booleans and unrelated attributes are preserved. Existing-owner desktop/mobile review uses one client transaction read plus at most one store write for the same byte-mirrored merge rule; a no-op still costs the one current-store read and performs no write/cache invalidation. This replaces the prior split read/write or direct stale-map write without adding a collection, index, rule, or document.
 
 June 30 B2C publish acknowledgement hardening is cost-neutral. Desktop B2C and Mobile Design publish still use the existing `publishProject()` write, but now require `assertProjectUpdateSucceeded()` before local published state, cached project state, success copy, or post-publish verification setup changes. Desktop B2C Official Page store saves still use the existing `updateStore()` write and `assertStoreUpdateSucceeded()` before local store state/photo cleanup. This adds no Firestore reads/writes/deletes, Storage operations beyond existing background/OBP media uploads and cleanup, Cloud Function logic changes, provider calls, routes, rules, indexes, schema fields, owner settings, Firebase deploy requirement, or Vercel deploy action.
 
@@ -141,7 +145,8 @@ June 30 B2C publish acknowledgement hardening is cost-neutral. Desktop B2C and M
 
 - **`unstable_cache` with 60s TTL:** Reduces actual Firestore reads by ~98% under load
 - **Per-store cache tags:** `store-{storeId}` enables instant invalidation only for changed stores
-- **No new collections:** Zero additional Firestore index costs
+- **No new collections:** OBP remains on the existing `stores` document.
+- **Large owner-content maps are not query indexes:** `publicPresence`, `businessCopyMeta`, `businessAttributes`, and `workingHours` are read only after an exact store/routing lookup. Their automatic single-field indexes are disabled, so gallery arrays, localized copy, attributes, metadata, and hours do not create unused index fanout on each owner save.
 - **Prepared media uploads:** OBP cover/gallery images are resized and compressed before Storage upload, avoiding raw phone-photo payloads on public pages
 - **One write per tracked event:** OBP analytics use the same daily analytics doc as menu analytics with atomic increments. No separate summary write happens on the customer request path.
 - **Language usage piggybacks on existing writes:** OBP language page-open counters ride on the existing OBP view write. Only dwell-accepted language switches create an additional write.
@@ -152,11 +157,9 @@ June 30 B2C publish acknowledgement hardening is cost-neutral. Desktop B2C and M
 - **Idempotent nightly summary:** Lifetime summary updates run in a Firestore transaction. A bounded 120-date receipt map allows retained dates to settle once even when calls complete out of order; legacy `lastProcessedDate` remains the initial migration guard and never regresses.
 - **Extraction defaults are bounded:** Attribute defaulting reads the store once and writes only when at least one missing attribute can be safely filled.
 
-### Potential Future Optimizations
+### Future Threshold
 
-- Increase cache TTL to 120s or 300s if OBP data changes infrequently
-- Use ISR (Incremental Static Regeneration) for even better caching
-- Pre-render popular OBP pages at build time
+Do not increase the cache window or pre-render tenant pages speculatively. If a future feature needs to filter or order by one of the exempt owner-content fields, add only the exact required index and its bounded query verifier; do not restore broad indexing for the whole nested map.
 
 ### Warnings
 
@@ -197,9 +200,11 @@ Assumptions:
 | `updateStore()`            | `src/database/stores/index.tsx`          | Write (merge + public cache revalidation) |
 | `revalidateMenuCache()`    | `src/lib/actions/revalidateMenuCache.ts` | Server cache invalidation |
 
-OBP business settings reuse existing store updates. `uploadOBPCover()` and `uploadOBPPhoto()` are Storage helpers only; both feed URLs into the existing `updateStore()` path. Mobile Official Page saves require `assertStoreUpdateSucceeded()` before photo cleanup, saved baselines, or success copy; this adds no reads, writes, routes, indexes, rules, Cloud Functions, or cache invalidation paths. Mobile Official Page save/media/link/share failures log bounded `mobile_official_page_*` diagnostics without adding reads, writes, routes, indexes, rules, Cloud Functions, or cache invalidation paths. Public-link copy is browser-local: copied feedback waits for Clipboard API success or acknowledged textarea fallback success, and failed copy diagnostics add only clipboard/fallback support booleans. Custom-domain routing fields are the exception: `/api/domain` owns those server-side writes because it must coordinate with Vercel before updating Firestore.
+OBP business settings reuse existing store updates. `updateStore()` persists recognized nested store maps as changed-leaf `FieldPath` updates, uses an explicit deletion sentinel for removed leaves, and merges summary-affecting patches with the transaction-current store before writing `storesSummary`. Literal dynamic map keys remain one `FieldPath` segment. This prevents stale sibling replacement without adding a Firestore read on direct writes; summary-affecting writes retain their existing transaction read/write count. `uploadOBPCover()` and `uploadOBPPhoto()` are Storage helpers only; both feed URLs into the existing `updateStore()` path. Mobile Official Page saves require `assertStoreUpdateSucceeded()` before photo cleanup, saved baselines, or success copy; photo retention uses the fully merged next public-presence model rather than a partial persistence patch. This adds no reads, writes, routes, indexes, rules, Cloud Functions, or cache invalidation paths. Mobile Official Page save/media/link/share failures log bounded `mobile_official_page_*` diagnostics without adding reads, writes, routes, indexes, rules, Cloud Functions, or cache invalidation paths. Public-link copy is browser-local: copied feedback waits for Clipboard API success or acknowledged textarea fallback success, and failed copy diagnostics add only clipboard/fallback support booleans. Custom-domain routing fields are the exception: `/api/domain` owns those server-side writes because it must coordinate with Vercel before updating Firestore.
 
-Failed best-effort cleanup deletes in `deleteOBPPhotos()` are diagnostics-only. They use `storage_obp_photo_batch_delete_failed` with bounded delete counts and URL length metadata, and they do not roll back the saved store update.
+Failed best-effort cleanup deletes in `deleteOBPPhotos()` are diagnostics-only. Every immediate upload and replaced/removed URL is a cleanup candidate until acknowledged store truth retains it. Every caller supplies final saved cover/gallery references, so duplicate or re-added URLs are filtered before deletion; reset/navigation can remove abandoned uploads. The helper returns failed URLs for bounded retry instead of forgetting them. Failures use `storage_obp_photo_batch_delete_failed` with bounded delete counts and URL length metadata, and they do not roll back the saved store update.
+
+Coordinate and owner public-link admission are pure validation and add no Firebase operation. Desktop and MobileShell write canonical `addressLine`, `postalCode`, and a valid paired `geo` value through the existing store update. Public Call/WhatsApp admission and Maps coordinate range checks are render-only. Tenant outlet discovery is explicitly bounded to `MAX_OUTLETS_PER_TENANT + 1` rows per cached query; no index, collection, listener, rule, Function, or scheduler is added.
 
 ---
 
@@ -215,4 +220,4 @@ Failed best-effort cleanup deletes in `deleteOBPPhotos()` are diagnostics-only. 
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** June 30, 2026
+**Last Updated:** July 17, 2026

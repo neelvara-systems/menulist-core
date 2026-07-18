@@ -1,24 +1,33 @@
-# Temporary Status Layer — Marketing & Sales Collateral
+# Temporary Status - Marketing Boundary
 
-**Date:** February 19, 2026  
-**Audience:** Sales, Marketing (INTERNAL)
+**Audience:** Internal sales and marketing
+**Last reviewed:** July 16, 2026
 
----
+## Accurate Positioning
 
-## Elevator Pitch
+MenuList lets an owner add a short, expiring notice to supported MenuList customer pages for a temporary change. Owners can also clear it early from desktop or mobile.
 
-"Hosting a private event? Opening late? Running a festival menu? Set a temporary notice on your page in 2 taps. It disappears automatically when you're back to normal."
+Approved examples:
 
-## Feature Narrative
+- “Closed today”
+- “Opening late today”
+- “Kitchen is closed”
+- “Special menu available today”
+- A short custom notice
 
-Customers arrive expecting normal service — but the place is closed for a private event, opening late, or running a special menu. Frustration leads to bad reviews. MenuList lets owners set temporary status notices that show on their official page and digital menu, with automatic expiry. No need to remember to remove it.
+## Approved Claims
 
-## Approved Language
+- “Set a temporary notice with an end time.”
+- “The notice disappears from supported MenuList pages when it expires.”
+- “Set or clear it from desktop or mobile.”
+- “Your normal weekly hours stay separate.”
 
-- ✅ "Temporary status notice" / "Quick status update"
-- ✅ "Auto-expires" / "Disappears automatically"
-- ❌ Never: "Real-time notifications", "Live updates", "Smart alerts"
+## Do Not Claim
 
----
+- real-time notifications or universal instant publishing
+- updates to Google, social networks, delivery providers, or other external profiles
+- automatic holiday/calendar management
+- guaranteed propagation to every cached device
+- that Kitchen Closed means the entire business is closed
 
-**Last Updated:** February 19, 2026
+This feature reduces customer uncertainty on supported MenuList surfaces; it is not an external communications platform.

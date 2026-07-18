@@ -1,6 +1,6 @@
 # AI Enhancement Packs — Mobile Support
 
-**Last Updated:** July 11, 2026
+**Last Updated:** July 14, 2026
 **Decision:** ✅ MOBILE SUPPORTED — billing and enhancement packs are handled on mobile through the same Razorpay + subscription contract as desktop
 
 ---
@@ -40,7 +40,7 @@ Pack purchase is handled directly in `MobileBillingScreen`.
 | Change plan | `MobileBillingScreen` plan sheet | `usePaymentHandler.onUpgradePlan()` / `onClickPaymentCard()` |
 | Buy enhancement pack | `MobileBillingScreen` enhancement sheet | `usePaymentHandler.handleTopupPurchase()` → Razorpay top-up APIs |
 | Billing history | `MobileBillingScreen` history sheet | `getBillingHistoryForStore()` using the effective subscription store |
-| Usage history | `MobileTransactionsScreen` | Same `getPaginatedAiOperations()` DAL as desktop, with shared Firestore timestamp normalization |
+| Usage history | `MobileTransactionsScreen` | Same `getPaginatedAiOperations()` DAL as desktop, with MenuList-only action filters, shared timestamp normalization, and explicit manual continuation across empty filtered scan windows |
 
 ## Store Switching Decision
 
@@ -51,6 +51,8 @@ Mobile billing must not assume `session.user.storeId` is always the viewed store
 3. History store: `activeSubscription.storeId || selected billing store`
 
 If an outlet inherits the HQ subscription, the UI states that billing changes apply to HQ.
+
+AI responses also identify the effective `billingStoreId`. The session provider applies a returned balance only when that ID matches the active subscription, preventing a late response from one outlet/store from overwriting another store's Billing state. The selected outlet still owns the Transactions history row even when its charge comes from an inherited HQ subscription.
 
 ## May 20, 2026 Verification Update
 

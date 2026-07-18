@@ -1,5 +1,5 @@
 import IconPicker from "@atoms/IconPicker";
-import { addCategory, assertKnowledgeBaseCategoryWriteSucceeded, updateCategory } from "@database/knowledgeBase/categories";
+import { addCategory, assertKnowledgeBaseCategoryWriteSucceeded, type KnowledgeBaseCategoryWriteResult, updateCategory } from "@database/knowledgeBase/categories";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseCategoriesType, KnowledgeBaseCategory } from "@type/knowledgeBase";
@@ -16,23 +16,26 @@ interface CategoryModalProps {
     form: FormInstance;
     onOk: () => void;
     onCancel: () => void;
-    onSuccess: (updatedCategories: KnowledgeBaseCategoriesType) => void;
-    from?: string;
+    onSuccess?: (updatedCategories: KnowledgeBaseCategoriesType) => void;
+    onReviewSuccess?: (updatedCategory: KnowledgeBaseCategory) => void;
+    from?: 'review';
 }
 
-const CategoryModal = ({ open, editingCategory, categoriesData, form, onOk, onCancel, onSuccess, from = "" }: CategoryModalProps) => {
+const CategoryModal = ({ open, editingCategory, categoriesData, form, onOk, onCancel, onSuccess, onReviewSuccess, from }: CategoryModalProps) => {
     const dispatch = useAppDispatch();
     const [previewData, setPreviewData] = useState<Partial<KnowledgeBaseCategory>>({});
     const titleValue = Form.useWatch('title', form);
 
     useEffect(() => {
-        if (Boolean(titleValue)) {
+        if (!editingCategory && Boolean(titleValue)) {
             const slug = titleValue.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             form.setFieldsValue({ url: slug });
         }
-        const categoriesList = categoriesData ? Object.values(categoriesData.categories) : [];
-        form.setFieldsValue({ index: getNewIndex(categoriesList) });
-    }, [titleValue, form, categoriesData]);
+        if (!editingCategory && form.getFieldValue('index') === undefined) {
+            const categoriesList = categoriesData ? Object.values(categoriesData.categories) : [];
+            form.setFieldsValue({ index: getNewIndex(categoriesList) });
+        }
+    }, [titleValue, form, categoriesData, editingCategory]);
 
     useEffect(() => {
         if (open) {
@@ -42,19 +45,22 @@ const CategoryModal = ({ open, editingCategory, categoriesData, form, onOk, onCa
 
     const handleFinish = async (values: any) => {
         if (from === "review") {
-            const categoryToSave = { ...editingCategory, ...values };
-            onSuccess(categoryToSave);
+            if (!onReviewSuccess) throw new Error('knowledge_base_category_review_callback_missing');
+            const categoryToSave = { ...editingCategory, ...values } as KnowledgeBaseCategory;
+            onReviewSuccess(categoryToSave);
             return;
         }
+        if (!onSuccess) throw new Error('knowledge_base_category_persistence_callback_missing');
         const isEditing = !!editingCategory;
         const action = isEditing ? 'updating' : 'creating';
         dispatch(startLoader(`Category ${action}`));
 
         try {
             let categoryToSave;
+            let result: KnowledgeBaseCategoryWriteResult;
             if (isEditing) {
                 categoryToSave = { ...editingCategory, ...values };
-                const result = await updateCategory(categoryToSave);
+                result = await updateCategory(categoryToSave);
                 assertKnowledgeBaseCategoryWriteSucceeded(
                     result,
                     categoryToSave.id,
@@ -63,7 +69,7 @@ const CategoryModal = ({ open, editingCategory, categoriesData, form, onOk, onCa
             } else {
                 const id = new Date().getTime().toString();
                 categoryToSave = { ...values, id, sections: [], articles: [] };
-                const result = await addCategory(categoryToSave);
+                result = await addCategory(categoryToSave);
                 assertKnowledgeBaseCategoryWriteSucceeded(
                     result,
                     categoryToSave.id,
@@ -71,13 +77,8 @@ const CategoryModal = ({ open, editingCategory, categoriesData, form, onOk, onCa
                 );
             }
 
-            const updatedCategoriesMap = {
-                ...(categoriesData?.categories || {}),
-                [categoryToSave.id]: categoryToSave,
-            };
-
             message.success(`Category ${isEditing ? 'updated' : 'created'} successfully!`);
-            onSuccess({ categories: updatedCategoriesMap });
+            onSuccess({ categories: result.categories });
         } catch (error) {
             message.error("Failed to save category.");
         } finally {

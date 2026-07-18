@@ -2,10 +2,28 @@
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
 **Status:** Source-backed test matrix — not current target or provider certification
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026
 **Sources:** ChatGPT conversation (Feb 16, 2026), Cascade architecture review, codebase cross-check, multi-provider architecture design, May 17 runtime audit
 
 > **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. Test-case definitions and historical results do not replace current target enablement/deploy evidence, real-provider smoke, browser/device QA, production-host smoke, or External Certification Runbook evidence.
+
+## July 13, 2026 Ops Monitor Regression Matrix
+
+`npm run verify:messaging-onboarding-monitor-boundary` now includes a pure runtime contract suite for the platform monitor.
+
+| Case | Expected result |
+| --- | --- |
+| Real health producer retention shape includes `retainPublishedSourceFiles: true` | Route projection omits producer-only booleans and the browser contract accepts the resulting snapshot |
+| Health snapshot contains more than 8 alerts | Response contains only 8 generic, bounded alert summaries |
+| `lastSnapshotId` has whitespace, control characters, path separators, reserved syntax, or a coercible object | No snapshot document reference is built; health remains unknown |
+| Stored event contains raw identifier text, PII metadata, control characters, negative counters, or raw provider error text | Identifier is re-masked; PII becomes presence/length metadata; invalid fields and raw error text are dropped |
+| Stored session counters are strings, negative, nonfinite, or unsafe integers | Values are not coerced; monitor receives safe zero/default values |
+| Generated-at or row timestamps are malformed/noncanonical | Browser response guard rejects the snapshot and clears stale state |
+| A superseded refresh resolves after the current refresh | Superseded response is ignored and cannot overwrite current data |
+| Events are future-dated | Closed 24-hour query excludes them from rows and counts |
+| More than 30 unrelated alerts are newer than a messaging alert | Indexed subsystem query still returns the recent messaging alert, capped at 8 reads |
+
+The source verifier also pins platform authorization, the composite alert index, closed-window query clauses, response caps, no-store behavior, hashed rate-limit keys, desktop/mobile route wiring, and the absence of raw persisted-object forwarding.
 
 ---
 
@@ -488,6 +506,8 @@ RESULT: ✅ No lost uploads. No partial menu. Clean restart.
 | R-01 | **Message delivery delay (5-10 min)** | Preview-ready message delayed by WhatsApp. User sends new images in the gap.             | System still safe. New uploads stored with `pendingUploadsWhileProcessing` or added to session. No double preview. No restart corruption. | P0       |
 | R-02 | **WhatsApp send message failure**     | WhatsApp API returns error when sending reply (network issue, rate limit, token expired) | Session continues unblocked. Send failure logged but does not block state transitions. Non-blocking fire-and-forget pattern.              | P0       |
 | R-03 | **Out-of-order webhook delivery**     | User sends images 1,2,3 but webhooks arrive as 3,1,2                                     | System stable. All images stored. Order irrelevant — extraction processes by content, not arrival sequence.                               | P0       |
+| R-04 | **Provider redirects authenticated request** | Meta lookup, download, text-send, or interactive-send endpoint returns a redirect. | Adapter does not follow the redirect. The bearer token is not forwarded; the provider operation fails through the existing bounded failure path. | P0 |
+| R-05 | **Provider stalls** | Meta lookup/send stalls past 15 seconds or media download stalls past 30 seconds. | Abort signal ends the request; the worker does not wait indefinitely and the existing retry/delivery state remains authoritative. | P0 |
 
 ---
 
@@ -542,6 +562,7 @@ RESULT: ✅ No lost uploads. No partial menu. Clean restart.
 | U-24 | **Concurrent orphan cleanup accounting** | Let two cleanup workers read and delete the same two queued paths before either completion transaction commits | Both workers converge on an empty queue, while the aggregate drained count records each removed queue pointer exactly once. | P0 |
 | U-25 | **Terminal cooldown retention cleanup** | Leave a valid `COOLDOWN` session beyond the 48-hour cleanup safety threshold | The scheduler deletes its validated session-owned uploads and session document without reopening or transitioning the terminal cooldown state. | P0 |
 | U-26 | **Invalid terminal row cannot recycle through retention cleanup** | Leave an expired terminal document with a forged embedded session ID beyond the retention threshold | The scheduler never follows its unvalidated Storage or target identifiers, precondition-deletes only the queried document, emits a bounded orphan warning, and leaves the other session untouched. | P0 |
+| U-27 | **Hourly health control read window and outbound retry metrics** | Run enabled intake inside/outside the first four UTC minutes, then succeed and fail preview/confirmation/fix delivery | Outside the window there is no health-control read. Inside it the existing lease allows at most one snapshot. Successful sends increment scheduler activity; query/provider failures increment the returned error count. | P1 |
 
 ---
 
@@ -566,11 +587,11 @@ RESULT: ✅ No lost uploads. No partial menu. Clean restart.
 | O. Firestore & Data Consistency    | 4        | 0        | 0        | 4       |
 | P. Extraction & AI Failure Cascade | 3        | 0        | 0        | 3       |
 | Q. Multi-Tab / Multi-Device Chaos  | 3        | 0        | 0        | 3       |
-| R. WhatsApp Delivery Reality       | 3        | 0        | 0        | 3       |
+| R. WhatsApp Delivery Reality       | 5        | 0        | 0        | 5       |
 | S. Extreme Abuse & Cost Attacks    | 2        | 0        | 0        | 2       |
 | T. Session Edge Corruption         | 4        | 1        | 0        | 5       |
 | U. Production Hardening            | 25       | 1        | 0        | 26      |
-| **Total**                          | **141**  | **34**   | **10**   | **185** |
+| **Total**                          | **143**  | **34**   | **10**   | **187** |
 
 ---
 
@@ -596,13 +617,13 @@ Before any real users touch this system:
 - [ ] O-01 through O-04: Firestore & data consistency under failure
 - [ ] P-01 through P-03: Extraction & AI failure cascade
 - [ ] Q-01 through Q-03: Multi-tab / multi-device chaos
-- [ ] R-01 through R-03: WhatsApp delivery reality
+- [ ] R-01 through R-05: WhatsApp delivery reality
 - [ ] S-01, S-02: Extreme abuse & cost attacks
 - [ ] T-01 through T-03, T-05: Session edge corruption & recovery
 - [ ] U-01 through U-06 and U-08 through U-26: Production hardening, queue, concurrency, delivery leases, replacement staging/cleanup convergence, terminal cooldown retention and poison-row retirement, hard-expiry enforcement, snapshot, model-input, storage-integrity, state-recovery, and cost guardrails
 
-**Total P0 tests: 141. ALL must pass before controlled testing.**
+**Total P0 tests: 143. ALL must pass before controlled testing.**
 
 ---
 
-_Document Status: Implementation-Complete (v4.9 — 185 total test cases (141 P0). July 13 hardening adds bounded replacement staging/cleanup with poison/failure/concurrency convergence, cooldown retention and safe invalid-terminal retirement, deterministic pre-checkpoint replay replies, bounded outbound delivery leases, producer invalidation, and transactional 24-hour hard-expiry regressions.)_
+_Document Status: Implementation-Complete (v5.0 — 187 total test cases (143 P0). July 16 provider-network hardening adds redirect refusal and bounded abort regressions for every authenticated WhatsApp lookup, download, and send path.)_

@@ -79,7 +79,7 @@ Rejected collections:
 
 ## Page Load Cost
 
-The live page reads exactly `coverage`, `trustMetrics`, `supportBoardSummary`, `frictionSnapshot`, and `knowledgeIntakeSummary`: five reads on a cold packet and zero reads on a tenant/store cache hit within 60 seconds. Daily Founder Brief is computed from that already-loaded packet, so it adds no read, write, listener, scheduler, provider call, or support-credit debit. The broader target budget below is deferred.
+The live page reads exactly `coverage`, `trustMetrics`, `supportBoardSummary`, `frictionSnapshot`, `knowledgeIntakeSummary`, and `activation`: six reads on a cold packet and zero reads on a tenant/store cache hit within 60 seconds. The activation snapshot supplies factual launch verification; Daily Founder Brief is computed from that already-loaded packet and adds no write, listener, scheduler, provider call, or support-credit debit. The broader target budget below is deferred.
 
 Initial route load uses `GET /api/answerlattice/support-assistant/brief`.
 

@@ -9,6 +9,7 @@ import {
     OWNER_REFERRAL_ONBOARDING_SOURCE_MAX_LENGTH,
     OWNER_REFERRAL_PROGRAM_VERSION,
     OWNER_REFERRAL_STATUS,
+    OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT,
     OWNER_REFERRAL_TOKEN_TTL_DAYS,
 } from '@data/shared/ownerReferralPolicy';
 import type { NextRequest, NextResponse } from 'next/server';
@@ -18,6 +19,7 @@ import {
     validateOwnerReferralToken,
 } from './ownerReferralTokenServer';
 import { isOwnerReferralPilotStoreAllowed } from './ownerReferralFeature';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import type {
     OwnerReferralDocument,
     OwnerReferralResolvedToken,
@@ -86,6 +88,7 @@ export const resolveOwnerReferralTokenForAttribution = async (
         || Number(storeData.tenantId) !== payload.referrerTenantId
         || storeData.active === false
         || storeData.deleted === true
+        || isPlatformEntityBlocked(storeData)
     ) {
         return null;
     }
@@ -111,12 +114,12 @@ const getOwnerReferralSubscriptionHistoryQuery = (scope: OwnerReferralScope) => 
         .collection(DB_COLLECTIONS.SUBSCRIPTIONS)
         .where('tenantId', '==', scope.tenantId)
         .where('storeId', '==', scope.storeId)
-        .limit(25)
+        .limit(OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT)
 );
 
 const hasSuccessfulMenuListSubscriptionPayment = (
     snapshot: FirebaseFirestore.QuerySnapshot,
-): boolean => snapshot.docs.some((document) => {
+): boolean => snapshot.size >= OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT || snapshot.docs.some((document) => {
     const subscription = document.data() || {};
     const productId = subscription.productId ?? subscription.pId ?? DEFAULT_PRODUCT_ID;
     if (productId !== DEFAULT_PRODUCT_ID) return false;

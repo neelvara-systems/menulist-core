@@ -446,3 +446,18 @@ Do not implement pilot extensions until pilot evidence exists.
 | Used History UI | Owners use multiple kits and need memory/repetition control. | Paginated export rows only, no ROI. |
 | Advanced Low-Data Access | Mobile use is high and refresh failures are observed. | Latest kit only; strict stale/entitlement policy. |
 | Owner-Confirmed Offer Builder | Founder approves new offer truth governance. | Separate offer facts with validity, terms, expiry, and store scope. |
+
+## 15. Concurrent Generation Persistence
+
+Generated kit IDs use a UUID in the existing tenant/store-prefixed document ID.
+This prevents two same-millisecond requests from targeting the same kit document
+without introducing a counter, coordination document, or extra read.
+
+The generated kit and `platformSummary/growthos_{sId}` latest-kit projection are
+committed in one Firestore batch through
+`writeGrowthOSKitAndSummaryServer()`. A failed commit therefore leaves neither a
+visible orphan kit nor a summary pointing at a kit that was not persisted.
+The helper proves that tenant, store, and latest-kit identity agree before
+queuing either write.
+Successful generation still performs the same two writes and returns the same
+owner response shape.

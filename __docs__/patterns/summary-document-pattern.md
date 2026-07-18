@@ -46,8 +46,8 @@ for (const [storeId, storeInfo] of Object.entries(stores)) {
 
 **Cost Impact:**
 
-- 1 read total (regardless of store count)
-- ~100 bytes per store vs ~5KB per full document
+- 1 bounded summary-document read
+- only the fields admitted by the shared summary boundary
 
 ---
 
@@ -57,7 +57,7 @@ for (const [storeId, storeInfo] of Object.entries(stores)) {
 | ---------------------------------- | --------------------------------- |
 | Scheduled jobs reading many docs   | Real-time user queries            |
 | Only need 2-5 fields per entity    | Need full document data           |
-| Entity count < 10,000              | Entity count > 10,000 (1MB limit) |
+| Entity count within the enforced 1,500-row / 850,000-byte ceiling | Data beyond that ceiling; shard or use bounded canonical pages |
 | Data changes infrequently          | Data changes every request        |
 | Cloud Functions / batch processing | Client-side reads                 |
 
@@ -140,23 +140,27 @@ Full store-summary projection must preserve inherited tenant block state as well
 
 Runtime readers must admit this denormalized document through the byte-identical `src/data/shared/storeSummaryBoundary.ts` and `functions/src/sharedData/storeSummaryBoundary.ts` contract. The boundary supports nested and historical flat shapes, rejects magic path segments, non-record rows, non-canonical numeric tenant/store IDs, and conflicting embedded `storeId`, and normalizes valid scope IDs before any Firestore path/query is composed. Invalid rows are skipped without aborting the other stores. Persisted summary timestamps must use the same boundary date normalizer so invalid dates do not become `NaN` analytics state.
 
+The nested `stores` and `projects` payload maps are not query surfaces. `firestore.indexes.json` exempts `platformSummary.stores` and `platformSummary.projects` from automatic single-field indexing so index entries do not grow with every store/project row. Keep independently queried top-level summary scalars, such as `specialMenuNextTransitionAt`, indexed. If a future feature needs a cross-summary query, add one explicit bounded scalar projection/index instead of re-enabling automatic indexing for the entire nested map.
+
 The platform backfill is a repair merge, never a destructive rebuild. `backfillStoresSummary` reads at most 1,501 canonical rows to enforce a 1,500-store ceiling, rejects any invalid canonical identity before writing, caps the serialized row payload at 850,000 bytes, and uses nested `{ merge: true }` so omitted scheduler enrichment, distribution hints, billing state, routing fields and future bounded fields survive. The external parity verifier applies the same exact-ID and safe-map rules, caps default store reads at 1,500 and canonical project reads at 500 per store, and must describe `storesSummary` as internal rather than public membership authority.
 
 ---
 
 ## Firestore Limits
 
-| Limit              | Value         | Impact                         |
-| ------------------ | ------------- | ------------------------------ |
-| Max document size  | 1 MB          | ~10,000 stores max             |
-| Max fields per doc | 20,000        | Not a concern for this pattern |
-| Write rate         | 1/sec per doc | Use batch writes if needed     |
+| Limit | Enforced repository boundary | Impact |
+| --- | --- | --- |
+| Document payload | 850,000 serialized bytes | Leaves safety room below Firestore's document limit |
+| Canonical backfill scan | 1,500 rows, with one extra row used to detect overflow | Refuses an unsafe monolithic rebuild |
+| Write contention | One shared summary document | Keep writes inside owning transactions; shard before write frequency becomes material |
 
 **Scale Calculation:**
 
-- ~100 bytes per store entry
-- 1 MB / 100 bytes = ~10,000 stores
-- If exceeding this, shard by tenant or use subcollections
+- Entry size varies with admitted scheduling, entitlement, and presence fields.
+- The implementation measures the serialized payload and refuses more than
+  850,000 bytes or 1,500 canonical rows.
+- Before either ceiling is approached, move to tenant/range shards or bounded
+  canonical queries through an explicit migration.
 
 ---
 
@@ -203,25 +207,18 @@ export const backfillStoresSummary = onCall(async () => {
 
 ---
 
-## Cost Comparison
+## Operation Comparison
 
-### Before (N stores = N reads)
+| Example | Canonical scan | Bounded summary |
+| --- | ---: | ---: |
+| Read scheduling fields for 100 stores once | 100 document reads | 1 document read |
+| Repeat that read daily for 30 days | 3,000 document reads | 30 document reads |
 
-| Operation             | Reads | Cost (per 100K) |
-| --------------------- | ----- | --------------- |
-| Get all stores        | 100   | $0.06           |
-| Nightly job (30 days) | 3,000 | $1.80           |
-| 3 Cloud Functions     | 9,000 | $5.40           |
-
-### After (1 read)
-
-| Operation             | Reads | Cost (per 100K) |
-| --------------------- | ----- | --------------- |
-| Get stores summary    | 1     | $0.0006         |
-| Nightly job (30 days) | 30    | $0.018          |
-| 3 Cloud Functions     | 90    | $0.054          |
-
-**Savings: ~99% read reduction**
+This comparison is about document-operation shape, not a currency forecast.
+Firebase pricing varies by region, edition, free-tier usage, network, storage,
+indexing, aggregation, and future provider pricing. Use Cloud Billing export
+and the internal Cost Posture surface for real spend. Keep canonical reads when
+identity, authorization, routing, or fresh full truth is required.
 
 ---
 

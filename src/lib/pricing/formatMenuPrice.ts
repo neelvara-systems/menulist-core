@@ -1,14 +1,27 @@
-export function normalizeMenuPrice(price: number | string | null | undefined): number {
+/**
+ * Parse a stored price only when it represents one numeric value.
+ *
+ * Text prices ("Market Price") and ranges ("199-249") are valid display
+ * values, but they must not participate in arithmetic or outlier detection.
+ */
+export function parseSingleMenuPrice(
+    price: number | string | null | undefined,
+): number | null {
     if (typeof price === 'number') {
-        return Number.isFinite(price) ? price : 0;
+        return Number.isFinite(price) ? price : null;
     }
 
-    if (typeof price === 'string') {
-        const parsed = Number(price.trim().replace(/[^0-9.-]/g, ''));
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
+    if (typeof price !== 'string') return null;
 
-    return 0;
+    const normalized = price.trim().replace(/[₹$€£¥,\s]/g, '');
+    if (!/^-?\d+(?:\.\d+)?$/.test(normalized)) return null;
+
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function normalizeMenuPrice(price: number | string | null | undefined): number {
+    return parseSingleMenuPrice(price) ?? 0;
 }
 
 export function formatMenuPrice(
@@ -22,8 +35,8 @@ export function formatMenuPrice(
         const isSingleNumericPrice = /^-?\d+(\.\d+)?$/.test(normalizedSingleValue);
         if (rawPrice && !isSingleNumericPrice) {
             const rangeCandidate = rawPrice.replace(/[₹$€£¥,]/g, '').trim();
-            if (/^\d+(\.\d+)?\s*[-/]\s*\d+(\.\d+)?$/.test(rangeCandidate)) {
-                return `${currencySymbol || ''}${rangeCandidate.replace(/\s*([-\/])\s*/g, '$1')}`;
+            if (/^\d+(\.\d+)?\s*[-/–—]\s*\d+(\.\d+)?$/.test(rangeCandidate)) {
+                return `${currencySymbol || ''}${rangeCandidate.replace(/\s*([-\/–—])\s*/g, '$1')}`;
             }
             return rawPrice;
         }

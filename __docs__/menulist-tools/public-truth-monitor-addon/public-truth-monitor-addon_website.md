@@ -1,6 +1,6 @@
 # Public Truth Monitor Add-On - Website Copy
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Status:** Public copy guidance only; no public route implemented
 
 ---

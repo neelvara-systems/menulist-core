@@ -2,7 +2,7 @@
 
 ## Status
 
-Completed on May 9, 2026.
+Refreshed on July 16, 2026.
 
 ## Automated Checks
 
@@ -11,6 +11,15 @@ npx tsc --noEmit --incremental false
 ```
 
 Result: passed.
+
+```bash
+npm run verify:storage-paths
+npm run test:admin-immutable-object-boundary
+npm run test:image-batch-retention-boundary
+npm run verify:ai-accounting
+```
+
+Result: passed for the July 16 lifecycle hardening after the final current-worktree rerun recorded in the item-5 verification report.
 
 ```bash
 git diff --check
@@ -24,7 +33,11 @@ Result: passed.
 - ChatGPT's canonical identity, variant, focal point, transparency, static-animation, EXIF normalization, and immutable cache feedback is accepted and now reflected in the media profile contract.
 - Minimum source dimensions are intentionally not an owner-facing rejection rule. Owner photos and downloaded reference images are accepted even when they are smaller than the final target, blurry, or have the wrong orientation; MenuList frames and prepares them internally. Only unsupported, empty, corrupt, or over-safety-cap files are rejected.
 - `prepareMediaImage` now returns `mediaId`, `checksum`, `version`, `status`, primary Blob/data URL compatibility output, named variants, focal point, dominant color, EXIF normalization state, and transparency policy.
-- The current DAL still persists the primary image URL in existing fields. The upload boundary is now Blob-based for profile-aware media saves, and `uploadPreparedMediaImage` uploads every prepared named variant to deterministic sibling paths. Local data URLs are preview/form-state only.
+- The current DAL still persists one selected image URL in existing fields. The upload boundary is Blob-based for profile-aware media saves, and `uploadPreparedMediaImage` writes only that selected immutable variant. Other prepared variants remain local until a real persisted URL-map consumer exists. Local data URLs are preview/form-state only.
+- Root Storage rules enforce create-once prepared-media objects. Repeated same-content uploads reuse the existing object, while a failed Firestore save or sibling upload does not delete a path another concurrent save may reference. The dedicated Storage emulator regression proves overwrite denial, original-byte preservation, public read, tenant isolation, MIME/profile admission, and owner deletion.
+- Direct Storage writes to a prepared-media path reject GIF, preserving the static-image public contract even when the normal UI is bypassed.
+- Admin SDK batch and prompt-cache destination uploads use create-only generation preconditions and preserve an existing Firebase download token on deterministic retry.
+- Batch owner actions and scheduled retention do not delete public media using browser/job/one-project evidence. Metadata retention remains bounded while physical deletion waits for global exclusive-reference proof.
 - Menu item, project image, menu background, business logo, Official Business Page business cover, Official Business Page gallery, and digital screen slide saves route through immutable `media/{profile}/{tId}/{sId}/...` Storage paths.
 - Firebase Storage rules now explicitly allow known media profiles under the tenant/store-scoped `media/` path.
 - Desktop and mobile item, project, background, logo, and Official Business Page photo paths now use shared media profiles or shared preparation.

@@ -13,16 +13,24 @@
 
 import {
     type DeploymentProductId,
-    getDeploymentStage,
+    getDeploymentStageEnvSnapshot,
     getExpectedFirebaseProjectId,
     getProductDeploymentTarget,
+    resolveDeploymentStage,
 } from '@constant/deploymentTargets';
 import {
     CAMPAIGNCUE_ADMIN_CREDENTIAL_ENV_KEYS,
     CAMPAIGNCUE_FIREBASE_ENV,
     CAMPAIGNCUE_FIREBASE_PROJECT_ID_ENV_KEYS,
 } from '@constant/campaigncue/firebase';
-import { SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS } from '@constant/signaldesk/firebase';
+import {
+    SIGNALDESK_DEFAULT_FIRESTORE_DATABASE_ID,
+    SIGNALDESK_FIREBASE_ENV,
+    SIGNALDESK_FIREBASE_PROJECT_ID_ENV_KEYS,
+    SIGNALDESK_REQUIRED_FIREBASE_MODE,
+    isSignalDeskProjectStorageBucket,
+    normalizeSignalDeskStorageBucket,
+} from '@constant/signaldesk/firebase';
 import { FEATURE_FLAGS } from '@config/features';
 import { logEnvValidationDiagnostic, logEnvValidationFailure } from './envDiagnostics';
 
@@ -132,6 +140,14 @@ const describeProduct = (productId: DeploymentProductId) => {
 };
 
 const getEnvValue = (varName: string) => process.env[varName]?.trim();
+const BOOLEAN_ENV_VALUES = new Set(['0', '1', 'false', 'no', 'off', 'on', 'true', 'yes']);
+const CAMPAIGNCUE_BOOLEAN_VARS = [
+    'CAMPAIGNCUE_CUE_LAYERS_ENABLE_PREMIUM_MODEL',
+] as const;
+const CAMPAIGNCUE_ROLLOUT_VARS = [
+    'CAMPAIGNCUE_CUE_LAYERS_PREMIUM_ROLLOUT_PERCENT',
+    'CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_ROLLOUT_PERCENT',
+] as const;
 
 /**
  * Validate all environment variables.
@@ -140,8 +156,13 @@ const getEnvValue = (varName: string) => process.env[varName]?.trim();
 export function validateEnvironment(): EnvValidationResult {
     const missing: string[] = [];
     const warnings: string[] = [];
-    const stage = getDeploymentStage();
-    const isVercel = process.env.VERCEL === '1';
+    const stageResolution = resolveDeploymentStage(getDeploymentStageEnvSnapshot());
+    const stage = stageResolution.stage;
+    const isVercel = process.env.VERCEL === '1' || Boolean(getEnvValue('VERCEL_ENV'));
+    const addEnvironmentIssue = (message: string) => {
+        if (isVercel) missing.push(message);
+        else warnings.push(message);
+    };
     const isEnvAliasGroup = (requirement: EnvRequirement): requirement is readonly string[] =>
         typeof requirement !== 'string';
     const hasAnyEnvVar = (requirement: EnvRequirement) =>
@@ -150,6 +171,34 @@ export function validateEnvironment(): EnvValidationResult {
             : Boolean(process.env[requirement]);
     const describeRequirement = (requirement: EnvRequirement) =>
         isEnvAliasGroup(requirement) ? requirement.join(' or ') : requirement;
+
+    if (!stageResolution.valid || stageResolution.errorCode) {
+        addEnvironmentIssue(`Deployment stage configuration is invalid (${stageResolution.errorCode || 'UNKNOWN_STAGE_ERROR'})`);
+    }
+
+    for (const varName of CAMPAIGNCUE_BOOLEAN_VARS) {
+        const rawValue = getEnvValue(varName);
+        if (rawValue && !BOOLEAN_ENV_VALUES.has(rawValue.toLowerCase())) {
+            addEnvironmentIssue(`${varName} must be an explicit true/false boolean value`);
+        }
+    }
+
+    for (const varName of CAMPAIGNCUE_ROLLOUT_VARS) {
+        const rawValue = getEnvValue(varName);
+        if (!rawValue) continue;
+        const parsedValue = Number(rawValue);
+        if (!Number.isFinite(parsedValue) || parsedValue < 0 || parsedValue > 100) {
+            addEnvironmentIssue(`${varName} must be a number from 0 through 100`);
+        }
+    }
+
+    const configuredSegmentationModel = getEnvValue('CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_MODEL');
+    if (
+        configuredSegmentationModel
+        && BOOLEAN_ENV_VALUES.has(configuredSegmentationModel.toLowerCase())
+    ) {
+        addEnvironmentIssue('CAMPAIGNCUE_CUE_LAYERS_SEGMENTATION_MODEL must be a model identifier or left blank');
+    }
 
     // Check required vars
     for (const requirement of REQUIRED_VARS) {
@@ -190,6 +239,14 @@ export function validateEnvironment(): EnvValidationResult {
     }
 
     if (FEATURE_FLAGS.ENABLE_OWNER_REFERRAL && FEATURE_FLAGS.ENABLE_OWNER_REFERRAL_REWARD_PROCESSING) {
+        const pilotStoreIds = (FEATURE_FLAGS.OWNER_REFERRAL_PILOT_STORE_IDS || [])
+            .map((value) => Number(value))
+            .filter((value) => Number.isSafeInteger(value) && value > 0);
+        if (pilotStoreIds.length === 0) {
+            const message = 'ENABLE_OWNER_REFERRAL requires at least one valid OWNER_REFERRAL_PILOT_STORE_IDS entry';
+            if (isVercel) missing.push(message);
+            else warnings.push(message);
+        }
         const secretReady = isValidOwnerReferralTokenSecret(process.env.MENULIST_OWNER_REFERRAL_TOKEN_SECRET);
         if (!secretReady) {
             const message = 'MENULIST_OWNER_REFERRAL_TOKEN_SECRET must be an unpadded base64url value that decodes to exactly 32 bytes when owner referrals are enabled';
@@ -198,14 +255,14 @@ export function validateEnvironment(): EnvValidationResult {
         }
     }
 
-    (['menulist', 'answerlattice', 'campaigncue'] as DeploymentProductId[]).forEach((productId) => {
+    (['menulist', 'answerlattice', 'campaigncue', 'signaldesk'] as DeploymentProductId[]).forEach((productId) => {
         const expectedProjectId = getExpectedFirebaseProjectId(productId, stage);
         PRODUCT_PROJECT_VARS[productId].forEach((varName) => {
             const actualProjectId = getEnvValue(varName);
             const message = `${varName} must be ${expectedProjectId} for ${stage} ${describeProduct(productId)}`;
 
             if (!actualProjectId) {
-                if (productId === 'answerlattice' || productId === 'campaigncue') {
+                if (productId === 'answerlattice' || productId === 'campaigncue' || productId === 'signaldesk') {
                     const missingMessage = `${message} — ${describeProduct(productId)} will not use the required ${stage} Firebase project`;
                     if (isVercel) missing.push(missingMessage);
                     else warnings.push(missingMessage);
@@ -222,6 +279,73 @@ export function validateEnvironment(): EnvValidationResult {
             }
         });
     });
+
+    const signalDeskDescription = describeProduct('signaldesk');
+    const addSignalDeskIssue = (detail: string) => {
+        addEnvironmentIssue(`${signalDeskDescription}: ${detail}`);
+    };
+    const signalDeskPrivateMode = getEnvValue(SIGNALDESK_FIREBASE_ENV.FIREBASE_MODE)?.toLowerCase();
+    const signalDeskPublicMode = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_FIREBASE_MODE)?.toLowerCase();
+    if (!signalDeskPrivateMode || !signalDeskPublicMode) {
+        addSignalDeskIssue('private and public Firebase modes must both be set to separate');
+    } else if (
+        signalDeskPrivateMode !== SIGNALDESK_REQUIRED_FIREBASE_MODE
+        || signalDeskPublicMode !== SIGNALDESK_REQUIRED_FIREBASE_MODE
+        || signalDeskPrivateMode !== signalDeskPublicMode
+    ) {
+        addSignalDeskIssue('private and public Firebase modes must agree and equal separate');
+    }
+
+    const signalDeskPrivateDatabaseId = getEnvValue(SIGNALDESK_FIREBASE_ENV.FIRESTORE_DATABASE_ID);
+    const signalDeskPublicDatabaseId = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_FIRESTORE_DATABASE_ID);
+    if (
+        signalDeskPrivateDatabaseId
+        && signalDeskPublicDatabaseId
+        && signalDeskPrivateDatabaseId !== signalDeskPublicDatabaseId
+    ) {
+        addSignalDeskIssue('private and public Firestore database IDs must agree');
+    } else if (
+        (signalDeskPrivateDatabaseId && signalDeskPrivateDatabaseId !== SIGNALDESK_DEFAULT_FIRESTORE_DATABASE_ID)
+        || (signalDeskPublicDatabaseId && signalDeskPublicDatabaseId !== SIGNALDESK_DEFAULT_FIRESTORE_DATABASE_ID)
+    ) {
+        addSignalDeskIssue('Firestore database must be the default database');
+    }
+
+    const rawSignalDeskPrivateBucket = getEnvValue(SIGNALDESK_FIREBASE_ENV.STORAGE_BUCKET);
+    const rawSignalDeskPublicBucket = getEnvValue(SIGNALDESK_FIREBASE_ENV.PUBLIC_STORAGE_BUCKET);
+    const signalDeskPrivateBucket = normalizeSignalDeskStorageBucket(rawSignalDeskPrivateBucket);
+    const signalDeskPublicBucket = normalizeSignalDeskStorageBucket(rawSignalDeskPublicBucket);
+    if (!rawSignalDeskPrivateBucket || !rawSignalDeskPublicBucket) {
+        addSignalDeskIssue('private and public Storage buckets are both required');
+    } else if (!signalDeskPrivateBucket || !signalDeskPublicBucket) {
+        addSignalDeskIssue('Storage buckets must be valid Firebase bucket names');
+    } else if (signalDeskPrivateBucket !== signalDeskPublicBucket) {
+        addSignalDeskIssue('private and public Storage buckets must agree');
+    } else if (!isSignalDeskProjectStorageBucket(signalDeskPrivateBucket, getExpectedFirebaseProjectId('signaldesk', stage))) {
+        addSignalDeskIssue('Storage bucket must be a project-owned default bucket for the active stage');
+    }
+
+    [
+        SIGNALDESK_FIREBASE_ENV.API_KEY,
+        SIGNALDESK_FIREBASE_ENV.APP_ID,
+        SIGNALDESK_FIREBASE_ENV.AUTH_DOMAIN,
+    ].forEach((varName) => {
+        if (!getEnvValue(varName)) {
+            addSignalDeskIssue(`${varName} is required for the dedicated Firebase client`);
+        }
+    });
+
+    const signalDeskCredentialPath = getEnvValue(SIGNALDESK_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS);
+    const signalDeskClientEmail = getEnvValue(SIGNALDESK_FIREBASE_ENV.CLIENT_EMAIL);
+    const signalDeskPrivateKey = getEnvValue(SIGNALDESK_FIREBASE_ENV.PRIVATE_KEY);
+    if (!signalDeskCredentialPath && (!signalDeskClientEmail || !signalDeskPrivateKey)) {
+        addSignalDeskIssue('a complete Admin credential tuple or namespaced credential file is required');
+    } else if (
+        signalDeskCredentialPath
+        && Boolean(signalDeskClientEmail) !== Boolean(signalDeskPrivateKey)
+    ) {
+        addSignalDeskIssue('partial Admin credential tuples are not allowed when a credential file is configured');
+    }
 
     const campaignCueAdminCredentialReady = Boolean(
         getEnvValue(CAMPAIGNCUE_FIREBASE_ENV.GOOGLE_APPLICATION_CREDENTIALS)

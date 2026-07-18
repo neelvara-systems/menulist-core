@@ -165,6 +165,7 @@ service cloud.firestore {
           )
         );
       allow create: if isAuthenticated()
+        && !hasPosSyncWebhookSecret(request.resource.data)
         && (
           isPlatformAdmin()
           || (
@@ -174,6 +175,7 @@ service cloud.firestore {
           )
         );
       allow update: if isAuthenticated()
+        && preservesPosSyncWebhookSecret(resource.data, request.resource.data)
         && (
           isPlatformAdmin()
           || (
@@ -190,20 +192,21 @@ service cloud.firestore {
     
     // Platform Summary - PLATFORM ADMIN ONLY, plus tenant-scoped Answerlattice summary docs
     match /platformSummary/{document} {
+      // Public display clients may fetch one exact, minimal screen listener
+      // document. Public collection listing stays denied so store IDs cannot be
+      // enumerated through platformSummary queries.
+      allow get: if isPublicScreenStateDoc(document);
       // Platform admins can read every platform summary document.
       // Answerlattice tenant users can read/write only the known Answerlattice summary docs
       // that carry matching tId/sId fields. All other writes remain server-only.
-      allow read: if isPublicScreenStateDoc(document)
-                  || (
-                    isAuthenticated()
-                    && (
-                      isPlatformAdmin()
-                      || isCurrentStoreSummaryDoc(document)
-                      || (
-                        isAnswerlatticePlatformSummaryClientReadableDoc(document)
-                        && isAnswerlatticeTenantMember(resource.data)
-                        && hasAnswerlatticePlatformSummaryReadPermission(document)
-                      )
+      allow read: if isAuthenticated()
+                  && (
+                    isPlatformAdmin()
+                    || isCurrentStoreSummaryDoc(document)
+                    || (
+                      isAnswerlatticePlatformSummaryClientReadableDoc(document)
+                      && isAnswerlatticeTenantMember(resource.data)
+                      && hasAnswerlatticePlatformSummaryReadPermission(document)
                     )
                   );
       allow create: if isAuthenticated()
@@ -284,8 +287,7 @@ service cloud.firestore {
     }
 
     function isPublicScreenStateDoc(document) {
-      return isValidPublicScreenState(resource.data, document)
-        && resource.data.enabled == true;
+      return isValidPublicScreenState(resource.data, document);
     }
 
     function isValidPublicScreenState(data, document) {
@@ -294,14 +296,11 @@ service cloud.firestore {
           'contentVersion',
           'enabled',
           'lastContentChangeAt',
-          'screenToken',
           'storeId',
           'updatedAt'
         ])
         && data.storeId == summaryDocStoreId(document)
         && data.enabled is bool
-        && data.screenToken is string
-        && data.screenToken.matches('^[A-Za-z0-9_-]{6,24}$')
         && data.contentVersion is int
         && data.contentVersion >= 1
         && data.lastContentChangeAt is timestamp
@@ -503,6 +502,17 @@ service cloud.firestore {
 
     // Razorpay Webhook Events — server-only idempotency locks
     match /razorpayWebhookEvents/{eventId} {
+      allow read, write: if false;
+    }
+
+    // Billing checkout/provider-plan coordination — server-only concurrency state.
+    // These documents can contain provider identifiers and must never be trusted
+    // or mutated by browser clients.
+    match /billingCheckoutLeases/{leaseId} {
+      allow read, write: if false;
+    }
+
+    match /billingProviderPlans/{registryId} {
       allow read, write: if false;
     }
 
@@ -1003,6 +1013,12 @@ service cloud.firestore {
     match /systemErrors/{docId} {
       allow read, write: if false;
     }
+
+    // POS webhook signing secrets are resolved only by authenticated server
+    // routes. Store documents keep a non-secret version marker for concurrency.
+    match /posSyncSecrets/{docId} {
+      allow read, write: if false;
+    }
     
     match /negativeFeedbackAlerts/{docId} {
       allow read, write: if false;
@@ -1110,9 +1126,11 @@ service cloud.firestore {
       // Platform admins can read all jobs (for extraction monitoring dashboard)
       allow read: if isAuthenticated()
                   && (
-                    resource.data.uId == request.auth.uid
-                    || resource.data.uId == request.auth.token.uId
-                    || isPlatformAdmin()
+                    isPlatformAdmin()
+                    || (
+                      isMenuProcessingJobOwner()
+                      && isMenuProcessingJobScopeMember()
+                    )
                   );
       
       // Create: server-only. Authenticated owner surfaces queue extraction through
@@ -1124,6 +1142,7 @@ service cloud.firestore {
       // pending → cancelled or processing → cancelling
       allow update: if isAuthenticated()
                     && isMenuProcessingJobOwner()
+                    && isMenuProcessingJobScopeMember()
                     && (
                       isClientJobCancellationRequest()
                       || isClientPreviewReviewResolution()
@@ -1167,6 +1186,20 @@ service cloud.firestore {
         || request.auth.token.get('role', null) == 'owner'
         || request.auth.token.get('role', null) == 'MANAGER'
         || request.auth.token.get('role', null) == 'manager';
+    }
+
+    function hasPosSyncWebhookSecret(data) {
+      return data.keys().hasAny(['posSync'])
+        && data.posSync is map
+        && data.posSync.keys().hasAny(['webhookSecret']);
+    }
+
+    function preservesPosSyncWebhookSecret(before, after) {
+      let hadSecret = hasPosSyncWebhookSecret(before);
+      let hasSecret = hasPosSyncWebhookSecret(after);
+      return hadSecret
+        ? hasSecret && after.posSync.webhookSecret == before.posSync.webhookSecret
+        : !hasSecret;
     }
 
     function isValidImageBatchJobCreate(tId, sId, docId) {
@@ -1767,6 +1800,128 @@ service cloud.firestore {
       return data.keys().hasAny(['documents']) && data.documents is list ? data.documents.size() : 0;
     }
 
+    function answerlatticeSupportTicketMessages(data) {
+      return data.keys().hasAny(['messages']) && data.messages is list ? data.messages : [];
+    }
+
+    function answerlatticeSupportTicketStatuses(data) {
+      return data.keys().hasAny(['statuses']) && data.statuses is list ? data.statuses : [];
+    }
+
+    function isValidAnswerlatticeSupportTicketActor(actor) {
+      return actor is map
+        && actor.keys().hasAll(['id', 'name', 'email'])
+        && actor.keys().hasOnly(['id', 'name', 'email'])
+        && actor.id is string
+        && actor.id.size() > 0
+        && actor.id.size() <= 180
+        && (actor.id == request.auth.uid || actor.id == request.auth.token.get('uId', ''))
+        && actor.name is string
+        && actor.name.size() > 0
+        && actor.name.size() <= 200
+        && actor.email is string
+        && actor.email.size() <= 254;
+    }
+
+    function isValidAnswerlatticeSupportTicketAttachment(attachment) {
+      return attachment is map
+        && attachment.keys().hasAll(['url', 'name', 'type', 'size'])
+        && attachment.keys().hasOnly(['url', 'name', 'type', 'size'])
+        && attachment.url is string
+        && attachment.url.size() > 0
+        && attachment.url.size() <= 2000
+        && attachment.name is string
+        && attachment.name.size() > 0
+        && attachment.name.size() <= 300
+        && attachment.type is string
+        && attachment.type.size() > 0
+        && attachment.type.size() <= 120
+        && attachment.size is int
+        && attachment.size >= 0
+        && attachment.size <= 10485760;
+    }
+
+    function isValidAnswerlatticeSupportTicketAttachments(message) {
+      return !message.keys().hasAny(['attachments'])
+        || (
+          message.attachments is list
+          && message.attachments.size() <= 4
+          && (message.attachments.size() < 1 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[0]))
+          && (message.attachments.size() < 2 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[1]))
+          && (message.attachments.size() < 3 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[2]))
+          && (message.attachments.size() < 4 || isValidAnswerlatticeSupportTicketAttachment(message.attachments[3]))
+        );
+    }
+
+    function isValidAnswerlatticeSupportTicketMessage(message, expectedType) {
+      return message is map
+        && message.keys().hasAll(['id', 'text', 'sender', 'timestamp'])
+        && message.keys().hasOnly(['id', 'text', 'type', 'sender', 'timestamp', 'attachments'])
+        && message.id is string
+        && message.id.size() > 0
+        && message.id.size() <= 180
+        && message.text is string
+        && message.text.size() <= 2000
+        && message.type == expectedType
+        && isValidAnswerlatticeSupportTicketActor(message.sender)
+        && message.timestamp is timestamp
+        && isValidAnswerlatticeSupportTicketAttachments(message);
+    }
+
+    function isValidAnswerlatticeSupportTicketStatusEntry(entry, expectedStatus) {
+      return entry is map
+        && entry.keys().hasAll(['status', 'timestamp', 'createdBy', 'remark'])
+        && entry.keys().hasOnly(['status', 'timestamp', 'createdBy', 'remark'])
+        && entry.status == expectedStatus
+        && isAnswerlatticeSupportTicketStatus(entry.status)
+        && entry.timestamp is timestamp
+        && isValidAnswerlatticeSupportTicketActor(entry.createdBy)
+        && entry.remark is string
+        && entry.remark.size() <= 2000;
+    }
+
+    function answerlatticeSupportTicketMessagesAppendOne(before, after, expectedType) {
+      let current = answerlatticeSupportTicketMessages(before);
+      let next = answerlatticeSupportTicketMessages(after);
+      return next.size() == current.size() + 1
+        && next == current.concat([next[next.size() - 1]])
+        && isValidAnswerlatticeSupportTicketMessage(next[next.size() - 1], expectedType);
+    }
+
+    function answerlatticeSupportTicketStatusesAppendOne(before, after) {
+      let current = answerlatticeSupportTicketStatuses(before);
+      let next = answerlatticeSupportTicketStatuses(after);
+      return next.size() == current.size() + 1
+        && next == current.concat([next[next.size() - 1]])
+        && isValidAnswerlatticeSupportTicketStatusEntry(next[next.size() - 1], after.status);
+    }
+
+    function isValidAnswerlatticeSupportTicketSatisfaction(before, after) {
+      return (
+          !before.keys().hasAny(['satisfaction'])
+          && !after.keys().hasAny(['satisfaction'])
+        )
+        || (
+          before.keys().hasAny(['satisfaction'])
+          && after.keys().hasAny(['satisfaction'])
+          && after.satisfaction == before.satisfaction
+        )
+        || (
+          !before.keys().hasAny(['satisfaction'])
+          && after.keys().hasAny(['satisfaction'])
+          && after.status in ['Resolved', 'Closed']
+          && after.satisfaction is map
+          && after.satisfaction.keys().hasAll(['rating', 'comment', 'submittedAt'])
+          && after.satisfaction.keys().hasOnly(['rating', 'comment', 'submittedAt'])
+          && after.satisfaction.rating is int
+          && after.satisfaction.rating >= 1
+          && after.satisfaction.rating <= 5
+          && after.satisfaction.comment is string
+          && after.satisfaction.comment.size() <= 1000
+          && after.satisfaction.submittedAt is timestamp
+        );
+    }
+
     function isValidAnswerlatticeSupportTicketBounds(data) {
       return answerlatticeSupportTicketMessageCount(data) <= 500
         && answerlatticeSupportTicketStatusCount(data) <= 200
@@ -1779,11 +1934,15 @@ service cloud.firestore {
       return data.pId == 'AL'
         && data.keys().hasAll(['tId', 'sId', 'subject', 'status', 'priority', 'category', 'statuses'])
         && data.subject is string
+        && data.subject.size() > 0
         && data.subject.size() <= 300
+        && (!data.keys().hasAny(['message']) || (data.message is string && data.message.size() <= 4000))
         && isAnswerlatticeSupportTicketStatus(data.status)
         && isAnswerlatticeSupportTicketPriority(data.priority)
         && isAnswerlatticeSupportTicketCategory(data.category)
-        && answerlatticeSupportTicketStatusCount(data) >= 1
+        && answerlatticeSupportTicketStatusCount(data) == 1
+        && answerlatticeSupportTicketMessageCount(data) == 0
+        && isValidAnswerlatticeSupportTicketStatusEntry(answerlatticeSupportTicketStatuses(data)[0], data.status)
         && isValidAnswerlatticeSupportTicketBounds(data);
     }
 
@@ -1800,17 +1959,20 @@ service cloud.firestore {
         && (!after.keys().hasAny(['deleted']) || after.deleted is bool)
         && isAnswerlatticeSupportTicketTransition(before.status, after.status)
         && isValidAnswerlatticeSupportTicketBounds(after)
+        && isValidAnswerlatticeSupportTicketSatisfaction(before, after)
         && (
           (
             after.status == before.status
-            && answerlatticeSupportTicketStatusCount(after) == answerlatticeSupportTicketStatusCount(before)
-            && answerlatticeSupportTicketMessageCount(after) >= answerlatticeSupportTicketMessageCount(before)
-            && answerlatticeSupportTicketMessageCount(after) <= answerlatticeSupportTicketMessageCount(before) + 1
+            && answerlatticeSupportTicketStatuses(after) == answerlatticeSupportTicketStatuses(before)
+            && (
+              answerlatticeSupportTicketMessages(after) == answerlatticeSupportTicketMessages(before)
+              || answerlatticeSupportTicketMessagesAppendOne(before, after, 'user')
+            )
           )
           || (
             after.status != before.status
-            && answerlatticeSupportTicketStatusCount(after) == answerlatticeSupportTicketStatusCount(before) + 1
-            && answerlatticeSupportTicketMessageCount(after) == answerlatticeSupportTicketMessageCount(before) + 1
+            && answerlatticeSupportTicketStatusesAppendOne(before, after)
+            && answerlatticeSupportTicketMessagesAppendOne(before, after, 'system')
           )
         );
     }
@@ -1988,6 +2150,19 @@ service cloud.firestore {
         && isValidAiMenuManagerSessionCounterValue(counters, 'clarifications');
     }
 
+    function isValidAiMenuManagerPendingState(data) {
+      return (!data.keys().hasAny(['hasPendingOperations', 'pendingCount']))
+        || (
+          data.keys().hasAll(['hasPendingOperations', 'pendingCount'])
+          && data.hasPendingOperations is bool
+          && data.pendingCount is int
+          && data.pendingCount >= 0
+          && data.pendingCount <= 25
+          && ((data.pendingCount == 0 && data.hasPendingOperations == false)
+            || (data.pendingCount > 0 && data.hasPendingOperations == true))
+        );
+    }
+
     function isValidAiMenuManagerSessionDoc(data, sessionId) {
       return data.keys().hasOnly([
           'sessionId',
@@ -2000,6 +2175,8 @@ service cloud.firestore {
           'compactMessages',
           'pendingCardSummaries',
           'pendingOperations',
+          'hasPendingOperations',
+          'pendingCount',
           'recentReceiptSummaries',
           'counters',
           'artifactRefs',
@@ -2034,6 +2211,7 @@ service cloud.firestore {
         && (!data.keys().hasAny(['recentReceiptSummaries']) || (data.recentReceiptSummaries is list && data.recentReceiptSummaries.size() <= 20))
         && (!data.keys().hasAny(['artifactRefs']) || (data.artifactRefs is list && data.artifactRefs.size() <= 20))
         && (!data.keys().hasAny(['counters']) || isValidAiMenuManagerSessionCounters(data.counters))
+        && isValidAiMenuManagerPendingState(data)
         && (!data.keys().hasAny(['expiresAt']) || data.expiresAt is timestamp);
     }
 
@@ -2800,6 +2978,12 @@ service cloud.firestore {
     function isMenuProcessingJobOwner() {
       return resource.data.uId == request.auth.uid
         || resource.data.uId == request.auth.token.uId;
+    }
+
+    function isMenuProcessingJobScopeMember() {
+      return resource.data.keys().hasAll(['tId', 'sId'])
+        && belongsToTenantById(resource.data.tId)
+        && belongsToStoreById(resource.data.sId);
     }
 
     function isClientJobCancellationRequest() {

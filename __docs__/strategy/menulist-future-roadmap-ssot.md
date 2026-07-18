@@ -853,7 +853,11 @@ If MenuList doesn't onboard real stores in 2026, the infrastructure becomes theo
 
 **Cascade Review:** 92% accuracy. 17/17 suggestions validated. 2 corrections applied (feature flag added, Instagram bio button → guidance text only). Full review at `__docs__/behavior-engineering/_archive/chatgpt-review.md`
 
-**Implementation:** Behavior engineering nudges IMPLEMENTED across 6 files. Feature flag: `ENABLE_BEHAVIOR_NUDGES: true`. New component: `BehaviorNudgeCard.tsx`. Zero Firebase cost.
+**Current source correction (July 17, 2026):** Behavior engineering guidance is
+implemented across existing Dashboard, desktop/mobile Share, editor, and
+post-publish surfaces behind `ENABLE_BEHAVIOR_NUDGES`. The unused standalone
+`BehaviorNudgeCard.tsx` was retired; there is no dismissal persistence and no
+Firebase cost.
 
 ## Session 5 Topics (February 19, 2026)
 

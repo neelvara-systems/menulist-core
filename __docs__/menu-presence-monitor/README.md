@@ -4,13 +4,13 @@
 > **Feature Flag:** `ENABLE_MENU_PRESENCE_MONITOR`
 > **Route:** Embedded panel on Use MenuList (`/use-menulist`) and Business Settings > Search & Discovery
 > **Mobile:** Embedded in MobileShareScreen and reachable from More > Search & Discovery
-> **Source:** ChatGPT Owner Features Session (March 15, 2026) → Cascade Review
+> **Source of truth:** current MenuList code and focused verifier
 
 ## What It Is
 
-A simple status checklist that answers one question for the owner: **"Is my menu visible everywhere customers look?"**
+A simple status checklist that shows what MenuList can prove is ready and which external placements the owner has confirmed.
 
-Shows deployment status across key surfaces — Google Business, Apple Business Connect, Bing Places, Instagram, WhatsApp, QR, Screens — using manual confirmation (owner marks "I added it") plus automatic detection where possible.
+It covers Google Business, Apple Business Connect, Bing Places, Instagram, WhatsApp, QR, Screens, and Feedback. External placements are never presented as provider-verified.
 
 **Not** analytics. **Not** a dashboard. **Not** marketing. Just simple status signals: ✓ Active / ⚠ Missing.
 
@@ -28,7 +28,11 @@ Menu Presence Monitor gently surfaces these gaps without overwhelming the owner.
 
 **Mostly manual confirmation + partial automatic detection.** Zero new collections for v1. Store-level field (`menuPresence`) on existing store document tracks confirmed surfaces. Starter activation actions use `starterActivationSignals` on the same store document.
 
-Presence confirmations and starter activation signals are owner-local writes. `updateMenuPresence()` and `recordStarterActivationSignal()` must verify the passed store matches the active session store before writing either field. A presence confirmation transactionally updates the canonical `stores` row and its `storesSummary` projection in one transaction, then invalidates the public client cache after commit so owner/public consumers cannot retain an older projection.
+Presence confirmations and starter activation signals are owner-local writes. `updateMenuPresence()` and `recordStarterActivationSignal()` verify that the passed store matches the active session before writing either field. A presence confirmation transactionally updates the canonical `stores` row and its `storesSummary` projection. It rejects an inactive, deleted, blocked, tenant-blocked, missing, or scope-changed store.
+
+`menuPresence` is not customer-facing public output, so confirmation/removal does not run public cache invalidation. This avoids an unnecessary post-write API/cache round trip. Public-output mutation paths retain their own cache invalidation contracts.
+
+The transaction derives the matching starter action from the current store snapshot instead of trusting stale client starter state. Removing a confirmation also deletes that matching action in the same store write. Typed acknowledgements include `recordedAt`; desktop/mobile update loaded store context only after acknowledgement and only while the same store remains selected, so activation proof refreshes without another read.
 
 `recordStarterActivationSignal()` rejects values outside the shared signal allowlist before constructing its Firestore dotted field path. Compile-time `StarterActivationSignal` typing is not treated as runtime validation.
 
@@ -36,6 +40,8 @@ The monitor now shows an activation-proof summary through the shared `buildStart
 
 - MenuList-recorded owner actions such as copy, WhatsApp share, QR download, Menu Kit download, or native share;
 - owner-confirmed external placements such as Google Business, Apple Business Connect, Bing Places, Instagram Bio, and WhatsApp Profile.
+
+Only allowlisted entries with valid timestamps count. These are owner-action/confirmation signals, not automatic external verification or customer-usage proof.
 
 ## Surface Checklist
 
@@ -46,9 +52,9 @@ The monitor now shows an activation-proof summary through the shared `buildStart
 | Bing Places | Manual confirmation | ✓ Added / ⚠ Not added |
 | Instagram Bio | Manual confirmation | ✓ Added / ⚠ Not added |
 | WhatsApp Profile | Manual confirmation | ✓ Added / ⚠ Not added |
-| Table QR | Auto readiness from published menu/share surface | ✓ Ready / ⚠ Not set up |
-| Digital Screens | Auto (screen token exists) | ✓ Active / ⚠ Not set up |
-| Feedback QR | Auto (feedback enabled) | ✓ Active / ⚠ Not enabled |
+| Table QR | Valid explicit publish acknowledgement on an active project | ✓ Ready / ⚠ Publish first |
+| Digital Screens | Screen token exists | ✓ Set up / ⚠ Not set up |
+| Feedback QR | Valid publish acknowledgement and feedback not disabled | ✓ Ready / ⚠ Not ready |
 
 ## Action-Done Model
 
@@ -60,7 +66,7 @@ The monitor now shows an activation-proof summary through the shared `buildStart
 
 ## Source Gate
 
-Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Monitor, Use MenuList output wiring, Business Settings Search & Discovery, Mobile More Search & Discovery, `updateMenuPresence()`, `recordStarterActivationSignal()`, or starter activation proof. This gate checks source/docs parity for runtime input validation, active-session and transaction-time store/tenant guards, atomic store/summary projection, post-commit cache invalidation, typed write acknowledgement, bounded diagnostics, desktop/mobile route wiring, and mobile bottom-sheet behavior. The store-summary emulator test covers admitted and rejected atomic presence writes. Browser/device QA and live production confirm/remove mutation testing remain separate release gates.
+Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Monitor, project publish/claim truth, Use MenuList, Business Settings Search & Discovery, Mobile Share/More, `updateMenuPresence()`, `recordStarterActivationSignal()`, or starter activation proof. The gate checks canonical publish evidence, atomic project/summary/store stamping, active-store rejection, atomic presence projection, typed acknowledgement, stale-store UI protection, bounded diagnostics, desktop/mobile wiring, no presence-only public-cache invalidation, and docs parity. The store-summary emulator test covers admitted and rejected atomic presence writes. Browser/device QA and live production confirm/remove mutation testing remain separate release gates.
 
 ## Key Files
 
@@ -70,6 +76,8 @@ Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Mo
 | `src/components/mobile/components/PresenceMonitor.tsx` | Mobile version (shared logic) |
 | `src/database/stores/index.tsx` | `menuPresence` field write and starter activation signal write |
 | `src/lib/onboarding/starterActivation.ts` | Shared activation target and action-done evidence summary |
+| `src/lib/menuPresence/presenceReadiness.ts` | Canonical valid-publish, feedback, and confirmation readiness |
+| `src/database/projects/index.ts` | Standard publish stamps project, project summary, and store truth atomically |
 
 ## Documents
 
@@ -88,11 +96,11 @@ Run `npm run verify:menu-presence-monitor-boundary` after changes to Presence Mo
 | System | File | Reused For |
 |--------|------|-----------|
 | Screen State | `src/database/campaigns/index.ts` | Auto-detect screen presence |
-| Menu Kit state | Use MenuList data loader | Auto-detect QR deployment |
+| Project summary | Use MenuList/Mobile Projects existing one-read list | Validate explicit publish readiness |
 | Feedback setting | Store `feedbackEnabled` field | Auto-detect feedback QR |
 | Store DAL | `src/database/stores/index.ts` | Persist manual confirmations |
 
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** July 10, 2026
+**Last Updated:** July 16, 2026

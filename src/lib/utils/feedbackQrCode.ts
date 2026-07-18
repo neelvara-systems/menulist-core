@@ -150,5 +150,5 @@ export function getQrCodeFilename(storeName: string): string {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-    return `${sanitized}-feedback-qr`;
+    return `${sanitized || 'menu'}-feedback-qr`;
 }

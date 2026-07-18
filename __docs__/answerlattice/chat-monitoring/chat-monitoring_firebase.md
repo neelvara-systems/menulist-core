@@ -11,6 +11,8 @@
 
 **Product boundary:** these operations use the dedicated Answerlattice Firebase project. Active server aggregation and insight projection run from `functions-answerlattice/`. The MenuList scheduler and retained legacy callables perform no chat-monitoring datastore or provider work.
 
+Manual historical repair uses the platform-only `backfillChatAnalytics` callable in `functions-answerlattice`. It validates numeric `tId`, `sId`, and 1-90 `days`, re-reads `stores/{sId}` in the dedicated project, requires exact `pId: AL` plus tenant/store identity, and acquires a transaction-backed one-minute cooldown/ten-minute lease in `platformSummary/chatAnalyticsState_{tId}_{sId}`. Concurrent or immediate repeats stop before session scans.
+
 ### 1.1 chatSessions (Read by Admin)
 
 | Property | Value |
@@ -93,6 +95,19 @@ Platform chat message copy and ROI share text copy are browser-local and cost-ne
 
 Admin chat mutation acknowledgement hardening is cost-neutral. Single metadata, internal-note, and batch status writes still use their existing Firestore write attempts, but platform UI now requires explicit acknowledgement before local note/session/batch-selection state or success copy changes. This adds no reads, no extra writes, no indexes, no rules, no Cloud Functions, and no deployment requirement.
 
+### 2.5a Manual Historical Backfill
+
+| Step | Reads | Writes |
+|------|:-----:|:------:|
+| Dedicated Answerlattice store scope admission | 1 | 0 |
+| Transactional lease/cooldown acquire | 1 | 1 |
+| Per requested UTC day | up to 2,001 `chatSessions` + 1 existing summary | 0 or 1 canonical summary |
+| Lease release | 1 | 1 |
+
+The response reports every requested date as `success` (canonical summary changed) or `skipped` (unchanged/no data), the admitted chat count, and whether the 2,000-session source cap made the date partial. Failed requests return fixed callable copy; completed summary writes remain source-hash idempotent on retry. Lease-release failure is logged with a stable code and does not turn completed work into a false client failure; the lease expires after ten minutes.
+
+Root MenuList scheduler/callable compatibility paths perform zero chat-session reads and zero analytics writes. A MenuList Functions deployment retires any previously deployed executable implementation; active backfill requires the dedicated Answerlattice Functions deployment.
+
 ### 2.6 View Weekly Digest
 
 | Step | Reads | Writes |
@@ -136,6 +151,15 @@ Chat Insights overview and feedback summary cards also reuse the same optimized 
 | **Per-workspace hard ceiling** | **14,532** | **10** | **0** |
 
 Typical runs are much smaller: one changed date reads that day's bounded sessions plus one existing summary, then writes only if the source hash changed. Sunday weekly output reuses the same 14-day source query. No scheduled model call remains.
+
+### QA deployment evidence (July 14, 2026)
+
+The exact MenuList compatibility/scheduler target and dedicated Answerlattice backfill target both passed their configured local predeploy gates. Cloud Resource Manager then returned HTTP 403 caller permission for `menulist-qa` and `answerlattice-qa` before any remote mutation. The source correction is validated locally, but the QA revisions remain unchanged. An authorized operator must repeat:
+
+```bash
+firebase deploy --only functions:backfillAggregates,functions:triggerAggregationManual,functions:menulistMaintenanceScheduler --project menulist-qa --non-interactive
+firebase deploy --only functions:answerlattice:backfillChatAnalytics --project answerlattice-qa --config firebase-answerlattice.json --non-interactive
+```
 
 ---
 

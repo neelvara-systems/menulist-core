@@ -2,11 +2,13 @@ export const dynamic = 'force-dynamic';
 import { calculateOfflineLocationTopup } from "@config/resellerPricing";
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
-import { createResellerTransaction, getResellerProfile, updateResellerStatsOnRenewal } from "@database/reseller/server";
-import { updateSubscription } from "@database/subscriptions/server";
+import { getResellerProfile } from "@database/reseller/server";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
+import { appendBoundedBillingStatusHistory } from '@lib/billing/subscriptionStatusHistory';
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
+import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -71,10 +73,21 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
-        const { storeId, tenantId, locationCount } = validation.data;
+        const { storeId, tenantId, locationCount, operationId } = validation.data;
 
-        const resellerProfile = await getResellerProfile(resellerId, session.user.email);
-        if (!isPlatformUser && (!resellerProfile || !resellerProfile.active)) {
+        const resellerProfile = isPlatformUser
+            ? null
+            : await getResellerProfile(resellerId, session.user.email);
+        if (isPlatformUser) {
+            if (!await getCurrentPlatformUser(session)) {
+                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            }
+        } else if (!isActiveResellerProfileForSession({
+            actorId: resellerId,
+            profile: resellerProfile,
+            sessionEmail: session.user.email,
+            sessionProfileId: session.user.resellerProfileId,
+        })) {
             logger.security('Reseller Add Location Capacity - Profile Not Found or Inactive', {
                 ...getBoundedSecurityRouteContext(session, request),
                 ...getBoundedResellerApiStringContext('resellerId', resellerId),
@@ -129,66 +142,147 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Renew this client before adding another location." }, { status: 400 });
         }
 
-        const currentQuantity = Math.max(1, Number(existingSubData.quantity || 1));
-        const nextQuantity = currentQuantity + topup.locationCount;
-        const nextAmount = Number(existingSubData.amount || 0) + topup.amountPaise;
-        const now = admin.firestore.Timestamp.now();
+        const subscriptionRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(existingSub.id);
+        const transactionRef = firestoreAdmin.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS).doc(operationId);
+        const operationResult = await firestoreAdmin.runTransaction(async (tx) => {
+            const [operationSnap, subscriptionSnap] = await Promise.all([
+                tx.get(transactionRef),
+                tx.get(subscriptionRef),
+            ]);
+            if (operationSnap.exists) {
+                const storedOperation = operationSnap.data() || {};
+                if (
+                    storedOperation.operationId !== operationId
+                    || storedOperation.action !== 'ADD_LOCATION'
+                    || storedOperation.resellerId !== resellerId
+                    || Number(storedOperation.storeId) !== storeId
+                    || Number(storedOperation.tenantId) !== tenantId
+                    || Number(storedOperation.locationCount) !== locationCount
+                    || storedOperation.subscriptionId !== existingSub.id
+                ) {
+                    throw new Error('Reseller operation id is already used by another action.');
+                }
+                return {
+                    amountExpected: Number(storedOperation.amountExpected),
+                    daysRemaining: Number(storedOperation.daysRemaining),
+                    locationCount: Number(storedOperation.locationCount),
+                    quantity: Number(storedOperation.subscriptionQuantity),
+                    validUntil: toDate(storedOperation.validUntil),
+                };
+            }
+            if (!subscriptionSnap.exists) throw new Error('Manual subscription disappeared during update.');
 
-        await updateSubscription(existingSub.id, {
-            amount: nextAmount,
-            manualPaymentConfirmed: true,
-            manualPaymentConfirmedAt: now as any,
-            quantity: nextQuantity,
-            statuses: [
-                ...(existingSubData.statuses || []),
-                {
-                    status: 'active',
-                    timestamp: now as any,
-                    amount: topup.amountPaise,
-                    currency: 'INR',
-                    remark: `Reseller prepaid location capacity — +${topup.locationCount} location${topup.locationCount > 1 ? 's' : ''} until current expiry`,
-                },
-            ],
+            const currentSubscription = subscriptionSnap.data() || {};
+            if (
+                currentSubscription.billingMode !== 'manual'
+                || currentSubscription.status !== 'active'
+                || (currentSubscription.resellerId !== resellerId && !isPlatformUser)
+            ) {
+                throw new Error('Manual subscription is no longer eligible for location capacity.');
+            }
+            const currentPricingTier = currentSubscription.resellerPricingTier;
+            const currentValidUntil = currentSubscription.validUntil
+                || currentSubscription.cycleEndDate
+                || currentSubscription.subscriptionEndDate;
+            const currentValidUntilDate = toDate(currentValidUntil);
+            if (!currentPricingTier || !currentValidUntilDate || currentValidUntilDate.getTime() <= Date.now()) {
+                throw new Error('Manual subscription must be renewed before adding a location.');
+            }
+
+            const currentTopup = calculateOfflineLocationTopup({
+                locationCount,
+                pricingTier: currentPricingTier,
+                validUntil: currentValidUntil,
+            });
+            if (currentTopup.daysRemaining <= 0 || currentTopup.amountPaise <= 0) {
+                throw new Error('Manual subscription must be renewed before adding a location.');
+            }
+
+            const currentQuantity = Math.max(1, Number(currentSubscription.quantity || 1));
+            const nextQuantity = currentQuantity + currentTopup.locationCount;
+            const nextAmount = Number(currentSubscription.amount || 0) + currentTopup.amountPaise;
+            const now = admin.firestore.Timestamp.now();
+            const profileId = currentSubscription.resellerProfileId || resellerProfile?.id || null;
+            const profileRef = profileId
+                ? firestoreAdmin.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(profileId)
+                : null;
+            if (profileRef) {
+                const profileSnap = await tx.get(profileRef);
+                if (!profileSnap.exists) throw new Error('Reseller profile disappeared during update.');
+                if (!isPlatformUser && profileSnap.data()?.active !== true) {
+                    throw new Error('Reseller profile is no longer active.');
+                }
+            }
+
+            tx.set(subscriptionRef, {
+                amount: nextAmount,
+                manualPaymentConfirmed: true,
+                manualPaymentConfirmedAt: now,
+                quantity: nextQuantity,
+                statuses: appendBoundedBillingStatusHistory(currentSubscription.statuses, {
+                        status: 'active',
+                        timestamp: now,
+                        amount: currentTopup.amountPaise,
+                        currency: 'INR',
+                        remark: `Reseller prepaid location capacity — +${currentTopup.locationCount} location${currentTopup.locationCount > 1 ? 's' : ''} until current expiry`,
+                }),
+            }, { merge: true });
+            tx.create(transactionRef, {
+                id: operationId,
+                operationId,
+                resellerId,
+                resellerProfileId: profileId,
+                resellerEmail: session.user.email || '',
+                storeId,
+                tenantId,
+                storeName: currentSubscription.name || '',
+                action: 'ADD_LOCATION',
+                pricingTier: currentPricingTier,
+                billingInterval: 'MONTH',
+                commitmentMonths: Math.max(1, Math.ceil(currentTopup.daysRemaining / 30)),
+                locationCount: currentTopup.locationCount,
+                subscriptionQuantity: nextQuantity,
+                amountExpected: currentTopup.amountPaise,
+                daysRemaining: currentTopup.daysRemaining,
+                currency: 'INR',
+                paymentMode: 'offline',
+                status: 'active',
+                subscriptionId: existingSub.id,
+                validFrom: now,
+                validUntil: currentValidUntil,
+                createdOn: now,
+                modifiedOn: now,
+            });
+            if (profileRef) {
+                tx.update(profileRef, {
+                    totalTransactions: admin.firestore.FieldValue.increment(1),
+                    totalRevenueCollectedPaise: admin.firestore.FieldValue.increment(currentTopup.amountPaise),
+                    modifiedOn: now,
+                });
+            }
+
+            return {
+                amountExpected: currentTopup.amountPaise,
+                daysRemaining: currentTopup.daysRemaining,
+                locationCount: currentTopup.locationCount,
+                quantity: nextQuantity,
+                validUntil: currentValidUntilDate,
+            };
         });
 
-        const profileId = existingSubData.resellerProfileId || resellerProfile?.id || null;
-        const transactionId = await createResellerTransaction({
-            resellerId,
-            resellerProfileId: profileId,
-            resellerEmail: session.user.email || '',
-            storeId,
-            tenantId,
-            storeName: existingSubData.name || '',
-            action: 'ADD_LOCATION',
-            pricingTier,
-            billingInterval: 'MONTH',
-            commitmentMonths: Math.max(1, Math.ceil(topup.daysRemaining / 30)),
-            locationCount: topup.locationCount,
-            subscriptionQuantity: nextQuantity,
-            amountExpected: topup.amountPaise,
-            currency: 'INR',
-            paymentMode: 'offline',
-            status: 'active',
-            subscriptionId: existingSub.id,
-            validFrom: now as any,
-            validUntil,
-        });
-
-        if (profileId) {
-            await updateResellerStatsOnRenewal(profileId, topup.amountPaise);
-        }
+        if (!operationResult.validUntil) throw new Error('Location capacity result is missing its expiry.');
 
         return NextResponse.json({
             success: true,
-            amountExpected: topup.amountPaise,
-            daysRemaining: topup.daysRemaining,
-            locationCount: topup.locationCount,
-            quantity: nextQuantity,
+            amountExpected: operationResult.amountExpected,
+            daysRemaining: operationResult.daysRemaining,
+            locationCount: operationResult.locationCount,
+            quantity: operationResult.quantity,
             storeId,
             subscriptionId: existingSub.id,
             tenantId,
-            transactionId,
-            validUntil: validUntilDate.toISOString(),
+            transactionId: operationId,
+            validUntil: operationResult.validUntil.toISOString(),
         });
     } catch (error) {
         logResellerApiFailure('reseller_add_location_capacity_route_failed', error, {

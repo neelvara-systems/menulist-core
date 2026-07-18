@@ -2,7 +2,7 @@
 
 **Feature:** Menu Image Preparation For Review
 **Status:** Source-backed marketing draft; not current sales, publication, or launch certification
-**Last Updated:** June 11, 2026
+**Last Updated:** July 14, 2026
 **Audience:** Sales Team, Marketing, Landing Page Writers
 
 ---
@@ -92,7 +92,7 @@ Owners get a bounded image-preparation workflow without claiming guaranteed qual
 
 **Bounded Batch:**
 - Useful for selected groups of items.
-- Batch size and availability follow the current release.
+- Supports 1–50 selected items in the current source; availability still follows plan, credits, provider status, and release deployment.
 - Results stay drafts until reviewed.
 
 ### Slide 5: Controls That Matter
@@ -174,7 +174,7 @@ Do not use testimonials, cost-savings claims, speed claims, customer-behavior cl
 > A: Do not promise third-party platform use without current rights, policy, and export evidence for the target release.
 
 **Q: How does batch mode work?**
-> A: Batch preparation is bounded by the current release, plan, credits, feature flags, and provider behavior. Results should be reviewed before use.
+> A: Owners can select up to 50 items in the current source. Admission still depends on the deployed release, plan, credits, feature flag, Cloud Tasks configuration, and provider behavior. Results must be reviewed before use.
 
 ---
 

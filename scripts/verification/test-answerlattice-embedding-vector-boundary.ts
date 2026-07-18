@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
     ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
-    ANSWERLATTICE_EMBEDDING_CONFIGS,
+    ANSWERLATTICE_EMBEDDING_VERSION,
     buildAnswerlatticeEmbeddingRequest,
 } from '../../src/data/shared/answerlatticeEmbedding';
 import {
@@ -34,39 +34,73 @@ assert.equal(
     sharedContract,
     'Answerlattice Functions must mirror the embedding registry byte-for-byte.',
 );
-assert.equal(ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG, ANSWERLATTICE_EMBEDDING_CONFIGS.v2);
+assert.equal(ANSWERLATTICE_EMBEDDING_VERSION, 'v1');
 assert.equal(ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.model, 'gemini-embedding-2');
-assert.equal(ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.vectorField, 'embeddingV2');
+assert.equal(ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.vectorField, 'embedding');
 assert.equal(ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.outputDimensionality, 768);
+assert.equal(ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.cacheVersion, 'gemini-embedding-2:768:v1');
+assert.equal(sharedContract.includes('gemini-embedding-001'), false);
+assert.equal(sharedContract.includes('taskType'), false);
+assert.equal(sharedContract.includes('embeddingV2'), false);
 
-const v2QueryRequest = buildAnswerlatticeEmbeddingRequest({
+const queryRequest = buildAnswerlatticeEmbeddingRequest({
     content: 'How do I retry a failed invoice?',
     purpose: 'query',
-    version: 'v2',
 });
-assert.equal(v2QueryRequest.contents, 'task: question answering | query: How do I retry a failed invoice?');
-assert.equal('taskType' in v2QueryRequest.config, false, 'Embedding 2 must not receive taskType.');
+assert.equal(queryRequest.contents, 'task: question answering | query: How do I retry a failed invoice?');
+assert.equal('taskType' in queryRequest.config, false, 'Embedding 2 must not receive taskType.');
 
-const v2DocumentRequest = buildAnswerlatticeEmbeddingRequest({
+const documentRequest = buildAnswerlatticeEmbeddingRequest({
     content: 'Open Billing and retry with an active payment method.',
     purpose: 'document',
     title: 'Fix a failed invoice',
-    version: 'v2',
 });
 assert.equal(
-    v2DocumentRequest.contents,
+    documentRequest.contents,
     'title: Fix a failed invoice | text: Open Billing and retry with an active payment method.',
 );
-assert.equal('taskType' in v2DocumentRequest.config, false, 'Embedding 2 documents must not receive taskType.');
+assert.equal('taskType' in documentRequest.config, false, 'Embedding 2 documents must not receive taskType.');
 
-const v1DocumentRequest = buildAnswerlatticeEmbeddingRequest({
-    content: 'Legacy rollback text',
-    purpose: 'document',
-    title: 'Legacy article',
-    version: 'v1',
-});
-assert.equal(v1DocumentRequest.config.taskType, 'RETRIEVAL_DOCUMENT');
-assert.equal(v1DocumentRequest.contents, 'Legacy rollback text');
+const runtimePaths = [
+    'src/constants/AI/models.ts',
+    'src/constants/answerlattice/ai.ts',
+    'src/lib/answerlattice/articleEmbeddingServer.ts',
+    'src/lib/search/searchCore.ts',
+    'src/lib/vectorEmbeddings/index.ts',
+    'functions/src/constants/ai.ts',
+    'functions/src/logic/articleEmbedding.ts',
+    'functions/src/logic/startGeneration.ts',
+    'functions/src/utils/aiUtils.ts',
+    'functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts',
+    'functions-answerlattice/src/logic/articleEmbedding.ts',
+    'functions-answerlattice/src/logic/startGeneration.ts',
+    'functions-answerlattice/src/utils/aiUtils.ts',
+];
+for (const runtimePath of runtimePaths) {
+    const source = fs.readFileSync(path.join(root, runtimePath), 'utf8');
+    assert.equal(source.includes('gemini-embedding-001'), false, `${runtimePath} must not use the retired embedding model.`);
+    assert.equal(source.includes('embeddingV2'), false, `${runtimePath} must not retain the migration-only vector field.`);
+    assert.equal(source.includes('includeLegacy'), false, `${runtimePath} must not retain legacy dual-write controls.`);
+    assert.equal(source.includes('embedding_v2_migration'), false, `${runtimePath} must not retain the corpus migration task.`);
+    assert.equal(source.includes('taskType'), false, `${runtimePath} must use embedding purpose rather than legacy taskType.`);
+}
+assert.equal(
+    fs.existsSync(path.join(root, 'functions-answerlattice/src/answerlattice/embeddingV2Migration.ts')),
+    false,
+    'The pre-launch embedding contract must not retain a backfill worker.',
+);
+
+for (const indexPath of ['firestore.indexes.json', 'firestore-answerlattice.indexes.json']) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, indexPath), 'utf8')) as {
+        indexes?: Array<{ collectionGroup?: string; fields?: Array<{ fieldPath?: string; vectorConfig?: unknown }> }>;
+    };
+    const vectorFields = (manifest.indexes || [])
+        .filter(index => index.collectionGroup === 'kb_articles')
+        .flatMap(index => index.fields || [])
+        .filter(field => field.vectorConfig)
+        .map(field => field.fieldPath);
+    assert.deepEqual(vectorFields, ['embedding'], `${indexPath} must keep one canonical KB vector index.`);
+}
 
 const dedicatedInput = getAnswerlatticeEmbeddingInput({
     categoryTitle: 'Billing',

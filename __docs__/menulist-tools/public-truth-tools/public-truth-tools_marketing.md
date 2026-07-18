@@ -1,7 +1,7 @@
 # Public Truth Tools - Marketing Notes
 
-**Status:** Planning documentation only
-**Last Updated:** July 4, 2026
+**Status:** Active internal messaging for implemented public tools and owner checks
+**Last Updated:** July 16, 2026
 **Audience:** Internal marketing, sales, founder
 
 ---
@@ -86,6 +86,8 @@ Use for acquisition:
 
 - Public Truth Check
 - Business Facts Copy Pack
+- WhatsApp Reply Pack
+- Customer FAQ Reply Pack
 - QR Link Health Check
 - Menu Readability Check
 - Customer Question Coverage Check
@@ -98,6 +100,7 @@ Use for acquisition:
 - WhatsApp Action Link Check
 - Hours & Holiday Hours Check
 - Photo / Visual Identity Gap Check
+- five browser-local Print & Share asset makers
 
 Goal: show the gap and route to MenuList setup.
 
@@ -105,17 +108,24 @@ Goal: show the gap and route to MenuList setup.
 
 Use inside Business Health/Public Discovery:
 
+- Public Truth Basics
+- Business Facts Copy Pack readiness
 - QR Link Health
-- Customer Question Coverage
-- Booking and Inquiry Readiness
+- Menu / Service Readability
 - Price and Availability Clarity
 - PDF Cleanup Readiness
+- WhatsApp Action Link readiness
+- WhatsApp Reply Pack readiness
+- Hours readiness
+- Photo / Visual Identity readiness
+- Customer Question Coverage
+- Customer FAQ Reply Pack readiness
+- Booking and Inquiry Readiness
 - Google Profile Handoff
-- Public Source Status
-- WhatsApp Action Status
-- Hours / Holiday Hours Status
-- Photo / Visual Identity Gap
-- Menu Link Status
+- One Customer Link Preview readiness
+- Social Bio Link Consistency
+- Print & Share asset readiness
+- Menu Freshness
 
 Goal: keep current MenuList stores healthy.
 
@@ -123,8 +133,9 @@ Goal: keep current MenuList stores healthy.
 
 Use when value becomes recurring:
 
-- scheduled reports
-- multi-location comparisons
+- entitled manual saved history and text report are implemented
+- scheduled reports remain disabled until separately approved
+- multi-location comparisons remain disabled until separately approved
 - agency/client exports
 - partner/reseller reporting
 - owner-approved public source repair

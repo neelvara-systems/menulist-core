@@ -1,8 +1,13 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
+import {
+    formatAiOperationHistoryLanguage,
+    getAiOperationHistoryJsonObject,
+    type AiOperationHistoryJsonValue,
+} from '@lib/ai/operationHistoryClientContract';
 
 export type AiOperationPresentationInput = {
     action?: string | null;
-    clientResponse?: any;
+    clientResponse?: AiOperationHistoryJsonValue;
     inputStrings?: Record<string, string>;
     itemDetails?: { name?: string } | null;
     itemsList?: Array<{ id?: string; name?: string }>;
@@ -22,6 +27,27 @@ export type AiOperationPresentationTranslator = (
     key: string,
     values?: AiOperationPresentationValues,
 ) => string;
+
+export const MENULIST_OWNER_AI_ACTIONS = [
+    AI_ACTIONS_TYPES.IMAGE_PROCESSING,
+    AI_ACTIONS_TYPES.IMAGE_GENERATION,
+    AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION,
+    AI_ACTIONS_TYPES.IMAGE_EDITING,
+    AI_ACTIONS_TYPES.LANGUAGE_ADDITION,
+    AI_ACTIONS_TYPES.IMAGE_TRANSLATION,
+    AI_ACTIONS_TYPES.ITEM_TRANSLATION,
+    AI_ACTIONS_TYPES.ADD_DESCRIPTION,
+    AI_ACTIONS_TYPES.REWRITE_DESCRIPTION,
+    AI_ACTIONS_TYPES.SEO_AEO_GENERATION,
+    AI_ACTIONS_TYPES.BUSINESS_COPY_GENERATION,
+    AI_ACTIONS_TYPES.CAMPAIGN_CAPTION,
+    AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR,
+    AI_ACTIONS_TYPES.MENU_INTAKE_IDENTITY,
+    AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION,
+    AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER,
+    AI_ACTIONS_TYPES.AI_MENU_MANAGER_PLANNER,
+    AI_ACTIONS_TYPES.NEW_ITEM_METADATA,
+] as const;
 
 const countArray = (value: unknown): number => (Array.isArray(value) ? value.length : 0);
 
@@ -152,6 +178,7 @@ export const getAiOperationTone = (action?: string | null): AiOperationTone => {
         || action === AI_ACTIONS_TYPES.REVIEW_REPLY_SUGGESTION
         || action === AI_ACTIONS_TYPES.MENU_CARD_EXPORT_DESIGN_ADVISOR
         || action === AI_ACTIONS_TYPES.OWNER_BUSINESS_ASSISTANT_ANSWER
+        || action === AI_ACTIONS_TYPES.AI_MENU_MANAGER_PLANNER
         || action === AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION
         || action === AI_ACTIONS_TYPES.ANSWERLATTICE_DRAFT_GENERATION
         || action === AI_ACTIONS_TYPES.ANSWERLATTICE_TICKET_KNOWLEDGE_EXTRACTION
@@ -163,14 +190,12 @@ export const getAiOperationTone = (action?: string | null): AiOperationTone => {
 };
 
 const countDescriptionRows = (operation: AiOperationPresentationInput): number => {
-    const compactCount = countFromSummary(operation.clientResponse?.descriptionSummary?.descriptionCount);
+    const response = getAiOperationHistoryJsonObject(operation.clientResponse);
+    const descriptionSummary = getAiOperationHistoryJsonObject(response?.descriptionSummary);
+    const compactCount = countFromSummary(descriptionSummary?.descriptionCount);
     if (compactCount > 0) return compactCount;
 
-    if (!operation.clientResponse || typeof operation.clientResponse !== "object" || Array.isArray(operation.clientResponse)) {
-        return 0;
-    }
-
-    const response = operation.clientResponse as Record<string, unknown>;
+    if (!response) return 0;
 
     return Object.values(response).reduce<number>((total, languageDescriptions) => {
         if (!languageDescriptions || typeof languageDescriptions !== "object" || Array.isArray(languageDescriptions)) {
@@ -181,19 +206,18 @@ const countDescriptionRows = (operation: AiOperationPresentationInput): number =
 };
 
 const countTranslationRows = (operation: AiOperationPresentationInput): number => {
-    const compactCount = countFromSummary(operation.clientResponse?.translationsCount);
+    const response = getAiOperationHistoryJsonObject(operation.clientResponse);
+    const compactCount = countFromSummary(response?.translationsCount);
     if (compactCount > 0) return compactCount;
 
-    if (operation.clientResponse?.translations && typeof operation.clientResponse.translations === "object") {
-        return Object.keys(operation.clientResponse.translations).length;
-    }
+    const translations = getAiOperationHistoryJsonObject(response?.translations);
+    if (translations) return Object.keys(translations).length;
     return operation.inputStrings ? Object.keys(operation.inputStrings).length : 0;
 };
 
 const formatLanguage = (language: LanguageValue): string | null => {
     if (!language) return null;
-    if (typeof language === "string") return language;
-    return language.name || language.code || null;
+    return formatAiOperationHistoryLanguage(language) || null;
 };
 
 const formatTargetLanguages = (operation: AiOperationPresentationInput): string | null => {
@@ -212,10 +236,13 @@ export const getAiOperationOwnerSummary = (
     translator?: AiOperationPresentationTranslator,
 ): string => {
     const action = operation.action;
+    const clientResponse = getAiOperationHistoryJsonObject(operation.clientResponse);
 
     if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING || action === AI_ACTIONS_TYPES.PUBLIC_MENU_EXTRACTION) {
-        const items = countArray(operation.clientResponse?.data?.items) || Number(operation.clientResponse?.dataSummary?.itemsCount || 0);
-        const categories = countArray(operation.clientResponse?.data?.categories) || Number(operation.clientResponse?.dataSummary?.categoriesCount || 0);
+        const data = getAiOperationHistoryJsonObject(clientResponse?.data);
+        const dataSummary = getAiOperationHistoryJsonObject(clientResponse?.dataSummary);
+        const items = countArray(data?.items) || Number(dataSummary?.itemsCount || 0);
+        const categories = countArray(data?.categories) || Number(dataSummary?.categoriesCount || 0);
         if (items > 0 || categories > 0) {
             return translate(
                 translator,
@@ -257,6 +284,21 @@ export const getAiOperationOwnerSummary = (
         || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION
         || action === AI_ACTIONS_TYPES.ITEM_TRANSLATION
     ) {
+        if (clientResponse?.hasPartialCoverage === true) {
+            const fallbackCount = countFromSummary(clientResponse.fallbackKeyCount);
+            return fallbackCount > 0
+                ? translate(
+                    translator,
+                    "summary.translationCompletedWithGapsCount",
+                    `Translation returned ${baseFormatCount(fallbackCount, "incomplete row")}. Review the content and retry.`,
+                    { count: fallbackCount },
+                )
+                : translate(
+                    translator,
+                    "summary.translationCompletedWithGaps",
+                    "Translation returned incomplete text. Review the content and retry.",
+                );
+        }
         const rows = countTranslationRows(operation);
         const targets = formatTargetLanguages(operation);
         const rowText = rows > 0
@@ -269,8 +311,8 @@ export const getAiOperationOwnerSummary = (
 
     if (action === AI_ACTIONS_TYPES.IMAGE_GENERATION || action === AI_ACTIONS_TYPES.BATCH_IMAGE_GENERATION) {
         const images = countArray(operation.clientResponse)
-            || countFromSummary(operation.clientResponse?.generatedImageCount)
-            || countFromSummary(operation.clientResponse?.arrayCount);
+            || countFromSummary(clientResponse?.generatedImageCount)
+            || countFromSummary(clientResponse?.arrayCount);
         const itemName = operation.itemDetails?.name;
         if (images > 0 && itemName) {
             return translate(
@@ -326,8 +368,12 @@ export const getAiOperationOwnerSummary = (
         return translate(translator, "summary.businessHealthQuestionAnswered", "Answered a Business Health question.");
     }
 
+    if (action === AI_ACTIONS_TYPES.AI_MENU_MANAGER_PLANNER) {
+        return translate(translator, "summary.preparedMenuUpdatePlan", "Prepared a menu update plan.");
+    }
+
     if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_WIDGET_SEARCH || action === AI_ACTIONS_TYPES.HELP_CENTER_SEARCH) {
-        const referencesCount = Number(operation.clientResponse?.referencesCount || 0);
+        const referencesCount = Number(clientResponse?.referencesCount || 0);
         return referencesCount > 0
             ? translate(translator, "summary.answerlatticeAnswerWithReferences", `Answered with ${baseFormatCount(referencesCount, "reference")}.`, { count: referencesCount })
             : translate(translator, "summary.answerlatticeAnswer", "Answered a support question.");
@@ -342,7 +388,7 @@ export const getAiOperationOwnerSummary = (
     }
 
     if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_FAQ_GENERATION) {
-        const createdCount = Number(operation.clientResponse?.createdCount || 0);
+        const createdCount = Number(clientResponse?.createdCount || 0);
         return createdCount > 0
             ? translate(translator, "summary.answerlatticeFaqsCreated", `Prepared ${baseFormatCount(createdCount, "FAQ")}.`, { count: createdCount })
             : translate(translator, "summary.answerlatticeFaqGeneration", "Checked article FAQ suggestions.");
@@ -369,7 +415,7 @@ export const getAiOperationOwnerSummary = (
     }
 
     if (action === AI_ACTIONS_TYPES.ANSWERLATTICE_ENTITY_EXTRACTION) {
-        const matchedCount = Number(operation.clientResponse?.matchedEntityCount || 0);
+        const matchedCount = Number(clientResponse?.matchedEntityCount || 0);
         return matchedCount > 0
             ? translate(translator, "summary.answerlatticeEntityExtractionMatched", `Matched ${baseFormatCount(matchedCount, "entity")}.`, { count: matchedCount })
             : translate(translator, "summary.answerlatticeEntityExtraction", "Checked article entity context.");

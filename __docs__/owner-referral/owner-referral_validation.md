@@ -2,7 +2,7 @@
 
 **Feature:** Owner Referral
 **Mode:** Implemented behind disabled feature flags
-**Validated:** July 11, 2026
+**Validated:** July 16, 2026
 **Runtime status:** Source complete; acquisition and settlement disabled
 
 ---
@@ -63,7 +63,7 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 | Existing-unpaid prior-payment detection ran before the referral-create transaction. | Moved the bounded subscription-history query into the same Firestore transaction as deterministic referral creation, closing the payment/attribution race. |
 | The verified-payment wrapper re-read the paid store's direct referral during pending repair. | Added `skipDirectReferral` for the wrapper while retaining the standalone repair helper's direct check. |
 | Public privacy disclosure was below the capture CTA. | Moved business-name/general-status disclosure before the CTA and kept payment-only/no-limit copy above the fold. |
-| Firebase docs counted only three settlement writes. | Corrected the atomic transaction to three reads and five writes: two wallet updates, two reward-ledger creates, and one referral update. |
+| Firebase docs counted only three settlement writes. | Corrected the atomic write count to five: two wallet updates, two reward-ledger creates, and one referral update. The later July 16 store-integrity hardening increased transaction reads from three to five. |
 | Long mobile business names had a one-line ellipsis without a full label. | Added a stable two-line clamp, full `title`, bounded text height, flexible non-wrapping row, and non-shrinking status tag. |
 | Active docs still described implementation as not started. | Updated spec, implementation, Firebase, mobile, website, help, marketing, tests, README, and this validation record to source-complete/release-disabled truth. |
 
@@ -90,18 +90,30 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 | Source gates | Referral verifier, billing-entitlement verifier, AI-accounting verifier, emulator test, focused lint, full TypeScript, JSON parse, and diff check pass. |
 | Visual rerun | Prior referral UI QA remains recorded below. The July 11 browser rerun could not complete because the connected browser timed out on local navigation; production-host desktop/mobile evidence remains a release gate. |
 
+### July 16 Deep Flow and Scale Cross-Check
+
+| Finding | Correction and proof |
+| --- | --- |
+| An empty pilot list silently admitted every store when both flags were enabled. | Acquisition now requires a non-empty normalized pilot list and explicit store membership across desktop, mobile, owner API, capture, and attribution. Env readiness rejects enabled acquisition without a valid pilot ID. |
+| Normal setup could retain an older referral cookie because its secondary CTA bypassed the capture route. | Capture now has strict `capture` and `decline` actions. Decline is rate-limited, clears the host-only cookie even while acquisition is disabled, and navigation waits for acknowledgement. |
+| Existing-unpaid attribution could treat a saturated 25-row subscription-history query as proof that no older paid record existed. | Saturation now fails closed as prior-paid inside the attribution transaction. Emulator coverage proves the 25-row case creates no referral. |
+| Owner-read permission work occurred before rate limiting, and throttled responses lacked retry metadata. | Owner and capture limits fail closed on provider outage in production; the owner limit precedes the billing-permission Firestore read, and both 429 paths return `Retry-After` plus `X-RateLimit-Reset`. |
+| Settlement trusted referral/store lifecycle shape and normalized malformed Pack balances to zero. | Referral program/status/scopes and both canonical stores are validated before and inside settlement. Inactive, deleted, tenant-blocked, or store-blocked businesses remain pending. Pack balances require non-negative safe integers with overflow room; invalid values reject atomically. |
+| Pending repair used an unbounded cursor loop with a 100-row page inside payment handling. | One invocation now fetches at most 26, processes at most 25, returns `hasMore`, and emits bounded operational evidence for a later replay. No scheduler or queue was added. |
+| Desktop/mobile handoffs could report success when WhatsApp was unavailable, raw browser date formatting could drift, and clipboard fallback cleanup was not exception-safe. | Both UIs use the shared formatter, treat blocked WhatsApp as a share failure, and always remove the fallback textarea. |
+
 ### Implementation Evidence
 
 | Check | Result |
 | --- | --- |
-| `npm run verify:owner-referral` | Passed; token cryptography, cross-surface pilot admission, transactional prior-payment detection, payment hooks, no-cap policy, pre-capture disclosure, ledger rendering, localization, rules/index and docs contracts |
-| `npm run test:owner-referral:emulator` | Passed; concurrent exactly-once settlement, 100/50 balance movement, deterministic two-row ledger, replay, pending repair, four uncapped referrals, prior-paid rejection, and client rule denials |
-| `npm run typecheck` | Passed |
+| `npm run verify:owner-referral` | Passed after July 16 source hardening; token cryptography, fail-closed pilot admission, bounded capture/decline, transactional prior-payment detection, settlement integrity, bounded repair, payment hooks, no-cap policy, ledger rendering, localization, rules/index, and docs contracts |
+| `npm run test:owner-referral:emulator` | Passed after July 16 source hardening; concurrent exactly-once settlement, 100/50 balance movement, deterministic two-row ledger, replay, bounded pending repair, uncapped referrals, prior-paid and saturated-history rejection, invalid-balance rollback, blocked-store pending behavior, and client rule denials |
+| `npx tsc --noEmit --incremental false --pretty false` | Passed on the current worktree |
 | `npm run lint` | Passed with no warnings or errors |
 | `npm run verify:billing-entitlement-boundary` | Passed |
 | `npm run verify:pricing-integrity-boundary` | Passed |
 | July 11 owner-copy visual QA | Public invitation passed at 360x640; Mobile Share sheet passed at 360x640 with a two-line business name and compact pending tags; desktop modal passed at 1280x800. No horizontal overflow. Mobile evidence: [public invitation](./evidence/credit-clarity-mobile-invite-viewport.png) and [owner sheet](./evidence/credit-clarity-mobile-owner-sheet.png). |
-| July 11 repository-wide TypeScript rerun | Blocked outside Owner Referral by existing `UserDataType[]` mismatches in `EntityBlockSettings.tsx:97` and `platform/users/index.tsx:62`; referral verifier, full lint, focused lint, docs, locale, mobile-shell, billing, emulator, and scoped diff gates passed. |
+| July 11 repository-wide TypeScript rerun | Historical blocker only. The exact repository-wide TypeScript command passes on July 16. |
 | `npm run verify:reseller-dashboard-boundary` | Passed |
 | `npm run verify:dependency-freeze` | Passed |
 | Local browser QA | Passed for valid and unavailable invitation states at 1280x800 and 390x844; fragment removal, payment/no-limit copy, privacy-before-CTA, real signed-token capture to `/create-menu`, image loading, button styling, and zero horizontal overflow were confirmed. The desktop owner modal and mobile sheet were exercised with all three statuses and a long business name. Mobile passed at 390x844 and compact 360x640 with 44px+ actions, bounded scrolling, no row overlap, and visible copy confirmation. Production-host desktop/mobile evidence remains a release gate. |
@@ -133,22 +145,22 @@ The archived ChatGPT feedback audit remains preserved but no longer governs rewa
 | Reseller/agency/source/plan/geography | No eligibility exclusion |
 | Reward trigger | Both current MenuList subscription wallets verified paid |
 | Reward timing | Immediate when both are paid |
-| Pending state | No expiry; repair from later verified subscription activation |
+| Pending state | No expiry; one bounded 25-row repair batch from a later verified subscription activation, with backlog evidence |
 | Reward cap | None |
 | Post-payment actions | None |
-| Settlement | Atomic, deterministic, idempotent |
+| Settlement | Atomic, deterministic, idempotent, canonical-store checked, and safe-integer guarded |
 | Scheduler | None |
 | Referral indexes | Two |
 | Client Firestore access | Denied |
 | Reward ledger | Two deterministic zero-cash rows commit with both wallet updates and referral state |
-| Pilot boundary | Desktop, mobile, owner API, capture, and attribution token resolution |
+| Pilot boundary | Desktop, mobile, owner API, capture, and attribution token resolution; empty/invalid pilot fails closed |
 
 ---
 
 ## Cost Validation
 
 - Firestore referral work is limited to attribution, payment settlement, pending repair, and bounded owner status.
-- The immediate issue transaction uses three reads and five writes. A normal first caller is about seven reads total after bounded pre-reads and the pending-referrer query.
+- The immediate issue transaction uses five reads and five writes. A normal first caller is about 11 reads total after bounded wallet/store pre-reads and the pending-referrer query.
 - No summary, project, signal, retention, cap, scheduler, or cleanup operations remain.
 - Conservative provider exposure remains up to USD 1.62 per paid referral under the current maximum image-heavy and overdraft model.
 - Because no reward cap exists, aggregate provider capacity scales linearly and requires explicit finance approval.
@@ -190,6 +202,6 @@ Engineering implementation was authorized immediately by the founder and is comp
 
 **Code implementation:** Complete behind disabled flags
 
-**Local verification:** Owner Referral source verifier, emulator accounting/rules, lint, focused UI lint, billing, pricing, reseller, dependency, mobile-shell, locale, docs, and scoped diff checks passed. A current repository-wide TypeScript rerun is blocked only by the unrelated platform-user typing errors recorded above.
+**Local verification:** Owner Referral source verifier, emulator accounting/rules, exact repository TypeScript, focused UI lint, billing, pricing, reseller, public-entry, onboarding, payment, tenant-safety, MobileShell, env/discovery, locale, dependency, documentation-script, docs-link, and scoped-diff gates pass on the July 16 worktree. Production-host/device/payment evidence remains pending.
 
 **Current decision record:** [owner-referral_payment-only-policy-amendment-2026-07-10.md](./_archive/owner-referral_payment-only-policy-amendment-2026-07-10.md)

@@ -7,9 +7,8 @@ import {
     ANSWERLATTICE_EMBEDDING_VECTOR_FIELD,
 } from '../constants/ai';
 import { firestoreAdmin } from '../firebaseAdmin';
-import { ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG } from '../sharedData/answerlatticeEmbedding';
 import { KB_ARTICLES_COLLECTION, KnowledgeBaseArticleType } from '../types';
-import { generateEmbeddingMigrationVectors } from '../utils/aiUtils';
+import { genrateEmbedding } from '../utils/aiUtils';
 import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
 import { getReusableEmbeddingVectorDimensions, isValidGeneratedEmbeddingVector } from './embeddingVectorBoundary';
 
@@ -140,11 +139,6 @@ export async function embedStoredAnswerlatticeArticle(params: {
         const article = parseStoredArticle(snapshot, params.expectedScope);
         const { sourceHash } = buildEmbeddingInput(article);
         const vectorDimensions = getReusableEmbeddingVectorDimensions(article[ANSWERLATTICE_EMBEDDING_VECTOR_FIELD]);
-        const legacySourceHash = article.embeddingV1SourceHash
-            || (article.embeddingVersion === 'v2' ? null : article.embeddingSourceHash);
-        const includeLegacy = getReusableEmbeddingVectorDimensions(article.embedding)
-            !== ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY
-            || legacySourceHash !== sourceHash;
         if (
             !params.force
             && article.embeddingStatus === 'embedded'
@@ -172,7 +166,7 @@ export async function embedStoredAnswerlatticeArticle(params: {
             },
             modifiedOn: startedAt,
         }, { merge: true });
-        return { article, includeLegacy, reused: false, sourceHash, vectorDimensions: 0 };
+        return { article, reused: false, sourceHash, vectorDimensions: 0 };
     });
 
     const scope = { tId: claim.article.tId, sId: claim.article.sId };
@@ -181,7 +175,7 @@ export async function embedStoredAnswerlatticeArticle(params: {
     }
 
     try {
-        const vectors = await generateEmbeddingMigrationVectors({
+        const embedding = await genrateEmbedding({
             id: articleId,
             categoryTitle: claim.article.categoryTitle,
             sectionTitle: claim.article.sectionTitle || '',
@@ -190,8 +184,8 @@ export async function embedStoredAnswerlatticeArticle(params: {
             tId: scope.tId,
             sId: scope.sId,
             source: cleanText(params.source, 120) || 'answerlattice_article_embedding',
-        }, { includeLegacy: Boolean(claim.includeLegacy) });
-        if (!isValidGeneratedEmbeddingVector(vectors.active, ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY)) {
+        });
+        if (!isValidGeneratedEmbeddingVector(embedding, ANSWERLATTICE_EMBEDDING_OUTPUT_DIMENSIONALITY)) {
             throw new Error('Embedding provider returned an invalid vector dimension.');
         }
         const completedAt = Timestamp.now();
@@ -207,22 +201,10 @@ export async function embedStoredAnswerlatticeArticle(params: {
                 throw new Error('Article changed before embedding could be saved.');
             }
             transaction.set(articleRef, {
-                [ANSWERLATTICE_EMBEDDING_VECTOR_FIELD]: FieldValue.vector(vectors.active),
-                ...(vectors.legacy ? {
-                    embedding: FieldValue.vector(vectors.legacy),
-                    embeddingV1CacheVersion: ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.cacheVersion,
-                    embeddingV1SourceHash: claim.sourceHash,
-                } : {}),
+                [ANSWERLATTICE_EMBEDDING_VECTOR_FIELD]: FieldValue.vector(embedding),
                 embeddingStatus: 'embedded',
                 embeddingCacheVersion: ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
                 embeddingSourceHash: claim.sourceHash,
-                embeddingV2CacheVersion: ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
-                embeddingV2SourceHash: claim.sourceHash,
-                embeddingVersion: 'v2',
-                ...(current.embedding && !current.embeddingV1CacheVersion && !vectors.legacy ? {
-                    embeddingV1CacheVersion: ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.cacheVersion,
-                    embeddingV1SourceHash: claim.sourceHash,
-                } : {}),
                 embeddingRun: {
                     id: runId,
                     status: 'completed',
@@ -239,7 +221,7 @@ export async function embedStoredAnswerlatticeArticle(params: {
             reused: false,
             scope,
             sourceHash: claim.sourceHash,
-            vectorDimensions: vectors.active.length,
+            vectorDimensions: embedding.length,
         };
     } catch (error) {
         const failedAt = Timestamp.now();

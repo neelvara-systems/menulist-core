@@ -5,6 +5,8 @@
 **Target Feature:** decision-intelligence  
 **Status:** Historical logic verification evidence; not current launch certification
 
+> **Superseded runtime authority (July 16, 2026):** Use `decision-intelligence_spec.md`, `decision-intelligence_impl.md`, and `decision-intelligence_verification-2026-07-16.md`. The formulas, line references, scheduler/callable scope, and public-reason examples below are retained only as historical evidence.
+
 > **Current release boundary (July 2, 2026):** This logic-verification report preserves January/May 2026 source evidence only. It is not current release approval. Current Decision Intelligence approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:functions-deploy-preflight`, scoped scheduler deploy evidence, current decision-block scoring checks, browser/mobile customer-menu QA, public cache/deploy evidence, target deploy evidence, and production-host smoke.
 
 ---

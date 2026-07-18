@@ -108,7 +108,6 @@ export const metadata: Metadata = {
 export const viewport = {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1,
     themeColor: [
         { media: '(prefers-color-scheme: light)', color: ANSWERLATTICE_LIGHT_THEME_COLOR },
         { media: '(prefers-color-scheme: dark)', color: ANSWERLATTICE_DARK_THEME_COLOR },

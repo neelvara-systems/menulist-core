@@ -1,4 +1,3 @@
-import { InfoCircleOutlined } from '@ant-design/icons';
 import { IMAGE_GENERATION_STYLES } from '@constant/AI';
 import useDeviceType from '@hook/useDeviceType';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
@@ -23,7 +22,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const selectedBusinessData = getImageViewTypeForBusiness(storeDetails?.businessType, storeDetails?.businessCategory);
     const [showStyleSelector, setShowStyleSelector] = useState(false)
-    const [useSmartDefaults, setUseSmartDefaults] = useState(true)
+    const [useRecommendedDefaults, setUseRecommendedDefaults] = useState(true)
 
     const getSkeletonDimensions = (aspectRatio: string | undefined, baseSize = 120) => {
         if (!aspectRatio) return { width: baseSize, height: baseSize }; // Default to square
@@ -80,28 +79,28 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                             size="small"
                             style={{
                                 width: '100%',
-                                background: useSmartDefaults ? token.colorPrimaryBg : token.colorBgContainer,
-                                border: `1px solid ${useSmartDefaults ? token.colorPrimary : token.colorBorder}`
+                                background: useRecommendedDefaults ? token.colorPrimaryBg : token.colorBgContainer,
+                                border: `1px solid ${useRecommendedDefaults ? token.colorPrimary : token.colorBorder}`
                             }}
                         >
                             <Flex justify="space-between" align="center">
                                 <Flex align="center" gap={8}>
-                                    <LuSparkles style={{ color: useSmartDefaults ? token.colorPrimary : token.colorTextSecondary }} />
+                                    <LuSparkles style={{ color: useRecommendedDefaults ? token.colorPrimary : token.colorTextSecondary }} />
                                     <Flex vertical>
-                                        <Typography.Text strong>Use Smart Defaults</Typography.Text>
+                                        <Typography.Text strong>Use Recommended Defaults</Typography.Text>
                                         <Typography.Text type="secondary" style={{ fontSize: 12 }}>
                                             We&apos;ll pick the best settings for your business type
                                         </Typography.Text>
                                     </Flex>
                                 </Flex>
                                 <Switch
-                                    checked={useSmartDefaults}
-                                    onChange={setUseSmartDefaults}
+                                    checked={useRecommendedDefaults}
+                                    onChange={setUseRecommendedDefaults}
                                 />
                             </Flex>
                         </Card>
 
-                        {!useSmartDefaults && (
+                        {!useRecommendedDefaults && (
                             <>
                                 <Flex gap={4} vertical style={{ width: '100%' }} justify='flex-start' align='start' >
                                     <Typography.Text type='secondary'>Styles*:</Typography.Text>
@@ -168,7 +167,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                     <Flex align="center" gap={4}>
                                         <Typography.Text type='secondary' italic style={{ fontSize: 12 }}>Colors</Typography.Text>
                                         <Tooltip title="Pick a background color for the generated image. Disabled if Transparent Background is enabled.">
-                                            <InfoCircleOutlined style={{ color: '#888' }} />
+                                            <LuBadgeInfo style={{ color: '#888' }} />
                                         </Tooltip>
                                     </Flex>
                                     <Flex gap={16} justify='flex-start' align={isMobile ? 'flex-start' : 'center'} style={{ width: '100%' }} vertical={isMobile}>
@@ -178,7 +177,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                                     checked={generationConfig.transparentBg || false}
                                                     onChange={e => setGenerationConfig({ ...generationConfig, transparentBg: e.target.checked })}
                                                 >
-                                                    Transparent Background <InfoCircleOutlined style={{ color: '#888', marginLeft: 4 }} />
+                                                    Transparent Background <LuBadgeInfo style={{ color: '#888', marginLeft: 4 }} />
                                                 </Checkbox>
                                             </Tooltip>
                                         </Flex>
@@ -186,7 +185,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                         <Flex justify='flex-start' align='center' style={{ width: '100%' }}>
                                             <Tooltip title="Pick a background color for the generated image. Disabled if Transparent Background is enabled.">
                                                 <Typography.Text style={{ fontSize: 12, width: '90px', color: generationConfig.transparentBg ? token.colorTextDescription : token.colorTextBase }} type='secondary'>
-                                                    Background Color <InfoCircleOutlined style={{ color: '#888', marginLeft: 4 }} />
+                                                    Background Color <LuBadgeInfo style={{ color: '#888', marginLeft: 4 }} />
                                                 </Typography.Text>
                                             </Tooltip>
                                             <ColorPicker
@@ -204,7 +203,7 @@ const BatchImageGenerationView: React.FC<BatchImageGenerationViewProps> = ({ gen
                                         <Flex justify='flex-start' align='center' style={{ width: '100%' }}>
                                             <Tooltip title="Pick a foreground color for the generated image (e.g., for text or main elements).">
                                                 <Typography.Text style={{ fontSize: 12, width: '90px' }}>
-                                                    Foreground Color <InfoCircleOutlined style={{ color: '#888', marginLeft: 4 }} />
+                                                    Foreground Color <LuBadgeInfo style={{ color: '#888', marginLeft: 4 }} />
                                                 </Typography.Text>
                                             </Tooltip>
                                             <ColorPicker

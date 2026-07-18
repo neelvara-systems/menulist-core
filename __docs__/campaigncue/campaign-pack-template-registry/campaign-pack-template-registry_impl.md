@@ -30,6 +30,9 @@ The flag gates owner-visible template surfaces. Seed/admin tooling exists separa
 | `src/lib/validation/campaigncuePackTemplateSchemas.ts` | Zod schemas for platform summaries, workspace saves, and payload references. |
 | `src/lib/campaigncue/pack-templates/category.ts` | Resolve category from business type/category using shared business type helpers. |
 | `src/lib/campaigncue/pack-templates/catalog.ts` | Load one platform category catalog, filter/search in memory, and hydrate payload refs. |
+| `src/lib/campaigncue/pack-templates/templateScopeBoundary.ts` | Bind catalog/index identity, template type, quality tier, payload identity, and exact owned artifact paths. |
+| `src/lib/campaigncue/pack-templates/editorDocumentBoundary.ts` | Reduce saved documents to reusable layout truth and hydrate only current approved business facts. |
+| `src/lib/campaigncue/pack-templates/factSlotReadiness.ts` | Deterministically resolve supported fact slots from current Business Brain, active/fresh source evidence, and rights-confirmed assets. Unknown slot types remain unresolved. |
 | `src/lib/campaigncue/pack-templates/workspaceTemplates.ts` | Workspace saved-template DAL. |
 | `src/lib/campaigncue/pack-templates/applyTemplate.ts` | Convert a selected template into CampaignCue pack intent, editor document, handoff fields, and missing-input checks. |
 | `src/components/templates/campaigncue/PackTemplatePicker.tsx` | Owner UI for recommended pack templates, CampaignCue output choices, local search, and explicit save. |
@@ -63,18 +66,18 @@ The `_2` suffix is reserved for overflow docs. It must not be read during the de
 ## Storage Shape
 
 ```text
-campaigncue/templates/platform/{businessCategory}/{templateId}/pack-template.json
-campaigncue/templates/platform/{businessCategory}/{templateId}/editor-document.json
-campaigncue/templates/platform/{businessCategory}/{templateId}/preview.webp
-campaigncue/templates/workspaces/{workspaceId}/{templateId}/pack-template.json
-campaigncue/templates/workspaces/{workspaceId}/{templateId}/editor-document.json
-campaigncue/templates/workspaces/{workspaceId}/{templateId}/preview.webp
+campaigncue/templates/platform/{businessCategory}/{templateId}/pack-template-{contentHash}.json
+campaigncue/templates/platform/{businessCategory}/{templateId}/editor-document-{contentHash}.json
+campaigncue/templates/platform/{businessCategory}/{templateId}/preview-{contentHash}.webp
+campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/pack-template.json
+campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/editor-document.json
+campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{saveId}/preview.webp
 ```
 
 If one shared payload is used by multiple category summaries, the summaries can point to:
 
 ```text
-campaigncue/templates/platform/shared/{templateId}/pack-template.json
+campaigncue/templates/platform/shared/{templateId}/pack-template-{contentHash}.json
 ```
 
 Only metadata is duplicated across category docs. Payloads do not need to be duplicated.
@@ -181,7 +184,9 @@ No CampaignCue-specific category enum may diverge from `BUSINESS_CATEGORIES`. Ca
 | Shared Creative Editor | Do not import template DAL directly; CampaignCue adapter owns save/load callbacks and opens saved layouts with Campaign Pack editor context. |
 | CueLayers | Offer "Save as reusable pack base" only after source preservation and safety checks. |
 
-Runtime behavior: selecting a template hydrates its Storage payload only on click. The CampaignCue output picker filters loaded summaries locally by output types, channels, template kind, required facts, and tags. The output picker includes `source_to_channel_pack` as a recommended intent with `whatsapp_message`, `google_update`, `instagram_square`, `poster_pdf`, `staff_share_text`, and `manual_task` output types. That intent turns the current source-backed campaign cue into a bounded manual pack through the existing campaign-create path; it does not force-select one individual source update, and it does not create blog/podcast/video repurposing, autopilot distribution, direct posting, posting-time optimization, provider analytics, or a new persistence path. The output picker includes `campaign_proof_deck` as a handoff intent with `campaign_proof_deck_pdf` output type, meaning proof decks are review artifacts inside a CampaignCue pack rather than a generic design-format library. It also includes `local_creator_test_brief` as a handoff intent with `creator_script`, `reel_brief`, and `manual_task` output types. That intent produces a creator-fit checklist, lightweight creator brief, 3-test plan, flat-fee boundary, disclosure, consent, CTA, and result prompt through the existing campaign pack path; it does not create a creator marketplace, roster, contract, payment, or provider workflow. If the template has a saved neutral editor document, CampaignCue opens it in the shared editor with `pack_template` context so task-based editing, protected facts, output/print formats, Trust Center status, manual delivery cards, result memory, and mobile-review messaging stay visible. The selected output intent is carried into that editor context as an owner task, output/print format focus, title/subtitle context, and delivery instruction, so choosing "source pack", "WhatsApp", "Google", "print", "proof deck", "creator brief", or another pack type is not lost when the template opens directly in the editor. If there is no saved editor document and required fact slots are missing, the owner is routed to inputs. If no required template facts are missing, CampaignCue creates a campaign pack through the existing guarded campaign API using the template title, brief, and selected output-intent channels; the server still applies the normal decision gate and trust report. Workspace-saved templates include Brand Playbook style tags and search tokens from saved owner fields only.
+Runtime behavior: selecting a template hydrates its Storage payload only on click. The CampaignCue output picker filters loaded summaries locally by output types, channels, template kind, required facts, and tags. The output picker includes `source_to_channel_pack` as a recommended intent with `whatsapp_message`, `google_update`, `instagram_square`, `poster_pdf`, `staff_share_text`, and `manual_task` output types. That intent turns the current source-backed campaign cue into a bounded manual pack through the existing campaign-create path; it does not force-select one individual source update, and it does not create blog/podcast/video repurposing, autopilot distribution, direct posting, posting-time optimization, provider analytics, or a new persistence path. The output picker includes `campaign_proof_deck` as a handoff intent with `campaign_proof_deck_pdf` output type, meaning proof decks are review artifacts inside a CampaignCue pack rather than a generic design-format library. It also includes `local_creator_test_brief` as a handoff intent with `creator_script`, `reel_brief`, and `manual_task` output types. That intent produces a creator-fit checklist, lightweight creator brief, 3-test plan, flat-fee boundary, disclosure, consent, CTA, and result prompt through the existing campaign pack path; it does not create a creator marketplace, roster, contract, payment, or provider workflow. Required fact slots are checked before any saved editor layout can open. When none remain, CampaignCue may open a saved neutral layout in the shared editor with `pack_template` context so task-based editing, protected facts, output/print formats, Trust Center status, manual delivery cards, result memory, and mobile-review messaging stay visible. The selected output intent is carried into that editor context as an owner task, output/print format focus, title/subtitle context, and delivery instruction. If required fact slots remain, the owner is routed to inputs even when a saved layout exists. If no saved editor document exists and no required template facts remain, CampaignCue creates a campaign pack through the existing guarded campaign API; the server still applies the normal decision gate and trust report. Workspace-saved templates include Brand Playbook style tags and search tokens from saved owner fields only.
+
+Fact readiness is deterministic and conservative. Business name, locality, approved contacts, available catalog items/services, confirmed prices, current capacity signals, active/fresh source evidence, and rights-confirmed assets can satisfy their matching slots. Unknown slot types and unsupported claim/date/rights evidence remain unresolved. The runtime does not ask a model whether a fact exists.
 
 If the owner chooses an output intent without selecting a template, CampaignCue creates a pack with the intent's bounded channel set through the same guarded campaign API. The `custom_size` intent opens the existing blank shared-editor flow instead of creating a new format marketplace or new persistence path.
 
@@ -204,10 +209,11 @@ Admin script responsibilities:
 1. Validate every category id against `BUSINESS_CATEGORIES`.
 2. Reject catalog docs above the configured soft byte limit.
 3. Reject summaries without payload paths.
-4. Upload Storage payloads first.
-5. Write category catalog doc after payload upload succeeds.
-6. Preserve `schemaVersion`, `updatedAt`, and `updatedBy`.
-7. Produce a dry-run cost summary before writes.
+4. Write content-hashed immutable Storage payloads first with a create-only generation precondition; reruns reuse an existing hash object instead of overwriting it.
+5. Switch all affected category catalog docs in one Firestore batch after every payload upload succeeds.
+6. Require explicit `CAMPAIGNCUE_FIREBASE_PROJECT_ID` and `CAMPAIGNCUE_FIREBASE_STORAGE_BUCKET`; honor the optional named database id.
+7. Preserve `schemaVersion`, `updatedAt`, and `updatedBy`.
+8. Produce a dry-run cost summary before writes.
 
 ## Workspace Saved Templates
 
@@ -219,7 +225,7 @@ campaigncueWorkspaces/{workspaceId}/packTemplateIndexes/default
 
 The index stores summary metadata only. The full reusable pack/editor document lives in Storage. Saving is explicit and should never happen during preview, open, download, or autosave.
 
-When the owner saves a reusable pack from an active non-CueLayers editor session, CampaignCue stores the current `CreativeEditorDocument` as the optional editor document artifact. CueLayers reuse documents are not automatically saved as generic pack templates because the original image preservation and safety metadata belong to the CueLayers source package.
+When the owner saves a reusable pack from an active non-CueLayers editor session, CampaignCue derives an optional layout-only `CreativeEditorDocument`. It removes image layers, source references, campaign/output identifiers, visible watermark state, logo URLs, old brand names/voice, and old text or QR values. Text and QR values become deterministic slots; current Business Brain values are applied only when the owner reopens the layout. If no reusable non-image layout survives, the pack is saved without an editor document. CueLayers reuse documents are not automatically saved as generic pack templates because the original image preservation and safety metadata belong to the CueLayers source package.
 
 Workspace template Storage cleanup is best-effort but not silent. If a save uploads new payload/editor/preview artifacts and the index write later fails, CampaignCue attempts to delete only newly-created artifacts that do not belong to the previous saved template record. If an owner deletes a saved template, CampaignCue first removes the visible index record and then attempts to delete the payload/editor/preview artifacts. Missing Storage objects are treated as already-cleaned state, while unexpected delete failures log bounded `campaigncue_workspace_template_storage_cleanup_failed` diagnostics with cleanup target plus storage path, template id, and workspace id presence-length metadata only.
 
@@ -232,7 +238,9 @@ Workspace template Storage cleanup is best-effort but not silent. If a save uplo
 | Storage platform payloads | Owner read allowed through scoped path/rules; writes admin only. |
 | Storage workspace payloads | Read/write only for workspace users. |
 | Template application | Recompute trust/missing inputs on server before campaign pack creation. |
-| URL persistence | No signed URLs, external URLs, or base64 payloads in saved template metadata. |
+| Output intent | Accept only a registry id, resolve requirements/channels server-side, reject editor-only intents on the campaign API, and persist intent/output provenance in the existing campaign pack. |
+| URL persistence | No signed URLs, external URLs, or base64 payloads in saved template metadata or layout artifacts. |
+| Artifact admission | Catalog, index, payload id/schema, and exact owned Storage paths must agree before hydration. Downloads are size-bounded by the Storage SDK. |
 
 ## Verification
 
@@ -245,6 +253,11 @@ Add a verifier that checks:
 - platform default load reads one category doc,
 - search/filter stays in memory,
 - output-intent filtering stays in memory,
+- fact-only similarity cannot admit an incompatible template kind,
+- output-intent requirement alternatives are evaluated deterministically in browser and server,
+- output-intent ids, canonical channels, compatible decision goals, source-template provenance, and requested output types survive campaign persistence,
+- `reuse_old_asset` opens CueLayers and `custom_size` opens the shared editor instead of creating a normal campaign,
+- picker actions are disabled while an open/create request is in flight,
 - full payloads are Storage-backed,
 - saved editor documents reopen with `pack_template` context rather than blank editor context,
 - saved templates are explicit only,

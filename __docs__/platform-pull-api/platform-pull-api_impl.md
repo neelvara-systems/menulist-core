@@ -40,6 +40,7 @@ API Route: /api/public/v1/business OR /api/public/v1/menu
   ├── Reject inactive/deleted/platform-blocked stores or platform-blocked tenants
   ├── Abuse logging (IP, user-agent, storeId)
   ├── Menu endpoint resolves default project from platformSummary/projects_{storeId}
+  ├── Reject summary project IDs whose embedded tenant/store scope differs from the admitted API-key target
   ├── Build response with schemaVersion + generatedAt
   ├── ETag: check If-None-Match → 304 Not Modified if unchanged
   ├── Unexpected route failures log bounded diagnostics only

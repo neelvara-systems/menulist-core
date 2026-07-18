@@ -1,7 +1,8 @@
 # Menu Health Monitor — Product Specification
 
-**Status:** 📝 DOCUMENTED  
+**Status:** ✅ IMPLEMENTED — gated by `ENABLE_MENU_HEALTH_MONITOR`
 **Created:** February 20, 2026  
+**Last Updated:** July 16, 2026
 **Audience:** CEO, PM, Non-developers
 
 ---
@@ -16,10 +17,7 @@
 
 ## Problem Statement
 
-Currently, when an owner publishes their menu:
-1. The publish pipeline runs (Firestore write, cache invalidation, etc.)
-2. There is **no verification** that the public menu actually loads correctly
-3. If something breaks (CDN issue, image failure, cache mismatch), **nobody knows** until a customer or owner reports it
+The implemented desktop and mobile design-publish surfaces hand the routed public menu URL to an authenticated verification callable after the project write and cache invalidation are acknowledged. Verification is internal, feature-flagged, and never converts an already acknowledged owner publish into a failure toast.
 
 At 20-50 stores, one broken menu during lunch rush = trust damage that's hard to recover from.
 
@@ -38,7 +36,7 @@ At 20-50 stores, one broken menu during lunch rush = trust damage that's hard to
 ## Scope
 
 ### In-Scope
-- Post-publish verification (runs after every publish)
+- Post-publish verification after explicit desktop/mobile design publish while the feature flag is enabled
 - Store health status field on store document
 - Alert trigger on failure detection
 - Admin visibility of store health
@@ -46,7 +44,7 @@ At 20-50 stores, one broken menu during lunch rush = trust damage that's hard to
 ### Out-of-Scope (NOT building)
 - Periodic menu load testing (cron) — Use external tools if needed
 - Last Known Good Version fallback — CDN edge cache handles transient failures
-- Auto-retry/self-healing — Alert + manual fix is safer
+- Automatic mutation retry — platform recovery refreshes already-correct truth; it does not invent or overwrite menu content
 - Customer-visible health indicators — Internal ops only
 
 ---
@@ -59,8 +57,8 @@ At 20-50 stores, one broken menu during lunch rush = trust damage that's hard to
 **So that** I know about failures before owners or customers discover them.
 
 **Acceptance Criteria:**
-- After every publish, system checks public menu URL within 2 minutes
-- System verifies: HTTP 200, non-empty response, at least 1 category exists
+- After an explicit design publish, the client starts verification without blocking owner success
+- System verifies: admitted canonical target, HTTP success, and a bounded non-empty response body
 - On failure: store health status set to FAILED, alert triggered
 - On success: store health status set to OK (silent, no alert)
 
@@ -82,8 +80,6 @@ At 20-50 stores, one broken menu during lunch rush = trust damage that's hard to
 |-------|-----------------|---------------|
 | HTTP 200 | Menu page loads | Page down or routing broken |
 | Non-empty body | Content renders | Blank page served to customers |
-| Category count >0 | Menu data exists | Empty menu (data not synced) |
-| Sample image loads | Images accessible | Broken images (CDN or storage issue) |
 
 ---
 
@@ -93,9 +89,8 @@ At 20-50 stores, one broken menu during lunch rush = trust damage that's hard to
 |------|------------|----------|
 | `MENU_HTTP_FAIL` | Public menu URL returns non-200 | P0 |
 | `MENU_EMPTY` | Page loads but no menu content | P0 |
-| `IMAGE_FAIL` | Menu items have broken images | P1 |
-| `PUBLISH_WRITE_FAIL` | Firestore write during publish failed | P0 |
-| `CACHE_STALE` | CDN serving old version after publish | P1 |
+| `MENU_TARGET_REJECTED` | URL is not an admitted public HTTPS target | P0 |
+| `VERIFICATION_ERROR` | Bounded verification runtime failure | P1 |
 
 ---
 

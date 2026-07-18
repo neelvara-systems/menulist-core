@@ -2,6 +2,8 @@
 
 **Parent Guide:** [authentication-complete-guide.md](./authentication-complete-guide.md)
 
+> **Historical reference:** Code samples and claim shapes in this companion guide may be stale. Use [Auth and Onboarding](../auth-onboarding/README.md), [firebase-auth-sync.md](./firebase-auth-sync.md), and current source for implemented behavior.
+
 ---
 
 ## Part 2: Firebase Auth Deep Dive

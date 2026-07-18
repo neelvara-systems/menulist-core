@@ -5,8 +5,8 @@
 > **Product:** MenuList
 > **Status:** Deterministic core and guarded conversation planner implemented; not current launch certification
 > **Release boundary:** Current approval requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:ai-menu-manager`, authenticated desktop/mobile Menu Manager QA, supported-adapter smoke behind AMM feature flags, public website/help copy review, target deploy evidence, and production-host smoke.
-> **Last Updated:** July 10, 2026
-> **Version:** 1.3
+> **Last Updated:** July 16, 2026
+> **Version:** 1.5
 
 ---
 
@@ -38,7 +38,7 @@ It is a bounded conversational operations agent over real MenuList actions, not 
 
 AMM can also answer MenuList-domain questions from the loaded selected menu context. Known diagnostics and recommendations use deterministic `system_context_answer` cards with no provider call or extra Firestore read. When deterministic routing cannot understand an in-domain message, the guarded cloud planner may receive a capped selected-menu packet and return a read-only router outcome or a prepare-action intent. Provider output never mutates truth and is never accepted as an executable patch.
 
-One owner message may prepare up to four independent deterministic project updates, for example `Masala Tea 20 and Cold coffee sold out`. AMM accepts the split only when every part independently resolves to a registered client-project proposal and the patches do not touch the same field. The cards share a command group and expose **Approve all** on desktop and MobileShell. Approval applies the whitelisted patches to one cloned project, performs one existing project save, and records all compact receipts in one session write. Immediate duplicate submits return the pending cards from loaded state without another write or planner call.
+One owner message may prepare up to four independent deterministic project updates, for example `Masala Tea 20 and Cold coffee sold out`. AMM accepts the split only when every part independently resolves to a registered client-project proposal and the patches do not touch the same field. The cards share a command group and expose **Approve all** on desktop and MobileShell. Approval requires the complete same-scope group, applies the whitelisted patches to one cloned project, performs one existing project save, and records all compact receipts in one session write. The save transaction rejects the card if the prepared project version no longer matches current project truth. Immediate duplicate submits return the pending cards from loaded state without another write or planner call.
 
 One-sentence product definition:
 
@@ -116,10 +116,10 @@ Feedback link and feedback QR requests are dedicated browser-local export cards,
 
 | Existing system | AMM use |
 | --- | --- |
-| `updateProject()` customer-truth invariant | AMM project/menu writes must preserve the existing DAL path and side effects. Evidence: `src/database/projects/index.ts:945` |
-| Public cache invalidation | Approved public-menu changes must revalidate menu, owner Business Assistant cache, and screen content version. Evidence: `src/lib/cache/publicClientCache.ts:77` |
-| Menu extraction jobs | AMM import/upload cards reuse the protected extraction job API. Evidence: `src/app/api/menu-extraction/jobs/route.ts:473` |
-| Existing image generation API | AMM generated-image cards reuse existing safe mode, rate limit, capacity, and accounting flow. Evidence: `src/app/api/image-generation/route.ts:24` |
+| `updateProject()` customer-truth invariant | AMM project/menu writes must preserve the existing DAL path and side effects. Evidence: `src/database/projects/index.ts:1626`, `src/database/projects/index.ts:1970` |
+| Public cache invalidation | Approved public-menu changes must revalidate menu, owner Business Assistant cache, and screen content version. Evidence: `src/lib/cache/publicClientCache.ts:58` |
+| Menu extraction jobs | AMM import/upload cards reuse the protected extraction job API. Evidence: `src/app/api/menu-extraction/jobs/route.ts:537` |
+| Existing image generation API | AMM generated-image cards reuse existing safe mode, rate limit, capacity, and accounting flow. Evidence: `src/app/api/image-generation/route.ts:65` |
 | Menu Observation Layer | AMM should not create a second noisy change log; approved menu writes flow into existing MOL where applicable. Evidence: `src/database/menuChangeLog/index.ts:1` |
 | Current menu data shape | AMM edits `Project.files[].extractedData.data.categories/items`, not a new Menu Graph collection. Evidence: `src/components/templates/main-app/projects/types/extractedData.types.ts:149` |
 | Existing design settings | Theme/style commands map to `config.design` and menu design presets. Evidence: `src/components/templates/main-app/projects/types/theme.types.ts:16` |
@@ -231,7 +231,9 @@ For deterministic selected-project actions, prefer the client DAL over AMM API r
 
 Normal price, availability, visibility, featured section, note, and design preset cards are stored in the compact `aiMenuManagerSessions/{sessionId}` daily doc as capped pending operations. They do not create one proposal document per card. Approval applies the stored patch through the existing `updateProject()` path and then writes the compact receipt back to the same session doc.
 
-Command submit, completion, and cancel reuse the compact session already loaded in the open AMM screen and write the updated daily session doc directly. They do not read a proposal doc or transaction-read the session again for normal deterministic cards.
+Command submit, completion, and cancel use the compact session already loaded in the open AMM screen for context, then transaction-read that same session before merging the write. This preserves concurrent cards, receipts, messages, and counters. Normal deterministic cards still do not read a proposal document.
+
+If a new UTC day begins while a selected menu still has unfinished cards, the inbox performs one protected, tenant/store/project-scoped, indexed `limit(1)` recovery query and continues that older session until its pending work is cleared. It does not scan historical sessions or create a second active work stream. Compact writes also enforce a conservative 700 KB application budget: old artifact pointers, receipts, and messages are trimmed first; pending cards are never silently removed.
 
 ---
 
@@ -242,3 +244,5 @@ Command submit, completion, and cancel reuse the compact session already loaded 
 | 1.0 | June 17, 2026 | Initial docs-first contract created from the captured ChatGPT conversation, current Codex planning discussion, and MenuList codebase cross-check. |
 | 1.1 | June 18, 2026 | Deterministic project actions moved to the client DAL compact-session model to avoid proposal-doc reads/writes for normal owner operations. |
 | 1.3 | July 10, 2026 | Added guarded unresolved-language planning, unified composer tools, inline compact replies/receipts, loaded-project status, and truthful voice gating without changing the compact deterministic write model. |
+| 1.4 | July 15, 2026 | Added transaction-current stale-project protection for desktop/mobile and linked outlets, complete-group admission before grouped saves, server-fallback counter preservation, and native Firestore TTL configuration for 35-day sessions and 45-day proposals. |
+| 1.5 | July 16, 2026 | Added bounded next-day recovery for unresolved cards, canonical pending lookup metadata, a 700 KB compact-session write guard, rules/index coverage, emulator verification, and corrected transaction-read cost documentation. |

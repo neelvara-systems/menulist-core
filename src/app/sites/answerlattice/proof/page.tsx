@@ -5,10 +5,14 @@ import AnswerlatticeHeader from '../components/Header';
 import AnswerlatticeLink from '../components/AnswerlatticeLink';
 import AnswerlatticePageStructuredData from '../components/PageStructuredData';
 import PageProofStrip from '../components/PageProofStrip';
+import {
+    ANSWERLATTICE_PROOF_EXAMPLES,
+    getAnswerlatticeVerifiedProofEntries,
+} from '@/data/answerlattice/proofEvidence';
 
 export const metadata: Metadata = {
     title: 'Proof Pack',
-    description: 'Example AnswerLattice workloads for founder-led SaaS support: billing, onboarding, releases, errors, approved answers, and support-gap review.',
+    description: 'Clearly labelled AnswerLattice workload examples plus consented customer evidence only when its measurement and public-use approval are complete.',
     alternates: { canonical: '/proof' },
 };
 
@@ -23,30 +27,6 @@ function getBasePath(): string {
     } catch { return ''; }
 }
 
-const EXAMPLES = [
-    {
-        label: 'Solo SaaS launch',
-        title: 'Billing and onboarding repeat questions',
-        situation: 'A founder ships an AI-built app with no support team. Early users repeat invoice, import, and invite questions.',
-        answerlattice: 'Map billing, onboarding, and team settings surfaces. Import starter FAQs, support macros, and repeated replies. Install the widget and verify context.',
-        outcome: 'Known questions receive approved answers. Missing answers become review work instead of disappearing into chat history.',
-    },
-    {
-        label: 'Release-heavy product',
-        title: 'Usage limit changes after a launch',
-        situation: 'A product changes limits and users ask from billing, usage, and release pages why behavior changed.',
-        answerlattice: 'Turn changelog entries into affected surfaces, FAQs, and approved-answer review work. Let stale answers and repeated misses surface review items.',
-        outcome: 'The owner sees where support needs review after the release and can approve updated answers before they become official.',
-    },
-    {
-        label: 'Studio workload',
-        title: 'Multiple small apps need the same support pattern',
-        situation: 'A studio launches several SaaS apps and needs repeatable install, surface templates, and safety controls.',
-        answerlattice: 'Reuse quickstarts, starter templates, allowed origins, blocked routes, import packs, and the install verifier for each workspace.',
-        outcome: 'Each product gets its own scoped support layer without hardcoded client assumptions or shared tenant leakage.',
-    },
-];
-
 const METRICS = [
     ['First surfaces', 'Billing, onboarding, team, releases, integrations, errors'],
     ['First content', 'Docs, FAQs, changelog, starter answers, support macros, repeated replies'],
@@ -56,6 +36,7 @@ const METRICS = [
 
 export default function AnswerlatticeProofPage() {
     const basePath = getBasePath();
+    const verifiedProof = getAnswerlatticeVerifiedProofEntries();
 
     return (
         <>
@@ -93,7 +74,7 @@ export default function AnswerlatticeProofPage() {
 
                 <section className="border-t border-white/[0.06] px-6 py-16">
                     <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
-                        {EXAMPLES.map((example) => (
+                        {ANSWERLATTICE_PROOF_EXAMPLES.map((example) => (
                             <article key={example.title} className="rounded-[1.5rem] border border-white/[0.06] bg-[#101028] p-6">
                                 <span className="rounded-full border border-teal-300/20 bg-teal-500/10 px-3 py-1 text-xs font-semibold text-teal-100">
                                     {example.label}
@@ -117,6 +98,26 @@ export default function AnswerlatticeProofPage() {
                         ))}
                     </div>
                 </section>
+
+                {verifiedProof.length > 0 ? (
+                    <section className="border-t border-white/[0.06] px-6 py-16">
+                        <div className="mx-auto max-w-7xl">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-emerald-300">Verified evidence</p>
+                            <h2 className="text-3xl font-bold text-white">Consented customer workloads</h2>
+                            <div className="mt-8 grid gap-5 lg:grid-cols-3">
+                                {verifiedProof.map(entry => (
+                                    <article key={entry.id} className="rounded-[1.5rem] border border-emerald-300/15 bg-emerald-400/[0.04] p-6">
+                                        <span className="text-xs font-semibold text-emerald-200">{entry.publicLabel}</span>
+                                        <h3 className="mt-4 text-xl font-semibold text-white">{entry.outcome}</h3>
+                                        <p className="mt-3 text-sm leading-relaxed text-[#d6d6ef]">{entry.evidenceSummary}</p>
+                                        <p className="mt-4 text-xs leading-relaxed text-[#a0a0c0]">Measured: {entry.measurementMethod}</p>
+                                        <p className="mt-2 text-xs text-[#808099]">Verified {entry.verifiedOn}</p>
+                                    </article>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+                ) : null}
 
                 <section className="border-t border-white/[0.06] px-6 py-16 text-center">
                     <h2 className="text-3xl font-bold text-white">The first proof is operational, not a sales deck.</h2>

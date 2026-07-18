@@ -5,23 +5,28 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getMetadataFieldsForBusiness, MetadataFieldConfig } from '@config/itemMetadataConfig';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
+import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
-import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
+import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
 import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
-import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
+import { MENU_PRICE_TEXT_MAX_LENGTH, normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
-import getNewItemMetadataViaAPI, { mergeGeneratedItemMetadata } from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
+import getNewItemMetadataViaAPI, {
+    mergeGeneratedItemMetadata,
+    prepareNewItemMetadataRequestItem,
+} from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
 import { UserUploadedFileType } from '@type/common';
 import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { removeObjRef } from '@util/utils';
-import { message as antdMessage, Button, Collapse, CollapseProps, Empty, Flex, Input, InputNumber, Modal, Select, Slider, Switch, Tooltip, Typography } from 'antd';
+import { message as antdMessage, Button, Collapse, CollapseProps, Empty, Flex, Input, InputNumber, Modal, Popconfirm, Select, Slider, Switch, Tooltip, Typography } from 'antd';
 import React, { memo, useCallback, useContext, useEffect, useMemo, useState } from 'react'; // Added useCallback
 import { LuCheck, LuClock, LuDownload, LuExternalLink, LuEye, LuFileImage, LuLock, LuPlus, LuShare2, LuSparkles, LuTrendingUp, LuX } from 'react-icons/lu';
 import { ExtractedDataAttribute, ExtractedDataItem, ItemForDropdown, NewItemMetadataAPIParams, Project, ProjectFileType } from '../types';
@@ -29,6 +34,7 @@ import { sanitizeUserInput } from '../utils';
 import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
 import { getBoundedTranslationStringContext, getTranslationLanguageLogContext, getTranslationScopeLogContext, logTranslationFailure } from '../utils/translationDiagnostics';
 import { clearStaleTranslations, translateItem } from '../utils/translationsUtils';
+import { runSingleItemDescriptionGeneration } from './descriptionGeneration.shared';
 import UploadedImagesList from './uploadedImagesList';
 
 const { Text } = Typography;
@@ -67,7 +73,9 @@ const ItemFormView = memo((
         handleAddAttribute,
         handleDeleteAttribute,
         setItemData, // Pass setItemData if category selection is handled here
-        isCategoryLocked // Multi-outlet: lock category for inherited items
+        isCategoryLocked, // Multi-outlet: lock category for inherited items
+        canRetryTranslation,
+        sourceLanguageCode,
     }: {
         modalData: { active: boolean; item: ExtractedDataItem | null, status: 'edit' | 'add' };
         lang: string;
@@ -79,6 +87,8 @@ const ItemFormView = memo((
         handleDeleteAttribute: (attributeId: string) => void;
         setItemData: React.Dispatch<React.SetStateAction<ExtractedDataItem | null>>;
         isCategoryLocked?: boolean;
+        canRetryTranslation?: boolean;
+        sourceLanguageCode: string;
     }
 ) => {
     return (
@@ -140,7 +150,7 @@ const ItemFormView = memo((
             </Flex>}
 
             <Flex gap={8} align='flex-end' justify='flex-end' style={{ width: '100%' }}>
-                {modalData.status == 'edit' && <AIButtonIcon
+                {modalData.status == 'edit' && canRetryTranslation && lang !== sourceLanguageCode && <AIButtonIcon
                     onClick={() => handleRetryTranslation(lang)}
                     tooltip={`Refresh the ${GlobalLanguagesList.find(l => l.code == lang)?.name} translation for this item.`}
                     label={`Refresh ${GlobalLanguagesList.find(l => l.code == lang)?.name} Translation`}
@@ -175,7 +185,8 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     const [isCardWorking, setIsCardWorking] = useState(false);
     const { activeProject } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
     const dispatch = useAppDispatch();
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const { storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const canGenerateDescriptions = userPermissions?.canGenerateDescriptions === true;
 
     // Multi-outlet governance: Determine if fields should be locked
     // Inherited/overridden items have locked brand-critical fields (name, description, images, category)
@@ -207,6 +218,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         [storeDetails?.businessType, storeDetails?.businessCategory],
     );
     const primaryLanguage = selectedLanguages[0] || 'en';
+    const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectData.languages);
 
     useEffect(() => {
         setItemData(modalData.item);
@@ -248,9 +260,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         const description = getLocalizedDraftText(itemData?.description, primaryLanguage);
         const categoryName = getLocalizedDraftText(selectedCategory?.name, primaryLanguage);
         const projectName = getLocalizedDraftText((projectData as any)?.metadata?.name, primaryLanguage);
-        const price = itemData && !(itemData.attributes || []).length && itemData.price
-            ? formatMenuPrice(itemData.price, store?.currencySymbol || '₹')
-            : '';
+        const price = getPublicItemListPriceLabel(itemData, store?.currencySymbol || '₹') || '';
 
         return {
             itemName,
@@ -302,49 +312,42 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         }
     }, [canGenerateSharableCard, isCardWorking, sharableCardInput]);
     const hasMultipleLanguages = selectedLanguages.length > 1;
-    const hasAnyDescription = useMemo(
-        () => Object.values(itemData?.description || {}).some((description) => hasMeaningfulDescription(description)),
-        [itemData?.description]
-    );
+    const sourceDescription = itemData?.description?.[sourceLanguageCode]?.trim() || '';
+    const hasSourceDescription = sourceDescription.length > 0;
+    const manualDescriptionProtected = itemData?.descriptionSource === 'manual'
+        && hasAnyNonEmptyDescription(itemData.description);
     const contentActionCopy = useMemo(() => {
-        if (hasMultipleLanguages) {
-            return hasAnyDescription
-                ? {
-                    label: 'Regenerate Description & Translations',
-                    helper: 'Refreshes the description and translations for this item.',
-                    success: 'Description and translations refreshed.',
-                    failure: 'Failed to refresh description and translations. Please try again.',
-                    unexpected: 'An unexpected error occurred while refreshing description and translations. Please try again.',
-                    validation: 'description and translations',
-                }
-                : {
-                    label: 'Generate Description & Translations',
-                    helper: 'Creates the description and translations for this item.',
-                    success: 'Description and translations generated.',
-                    failure: 'Failed to generate description and translations. Please try again.',
-                    unexpected: 'An unexpected error occurred while generating description and translations. Please try again.',
-                    validation: 'description and translations',
-                };
+        if (hasSourceDescription) {
+            return {
+                label: 'Refresh Descriptions',
+                helper: `Refreshes this item in every menu language. Uses ${CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE} enhancement credit.`,
+                success: 'Descriptions refreshed.',
+                failure: 'Failed to refresh descriptions. Please try again.',
+                unexpected: 'An unexpected error occurred while refreshing descriptions. Please try again.',
+                validation: 'descriptions',
+            };
         }
 
-        return hasAnyDescription
-            ? {
-                label: 'Regenerate Description',
-                helper: 'Refreshes the description for this item.',
-                success: 'Description refreshed.',
-                failure: 'Failed to refresh description. Please try again.',
-                unexpected: 'An unexpected error occurred while refreshing description. Please try again.',
-                validation: 'description',
-            }
-            : {
-                label: 'Generate Description',
-                helper: 'Creates the description for this item.',
-                success: 'Description generated.',
-                failure: 'Failed to generate description. Please try again.',
-                unexpected: 'An unexpected error occurred while generating description. Please try again.',
-                validation: 'description',
+        if (hasMultipleLanguages) {
+            return {
+                label: 'Generate Description & Translations',
+                helper: 'Creates the first description and translations for this item at no credit cost.',
+                success: 'Description and translations generated.',
+                failure: 'Failed to generate description and translations. Please try again.',
+                unexpected: 'An unexpected error occurred while generating description and translations. Please try again.',
+                validation: 'description and translations',
             };
-    }, [hasAnyDescription, hasMultipleLanguages]);
+        }
+
+        return {
+            label: 'Generate Description',
+            helper: 'Creates the first description for this item at no credit cost.',
+            success: 'Description generated.',
+            failure: 'Failed to generate description. Please try again.',
+            unexpected: 'An unexpected error occurred while generating description. Please try again.',
+            validation: 'description',
+        };
+    }, [hasMultipleLanguages, hasSourceDescription]);
 
     const onUploadGeneratedImage = useCallback((imagesToUpload: UserUploadedFileType[]) => {
         if (!itemData) return;
@@ -412,11 +415,13 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     }, [setItemData]); // setItemData is a stable function from useState
 
     const handleRetryTranslation = useCallback(async (language: string) => {
+        const sourceLangCode = getCanonicalProjectSourceLanguage(projectData.languages);
+        if (isInheritedItem || !canGenerateDescriptions || language === sourceLangCode) return;
         dispatch(startLoader("retrying translations"))
         try {
-            const sourceLangCode = getCanonicalProjectSourceLanguage(projectData.languages);
             const sourceLang = GlobalLanguagesList.find(lang => lang.code === sourceLangCode);
             const targetLang = GlobalLanguagesList.find(lang => lang.code === language);
+            if (!sourceLang || !targetLang) throw new Error('Translation language is unavailable.');
             const { updatedItem, message: resultMessage, messageType } = await translateItem(projectData, fileData, targetLang, sourceLang, AI_ACTIONS_TYPES.ITEM_TRANSLATION, itemData);
             setItemData(updatedItem);
             if (messageType && resultMessage) {
@@ -436,7 +441,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         } finally {
             dispatch(stopLoader("retrying translations"))
         }
-    }, [dispatch, projectData, fileData, itemData, setItemData]);
+    }, [canGenerateDescriptions, dispatch, fileData, isInheritedItem, itemData, projectData, setItemData]);
 
     const handleAddAttribute = useCallback(() => {
         const itemCopy = removeObjRef(itemData);
@@ -475,8 +480,13 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
         };
 
         const isDescription = id.includes('description');
+        const isPrice = id === 'price' || id === 'attr_price';
         const InputComponent = isDescription ? Input.TextArea : Input;
-        const props = isDescription ? { autoSize: { minRows: 2, maxRows: 6 }, showCount: true } : {};
+        const props = isDescription
+            ? { autoSize: { minRows: 2, maxRows: 6 }, showCount: true }
+            : isPrice
+                ? { maxLength: MENU_PRICE_TEXT_MAX_LENGTH }
+                : {};
 
         // Multi-outlet: Check if this field is locked for inherited items
         const locked = isFieldLocked(id);
@@ -510,43 +520,75 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
     }, [onChangeValue, isFieldLocked]);
 
     const onGenerateContent = async () => {
+        if (!canGenerateDescriptions) {
+            antdMessage.info('You do not have permission to generate descriptions.');
+            return;
+        }
         if (isFieldLocked('description')) {
             antdMessage.info('Description changes are not enabled for this store.');
             return;
         }
+        if (!itemData) return;
 
         dispatch(startLoader("generating_content"));
         const sourceLanguage = GlobalLanguagesList.find(
             (gl) => gl.code === getCanonicalProjectSourceLanguage(projectData.languages),
         );
-        const targetLanguages = projectData.languages.map(lang => GlobalLanguagesList.find(gl => gl.code === lang));
+        const projectLanguageCodes = projectData.languages?.length
+            ? projectData.languages
+            : sourceLanguage
+                ? [sourceLanguage.code]
+                : [];
+        const targetLanguages = projectLanguageCodes
+            .map(lang => GlobalLanguagesList.find(gl => gl.code === lang))
+            .filter(Boolean);
 
         try {
+            if (!sourceLanguage) {
+                antdMessage.error('The source language is unavailable.');
+                return;
+            }
             // Validate if item name is present in the source language
-            if (!itemData.name[sourceLanguage.code]) {
+            if (!itemData.name[sourceLanguage.code]?.trim()) {
                 antdMessage.error(`Item name in ${sourceLanguage.name} is required to generate ${contentActionCopy.validation}.`);
                 return;
             }
 
+            if (hasSourceDescription) {
+                const descriptionResult = await runSingleItemDescriptionGeneration({
+                    contentLength: getProjectDescriptionContentLength(projectData, storeDetails.businessType, storeDetails.businessCategory),
+                    item: itemData,
+                    projectData,
+                    sourceFile: fileData,
+                    tone: getProjectDescriptionTone(projectData, storeDetails.businessType, storeDetails.businessCategory),
+                });
+                if (descriptionResult.reason === 'manual_protected') {
+                    antdMessage.info('Your manual description was kept unchanged.');
+                    return;
+                }
+                if (descriptionResult.reason) {
+                    antdMessage.error(contentActionCopy.failure);
+                    return;
+                }
+
+                setItemData(descriptionResult.updatedItem);
+                antdMessage.success(contentActionCopy.success);
+                return;
+            }
+
             const payload: NewItemMetadataAPIParams = {
-                item: {
-                    id: itemData.id,
-                    name: itemData.name[sourceLanguage.code],
-                    category: itemData.category,
-                    description: itemData.description?.[sourceLanguage.code] || '',
-                    attributes: (itemData.attributes || []).map(attr => ({
-                        id: attr.id,
-                        name: attr.name?.[sourceLanguage.code],
-                        price: attr.price
-                    }))
-                },
+                item: prepareNewItemMetadataRequestItem(
+                    itemData,
+                    fileData.extractedData?.data?.categories || [],
+                    sourceLanguage.code,
+                ),
                 targetLang: targetLanguages as any,
                 sourceLang: sourceLanguage as any,
                 projectId: projectData.projectId,
                 fileId: fileData.uid,
                 contentLength: getProjectDescriptionContentLength(projectData, storeDetails.businessType, storeDetails.businessCategory),
                 tone: getProjectDescriptionTone(projectData, storeDetails.businessType, storeDetails.businessCategory),
-                businessType: storeDetails.businessType
+                ...(storeDetails.businessType?.trim() ? { businessType: storeDetails.businessType.trim().slice(0, 100) } : {}),
             }
             const result = await getNewItemMetadataViaAPI(payload)
             if (result) {
@@ -589,6 +631,27 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             }
         }
 
+        const normalizedItemPrice = normalizeOptionalMenuPrice(itemData.price);
+        if (!normalizedItemPrice.success) {
+            antdMessage.error(normalizedItemPrice.error || 'Invalid price format.');
+            return;
+        }
+        const normalizedAttributes: ExtractedDataAttribute[] = [];
+        for (let index = 0; index < (itemData.attributes || []).length; index += 1) {
+            const attribute = itemData.attributes[index];
+            const normalizedPrice = normalizeOptionalMenuPrice(attribute.price);
+            if (!normalizedPrice.success) {
+                antdMessage.error(`Option ${index + 1}: ${normalizedPrice.error || 'Invalid price format.'}`);
+                return;
+            }
+            normalizedAttributes.push({ ...attribute, price: normalizedPrice.data || '' });
+        }
+        const normalizedItemData = {
+            ...itemData,
+            price: normalizedItemPrice.data || '',
+            attributes: normalizedAttributes,
+        };
+
         // Track ownerBoost changes (Authority Maturation Doctrine)
         const originalItem = modalData.item;
         if (modalData.status === 'edit' && originalItem) {
@@ -607,12 +670,18 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
 
         const fileCopy = removeObjRef(fileData);
 
-        // Translation drift protection: if primary language text changed,
+        // Translation drift protection: if canonical English source text changed,
         // clear stale translations so they get retranslated instead of showing wrong data
-        let finalItem = itemData;
+        let finalItem: ExtractedDataItem = normalizedItemData;
         if (modalData.status === 'edit' && modalData.item && projectData.languages?.length > 1) {
-            const primaryLang = projectData.languages[0];
-            finalItem = clearStaleTranslations(modalData.item, itemData, primaryLang, projectData.languages);
+            const primaryLang = getCanonicalProjectSourceLanguage(projectData.languages);
+            finalItem = clearStaleTranslations(
+                modalData.item,
+                normalizedItemData,
+                primaryLang,
+                projectData.languages,
+                { preserveGeneratedDescriptionTranslations: itemData.descriptionSource === 'ai' },
+            );
         }
 
         if (modalData.status == 'edit') {
@@ -640,6 +709,8 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                     handleDeleteAttribute={handleDeleteAttribute}
                     setItemData={setItemData}
                     isCategoryLocked={isFieldLocked('category')}
+                    canRetryTranslation={canGenerateDescriptions && !isInheritedItem}
+                    sourceLanguageCode={getCanonicalProjectSourceLanguage(selectedLanguages)}
                 />
             )
         })) : [];
@@ -655,7 +726,7 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
             )
         });
         return items;
-    }, [itemData, selectedLanguages, categoriesList, renderEditableContent, handleRetryTranslation, handleAddAttribute, handleDeleteAttribute, setItemData, projectData, onProjectDataUpdate, onUploadGeneratedImage, isFieldLocked, openAddImageModal]);
+    }, [canGenerateDescriptions, categoriesList, handleAddAttribute, handleDeleteAttribute, handleRetryTranslation, isFieldLocked, isInheritedItem, itemData, onProjectDataUpdate, onUploadGeneratedImage, openAddImageModal, projectData, renderEditableContent, selectedLanguages, setItemData]);
 
     return (
         <Modal
@@ -680,12 +751,34 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                 <Button disabled={isCardWorking} icon={<LuDownload />} onClick={handleDownloadCard}>Download card</Button>
                             </>
                         ) : null}
-                        <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label={contentActionCopy.label} />
+                        {canGenerateDescriptions && !manualDescriptionProtected ? (
+                            hasSourceDescription ? (
+                                <Popconfirm
+                                    cancelText="Cancel"
+                                    description={`Uses ${CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE} enhancement credit. Your current generated descriptions will be replaced.`}
+                                    okText="Refresh descriptions"
+                                    onConfirm={onGenerateContent}
+                                    title="Refresh this item's descriptions?"
+                                >
+                                    <span>
+                                        <AIButtonIcon type="default" icon={<LuSparkles />} label={contentActionCopy.label} />
+                                    </span>
+                                </Popconfirm>
+                            ) : (
+                                <AIButtonIcon type="default" icon={<LuSparkles />} onClick={onGenerateContent} label={contentActionCopy.label} />
+                            )
+                        ) : null}
                         <Button type="primary" icon={<LuCheck />} onClick={onSave} >Save</Button>
                     </Flex>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        {contentActionCopy.helper}
-                    </Text>
+                    {manualDescriptionProtected ? (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Manual descriptions are protected. Use the language controls to refresh a translation.
+                        </Text>
+                    ) : canGenerateDescriptions ? (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {contentActionCopy.helper}
+                        </Text>
+                    ) : null}
                 </Flex>
             </>}
             width={600}
@@ -978,6 +1071,8 @@ const EditItemModal: React.FC<EditItemModalProps> = ({ modalData, onClose, selec
                                     handleDeleteAttribute={handleDeleteAttribute}
                                     setItemData={setItemData}
                                     isCategoryLocked={isFieldLocked('category')}
+                                    canRetryTranslation={canGenerateDescriptions && !isInheritedItem}
+                                    sourceLanguageCode={getCanonicalProjectSourceLanguage(selectedLanguages)}
                                 />
                                 <Flex vertical gap={16}>
                                     <Text strong>Images</Text>

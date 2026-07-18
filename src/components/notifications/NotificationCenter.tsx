@@ -8,7 +8,7 @@
 import { timeAgo } from '@util/dateTime/timeAgo';
 import { Badge, Button, Dropdown, Empty, List, Typography } from 'antd';
 import { motion } from 'framer-motion';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import {
   LuAlertTriangle,
@@ -185,6 +185,7 @@ interface NotificationItemProps {
 }
 
 function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
+  const locale = useLocale();
   const getIcon = () => {
     switch (notification.type) {
       case 'success':
@@ -275,7 +276,7 @@ function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps)
               }}
             >
               <Text type="secondary" style={{ fontSize: 12 }}>
-                {timeAgo(notification.timestamp)}
+                {timeAgo(notification.timestamp, locale)}
               </Text>
 
               {notification.actionUrl && notification.actionLabel && (

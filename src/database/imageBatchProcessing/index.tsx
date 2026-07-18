@@ -11,6 +11,7 @@ import {
 } from "@lib/ai/imageBatchIdBoundary";
 import {
     isAllowedImageBatchOwnerTransition,
+    isImageBatchOwnerOutcomeAlreadyCommitted,
     normalizeImageBatchJobCreateInput,
     normalizeImageBatchJobForClient,
 } from "@lib/ai/imageBatchClientBoundary";
@@ -254,6 +255,9 @@ export const updateImageBatchProcessingJob = async (data: ImageBatchOwnerUpdate,
                     tenantId: projectScope.tenantId,
                 });
                 if (!currentJob) throw new Error("Stored image batch job is invalid or outside the active project.");
+                if (isImageBatchOwnerOutcomeAlreadyCommitted(currentJob, data.status, data.selectedImagesPersisted)) {
+                    return;
+                }
                 if (!isAllowedImageBatchOwnerTransition(currentJob.status, data.status)) {
                     throw new Error("Image batch owner status transition is not allowed.");
                 }

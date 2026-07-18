@@ -1,6 +1,7 @@
 import { onRequest } from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 import { FUNCTION_FLAGS } from "./constants/features";
+export { signaldeskMaintenanceScheduler } from "./schedulers/signaldeskMaintenanceScheduler";
 
 export const signaldeskHealthCheck = onRequest(
   {
@@ -22,6 +23,8 @@ export const signaldeskHealthCheck = onRequest(
       providerWebhooksEnabled: FUNCTION_FLAGS.ENABLE_SIGNALDESK_PROVIDER_WEBHOOKS,
       aiWorkersEnabled: FUNCTION_FLAGS.ENABLE_SIGNALDESK_AI_WORKERS,
       scheduledSummariesEnabled: FUNCTION_FLAGS.ENABLE_SIGNALDESK_SCHEDULED_SUMMARIES,
+      proofPermissionLifecycleEnabled: FUNCTION_FLAGS.ENABLE_SIGNALDESK_PROOF_PERMISSION_LIFECYCLE,
+      sourceDataLifecycleEnabled: FUNCTION_FLAGS.ENABLE_SIGNALDESK_SOURCE_DATA_LIFECYCLE,
     });
   },
 );

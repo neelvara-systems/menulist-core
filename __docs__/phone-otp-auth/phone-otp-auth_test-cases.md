@@ -9,10 +9,13 @@
 - Valid phone creates challenge and sends WhatsApp message when provider config exists.
 - Send route rate-limits by IP.
 - Send route rate-limits by phone hash.
+- Send returns 503 and performs no challenge write or WhatsApp call when either limiter provider is unavailable.
 - Verify rejects malformed code.
 - Verify rejects expired challenge.
 - Verify increments attempts on invalid code.
 - Verify marks challenge `too_many_attempts` after max attempts.
+- Verify returns 503 and performs no challenge/user/token work when either limiter provider is unavailable.
+- Working exhausted limits return 429 with `Retry-After`; provider unavailability is not misreported as caller abuse.
 - Invalid-attempt and expiry state changes remain committed after the helper returns its typed error.
 - Concurrent valid-code verification produces one finalized login token and leaves no active verification lease.
 - A failure between reservation and finalization can release only its own challenge operation for retry.

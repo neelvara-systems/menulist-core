@@ -1,42 +1,38 @@
-# Help Center — Parent Feature Documentation
+# MenuList Help Center — Feature Documentation
 
 > **Location:** `__docs__/answerlattice/help-center/`
-> **Purpose:** Documents the existing Help Center infrastructure that Answerlattice extends
-> **Last Updated:** 2026-05-25
+> **Purpose:** Documents MenuList's owner-facing support client and its scoped Answerlattice runtime boundary
+> **Last Updated:** 2026-07-16
 
 ---
 
 ## Document Index
 
-| #   | Document                             | Audience        | Purpose                                                       |
-| --- | ------------------------------------ | --------------- | ------------------------------------------------------------- |
-| 1   | `help-center_spec.md`                | CEO/PM/Clients  | Business requirements, user flows, feature map                |
-| 2   | `help-center_impl.md`                | Developers      | Technical blueprint — every file, function, dependency        |
-| 3   | `help-center_firebase.md`            | Developers/Ops  | Every Firestore collection, read/write/delete, cost estimates |
-| 4   | `help-center_marketing.md`           | Sales/Marketing | Positioning, pitch points, competitive comparison             |
-| 5   | `help-center_website.md`             | Public website  | Landing page content, SEO meta                                |
-| 6   | `help-center_helpdoc.md`             | End users       | Customer help documentation                                   |
-| 7   | `help-center_mobile-support.md`      | Mobile team     | 4-gate admission test, mobile architecture                    |
-| 8   | `help-center_decoupling-analysis.md` | Strategy/Arch   | Future standalone SaaS readiness assessment                   |
+| Document | Purpose |
+| --- | --- |
+| `help-center_spec.md` | Owner and operator behavior |
+| `help-center_impl.md` | Routes, components, DAL and runtime contracts |
+| `help-center_firebase.md` | Firestore, Storage, provider and cost boundaries |
+| `help-center_marketing.md` | Approved internal positioning and forbidden claims |
+| `help-center_website.md` | Current website/content decision |
+| `help-center_helpdoc.md` | Owner instructions and failure fallbacks |
+| `help-center_mobile-support.md` | MobileShell routing and touch behavior |
+| `help-center_decoupling-analysis.md` | Historical pre-separation assessment; not current architecture authority |
 
----
+## Current Boundary
 
-## Relationship to Answerlattice
+`/help-center` is a MenuList owner surface. Search, knowledge content, FAQs, changelog, feedback and support tickets use the signed-in user's explicit Answerlattice product-account scope. MenuList source identity is retained only as bounded `sourceContext`; Answerlattice remains the owner of support data and provider operations.
 
-These documents describe the **existing Help Center** — the base support infrastructure built into MenuList. Answerlattice is the governance layer that sits on top of this infrastructure, adding:
+The Help Center does not mount Answerlattice governance, drift, mutation, coverage or platform administration inside the owner tab set. It also does not become a separate helpdesk product.
 
-- Product Ontology (entity modeling)
-- Canonical Answer Engine (deterministic retrieval before RAG)
-- Drift Governance (answer staleness detection)
-- Signal Mutation (friction signals → mutation proposals)
-- Release Management (version-aware answers)
+Current local source gate:
 
-For Answerlattice-specific documentation, see:
+```bash
+npm run verify:help-center-boundary
+```
 
-- `__docs__/answerlattice/doctrine/` — Answerlattice doctrine and architecture
-- `__docs__/answerlattice/answerlattice-activation-clearance.md` — Audit clearance
-- `__docs__/answerlattice/answerlattice-activation-experiment.md` — Experiment framework
+The gate covers authenticated/bounded search, response normalization, internal related-content links, desktop and MobileShell routing, scoped ticket reads and transactions, attachment admission/opening, append-only Firestore history, immutable satisfaction, current footer routes and maintained docs. Dedicated and shared Firestore rule emulator suites remain required because the repository supports a separate active Answerlattice target plus an explicit local shared-mode compatibility target.
 
-## Boundary Note
+## Release Boundary
 
-MenuList Help Center is a support surface for product users. Answerlattice Governance, Signal-to-Knowledge Queue, Entity Candidates, Canonical Coverage KPI, drift review, and canonical answer administration are owner/admin governance tools and are not mounted inside the Help Center tab list or landing page.
+Source gates do not prove target deployment, Answerlattice product-account provisioning, Firebase Auth claim sync, SMTP/provider availability, browser/device behavior or production-host routing. Those remain release evidence. Vercel deployment is owner-approved only.

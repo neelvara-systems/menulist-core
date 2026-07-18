@@ -41,6 +41,12 @@ const RAZORPAY_STATUS_MAP: Record<string, PaymentStatus> = {
 
 const BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED =
     'BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED';
+const BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT = 100;
+
+function appendBoundedBillingStatusHistory(current: unknown, entry: Record<string, unknown>): unknown[] {
+    const existing = Array.isArray(current) ? current : [];
+    return [...existing, entry].slice(-BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT);
+}
 
 function getReconciliationStringContext(label: string, value: unknown): Record<string, boolean | number> {
     const normalized = value === undefined || value === null ? '' : String(value);
@@ -95,6 +101,7 @@ function getReconciliationUpdateLogContext(updates: Record<string, any>): Record
         hasCycleEndUpdate: updateKeys.includes('cycleEndDate'),
         hasPaidCountUpdate: updateKeys.includes('totalPaymentsMadeCount'),
         hasRenewsOnUpdate: updateKeys.includes('renewsOn'),
+        hasQuantityUpdate: updateKeys.includes('quantity'),
     };
 }
 
@@ -103,10 +110,7 @@ function normalizePlanId(planId: unknown): string | null {
     return normalized || null;
 }
 
-function getActivePlanTypeForSubscription(sub: Record<string, any>, status: PaymentStatus): string | null {
-    if (status !== 'active') return null;
-    return normalizePlanId(sub.planId);
-}
+export const PLAN_ENTITLED_SUBSCRIPTION_STATUSES = ['active', 'cancelled', 'paused'] as const;
 
 const POSITIVE_NUMERIC_DOCUMENT_ID_PATTERN = /^[1-9]\d*$/;
 const RESERVED_FIRESTORE_DOCUMENT_ID_PATTERN = /^__.*__$/;
@@ -150,6 +154,31 @@ function toTimestampMillis(value: unknown): number {
     }
 }
 
+function getPlanEntitlementStatusPriority(status: unknown): number {
+    if (status === 'active') return 3;
+    if (status === 'cancelled') return 2;
+    if (status === 'paused') return 1;
+    return 0;
+}
+
+export function hasCurrentSubscriptionPlanEntitlement(
+    sub: Record<string, any>,
+    status: PaymentStatus = sub.status,
+    nowMs = Date.now(),
+): boolean {
+    if (status === 'active') return true;
+    if (status !== 'cancelled' && status !== 'paused') return false;
+    return Number.isFinite(nowMs) && toTimestampMillis(sub.cycleEndDate) >= nowMs;
+}
+
+function getActivePlanTypeForSubscription(
+    sub: Record<string, any>,
+    status: PaymentStatus = sub.status,
+): string | null {
+    if (!hasCurrentSubscriptionPlanEntitlement(sub, status)) return null;
+    return normalizePlanId(sub.planId);
+}
+
 export async function syncStorePlanEntitlement(
     db: FirebaseFirestore.Firestore,
     sub: Record<string, any>,
@@ -166,17 +195,17 @@ export async function syncStorePlanEntitlement(
 
     const subscriptionsRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const subscriptionRef = subscriptionsRef.doc(subscriptionId);
-    const activeSubscriptionsQuery = subscriptionsRef
-        .where('status', '==', 'active')
+    const entitledSubscriptionsQuery = subscriptionsRef
+        .where('status', 'in', [...PLAN_ENTITLED_SUBSCRIPTION_STATUSES])
         .where('storeId', '==', expectedStoreScope.numericId)
         .where('tenantId', '==', expectedTenantScope.numericId)
         .where('cycleEndDate', '>=', Timestamp.now())
         .orderBy('cycleEndDate', 'desc')
         .limit(10);
     const syncResult = await db.runTransaction(async (transaction) => {
-        const [subscriptionSnapshot, activeSubscriptionsSnapshot] = await Promise.all([
+        const [subscriptionSnapshot, entitledSubscriptionsSnapshot] = await Promise.all([
             transaction.get(subscriptionRef),
-            transaction.get(activeSubscriptionsQuery),
+            transaction.get(entitledSubscriptionsQuery),
         ]);
         if (!subscriptionSnapshot.exists) return null;
 
@@ -193,24 +222,28 @@ export async function syncStorePlanEntitlement(
             || currentStoreScope.numericId !== expectedStoreScope.numericId
         ) return null;
 
-        const activeSubscription = activeSubscriptionsSnapshot.docs
-            .map((activeSnapshot) => ({
-                ...(activeSnapshot.data() || {}),
-                id: activeSnapshot.id,
+        const entitledSubscription = entitledSubscriptionsSnapshot.docs
+            .map((entitledSnapshot) => ({
+                ...(entitledSnapshot.data() || {}),
+                id: entitledSnapshot.id,
             } as Record<string, any>))
             .filter((candidate) => (
-                normalizeScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
+                hasCurrentSubscriptionPlanEntitlement(candidate)
+                && normalizeScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
                     === expectedTenantScope.numericId
                 && normalizeScopeDocumentId(candidate.storeId ?? candidate.sId)?.numericId
                     === expectedStoreScope.numericId
             ))
-            .sort((left, right) => toTimestampMillis(right.cycleEndDate) - toTimestampMillis(left.cycleEndDate))[0]
+            .sort((left, right) => (
+                getPlanEntitlementStatusPriority(right.status) - getPlanEntitlementStatusPriority(left.status)
+                || toTimestampMillis(right.cycleEndDate) - toTimestampMillis(left.cycleEndDate)
+            ))[0]
             || null;
-        const activePlanType = activeSubscription
-            ? getActivePlanTypeForSubscription(activeSubscription, activeSubscription.status)
+        const activePlanType = entitledSubscription
+            ? getActivePlanTypeForSubscription(entitledSubscription, entitledSubscription.status)
             : null;
         const entitlementValue = activePlanType || FieldValue.delete();
-        const activeSubscriptionIdValue = activeSubscription?.id || FieldValue.delete();
+        const activeSubscriptionIdValue = entitledSubscription?.id || FieldValue.delete();
         const syncedAt = FieldValue.serverTimestamp();
 
         transaction.set(db.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId), {
@@ -335,6 +368,13 @@ function getNonNegativeSafeInteger(value: unknown): number | null {
     return Number.isSafeInteger(numericValue) && numericValue >= 0 ? numericValue : null;
 }
 
+function getProviderSubscriptionQuantity(value: unknown): number | null {
+    const quantity = Number(value);
+    return Number.isSafeInteger(quantity) && quantity > 0 && quantity <= 10_000
+        ? quantity
+        : null;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RAZORPAY CLIENT (initialized lazily with Firebase secrets)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -366,6 +406,8 @@ export interface ReconciliationResult {
     processed: number;
     synced: number;
     errors: number;
+    checkpointed?: boolean;
+    cycleCompleted?: boolean;
     syncDetails?: Array<{ subId: string; field: string; local: string; remote: string }>;
     durationMs: number;
 }
@@ -381,31 +423,45 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
     const db = firestoreAdmin;
 
     const subscriptionsRef = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
+    const cursorRef = db.collection(DB_COLLECTIONS.SYSTEM).doc('subscriptionReconciliationCursor');
     const pageSize = 100;
-    let lastDocument: FirebaseFirestore.QueryDocumentSnapshot | null = null;
+    const providerConcurrency = 5;
+    const runtimeBudgetMs = 6 * 60 * 1000;
+    const cursorSnapshot = await cursorRef.get();
+    const storedCursor = normalizeSubscriptionDocumentId(cursorSnapshot.data()?.lastDocumentId);
+    let lastDocumentId = storedCursor;
     let foundSubscriptions = false;
+    let checkpointed = false;
+    let cycleCompleted = false;
 
     while (true) {
         let pageQuery = subscriptionsRef
             .where('status', 'in', ['active', 'past_due', 'paused'])
             .orderBy(FieldPath.documentId())
             .limit(pageSize);
-        if (lastDocument) pageQuery = pageQuery.startAfter(lastDocument);
+        if (lastDocumentId) pageQuery = pageQuery.startAfter(lastDocumentId);
         const snapshot = await pageQuery.get();
-        if (snapshot.empty) break;
+        if (snapshot.empty) {
+            await cursorRef.delete().catch(() => undefined);
+            cycleCompleted = true;
+            break;
+        }
         foundSubscriptions = true;
 
         // Fetch provider truth outside the transaction, then re-read local truth
-        // inside the transaction before applying any change.
-        for (const docSnap of snapshot.docs) {
-            const sub = { ...docSnap.data(), id: docSnap.id } as Record<string, any>;
-            processed++;
-            let providerSubId: string | null = null;
+        // inside the transaction before applying any change. Provider calls use
+        // bounded concurrency so growth does not turn the nightly task into one
+        // long serial chain or an unbounded request burst.
+        for (let offset = 0; offset < snapshot.docs.length; offset += providerConcurrency) {
+            await Promise.all(snapshot.docs.slice(offset, offset + providerConcurrency).map(async (docSnap) => {
+                const sub = { ...docSnap.data(), id: docSnap.id } as Record<string, any>;
+                processed++;
+                let providerSubId: string | null = null;
 
-            try {
-                if (!RAZORPAY_SUBSCRIPTION_ID_PATTERN.test(docSnap.id)) continue;
-                providerSubId = getRazorpayManagedSubscriptionId(sub);
-                if (!providerSubId || providerSubId !== docSnap.id) continue;
+                try {
+                    if (!RAZORPAY_SUBSCRIPTION_ID_PATTERN.test(docSnap.id)) return;
+                    providerSubId = getRazorpayManagedSubscriptionId(sub);
+                    if (!providerSubId || providerSubId !== docSnap.id) return;
 
                 const razorpay = getRazorpayClient();
                 const rzpSub = await razorpay.subscriptions.fetch(providerSubId);
@@ -427,16 +483,13 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         && validateTransition(current.status, rzpStatus, 'reconciliation:status-sync')
                     ) {
                         updates.status = rzpStatus;
-                        updates.statuses = [
-                            ...(Array.isArray(current.statuses) ? current.statuses : []),
-                            {
+                        updates.statuses = appendBoundedBillingStatusHistory(current.statuses, {
                                 status: rzpStatus,
                                 timestamp: Timestamp.now(),
                                 amount: Number.isFinite(Number(current.amount)) ? Number(current.amount) : 0,
                                 currency: current.currency || 'INR',
                                 remark: `Reconciled from Razorpay status ${String(rzpSub.status || 'unknown')}`,
-                            },
-                        ];
+                        });
                         if (rzpStatus === 'past_due') {
                             updates.pastDueSinceAt = current.pastDueSinceAt || Timestamp.now();
                         } else if (rzpStatus === 'active') {
@@ -483,6 +536,17 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         });
                     }
 
+                    const providerQuantity = getProviderSubscriptionQuantity(rzpSub.quantity);
+                    const localQuantity = getProviderSubscriptionQuantity(current.quantity) || 1;
+                    if (providerQuantity !== null && providerQuantity !== localQuantity) {
+                        updates.quantity = providerQuantity;
+                        changes.push({
+                            field: 'quantity',
+                            local: String(localQuantity),
+                            remote: String(providerQuantity),
+                        });
+                    }
+
                     const rzpChargeAt = getProviderEpochMillis(rzpSub.charge_at);
                     const localRenewsOn = toTimestampMillis(current.renewsOn);
                     if (rzpChargeAt !== null && Math.abs(rzpChargeAt - localRenewsOn) > 86400000) {
@@ -518,12 +582,14 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         updates,
                     };
                 });
-                if (!application) continue;
+                    if (!application) return;
 
-                application.changes.forEach((change) => syncDetails.push({
-                    subId: docSnap.id,
-                    ...change,
-                }));
+                application.changes.forEach((change) => {
+                    if (syncDetails.length < 100) syncDetails.push({
+                        subId: docSnap.id,
+                        ...change,
+                    });
+                });
                 if (application.updatesApplied) {
                     synced++;
                     logger.info('[Reconciliation] Subscription synced', {
@@ -541,25 +607,40 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
                         throw new Error('Subscription entitlement scope is invalid.');
                     }
                     synced++;
-                    syncDetails.push({
-                        subId: docSnap.id,
-                        field: 'analyticsEntitlement',
-                        local: String(application.previousActivePlanType),
-                        remote: String(application.desiredActivePlanType),
+                    if (syncDetails.length < 100) {
+                        syncDetails.push({
+                            subId: docSnap.id,
+                            field: 'analyticsEntitlement',
+                            local: String(application.previousActivePlanType),
+                            remote: String(application.desiredActivePlanType),
+                        });
+                    }
+                }
+                } catch (subError: any) {
+                    errors++;
+                    logger.error('[Reconciliation] Failed to process subscription', {
+                        failureCode: BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED,
+                        ...getReconciliationSubscriptionLogContext(sub, providerSubId),
+                        ...getReconciliationErrorContext(subError),
                     });
                 }
-            } catch (subError: any) {
-                errors++;
-                logger.error('[Reconciliation] Failed to process subscription', {
-                    failureCode: BILLING_SUBSCRIPTION_RECONCILIATION_SUBSCRIPTION_FAILED,
-                    ...getReconciliationSubscriptionLogContext(sub, providerSubId),
-                    ...getReconciliationErrorContext(subError),
-                });
-            }
+            }));
         }
 
-        lastDocument = snapshot.docs[snapshot.docs.length - 1] || null;
-        if (snapshot.size < pageSize || !lastDocument) break;
+        lastDocumentId = snapshot.docs[snapshot.docs.length - 1]?.id || null;
+        if (snapshot.size < pageSize || !lastDocumentId) {
+            await cursorRef.delete().catch(() => undefined);
+            cycleCompleted = true;
+            break;
+        }
+        await cursorRef.set({
+            lastDocumentId,
+            updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+        if (Date.now() - startTime >= runtimeBudgetMs) {
+            checkpointed = true;
+            break;
+        }
     }
 
     if (!foundSubscriptions) {
@@ -571,6 +652,8 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
         processed,
         synced,
         errors,
+        checkpointed,
+        cycleCompleted,
         syncDetails: syncDetails.length > 0 ? syncDetails : undefined,
         durationMs: Date.now() - startTime,
     };
@@ -579,6 +662,8 @@ export async function reconcileSubscriptions(): Promise<ReconciliationResult> {
         processed,
         synced,
         errors,
+        checkpointed,
+        cycleCompleted,
         durationMs: result.durationMs,
     });
 

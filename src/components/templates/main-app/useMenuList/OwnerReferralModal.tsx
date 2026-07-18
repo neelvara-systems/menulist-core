@@ -3,7 +3,7 @@
 import { useOwnerReferral } from '@hook/useOwnerReferral';
 import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 import { Button, Divider, Empty, Flex, List, Modal, Tag, Typography, message } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useState } from 'react';
 import { LuCopy, LuGift, LuMessageCircle, LuShare2, LuUserPlus } from 'react-icons/lu';
 
@@ -11,6 +11,7 @@ const { Text, Title } = Typography;
 
 export default function OwnerReferralModal() {
     const t = useTranslations('OwnerReferral');
+    const format = useFormatter();
     const [open, setOpen] = useState(false);
     const referral = useOwnerReferral();
     const referrerExamples = getContentCreditOutcomeExamples(referral.data?.policy.referrerCredits || 0);
@@ -36,6 +37,14 @@ export default function OwnerReferralModal() {
             if (!shared) await copy();
         } catch (error: any) {
             if (error?.name !== 'AbortError') message.error(t('shareFailed'));
+        }
+    };
+
+    const openWhatsApp = () => {
+        try {
+            referral.openWhatsApp();
+        } catch {
+            message.error(t('shareFailed'));
         }
     };
 
@@ -98,7 +107,7 @@ export default function OwnerReferralModal() {
                             <Button icon={<LuShare2 size={16} />} onClick={() => void nativeShare()} type="primary">
                                 {t('share')}
                             </Button>
-                            <Button icon={<LuMessageCircle size={16} />} onClick={referral.openWhatsApp}>
+                            <Button icon={<LuMessageCircle size={16} />} onClick={openWhatsApp}>
                                 {t('whatsApp')}
                             </Button>
                             <Button icon={<LuCopy size={16} />} onClick={() => void copy()}>
@@ -121,7 +130,11 @@ export default function OwnerReferralModal() {
                                         <List.Item extra={<Tag color={status.color}>{status.label}</Tag>}>
                                             <List.Item.Meta
                                                 title={<span title={item.businessName}>{item.businessName}</span>}
-                                                description={new Date(item.date).toLocaleDateString()}
+                                                description={format.dateTime(new Date(item.date), {
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                })}
                                             />
                                         </List.Item>
                                     );

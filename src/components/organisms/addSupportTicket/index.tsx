@@ -1,6 +1,11 @@
 import PasteUpload, { PastedFile } from '@atoms/PasteUpload';
 import { addTicket, assertSupportTicketCreateSucceeded } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
+import {
+    ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT,
+    ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES,
+    ANSWERLATTICE_TICKET_ATTACHMENT_TYPES,
+} from '@lib/answerlattice/supportTicketAttachmentBoundary';
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { SUPPORT_TICKET_CATEGORY, SUPPORT_TICKET_CATEGORY_LIST, SUPPORT_TICKET_PRIORITY, SUPPORT_TICKET_PRIORITY_LIST, SUPPORT_TICKET_STATUS, SupportTicketType } from '@type/supportTicket';
@@ -14,14 +19,7 @@ import React, { useContext, useMemo, useRef, useState } from 'react';
 import { getBoundedSupportTicketStringContext, logSupportTicketFailure } from './supportTicketDiagnostics';
 
 const { Text, Title, Paragraph } = Typography;
-const MAX_TICKET_ATTACHMENT_BYTES = 10 * 1024 * 1024;
-const ALLOWED_TICKET_ATTACHMENT_TYPES = new Set([
-    'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-    'application/pdf', 'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/json', 'application/xml',
-    'text/plain', 'text/markdown', 'text/csv', 'text/html', 'text/xml',
-]);
+const ALLOWED_TICKET_ATTACHMENT_TYPES = new Set<string>(ANSWERLATTICE_TICKET_ATTACHMENT_TYPES);
 
 interface AddTicketModalProps {
     visible?: boolean;
@@ -43,7 +41,7 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
 
     const onPasteFiles = (pastedFiles: PastedFile[]) => {
         const supportedFiles = pastedFiles.filter((file) => {
-            if (file.size > MAX_TICKET_ATTACHMENT_BYTES) {
+            if (file.size > ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES) {
                 message.error(`${file.name || 'File'} is larger than 10 MB.`);
                 return false;
             }
@@ -57,9 +55,9 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
             const existingFiles = new Set(prevAttachments.map(f => `${f.name}|${f.size}`));
             const uniqueNewFiles = supportedFiles.filter(file => !existingFiles.has(`${file.name}|${file.size}`));
 
-            if (prevAttachments.length + uniqueNewFiles.length > 4) {
-                message.error('File Limit Exceeded, You can only upload a maximum of 4 files.');
-                const remainingSlots = 4 - prevAttachments.length;
+            if (prevAttachments.length + uniqueNewFiles.length > ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT) {
+                message.error(`File limit exceeded. You can upload up to ${ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT} files.`);
+                const remainingSlots = ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT - prevAttachments.length;
                 return [...prevAttachments, ...uniqueNewFiles.slice(0, remainingSlots)];
             }
 
@@ -135,14 +133,14 @@ const AddSupportTicket: React.FC<AddTicketModalProps> = ({ visible = false, onCl
     const props: UploadProps = useMemo(() => ({
         name: "file",
         multiple: true,
-        maxCount: 4,
+        maxCount: ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT,
         fileList: attachments,
         beforeUpload: () => false, // Prevent auto-upload
         onChange: (info) => {
             const { fileList } = info;
             const uniqueFilesMap = new Map();
             fileList.forEach(file => {
-                if (Number(file.size || 0) > MAX_TICKET_ATTACHMENT_BYTES) {
+                if (Number(file.size || 0) > ANSWERLATTICE_TICKET_ATTACHMENT_MAX_BYTES) {
                     message.error(`${file.name || 'File'} is larger than 10 MB.`);
                     return;
                 }

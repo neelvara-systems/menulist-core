@@ -60,3 +60,7 @@ Verify:
 6. Asking for a mutation does not mutate truth and does not open an action sheet.
 7. The screen stays usable with keyboard open.
 8. Account, billing, reseller, platform, and Answerlattice surfaces are not directly mutable from Business Health.
+
+## Direct-Entry Permission Boundary
+
+`MobileShell` replaces the guarded desktop page on handheld devices, so it owns the mobile defense for direct routes and hashes. A loaded role without `VIEW_ANALYTICS` is reset from `today/dashboard` or `more/businessHealth` to the safe main screen. While permissions are still loading, the analytics screen does not mount. The Business Health opener also requires the feature flag and `VIEW_ANALYTICS`. Mobile More retains the same gate for in-shell navigation.

@@ -598,5 +598,5 @@ export function buildQrCodeFilename(label: string, suffix = 'qr'): string {
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-+|-+$/g, '');
 
-    return `${sanitized}-${suffix}`;
+    return `${sanitized || 'menu'}-${suffix}`;
 }

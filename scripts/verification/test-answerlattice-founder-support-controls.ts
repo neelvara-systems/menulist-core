@@ -6,6 +6,24 @@ import {
     normalizeAnswerlatticeEvidenceLinks,
     verifyAnswerlatticeVisitorToken,
 } from '../../src/lib/answerlattice/verifiedWidgetContextServer';
+import {
+    AnswerlatticeAnswerTestCaseSchema,
+    prepareAnswerlatticeAnswerTestCasesForWrite,
+    type AnswerlatticeAnswerTestCase,
+} from '../../src/lib/answerlattice/answerTestContracts';
+import {
+    evaluateAnswerTestCase,
+    extractAnswerTestReferenceIds,
+    getAnswerTestProofSummary,
+} from '../../src/lib/answerlattice/answerTestEvaluation';
+import { buildAnswerlatticeActivationAnswerTestSummary } from '../../src/lib/answerlattice/activationAnswerTestSummary';
+import { ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS } from '../../src/lib/answerlattice/answerTestStarterPack';
+import {
+    AnswerlatticeProposalImpactResponseSchema,
+    buildAnswerlatticeProposalImpactAffectedEntityIds,
+    classifyAnswerlatticeProposalImpact,
+    selectAnswerlatticeProposalImpactCases,
+} from '../../src/lib/answerlattice/proposalImpactContracts';
 
 const encodeJson = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');
 
@@ -144,5 +162,428 @@ const cappedLinks = normalizeAnswerlatticeEvidenceLinks([
     { url: 'https://errors.example.com/4' },
 ], ['errors.example.com']);
 assert.equal(cappedLinks.length, 3, 'evidence links must remain capped at three');
+
+const nowIso = new Date(nowSeconds * 1000).toISOString();
+const legacyCase = AnswerlatticeAnswerTestCaseSchema.parse({
+    id: 'legacy_case',
+    title: 'Legacy canonical answer',
+    query: 'What is the approved billing policy?',
+    expected: {
+        source: 'canonical',
+        mustInclude: [],
+        mustNotInclude: [],
+    },
+    relatedEntityIds: [],
+    active: true,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+});
+assert.equal(legacyCase.riskLevel, 'standard', 'legacy answer tests must default to standard risk');
+assert.equal(legacyCase.expected.citationPolicy, 'not_required', 'legacy answer tests must not gain a new evidence requirement');
+assert.deepEqual(legacyCase.expected.referenceIds, [], 'legacy answer tests must receive an empty reference list');
+const serverSaveTime = '2027-01-01T00:00:00.000Z';
+const [serverStampedChangedCase, serverPreservedCase, serverStampedNewCase] = prepareAnswerlatticeAnswerTestCasesForWrite(
+    [
+        legacyCase,
+        { ...legacyCase, id: 'unchanged_case', title: 'Unchanged case' },
+    ],
+    [
+        {
+            ...legacyCase,
+            query: 'What is the current approved billing policy?',
+            createdAt: '2099-01-01T00:00:00.000Z',
+            updatedAt: '2099-01-01T00:00:00.000Z',
+        },
+        {
+            ...legacyCase,
+            id: 'unchanged_case',
+            title: 'Unchanged case',
+            createdAt: '2099-01-01T00:00:00.000Z',
+            updatedAt: '2099-01-01T00:00:00.000Z',
+        },
+        {
+            ...legacyCase,
+            id: 'new_case',
+            createdAt: '2099-01-01T00:00:00.000Z',
+            updatedAt: '2099-01-01T00:00:00.000Z',
+        },
+    ],
+    serverSaveTime,
+);
+assert.equal(serverStampedChangedCase.createdAt, legacyCase.createdAt, 'existing case creation time must be immutable');
+assert.equal(serverStampedChangedCase.updatedAt, serverSaveTime, 'changed case definition must receive the server edit time');
+assert.equal(serverPreservedCase.createdAt, legacyCase.createdAt, 'unchanged case creation time must ignore client timestamps');
+assert.equal(serverPreservedCase.updatedAt, legacyCase.updatedAt, 'unchanged case edit time must ignore client timestamps');
+assert.equal(serverStampedNewCase.createdAt, serverSaveTime, 'new case creation time must be server-authored');
+assert.equal(serverStampedNewCase.updatedAt, serverSaveTime, 'new case edit time must be server-authored');
+assert.throws(
+    () => AnswerlatticeAnswerTestCaseSchema.parse({
+        ...legacyCase,
+        expected: {
+            ...legacyCase.expected,
+            citationPolicy: 'specific_sources',
+            referenceIds: [],
+        },
+    }),
+    'specific-source tests must declare at least one reference ID',
+);
+
+assert.deepEqual(
+    extractAnswerTestReferenceIds([
+        { id: 'article_one', title: 'One' },
+        'article_two',
+        { id: 'article_one' },
+        { documentId: 'must_not_be_trusted' },
+        null,
+    ]),
+    ['article_one', 'article_two'],
+    'answer-test evidence must use bounded explicit reference IDs and deduplicate them',
+);
+
+const criticalEvidenceCase: AnswerlatticeAnswerTestCase = AnswerlatticeAnswerTestCaseSchema.parse({
+    ...legacyCase,
+    id: 'critical_evidence_case',
+    title: 'Critical evidence-backed answer',
+    riskLevel: 'critical',
+    expected: {
+        source: 'rag',
+        minimumConfidence: 'medium',
+        mustInclude: ['invoice'],
+        mustNotInclude: ['guaranteed refund'],
+        citationPolicy: 'specific_sources',
+        referenceIds: ['article_one'],
+    },
+});
+
+const passingEvidenceResult = evaluateAnswerTestCase(criticalEvidenceCase, {
+    source: 'rag',
+    answer: 'The invoice can be retried after the payment method is updated.',
+    referenceIds: ['article_one'],
+    confidence: 'high',
+    aiProviderUsed: true,
+}, 12.9);
+assert.equal(passingEvidenceResult.passed, true, 'matching claims and evidence must pass');
+assert.equal(passingEvidenceResult.citationPassed, true, 'matching evidence must be recorded explicitly');
+assert.equal(passingEvidenceResult.durationMs, 12, 'duration evidence must be normalized to a non-negative integer');
+
+const failingEvidenceResult = evaluateAnswerTestCase(criticalEvidenceCase, {
+    source: 'rag',
+    answer: 'A guaranteed refund is available.',
+    referenceIds: ['article_two'],
+    confidence: 'low',
+    aiProviderUsed: true,
+}, 8);
+assert.equal(failingEvidenceResult.passed, false, 'missing claims, blocked claims, low confidence, and wrong evidence must fail');
+assert.equal(failingEvidenceResult.citationPassed, false, 'missing expected evidence must fail independently');
+assert.deepEqual(failingEvidenceResult.missingReferenceIds, ['article_one']);
+assert.equal(getAnswerTestProofSummary([passingEvidenceResult]).proofStatus, 'ready');
+assert.deepEqual(getAnswerTestProofSummary([failingEvidenceResult]), {
+    criticalCaseCount: 1,
+    criticalFailureCount: 1,
+    proofStatus: 'blocked',
+});
+
+const standardFailure = { ...failingEvidenceResult, riskLevel: 'standard' as const };
+assert.equal(
+    getAnswerTestProofSummary([standardFailure]).proofStatus,
+    'review',
+    'standard failures must require review without marking release proof blocked',
+);
+
+const abstentionCase: AnswerlatticeAnswerTestCase = AnswerlatticeAnswerTestCaseSchema.parse({
+    ...legacyCase,
+    id: 'safe_abstention_case',
+    title: 'Safe abstention',
+    expected: {
+        source: 'no_answer',
+        mustInclude: [],
+        mustNotInclude: [],
+        citationPolicy: 'not_required',
+        referenceIds: [],
+    },
+});
+assert.equal(evaluateAnswerTestCase(abstentionCase, {
+    source: 'no_answer',
+    answer: '',
+    referenceIds: [],
+    confidence: 'none',
+    aiProviderUsed: false,
+}, 1).passed, true, 'explicit no-answer behavior must be provable without invented evidence');
+
+const impactCases = Array.from({ length: 11 }, (_, index): AnswerlatticeAnswerTestCase => (
+    AnswerlatticeAnswerTestCaseSchema.parse({
+        ...legacyCase,
+        id: `impact_case_${index}`,
+        title: `Impact case ${index}`,
+        riskLevel: index === 10 ? 'critical' : 'standard',
+        relatedEntityIds: ['entity_billing'],
+    })
+));
+const selectedImpact = selectAnswerlatticeProposalImpactCases(
+    [
+        ...impactCases,
+        { ...legacyCase, id: 'unrelated_case', relatedEntityIds: ['entity_other'] },
+        { ...legacyCase, id: 'inactive_case', active: false, relatedEntityIds: ['entity_billing'] },
+        {
+            ...legacyCase,
+            id: 'target_answer_case',
+            relatedEntityIds: [],
+            expected: { ...legacyCase.expected, answerId: 'canonical_target' },
+        },
+    ],
+    ['entity_billing'],
+    'canonical_target',
+);
+assert.equal(selectedImpact.linkedTestCount, 12, 'proposal impact must count only active explicitly linked tests');
+assert.equal(selectedImpact.cases.length, 10, 'proposal impact must cap execution at ten linked tests');
+assert.equal(selectedImpact.testsTruncated, true, 'proposal impact must disclose when linked tests are truncated');
+assert.equal(selectedImpact.cases[0].riskLevel, 'critical', 'critical linked tests must be selected before standard tests');
+const allAffectedImpactEntities = buildAnswerlatticeProposalImpactAffectedEntityIds(
+    Array.from({ length: 25 }, (_, index) => `proposal_entity_${index}`),
+    Array.from({ length: 25 }, (_, index) => `current_entity_${index}`),
+    Array.from({ length: 25 }, (_, index) => `candidate_entity_${index}`),
+);
+assert.equal(
+    allAffectedImpactEntities.length,
+    75,
+    'proposal impact must retain every bounded proposal, current, and candidate entity',
+);
+assert.equal(
+    allAffectedImpactEntities.includes('current_entity_24'),
+    true,
+    'proposal impact must not truncate a removed current-answer entity behind proposal entities',
+);
+assert.equal(
+    allAffectedImpactEntities.includes('candidate_entity_24'),
+    true,
+    'proposal impact must not truncate a newly proposed entity behind current entities',
+);
+assert.equal(
+    classifyAnswerlatticeProposalImpact(passingEvidenceResult, failingEvidenceResult),
+    'regression',
+    'a current pass that becomes a projected failure must be labelled regression',
+);
+assert.equal(
+    classifyAnswerlatticeProposalImpact(failingEvidenceResult, passingEvidenceResult),
+    'improvement',
+    'a current failure that becomes a projected pass must be labelled improvement',
+);
+assert.equal(
+    classifyAnswerlatticeProposalImpact(
+        passingEvidenceResult,
+        { ...passingEvidenceResult, answerPreview: 'Changed approved wording' },
+    ),
+    'changed',
+    'changed output must remain visible even when both results pass',
+);
+assert.equal(
+    classifyAnswerlatticeProposalImpact(passingEvidenceResult, { ...passingEvidenceResult }),
+    'unchanged',
+    'identical outcomes must be labelled unchanged',
+);
+assert.equal(
+    AnswerlatticeProposalImpactResponseSchema.safeParse({
+        requestId: 'impact_request_1',
+        proposalId: 'proposal_1',
+        candidate: {
+            answerId: 'canonical_target',
+            title: 'Billing answer',
+            status: 'active',
+            answerType: 'explanation',
+            entityIds: ['entity_billing'],
+            versionFrom: 1,
+            versionTo: null,
+            structuredSummary: 'Approved billing guidance.',
+        },
+        currentAnswer: null,
+        linkedTestCount: 0,
+        evaluatedTestCount: 0,
+        testsTruncated: false,
+        currentProofStatus: null,
+        proposedProofStatus: null,
+        regressionCount: 0,
+        improvementCount: 0,
+        changedCount: 0,
+        unchangedCount: 0,
+        comparisons: [],
+        warnings: ['No active Answer Test is linked.'],
+        unexpectedScope: 99,
+    }).success,
+    false,
+    'proposal impact browser responses must reject unknown fields',
+);
+
+const activationSourceVersions = {
+    canonical: 3,
+    kb: 4,
+    docsNav: 2,
+    entities: 5,
+    entityRelations: 1,
+    releases: 6,
+};
+const activationCases = ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS.map(id => ({
+    id,
+    active: true,
+    updatedAt: '2026-07-17T09:00:00.000Z',
+}));
+const activationResults = ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS.map(caseId => ({
+    caseId,
+    passed: true,
+    riskLevel: 'standard',
+}));
+assert.deepEqual(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            proofStatus: 'ready',
+            criticalFailureCount: 0,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults,
+        }],
+    }, 11, 22, activationSourceVersions),
+    {
+        activeCaseCount: 10,
+        firstTenCount: 10,
+        latestProofStatus: 'ready',
+        latestCriticalFailureCount: 0,
+        latestProofStale: false,
+        lastRunAt: '2026-07-17T10:00:00.000Z',
+    },
+    'Activation must derive launch proof only from a retained run that covers all active First 10 cases',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults.slice(0, 9),
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStatus,
+    null,
+    'A partial run must not make the First 10 launch proof ready',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            proofStatus: 'ready',
+            criticalFailureCount: 0,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults.map((result, index) => index === 0
+                ? { ...result, passed: false, riskLevel: 'critical' }
+                : result),
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStatus,
+    'blocked',
+    'Activation must derive proof status from retained case results instead of trusting contradictory stored metadata',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            proofStatus: 'ready',
+            criticalFailureCount: 0,
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: [...activationResults, { ...activationResults[0] }],
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStatus,
+    null,
+    'A malformed run with duplicate case results must not become launch proof',
+);
+assert.deepEqual(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases.map((testCase, index) => index === 0
+            ? { ...testCase, updatedAt: '2026-07-17T11:00:00.000Z' }
+            : testCase),
+        runs: [{
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults,
+        }],
+    }, 11, 22, activationSourceVersions),
+    {
+        activeCaseCount: 10,
+        firstTenCount: 10,
+        latestProofStatus: null,
+        latestCriticalFailureCount: 0,
+        latestProofStale: true,
+        lastRunAt: '2026-07-17T10:00:00.000Z',
+    },
+    'Editing a First 10 case after the retained run must invalidate launch proof',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: activationSourceVersions,
+            results: activationResults,
+        }],
+    }, 11, 22, { ...activationSourceVersions, canonical: activationSourceVersions.canonical + 1 }).latestProofStale,
+    true,
+    'Changing governed answer sources after the retained run must invalidate launch proof',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            completedAt: '2026-07-17T10:00:00.000Z',
+            results: activationResults,
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStale,
+    true,
+    'A legacy run without a source-version snapshot must require one fresh rerun',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 11,
+        sId: 22,
+        cases: activationCases,
+        runs: [{
+            completedAt: '2026-07-17T10:00:00.000Z',
+            sourceVersions: { ...activationSourceVersions, kb: null },
+            results: activationResults,
+        }],
+    }, 11, 22, activationSourceVersions).latestProofStale,
+    true,
+    'Malformed retained source-version evidence must fail closed instead of coercing to zero',
+);
+assert.equal(
+    buildAnswerlatticeActivationAnswerTestSummary({
+        pId: 'AL',
+        tId: 999,
+        sId: 22,
+        cases: activationCases,
+        runs: [],
+    }, 11, 22, activationSourceVersions).firstTenCount,
+    0,
+    'A cross-scope Answer Tests summary must fail closed',
+);
 
 console.log('Answerlattice founder support controls contract tests passed');

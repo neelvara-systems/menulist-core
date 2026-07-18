@@ -1,6 +1,7 @@
 import { PRODUCT_IDS } from '@constant/product';
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId } from '@lib/answerlattice/sessionScope';
+import { ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES } from '@lib/answerlattice/chatImagePolicy';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import type { ChatMessage, ChatReference, ChatSession } from '@type/chatSession';
 import { Timestamp } from 'firebase/firestore';
@@ -107,15 +108,26 @@ export const normalizeAnswerlatticeChatMessageForStorage = (value: unknown): Cha
     const feedback = value.feedback === undefined
         ? undefined
         : normalizeAnswerlatticeChatFeedback(value.feedback, value.feedback.submittedAt);
-    const image = isRecord(value.image)
-        ? {
-            url: cleanUrl(value.image.url || value.image.source),
-            source: cleanUrl(value.image.source || value.image.url),
-            name: cleanString(value.image.name, 300),
-            type: cleanString(value.image.type, 120),
-            size: Math.max(0, Number(value.image.size || 0)),
-        }
-        : undefined;
+    let image: ChatMessage['image'];
+    if (value.image !== undefined && value.image !== null) {
+        if (!isRecord(value.image)) throw new Error('answerlattice_chat_image_invalid');
+        const url = cleanUrl(value.image.url || value.image.source);
+        const name = cleanString(value.image.name, 300);
+        const type = cleanString(value.image.type, 120);
+        const rawSize = value.image.size;
+        const size = rawSize === undefined ? undefined : Number(rawSize);
+        if (
+            !url
+            || (rawSize !== undefined && (!Number.isFinite(size) || size! < 0 || size! > ANSWERLATTICE_CHAT_IMAGE_MAX_BYTES))
+        ) throw new Error('answerlattice_chat_image_invalid');
+        image = {
+            url,
+            source: url,
+            ...(name ? { name } : {}),
+            ...(type ? { type } : {}),
+            ...(size !== undefined ? { size } : {}),
+        };
+    }
     const relatedContent = copyBoundedJson(value.relatedContent, 8 * 1024);
     const generationMetadata = copyBoundedJson(value.generationMetadata, 2 * 1024);
     const escalation = copyBoundedJson(value.escalation, 8 * 1024);
@@ -131,7 +143,7 @@ export const normalizeAnswerlatticeChatMessageForStorage = (value: unknown): Cha
         ...(cleanString(value.answerSource, 80) ? { answerSource: cleanString(value.answerSource, 80) } : {}),
         ...(relatedContent ? { relatedContent } : {}),
         ...(suggestedQuestions.length > 0 ? { suggestedQuestions } : {}),
-        ...(image?.url ? { image: image as any } : {}),
+        ...(image?.url ? { image } : {}),
         ...(feedback ? { feedback } : {}),
         ...(generationMetadata ? { generationMetadata } : {}),
         ...(escalation ? { escalation } : {}),

@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** ✅ Runtime Updated
-**Last Updated:** July 13, 2026
+**Last Updated:** July 14, 2026
 **Audience:** Developers, DevOps, Cost Auditing
 
 ---
@@ -22,7 +22,7 @@
 
 ### Paid Reservation State
 
-Paid requests reuse the final `menulistAiOperations/{tId}/{sId}/{operationId}` document as a short-lived reservation shell. `accountingStatus` transitions `reserved -> consumed` or `reserved -> refunded`. A reserved shell intentionally omits `createdOn`, so the existing ordered transaction-history query cannot surface unfinished work. It records the exact charged recurring/top-up buckets, billing period, subscription ID, integer units, recovery mode, and remaining balance needed for idempotent settlement or compensation. Settlement writes the normal operation payload and `createdOn`; refunded shells are retained for fourteen days to preserve idempotency evidence and then removed by bounded maintenance.
+Paid requests reuse the final `menulistAiOperations/{tId}/{sId}/{operationId}` document as a short-lived reservation shell. `accountingStatus` transitions `reserved -> consumed` or `reserved -> refunded`. A reserved shell intentionally omits `createdOn`, so the existing ordered transaction-history query cannot surface unfinished work. It records the exact charged recurring/top-up buckets, billing period, subscription ID, integer units, recovery mode, remaining balance, and `accountingBillingStoreId` needed for idempotent settlement or compensation. The ledger path `sId` remains the selected operation outlet; `accountingBillingStoreId` can be the HQ/effective subscription store for an inheriting outlet. Settlement and refund must validate tenant identity and use that persisted billing scope. Pre-July-14 direct-store shells without the field fall back to their operation `sId`. Settlement writes the normal operation payload and `createdOn`; refunded shells are retained for fourteen days to preserve idempotency evidence and then removed by bounded maintenance.
 
 Interactive reservations receive a 30-minute recovery marker. The existing daily `menulistMaintenanceScheduler.ai_operation_detail_cleanup` task reads at most ten due reservation rows per active store (maximum 200 active stores per run), refunds stale interactive rows, and deletes expired refunded shells. Batch-image reservations use deterministic operation IDs and `durable_retry`; they remain reserved while staged output may be finalized and are refunded by terminal/cancelled/max-attempt worker paths rather than by the interactive timer.
 
@@ -32,7 +32,7 @@ Interactive reservations receive a 30-minute recovery marker. The existing daily
 
 ### Purpose
 
-Append-only log of every AI operation. Each document represents one API call to Gemini. This is the **source of truth** for cost reconciliation. Writes are server/Admin-only through `src/lib/ai/operationLog.ts` and `src/lib/ai/accounting.ts`; browser clients can read scoped transaction history but cannot create or mutate operation rows.
+Append-only log of every AI operation. Each document represents one accounted AI action (including explicit zero-unit/internal actions, not only Gemini calls). This is the **source of truth** for cost reconciliation. Writes are server/Admin-only through `src/lib/ai/operationLog.ts` and `src/lib/ai/accounting.ts`; owner browsers read a role-safe projection only through authenticated `/api/ai-operations` after current `canAccessBilling` authorization and cannot directly create, mutate, or read full operation rows.
 
 ### Document Schema
 
@@ -80,33 +80,33 @@ Append-only log of every AI operation. Each document represents one API call to 
 
 | Operation                | Trigger                       | Frequency       | Reads              | Writes |
 | ------------------------ | ----------------------------- | --------------- | ------------------ | ------ |
-| **Write**                | Server route/worker after successful AI provider call | Per user action | 0                  | 1      |
-| **Read (paginated)**     | Admin views Transactions page | Rare            | pageSize (10-50)   | 0      |
-| **Read (by store)**      | Admin filters by store        | Rare            | All docs for store | 0      |
-| **Read (by date range)** | Admin filters by date         | Rare            | Filtered subset    | 0      |
+| **Write**                | Paid server route reserves before provider and settles after valid output | Per paid user action | Transactional subscription update + reservation shell, then settlement of the same shell | 1 operation document plus subscription updates |
+| **Owner extraction history mirror** | Cloud Functions after successful/partial authenticated extraction | Per eligible extraction job | 0 | 2 atomic operation writes: detailed platform audit + compact no-credit owner history row |
+| **Read (paginated)**     | Authorized owner/platform views Transactions | Rare | Owner: 1 current-store permission read + pageSize (1-50) + optional cursor; platform: pageSize + optional cursor | 0 |
+| **Read (action-filtered)** | Authorized owner/platform filters Transactions | Rare | Same permission rule; bounded scan up to 500 operation rows per request | 0 |
+| **Read (by date range)** | Authorized owner/platform filters Transactions | Rare | Same permission rule; filtered subset plus optional cursor | 0 |
 
 ### Cost Estimate
 
 | Scenario                                   | Monthly Writes | Monthly Reads           | Firestore Cost |
 | ------------------------------------------ | -------------- | ----------------------- | -------------- |
-| 100 active tenants, 50 AI ops/month each   | 5,000 writes   | ~500 reads (admin only) | ~$0.03         |
+| 100 active tenants, 50 AI ops/month each   | 5,000 writes   | ~500 protected history reads | ~$0.03         |
 | 500 active tenants, 100 AI ops/month each  | 50,000 writes  | ~2,000 reads            | ~$0.30         |
 | 1000 active tenants, 200 AI ops/month each | 200,000 writes | ~5,000 reads            | ~$1.20         |
 
-**Why so cheap:** Append-only pattern means no update costs. Reads are admin-only (paginated), not customer-facing.
+**Why bounded:** Append-only writes avoid update churn. History reads are authenticated, permission-checked, paginated, and rate-limited; action fallback scans stop at 500 operation rows per request.
 
 ### Indexes Required
 
 | Index     | Fields                        | Purpose                              |
 | --------- | ----------------------------- | ------------------------------------ |
-| Composite | `createdOn` (desc) + `action` | Paginated queries with action filter |
-| Composite | `createdOn` (desc)            | Date range queries                   |
+| Built-in single-field | `createdOn` (desc) | Page and date-range ordering |
 
-**Note:** These indexes may already exist if the Transactions UI was previously tested. Verify in Firebase Console.
+**Note:** Action filtering intentionally uses the bounded server scan because these operation ledgers are dynamic nested store collections and do not share one collection-group composite index in this flow.
 
 ### Usage Date Rendering Contract
 
-`createdOn` is stored as a Firestore `Timestamp` for normal operation rows. Browser DAL reads can return a live Firebase `Timestamp` object, while serialized/admin paths can return `{ seconds, nanoseconds }` or `{ _seconds, _nanoseconds }`. Desktop Transactions, Mobile Transactions, and the details modal must format dates through the shared date normalizer instead of passing raw timestamp objects to `Intl` formatters.
+`createdOn` is stored as a Firestore `Timestamp` for normal operation rows. The protected API serializes visible dates to canonical ISO strings, and `src/lib/ai/operationHistoryClientContract.ts` rejects malformed/noncanonical browser values before Desktop Transactions, Mobile Transactions, or detail state consumes them.
 
 ---
 
@@ -169,7 +169,7 @@ Record of every AI Enhancement Pack purchase. Links Razorpay order/payment to th
 
 `verify-topup` requires authenticated tenant/store access plus `canManageSubscription`, validates the Razorpay checkout signature, normalizes the checkout order ID through `src/lib/billing/topupDocumentIdBoundary.ts`, reads `topups/{orderId}` before changing the subscription, and writes the credit update plus paid top-up audit record in one Firestore transaction. `create-topup-order` also normalizes the provider order ID before the pending top-up write. Both top-up routes validate the resolved billing tenant/store scope through `normalizeBillingTopupScopeDocumentId()` before top-up provider work, provider-note comparison, Firestore store refs, or top-up writes. If the top-up is already `paid`, the route returns success without adding credits again. If the order is not paid yet, the route fetches the Razorpay order and requires `order.notes.tenantId` and `order.notes.storeId` to match the normalized authenticated billing scope before updating `subscriptions.topUpCredits`.
 
-AI usage reset, reservation, settlement, and refund write through Firestore transactions. Paid AI routes run `checkAICapacity()` and then atomically reserve exact units before the provider call; if a billing-period reset is due, current allowance is applied inside that reservation transaction. After valid output, `finalizeAiOperationAccounting()` promotes the reservation shell into the operation row without a second debit. Provider/pre-settlement failure restores the exact charged buckets once. Reservation deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets.
+AI usage reset, reservation, settlement, and refund write through Firestore transactions. Paid AI routes run `checkAICapacity()` and then atomically reserve exact units before the provider call; if a billing-period reset is due, current allowance is applied inside that reservation transaction. For linked outlets, the operation shell remains under the outlet while the debit/refund uses the inherited HQ subscription recorded by `accountingBillingStoreId`. After valid output, `finalizeAiOperationAccounting()` promotes the reservation shell into the operation row without a second debit. Provider/pre-settlement failure restores the exact charged buckets once. Reservation deducts recurring `monthlyCredits` first and purchased `topUpCredits` second, leaving top-up balance untouched by billing-cycle resets. API balance responses carry the effective `billingStoreId`; browser state applies them only when they match the active subscription.
 
 July 1 owner AI permission hardening adds one existing store permission read before expensive AI or capacity work on business copy, campaign caption, description generation, new-item metadata, translation, image generation, image editing, batch image trigger, Menu Card design advisor, SEO generation, AI pack status, and weekly narrative routes. Rejected users can incur the permission read but do not reach capacity checks, media fetches, Cloud Tasks enqueue, provider calls, analytics Firestore reads, insight writes, operation-log writes, or credit consumption. This adds no writes for rejected requests, deletes, rules, indexes, Cloud Functions, Firebase deploy requirement, or Vercel deploy action.
 
@@ -177,7 +177,7 @@ July 1 batch image Cloud Tasks config preflight keeps rejected misconfigured bat
 
 July 13 batch-trigger admission now treats limiter infrastructure as required for the expensive Cloud Tasks fanout. `checkBatchOperationLimit()` opts into the shared core limiter's strict provider-error mode; provider unavailability or an unexpected helper failure returns fixed `503` copy plus `Retry-After` before request-body parsing, permission/capacity reads, or task enqueue. Caller quota exhaustion remains `429`. Other shared rate-limit convenience wrappers keep their existing default. This changes no Firestore read/write shape, rule, index, Storage object, Cloud Function, task payload, provider accounting, or credit-debit contract.
 
-July 1 batch image prompt-cache retention is bounded by the consolidated maintenance scheduler. Cache-eligible batch worker misses write a private prepared source object under `system/aiImagePromptCache/` and an `aiImagePromptCache/{cacheKey}` doc with `expiresAt`; cache hits copy source bytes into the requesting store's own `media/menuItem/{tId}/{sId}/...` path and record a free `unitsConsumed: 0` operation. `menulistMaintenanceScheduler` now runs `ai_image_prompt_cache_cleanup` daily, scanning up to 25 expired cache docs, deleting only source paths under `system/aiImagePromptCache/`, and then deleting the cache docs. This changes Firebase Function logic and remains pending live effect until the updated scheduler can be deployed.
+July 1 batch image prompt-cache retention is bounded by the consolidated maintenance scheduler. Cache-eligible batch worker misses write a private prepared immutable version-2 source object under `system/aiImagePromptCache/v2/{cacheKey}/{sourceVersion}.{ext}` and transactionally replace the `aiImagePromptCache/{cacheKey}` doc with `expiresAt`; cache hits copy source bytes into the requesting store's own `media/menuItem/{tId}/{sId}/...` path and record a free `unitsConsumed: 0` operation. `menulistMaintenanceScheduler` runs `ai_image_prompt_cache_cleanup` daily, scanning up to 25 expired cache docs, deleting only exact cache-key source paths under `system/aiImagePromptCache/`, and transactionally deleting each row only when current source/expiry truth still matches the expired snapshot. This changes Firebase Function logic and remains pending live effect until the updated scheduler can be deployed.
 
 ---
 

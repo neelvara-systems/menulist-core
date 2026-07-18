@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { FEATURE_FLAGS } from "@config/features";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
@@ -71,6 +72,9 @@ export const POST = withAuth(async (request, session) => {
     let capacityReservation: Awaited<ReturnType<typeof reserveAiCapacity>> | null = null;
 
     try {
+        if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) {
+            return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
+        }
 
         // �️ SAFE_MODE: Block expensive operations during system maintenance
         const { checkSafeMode } = await import('@lib/ops/safeMode');

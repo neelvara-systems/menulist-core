@@ -3,8 +3,55 @@ import {
     filterProjectReferencedImageBatchUrls,
     getImageBatchImageUrls,
     getImageBatchStorageCleanupUrls,
+    IMAGE_BATCH_STORAGE_DELETION_ENABLED,
+    selectImageBatchRetentionStorePage,
     shouldDeleteImageBatchStorage,
 } from '../../functions/src/schedulers/imageBatchRetentionBoundary';
+import { selectDeterministicRetentionStorePage } from '../../functions/src/schedulers/retentionStorePageBoundary';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const stores = Object.fromEntries(
+    Array.from({ length: 451 }, (_, index) => {
+        const storeId = String(451 - index);
+        return [storeId, { active: storeId !== '451', tId: '1' }];
+    }),
+);
+const firstStorePage = selectImageBatchRetentionStorePage(stores, 0, 200);
+const secondStorePage = selectImageBatchRetentionStorePage(stores, DAY_MS, 200);
+const thirdStorePage = selectImageBatchRetentionStorePage(stores, 2 * DAY_MS, 200);
+const wrappedStorePage = selectImageBatchRetentionStorePage(stores, 3 * DAY_MS, 200);
+
+assert.deepEqual(
+    {
+        first: firstStorePage.entries.map(([storeId]) => storeId),
+        second: secondStorePage.entries.map(([storeId]) => storeId),
+        third: thirdStorePage.entries.map(([storeId]) => storeId),
+        wrapped: wrappedStorePage.entries.map(([storeId]) => storeId),
+    },
+    {
+        first: Array.from({ length: 200 }, (_, index) => String(index + 1)),
+        second: Array.from({ length: 200 }, (_, index) => String(index + 201)),
+        third: Array.from({ length: 50 }, (_, index) => String(index + 401)),
+        wrapped: Array.from({ length: 200 }, (_, index) => String(index + 1)),
+    },
+    'Daily retention pages must cover every active store and wrap without starving stores after the first 200.',
+);
+
+const snapshotPage = selectDeterministicRetentionStorePage(stores, 2 * DAY_MS, 200);
+assert.equal(snapshotPage.totalStores, 451, 'Snapshot retention must include inactive stores with expiring historical data.');
+assert.ok(
+    snapshotPage.entries.some(([storeId]) => storeId === '451'),
+    'The deterministic all-store retention cycle must eventually cover inactive stores.',
+);
+assert.deepEqual(
+    {
+        pageCount: thirdStorePage.pageCount,
+        pageIndex: thirdStorePage.pageIndex,
+        totalActiveStores: thirdStorePage.totalActiveStores,
+    },
+    { pageCount: 3, pageIndex: 2, totalActiveStores: 450 },
+);
 
 const data = {
     itemsList: [
@@ -34,25 +81,19 @@ assert.deepEqual(
 assert.deepEqual(
     getImageBatchStorageCleanupUrls(data, 'finished'),
     [],
-    'Finished jobs must retain every URL because selection flags are not durable job data.',
+    'Finished jobs must retain Storage objects until exclusive cross-project reference proof exists.',
 );
 
 for (const status of ['completed', 'failed', 'cancelled', 'discarded']) {
-    assert.deepEqual(
-        getImageBatchStorageCleanupUrls(data, status),
-        [
-            'media/menuItem/1/2/selected.webp',
-            'media/menuItem/1/2/unselected.webp',
-        ],
-        `${status} jobs must clean every generated image exactly once.`,
-    );
-    assert.equal(shouldDeleteImageBatchStorage(status), true);
+    assert.deepEqual(getImageBatchStorageCleanupUrls(data, status), []);
+    assert.equal(shouldDeleteImageBatchStorage(status), false);
 }
+assert.equal(IMAGE_BATCH_STORAGE_DELETION_ENABLED, false);
 
 assert.deepEqual(
     getImageBatchStorageCleanupUrls({ ...data, selectedImagesPersisted: true }, 'cancelled'),
     [],
-    'Cancelled partial jobs that persisted selected images must retain every potentially referenced URL.',
+    'Cancelled partial jobs must retain every potentially shared media object.',
 );
 
 const persistedJobWithoutUiSelectionFlags = {
@@ -62,7 +103,7 @@ const persistedJobWithoutUiSelectionFlags = {
 assert.deepEqual(
     getImageBatchStorageCleanupUrls(persistedJobWithoutUiSelectionFlags, 'finished'),
     [],
-    'Cleanup must not depend on browser-only isSelected flags.',
+    'Cleanup must not infer exclusive ownership from browser-only selection state.',
 );
 
 for (const status of ['queued', 'processing', 'unknown', null, 1]) {

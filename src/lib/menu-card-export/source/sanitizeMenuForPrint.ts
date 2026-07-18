@@ -1,4 +1,5 @@
 import type { LocalizedText, PrintAttribute, PrintCategory, PrintItem } from '../models/printModel';
+import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 
 function resolveText(value: LocalizedText, language = 'en', fallback = ''): string {
     if (!value) return fallback;
@@ -19,9 +20,8 @@ function stripUnsupported(text: string): string {
 }
 
 function normalizePrice(price: unknown): string | undefined {
-    if (price === undefined || price === null) return undefined;
-    const value = String(price).trim();
-    return value ? value : undefined;
+    const result = normalizeOptionalMenuPrice(price);
+    return result.success && result.data ? result.data : undefined;
 }
 
 function normalizeTags(item: any): string[] {
@@ -67,9 +67,6 @@ export function sanitizeMenuForPrint(
             return;
         }
 
-        const price = normalizePrice(item?.price);
-        if (!price) missingPriceCount += 1;
-
         const attributes: PrintAttribute[] = (Array.isArray(item?.attributes) ? item.attributes : [])
             .filter((attribute: any) => attribute?.active !== false)
             .slice(0, 8)
@@ -79,6 +76,10 @@ export function sanitizeMenuForPrint(
                 price: normalizePrice(attribute?.price),
             }))
             .filter((attribute: PrintAttribute) => !!attribute.name);
+        const price = normalizePrice(item?.price);
+        if (!price && !attributes.some((attribute) => Boolean(attribute.price))) {
+            missingPriceCount += 1;
+        }
 
         const categoryId = item?.category || item?.categoryId;
         const printItem: PrintItem = {

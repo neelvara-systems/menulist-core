@@ -194,6 +194,9 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             setCoverUploading(true);
             try {
                 const url = await uploadOBPCover(prepared.blob, { tId: session.tId, sId: session.sId }, prepared);
+                // Treat the immediate upload as a cleanup candidate until the
+                // parent store save confirms it is still referenced.
+                queuePhotoDelete(url);
                 if (watchedBusinessCover && watchedBusinessCover !== url) {
                     queuePhotoDelete(watchedBusinessCover);
                 }
@@ -314,6 +317,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
             setPhotoUploading(index);
             try {
                 const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
+                queuePhotoDelete(url);
                 const updated = [...photos];
                 if (updated[index] && updated[index] !== url) {
                     queuePhotoDelete(updated[index]);
@@ -583,7 +587,7 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                             {t('businessCoverHelp')}
                         </Text>
                         <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-                            <Col xs={24} md={12}>
+                            <Col xs={24} md={FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? 12 : 24}>
                                 <MediaImageCard
                                     accept={getMediaProfileAcceptAttribute('businessCover')}
                                     alt={t('businessCover')}
@@ -621,21 +625,23 @@ const OfficialPageTab = forwardRef<HTMLDivElement, OfficialPageTabProps>(
                                     />
                                 </div>
                             </Col>
-                            <Col xs={24} md={12}>
-                                <Button
-                                    block
-                                    disabled={coverUploading}
-                                    loading={coverGenerating}
-                                    onClick={() => { void handleGenerateBusinessCover(); }}
-                                    size="large"
-                                    style={{ minHeight: 48 }}
-                                >
-                                    <Flex align="center" gap={8} justify="center">
-                                        <LuSparkles size={18} />
-                                        <span>{watchedBusinessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</span>
-                                    </Flex>
-                                </Button>
-                            </Col>
+                            {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                                <Col xs={24} md={12}>
+                                    <Button
+                                        block
+                                        disabled={coverUploading}
+                                        loading={coverGenerating}
+                                        onClick={() => { void handleGenerateBusinessCover(); }}
+                                        size="large"
+                                        style={{ minHeight: 48 }}
+                                    >
+                                        <Flex align="center" gap={8} justify="center">
+                                            <LuSparkles size={18} />
+                                            <span>{watchedBusinessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</span>
+                                        </Flex>
+                                    </Button>
+                                </Col>
+                            ) : null}
                         </Row>
                     </div>
 

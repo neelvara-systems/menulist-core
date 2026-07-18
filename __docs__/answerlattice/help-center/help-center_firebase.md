@@ -1,7 +1,7 @@
 # Help Center — Firebase Cost & Operations Tracking
 
-> **Version:** 1.1.5
-> **Last Updated:** 2026-07-06
+> **Version:** 1.3.0
+> **Last Updated:** 2026-07-17
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -11,8 +11,8 @@
 
 | # | Collection | Doc ID Pattern | Scoping | Avg Doc Size | Growth Rate |
 |---|-----------|---------------|---------|-------------|-------------|
-| 1 | `kb_articles` | Auto-ID | Global | 5-50 KB (with embedding ~3KB) | Slow (manual + AI gen) |
-| 2 | `kb_categories` | `categories` (single doc) | Global | 10-100 KB (nested map) | Very slow |
+| 1 | `kb_articles` | Auto-ID | `pId + tId + sId` | 5-50 KB (embedding field varies by active model) | Slow (manual + governed generation) |
+| 2 | `kb_categories` | `categories_{tId}_{sId}` | `pId + tId + sId` | 10-100 KB (nested map) | Very slow |
 | 3 | `kb_generation_jobs` | Auto-ID | `tId + sId` fields | 5-50 KB | Per-upload |
 | 4 | `kb_staging_sections` | — | Global | Variable | Transient |
 | 5 | `kb_staging_chunks` | — | Global | Variable | Transient |
@@ -21,8 +21,8 @@
 | 8 | `kb_sections` | — | Global | Variable | Slow |
 | 9 | `chatSessions` | Auto-ID | `tId + sId + uId` fields | 2-100 KB (grows with messages) | Per-conversation |
 | 10 | `chatAnalytics` | `{tId}_{sId}_{YYYY-MM-DD}` | `tId + sId` fields | 1-5 KB | 1/store/day |
-| 11 | `queryEmbeddings` | Cache key string | Global | 3-4 KB (768-dim vector) | Per-unique-query |
-| 12 | `aiSearchHistory` | Auto-ID | `tId` field | 2-10 KB | Per-search |
+| 11 | `queryEmbeddings` | Scoped cache key | `pId + tId + sId` | Model-dependent vector payload | Per unique scoped query |
+| 12 | `aiSearchHistory` | Auto-ID | `pId + tId + sId + uId` | 2-10 KB | Per search when analytics persistence succeeds |
 | 13 | `supportTickets` | Auto-ID | `tId + sId` fields | 2-50 KB | Per-ticket |
 | 14 | `feedback` | Auto-ID | `tId + sId + uId` fields | 0.5-2 KB | Per-submission |
 | 15 | `changelog/{tId}/{sId}` | `page_XXXXXX` | Subcollection | Up to 900 KB/page | Per-entry |
@@ -31,13 +31,13 @@
 
 Chat session acknowledgement hardening is cost-neutral. `saveChatSession()` still performs one `chatSessions` create, but HelpChat now requires a persisted session object before selecting the new conversation. `updateChatSession()` still performs one merge write, but returns `{ success, sessionId, updatedFields }`; HelpChat append/retry/rename and platform metadata saves require that acknowledgement or route through the existing bounded failure path. This adds no reads, writes, indexes, rules, Cloud Functions, Storage operations, provider calls, or deployment requirement.
 
-Chat session delete acknowledgement hardening is cost-neutral. `deleteChatSession()` still performs the existing session read, best-effort attached-image cleanup, and one `chatSessions` delete, but HelpChat now requires `{ success, sessionId, deleted, storageFilesDeleted }` before showing delete success. Failed or malformed delete results reload session state and restore the previous active-session/search snapshot. This adds no reads, writes, deletes, Storage operations, indexes, rules, Cloud Functions, routes, schema fields, or deployment requirement beyond the existing delete path.
+Chat session delete acknowledgement hardening keeps one transaction read and one `chatSessions` delete. HelpChat requires `{ success, sessionId, deleted, storageFilesDeleted }` before showing delete success; `storageFilesDeleted` is now zero because tenant/store-scoped images can be shared across sessions and one deleted row cannot prove scope-wide non-reference. Failed or malformed delete results reload session state and restore the previous active-session/search snapshot. This removes immediate persisted-image Storage deletes without adding reads, writes, indexes, rules, Cloud Functions, routes, schema fields, or deployment requirements.
 
 HelpChat answer-feedback acknowledgement hardening is also cost-neutral. Feedback submission still attempts the existing `aiSearchHistory` feedback merge and `chatSessions` message feedback mirror, but `submitSearchFeedback()` now requires explicit acknowledgements from both writes before local feedback state, thank-you copy, or negative-feedback signal emission advances. This adds no reads, writes, indexes, rules, Cloud Functions, Storage operations, provider calls, routes, schema fields, or deployment requirement.
 
 Chat session scope hardening is cost-neutral. Chat image uploads still perform the same single Storage upload for valid base64 chat images, and chat history/admin/stat reads keep the same `chatSessions` query shapes and read caps, but `src/database/chatSessions/index.ts` now normalizes session `tId/sId` as exact positive numeric Firestore document IDs before composing Storage paths or Firestore filters. Malformed session scope fails before Storage path composition or chat-session reads/scans instead of being trimmed, loosely numeric-coerced, or passed raw to query filters. This adds no Firestore reads/writes/deletes, Storage operations for valid uploads, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
 
-The July 11 single-record hardening makes mutation cost explicit: update, internal-note and delete operations read the target inside a transaction before one optional update or delete; batch metadata reads each capped target before its one batch write; feedback reads the chat session and linked `aiSearchHistory` row and writes both atomically. Delete commits the Firestore delete before best-effort image cleanup so a failed database mutation cannot first remove referenced assets. These reads replace unsafe caller assumptions with transaction-local ownership/schema proof; they add no collection, index, rule, Function, provider call, scheduled work, Firebase deploy target or Vercel action.
+The July 11 single-record hardening makes mutation cost explicit: update, internal-note and delete operations read the target inside a transaction before one optional update or delete; batch metadata reads each capped target before its one batch write; feedback reads the chat session and linked `aiSearchHistory` row and writes both atomically. The July 14 shared-reference correction retains persisted images after append compaction, branch replacement, and delete because the object path is tenant/store-scoped rather than session-owned. These reads replace unsafe caller assumptions with transaction-local ownership/schema proof; the correction removes Storage deletes and adds no collection, index, rule, Function, provider call, scheduled work, Firebase deploy target or Vercel action.
 
 Both `firestore-answerlattice.rules` and the shared `firestore.rules` now enforce the same chat-session product, actor, required/allowed top-level keys, title/mode/message-count, timestamp, metadata-list and immutable creator/scope update contract. Scoped collection queries include `pId == 'AL'` so the rules engine can prove product isolation; both index files contain the six product+tenant+store chat query shapes for user history, modified sorting/filtering and ascending/descending creation time. Dedicated and shared emulator suites prove valid create/read/query/update/delete behavior plus public/cross-workspace, forged actor/product/scope, unknown field, invalid timestamp/mode/title and message-bound denial. These source changes require the matching rules/index deployments; they add no runtime document operation for already valid queries.
 
@@ -50,6 +50,17 @@ KB owner content scope hardening is cost-neutral. KB category document IDs, arti
 Article AI route scope hardening is cost-neutral. FAQ generation, article translation, and article entity extraction now use the same shared exact positive numeric Firestore document-ID scope helper before comparing persisted `kb_articles` tenant/store scope with the authenticated Answerlattice route scope. Valid provider calls, article reads/writes, FAQ suggestion writes, entity candidate writes, translation writes, AI accounting, cache-version behavior, and rate-limit placement keep the same operation shape; malformed stored or route scope fails before provider work or article mutation. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, indexes, rules, Cloud Functions, schema fields, Firebase deploy requirement, or Vercel deploy action.
 
 Support ticket session scope hardening is cost-neutral. Owner-side ticket reads and listeners still query `supportTickets` by `tId + sId + deleted`, order by `createdOn`, and keep the same latest-ticket caps, but `src/database/tickets/index.ts` now normalizes session `tId/sId` as exact positive numeric Firestore document IDs before composing those queries. Malformed session scope fails before owner ticket reads/listeners instead of being trimmed, loosely numeric-coerced, or passed raw to Firestore query filters. Platform-wide support-ticket views keep the existing platform query behavior. This adds no Firestore reads/writes/deletes, Storage operations, indexes, rules, Cloud Functions, provider calls, schema fields, Firebase deploy requirement, or Vercel deploy action.
+
+Item 28 ticket hardening keeps the valid operation shape and tightens admission. Initial ticket uploads now share the UI's four-file, 10 MB and supported-type limit in the DAL; declared byte size and data-URL media type must match before upload. Saved attachment opening performs no Firebase operation, but it now accepts only an HTTPS Firebase download URL from the configured Answerlattice bucket whose decoded object path matches `supportTickets/(documents|messages)/{tId}/{sId}`. Signed URLs are not logged. Firestore rule changes preserve existing message/status lists exactly and validate only the newly appended entry, so long valid histories remain appendable without an extra read or summary document. Satisfaction is write-once after Resolved/Closed. These rule changes require dedicated Answerlattice and explicit shared-mode rule deployment; they add no collection, index, Function or scheduled work.
+
+July 17 cost recheck: support-ticket `messages`, `statuses`, `documents`, and internal `logs` are consumed only after an exact ticket document is returned; no active query filters or orders by these growing arrays/maps. Both `firestore-answerlattice.indexes.json` and the shared `firestore.indexes.json` now exempt the four parent fields from automatic single-field indexing. Ticket list/detail/listener queries keep their existing product/scope/deleted/created ordering, while reply, status, attachment-metadata, and log updates avoid rebuilding unused nested index entries. The dedicated and shared scoped index configurations must be deployed before this saving is live.
+
+On July 16, 2026 both smallest-scope QA rule deployments were attempted after the dedicated and shared emulator suites passed:
+
+- `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json`
+- `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json`
+
+Each stopped at `firebaserules.googleapis.com ... :test` with HTTP 403, `The caller does not have permission`, before compilation/upload. No QA rule revision changed. The exact reruns remain owner/IAM-pending in `__docs__/owner-action-items.md`; production rule deployment remains out of scope until QA evidence and explicit approval exist.
 
 ---
 
@@ -132,7 +143,7 @@ Translation route guard changes on 2026-06-28 added no Firestore reads/writes. U
 | Operation | Reads | Writes | Storage |
 |-----------|-------|--------|---------|
 | requestBodyComposer | 0 | 0 | — |
-| Upload attachments | 0 | 0 | N files |
+| Upload attachments | 0 | 0 | 0-4 files, each at most 10 MB |
 | addDoc | 0 | 1 | — |
 | **Total** | **0** | **1** | **N files** |
 
@@ -140,16 +151,18 @@ Translation route guard changes on 2026-06-28 added no Firestore reads/writes. U
 
 | Operation | Reads | Writes | Storage |
 |-----------|-------|--------|---------|
-| Upload attachments | 0 | 0 | N files |
-| Update ticket | 0 | 1 | — |
-| **Total** | **0** | **1** | **N files** |
+| Upload attachments (DAL capability; current owner reply UI sends text only) | 0 | 0 | 0-4 files, each at most 10 MB |
+| Transaction read + append | 1 | 1 | — |
+| **Total** | **1** | **1** | **0-4 files** |
 
 **Update ticket status:**
 
 | Operation | Reads | Writes |
 |-----------|-------|--------|
-| Update ticket | 0 | 1 |
-| **Total** | **0** | **1** |
+| Transaction read + status/history append | 1 | 1 |
+| **Total** | **1** | **1** |
+
+**Submit satisfaction after resolution/closure:** one transaction read plus one update. A second submission or malformed rating/comment is rejected before mutation.
 
 **Get store tickets (owner):**
 
@@ -332,15 +345,13 @@ Normal runs are far below the ceiling because unchanged summaries skip writes an
 | `feedback` | `uId ASC, tId ASC, sId ASC, createdOn DESC` | User feedback history |
 | `aiSearchHistory` | `cacheKey ASC, tId ASC` | Cache lookup |
 | `kb_generation_jobs` | `tId ASC, sId ASC, status ASC` | Active jobs query |
-| `kb_articles` | `pId+tId+sId+status+active` + Vector index on `embeddingV2` | Active v2 vector search |
-| `kb_articles` | Same scope fields + Vector index on legacy `embedding` | Rollback only during migration |
+| `kb_articles` | `pId+tId+sId+status+active` + Vector index on `embedding` | Canonical vector search |
 
 ### 4.2 Vector Index
 
 | Collection | Vector Field | Dimensions | Distance |
 |-----------|-------------|-----------|----------|
-| `kb_articles` | `embeddingV2` | 768 | COSINE |
-| `kb_articles` | `embedding` | 768 | COSINE rollback index |
+| `kb_articles` | `embedding` | 768 | COSINE |
 
 ---
 

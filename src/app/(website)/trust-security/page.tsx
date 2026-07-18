@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -5,7 +6,7 @@ import TrustSecurityPage from '@/components/website/trust-security/TrustSecurity
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
     title: 'Trust & Security - MenuList | How We Keep Your Data Safe',
     description: 'Learn about MenuList\'s security practices, data protection measures, and our commitment to keeping your business information safe.',
     alternates: {
@@ -16,7 +17,7 @@ export const metadata: Metadata = {
         description: 'Learn about MenuList\'s security practices, data protection measures, and our commitment to keeping your business information safe.',
         url: '/trust-security',
     },
-};
+});
 
 export default function Page() {
     return (

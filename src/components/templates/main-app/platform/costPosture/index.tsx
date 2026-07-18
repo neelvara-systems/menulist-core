@@ -14,7 +14,7 @@ import { formatInrPaise } from '@util/formatters';
 import { Alert, Button, Card, Empty, Select, Space, Spin, Statistic, Table, Tag, Typography, message } from 'antd';
 import { useSession } from 'next-auth/react';
 import { redirect } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const { Paragraph, Text, Title } = Typography;
 
@@ -41,6 +41,7 @@ export default function PlatformCostPosture() {
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
   const [data, setData] = useState<PlatformCostPostureData | null>(null);
+  const activeRequestRef = useRef<AbortController | null>(null);
 
   if (status !== 'loading' && session && !isPlatform) {
     redirect('/dashboard');
@@ -49,23 +50,37 @@ export default function PlatformCostPosture() {
   const loadData = useCallback(async () => {
     if (status === 'loading') return;
     if (!isPlatform) {
+      activeRequestRef.current?.abort();
       setLoading(false);
       return;
     }
+
+    activeRequestRef.current?.abort();
+    const controller = new AbortController();
+    activeRequestRef.current = controller;
     setLoading(true);
     try {
-      const payload = await getPlatformCostPosture(days);
+      const payload = await getPlatformCostPosture(days, { signal: controller.signal });
+      if (activeRequestRef.current !== controller) return;
       setData(payload);
     } catch (error) {
+      if (controller.signal.aborted || activeRequestRef.current !== controller) return;
+      setData(null);
       logRuntimeFailure('platform_cost_posture_load_failed', error, { days });
       message.error('Failed to load platform cost posture');
     } finally {
-      setLoading(false);
+      if (activeRequestRef.current === controller) {
+        activeRequestRef.current = null;
+        setLoading(false);
+      }
     }
   }, [days, isPlatform, status]);
 
   useEffect(() => {
     void loadData();
+    return () => {
+      activeRequestRef.current?.abort();
+    };
   }, [loadData]);
 
   const signalColumns = useMemo(() => [

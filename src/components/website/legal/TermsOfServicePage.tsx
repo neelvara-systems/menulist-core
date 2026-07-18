@@ -10,8 +10,8 @@ import WebsiteHeadline from '../shared/WebsiteHeadline';
 const whatIsMenuList = [
     { label: 'Upload your content', value: 'Menus, price lists, images, and business documents' },
     { label: 'Structured content', value: 'Automatically extracted and organised menu data' },
-    { label: 'Publish everywhere', value: 'QR, digital screens, web links, PDF — all from one source' },
-    { label: 'You own your output', value: 'All generated content belongs to you' },
+    { label: 'Supported outputs', value: 'MenuList QR links, web pages, screens, and fresh downloadable assets from one approved source' },
+    { label: 'Your business content', value: 'You retain the rights you hold in content you upload' },
 ];
 
 const accountCards = [
@@ -59,6 +59,8 @@ const staffAccessCards = [
         desc: 'If you add staff to MenuList, you are responsible for choosing the right role, sharing login details safely, and removing access when it is no longer needed.',
         points: [
             'Assign roles that match what each staff member needs to do',
+            'The Owner role grants operational access; assigning it does not transfer the business account, billing records, notification recipients, or existing subscriptions',
+            'A business ownership transfer requires verified authority and support review before prior-owner access and account records are changed',
             'Keep staff phone numbers, emails, and store assignments accurate',
             'Reset passcodes, sign out sessions, deactivate, or remove staff when access should end',
         ],
@@ -78,19 +80,19 @@ const staffAccessCards = [
 const ownershipCards = [
     {
         icon: LuCheck,
-        title: 'Your content — you own it',
-        desc: 'You retain full ownership of all content you upload and all content generated on your behalf.',
+        title: 'Your content and permitted outputs',
+        desc: 'You retain the rights you already hold in content you upload. MenuList does not claim ownership of that owner content.',
         points: [
-            'You own 100% of your uploaded content',
-            'You grant us a limited licence to process it',
-            'All generated output belongs to you — free to use commercially',
-            'No attribution required to MenuList',
+            'You must have permission to upload and use your source content',
+            'You grant MenuList a limited licence to process it to provide the service',
+            'You may use generated outputs subject to applicable law, your input rights, and relevant provider terms',
+            'You remain responsible for reviewing output accuracy and rights before publishing',
         ],
     },
     {
         icon: LuFileText,
         title: 'Our platform and IP',
-        desc: 'The MenuList platform itself, including our models, algorithms, templates, and workflows, remains our exclusive intellectual property.',
+        desc: 'The MenuList software, product design, templates, workflows, branding, and related platform materials remain MenuList intellectual property or licensed materials.',
         points: [
             'Protected by copyright, trademark, and other laws',
             'Generated content disclaimer: review all output for accuracy before use',
@@ -101,7 +103,7 @@ const ownershipCards = [
 
 const billingFacts = [
     { label: 'Billing cycle', value: 'Monthly or annually — auto-renews unless cancelled' },
-    { label: 'Payment security', value: 'Razorpay (PCI-DSS compliant) — we never store card details' },
+    { label: 'Payment handling', value: 'Razorpay handles checkout and payment-method entry; MenuList stores billing references and status needed to operate subscriptions' },
     { label: 'Cancellation', value: 'Cancel any time from account settings' },
     { label: 'Refund policy', value: 'See our Refund Policy page for details' },
 ];
@@ -131,7 +133,7 @@ const terminationReasons = [
 ];
 
 export default function TermsOfServicePage() {
-    const lastUpdated = 'July 10, 2026';
+    const lastUpdated = 'July 17, 2026';
 
     return (
         <div className="ws-page">

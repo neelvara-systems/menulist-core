@@ -2,8 +2,8 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useTranslations } from 'next-intl';
-import { useCallback, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useForm, type Resolver } from 'react-hook-form';
 import { LuCheck, LuCheckCircle, LuLoader, LuSend } from 'react-icons/lu';
 import * as z from 'zod';
 import TurnstileWidget, { isTurnstileClientEnabled, type TurnstileStatus } from '@/components/security/TurnstileWidget';
@@ -19,17 +19,15 @@ import WebsiteLink from '../shared/WebsiteLink';
 import WebsitePageHero from '../shared/WebsitePageHero';
 import WebsiteProofStrip from '../shared/WebsiteProofStrip';
 
-const schema = z.object({
-  name: z.string().min(2, 'Full name is required'),
-  workEmail: z.string().email('Enter a valid email address'),
-  phoneNumber: z.string().optional(),
-  helpTopic: z.enum(['general', 'demo', 'multi-location', 'pricing', 'other']).optional(),
-  message: z.string().min(10, 'Message must be at least 10 characters'),
-  agreeToTerms: z.boolean().refine(v => v === true, { message: 'Please agree to continue' }),
-  website: z.string().optional(),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = {
+  name: string;
+  workEmail: string;
+  phoneNumber?: string;
+  helpTopic?: 'general' | 'demo' | 'multi-location' | 'pricing' | 'other';
+  message: string;
+  agreeToTerms: boolean;
+  website?: string;
+};
 
 const WHY_COUNT = 3;
 
@@ -41,7 +39,6 @@ const inputStyle: React.CSSProperties = {
   borderRadius: 'var(--ws-radius-md)',
   backgroundColor: 'var(--ws-bg-primary)',
   color: 'var(--ws-text-primary)',
-  outline: 'none',
   boxSizing: 'border-box',
   transition: 'border-color 0.2s',
 };
@@ -68,14 +65,24 @@ export default function ContactPage() {
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
   const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+  const successRef = useRef<HTMLDivElement>(null);
   const captchaRequired = isTurnstileClientEnabled();
   const whyPoints = Array.from({ length: WHY_COUNT }, (_, i) => t(`Contact.why${i}`));
   const proofItems = Array.from({ length: 3 }, (_, i) => t(`Contact.proof${i}`));
   const submitFailedMessage = t('Contact.submitFailed');
   const securityCheckMessage = t('Contact.securityCheckRequired');
+  const contactSchema = z.object({
+    name: z.string().trim().min(2, t('Contact.formNameError')),
+    workEmail: z.string().trim().email(t('Contact.formEmailError')),
+    phoneNumber: z.string().optional(),
+    helpTopic: z.enum(['general', 'demo', 'multi-location', 'pricing', 'other']).optional(),
+    message: z.string().trim().min(10, t('Contact.formMessageError')),
+    agreeToTerms: z.boolean().refine(v => v === true, { message: t('Contact.formAgreeError') }),
+    website: z.string().optional(),
+  });
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(contactSchema) as Resolver<FormValues>,
     defaultValues: { agreeToTerms: false, website: '' },
   });
 
@@ -84,6 +91,10 @@ export default function ContactPage() {
     setCaptchaToken(null);
     setCaptchaResetSignal((current) => current + 1);
   }, [captchaRequired]);
+
+  useEffect(() => {
+    if (submitted) successRef.current?.focus();
+  }, [submitted]);
 
   const onSubmit = async (values: FormValues) => {
     setSubmitError(null);
@@ -209,7 +220,13 @@ export default function ContactPage() {
           <AnimateOnScroll delay={0.15}>
             <div style={{ backgroundColor: 'var(--ws-bg-primary)', borderRadius: 'var(--ws-radius-xl)', border: '1px solid var(--ws-border-default)', padding: 'var(--ws-space-8)' }}>
               {submitted ? (
-                <div style={{ textAlign: 'center', padding: 'var(--ws-space-12) var(--ws-space-6)' }}>
+                <div
+                  ref={successRef}
+                  role="status"
+                  aria-live="polite"
+                  tabIndex={-1}
+                  style={{ textAlign: 'center', padding: 'var(--ws-space-12) var(--ws-space-6)', outline: 'none' }}
+                >
                   <LuCheckCircle size={48} color="var(--ws-success, #38a169)" style={{ margin: '0 auto var(--ws-space-4)' }} />
                   <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--ws-text-primary)' }}>{t('Contact.successTitle')}</h3>
                   <p className="ws-caption" style={{ marginTop: 'var(--ws-space-3)' }}>
@@ -223,31 +240,55 @@ export default function ContactPage() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-5)' }}>
+                <form noValidate onSubmit={handleSubmit(onSubmit)} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--ws-space-5)' }}>
                   {/* Name */}
                   <div>
-                    <label style={labelStyle}>{t('Contact.formName')}</label>
-                    <input {...register('name')} placeholder={t('Contact.formNamePlaceholder')} style={inputStyle} />
-                    {errors.name && <p style={errorStyle}>{errors.name.message}</p>}
+                    <label htmlFor="contact-name" style={labelStyle}>{t('Contact.formName')}</label>
+                    <input
+                      id="contact-name"
+                      autoComplete="name"
+                      aria-invalid={Boolean(errors.name)}
+                      aria-describedby={errors.name ? 'contact-name-error' : undefined}
+                      {...register('name')}
+                      placeholder={t('Contact.formNamePlaceholder')}
+                      style={inputStyle}
+                    />
+                    {errors.name && <p id="contact-name-error" role="alert" style={errorStyle}>{errors.name.message}</p>}
                   </div>
 
                   {/* Email + Phone row */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--ws-space-4)' }}>
                     <div>
-                      <label style={labelStyle}>{t('Contact.formEmail')}</label>
-                      <input {...register('workEmail')} placeholder={t('Contact.formEmailPlaceholder')} style={inputStyle} />
-                      {errors.workEmail && <p style={errorStyle}>{errors.workEmail.message}</p>}
+                      <label htmlFor="contact-email" style={labelStyle}>{t('Contact.formEmail')}</label>
+                      <input
+                        id="contact-email"
+                        type="email"
+                        autoComplete="email"
+                        aria-invalid={Boolean(errors.workEmail)}
+                        aria-describedby={errors.workEmail ? 'contact-email-error' : undefined}
+                        {...register('workEmail')}
+                        placeholder={t('Contact.formEmailPlaceholder')}
+                        style={inputStyle}
+                      />
+                      {errors.workEmail && <p id="contact-email-error" role="alert" style={errorStyle}>{errors.workEmail.message}</p>}
                     </div>
                     <div>
-                      <label style={labelStyle}>{t('Contact.formPhone')}</label>
-                      <input {...register('phoneNumber')} placeholder={t('Contact.formPhonePlaceholder')} style={inputStyle} />
+                      <label htmlFor="contact-phone" style={labelStyle}>{t('Contact.formPhone')}</label>
+                      <input
+                        id="contact-phone"
+                        type="tel"
+                        autoComplete="tel"
+                        {...register('phoneNumber')}
+                        placeholder={t('Contact.formPhonePlaceholder')}
+                        style={inputStyle}
+                      />
                     </div>
                   </div>
 
                   {/* Topic */}
                   <div>
-                    <label style={labelStyle}>{t('Contact.formTopic')}</label>
-                    <select {...register('helpTopic')} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+                    <label htmlFor="contact-topic" style={labelStyle}>{t('Contact.formTopic')}</label>
+                    <select id="contact-topic" {...register('helpTopic')} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
                       <option value="">{t('Contact.formTopicDefault')}</option>
                       <option value="general">{t('Contact.formTopicGeneral')}</option>
                       <option value="demo">{t('Contact.formTopicDemo')}</option>
@@ -259,14 +300,17 @@ export default function ContactPage() {
 
                   {/* Message */}
                   <div>
-                    <label style={labelStyle}>{t('Contact.formMessage')}</label>
+                    <label htmlFor="contact-message" style={labelStyle}>{t('Contact.formMessage')}</label>
                     <textarea
+                      id="contact-message"
+                      aria-invalid={Boolean(errors.message)}
+                      aria-describedby={errors.message ? 'contact-message-error' : undefined}
                       {...register('message')}
                       placeholder={t('Contact.formMessagePlaceholder')}
                       rows={5}
                       style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
                     />
-                    {errors.message && <p style={errorStyle}>{errors.message.message}</p>}
+                    {errors.message && <p id="contact-message-error" role="alert" style={errorStyle}>{errors.message.message}</p>}
                   </div>
 
                   <div style={{ display: 'none' }} aria-hidden>
@@ -284,6 +328,8 @@ export default function ContactPage() {
                     <input
                       type="checkbox"
                       id="agreeToTerms"
+                      aria-invalid={Boolean(errors.agreeToTerms)}
+                      aria-describedby={errors.agreeToTerms ? 'contact-terms-error' : undefined}
                       {...register('agreeToTerms')}
                       style={{ flexShrink: 0, width: '16px', height: '16px', cursor: 'pointer' }}
                     />
@@ -294,7 +340,7 @@ export default function ContactPage() {
                       <WebsiteLink href="/terms-of-service" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none' }}>{t('Contact.formTerms')}</WebsiteLink>{t('Contact.formAgreeEnd')}
                     </label>
                   </div>
-                  {errors.agreeToTerms && <p style={{ ...errorStyle, marginTop: '-12px' }}>{errors.agreeToTerms.message}</p>}
+                  {errors.agreeToTerms && <p id="contact-terms-error" role="alert" style={{ ...errorStyle, marginTop: '-12px' }}>{errors.agreeToTerms.message}</p>}
 
                   <TurnstileWidget
                     action="menulist_contact"
@@ -306,7 +352,7 @@ export default function ContactPage() {
 
                   {captchaRequired && captchaStatus === 'error' ? (
                     <p style={errorStyle} role="alert">
-                      Security check did not load. Refresh the page and try again.
+                      {t('Contact.securityCheckLoadFailed')}
                     </p>
                   ) : null}
 

@@ -5,7 +5,7 @@
 **Acquisition flag:** `ENABLE_OWNER_REFERRAL` (implemented, default `false`)
 **Pilot allowlist:** `OWNER_REFERRAL_PILOT_STORE_IDS` (implemented, default `[]`)
 **Settlement flag:** `ENABLE_OWNER_REFERRAL_REWARD_PROCESSING` (implemented, default `false`)
-**Last updated:** July 11, 2026
+**Last updated:** July 16, 2026
 **Audience:** Engineering, security, billing, QA
 
 ---
@@ -87,7 +87,7 @@ OWNER_REFERRAL_PILOT_STORE_IDS: [],
 
 - `ENABLE_OWNER_REFERRAL` controls new invite generation, capture, and attribution.
 - `ENABLE_OWNER_REFERRAL_REWARD_PROCESSING` controls payment settlement for already-attributed referrals.
-- `OWNER_REFERRAL_PILOT_STORE_IDS` limits rollout exposure when populated. An empty list represents broad rollout, but may be used only after the pilot release decision.
+- `OWNER_REFERRAL_PILOT_STORE_IDS` is a required acquisition allowlist. An empty list, a list containing no valid positive store IDs, or a store outside the list fails closed. Broad rollout requires a later explicit implementation/governance decision; it cannot happen accidentally through an empty list.
 
 Acquisition may be paused while settlement remains enabled. Do not abandon an attributed paid referral merely because new invitations are disabled.
 Acquisition is considered enabled only when both boolean flags are on. Settlement may run by itself for repair, but acquisition may never accept a referral while settlement is off.
@@ -106,7 +106,8 @@ export const OWNER_REFERRAL_TOKEN_TTL_DAYS = 30;
 export const OWNER_REFERRAL_REFERRER_CREDITS = 100;
 export const OWNER_REFERRAL_REFERRED_CREDITS = 50;
 export const OWNER_REFERRAL_RECENT_LIMIT = 10;
-export const OWNER_REFERRAL_PENDING_REPAIR_LIMIT = 100;
+export const OWNER_REFERRAL_PENDING_REPAIR_LIMIT = 25;
+export const OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT = 25;
 
 export const OWNER_REFERRAL_STATUS = {
   ATTRIBUTED: 'attributed',
@@ -264,10 +265,11 @@ Admission order:
 
 1. authenticated session and numeric tenant/store scope;
 2. acquisition flag and pilot allowlist;
-3. tenant access and billing-management permission;
-4. owner-read rate limit before Firestore work;
-5. verified paid MenuList subscription evidence;
-6. recent-status query limited to ten.
+3. tenant access;
+4. owner-read rate limit before the billing-permission Firestore check, failing closed on provider failure in production;
+5. billing-management permission;
+6. verified paid MenuList subscription evidence;
+7. recent-status query limited to ten.
 
 Response:
 
@@ -297,13 +299,13 @@ Public but same-origin, Zod-bounded, rate-limited before cryptographic work, and
 
 ```ts
 // request
-{ token: string }
+{ action: 'capture', token: string } | { action: 'decline' }
 
 // response
 { success: true, continueTo: '/create-menu' }
 ```
 
-Only the explicit invite CTA calls this route. Page load, social preview, and iframe load never capture. Rate-limit provider errors fail closed in production; local development may use the existing local bypass so the flow remains testable without production Upstash access.
+Only an explicit invite-page choice calls this route. `capture` validates and saves the token; `decline` clears any existing referral cookie and works even when acquisition is disabled, so normal setup cannot inherit stale attribution. Page load, social preview, and iframe load never capture. Rate-limit provider errors fail closed in production; 429 responses include `Retry-After` and `X-RateLimit-Reset`. Local development may use the existing local bypass so the flow remains testable without production Upstash access.
 
 ---
 
@@ -335,8 +337,8 @@ In `src/app/api/onboarding/create-subscription/route.ts`, bind the referral in t
 In `src/app/api/razorpay/create-subscription/route.ts`, when a valid referral cookie is present:
 
 1. verify tenant/store authority;
-2. read the deterministic referral document and the bounded subscription-history query inside one Firestore transaction;
-3. reject retroactive binding when that transaction finds a prior successful MenuList subscription payment;
+2. read the deterministic referral document and the bounded 25-row subscription-history query inside one Firestore transaction;
+3. reject retroactive binding when that transaction finds a prior successful MenuList subscription payment or the 25-row query is saturated; saturation fails closed because older successful-payment history cannot be disproved safely;
 4. create the deterministic referral record before creating the pending provider subscription;
 5. preserve the record if provider checkout is abandoned so a later first payment can still settle;
 6. clear the cookie after successful binding or after detecting a prior paid subscription.
@@ -394,10 +396,12 @@ Call it from:
 
 1. checks the direct referral where the paid store is the referred business;
 2. queries pending referrals where the paid store is the referrer, using the pending-repair index;
-3. processes at most 100 per page with cursors;
-4. re-reads both paid wallet documents in each reward transaction;
-5. issues exactly once when both are paid;
-6. leaves unpaid records pending without a retry timer or expiry.
+3. fetches at most 26 rows once, processes at most 25, and uses the extra row only as a `hasMore` signal;
+4. does not run an unbounded cursor loop in a payment request;
+5. re-reads both paid wallet and canonical store documents in each reward transaction;
+6. issues exactly once when both are paid and both stores remain active, non-deleted, and unblocked;
+7. leaves unpaid or ineligible-lifecycle records pending without a retry timer or expiry;
+8. emits bounded operational evidence when more pending rows remain for a later verified-payment replay or operator retry.
 
 This is event-driven repair. Do not add a daily referral scheduler.
 
@@ -407,18 +411,20 @@ The normal verified-payment wrapper settles the paid store's direct referral fir
 
 For each candidate:
 
-1. read referral;
+1. read and validate the referral program, status, and two tenant/store scopes;
 2. read referrer current paid subscription wallet;
 3. read referred current paid subscription wallet;
-4. confirm distinct store and subscription wallet scopes;
-5. confirm `reward_issued` is not already set;
-6. derive deterministic `rewardIssueId`;
-7. add 100 to referrer `topUpCredits`;
-8. add 50 to referred `topUpCredits`;
-9. leave monthly fields unchanged;
-10. record before/after balances, subscription IDs, evidence, and `rewardIssuedAt`;
-11. create deterministic `payment_transactions` rows for the referrer and referred business with `transactionType: 'reward_credit'`, `event: 'owner_referral.reward_issued'`, recipient role, credits added, wallet before/after, subscription ID, referral ID, and reward issue ID;
-12. set `reward_issued` and store both reward transaction IDs.
+4. read both canonical store documents;
+5. confirm distinct store and subscription wallet scopes and active, non-deleted, non-blocked stores;
+6. confirm `reward_issued` is not already set;
+7. require both Pack balances to be non-negative safe integers with room for the fixed reward; malformed or overflow-prone values fail the transaction;
+8. derive deterministic `rewardIssueId`;
+9. add 100 to referrer `topUpCredits`;
+10. add 50 to referred `topUpCredits`;
+11. leave monthly fields unchanged;
+12. record before/after balances, subscription IDs, evidence, and `rewardIssuedAt`;
+13. create deterministic `payment_transactions` rows for the referrer and referred business with `transactionType: 'reward_credit'`, `event: 'owner_referral.reward_issued'`, recipient role, credits added, wallet before/after, subscription ID, referral ID, and reward issue ID;
+14. set `reward_issued` and store both reward transaction IDs.
 
 The transaction does not write top-up purchase records, Razorpay payment events, AI-operation records, store documents, project summaries, or analytics events. Referral reward ledger rows are zero-cash credit events and must be rendered as `Referral reward`, never as an Enhancement Pack purchase.
 
@@ -458,6 +464,8 @@ Add `Invite a business owner you know` to `src/components/templates/main-app/use
 
 Add one action to `MobileShareScreen` and open a shell-owned bottom sheet. Use 44px controls, native Share first, WhatsApp second, Copy third, and no route bypass.
 
+Desktop and mobile use the app formatter for referral dates. Clipboard fallback always removes its temporary textarea, and a blocked/unavailable WhatsApp handoff reports a calm share failure instead of a false success.
+
 ### Public Invite Page
 
 Create `src/app/(website)/invite/page.tsx` with:
@@ -468,7 +476,7 @@ Create `src/app/(website)/invite/page.tsx` with:
 - 100/50 payment-only reward disclosure;
 - business-name/general-status privacy disclosure;
 - primary `Create my customer link` CTA;
-- secondary normal setup path that does not capture;
+- secondary normal setup path that explicitly declines and clears any older referral cookie before navigation;
 - privacy and no-limit disclosure before the capture CTA;
 - three short setup steps;
 - invalid/expired generic state;

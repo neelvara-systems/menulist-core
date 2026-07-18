@@ -49,9 +49,13 @@ export const useOwnerReferral = () => {
         textarea.style.position = 'fixed';
         textarea.style.opacity = '0';
         document.body.appendChild(textarea);
-        textarea.select();
-        const copied = document.execCommand('copy');
-        textarea.remove();
+        let copied = false;
+        try {
+            textarea.select();
+            copied = typeof document.execCommand === 'function' && document.execCommand('copy');
+        } finally {
+            textarea.remove();
+        }
         if (!copied) throw new Error('owner_referral_copy_unavailable');
     }, [data, locale]);
 
@@ -65,9 +69,10 @@ export const useOwnerReferral = () => {
     }, [data, locale]);
 
     const openWhatsApp = useCallback(() => {
-        if (!data?.inviteUrl) return false;
+        if (!data?.inviteUrl) throw new Error('owner_referral_whatsapp_unavailable');
         const target = `https://wa.me/?text=${encodeURIComponent(getOwnerReferralShareMessage(data.inviteUrl, locale))}`;
-        window.open(target, '_blank', 'noopener,noreferrer');
+        const opened = window.open(target, '_blank', 'noopener,noreferrer');
+        if (!opened) throw new Error('owner_referral_whatsapp_unavailable');
         return true;
     }, [data, locale]);
 

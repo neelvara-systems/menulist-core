@@ -34,6 +34,7 @@ import {
   normalizeAuthClaimToken,
 } from "@lib/auth/claimTokenBoundary";
 import { getBoundedAuthStringContext, logAuthFailure } from "@lib/auth/authDiagnostics";
+import { runClaimAccountCacheRevalidation } from "@lib/auth/claimAccountPostCommit";
 import { getGlobalEmailUserDocumentId } from "@lib/auth/serverUserContext";
 import {
   assertGoogleClaimTargetIsAvailable,
@@ -216,6 +217,21 @@ const setClaimCustomClaims = async ({
   }
 };
 
+const revalidateClaimAccountPublicCache = async (
+  scope: ClaimedMessagingUser['claimAccountScope'],
+  request: NextRequest,
+): Promise<void> => {
+  await runClaimAccountCacheRevalidation(
+    { storeId: scope.storeId, tenantId: scope.tenantId },
+    {
+      revalidate: (storeId, tenantId) => revalidateMenuCache(storeId, { tId: tenantId }),
+      onFailure: (error) => {
+        logAuthFailure("claim_account_cache_revalidation_failed", error, buildClaimFailureLogContext(request));
+      },
+    },
+  );
+};
+
 export async function POST(request: NextRequest) {
   try {
     // 🔒 RATE LIMITING: Prevent brute force account claim attempts
@@ -223,9 +239,21 @@ export async function POST(request: NextRequest) {
     const { getRateLimitForFeature } = await import('@lib/rateLimit/configs');
     const ip = getClientIp(request);
     const ipHash = hashPublicRateLimitValue(ip);
-    const rl = await checkRateLimit({ key: `auth-claim:${ipHash}`, ...getRateLimitForFeature('AUTH_SENSITIVE') });
+    const rl = await checkRateLimit({
+      key: `auth-claim:${ipHash}`,
+      ...getRateLimitForFeature('AUTH_SENSITIVE'),
+      failClosedOnProviderError: true,
+    });
     if (!rl.allowed) {
-      return NextResponse.json({ error: "Too many attempts. Please wait before trying again." }, { status: 429 });
+      const providerUnavailable = rl.reason === 'provider_unavailable';
+      return NextResponse.json(
+        {
+          error: providerUnavailable
+            ? "Account setup is temporarily unavailable. Please try again shortly."
+            : "Too many attempts. Please wait before trying again.",
+        },
+        { status: providerUnavailable ? 503 : 429 },
+      );
     }
 
     const bodyResult = await readBoundedJsonBody(request, CLAIM_ACCOUNT_MAX_BODY_BYTES, {
@@ -468,7 +496,7 @@ export async function POST(request: NextRequest) {
         throw error;
       }
       const claimScope = claimedMessagingUser.claimAccountScope;
-      await revalidateMenuCache(claimScope.storeId, { tId: claimScope.tenantId });
+      await revalidateClaimAccountPublicCache(claimScope, request);
       await setClaimCustomClaims({
         firebaseUid: authResult.uid,
         request,
@@ -580,7 +608,7 @@ export async function POST(request: NextRequest) {
       throw error;
     }
     const claimScope = claimedMessagingUser.claimAccountScope;
-    await revalidateMenuCache(claimScope.storeId, { tId: claimScope.tenantId });
+    await revalidateClaimAccountPublicCache(claimScope, request);
 
     return NextResponse.json({
       success: true,

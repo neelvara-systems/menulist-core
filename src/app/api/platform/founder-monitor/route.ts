@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import type {
@@ -371,6 +372,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     const rateLimit = await checkRateLimit({
       key: `platform-founder-monitor:${userRateLimitHash}`,
       ...rateLimitConfig,
+      failClosedOnProviderError: true,
     });
 
     if (!rateLimit.allowed) {
@@ -385,12 +387,14 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
       return NextResponse.json(
         {
-          error: `Too many requests. Please wait ${waitSeconds} seconds.`,
+          error: rateLimit.reason === 'provider_unavailable'
+            ? 'Founder monitor is temporarily unavailable.'
+            : `Too many requests. Please wait ${waitSeconds} seconds.`,
           retryAfter: waitSeconds,
           resetAt: rateLimit.resetAt,
         },
         {
-          status: 429,
+          status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
           headers: {
             'Retry-After': String(waitSeconds),
             'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -399,6 +403,14 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
           },
         },
       );
+    }
+
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Founder Monitor Current Role', {
+        ...getBoundedRuntimeStringContext('requestPath', request.nextUrl.pathname),
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const dayKeys = getRecentIndiaDayKeys(parsed.data.days);

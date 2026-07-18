@@ -1,0 +1,463 @@
+{
+  "version": 1,
+  "generatedOn": "2026-07-18",
+  "sourceLocale": "en-US",
+  "sourceOwnerSha256": "ca81e321891bf8fcc6b67f2ad51ef4a450f1d9fcdccb4ec1012963d27c7ce34a",
+  "sourceOwnerValueCount": 3119,
+  "policy": "Existing non-source values were preserved. Only values equal to en-US were generated.",
+  "qualityGates": [
+    "Pinned provider revision and license",
+    "Protected product names, technical terms, URLs, emails, and ICU syntax",
+    "Exact ICU argument/select/plural/tag signature parity",
+    "NFC normalization and invalid-character rejection",
+    "Per-locale owner-subtree SHA-256 evidence",
+    "Translated/source Unicode length ratio at most 2.5 for source messages of 20 or more characters",
+    "Translated/source Unicode length ratio at least 0.18 for source messages of 20 or more characters",
+    "Exact English source values are limited to approved protected invariants"
+  ],
+  "providers": {
+    "indictrans2": {
+      "model": "naklitechie/indictrans2-en-indic-dist-200M",
+      "upstream": "ai4bharat/indictrans2-en-indic-dist-200M",
+      "revision": "a814dab1ae6e4ee4c7d785b7e1dcb0ac8e36bcd6",
+      "upstreamWeightSha256": "0039e4304e9889acc5c8350a193311d07aa5399b6d9fb0445e8fde19e3533bb5",
+      "license": "MIT",
+      "generation": "greedy; no_repeat_ngram_size=3; repetition_penalty=1.1; max_length=128; token-preserving segment fallback"
+    },
+    "madlad400": {
+      "model": "santhosh/madlad400-3b-ct2",
+      "upstream": "google/madlad400-3b-mt",
+      "revision": "c32ad0cf118807ea6258d14be137547155842723",
+      "convertedWeightSha256": "f3c87256a2c888100c179d7dcd7f41df17c767469546c59d32c7dde86c740a6b",
+      "tokenizerSha256": "ef11ac9a22c7503492f56d48dce53be20e339b63605983e9f27d2cd0e0f3922c",
+      "license": "Apache-2.0",
+      "generation": "greedy; no_repeat_ngram_size=3; repetition_penalty=1.1; max_decoding_length=256; token-preserving segment fallback"
+    }
+  },
+  "locales": {
+    "en-US": {
+      "provider": "source",
+      "target": "en-US",
+      "generatedValues": 0,
+      "identicalValues": 0,
+      "ownerValueCount": 3119,
+      "ownerSha256": "ca81e321891bf8fcc6b67f2ad51ef4a450f1d9fcdccb4ec1012963d27c7ce34a"
+    },
+    "en-GB": {
+      "provider": "regional-source",
+      "target": "en-GB",
+      "generatedValues": 0,
+      "identicalValues": 0,
+      "ownerValueCount": 3119,
+      "ownerSha256": "133d8621fba89215891a6fa77cbfc722868965afde650fe9c31410944db7417f"
+    },
+    "hi-IN": {
+      "provider": "indictrans2",
+      "target": "hin_Deva",
+      "generatedValues": 1685,
+      "identicalValues": 33,
+      "ownerValueCount": 3119,
+      "ownerSha256": "9539a4acf374b4c1827809966208d066af53a0021108c7b63e6652e9d1b2b873"
+    },
+    "ar-SA": {
+      "provider": "madlad400",
+      "target": "ar",
+      "generatedValues": 1942,
+      "identicalValues": 19,
+      "ownerValueCount": 3119,
+      "ownerSha256": "969d9bda0243afbd2cde6234d563fdc033d7e818fddc70922d40eb73019816a7"
+    },
+    "es-ES": {
+      "provider": "madlad400",
+      "target": "es",
+      "generatedValues": 1965,
+      "identicalValues": 40,
+      "ownerValueCount": 3119,
+      "ownerSha256": "11390cc6602f72a4b346375ea6a7d7b3a06bc919b383c5e55b5da93309fe5221"
+    },
+    "ta-IN": {
+      "provider": "indictrans2",
+      "target": "tam_Taml",
+      "generatedValues": 2019,
+      "identicalValues": 27,
+      "ownerValueCount": 3119,
+      "ownerSha256": "e53399dc8ff7551e3205ae85e1bf99ad39bf674c89404f20774a871fa44ffc93"
+    },
+    "te-IN": {
+      "provider": "indictrans2",
+      "target": "tel_Telu",
+      "generatedValues": 2048,
+      "identicalValues": 39,
+      "ownerValueCount": 3119,
+      "ownerSha256": "44c0c9234c55a1eb3d754290456cf1adc16e767dbeed9d1c778abf5b9b63601c"
+    },
+    "mr-IN": {
+      "provider": "indictrans2",
+      "target": "mar_Deva",
+      "generatedValues": 2015,
+      "identicalValues": 30,
+      "ownerValueCount": 3119,
+      "ownerSha256": "96204ef56162bf41fcea2d0e49031f59c4ea9239bf8797b0587b76f1bf3314ac"
+    },
+    "bn-IN": {
+      "provider": "indictrans2",
+      "target": "ben_Beng",
+      "generatedValues": 2028,
+      "identicalValues": 20,
+      "ownerValueCount": 3119,
+      "ownerSha256": "20ea2b3f20b8c0191dd15ba6c8f3e2fcbd0e938bdc4f607267de142f816fea17"
+    },
+    "gu-IN": {
+      "provider": "indictrans2",
+      "target": "guj_Gujr",
+      "generatedValues": 2256,
+      "identicalValues": 23,
+      "ownerValueCount": 3119,
+      "ownerSha256": "6c2f80fe6beb638cb6a144b7eedde75516d553ecb60b8b032d505548163b9fd8"
+    },
+    "kn-IN": {
+      "provider": "indictrans2",
+      "target": "kan_Knda",
+      "generatedValues": 2504,
+      "identicalValues": 35,
+      "ownerValueCount": 3119,
+      "ownerSha256": "3397a0a2d9eafd333df5b281c42aade193c06aca01d3c58f3430cfa25efbdb3e"
+    },
+    "ml-IN": {
+      "provider": "indictrans2",
+      "target": "mal_Mlym",
+      "generatedValues": 2505,
+      "identicalValues": 31,
+      "ownerValueCount": 3119,
+      "ownerSha256": "e8cae6b2f6ffa7c8e09051f611c7817c766c8dfabaccb644a4d676f3b0017431"
+    },
+    "pa-IN": {
+      "provider": "indictrans2",
+      "target": "pan_Guru",
+      "generatedValues": 2506,
+      "identicalValues": 36,
+      "ownerValueCount": 3119,
+      "ownerSha256": "d503a0da366958e87de4314fac73a8df31b1297d8d2e37a1bd56638a4c3059a3"
+    },
+    "ur-IN": {
+      "provider": "indictrans2",
+      "target": "urd_Arab",
+      "generatedValues": 2506,
+      "identicalValues": 32,
+      "ownerValueCount": 3119,
+      "ownerSha256": "6282519f7549c49b65e4ae6112772d280dc32a1864a10bebef53f5e943e1260d"
+    },
+    "or-IN": {
+      "provider": "indictrans2",
+      "target": "ory_Orya",
+      "generatedValues": 2499,
+      "identicalValues": 32,
+      "ownerValueCount": 3119,
+      "ownerSha256": "d641271eda53aea1d7e4ac8c71d30018e6d6786acc6226794648eabc2ac8d9e9"
+    },
+    "as-IN": {
+      "provider": "indictrans2",
+      "target": "asm_Beng",
+      "generatedValues": 2494,
+      "identicalValues": 20,
+      "ownerValueCount": 3119,
+      "ownerSha256": "2bffbb1c1f410002051725f3a605cb5b6b171a500f4a31a897f11aa725e44f24"
+    },
+    "ne-NP": {
+      "provider": "indictrans2",
+      "target": "npi_Deva",
+      "generatedValues": 2500,
+      "identicalValues": 30,
+      "ownerValueCount": 3119,
+      "ownerSha256": "21527a231baa6ed4635d1862e63619cf705536872e9bf63dbb406674329ea72e"
+    },
+    "mai-IN": {
+      "provider": "indictrans2",
+      "target": "mai_Deva",
+      "generatedValues": 2490,
+      "identicalValues": 20,
+      "ownerValueCount": 3119,
+      "ownerSha256": "06d6b53542ec4c32d05188421d08513ec6dc553f617580597d3b281ea6044096"
+    },
+    "kok-IN": {
+      "provider": "indictrans2",
+      "target": "gom_Deva",
+      "generatedValues": 2491,
+      "identicalValues": 20,
+      "ownerValueCount": 3119,
+      "ownerSha256": "8c74c48b6851d54043b629c30edd9876af9643b9ab6a08dab4a3647cf9714746"
+    },
+    "sd-IN": {
+      "provider": "indictrans2",
+      "target": "snd_Arab",
+      "generatedValues": 2506,
+      "identicalValues": 43,
+      "ownerValueCount": 3119,
+      "ownerSha256": "c063c28f9129e1ce1bedd35bef447e35edd7e68c9564af47c5792d13fae13f11"
+    },
+    "ks-IN": {
+      "provider": "indictrans2",
+      "target": "kas_Arab",
+      "generatedValues": 3099,
+      "identicalValues": 40,
+      "ownerValueCount": 3119,
+      "ownerSha256": "4017d4360136c0db2308490e49c6c75eab46c5a8d3489aa1070677a7e9281ac1"
+    },
+    "doi-IN": {
+      "provider": "indictrans2",
+      "target": "doi_Deva",
+      "generatedValues": 2491,
+      "identicalValues": 22,
+      "ownerValueCount": 3119,
+      "ownerSha256": "b50c5cdcf3ff598772082c718f60ea8ce271f97162b1160e4f6cda1785e4b9b9"
+    },
+    "mni-IN": {
+      "provider": "indictrans2",
+      "target": "mni_Mtei",
+      "generatedValues": 2490,
+      "identicalValues": 27,
+      "ownerValueCount": 3119,
+      "ownerSha256": "bfccbb66a3beaa8189e6793cfd73c88d7f168be7b7f14a88e4a2e82936b17aee"
+    },
+    "sat-IN": {
+      "provider": "indictrans2",
+      "target": "sat_Olck",
+      "generatedValues": 2490,
+      "identicalValues": 20,
+      "ownerValueCount": 3119,
+      "ownerSha256": "360d66f66ffddd2d954204e25e4ac712d8afa35d7ad7a4ae0ceec53af7843719"
+    },
+    "brx-IN": {
+      "provider": "indictrans2",
+      "target": "brx_Deva",
+      "generatedValues": 3099,
+      "identicalValues": 37,
+      "ownerValueCount": 3119,
+      "ownerSha256": "91faf7d3fd9f850d9a127e7878ca2f2035ef3c0741ca207e8fb951a1ed16f116"
+    },
+    "fr-FR": {
+      "provider": "madlad400",
+      "target": "fr",
+      "generatedValues": 2514,
+      "identicalValues": 46,
+      "ownerValueCount": 3119,
+      "ownerSha256": "925f066707f0cdd43df42f8be99aee663a9daf7eaf086e5eb8c07b83e09bffb7"
+    },
+    "pt-BR": {
+      "provider": "madlad400",
+      "target": "pt",
+      "generatedValues": 2508,
+      "identicalValues": 40,
+      "ownerValueCount": 3119,
+      "ownerSha256": "9736f4e07ad1308188b6914ab4cffedd9b16de23161840b3542c8af771490f68"
+    },
+    "de-DE": {
+      "provider": "madlad400",
+      "target": "de",
+      "generatedValues": 2514,
+      "identicalValues": 40,
+      "ownerValueCount": 3119,
+      "ownerSha256": "9fad1d2bd7ec070b4480f7aef6f37ca3114bbcbf54e3b273e4f527637c6f4cf9"
+    },
+    "it-IT": {
+      "provider": "madlad400",
+      "target": "it",
+      "generatedValues": 2509,
+      "identicalValues": 43,
+      "ownerValueCount": 3119,
+      "ownerSha256": "0d7240d33bba3b7134d0b912252aa9479aa04c564357dae1ff7a719767953cbe"
+    },
+    "ja-JP": {
+      "provider": "madlad400",
+      "target": "ja",
+      "generatedValues": 2496,
+      "identicalValues": 29,
+      "ownerValueCount": 3119,
+      "ownerSha256": "617fed97d6e56f51396d96454004d6c14fddd20a172621ce598ede4140215744"
+    },
+    "zh-CN": {
+      "provider": "madlad400",
+      "target": "zh",
+      "generatedValues": 2270,
+      "identicalValues": 36,
+      "ownerValueCount": 3119,
+      "ownerSha256": "7ebd715011a77ec4658b0a7d866064fb8de1bf0a29123316120090e9f26c3d1f"
+    },
+    "id-ID": {
+      "provider": "madlad400",
+      "target": "id",
+      "generatedValues": 2511,
+      "identicalValues": 39,
+      "ownerValueCount": 3119,
+      "ownerSha256": "71c710158799d879d1a927670c4d85b2e5a5acb09c2f5693703d56236a2cb61e"
+    },
+    "vi-VN": {
+      "provider": "madlad400",
+      "target": "vi",
+      "generatedValues": 2505,
+      "identicalValues": 39,
+      "ownerValueCount": 3119,
+      "ownerSha256": "1acf00a345742f2c2a4a6208c5fbfbe0094884fa5e69dd811fb10f9f01c5405a"
+    },
+    "th-TH": {
+      "provider": "madlad400",
+      "target": "th",
+      "generatedValues": 2485,
+      "identicalValues": 21,
+      "ownerValueCount": 3119,
+      "ownerSha256": "77120638f76c0ef2049fb2220b3f258b9576b7928637913ebe56b56ea3052448"
+    },
+    "ko-KR": {
+      "provider": "madlad400",
+      "target": "ko",
+      "generatedValues": 2486,
+      "identicalValues": 19,
+      "ownerValueCount": 3119,
+      "ownerSha256": "2a9e523db8cbcf3738a8b7357708884aa1022932b689959bb0701220d3f64174"
+    },
+    "tr-TR": {
+      "provider": "madlad400",
+      "target": "tr",
+      "generatedValues": 2501,
+      "identicalValues": 33,
+      "ownerValueCount": 3119,
+      "ownerSha256": "705ee62f7e410c3aa6d5eb2c74c4866b3ab23b7af44464e461d22996e7c5c59b"
+    },
+    "ms-MY": {
+      "provider": "madlad400",
+      "target": "ms",
+      "generatedValues": 2516,
+      "identicalValues": 40,
+      "ownerValueCount": 3119,
+      "ownerSha256": "01d3fe9f0e92edfed849a023d4fe302207bae8c411379ae00d81bdb472c5fdca"
+    },
+    "nl-NL": {
+      "provider": "madlad400",
+      "target": "nl",
+      "generatedValues": 2526,
+      "identicalValues": 37,
+      "ownerValueCount": 3119,
+      "ownerSha256": "de855c57b541bcb45daecae6a87c76e7e7690c0a14ae79db241193bc58904023"
+    },
+    "pl-PL": {
+      "provider": "madlad400",
+      "target": "pl",
+      "generatedValues": 2503,
+      "identicalValues": 30,
+      "ownerValueCount": 3119,
+      "ownerSha256": "0d5fa8ebe92fb63b45876418a6a6f7a13ac62f9a08bfc45869e745335de960be"
+    },
+    "uk-UA": {
+      "provider": "madlad400",
+      "target": "uk",
+      "generatedValues": 2507,
+      "identicalValues": 37,
+      "ownerValueCount": 3119,
+      "ownerSha256": "f40581d4ac87ac665fb6c7e820266f3eae5119fe772a27fbafc8c81399704eee"
+    },
+    "cs-CZ": {
+      "provider": "madlad400",
+      "target": "cs",
+      "generatedValues": 2509,
+      "identicalValues": 41,
+      "ownerValueCount": 3119,
+      "ownerSha256": "5190b56acbf4377133946f90a1a4175aeff4f1d6b91216cc02709bc4cd8b25cf"
+    },
+    "ro-RO": {
+      "provider": "madlad400",
+      "target": "ro",
+      "generatedValues": 2509,
+      "identicalValues": 38,
+      "ownerValueCount": 3119,
+      "ownerSha256": "fc07a139db7db8c1d05643d3056483ab91c2081b073a98c471640a1bdaa57897"
+    },
+    "el-GR": {
+      "provider": "madlad400",
+      "target": "el",
+      "generatedValues": 2505,
+      "identicalValues": 37,
+      "ownerValueCount": 3119,
+      "ownerSha256": "56b2acdeef6fee4ec302301b0303fd918385ae4a0895f66a2f233f1cd7f4addb"
+    },
+    "hu-HU": {
+      "provider": "madlad400",
+      "target": "hu",
+      "generatedValues": 2508,
+      "identicalValues": 37,
+      "ownerValueCount": 3119,
+      "ownerSha256": "1cb6ece80b9166015e1e23b1b320bef9a7a97c751d09885c412bf33113ef3f0b"
+    },
+    "sv-SE": {
+      "provider": "madlad400",
+      "target": "sv",
+      "generatedValues": 2514,
+      "identicalValues": 39,
+      "ownerValueCount": 3119,
+      "ownerSha256": "192653da30d11d2e580af802c9f0c39b68776a1093776423ec722731bd6abf2c"
+    },
+    "da-DK": {
+      "provider": "madlad400",
+      "target": "da",
+      "generatedValues": 2535,
+      "identicalValues": 40,
+      "ownerValueCount": 3119,
+      "ownerSha256": "203b8f7e8b33502cf5f71b13cecc944d31a18dde286dff5cf415ca366b96c1b5"
+    },
+    "fi-FI": {
+      "provider": "madlad400",
+      "target": "fi",
+      "generatedValues": 2512,
+      "identicalValues": 38,
+      "ownerValueCount": 3119,
+      "ownerSha256": "5fa137fef0e6eb3a7d65e68b619c519a10e91482fd120e9683be4d36bcfebbcf"
+    },
+    "fil-PH": {
+      "provider": "madlad400",
+      "target": "fil",
+      "generatedValues": 2537,
+      "identicalValues": 38,
+      "ownerValueCount": 3119,
+      "ownerSha256": "50af101037a788715253843b1c72a9cbeea52d2080a3bfdf570222ee6d7167da"
+    },
+    "zh-TW": {
+      "provider": "madlad400",
+      "target": "zh",
+      "generatedValues": 2498,
+      "identicalValues": 32,
+      "ownerValueCount": 3119,
+      "ownerSha256": "5848ba9be26ecfd7683d09486563c72b7e2017dbd9a3d98b37972603491b9508"
+    },
+    "he-IL": {
+      "provider": "madlad400",
+      "target": "he",
+      "generatedValues": 2501,
+      "identicalValues": 29,
+      "ownerValueCount": 3119,
+      "ownerSha256": "5c0f4e5ba700480d1c73915a06e142b6d36a498af2d0cd19575f40b0b4834527"
+    },
+    "fa-IR": {
+      "provider": "madlad400",
+      "target": "fa",
+      "generatedValues": 2502,
+      "identicalValues": 29,
+      "ownerValueCount": 3119,
+      "ownerSha256": "58309e304c99562a7653ede484a62b0fdb7a462ec87834f8acdb75a806ba0f5e"
+    },
+    "sw-KE": {
+      "provider": "madlad400",
+      "target": "sw",
+      "generatedValues": 2508,
+      "identicalValues": 37,
+      "ownerValueCount": 3119,
+      "ownerSha256": "6b5d4da59c705d81f628d67660764175c28ad3224e4ab018ca86533c395e6360"
+    }
+  },
+  "qualityRepair": {
+    "repairedOn": "2026-07-18",
+    "repairedValues": 826,
+    "manualOverridesApplied": 109,
+    "lastPassRepairedValues": 0,
+    "trigger": "translated/source Unicode length ratio outside 0.18-2.5 or exact non-invariant English residue",
+    "generation": "provider beam search with token-preserving segment fallback; bounded first-complete-message fallback"
+  }
+}

@@ -3,7 +3,7 @@
 **Status:** Public launch copy locked for website implementation  
 **Public feature name:** AI Menu Manager  
 **In-app owner label:** Menu Manager, with AI badge where useful  
-**Last Updated:** June 27, 2026
+**Last Updated:** July 15, 2026
 
 ---
 
@@ -138,7 +138,7 @@ Subheadline:
 ```text
 AI Menu Manager is an approval-based AI agent for menu operations. Prepare price,
 sold-out, menu-note, design, local export, and review/handoff cards from simple
-messages while MenuList keeps you in control.
+messages while supported changes remain approval-gated.
 ```
 
 Core flow:

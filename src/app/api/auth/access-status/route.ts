@@ -190,6 +190,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
         });
     }
+    if (!platformAccessSession && tenant.data?.deleted === true) {
+        return invalidAccess(request, session, "TENANT_DELETED", {
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
+        });
+    }
+    if (!platformAccessSession && tenant.data?.active === false) {
+        return invalidAccess(request, session, "TENANT_INACTIVE", {
+            ...getBoundedRuntimeStringContext("tenantId", tenantId),
+        });
+    }
     if (isPlatformEntityBlocked(tenant.data)) {
         return invalidAccess(request, session, "TENANT_BLOCKED", {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),
@@ -205,6 +215,16 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     }
     if (!platformAccessSession && storeId != null && storeId !== "" && !store.data) {
         return invalidAccess(request, session, "STORE_NOT_FOUND", {
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+        });
+    }
+    if (!platformAccessSession && store.data?.deleted === true) {
+        return invalidAccess(request, session, "STORE_DELETED", {
+            ...getBoundedRuntimeStringContext("storeId", storeId),
+        });
+    }
+    if (!platformAccessSession && store.data?.active === false) {
+        return invalidAccess(request, session, "STORE_INACTIVE", {
             ...getBoundedRuntimeStringContext("storeId", storeId),
         });
     }

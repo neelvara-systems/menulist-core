@@ -132,13 +132,14 @@ async function testLinkFallbackDoesNotDuplicateUrl(): Promise<void> {
   const originalFetch = globalThis.fetch;
   const originalPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const originalAccessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  const requests: Array<{ body?: string; signal?: AbortSignal | null }> = [];
+  const requests: Array<{ body?: string; redirect?: RequestRedirect; signal?: AbortSignal | null }> = [];
 
   process.env.WHATSAPP_PHONE_NUMBER_ID = "phone-id";
   process.env.WHATSAPP_ACCESS_TOKEN = "token";
   globalThis.fetch = (async (_input: string | URL | Request, init?: RequestInit) => {
     requests.push({
       body: typeof init?.body === "string" ? init.body : undefined,
+      redirect: init?.redirect,
       signal: init?.signal,
     });
     return new Response(null, { status: requests.length === 1 ? 400 : 200 });
@@ -154,6 +155,7 @@ async function testLinkFallbackDoesNotDuplicateUrl(): Promise<void> {
     assert.equal(fallback.text?.body, `Your preview: ${url}`);
     assert.equal((fallback.text?.body?.match(new RegExp(url, "g")) || []).length, 1);
     assert.ok(requests.every((request) => request.signal instanceof AbortSignal));
+    assert.ok(requests.every((request) => request.redirect === "manual"));
   } finally {
     globalThis.fetch = originalFetch;
     if (originalPhoneNumberId === undefined) delete process.env.WHATSAPP_PHONE_NUMBER_ID;
@@ -280,11 +282,15 @@ async function testMediaLookupBindsPhoneAndRejectsUntrustedHost(): Promise<void>
   const originalFetch = globalThis.fetch;
   const originalPhoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const originalAccessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  const requests: string[] = [];
+  const requests: Array<{ url: string; redirect?: RequestRedirect; signal?: AbortSignal | null }> = [];
   process.env.WHATSAPP_PHONE_NUMBER_ID = "phone/id";
   process.env.WHATSAPP_ACCESS_TOKEN = "token";
-  globalThis.fetch = (async (input: string | URL | Request) => {
-    requests.push(String(input));
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    requests.push({
+      url: String(input),
+      redirect: init?.redirect,
+      signal: init?.signal,
+    });
     return new Response(JSON.stringify({ url: "https://attacker.example/media" }), {
       headers: { "content-type": "application/json" },
       status: 200,
@@ -301,10 +307,12 @@ async function testMediaLookupBindsPhoneAndRejectsUntrustedHost(): Promise<void>
     assert.match(String(providerError), /WHATSAPP_MEDIA_URL_REJECTED/);
     assert.equal(isRetryableMessagingProviderError(providerError), false);
     assert.equal(requests.length, 1, "untrusted URLs must be rejected before a bearer-token download");
-    const lookup = new URL(requests[0]);
+    const lookup = new URL(requests[0].url);
     assert.equal(lookup.hostname, "graph.facebook.com");
     assert.equal(lookup.pathname, "/v21.0/media%2Fid");
     assert.equal(lookup.searchParams.get("phone_number_id"), "phone/id");
+    assert.equal(requests[0].redirect, "manual");
+    assert.ok(requests[0].signal instanceof AbortSignal);
   } finally {
     globalThis.fetch = originalFetch;
     if (originalPhoneNumberId === undefined) delete process.env.WHATSAPP_PHONE_NUMBER_ID;

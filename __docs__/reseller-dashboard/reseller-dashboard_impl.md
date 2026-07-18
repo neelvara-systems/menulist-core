@@ -3,8 +3,20 @@
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
 **Status:** Implemented - reseller boundary source gate added July 2, 2026
 **Created:** February 27, 2026  
-**Last Updated:** July 2, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Developers
+
+July 14, 2026 payment lifecycle corrections:
+
+- Manual renewal and add-location requests require a browser-retained UUID `operationId`. Desktop and mobile keep the same UUID across timeout/retry and clear it only after a valid success acknowledgement.
+- Each route uses `resellerTransactions/{operationId}` as its deterministic operation ledger. One Firestore transaction reads the operation plus transaction-current subscription (and reseller profile when present), then writes the subscription, immutable operation result, and profile revenue counters together. A replay returns the stored result without extending prepaid validity, adding quantity, or incrementing revenue twice; reuse for different inputs fails closed.
+- Manual/prepaid subscriptions remain provider-free. Owner Billing hides Razorpay self-service, and shared recurring mutation routes reject `manual_...` provider identities before provider work.
+- Reseller online onboarding now handles the provider-created/local-persistence gap. It re-reads an ambiguous subscription write; when definitively absent, it cancels the Razorpay subscription before compensating tenant/store/user onboarding. If provider cancellation itself fails, local access remains available for support/reconciliation instead of deleting the only scope linked to a live provider subscription.
+- Reseller pending recurring checkouts retain and expose their provider `shortUrl`; payment activation uses the same verified MenuList subscription/webhook path as self-serve checkout.
+- Onboarding itself now uses a browser-retained UUID. The subscription, onboarding operation, offline-cap reservation, and profile counters commit atomically; an exact lost-response retry recovers the stored subscription/store handoff before owner uniqueness checks.
+- Online onboarding records `profileRevenueRecognized: false` and does not count pending checkout value as collected revenue. The Razorpay activation/charge ledger transaction changes the pending onboarding row to active and increments the reseller profile once. Legacy rows without the explicit marker are not recounted.
+- Desktop and mobile now expose the existing manual renewal API. Renewal acknowledgements are scope/operation validated, active or expired manual status is required, the stored tier cannot be changed, and an expired renewal atomically reacquires an offline-cap slot.
+- `/api/reseller/clients` reads bounded current reseller subscriptions directly instead of querying ledger rows and then fetching each subscription. This produces one current client row, removes duplicate renewal/location entries, and roughly halves the feature read shape.
 
 July 4, 2026 account/link boundary correction:
 
@@ -47,7 +59,7 @@ June 11, 2026 runtime corrections:
 
 - Reseller routes are server-owned through `withAuth()` and Admin SDK writes; Firestore client writes to reseller billing collections remain denied.
 - Platform reseller management no longer uses a client-bundled password gate. The hardcoded `ECOMSAI_PLATFORM_PASSWORD` constant was removed; `/reseller/manage`, `/api/reseller/manage`, and `/api/reseller/monthly-summary` rely on platform-role checks instead of shipping a secret to the browser.
-- Reseller client lists are bounded: 100 transactions for reseller users, 200 for platform users, plus one bounded subscription read per visible subscription ID for current status/quantity/payment-link truth.
+- Reseller client lists use one bounded current-subscription query: up to 101 rows for reseller users or 201 for platform users, including the overflow row used to expose partial results. There is no ledger-to-subscription read fan-out.
 - Reseller monthly summary no longer reads all reseller profiles for a normal reseller. Platform users read up to 50 profiles; reseller users read only direct/email-matched profile docs.
 - Manual/offline subscription activation and renewal sync store entitlement and public/assistant cache state through `safeSyncStorePlanEntitlementFromSubscription()`.
 - Reseller online subscriptions use the same hardened Razorpay verification contract as self-serve subscriptions.
@@ -63,7 +75,7 @@ June 11, 2026 runtime corrections:
 | 2   | Create role `RESELLER_ASSISTED`               | **PARTIAL**  | Existing roles in `src/constants/user.ts`: `PLATFORM`, `PLATFORM_SUPPORT`, `CRAFT_BUILDER_MAINTAINER`. Auth middleware (`withAuth`) already supports `requiredPlatformRole`. **Add `RESELLER` to existing constants.**                                 |
 | 3   | Multiple Razorpay plans for 400/500/700       | **AGREE**    | `getOrCreateRazorpayPlan()` in `src/lib/razorpay/plan-handler.ts` dynamically creates plans with lookup keys. Works perfectly. **Reseller online uses same Razorpay Subscriptions (recurring) as self-serve — unified billing.**                       |
 | 4   | Fixed duration buckets (3/6/12)               | **AGREE**    | Clean, no complexity explosion. Matches prepaid model.                                                                                                                                                                                                 |
-| 5   | Offline payment mode                          | **AGREE**    | Need `billingMode: 'manual'` field. Existing `subscriptionStateMachine.ts` transitions work. Add auto-expiry to nightly scheduler.                                                                                                                     |
+| 5   | Offline payment mode                          | **AGREE**    | Use `billingMode: 'manual'`. Existing `subscriptionStateMachine.ts` transitions remain authoritative; expiry runs in the daily consolidated MenuList maintenance scheduler.                                                                          |
 | 6   | `billingMode: AUTO \| MANUAL_YEARLY`          | **PARTIAL**  | Use `billingMode: 'auto' \| 'manual'` (simpler). Duration is separate field.                                                                                                                                                                           |
 | 7   | Client pays inside system (Razorpay checkout) | **AGREE**    | Existing Razorpay Subscription `shortUrl`. Client completes checkout via shareable link. Same as self-serve flow.                                                                                                                                      |
 | 8   | Cap offline activations per reseller          | **AGREE**    | Essential governance. Store in reseller config doc.                                                                                                                                                                                                    |
@@ -108,14 +120,15 @@ Billing UI handling:
 - `hasValidSubscriptionAccess()` treats `pending` as no paid access; visibility on Billing does not grant app access.
 - Desktop `ActiveSubscriptionCard` and `MobileBillingScreen` branch on `billingMode: 'manual'` to show prepaid period, prepaid-until date, and offline one-time prepaid messaging.
 - Manual active subscriptions hide Razorpay-only pause/cancel/upgrade actions. Recurring online subscriptions keep the normal Razorpay controls.
-- Account claim links the reseller-created subscription document to the claimed owner `userId` and email so later billing, webhook, and audit flows have the real owner identity.
+- Reseller onboarding creates or updates a real Firebase Auth owner and matching `users` document; the subscription is written with that owner `userId` and login email.
 
 ### 2.2 New Collection: `resellerTransactions`
 
 ```typescript
-// Collection: resellerTransactions/{autoId}
+// Collection: resellerTransactions/{transactionId}
 interface ResellerTransaction {
   id: string;
+  operationId?: string; // Required for new onboarding/renewal/add-location rows; legacy rows may omit it
   resellerId: string; // User ID of reseller
   resellerEmail: string; // For audit
   storeId: number;
@@ -123,7 +136,7 @@ interface ResellerTransaction {
   storeName: string;
 
   // Transaction details
-  action: "ONBOARD" | "RENEW" | "CANCEL";
+  action: "ONBOARD" | "RENEW" | "ADD_LOCATION" | "CANCEL";
   pricingTier: string; // 'FOUNDER_400' | 'FOUNDER_500' | 'STANDARD'
   durationMonths: number; // 3 | 6 | 12
   amountExpected: number; // In paise (INR smallest unit)
@@ -142,7 +155,7 @@ interface ResellerTransaction {
 }
 ```
 
-**Immutability rule:** Documents in this collection are NEVER updated (except `status`). New transactions are appended for renewals.
+**Immutability rule:** Financial/action inputs are never edited. Controlled payment convergence may update `status`, confirmation metadata, `modifiedOn`, and `profileRevenueRecognized`. Every new onboarding, manual renewal, and add-location mutation uses its request UUID as both document ID and `operationId` for exact retry behavior.
 
 ### 2.3 New Collection: `resellerProfiles`
 
@@ -241,8 +254,8 @@ billingUtils.ts → getPlanDetailsFromConstants(notes) → resolves plan from co
 Updates subscription doc with plan details (monthlyCredits, etc.)
 ```
 
-**🔴 CRITICAL INTEGRATION POINT:**
-`getPlanDetailsFromConstants()` at `src/lib/billing/billingUtils.ts:11-17` resolves plan info from `B2CplansList`/`B2BplansList` using `notes.planId` + `notes.interval`. Reseller subscriptions use different planIds (e.g., `reseller_FOUNDER_400`). This function MUST be updated to also check reseller plans, otherwise **webhooks will fail silently** for reseller subscriptions.
+**Resolved integration point:**
+`getPlanDetailsFromConstants()` in `src/lib/billing/billingUtils.ts` resolves public and reseller plan IDs from canonical constants using provider notes. Reseller online subscriptions therefore receive the same verified activation, renewal-credit, date, entitlement, and audit handling as self-serve subscriptions. The reseller source gate locks this parity so reseller plan support cannot silently disappear.
 
 ### 3.3 Reseller Pricing Constants
 
@@ -402,16 +415,18 @@ export const getPlanDetailsFromConstants = (notes: any) => {
 
 ```typescript
 const ResellerOnboardSchema = z.object({
+  operationId: z.string().uuid(),
   businessName: z.string().min(2).max(100),
   businessType: z.string().min(2).max(50),
   ownerCountryCode: z.string().trim().max(8).optional(),
   ownerDialCode: z.string().trim().max(12).optional(),
   ownerPhone: z.string().trim().min(6).max(40),
-  ownerEmail: z.string().email().optional(), // Contact email. Login handoff uses claim link unless an unclaimed user already exists.
+  ownerEmail: z.string().email().optional(), // Optional login/contact email; phone-derived generated login is the fallback.
+  ownerPassword: z.string().min(6).max(100), // Firebase Auth only; never persisted in Firestore.
   pricingTier: z.enum(["FOUNDER_400", "FOUNDER_500", "STANDARD"]),
   billingInterval: z.enum(["MONTH", "YEAR"]).optional().default("MONTH"), // For online only
-  commitmentMonths: z.enum(["3", "6", "12"]).transform(Number).optional(), // Tracking only for online, duration for offline
-  locationCount: z.number().int().min(1).max(30).optional().default(1),
+  commitmentMonths: z.coerce.number().refine((value) => [3, 6, 12].includes(value)).optional(),
+  locationCount: z.coerce.number().int().min(1).max(30).optional().default(1),
   paymentMode: z.enum(["online", "offline"]),
   skipMenuUpload: z.boolean().optional().default(true), // compatibility field; active route does not upload/extract menu files
 });
@@ -421,34 +436,33 @@ const ResellerOnboardSchema = z.object({
 
 1. Validate reseller has `RESELLER` or `PLATFORM` role
 2. Apply `DATA_WRITE` rate limit and bounded 16KB JSON parsing before validation or writes
-3. Validate reseller profile exists and is active
-4. If offline: check cap not exceeded
-5. Atomic transaction:
+3. Re-read current platform authority or require the active reseller profile to match Auth UID/profile claim/email
+4. Normalize owner login, bind the request UUID to a SHA-256 operation fingerprint, and recover a matching already-committed operation before creating new scope
+5. If offline: perform an advisory cap check; the authoritative cap check remains inside the billing transaction
+6. Account transaction:
    - Create tenant (same pattern as `create-subscription/route.ts`)
    - Create store (same pattern)
-   - Create or update the owner access record:
-     - If `ownerEmail` matches an existing unclaimed user, attach that user to the new tenant/store.
-     - Otherwise create a claimable placeholder user with `claimToken`.
+   - Transactionally claim the normalized owner `users` record and attach the real Firebase Auth UID.
    - Update platformSummary counts
    - Sync storesSummary
-6. Create subscription doc:
+7. For online, create the Razorpay Subscription and require a normalized HTTPS `rzp.io` checkout URL. For offline, use deterministic `manual_{operationId}` provider-free identity.
+8. Billing transaction creates the subscription and `resellerTransactions/{operationId}`, rechecks profile activity/cap, and increments the correct counters together:
    - `billingMode: paymentMode === 'online' ? 'auto' : 'manual'`
    - `status: paymentMode === 'offline' ? 'active' : 'pending'`
    - `quantity: locationCount` so the owner can create prepaid/paid locations after onboarding without a second billing decision
    - `validUntil` (offline only): `now + commitmentMonths`
-   - `onboardingSource: 'reseller'`
+   - `onboardingSource: 'RESELLER_ONBOARDING'`
    - `resellerId: session.user.id`
    - `resellerPricingTier: pricingTier`
    - `commitmentPeriodMonths: commitmentMonths`
-7. If online: create Razorpay Subscription via `getOrCreateRazorpayPlan()` + `razorpayClient.subscriptions.create()` (same as self-serve)
-8. Create `resellerTransactions` record
-9. If a reseller profile exists, increment counters for active offline slots, online/offline totals, transaction count, and tracked revenue.
+9. Offline collected revenue is counted in that transaction. Online pending value is not collected revenue; the webhook ledger convergence recognizes it exactly once after provider activation.
+10. If local billing persistence fails, re-read the exact subscription plus operation to distinguish an ambiguous acknowledgement. Definite online failure cancels the provider subscription before account compensation; definite offline/cap failure compensates the tenant/store/user scope.
 
 If a new Firebase Auth owner account is created and the Firestore onboarding transaction later fails, the route still attempts best-effort Auth rollback before returning the original failure. Failed rollback logs `reseller_onboard_auth_cleanup_failed` through bounded reseller API diagnostics with only reseller/auth/login-email presence and length metadata plus source error name/code/status. It does not log raw owner credentials, raw Auth UID, raw owner email, or the original transaction exception.
 
 The owner user is claimed before tenant/store creation inside the same Firestore transaction. An existing candidate is re-read and must remain unlinked with the expected normalized email and compatible Firebase UID; a new candidate requires `users/{authUid}` not to exist and is created with transaction `create`. Concurrent onboarding attempts cannot both bind the owner or leave two tenant/store scopes. Rollback checks that `users/{authUid}` is still absent before deleting an Auth identity created by the request.
 
-If online Razorpay plan lookup or subscription creation fails after the reseller tenant/store/user transaction succeeds, the route calls `compensateFailedTenantStoreOnboarding()`, clears the just-set owner custom claims back to owner identity without tenant/store scope, revalidates the public menu/OBP cache, and returns the existing generic onboarding failure response. The compensation marks the created tenant/store inactive, updates `storesSummary` for summary-backed public reads, and clears the failed store mapping from the owner user document only when it matches the just-created scope.
+If online Razorpay plan lookup or provider subscription creation fails after the reseller tenant/store/user transaction succeeds, the route calls `compensateFailedTenantStoreOnboarding()`, clears the just-set owner claims back to owner identity without tenant/store scope, revalidates public menu/OBP cache, and returns the generic failure response. If provider creation succeeds but local subscription persistence throws, the route first re-reads the exact subscription ID to distinguish an ambiguous acknowledgement from a missing write. A missing row triggers provider cancellation; only after cancellation succeeds does tenant/store/user compensation run. If cancellation fails, the route preserves the local onboarding scope for support/reconciliation rather than orphaning a live provider subscription from its customer context.
 
 **Response:**
 
@@ -460,10 +474,15 @@ If online Razorpay plan lookup or subscription creation fails after the reseller
   shortUrl?: string; // Only for online — Razorpay checkout URL for client
   status: 'active' | 'pending';
   locationCount: number;
+  transactionId: string; // Exact request operation UUID
+  loginEmail: string;
+  ownerUsername: string;
+  dashboardUrl: string;
+  publicUrl?: string;
 }
 ```
 
-**Firebase cost:** ~8 writes per onboarding (tenant + store + user + platformSummary + storesSummary + subscription + transaction + resellerProfile)
+**Firebase cost:** account creation uses the shared tenant/store/user/summary transaction. Billing adds one operation read, one subscription read, and optionally one profile read, then creates subscription + operation and optionally updates the profile in one transaction. Exact response-loss replay writes nothing and performs only bounded operation/subscription/store recovery reads.
 
 ### 4.2 `POST /api/reseller/confirm-payment` — Offline Payment Confirmation
 
@@ -484,7 +503,8 @@ const ConfirmPaymentSchema = z.object({
 2. Re-read the current reseller profile or platform user and reject inactive, revoked, malformed, or identity-mismatched authority
 3. Transactionally re-read the subscription and require exact reseller ownership (unless current platform authority), MenuList product identity, coherent tenant/store aliases, integer paise amount, `INR`, `billingMode: 'manual'`, and `status: 'pending'`
 4. Append one `active` status and set `manualPaymentConfirmed` inside the same transaction. Concurrent requests serialize; a retry after a committed/lost response returns successful `alreadyConfirmed: true` without appending another status
-5. On both first success and replay, repair the authoritative store entitlement/public-assistant cache projection and idempotent owner-referral settlement from the transaction-normalized scope
+5. Converge the matching pending reseller ledger row to active; new online rows recognize profile revenue only from their explicit deferred marker
+6. On both first success and replay, repair the authoritative store entitlement/public-assistant cache projection and idempotent owner-referral settlement from the transaction-normalized scope
 
 **Firebase cost:** one current-authority read plus one subscription transaction read. First confirmation writes one subscription document; replay writes none. Entitlement/referral reconciliation adds its existing bounded, state-dependent reads/writes and cache invalidation.
 
@@ -494,11 +514,11 @@ const ConfirmPaymentSchema = z.object({
 
 **Logic:**
 
-1. Query `resellerTransactions` where `resellerId == session.user.id`
-2. Bounded-read matching `subscriptions/{subscriptionId}` docs for current quantity/status
-3. Return list with status, store info, expiry dates, paid location count, and the subscription `shortUrl` for pending online payment recovery
+1. Query current `subscriptions` by `resellerId` (100 + one overflow row) or `onboardingSource: RESELLER_ONBOARDING` for platform (200 + one overflow row), ordered by `createdOn desc` before applying the cap
+2. Project only current client fields, normalize the Razorpay `shortUrl`, and return `isPartial`
+3. Browser deduplication by store handles historical replacement subscriptions without exposing operation fingerprints or reading every ledger row
 
-**Firebase cost:** 1 transaction query + up to 100 subscription reads for reseller users (200 for platform)
+**Firebase cost:** one bounded subscription query; billed reads equal returned documents (up to 101 reseller / 201 platform). The former transaction-query plus up-to-N exact subscription reads is removed.
 
 ### 4.4 `POST /api/reseller/renew` — Renew Existing License
 
@@ -508,10 +528,11 @@ const ConfirmPaymentSchema = z.object({
 
 ```typescript
 const RenewSchema = z.object({
+  operationId: z.string().uuid(),
   storeId: z.number(),
   tenantId: z.number(),
   pricingTier: z.enum(["FOUNDER_400", "FOUNDER_500", "STANDARD"]),
-  durationMonths: z.enum(["3", "6", "12"]).transform(Number),
+  durationMonths: z.coerce.number().refine((value) => [3, 6, 12].includes(value)),
   paymentMode: z.enum(["online", "offline"]),
 });
 ```
@@ -521,11 +542,15 @@ const RenewSchema = z.object({
 1. Apply `DATA_WRITE` rate limit and bounded 16KB JSON parsing before validation or subscription reads
 2. Find existing manual subscription for the store
 3. Verify reseller ownership or platform role
-4. Create new subscription period using the renewal anchor rule
-5. Calculate offline amount as `tier × duration × subscription.quantity`
-6. Update subscription, sync entitlement, and append a new transaction record
+4. Require active or expired manual status; reject a different tier when the subscription already has a reseller tier
+5. Read `resellerTransactions/{operationId}` and the transaction-current subscription in one Firestore transaction
+6. If the exact operation already exists, return its stored amount/dates without another mutation; mismatched reuse fails closed
+7. Create the new period using the renewal anchor rule and calculate `tier × duration × subscription.quantity`
+8. Atomically update subscription, create the operation ledger, update profile revenue counters, and reacquire one active-offline slot when renewing from expired; sync entitlement after commit
 
-**Firebase cost:** ~4 writes
+Desktop and mobile both expose this action with 3/6/12-month selection, calculated collection amount, 8KB bounded response parsing, exact store/tenant/subscription/operation acknowledgement checks, and the same retained UUID on transport failure.
+
+**Firebase cost:** first application reads operation + subscription (+ profile when present) and writes subscription + operation (+ profile). Replay reads operation/subscription and writes nothing.
 
 ### 4.5 `POST /api/reseller/add-location-capacity` — Add Manual Location Capacity
 
@@ -537,6 +562,7 @@ const RenewSchema = z.object({
 
 ```typescript
 const AddLocationCapacitySchema = z.object({
+  operationId: z.string().uuid(),
   storeId: z.number(),
   tenantId: z.number(),
   locationCount: z.number().int().min(1).max(30).default(1),
@@ -549,13 +575,15 @@ const AddLocationCapacitySchema = z.object({
 2. Verify reseller profile is active and owns the manual subscription
 3. Require `billingMode: "manual"` and active, non-expired prepaid access
 4. Calculate prorated amount until the existing `validUntil`
-5. Update `subscriptions/{subId}`: `quantity += locationCount`, `amount += topupAmount`
-6. Append `resellerTransactions` action `ADD_LOCATION`
-7. Update reseller tracked revenue
+5. Read `resellerTransactions/{operationId}` and the transaction-current subscription in one Firestore transaction
+6. If the exact operation exists, return its stored acknowledgement; mismatched reuse fails closed
+7. Atomically update `subscriptions/{subId}` (`quantity += locationCount`, `amount += topupAmount`), create the `ADD_LOCATION` operation ledger, and update tracked revenue
+
+Desktop and mobile retain the UUID in `sessionStorage` across network/response failures and clear it only after the acknowledgement passes shape and scope checks.
 
 **Owner-side effect:** `/api/outlets/create` now consumes this prepaid capacity. If manual capacity is exhausted, outlet creation returns 402 and no store is created.
 
-**Firebase cost:** 1 subscription query + 1 subscription write + 1 transaction write + 1 resellerProfile write
+**Firebase cost:** first application reads operation + subscription (+ profile when present) and writes subscription + operation (+ profile). Replay writes nothing.
 
 ### 4.6 `GET /api/reseller/profile` — Reseller's Own Profile
 
@@ -622,17 +650,18 @@ const checkoutUrl = razorpaySubscription.short_url;
 
 ---
 
-## 6. Nightly Scheduler Addition
+## 6. Daily Maintenance Scheduler Task
 
 **File:** `functions/src/schedulers/menulistMaintenanceScheduler.ts`
 
-The `reseller_license_expiry` maintenance task runs daily at 2:30 AM UTC under the existing per-task lease model. The old `functions/src/decisionBlocksScoring.ts` nightly scheduler no longer owns reseller expiry.
+The `reseller_license_expiry` maintenance task runs daily at 2:30 AM UTC under the existing per-task lease model. The old `functions/src/decisionBlocksScoring.ts` nightly scheduler no longer owns reseller expiry. Shared `billingEntitlementSyncPending` repair runs first even when the reseller feature flag is off, because the marker is also used by ordinary Razorpay paid-cycle expiry.
 
 Expiry is transaction-serialized with the subscription and reseller profile count. It rechecks `billingMode`, current status, `validUntil`, exact tenant/store scope, and profile state before appending the terminal history and decrementing the counter without going below zero. The task processes up to five bounded 100-row pages per run. It writes `billingEntitlementSyncPending: true` with the expiry, clears it only after the authoritative current-active entitlement/cache sync succeeds, and scans pending markers on later runs so a post-commit cache or mirror failure is recoverable rather than silently permanent.
 
 Runtime contract:
 
-- Guard on `ENABLE_RESELLER_DASHBOARD`.
+- Repair bounded pending billing entitlement mirrors before the reseller flag gate.
+- Guard manual reseller expiry on `ENABLE_RESELLER_DASHBOARD`.
 - Query active manual subscriptions past `validUntil + 7 day grace`, capped at 100 candidates per run.
 - Mark each expired subscription as `expired`, set end/cycle dates, append status history, and mirror expired analytics entitlement.
 - Decrement the reseller profile's `currentActiveOfflineStores` counter when a reseller profile exists.
@@ -661,43 +690,16 @@ Runtime contract:
 
 ```
 src/
-├── config/
-│   └── resellerPricing.ts                    # Pricing tiers, caps, duration constants
-├── app/
-│   ├── api/
-│   │   └── reseller/
-│   │       ├── onboard/route.ts              # POST — Create store + subscription
-│   │       ├── confirm-payment/route.ts      # POST — Offline payment confirmation
-│   │       ├── clients/route.ts              # GET — List reseller's clients
-│   │       ├── add-location-capacity/route.ts # POST — Add manual prepaid location capacity
-│   │       ├── renew/route.ts                # POST — Renew offline license
-│   │       └── profile/route.ts              # GET — Reseller profile
-│   └── (main)/
-│       └── reseller/
-│           ├── page.tsx                       # Reseller dashboard home
-│           ├── onboard/page.tsx               # Multi-step onboarding form
-│           └── clients/
-│               ├── page.tsx                   # Clients list
-│               └── [storeId]/page.tsx         # Client detail
-├── components/
-│   └── templates/
-│       └── main-app/
-│           └── reseller/
-│               ├── ResellerDashboard.tsx      # Dashboard home component
-│               ├── OnboardingWizard.tsx       # Multi-step form
-│               ├── ClientsList.tsx            # Clients table
-│               ├── ClientDetail.tsx           # Single client view
-│               └── ResellerStatusBadge.tsx    # Status badge component
-├── database/
-│   └── reseller/
-│       └── index.ts                           # DAL: transactions, profiles, queries
-├── hooks/
-│   └── useResellerDashboard.ts               # SWR hook for reseller data
-├── lib/
-│   └── validation/
-│       └── resellerSchemas.ts                # Zod schemas for reseller APIs
-└── types/
-    └── reseller.ts                            # TypeScript types
+├── config/resellerPricing.ts                  # Pricing tiers, caps, duration helpers
+├── app/(main)/reseller/                       # Dashboard, onboarding, platform management routes
+├── app/api/reseller/                          # Authenticated read/mutation APIs
+├── components/templates/main-app/reseller/    # Desktop dashboard, onboarding, management, diagnostics
+├── components/mobile/screens/                 # Mobile dashboard, onboarding, management
+├── database/reseller/server.ts                # Server-only profile reads + atomic onboarding billing
+├── hooks/useResellerDashboard.ts              # Bounded current-subscription client read model
+├── lib/reseller/                               # Owner claim, profile authority, retry fingerprint, ledger convergence
+├── lib/validation/resellerSchemas.ts           # Zod schemas
+└── types/reseller.ts                           # Shared types
 ```
 
 ### Modified Files
@@ -815,18 +817,17 @@ This is handled by checking `session.platformRole === 'RESELLER'` in the sidebar
 
 When reseller onboards a client, the system must return a usable owner access path in the onboarding response.
 
-### If Owner Email Already Exists As An Unclaimed User
+### Existing Compatible Owner Identity
 
-- Attach that existing user document to the new `tenantId` and `storeId`.
-- Preserve the owner role mapping in `stores[]`.
-- Return the dashboard sign-in URL.
+- Require the normalized email/Firebase UID to remain compatible and the user to remain unlinked when the account transaction re-reads it.
+- Update the real Firebase Auth account with the reseller-entered password and attach its user document to the new tenant/store.
+- Preserve owner role/store mappings and return the standard dashboard sign-in URL.
 
-### If No Existing Owner User Exists
+### New Owner Identity
 
-- Create a placeholder owner user with a generated `@msg.menulist.ai` email.
-- Store `pendingOwnerEmail` when the reseller provided a contact email.
-- Generate a `claimToken`.
-- Return `dashboardUrl = SIGNIN_URL?claim={claimToken}` so the client can claim with Google or email/password.
+- Create a Firebase Auth owner using the supplied email or phone-derived generated login email and the reseller-entered password.
+- Create `users/{authUid}` transactionally with owner role, tenant/store scope, normalized phone fields, and no claim token.
+- Return the username/login email plus `SIGNIN_URL`; passwords are displayed only from browser form state and are never returned by Firestore or logged.
 
 ### Link Delivery
 
@@ -834,7 +835,7 @@ When reseller onboards a client, the system must return a usable owner access pa
 - Reseller shares the returned `publicUrl` as the customer-facing menu link.
 - For online payment, reseller also shares the returned Razorpay `shortUrl`.
 - Browser-local copy/share/open failures are logged only with bounded presence/length metadata and stable handoff kinds; returned URLs, login emails, owner usernames, and passwords are never logged raw.
-- Client clicks → sets up Google OAuth → gets full dashboard access
+- Client opens the dashboard sign-in link and uses the handed-off owner credentials.
 
 ---
 
@@ -886,56 +887,26 @@ When reseller onboards a client, the system must return a usable owner access pa
 
 ## 13. Implementation Checklist
 
-### Foundation
+### Local/source complete
 
-- [ ] Add feature flag `ENABLE_RESELLER_DASHBOARD`
-- [ ] Add `RESELLER` role constant
-- [ ] Add DB collection constants
-- [ ] Create `src/config/resellerPricing.ts` (separate from PlatformPlansList — ADR-7)
-- [ ] Create `src/types/reseller.ts`
-- [ ] Extend `FirestoreSubscriptionDoc` type
-- [ ] **Update `src/lib/billing/billingUtils.ts` — `getPlanDetailsFromConstants()` to resolve reseller planIds (CRITICAL)**
-- [ ] Create Zod schemas (`src/lib/validation/resellerSchemas.ts`)
-- [ ] Create DAL (`src/database/reseller/index.ts`)
+- [x] Feature/role/collection/pricing/type/subscription contracts
+- [x] Reseller plan resolution through the canonical webhook billing path
+- [x] Protected platform reseller management with Firebase Auth/user/profile creation and create-failure cleanup
+- [x] Onboarding, confirm-payment, current-client list, add-location, renewal, profile, and monthly-summary APIs
+- [x] UUID retry boundaries for onboarding, renewal, and add-location capacity
+- [x] Atomic subscription + operation + cap + reseller-counter onboarding commit
+- [x] Deferred online revenue recognition and bounded payment-status convergence
+- [x] Desktop/mobile onboarding, current clients, safe pending-payment link, manual renewal, add-location, and platform management parity
+- [x] Daily leased manual-expiry task and required existing composite index
+- [x] Source verifier, pure operation/authority tests, and Firestore emulator concurrency/cap/replay tests
+- [x] Code-truth docs and changelog
 
-### API Routes
+### Owner/provider release checks — pending
 
-- [ ] `POST /api/reseller/onboard`
-- [ ] `POST /api/reseller/confirm-payment`
-- [ ] `GET /api/reseller/clients`
-- [ ] `POST /api/reseller/add-location-capacity`
-- [ ] `POST /api/reseller/renew`
-- [ ] `GET /api/reseller/profile`
-- [ ] Update `withAuth` for PLATFORM fallback
-
-### UI — Reseller Dashboard
-
-- [ ] Reseller layout (simplified sidebar)
-- [ ] Dashboard home page
-- [ ] Onboarding wizard (multi-step form)
-- [ ] Clients list page
-- [ ] Client detail page
-- [ ] Status badges
-
-### Scheduler + Indexes
-
-- [ ] Add license expiry check to nightly scheduler
-- [ ] Add Firestore composite index
-- [ ] Test expiry flow
-
-### Founder Admin View
-
-- [ ] Reseller management view (in existing platform settings)
-- [ ] All resellers list
-- [ ] Per-reseller client count + revenue
-- [ ] Activate/deactivate reseller
-
-### Testing + Docs
-
-- [ ] Type check (`npx tsc --noEmit`)
-- [ ] Happy path testing
-- [ ] Edge case testing
-- [ ] Update changelog
+- [ ] Razorpay test-mode online onboarding, checkout, activation webhook, and recovered `shortUrl` smoke
+- [ ] Authenticated desktop browser pass for platform create/deactivate, reseller onboarding, manual renewal, and add-location
+- [ ] Authenticated physical-device/PWA pass for the same mobile actions and payment-link handoff
+- [ ] Production rollout/deploy and post-deploy metrics review when the owner schedules release
 
 ---
 
@@ -945,12 +916,12 @@ When reseller onboards a client, the system must return a usable owner access pa
 | --- | ---------------------------------------------- | ----------------------------------------------------------------------------------------- |
 | 1   | Reseller creates store (offline)               | Store active, subscription active, transaction logged                                     |
 | 2   | Reseller creates store (online)                | Razorpay subscription created, `shortUrl` generated, status pending, activates on webhook |
-| 3   | Offline store expires                          | Nightly scheduler marks expired after grace                                               |
+| 3   | Offline store expires                          | Daily maintenance scheduler marks expired after grace and frees one cap slot              |
 | 4   | Reseller hits offline cap                      | Error: "Maximum offline activations reached"                                              |
 | 5   | Non-reseller accesses /reseller                | Redirect to /dashboard                                                                    |
 | 6   | Reseller tries to see other reseller's clients | Empty list (data isolation)                                                               |
 | 7   | Client logs in after reseller onboarding       | Full dashboard access and handoff links; menu content is added through normal owner/import flows |
-| 8   | Reseller renews expired offline store          | New transaction, validUntil starts from now (renewal anchor rule)                         |
+| 8   | Reseller renews expired offline store          | New UUID operation, validUntil starts from now, and one cap slot is atomically reacquired  |
 | 9   | Founder views all reseller data                | Full visibility across all resellers                                                      |
 | 10  | Online payment fails                           | Status stays pending, reseller can retry                                                  |
 | 11  | Reseller adds prepaid location to offline client | Subscription quantity/amount increase, `ADD_LOCATION` transaction logged, owner can add outlet |
@@ -959,4 +930,4 @@ When reseller onboards a client, the system must return a usable owner access pa
 ---
 
 **DOCUMENT STATUS:** ✅ IMPLEMENTED  
-**Last Updated:** July 4, 2026 (v1.8 - reseller onboarding account/link boundary)
+**Last Updated:** July 16, 2026 (v1.9 - atomic billing, renewal parity, and current-subscription client reads)

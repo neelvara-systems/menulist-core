@@ -1,7 +1,7 @@
 # Public Truth Check - Test Cases
 
 **Status:** Implemented - public self-report route and logged-in owner check
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** QA, developers
 
 ---
@@ -15,6 +15,7 @@
 | PTC-003 | Menu/service text provided | Report checks source-present status |
 | PTC-004 | No source provided | Report status is `missing_basics` or `not_checked` |
 | PTC-005 | URL provided in default mode | URL is treated as reference only; no arbitrary server fetch |
+| PTC-005A | Valid URL path contains `prices-hours-contact-order-{city}` but pasted source text and owner facts are empty | URL proves only the public-link row; those fact rows do not become present |
 | PTC-006 | Contact provided without consent | Contact is not stored |
 | PTC-007 | Oversized pasted text | Input is capped or rejected |
 | PTC-008 | Unsupported source | Report marks item as `not_checked` |

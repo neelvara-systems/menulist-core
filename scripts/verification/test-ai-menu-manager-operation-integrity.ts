@@ -2,6 +2,7 @@
 
 import assert from 'node:assert/strict';
 import {
+    assertAiMenuManagerPreparedOperationGroup,
     resolveCurrentAiMenuManagerOperation,
     resolveCurrentAiMenuManagerOperationGroup,
 } from '../../src/lib/ai-menu-manager/pendingOperationIntegrity';
@@ -83,6 +84,17 @@ assert.throws(
 
 const groupA = operation({ id: 'group-a', groupId: 'group-1', groupSize: 2 });
 const groupB = operation({ id: 'group-b', groupId: 'group-1', groupSize: 2 });
+assert.equal(assertAiMenuManagerPreparedOperationGroup([groupA, groupB]), 'group-1');
+assert.throws(
+    () => assertAiMenuManagerPreparedOperationGroup([groupA, { ...groupB, commandGroupSize: 3 }]),
+    /Prepared updates no longer match/,
+    'grouped project saves must reject incomplete or inconsistent groups before mutation',
+);
+assert.throws(
+    () => assertAiMenuManagerPreparedOperationGroup([groupA, { ...groupB, sId: 999 }]),
+    /Prepared updates no longer match/,
+    'grouped project saves must reject mixed scope before mutation',
+);
 assert.deepEqual(
     resolveCurrentAiMenuManagerOperationGroup({
         currentOperations: [groupA, groupB],

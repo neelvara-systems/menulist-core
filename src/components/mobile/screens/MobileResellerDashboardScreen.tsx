@@ -1,10 +1,15 @@
 'use client'
 
-import { calculateOfflineLocationTopup } from '@config/resellerPricing';
+import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from '@config/resellerPricing';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { useResellerDashboard } from '@hook/useResellerDashboard';
+import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import { RESELLER_REQUEST_POLICY } from '@template/main-app/reseller/resellerDiagnostics';
+import {
+    clearResellerOperationId,
+    getOrCreateResellerOperationId,
+    RESELLER_REQUEST_POLICY,
+} from '@template/main-app/reseller/resellerDiagnostics';
 import type { ResellerTransaction } from '@type/reseller';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { formatInrPaise } from '@util/formatters';
@@ -12,7 +17,7 @@ import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useState } from 'react';
 import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers, LuX } from 'react-icons/lu';
-import { Button, Card, Empty, Flex, Input, NavBar, Popup, Spin, Tag, Text, Title, Toast } from '../antd';
+import { Button, Card, Empty, Flex, Input, NavBar, Popup, Select, Spin, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import { getBoundedMobileOwnerStringContext, logMobileOwnerFailure } from '../utils/mobileOwnerDiagnostics';
 
@@ -31,6 +36,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const MOBILE_RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const MOBILE_RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 const MOBILE_RESELLER_DASHBOARD_COPY_UNAVAILABLE = 'mobile_reseller_dashboard_copy_unavailable';
 const MOBILE_RESELLER_DASHBOARD_COPY_FALLBACK_FAILED = 'mobile_reseller_dashboard_copy_fallback_failed';
 
@@ -96,6 +102,16 @@ type MobileResellerAddLocationCapacityExpectation = {
     locationCount: number;
     storeId: unknown;
     tenantId: unknown;
+};
+
+type MobileResellerRenewResponse = {
+    amountExpected?: unknown;
+    storeId?: unknown;
+    subscriptionId?: unknown;
+    success?: unknown;
+    tenantId?: unknown;
+    transactionId?: unknown;
+    validUntil?: unknown;
 };
 
 function formatDate(value: any, formatter: IntlFormatter) {
@@ -173,15 +189,53 @@ async function readMobileAddLocationCapacityResponse(
     }
 }
 
+function isValidMobileRenewResponse(
+    data: MobileResellerRenewResponse | null,
+    expected: { operationId: string; storeId: unknown; subscriptionId: string; tenantId: unknown },
+): data is MobileResellerRenewResponse & { amountExpected: number; success: true; validUntil: string } {
+    return data?.success === true
+        && typeof data.amountExpected === 'number'
+        && Number.isFinite(data.amountExpected)
+        && data.amountExpected > 0
+        && isMatchingMobileResellerEntityId(data.storeId, expected.storeId)
+        && data.subscriptionId === expected.subscriptionId
+        && isMatchingMobileResellerEntityId(data.tenantId, expected.tenantId)
+        && data.transactionId === expected.operationId
+        && typeof data.validUntil === 'string'
+        && Number.isFinite(new Date(data.validUntil).getTime());
+}
+
+async function readMobileRenewResponse(
+    response: Response,
+    context: Record<string, boolean | number | string | null | undefined>,
+): Promise<MobileResellerRenewResponse | null> {
+    try {
+        return await readJsonResponseWithLimit<MobileResellerRenewResponse>(
+            response,
+            MOBILE_RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES,
+        );
+    } catch (error) {
+        logMobileOwnerFailure('mobile_reseller_dashboard_renew_response_parse_failed', error, {
+            ...context,
+            maxBytes: MOBILE_RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
+}
+
 function ClientCard({
     onAddLocation,
     onCopyPaymentLink,
     onOpenPaymentLink,
+    onRenew,
     transaction,
 }: {
     onAddLocation: (transaction: ResellerTransaction) => void;
     onCopyPaymentLink: (transaction: ResellerTransaction) => void;
     onOpenPaymentLink: (transaction: ResellerTransaction) => void;
+    onRenew: (transaction: ResellerTransaction) => void;
     transaction: ResellerTransaction;
 }) {
     const formatter = useFormatter();
@@ -189,6 +243,7 @@ function ClientCard({
     const statusColor = STATUS_COLORS[transaction.status] || 'default';
     const isManual = transaction.paymentMode === 'offline' || transaction.subscriptionBillingMode === 'manual';
     const canAddLocation = isManual && transaction.status === 'active';
+    const canRenew = isManual && ['active', 'expired'].includes(transaction.status);
     const hasPendingPaymentLink = transaction.paymentMode === 'online'
         && transaction.status === 'pending_payment'
         && Boolean(transaction.subscriptionShortUrl);
@@ -216,6 +271,11 @@ function ClientCard({
                 {canAddLocation ? (
                     <Button block fill="outline" onClick={() => onAddLocation(transaction)} style={{ minHeight: 44 }}>
                         Add prepaid location
+                    </Button>
+                ) : null}
+                {canRenew ? (
+                    <Button block onClick={() => onRenew(transaction)} style={{ minHeight: 44 }}>
+                        Renew manual access
                     </Button>
                 ) : null}
                 {hasPendingPaymentLink ? (
@@ -247,10 +307,13 @@ export default function MobileResellerDashboardScreen({
     const resellerEmail = (session as any)?.user?.email || '';
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === ECOMSAI_PLATFORM_USER_ROLE;
-    const { profile, monthlySummary, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const { profile, monthlySummary, transactions, stats, isClientListPartial, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
     const [selectedClient, setSelectedClient] = useState<ResellerTransaction | null>(null);
     const [locationCount, setLocationCount] = useState('1');
     const [addingLocation, setAddingLocation] = useState(false);
+    const [renewalClient, setRenewalClient] = useState<ResellerTransaction | null>(null);
+    const [renewalMonths, setRenewalMonths] = useState('3');
+    const [renewing, setRenewing] = useState(false);
     const parsedLocationCount = Math.max(1, Number(locationCount || 1));
     const buildResellerDashboardLogContext = (flow: string, metadata: Record<string, boolean | number | string | null | undefined> = {}) => ({
         surface: 'mobile_reseller_dashboard',
@@ -275,10 +338,25 @@ export default function MobileResellerDashboardScreen({
             }
         })()
         : null;
+    const renewalAmount = renewalClient
+        ? (() => {
+            try {
+                return calculateOfflineAmount(
+                    renewalClient.pricingTier,
+                    Number(renewalMonths),
+                    renewalClient.subscriptionQuantity || renewalClient.locationCount || 1,
+                );
+            } catch {
+                return null;
+            }
+        })()
+        : null;
 
     const handleAddLocationCapacity = async () => {
         if (!selectedClient) return;
         setAddingLocation(true);
+        const operationIntentKey = `add-location:${selectedClient.subscriptionId}:${parsedLocationCount}`;
+        const operationId = getOrCreateResellerOperationId(operationIntentKey);
         const addLocationLogContext = buildResellerDashboardLogContext('add_location_capacity', {
             ...getBoundedMobileOwnerStringContext('storeId', selectedClient.storeId),
             ...getBoundedMobileOwnerStringContext('tenantId', selectedClient.tenantId),
@@ -289,6 +367,7 @@ export default function MobileResellerDashboardScreen({
                 ...RESELLER_REQUEST_POLICY,
                 body: JSON.stringify({
                     locationCount: parsedLocationCount,
+                    operationId,
                     storeId: selectedClient.storeId,
                     tenantId: selectedClient.tenantId,
                 }),
@@ -322,6 +401,7 @@ export default function MobileResellerDashboardScreen({
                 throw invalidResponseError;
             }
             Toast.show({ content: `Collect ${formatInrPaise(data.amountExpected)}`, duration: 2200, icon: 'success' });
+            clearResellerOperationId(operationIntentKey);
             setSelectedClient(null);
             setLocationCount('1');
             refresh();
@@ -333,9 +413,62 @@ export default function MobileResellerDashboardScreen({
         }
     };
 
+    const handleRenew = async () => {
+        if (!renewalClient || !renewalAmount) return;
+        setRenewing(true);
+        const operationIntentKey = `renew:${renewalClient.subscriptionId}:${renewalClient.pricingTier}:${renewalMonths}`;
+        const operationId = getOrCreateResellerOperationId(operationIntentKey);
+        const context = buildResellerDashboardLogContext('renew_manual_subscription', {
+            durationMonths: Number(renewalMonths),
+            ...getBoundedMobileOwnerStringContext('storeId', renewalClient.storeId),
+            ...getBoundedMobileOwnerStringContext('tenantId', renewalClient.tenantId),
+            ...getBoundedMobileOwnerStringContext('pricingTier', renewalClient.pricingTier),
+        });
+        try {
+            const response = await fetch('/api/reseller/renew', {
+                ...RESELLER_REQUEST_POLICY,
+                body: JSON.stringify({
+                    durationMonths: Number(renewalMonths),
+                    operationId,
+                    paymentMode: 'offline',
+                    pricingTier: renewalClient.pricingTier,
+                    storeId: renewalClient.storeId,
+                    tenantId: renewalClient.tenantId,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+            const data = await readMobileRenewResponse(response, context);
+            if (!response.ok) {
+                throw createMobileResellerStatusError('mobile_reseller_dashboard_renew_rejected', response.status);
+            }
+            if (!isValidMobileRenewResponse(data, {
+                operationId,
+                storeId: renewalClient.storeId,
+                subscriptionId: renewalClient.subscriptionId,
+                tenantId: renewalClient.tenantId,
+            })) {
+                throw createMobileResellerStatusError('mobile_reseller_dashboard_renew_response_invalid', response.status);
+            }
+            clearResellerOperationId(operationIntentKey);
+            Toast.show({ content: `Renewed. Collect ${formatInrPaise(data.amountExpected)}`, duration: 2400, icon: 'success' });
+            setRenewalClient(null);
+            setRenewalMonths('3');
+            refresh();
+        } catch (error) {
+            logMobileOwnerFailure('mobile_reseller_dashboard_renew_failed', error, context);
+            Toast.show({ content: 'Could not renew client', duration: 2600 });
+        } finally {
+            setRenewing(false);
+        }
+    };
+
     const copyPaymentLink = async (transaction: ResellerTransaction) => {
-        const link = transaction.subscriptionShortUrl || '';
-        if (!link) return;
+        const link = normalizeRazorpaySubscriptionCheckoutUrl(transaction.subscriptionShortUrl);
+        if (!link) {
+            Toast.show({ content: 'Payment link is unavailable', duration: 2200 });
+            return;
+        }
         try {
             await copyMobileResellerDashboardText(link);
             Toast.show({ content: 'Payment link copied', duration: 1600, icon: 'success' });
@@ -356,8 +489,11 @@ export default function MobileResellerDashboardScreen({
     };
 
     const openPaymentLink = (transaction: ResellerTransaction) => {
-        const link = transaction.subscriptionShortUrl || '';
-        if (!link) return;
+        const link = normalizeRazorpaySubscriptionCheckoutUrl(transaction.subscriptionShortUrl);
+        if (!link) {
+            Toast.show({ content: 'Payment link is unavailable', duration: 2200 });
+            return;
+        }
         try {
             const opened = window.open(link, '_blank', 'noopener,noreferrer');
             if (!opened) {
@@ -474,6 +610,9 @@ export default function MobileResellerDashboardScreen({
                 ) : (
                     <Flex gap={10} vertical>
                         <Title level={5} style={{ margin: 0 }}>Clients</Title>
+                        {isClientListPartial ? (
+                            <Card><Text type="warning">Showing a bounded client list. Monthly reporting has its own completeness indicator.</Text></Card>
+                        ) : null}
                         {transactions.map((transaction) => (
                             <ClientCard
                                 key={transaction.id}
@@ -483,6 +622,10 @@ export default function MobileResellerDashboardScreen({
                                 }}
                                 onCopyPaymentLink={copyPaymentLink}
                                 onOpenPaymentLink={openPaymentLink}
+                                onRenew={(client) => {
+                                    setRenewalClient(client);
+                                    setRenewalMonths('3');
+                                }}
                                 transaction={transaction}
                             />
                         ))}
@@ -529,6 +672,46 @@ export default function MobileResellerDashboardScreen({
                                     style={{ minHeight: 44 }}
                                 >
                                     Record payment
+                                </Button>
+                            </Flex>
+                        </Flex>
+                    ) : null}
+                </Flex>
+            </Popup>
+            <Popup
+                bodyStyle={{ maxHeight: '70vh', overflow: 'hidden', padding: 0 }}
+                onMaskClick={renewing ? undefined : () => setRenewalClient(null)}
+                position="bottom"
+                visible={Boolean(renewalClient)}
+            >
+                <Flex style={{ height: '100%' }} vertical>
+                    <NavBar backIcon={<LuX size={20} />} onBack={() => setRenewalClient(null)}>
+                        Renew manual access
+                    </NavBar>
+                    {renewalClient ? (
+                        <Flex gap={12} style={{ overflowY: 'auto', padding: 12 }} vertical>
+                            <Text strong>{renewalClient.storeName || `Store ${renewalClient.storeId}`}</Text>
+                            <Select
+                                onChange={setRenewalMonths}
+                                options={RESELLER_COMMITMENT_OPTIONS.map((months) => ({
+                                    label: `${months} months`,
+                                    value: String(months),
+                                }))}
+                                value={renewalMonths}
+                            />
+                            <Card size="small">
+                                <Flex gap={4} vertical>
+                                    <Text type="secondary">Collect before confirming</Text>
+                                    <Text strong>{formatInrPaise(renewalAmount)}</Text>
+                                    <Text type="secondary">
+                                        Covers {renewalClient.subscriptionQuantity || renewalClient.locationCount || 1} paid location{(renewalClient.subscriptionQuantity || renewalClient.locationCount || 1) > 1 ? 's' : ''}.
+                                    </Text>
+                                </Flex>
+                            </Card>
+                            <Flex gap={10}>
+                                <Button block fill="outline" onClick={() => setRenewalClient(null)} style={{ minHeight: 44 }}>Cancel</Button>
+                                <Button block disabled={!renewalAmount} loading={renewing} onClick={handleRenew} style={{ minHeight: 44 }}>
+                                    Confirm renewal
                                 </Button>
                             </Flex>
                         </Flex>

@@ -24,6 +24,10 @@ research -> dedupe -> score -> gather evidence -> draft -> queue approvals -> ro
 
 Implementation rule: if a workflow can be safely converted into a system-prepared approval packet, do that instead of adding another founder/operator task. Human work should remain at policy, approval, exception, pause, and scale decisions.
 
+Draft preparation is transaction-authoritative and replay-safe. The selected target, source policy, active template, evidence summary, optional CTA, sender-domain readiness, and latest prior-contact conversation are re-read in the settlement transaction. A content hash over the rendered message and those authority-bearing inputs owns the draft, approval, and approval-packet IDs, so exact concurrent retries cannot duplicate queue, audit, timeline, or cost effects; changed message or authority facts produce a distinct review record.
+
+Human approval is also transaction-authoritative. The decision transaction requires the pending approval's draft and packet to exist and agree on target, approval, and evidence identity; the target must still point to that exact pair as latest. It then revalidates current source rights, suppression/lifecycle/prior-contact state, target segment/action, and unsupported claims before changing approval/draft/packet/target truth or decrementing queues. Rejection remains available to close a pending review unit even when its optional packet/draft is incomplete, while approval always fails closed.
+
 Client-side SignalDesk DAL failures use fixed internal-tool copy for overview load, workspace load, action run, and pause updates. Route response text from `src/app/api/signaldesk/*` is not rethrown into the UI. Overview, workspace, action, and kill-switch callers parse route responses through a 1 MB bounded reader, require the documented `{ data }` envelope, and guard overview/workspace shapes before replacing local state. Malformed, oversized, rejected, or wrong-shape route responses now log `signaldesk_client_response_parse_failed`, `signaldesk_client_response_rejected`, or `signaldesk_client_response_invalid` with operation, response status, mobile-client state, and bounded action/section/scope presence/length metadata before preserving the same fixed UI failure copy. The runtime still preserves the existing access, rate-limit, mobile-readonly, and provider-send gates. Overview, workspace, action, kill-switch, and lower-level overview-load failures use `signaldesk_*_failed` diagnostics with bounded user/action/section/scope metadata and source error name/code/status only. Shared API guard security events for validation failures, permission failures, rate limits, and invalid JSON now use `getSignalDeskSecurityLogContext()` over bounded route metadata plus endpoint/method/action/permission/feature presence-length fields instead of raw `buildSecurityContext()` output.
 
 ## Investment-Control Runtime Added
@@ -74,19 +78,47 @@ The validated July 11 AI-revenue research reuses existing records instead of add
 
 No new feature flag, collection, index, provider, scheduler, or public surface is required.
 
+Standalone `run-ai-assist` requests use the existing `signaldeskIdempotencyKeys` collection before provider execution. The key binds actor, target, task, normalized instruction, multi-pass mode, and optional volume parent. Exact completed retries replay one deterministic worker run; changed input conflicts. The final worker/eval/snapshot/operation/provider-spend/timeline/audit/cost transaction must still own the original claim. Browser retries retain a key only while the exact target/task/instruction tuple is unchanged, and volume children derive their key from parent/target/task identity.
+
+Provider, critic, escalation, or unconfirmed final-persistence failures move only the exact AI claim owner to `unresolved`, store `ai_assist_outcome_unresolved`, and emit one audit event. Exact retry becomes review-required without another model call. If final transaction acknowledgement is lost but the completed claim and deterministic worker exist, the call returns success. Reserved spend is retained for ambiguous provider billing.
+
+Direct `run-source-provider` requests use the same existing idempotency collection. The request fingerprint binds actor, provider, policy, normalized query/location, and result cap. The first claim transaction also reads the provider account and optional provider budget policy, enforces the per-run/daily/monthly caps against transaction-current spend, and reserves the estimated cost before the external call. Exact completed retries reconstruct the bounded source run and target summaries; changed input conflicts. The private browser retains a retry key only while the exact provider request is unchanged.
+
+After provider success, target/detail/identity/source-run writes, provider health, deterministic vendor-run truth, row-aligned retention, claim completion, timeline, audit, and cost truth share the target-import batch. The source-run ID is derived from the actor/key hash. A commit acknowledgement loss therefore re-reads the exact completed claim and deterministic source run without repeating provider work. Duplicate rows keep an aligned internal target projection even when the public result set deduplicates them, preserving every allowed provider-record provenance against the correct target.
+
+If the external result or pre-commit import outcome is not durably completed, the exact claim owner transactionally moves the claim from `in_progress` to `unresolved`, stores only `source_provider_outcome_unresolved` or `source_provider_import_unresolved`, and emits one audit event. Exact retry returns a review-required error without another provider request. The reservation is not automatically refunded because provider billing may already have occurred.
+
+Research Agent requests require a bounded actor/request idempotency key at both API and server boundaries. The private browser retains the same key while prompt, provider, research type, source policy, and result cap remain unchanged after failure, and clears it only after success. Exact replays return the durable run status unchanged and expose replay identity only through the separate response `duplicate` flag. Completion compensation first re-reads the deterministic run and at most one hundred matching rows. A final batch that committed before acknowledgement loss returns completed durable truth; only a non-completed run may be marked blocked. This prevents completed table/pod/run output from being overwritten by false failure compensation.
+
+The research run ID derives from founder actor plus the required key hash. Exact legacy claims still replay their stored entity ID, while independent keys always receive separate run and row namespaces even when their normalized research input is identical.
+
+Final Research Agent rows, run, market pod, timeline, audit, and cost settle in one Firestore transaction. The transaction reads market-pod review authority before writing, so a founder decision committed during provider work forces a retry against current pod truth instead of being overwritten by stale approval/status fields.
+
+Rules-only target scoring also settles transactionally. It re-reads target and source-policy authority before any score effects, and derives a deterministic operation identity from the exact scoring facts plus `rules-v1`. Concurrent/retried identical requests return the existing score without duplicate snapshots, ledgers, audits, target writes, or cost increments.
+
+Evidence creation follows the same transaction-current contract. Its content identity includes source-policy-derived allowed use plus every target fact projected into packet detail/summary, so identical retries converge while a rights or evidence-fact change produces new provenance. Packet detail, summary, target next action, audit, and cost commit together.
+
+Standalone AI Assist reserves its initial Gemini estimate while creating its claim. It refuses to start while AI Volume owns the live global lock. AI Volume performs a second transaction-current aggregate budget check while acquiring that lock, so a direct request cannot consume capacity between preflight and batch ownership. Volume children then use the owned envelope and final provider-spend ledger without double-reserving their calls.
+
+AI finalization re-reads the optional provider-budget policy in the claim-owned transaction. Provider-account spend is always recorded, while policy spend is merged only when the policy exists. This preserves the supported account-only configuration and prevents a missing optional policy from becoming a partial spend-only document.
+
 ## AI Volume Mode Runtime Contract
 
 `ENABLE_MENULIST_SIGNALDESK_AI_VOLUME_MODE` gates `run-ai-volume-batch`. The authenticated action is Zod-validated, rate-limited as `BATCH_OPERATION`, mapped to `signaldesk.configure`, repeated as a founder-admin check in the workflow, and classified as blocked provider work on mobile.
 
 The parent and child records reuse `signaldeskAiWorkerRuns`:
 
-- parent `workerType: ai_volume_batch` uses a founder-scoped idempotency-key hash, stores no raw key, and summarizes up to fifteen target/task pairs;
+- parent `workerType: ai_volume_batch` uses a founder-scoped idempotency-key hash, stores no raw key, binds the exact normalized founder/targets/tasks/instruction/cost request with a fingerprint, and summarizes up to fifteen target/task pairs;
 - child `workerType: ai_assist_{task}` stores fast output, critic verdict/evidence, optional same-provider escalation, final confidence/output, model calls, estimated cost, and parent ID;
 - latest bounded workspace reads split rules scores, parent volume runs, and reviewable provider children without another collection or index.
 
 Default active routes use `gemini-2.5-flash-lite` for `score`, `evidence`, `draft`, `reply-classification`, and `quality-critic`, with `gemini-2.5-flash` escalation on the four business tasks. Exact legacy score/evidence defaults migrate once; later founder-modified routes are not overwritten by reseeding.
 
+Default convergence is create-only for valid current rows. One foundation transaction reads the current preview CTA plus 53 unique business defaults, creates only missing rows, and emits the seed audit, timeline, and daily-cost increment only when at least one business row is created or an exact legacy row is migrated. The provider registry contains 18 account/use records and 17 provider-scoped budgets because `owned-email` has separate disabled sender and approved internal-sequencer accounts under one conservative provider budget. Existing spend, caps, status, disable reasons, and ownership timestamps are preserved byte-for-byte after strict product/shape validation. Automatic replacement is limited to the exact historical score/evidence route, Mumbai first-pod, and active current-list Offer CTA shapes; any near-match or founder marker prevents migration. The default content source is separately create-only, is not created while distribution is paused, validates existing source provenance, and derives activation only from a strictly projected transaction-current founder-approved pod.
+
 The synchronous executor uses three bounded workers. It preflights the aggregate daily/monthly Gemini budget and holds one six-minute global recovery lock so another batch cannot consume the same budget snapshot while the 300-second route has a one-minute shutdown margin. Every child retains its own provider/budget/source-policy checks, provider spend, operation ledger, model eval, decision snapshot, timeline, audit, and daily cost. The parent records only orchestration evidence and stable failure codes.
+
+Exact retries return the durable parent without another provider call; changed input under the same key fails closed. Legacy parents without a fingerprint replay only when their stored founder, targets, tasks, instruction, and cost ceiling exactly match. Parent creation also stores a unique worker claim, so an ambiguous transaction acknowledgement can continue only for the worker that actually committed it.
 
 If an idempotent retry finds an expired `running` parent, it reconstructs at most fifteen children from a bounded twenty-row query and finalizes the parent without a provider call. Completed children preserve calls and estimated cost; incomplete recovery stores `ai_volume_run_interrupted`. Both normal finish and recovery release the global lock only when it still belongs to that parent.
 
@@ -345,9 +377,9 @@ MenuList integration must use a narrow outcome bridge. SignalDesk records route 
 | Import target | Validate source policy, write import record, create candidates, no send. |
 | Dedupe target | Generate identity keys and merge/hold/reject suggestions. |
 | Score target | Return typed fit/gap/contactability/risk output. |
-| Create evidence packet | Store source facts, rejected facts, allowed-use notes, expiry. |
+| Create evidence packet | Store source facts, rejected facts, allowed-use notes, expiry, and a versioned current-menu-presence diagnostic. Unknown owner-control and mobile-access facts remain explicitly unverified. |
 | Draft message | Use approved template and variables only. |
-| Approve action | Human reviewer transitions work item to approved. |
+| Approve action | Human reviewer may transition only an exact action packet whose fingerprint still matches the current evidence, source rights, allowed route, sender, CTA, message, unsupported-claim result, expected outcome, and risk state. |
 | Export/send email | Recheck suppression, sender readiness, and approval. Export can precede provider send. |
 | Classify reply | Typed classifier result; DNC/complaint immediately updates suppression. |
 | Record outcome | Store MenuList outcome event and update summaries. |
@@ -451,7 +483,7 @@ Implemented behavior:
 1. protected `/signaldesk` app shell;
 2. first-route workspace for dashboard, targets, imports, approvals, templates, inbox, attribution, policies, control-room, and audit;
 3. summary-first overview API;
-4. global outbound kill-switch API with role checks, rate limiting, Zod validation, audit event, and control-room summary update;
+4. global outbound kill-switch API with role checks, rate limiting, Zod validation, and one transactional switch/audit/idempotency settlement that leaves provider-derived channel health untouched;
 5. dedicated SignalDesk Firebase client/admin configuration using full `MENULIST_SIGNALDESK_*` env names;
 6. dedicated Firestore/Storage rules with default deny and server/admin-only writes;
 7. dedicated `functions-signaldesk` package with a health-check skeleton and disabled provider/AI/scheduler flags;
@@ -547,6 +579,33 @@ The first-trial operating loop now distinguishes preparation from execution:
 9. Conversations exposes the manual confirmation form. Approval Queue exposes a reason selector and optional note. Both remain disabled in mobile observe-only mode while the server still blocks forced requests.
 
 No collection, index, Firestore rule, Storage rule, provider adapter, public route, or MenuList runtime file was added.
+
+## July 15 Source-Policy And Transactional Import Hardening
+
+Source authority and import lineage now share one runtime contract instead of relying on route-local types or permissive persisted casts:
+
+1. `sourcePolicyContracts.ts` is authoritative for source-policy creation and persisted projection. Contact, evidence, import, personalization, provider-run, and storage authority are all required booleans; missing values do not default open.
+2. Contact authority requires an approved access method, explicit bounded contact channels, matching allowed fields, and evidence. Public discovery or a provider record never implies permission to contact.
+3. Source-policy documents must carry `pId = SD`, match their Firestore document ID, satisfy review/expiry/retention/provider semantics, and project through an explicit DTO before any workspace or operation consumes them.
+4. Policy creation uses a deterministic actor-plus-idempotency claim and stable request fingerprint in one transaction. An exact replay returns the original policy; reuse with changed facts fails closed.
+5. `targetContracts.ts` is authoritative for import rows and target/source/research projections. URLs are credential-free HTTP(S), bounded fields are normalized, unexpected request fields are rejected, and internal/contact fields cannot leak through target summary DTOs.
+6. Every retained email, phone, or Instagram value requires that row's `permissionEvidenceRef`. Import checks both the retained phone suppression identity and the exact legacy digits-only identity.
+7. One Firestore transaction reads source authority, identity indexes, targets, contact identities, source candidates, suppressions, provider lineage, retention rows, and provider idempotency truth before any write. Foreign, orphaned, rebound, divergent, or mismatched records abort the whole import.
+8. Re-import preserves mature target lifecycle and derived scores. It also preserves an existing contact permission state. Import refresh is not an authority-upgrade operation.
+9. Only exact historical identity/contact records missing `pId` may migrate. Near matches, additional fields, wrong-product records, and incompatible lineage fail closed.
+10. Provider adapters parse unknown payloads into bounded shared rows, cap result arrays, use abort timeouts, and expose stable safe failure codes. The workspace binds provider actions to an exact usable policy for the selected provider and keeps policy-create retry identity stable.
+11. Manual CSV parsing uses one shared ten-column state machine. It supports escaped quotes, quoted commas/newlines, CRLF, and an optional exact header while rejecting unclosed quotes, shifted columns, overlong fields, empty names, and more than 50 rows before submission.
+12. Manual imports use an actor-bound stable retry key and request fingerprint. Exact and concurrent retries return the same source run and target DTOs; changed facts under the same key fail closed without another write set.
+13. Provider targets use versioned, provider-namespaced identity based on the record ID, then record URL, then bounded business facts. A pre-contract identity is reused only when strict target detail or provider-retention provenance proves the same external record, so same-name provider rows cannot overwrite one another.
+14. Persisted target/research scores are bounded from 0 through 100, Firestore timestamps must remain Firestore timestamps, source-run status must agree with its counts, research verdict counts must reconcile to table-row count, and queued/running research runs cannot carry terminal rows or provider-run IDs.
+15. Manual import admits only manual CSV, manual research, or owned-demand policies and rejects provider record fields before Firestore work. Provider-backed identity can enter only through a completed, matching provider run; rejected provenance spoof attempts create no source run, target, identity, candidate, claim, or cost truth.
+16. Google Maps and provider listing URLs remain provenance, not current-menu truth. Only explicit current-list/menu fields can set `currentListUrl`; malformed optional provider contact/URL values are dropped independently without dropping an otherwise valid business. Opportunity classification prefers explicit PDF, then Instagram-only, then missing-current-list, and otherwise stays unknown.
+17. Target detail reads enforce canonical email, international phone, Instagram handle, credential-free HTTP(S), an external-provider enum, and exact identity-version/provider/record coupling. Score replay and scoring inputs use strict product/identity/range projectors. Research runs require one explicit matching source-policy ID, and persisted row verdicts must agree with score bands and fail-safe route state.
+18. Strict workspace lists page by descending `updatedAt` across bounded pages before projection, so arbitrary document IDs cannot hide newer valid truth. Outcome settlement and later reply capture preserve owner-qualified and verified-activation fields as Firestore `Timestamp` values rather than round-tripping public ISO DTO strings into persistence.
+19. A newly imported target is projected through the same strict target-summary DTO as an exact replay, so retry timing cannot change response keys or expose persistence-only fields.
+20. Identity-index, contact-identity, and source-candidate readers accept only their documented persistence fields and return explicit allowlists. Unknown/private fields are stripped, while raw document identity must equal the Firestore path before any trim or normalization.
+
+This correction adds no outbound send, manual-contact settlement, webhook settlement, scheduler, public route, Firebase rule/index change, or MenuList truth write. Existing outcome behavior is unchanged; only the target lifecycle timestamp persistence format was repaired to match its existing Firestore contract.
 
 ## Remaining Implementation Gates
 

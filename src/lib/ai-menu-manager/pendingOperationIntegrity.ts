@@ -14,6 +14,32 @@ function requireDistinctOperationIds(operations: AiMenuManagerPendingOperation[]
     return operationIds;
 }
 
+export function assertAiMenuManagerPreparedOperationGroup(
+    operations: AiMenuManagerPendingOperation[],
+): string {
+    if (operations.length < 2) throw new Error(INVALID_GROUP_MESSAGE);
+    requireDistinctOperationIds(operations);
+
+    const first = operations[0];
+    const commandGroupId = first.commandGroupId;
+    const commandGroupSize = first.commandGroupSize;
+    if (
+        !commandGroupId
+        || commandGroupSize !== operations.length
+        || operations.some((operation) => (
+            operation.commandGroupId !== commandGroupId
+            || operation.commandGroupSize !== commandGroupSize
+            || operation.sessionId !== first.sessionId
+            || String(operation.tId) !== String(first.tId)
+            || String(operation.sId) !== String(first.sId)
+            || String(operation.projectId) !== String(first.projectId)
+        ))
+    ) {
+        throw new Error(INVALID_GROUP_MESSAGE);
+    }
+    return commandGroupId;
+}
+
 export function resolveCurrentAiMenuManagerOperation(params: {
     currentOperations: AiMenuManagerPendingOperation[];
     requestedOperation: AiMenuManagerPendingOperation;

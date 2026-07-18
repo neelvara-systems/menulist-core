@@ -20,7 +20,8 @@ import { getDecisionFactArray, getDecisionFactNumber, getDecisionFactString, get
 import { normalizePublicMenuImages } from '@lib/menu/publicMenuImages';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import PublicImageViewer from '@/components/shared/media/PublicImageViewer';
-import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { getActivePublicItemPriceAttributes, getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
 import { AnimatePresence, motion } from 'framer-motion';
 import Image from 'next/image';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -159,7 +160,7 @@ function getDietaryTagStyle(tag: string): CSSProperties {
     if (['non-vegetarian', 'non-veg', 'nonveg'].includes(key)) {
         return { background: '#11182710', color: '#374151' };
     }
-    return { background: '#22c55e20', color: '#16a34a' };
+    return { background: '#dcfce7', color: '#166534' };
 }
 
 function PDPModal({
@@ -200,6 +201,14 @@ function PDPModal({
     const getAnalyticsText = useCallback(
         (value: unknown, fallback = '') => getLocalizedText(value as any, primaryLanguage, primaryLanguage, fallback),
         [primaryLanguage],
+    );
+    const activePriceAttributes = useMemo(
+        () => getActivePublicItemPriceAttributes(item),
+        [item],
+    );
+    const itemListPriceLabel = useMemo(
+        () => getPublicItemListPriceLabel(item, currencySymbol),
+        [currencySymbol, item],
     );
     const markImageLoaded = useCallback((url?: string) => {
         if (!url) return;
@@ -314,12 +323,12 @@ function PDPModal({
                     category: analyticsCategoryName,
                     categoryId,
                     categoryName: analyticsCategoryName,
-                    price: showItemPrices
-                        ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
+                    price: showItemPrices && activePriceAttributes.length === 0
+                        ? (parseSingleMenuPrice(item.price) ?? undefined)
                         : undefined,
                     currency: currencyCode,
                     attributes: showItemPrices
-                        ? item.attributes?.reduce((acc: Record<string, string>, attr: any) => {
+                        ? activePriceAttributes.reduce((acc: Record<string, string>, attr: any) => {
                             const attributeName = getModalText(attr.name);
                             if (attributeName) {
                                 acc[attributeName] = String(attr.price);
@@ -336,7 +345,7 @@ function PDPModal({
             });
             setCategory(file?.extractedData?.data?.categories?.find((cat: any) => cat.id === item.category));
         }
-    }, [currencyCode, getAnalyticsText, getModalText, item, trackMenuItemView, projectData, showItemPrices, trackView]);
+    }, [activePriceAttributes, currencyCode, getAnalyticsText, getModalText, item, trackMenuItemView, projectData, showItemPrices, trackView]);
 
     useEffect(() => {
         if (!item || typeof window === 'undefined') return;
@@ -787,8 +796,8 @@ function PDPModal({
                                             padding: '4px 8px',
                                             marginBottom: 12,
                                             borderRadius: 6,
-                                            background: '#ef444420',
-                                            color: '#ef4444',
+                                            background: '#fee2e2',
+                                            color: '#991b1b',
                                             fontSize: 12,
                                             fontWeight: 600,
                                             lineHeight: '16px',
@@ -852,7 +861,7 @@ function PDPModal({
                                     >
                                         {getModalText(item.name, 'Menu Item')}
                                     </h2>
-                                    {showItemPrices && !item.attributes?.length && item.price !== undefined && item.price !== null && String(item.price).trim() !== '' && (
+                                    {showItemPrices && itemListPriceLabel && (
                                         <span
                                             className="text-lg md:text-xl font-semibold whitespace-nowrap"
                                             style={{
@@ -865,7 +874,7 @@ function PDPModal({
                                                 whiteSpace: 'nowrap',
                                             }}
                                         >
-                                            {formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })}
+                                            {itemListPriceLabel}
                                         </span>
                                     )}
                                 </div>
@@ -891,7 +900,7 @@ function PDPModal({
                                                     padding: '4px 8px',
                                                     borderRadius: 6,
                                                     background: `${moodConfig.accentColor}20`,
-                                                    color: moodConfig.accentColor,
+                                                    color: moodConfig.headingColor,
                                                     fontSize: 12,
                                                     lineHeight: '16px',
                                                     fontWeight: 600,
@@ -920,42 +929,42 @@ function PDPModal({
                                             </span>
                                         ))}
                                         {spiceLevel && spiceLevel !== 'none' && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#ef444420', color: '#ef4444', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#fee2e2', color: '#991b1b', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 🌶️ {spiceLevel.charAt(0).toUpperCase() + spiceLevel.slice(1).replace('-', ' ')}
                                             </span>
                                         )}
                                         {allergens.length > 0 && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#f59e0b20', color: '#d97706', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: '#fef3c7', color: '#92400e', fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 ⚠️ {allergens.join(', ')}
                                             </span>
                                         )}
                                         {duration && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 ⏱ {duration} min
                                             </span>
                                         )}
                                         {targetAudience && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 {targetAudience.replace('-', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                             </span>
                                         )}
                                         {skillLevel && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 {skillLevel.replace('-', ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                             </span>
                                         )}
                                         {materials && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 {materials}
                                             </span>
                                         )}
                                         {warranty && (
-                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.accentColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}15`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 Warranty: {warranty}
                                             </span>
                                         )}
                                         {nutritionBadges.map((badge) => (
-                                            <span key={`nutrition-${badge}`} className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}12`, color: moodConfig.accentColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
+                                            <span key={`nutrition-${badge}`} className="px-2 py-0.5 text-xs rounded-full" style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 8px', borderRadius: 999, background: `${moodConfig.accentColor}12`, color: moodConfig.headingColor, fontSize: 12, lineHeight: '16px', fontWeight: 600 }}>
                                                 {badge}
                                             </span>
                                         ))}
@@ -1037,7 +1046,7 @@ function PDPModal({
                                 )}
 
                                 {/* Attributes/Variants */}
-                                {item.attributes?.length > 0 && (
+                                {activePriceAttributes.length > 0 && (
                                     <div
                                         className="space-y-2 mt-4"
                                         style={{
@@ -1059,7 +1068,7 @@ function PDPModal({
                                         >
                                             Options
                                         </h3>
-                                        {item.attributes.map((attr: any, idx: number) => (
+                                        {activePriceAttributes.map((attr: any, idx: number) => (
                                             <div
                                                 key={idx}
                                                 className="flex justify-between items-center p-3 rounded-lg"

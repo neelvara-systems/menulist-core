@@ -1,6 +1,6 @@
 # Roles & Permissions — Technical Implementation
 
-**Status:** ✅ Staff CRUD + permissions wired end-to-end | **Last Updated:** July 11, 2026
+**Status:** Local source flow verified; hosted release evidence pending | **Last Updated:** July 16, 2026
 
 > **Scope:** This document covers Layer 1 (staff-level RBAC). For Layer 2 (OutletPolicy chain restrictions) and the two-layer interaction model, see [Multi-Chain Permissions](../multi-chain-permissions/multi-chain-permissions_impl.md).
 
@@ -18,7 +18,7 @@ roles: StoreRoleDataType[]          stores: [{
                                     }]
 ```
 
-Private concurrency state lives at `staffStoreAccessState/{tenantId}_{storeId}`. Its bounded `assignments[]` projection contains only active, unblocked user IDs and their role IDs. Staff creation, mapping/active changes, role mutations, and platform user block/unblock serialize through that document together with the authoritative `users` or `stores` write. The state document is lazy-initialized from compatible numeric/string legacy user mappings and is not client-readable or client-writable under the default-deny Firestore rules boundary.
+Private concurrency state lives at `staffStoreAccessState/{tenantId}_{storeId}`. Its bounded `assignments[]` projection contains only active, not-deleted, not-explicitly-unverified, unblocked user IDs and their role IDs. Staff creation, mapping/active changes, role mutations, and platform user block/unblock serialize through that document together with the authoritative `users` or `stores` write. The state document is lazy-initialized from compatible numeric/string legacy user mappings and is not client-readable or client-writable under the default-deny Firestore rules boundary. Legacy rows with missing `isVerified` remain compatible; explicit `isVerified: false` rows do not count as active owners.
 
 **Key Files:**
 
@@ -26,7 +26,8 @@ Private concurrency state lives at `staffStoreAccessState/{tenantId}_{storeId}`.
 - Role types: `src/types/platform/roles.ts`
 - User types: `src/types/platform/user.ts`
 - Store types: `src/types/platform/store.ts`
-- Default roles: `src/data/defaultRoles.ts`
+- Default roles: `src/data/shared/defaultRoles.ts`
+- Functions mirror: `functions/src/sharedData/defaultRoles.ts` (byte-identical source gate)
 - Permission labels: `src/data/rolesPermissionsInitialData.ts`
 - Outlet policy enforcement: `src/lib/permissions/applyOutletPolicy.ts`
 
@@ -57,12 +58,16 @@ Private concurrency state lives at `staffStoreAccessState/{tenantId}_{storeId}`.
 | Staff and role target-store eligibility rejects inactive, soft-deleted, or platform-blocked stores | ✅ Done |
 | Staff creation, mapping, owner preservation and role edits serialize transactionally | ✅ Done |
 | Platform-blocked owners are removed from active owner/role assignment state | ✅ Done |
+| Managers cannot mutate Owner accounts without `canAssignRoles` | ✅ Done |
+| Existing placeholder verification requires committed Firebase Auth UID binding | ✅ Done |
+| Firebase refresh-token revocation runs only after accepted staff transactions | ✅ Done |
+| Access status rejects inactive/deleted tenant and store truth | ✅ Done |
 
 ---
 
 ## 3. Default Roles Implementation
 
-**File:** `src/data/defaultRoles.ts`
+**File:** `src/data/shared/defaultRoles.ts`
 
 ```typescript
 // Simple role IDs - no storeId suffix needed
@@ -166,7 +171,8 @@ Owner AI routes now use the same server guard before expensive work. Text/menu A
 | File                                                  | Status |
 | ----------------------------------------------------- | ------ |
 | `src/types/platform/roles.ts`                         | ✅ OK  |
-| `src/data/defaultRoles.ts`                            | ✅ OK  |
+| `src/data/shared/defaultRoles.ts`                     | ✅ OK — canonical app default-role data |
+| `functions/src/sharedData/defaultRoles.ts`            | ✅ OK — byte-identical Functions mirror |
 | `src/constants/permissions.ts`                        | ✅ OK  |
 | `src/data/rolesPermissionsInitialData.ts`             | ✅ OK  |
 | `src/lib/permissions/hasPermission.ts`                | ✅ OK  |
@@ -270,7 +276,9 @@ Categories:
 - Staff list/create repairs legacy stores that are missing default `owner` / `manager` / `staff` role definitions and normalizes missing permission keys on existing default roles. Custom roles keep missing permission keys denied.
 - The `owner` role definition is locked from edits/deactivation.
 - Last active owner protection prevents removing/demoting/deactivating the only owner for a store.
+- Owner-target protection is independent of last-owner protection. An actor with `canManageUsers` but without `canAssignRoles` cannot edit, reset credentials, force-sign-out, deactivate, remove, or add a store mapping to any user that currently holds an Owner mapping. The target is checked before provider work and again from fresh transaction data.
 - Protected API routes reject sessions whose user is inactive, unverified, deleted, or platform-blocked.
+- `/api/auth/access-status` also rejects authoritative tenant/store documents that are inactive or soft-deleted, as well as missing, cross-tenant, blocked, or session-revoked truth.
 - `users/{userId}` Firestore writes are not a normal client path. Owner/staff profile edits, password changes, role changes, staff mappings, and revocation metadata go through authenticated server APIs; direct Firestore user writes are platform-admin only.
 - Staff mutation target user IDs use the shared Firestore document-ID boundary before `users/{userId}` reads. `src/lib/staffManagement/server.ts` validates update, remove, reset-passcode, and force-sign-out `userId` values through `StaffUserIdSchema`, which does not trim `userId` before validation, rejects whitespace-mutated, empty, oversized, path-shaped, or reserved Firestore document IDs, re-normalizes each request into local `targetUserId`, uses `.doc(targetUserId)` for user document reads, and returns mutation acknowledgements with `targetUserId`. Raw `.doc(input.userId)` and `sanitizeStaffUserForAuthority(input.userId, ...)` are excluded by `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix`.
 - Staff store refs use `normalizeStaffStoreScopeDocumentId()` before staff list target-store reads, default-role repair writes, and role save/delete `stores/{storeId}` writes. The helper uses the shared Firestore document-ID guard plus exact positive numeric admission, then all store document refs use `.doc(storeScope.documentId)`. Raw `.doc(String(storeId))`, `.doc(String(store.storeId))`, and `.doc(String(input.storeId))` are excluded by `npm run verify:menulist-api-tenant-safety` and `npm run verify:auth-security-failure-matrix`.
@@ -278,17 +286,22 @@ Categories:
 - Staff authorization, validation, and rate-limit security events use bounded detail shaping before `logger.security()`. Tenant/store/user IDs, requested/target tenant IDs, role IDs, validation payloads, and request-derived values are logged as presence/length/count metadata instead of raw identifiers.
 - Owner AI route permission checks run after bounded body parsing and schema validation where a body exists, and before outlet policy, capacity checks, provider/media work, task fanout, analytics Firestore reads, insight writes, or accounting.
 - Desktop staff create/update/list/reset/remove/sign-out failures, mobile staff mutations, desktop/mobile one-time login-detail copy/share failures, and server-side staff Auth, lifecycle, and role-repair breadcrumbs use `src/lib/staffManagement/diagnostics.ts` for bounded diagnostics. Unknown failures show generic owner-facing copy while diagnostics record only operation name, bounded tenant/store/user/action/reason/provider-code metadata, safe presence/count booleans, copy/share result metadata, text/value lengths, and source error name/code/status. Raw staff mutation errors, staff IDs, temporary passcodes, names, emails, phone numbers, generated login messages, server payloads, Firebase Auth missing-user context, password setup provider details, staff lifecycle identifiers, and provider objects are not direct-console logged.
-- `src/lib/staffManagement/client.ts` requires operation-specific staff mutation acknowledgements before desktop or mobile staff state updates. Create must return `new_user_created` or `existing_user_added_to_store`; update/reset must return `user_updated`; remove must return `store_mapping_removed` or `user_deactivated`; force sign-out must return `session_revoked`. These calls also require returned `user` and `userId` envelopes, and the returned `user.id` must match `userId`, so a generic `{ success: true }` or mismatched successful envelope is treated as invalid and routed through the existing bounded failure path.
-- The app shell runs `SessionExpiryMonitor`, which checks `/api/auth/access-status` on focus and every 30 seconds while visible using same-origin credentials, no-store cache policy, and manual redirect handling. The route applies the shared `DATA_READ` gate before user/tenant/store reads; throttled checks return a no-store `429` without `valid: false`, so the browser does not sign out on throttling. It signs out the browser when the access-status request redirects, or when `sessionRevokedAt`, `active`, `deleted`, direct user block, tenant block, or store block invalidates access.
+- `src/lib/staffManagement/client.ts` requires operation-specific staff mutation acknowledgements before desktop or mobile staff state updates. Create accepts `new_user_created`, `existing_user_added_to_store`, or `existing_user_auth_bound`; update/reset requires `user_updated`; remove requires `store_mapping_removed` or `user_deactivated`; force sign-out requires `session_revoked`. These calls require shaped `user` and `userId` envelopes whose IDs match. Role responses validate the returned role list and boolean permission map. Generic or mismatched success is rejected through the bounded failure path.
+- The legacy Platform Users verification caller is narrower than ordinary staff creation. `readCreateStaffCompatibilityResponse()` must pass `isCreateStaffCompatibilityVerificationResponse()` for the exact expected Firestore user ID and email, `existing_user_auth_bound` mode, and `user.isVerified === true`. `EMAIL_EXISTS` is a rejection, not verification success, and the browser no longer writes `isVerified` after a generic response.
+- The app shell runs `SessionExpiryMonitor`, which checks `/api/auth/access-status` on focus and every 30 seconds while visible using same-origin credentials, no-store cache policy, and manual redirect handling. The route applies the shared `DATA_READ` gate before user/tenant/store reads; throttled checks return a no-store `429` without `valid: false`, so the browser does not sign out on throttling. It signs out the browser when the access-status request redirects, or when session revocation, user lifecycle/block state, tenant lifecycle/block state, or store lifecycle/block state invalidates access.
 
 ### Staff Access Revocation Contract
 
-- **Sign out staff:** writes `sessionRevokedAt`, `sessionRevokedBy`, `sessionRevokedReason: "owner_force_signout"`, and `authTokensRevokedAt`; calls Firebase Auth `revokeRefreshTokens()`. The Firebase Auth account stays enabled, so the staff member can sign in again with current credentials.
+- **Commit ordering:** staff add/update/remove/force-sign-out writes authoritative session-revocation metadata inside the accepted Firestore transaction first. Only after that commit does the route make a best-effort Firebase Auth refresh-token revocation call. A rejected stale, last-owner, owner-target, or concurrency transaction therefore cannot sign anyone out as a side effect.
+- **Sign out staff:** writes `sessionRevokedAt`, `sessionRevokedBy`, `sessionRevokedReason: "owner_force_signout"`, and `authTokensRevokedAt`; after commit it calls Firebase Auth `revokeRefreshTokens()`. The Firebase Auth account stays enabled, so the staff member can sign in again with current credentials.
 - **Deactivate staff:** writes the same session revocation fields, sets `authDisabled: true`, and disables Firebase Auth. Reactivation re-enables Firebase Auth but does not clear `sessionRevokedAt`, so old sessions stay invalid.
 - **Remove last store mapping:** soft-deletes the user, revokes sessions, disables Firebase Auth, and preserves the Firestore user document for audit history.
 - **Every store/role mapping change:** revokes Firebase refresh tokens and writes session-revocation fields, including adding or removing one store while other mappings remain, so an earlier token cannot retain removed claims or miss newly assigned scope.
 - **Owner passcode reset:** first reserves one operation in `passcodeResetPending` with a 15-minute lease, then updates Firebase Auth password/revokes refresh tokens, and finally clears only the matching operation while writing audit/session metadata. Concurrent resets return `PASSCODE_RESET_IN_PROGRESS`; provider failure clears only its own reservation; a post-provider audit failure leaves the reservation and still returns the confirmed passcode once. No passcode is stored in Firestore.
 - **New staff compensation:** when this request created the Firebase Auth account but the first `users/{userId}` write fails, the route deletes that just-created Auth user. It never deletes a pre-existing Auth identity, and a failed cleanup emits only the bounded `staff_create_auth_compensation_failed` diagnostic.
+- **Existing placeholder verification:** an unverified same-tenant Firestore user with no existing `firebaseUid` may be verified by creating a new Firebase Auth account, transactionally upserting the target store mapping and UID on that same user document, then returning `existing_user_auth_bound`. If the Firestore commit loses, only the Auth UID created by that request is deleted. If Firebase reports `auth/email-already-exists`, or the placeholder already contains an incomplete UID binding, the route fails closed and never adopts that Auth identity.
+- **Password setup delivery after commit:** Firebase password-reset email requests have a 10-second provider timeout and return a bounded sent/failed result. If the account is already committed, an email-network failure or later password-reset audit-metadata write failure is reported in the response/diagnostics but does not turn the account mutation into a false 500.
+- **Default-role repair:** missing/partial default roles are re-read and repaired through `runStaffRoleMutationTransaction()`. The transaction recomputes the repair from current roles, so a concurrent custom/default role edit is not overwritten by a stale store snapshot.
 - **Self-service password/passcode change:** a signed-in owner or staff member can change their own password/passcode after current password verification. The route is protected by `withAuth()`, `AUTH_SENSITIVE` rate limiting, Zod validation, and secure logging. It updates Firebase Auth and writes `passwordChangedAt` to the user document.
 - **One-time login sharing:** desktop and mobile login-detail popups let owners copy Staff ID, copy passcode, copy both details, use the native browser share sheet when `navigator.share` exists, or open WhatsApp Web with a prefilled login message. If the staff phone number is saved, WhatsApp Web opens with that number in the URL. Desktop failures log `desktop_staff_login_details_copy_failed`, `desktop_staff_login_details_whatsapp_open_failed`, or `desktop_staff_login_details_native_share_failed`; mobile failures log the matching `mobile_staff_login_details_*` codes. Both surfaces record bounded presence/length metadata only. This is client-only and does not create extra Firebase reads or writes.
 - **Platform user block:** first transactionally writes Firestore-authoritative `blocked` / `blockDetails`, session revocation fields, the desired `authDisabled` value, and a unique `authSyncRevision` / `authSyncPending` marker. A bounded reconciliation loop then disables or enables Firebase Auth, revokes refresh tokens while blocked, and clears the pending marker only when the same revision and desired state are still current. Concurrent later block/unblock actions supersede earlier acknowledgements, and provider failure leaves the Firestore block plus pending marker fail-closed for an explicit retry. The same access-status route enforces the Firestore block and session revocation. Tenant/store blocks are inherited at login/session refresh and checked fresh by `/api/auth/access-status`.
@@ -298,11 +311,11 @@ Categories:
 
 | Surface | Files | Contract |
 | --- | --- | --- |
-| Desktop staff | `src/components/templates/main-app/users/usersList/*` | `/users/list` loads current-store staff through `fetchStaffUsers()`, creates through `createStaffUser()`, updates through `updateStaffUser()`, removes through `removeStaffFromStore()`, signs out active staff through `forceSignOutStaffUser()`. Removing staff from the current store removes the row from the current-store list even if the account remains assigned elsewhere. Details drawer opens the profile directly. Add/edit drawer only exposes current staff fields: Staff Details, Store Access, and Permissions. |
+| Desktop staff | `src/components/templates/main-app/users/usersList/*` | `/users/list` loads current-store staff through `fetchStaffUsers()`, creates through `createStaffUser()`, updates through `updateStaffUser()`, removes through `removeStaffFromStore()`, and signs out active staff through `forceSignOutStaffUser()`. Owner-protected rows remain viewable but all mutation actions are disabled for actors without `canAssignRoles`. Removing staff from the current store removes the row from the current-store list even if the account remains assigned elsewhere. |
 | Desktop roles | `src/components/templates/main-app/users/permissions/*` | `/users/permissions` saves through `saveRoleDefinition()` and deactivates roles through `deleteRoleDefinition()`. Custom role creation starts with all permissions off until the owner enables them. |
 | Desktop app guard | `src/components/auth/OwnerPermissionGuard.tsx` | Blocks direct route access for protected owner pages after permissions resolve |
 | Desktop navigation | `src/constants/navigations.ts`, `src/components/organisms/sidebar/*` | `Users` is a parent navigation item. `Users List` routes to `/users/list`; `Roles` routes to `/users/permissions`. Child items are permission-filtered with the same `permissionRequirements.ts` contract used by direct route guards. |
-| Mobile staff | `src/components/mobile/screens/MobileUsersScreen.tsx` | Uses the same staff client helpers as desktop, including add staff, passcode reset, force sign-out, role change, deactivate/reactivate, and current-store removal |
+| Mobile staff | `src/components/mobile/screens/MobileUsersScreen.tsx` | Uses the same staff client helpers as desktop. Managers can create ordinary Staff assignments; Owner-protected rows show read-only explanation and disabled reset/sign-out/activate/remove/edit actions unless the actor also has `canAssignRoles`. |
 | Mobile roles | `src/components/mobile/screens/MobileRolesScreen.tsx` | Uses the same role client helpers as desktop |
 | Mobile app shell | `src/components/mobile/MobileShell.tsx`, `MobileNavigation.tsx` | Filters bottom tabs by role permissions and falls back to More when a tab is not available |
 | Mobile More | `src/components/mobile/screens/MobileMoreScreen.tsx` | Filters sub-screens by the same permission taxonomy and blocks direct hash/sub-screen access |

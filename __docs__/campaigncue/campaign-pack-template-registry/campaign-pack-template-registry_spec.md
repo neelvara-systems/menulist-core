@@ -110,7 +110,7 @@ CampaignCue uses a small grouped output-intent registry instead of a generic "Ch
 | Source-to-channel pack | Turn the current source-backed campaign cue into a coordinated manual pack. | WhatsApp message, Google/local draft, social/print creative, manual task, result prompt. |
 | WhatsApp sales pack | Get replies, orders, or customer questions. | WhatsApp image/message, status text, reply script, social support. |
 | Booking push pack | Fill slots, appointments, classes, or service openings. | WhatsApp booking message, story, Google update, reception poster. |
-| Google local update | Keep local visibility fresh without inventing an offer. | Google update/offer fields, local caption, flyer if useful. |
+| Google local update | Keep local visibility fresh without inventing an offer. | Google update fields, local caption, flyer if useful. A Google Offer is a separate fact-gated use because it requires confirmed offer dates/terms. |
 | Instagram post + story | Prepare social visuals from the same campaign. | Square post, story, reel brief when applicable. |
 | Poster or flyer | Use the campaign offline. | Poster PDF, flyer PDF, counter or reception use. |
 | Staff share pack | Give staff a clear message and script. | Staff WhatsApp text, counter script, customer reply prompt. |
@@ -120,7 +120,11 @@ CampaignCue uses a small grouped output-intent registry instead of a generic "Ch
 | Reuse old poster/image | Start from an existing owner asset. | CueLayers-safe source preservation and manual export. |
 | Custom size | Advanced blank layout when the owner already knows the size. | Shared editor blank asset, desktop-preferred. |
 
-Selecting an output intent filters the already-loaded category template summaries in memory by output types, channels, template kind, required facts, and search tags. It must not trigger a new Firestore query.
+Selecting an output intent filters the already-loaded category template summaries in memory by output types, channels, compatible template kind, fact tags, and search tags. It must not trigger a new Firestore query. A shared fact alone cannot make an incompatible template kind appear.
+
+An output intent is a durable owner request, not a cosmetic label. Campaign creation sends its allowlisted intent id and optional source-template id to the existing campaign API. The server resolves the canonical registry item, rejects editor-only intents, rechecks grouped fact requirements, keeps the Decision Engine authoritative, selects only a compatible business-goal candidate when the intent is goal-specific, derives channels from the canonical intent, and stores the intent id plus requested output types in the existing campaign pack. No model chooses the campaign and no new Firestore document is created.
+
+Requirement groups support valid alternatives. For example, a booking destination may be a booking link, WhatsApp number, or phone; an item focus may be a menu item, product, service, or confirmed offer. The browser uses the same deterministic evaluator for immediate owner guidance, but the server check is authoritative.
 
 ## Owner Flows
 
@@ -150,7 +154,7 @@ Selecting an output intent filters the already-loaded category template summarie
 1. Owner creates or edits a campaign pack.
 2. Owner chooses "Save as reusable pack."
 3. CampaignCue saves metadata to the workspace template index and the full payload to Storage.
-4. If the owner is editing a non-CueLayers Campaign Pack layout, CampaignCue saves the current neutral editor document as the optional template layout artifact.
+4. If the owner is editing a non-CueLayers Campaign Pack layout, CampaignCue saves an optional layout-only editor artifact: image layers, old visible text/QR values, old business identity, source refs, and campaign/output ids are removed.
 5. Reopening the saved pack refreshes current facts and checks stale price/date/contact values.
 
 ## Required Behavior
@@ -161,7 +165,7 @@ Selecting an output intent filters the already-loaded category template summarie
 | Default read | Read exactly one platform category doc for the normal template surface. |
 | Shared templates | Duplicate small summary metadata into relevant category docs to avoid a shared-doc read. |
 | Full payload | Store in Firebase Storage. |
-| Editor truth | Store neutral `CreativeEditorDocument`, not Fabric JSON. |
+| Editor truth | Store a validated, layout-only neutral `CreativeEditorDocument`, not Fabric JSON or stale rendered business content. |
 | Business facts | Rehydrate current facts before use or export. |
 | Protected text | Price, date, phone, location, business name, offer, and CTA stay protected. |
 | Direct posting | Not supported. Export/download/copy remains the active delivery boundary. |
@@ -184,7 +188,8 @@ Selecting an output intent filters the already-loaded category template summarie
 | --- | --- |
 | Category docs grow too large | Enforce soft byte/count limits in seed/admin tooling and use explicit overflow docs only on owner action. |
 | Shared festival templates duplicate metadata | Accept small metadata duplication to preserve one-read category loading. Storage payloads can still be shared. |
-| Stale facts in saved templates | Save fact slots and refs; rehydrate current facts before use; block export when required facts are missing. |
+| Stale facts in saved templates | Strip old visible text, QR destinations, image URLs/layers, and source refs; rehydrate only current approved facts; route to missing inputs before opening the editor. |
+| Catalog/path tampering | Bind catalog/index identity, type, quality tier, payload id/schema, workspace scope, and exact artifact paths before download/use. |
 | Product drifts into template marketplace | Keep Daily Desk and campaign pack outcome as primary entry; templates are supporting surfaces only. |
 | Search gets too broad | Use curated tags and in-memory filters; no full catalog scan. |
 | Output picker becomes a format marketplace | Keep labels business-use based and keep custom size as the advanced escape hatch. |

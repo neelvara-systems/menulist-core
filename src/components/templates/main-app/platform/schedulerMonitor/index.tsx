@@ -3,9 +3,10 @@
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { normalizeSchedulerRecoveryResponse, normalizeSchedulerRecoveryRunLogId } from '@lib/ops/schedulerRecoveryResponse';
 import type { SchedulerHealthSummary, SchedulerRunFilter, SchedulerRunLog, SchedulerRunStatus, SchedulerSettlementSummary, SchedulerTaskResult, SchedulerTrigger } from '@lib/ops/schedulerTypes';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
-import { Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Collapse, Divider, Modal, Select, Spin, Table, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
@@ -138,11 +139,13 @@ function SchedulerMonitor() {
     const [runHistory, setRunHistory] = useState<SchedulerRunLog[]>([]);
     const [settlement, setSettlement] = useState<SchedulerSettlementSummary | null>(null);
     const [triggerLoading, setTriggerLoading] = useState(false);
+    const [loadError, setLoadError] = useState(false);
     const [filterStatus, setFilterStatus] = useState<SchedulerRunStatus | undefined>(undefined);
     const [filterTrigger, setFilterTrigger] = useState<SchedulerTrigger | undefined>(undefined);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
     const {
+        error: storesError,
         loading: storesLoading,
         selectedStore,
         selectedStoreId,
@@ -161,6 +164,7 @@ function SchedulerMonitor() {
             return;
         }
         setLoading(true);
+        setLoadError(false);
         try {
             const filter: SchedulerRunFilter = { limit: 20 };
             if (filterStatus) filter.status = filterStatus;
@@ -171,6 +175,7 @@ function SchedulerMonitor() {
             setRunHistory(snapshot.runHistory);
             setSettlement(snapshot.settlement);
         } catch (error) {
+            setLoadError(true);
             logOpsFailure('ops_scheduler_monitor_load_failed', error, {
                 isPlatform,
                 statusFilter: filterStatus,
@@ -211,14 +216,20 @@ function SchedulerMonitor() {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const fns = getFunctions();
                     const triggerFn = httpsCallable(fns, 'triggerStoreNightlyScheduler', { timeout: 600000 });
-                    const result: any = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
-                    const data = result?.data || {};
-                    message.success(
-                        `Nightly recovery ${data.status || 'finished'}: ${data.successCount || 0} DI success, ${data.failedCount || 0} failed${data.runLogId ? ` · ${data.runLogId}` : ''}`
-                    );
+                    const result = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
+                    const data = normalizeSchedulerRecoveryResponse(result?.data);
+                    if (!data) throw new Error('ops_scheduler_recovery_response_invalid');
+                    const summary = `Nightly recovery ${data.status}: ${data.successCount} DI success, ${data.failedCount} failed · ${data.runLogId}`;
+                    if (data.status === 'success') message.success(summary);
+                    else if (data.status === 'partial') message.warning(summary);
+                    else message.error(summary);
                     await loadData();
-                } catch (error: any) {
-                    const runLogId = error?.details?.runLogId;
+                } catch (error: unknown) {
+                    const runLogId = normalizeSchedulerRecoveryRunLogId(
+                        error && typeof error === 'object' && 'details' in error
+                            ? (error as { details?: { runLogId?: unknown } }).details?.runLogId
+                            : null,
+                    );
                     logOpsFailure('ops_scheduler_manual_recovery_failed', error, {
                         ...getBoundedOpsStringContext('storeId', selectedStore.sId),
                         ...getBoundedOpsStringContext('tenantId', selectedStore.tId),
@@ -281,6 +292,16 @@ function SchedulerMonitor() {
                 </div>
             </div>
 
+            {loadError && (
+                <Alert
+                    message="Scheduler state unavailable"
+                    description="The latest run and settlement state could not be verified. Values may be missing or from the previous successful refresh."
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="error"
+                />
+            )}
+
             <Card title="Manual Recovery" size="small" style={{ marginBottom: 16 }}>
                 <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
                     Select a store from storesSummary. Recovery runs for all active projects under that store; no project ID is needed.
@@ -299,6 +320,7 @@ function SchedulerMonitor() {
                         Run Nightly Recovery
                     </Button>
                 </div>
+                {storesError && <Text type="danger">Store options are unavailable. Refresh before running recovery.</Text>}
                 {selectedStore && (
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Selected scope: tenant {selectedStore.tId}, store {selectedStore.sId}

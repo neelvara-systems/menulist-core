@@ -1,7 +1,7 @@
 # Reseller Dashboard — Product Specification
 
 **Feature:** Assisted Onboarding Portal for Authorized Resellers  
-**Status:** 📝 DOCUMENTED  
+**Status:** ✅ IMPLEMENTED
 **Created:** February 27, 2026  
 **Audience:** CEO, Business Team, Product Team
 
@@ -40,7 +40,7 @@ A controlled, role-gated dashboard where authorized resellers (friends, sales pa
 
 **How they get access:**
 
-- Founder manually sets `platformRole: 'RESELLER'` on user document in Firestore
+- A current platform admin creates or updates the reseller through the protected reseller-management screen/API; the server provisions Firebase Auth, the `users` role document, and the reseller profile
 - No self-registration. No public signup. Invitation-only.
 - Reseller must have a MenuList account (email login via existing auth)
 
@@ -144,7 +144,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 | -------------- | --------- | ------- | --------- |
 | Online/Offline | Founder A | ₹400/mo | ₹4,800/yr |
 | Online/Offline | Founder B | ₹500/mo | ₹6,000/yr |
-| Online/Offline | Standard  | ₹499/mo | ₹5,988/yr |
+| Online/Offline | Standard  | ₹499/mo | ₹4,990/yr |
 
 ---
 
@@ -159,7 +159,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 3. Subscription returns `shortUrl` — reseller shares with client (WhatsApp, SMS, email)
 4. Client clicks `shortUrl` → Razorpay checkout → sets up autopay mandate → first payment
 5. Razorpay webhook (`subscription.activated` / `subscription.charged`) → subscription activated
-6. Reseller shares the returned dashboard claim link with the client
+6. Reseller shares the returned owner username/login email, password, dashboard link, and customer link with the client
 7. Subsequent renewals are automatic (Razorpay handles billing)
 
 **Why Razorpay Subscription (same as self-serve):**
@@ -167,7 +167,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 - **Unified billing engine** — same webhooks, same state machine, same lifecycle
 - **Auto-renewal** — no manual renewal burden on reseller
 - **Clean MRR** — every reseller store contributes to recurring revenue
-- **No new Razorpay API** — reuses existing `getOrCreateRazorpayPlan()` + `create-subscription` flow
+- **No parallel billing engine** — reuses `getOrCreateRazorpayPlan()`, Razorpay Subscriptions, the canonical subscription document, and the same verified webhook path
 - **`shortUrl` already exists** — subscription objects already include a shareable checkout URL
 
 **Two billing models total (not three):**
@@ -186,8 +186,8 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 3. Reseller confirms payment during onboarding
 4. System immediately activates a manual prepaid subscription with `billingMode: 'manual'`
 5. Sets `validUntil` = now + duration and `quantity` = prepaid location count
-6. Reseller shares the returned dashboard claim link with the client
-7. Nightly scheduler auto-expires when `validUntil` passes
+6. Reseller shares the returned owner login, dashboard link, and customer link with the client
+7. The daily maintenance scheduler expires the manual subscription after the documented seven-day grace window
 
 **Owner billing screen behavior:**
 
@@ -199,7 +199,7 @@ Reseller selects a commitment period (3 / 6 / 12 months) which is tracked for re
 
 **Safeguards:**
 
-- Reseller must confirm they received payment (checkbox + button)
+- Reseller must confirm they received payment through the explicit confirmation summary and action button
 - Amount is displayed (computed from tier × duration × locations) — cannot be edited
 - Transaction logged immutably
 - Reseller has offline activation cap
@@ -215,11 +215,12 @@ Reseller enters:
 - **Business Name** (required, text)
 - **Business Type** (required, dropdown — uses existing `BUSINESS_TYPES` from `src/data/shared/businessTypes.ts`)
 - **Owner Phone** (required — country dropdown + local phone number for client's login/contact)
-- **Owner Email** (optional contact email — dashboard access is delivered through the claim link unless an existing unclaimed user is found)
+- **Owner Email** (optional; if omitted, the phone-derived generated login email is used)
+- **Owner Password** (required; stored only in Firebase Auth, never Firestore)
 
 ### Step 2: Account & Link Setup
 
-- The reseller onboarding route creates the tenant/store account and claim/login handoff.
+- The reseller onboarding route creates the tenant/store account and owner credential handoff.
 - The route returns the dashboard link and generated public customer link when available.
 - Menu images/PDFs/text are not uploaded or extracted in this onboarding API path; the owner adds menu content later through the standard dashboard import/review flows.
 
@@ -248,7 +249,7 @@ Summary screen showing:
 - Payment mode
 - Validity dates
 
-Reseller confirms → System creates the tenant/store/account records and then creates the selected subscription record.
+Reseller confirms → System creates tenant/store/owner records, then atomically commits the selected subscription, immutable onboarding operation, offline-cap reservation, and reseller counters. The browser retains one UUID across a timeout and clears it only after the returned operation ID and scope are validated.
 
 ### Step 5: Activation
 
@@ -270,7 +271,7 @@ Reseller confirms → System creates the tenant/store/account records and then c
 System returns:
 
 - Public menu link from the generated subdomain.
-- Dashboard claim link for the client to connect Google or set email/password.
+- Owner username/login email, the reseller-entered password, and the dashboard sign-in link.
 - Razorpay payment link for online reseller sales.
 - Menu content still needs the standard owner/import/review flow before the customer link has an approved menu.
 
@@ -290,21 +291,20 @@ System returns:
 - Progress indicator
 - Summary before confirmation
 
-### 6.3 My Clients (`/reseller/clients`)
+### 6.3 Client List (inside `/reseller`)
 
 - Table of all onboarded stores
 - Columns: Business Name, Plan, Status, Expires On, Payment Mode, Paid Locations
 - Status badges: Active (green), Expiring Soon (orange), Expired (red), Pending Payment (yellow)
 - Active offline/manual clients show "Add prepaid location" so reseller can record extra paid capacity before owner outlet creation.
-- Click → details view
+- Active/expired manual clients expose a 3/6/12-month renewal action; active manual clients also expose add-location capacity
 
-### 6.4 Client Detail (`/reseller/clients/[storeId]`)
+### 6.4 Current Runtime Boundary
 
-- Business info (read-only after creation)
-- Subscription status
-- Payment history (for this client)
-- Renewal action (create new license period)
-- Add prepaid location action for active offline/manual clients
+- There is no separate client-detail route in the current runtime.
+- The dashboard reads current reseller subscription documents directly and displays one current row per store after browser deduplication.
+- The immutable transaction ledger is used for monthly reporting and operation replay, not as the client-list read model.
+- Pending online rows expose the validated Razorpay checkout link; manual rows expose renewal and, while active, add-location capacity.
 
 ---
 
@@ -323,14 +323,14 @@ This is the **same state machine** from `src/lib/billing/subscriptionStateMachin
 
 ### State Authority Rule (CRITICAL)
 
-**`subscription.status` is the SOLE authority for store access.** Never check a separate store status field. All access decisions derive from subscription status — for both online and offline modes.
+The canonical subscription status is billing authority. `safeSyncStorePlanEntitlementFromSubscription()` maintains the derived store entitlement/cache projection used by owner and public reads; no separate reseller-license authority is introduced.
 
 ### Auto-Expiry (Offline Mode Only)
 
-- Nightly scheduler checks all `billingMode: 'manual'` subscriptions
+- The `reseller_license_expiry` task in `menulistMaintenanceScheduler.ts` checks bounded pages of `billingMode: 'manual'` subscriptions daily
 - If `now > validUntil + 7 days grace` → mark `expired`
 - Store access paused
-- Reseller notified (dashboard badge)
+- Reseller sees the current status and expiry in the dashboard
 - Client sees "subscription expired" message
 - **Online mode does NOT need expiry checks** — Razorpay handles lifecycle via webhooks
 
@@ -338,13 +338,16 @@ This is the **same state machine** from `src/lib/billing/subscriptionStateMachin
 
 **Online mode:** Automatic. Razorpay handles recurring billing. No reseller action needed.
 
-**Offline mode:** Reseller initiates renewal from client detail page.
+**Offline mode:** Reseller initiates renewal from the current-clients dashboard action.
+
+Conversion from manual/offline to online auto-renewal is not implemented. It requires a separate owner-approved billing migration and provider-reconciliation decision; the current renewal action preserves the existing manual billing mode and tier.
 
 **Renewal Anchor Rule (Explicit):**
 
 - If renewal happens **before expiry** → `validUntil` extends from previous `validUntil`
 - If renewal happens **after expiry** → `validUntil` starts from **now** (not from old expiry)
-- New transaction appended (never mutate old ones)
+- New UUID-keyed renewal operation appended; an exact response-loss retry returns the stored result without extending validity or revenue twice
+- Renewing an expired manual subscription atomically reacquires one active offline-cap slot and fails if the cap is already full
 
 ### Grace Period
 
@@ -386,8 +389,9 @@ This is the **same state machine** from `src/lib/billing/subscriptionStateMachin
 Every reseller action is logged immutably:
 
 - Store creation
-- Payment confirmation (online/offline)
+- Payment confirmation status convergence (online/offline)
 - Renewal
+- Added prepaid location capacity
 - No edits allowed — only append
 
 ### 8.4 Revenue Reporting
@@ -416,7 +420,7 @@ The client has **zero awareness** of the reseller layer:
 
 ## 10. Business Rules Summary
 
-1. **Reseller is invitation-only** — founder sets role manually in DB
+1. **Reseller is invitation-only** — a platform admin provisions/deactivates the role through protected management
 2. **No arbitrary prices** — fixed tiers only
 3. **No reseller billing** — resellers are not charged for using the dashboard
 4. **Offline = trust-based** — reseller confirms payment, system trusts
@@ -436,7 +440,7 @@ The client has **zero awareness** of the reseller layer:
 | Reseller doesn't collect offline payment | Medium     | Revenue loss   | Cap system + immutable logs + founder oversight               |
 | Price comparison between clients         | Low        | Trust damage   | All clients see "MenuList Standard" — internal pricing hidden |
 | Reseller abuse (mass fake activations)   | Low        | Cost + data    | Offline cap + reseller approval process                       |
-| Client can't login after onboarding      | Medium     | Support burden | Auto-credential flow + magic link                             |
+| Client can't login after onboarding      | Medium     | Support burden | Explicit username/login email/password and dashboard-link handoff |
 | Manual license tracking burden           | Medium     | Ops overhead   | Auto-expiry + dashboard alerts                                |
 
 ---
@@ -444,11 +448,11 @@ The client has **zero awareness** of the reseller layer:
 ## 12. Open Questions
 
 1. **Should resellers earn commission?** — No current commission runtime exists. Reseller distribution remains relationship-based until a separate audited billing/revenue-share feature exists.
-2. **Should clients be able to convert from offline to online recurring?** — Yes, at renewal time. Same Razorpay flow as self-serve upgrade.
+2. **Should clients be able to convert from offline to online recurring?** — Not implemented in the reseller flow. Keep this as an owner/product decision; do not infer a provider migration from the manual-renewal action.
 3. **Should resellers see client analytics?** — No. Resellers see status only, not engagement data.
 4. **Multi-currency for resellers?** — Current scope is INR only. Other currencies require a separate pricing, tax, billing, and docs audit before they are exposed.
 
 ---
 
 **DOCUMENT STATUS:** ✅ IMPLEMENTED  
-**Last Updated:** July 4, 2026 (v1.4 — reseller onboarding account/link boundary)
+**Last Updated:** July 16, 2026 (v1.5 — atomic billing, exact retries, renewal parity, and current-subscription client reads)

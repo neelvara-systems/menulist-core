@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { FieldPath, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { DB_COLLECTIONS } from '../constants/database';
 import { firestoreAdmin as db } from '../firebaseAdmin';
@@ -9,6 +9,8 @@ const CHANGED_SESSION_LIMIT = 500;
 const MAX_CHANGED_DATES_PER_RUN = 7;
 const INITIAL_LOOKBACK_DAYS = 30;
 const STATE_DOC_PREFIX = 'chatAnalyticsState';
+const MANUAL_BACKFILL_LEASE_MS = 10 * 60 * 1000;
+const MANUAL_BACKFILL_COOLDOWN_MS = 60 * 1000;
 
 type ChatMessage = {
     id: string;
@@ -146,6 +148,66 @@ const initialCursor = (): Timestamp => {
 const getStateDocId = (tId: number, sId: number) => `${STATE_DOC_PREFIX}_${tId}_${sId}`;
 const getDayDocId = (tId: number, sId: number, dateKey: string) => `${tId}_${sId}_${dateKey}`;
 
+export const acquireChatAnalyticsBackfillLease = async (
+    tId: number,
+    sId: number,
+    now = Timestamp.now(),
+): Promise<string | null> => {
+    if (!isPositiveScopeId(tId) || !isPositiveScopeId(sId)) {
+        throw new Error('answerlattice_chat_backfill_scope_invalid');
+    }
+    const stateRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getStateDocId(tId, sId));
+    return db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(stateRef);
+        const state = snapshot.data();
+        if (snapshot.exists && (
+            !state
+            || state.pId !== PRODUCT_ID
+            || state.tId !== tId
+            || state.sId !== sId
+        )) {
+            throw new Error('answerlattice_chat_analytics_state_scope_invalid');
+        }
+        const leaseExpiresAt = toTimestamp(snapshot.get('manualBackfillLeaseExpiresAt'));
+        const lastStartedAt = toTimestamp(snapshot.get('manualBackfillLastStartedAt'));
+        if (
+            (leaseExpiresAt && leaseExpiresAt.toMillis() > now.toMillis())
+            || (lastStartedAt && now.toMillis() - lastStartedAt.toMillis() < MANUAL_BACKFILL_COOLDOWN_MS)
+        ) {
+            return null;
+        }
+        const leaseId = randomUUID();
+        transaction.set(stateRef, {
+            pId: PRODUCT_ID,
+            tId,
+            sId,
+            manualBackfillLeaseId: leaseId,
+            manualBackfillLastStartedAt: now,
+            manualBackfillLeaseExpiresAt: Timestamp.fromMillis(now.toMillis() + MANUAL_BACKFILL_LEASE_MS),
+            modifiedOn: now,
+            ...(snapshot.exists ? {} : { createdOn: now }),
+        }, { merge: true });
+        return leaseId;
+    });
+};
+
+export const releaseChatAnalyticsBackfillLease = async (
+    tId: number,
+    sId: number,
+    leaseId: string,
+): Promise<void> => {
+    const stateRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getStateDocId(tId, sId));
+    await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(stateRef);
+        if (!snapshot.exists || snapshot.get('manualBackfillLeaseId') !== leaseId) return;
+        transaction.set(stateRef, {
+            manualBackfillLeaseId: FieldValue.delete(),
+            manualBackfillLeaseExpiresAt: FieldValue.delete(),
+            modifiedOn: Timestamp.now(),
+        }, { merge: true });
+    });
+};
+
 const aggregateDay = async (tId: number, sId: number, dateKey: string) => {
     const bounds = utcDayBounds(dateKey);
     const snapshot = await db.collection(DB_COLLECTIONS.CHAT_SESSIONS)
@@ -237,10 +299,10 @@ const aggregateDay = async (tId: number, sId: number, dateKey: string) => {
     const summaryRef = db.collection(DB_COLLECTIONS.CHAT_ANALYTICS).doc(getDayDocId(tId, sId, dateKey));
     const existing = await summaryRef.get();
     if (existing.exists && existing.get('sourceHash') === sourceHash) {
-        return { written: false, partial: !sourceComplete };
+        return { written: false, partial: !sourceComplete, totalChats: sessions.length };
     }
     if (sessions.length === 0 && !existing.exists) {
-        return { written: false, partial: false };
+        return { written: false, partial: false, totalChats: 0 };
     }
     await summaryRef.set({
         ...payload,
@@ -250,7 +312,44 @@ const aggregateDay = async (tId: number, sId: number, dateKey: string) => {
             : FieldValue.serverTimestamp(),
         modifiedOn: FieldValue.serverTimestamp(),
     });
-    return { written: true, partial: !sourceComplete };
+    return { written: true, partial: !sourceComplete, totalChats: sessions.length };
+};
+
+export type ChatAnalyticsBackfillResult = Readonly<{
+    tId: number;
+    sId: number;
+    days: number;
+    results: ReadonlyArray<Readonly<{
+        date: string;
+        chats: number;
+        status: 'success' | 'skipped';
+        partial: boolean;
+    }>>;
+}>;
+
+export const backfillChatAnalyticsDays = async (
+    tId: number,
+    sId: number,
+    days: number,
+    now = new Date(),
+): Promise<ChatAnalyticsBackfillResult> => {
+    if (!isPositiveScopeId(tId) || !isPositiveScopeId(sId) || !Number.isSafeInteger(days) || days < 1 || days > 90 || !Number.isFinite(now.getTime())) {
+        throw new Error('answerlattice_chat_backfill_scope_invalid');
+    }
+    const results: Array<{ date: string; chats: number; status: 'success' | 'skipped'; partial: boolean }> = [];
+    for (let offset = 1; offset <= days; offset += 1) {
+        const date = new Date(now);
+        date.setUTCDate(date.getUTCDate() - offset);
+        const dateKey = utcDateKey(date);
+        const aggregate = await aggregateDay(tId, sId, dateKey);
+        results.push({
+            date: dateKey,
+            chats: aggregate.totalChats,
+            status: aggregate.written ? 'success' : 'skipped',
+            partial: aggregate.partial,
+        });
+    }
+    return { tId, sId, days, results };
 };
 
 export const syncChatAnalyticsNightly = async (

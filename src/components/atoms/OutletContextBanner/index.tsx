@@ -3,7 +3,7 @@
 /**
  * OutletContextBanner — Persistent banner when HQ user is viewing an outlet
  * "You are viewing [outlet] — Changes here affect only this outlet"
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §17.3
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §17.3
  */
 
 import { getStoreContextName } from '@lib/businessIdentity/names';

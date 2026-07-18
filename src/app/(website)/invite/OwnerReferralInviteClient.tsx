@@ -8,13 +8,12 @@ import {
 import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { LuArrowRight, LuCheck, LuGift, LuShieldCheck, LuSparkles } from 'react-icons/lu';
 
-type InviteState = 'loading' | 'ready' | 'capturing' | 'invalid' | 'error';
+type InviteState = 'loading' | 'ready' | 'capturing' | 'declining' | 'invalid' | 'error';
 const OWNER_REFERRAL_CAPTURE_RESPONSE_MAX_BYTES = 4 * 1024;
 
 const isSuccessfulCaptureResponse = (value: unknown): boolean => {
@@ -55,22 +54,27 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
         setState('ready');
     }, [canonicalInviteUrl, enabled]);
 
+    const postReferralChoice = async (body: Record<string, unknown>): Promise<boolean> => {
+        const response = await fetch('/api/public/owner-referrals/capture', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+        const responseBody = await readJsonResponseWithLimit<unknown>(
+            response,
+            OWNER_REFERRAL_CAPTURE_RESPONSE_MAX_BYTES,
+        ).catch(() => null);
+        return response.ok && isSuccessfulCaptureResponse(responseBody);
+    };
+
     const capture = async () => {
         if (!token || state !== 'ready') return;
         setState('capturing');
         try {
-            const response = await fetch('/api/public/owner-referrals/capture', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token }),
-            });
-            const body = await readJsonResponseWithLimit<unknown>(
-                response,
-                OWNER_REFERRAL_CAPTURE_RESPONSE_MAX_BYTES,
-            ).catch(() => null);
-            if (!response.ok || !isSuccessfulCaptureResponse(body)) {
-                setState(response.status === 400 || response.status === 404 ? 'invalid' : 'error');
+            const captured = await postReferralChoice({ action: 'capture', token });
+            if (!captured) {
+                setState('error');
                 return;
             }
             setToken('');
@@ -80,7 +84,23 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
         }
     };
 
-    if (state === 'loading') {
+    const continueWithoutReferral = async () => {
+        if (state === 'capturing' || state === 'declining') return;
+        setState('declining');
+        try {
+            const declined = await postReferralChoice({ action: 'decline' });
+            if (!declined) {
+                setState('error');
+                return;
+            }
+            setToken('');
+            router.push('/create-menu');
+        } catch {
+            setState('error');
+        }
+    };
+
+    if (state === 'loading' || state === 'declining') {
         return <main style={{ minHeight: '62vh' }} aria-busy="true" />;
     }
 
@@ -92,7 +112,13 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                     <p className="ws-body" style={{ margin: '18px auto 28px', color: 'var(--ws-text-secondary)' }}>
                         {t('unavailableBody')}
                     </p>
-                    <Link className="ws-btn ws-btn--primary" href="/create-menu">{t('createLink')}</Link>
+                    <button
+                        className="ws-btn ws-btn--primary"
+                        onClick={() => void continueWithoutReferral()}
+                        type="button"
+                    >
+                        {t('createLink')}
+                    </button>
                 </div>
             </main>
         );
@@ -152,7 +178,14 @@ export default function OwnerReferralInviteClient({ enabled }: { enabled: boolea
                                 {state === 'capturing' ? t('preparing') : t('createLink')}
                                 {state !== 'capturing' ? <LuArrowRight size={18} /> : null}
                             </button>
-                            <Link className="ws-btn ws-btn--secondary" href="/create-menu">{t('continueWithoutReferral')}</Link>
+                            <button
+                                type="button"
+                                className="ws-btn ws-btn--secondary"
+                                disabled={state === 'capturing'}
+                                onClick={() => void continueWithoutReferral()}
+                            >
+                                {t('continueWithoutReferral')}
+                            </button>
                         </div>
                     </div>
 

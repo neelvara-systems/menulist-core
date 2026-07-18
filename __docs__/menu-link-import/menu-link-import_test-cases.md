@@ -16,6 +16,7 @@
 - Oversized response is rejected.
 - Unsupported content type is rejected.
 - Valid HTML menu creates `menuLinkImportArtifacts` and `menuImageProcessingJobs`.
+- Seven-day retention deletes only exact terminal or already-pruned job artifacts, skips active jobs, rejects cross-tenant/job/path mismatches, and preserves metadata when Storage deletion cannot be confirmed.
 - Valid direct PDF/image creates a job with original content type.
 - Homepage with same-origin menu/catalog link follows bounded candidates and creates a text artifact from the selected page.
 - Homepage with Schema.org `hasMenu` URL follows the same-origin structured menu URL.

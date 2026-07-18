@@ -4,6 +4,7 @@ export const runtime = 'nodejs';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PERMISSIONS } from '@constant/permissions';
 import GlobalLanguagesList from '@data/languages';
 import {
     buildMenuExtractionRoutingFields,
@@ -28,12 +29,13 @@ import {
 } from '@lib/menu-extraction/activeJobClaim';
 import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { checkSafeMode } from '@lib/ops/safeMode';
+import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import crypto from 'crypto';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, type DocumentReference } from 'firebase-admin/firestore';
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyTenantAccess, withAuth } from 'src/middleware/auth';
 import { hashPublicRateLimitValue } from 'src/middleware/publicApi';
@@ -52,6 +54,7 @@ const RequestSchema = z.object({
 const ACTIVE_JOB_STATUSES = MENU_EXTRACTION_ACTIVE_JOB_STATUSES;
 const MENU_LINK_IMPORT_MAX_BODY_BYTES = 8 * 1024;
 const MENU_LINK_IMPORT_STORAGE_CLEANUP_FAILED = 'menu_link_import_storage_cleanup_failed';
+const MENU_LINK_IMPORT_PERSISTENCE_PROBE_FAILED = 'menu_link_import_persistence_probe_failed';
 
 function resolveTargetLanguages(projectData: any): Array<{ code: string; name: string }> {
     const codes = Array.isArray(projectData?.languages) && projectData.languages.length
@@ -159,9 +162,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     }
 
     const { projectId, url } = validation.data;
+    const permissionResponse = await requireAnyStorePermission(
+        request,
+        session,
+        [PERMISSIONS.USE_MENU_EXTRACTION],
+        'Menu extraction',
+    );
+    if (permissionResponse) return permissionResponse;
+
     const createdStoragePaths: string[] = [];
-    let artifactDocCreated = false;
-    let jobDocCreated = false;
+    let artifactRef: DocumentReference | null = null;
+    let jobRef: DocumentReference | null = null;
+    let persistenceAttempted = false;
 
     try {
         const projectRef = firestoreAdmin
@@ -190,8 +202,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         const businessCategory = projectData.businessCategory || projectData.category || null;
         const businessType = projectData.businessType || projectData.type || null;
         const acquisition = await acquireMenuLinkSource(url, { businessCategory, businessType });
-        const jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
-        const artifactRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_LINK_IMPORT_ARTIFACTS).doc();
+        jobRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS).doc();
+        artifactRef = firestoreAdmin.collection(DB_COLLECTIONS.MENU_LINK_IMPORT_ARTIFACTS).doc();
         const bucket = storageAdmin.bucket();
         const now = Timestamp.now();
         const storagePath = `menuLinkImports/${ids.tId}/${ids.sId}/${projectId}/${jobRef.id}/source.${acquisition.artifactExtension}`;
@@ -272,6 +284,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             uId: ids.uId,
             updatedAt: now,
         };
+        persistenceAttempted = true;
         const jobCreation = await createOrReuseActiveMenuExtractionJob({
             additionalCreates: [{ data: artifactData, ref: artifactRef }],
             db: firestoreAdmin,
@@ -298,9 +311,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 reusedExistingJob: true,
             });
         }
-        artifactDocCreated = true;
-        jobDocCreated = true;
-
         logMenuProcessingDiagnostic('menu_link_import_job_created', {
             ...getMenuProcessingProjectLogContext(projectId),
             ...getBoundedMenuProcessingStringContext('artifactId', artifactRef.id),
@@ -326,7 +336,48 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             );
         }
 
-        if (!jobDocCreated) {
+        let cleanupDeferred = false;
+        if (persistenceAttempted && jobRef && artifactRef) {
+            try {
+                const [jobSnapshot, artifactSnapshot] = await Promise.all([
+                    jobRef.get(),
+                    artifactRef.get(),
+                ]);
+                const committedJob = jobSnapshot.data() || {};
+                const committedScopeMatches = jobSnapshot.exists
+                    && artifactSnapshot.exists
+                    && String(committedJob.projectId || '') === projectId
+                    && String(committedJob.tId || '') === ids.tId
+                    && String(committedJob.sId || '') === ids.sId
+                    && String(committedJob.uId || '') === ids.uId
+                    && committedJob.source === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT;
+
+                if (committedScopeMatches) {
+                    logMenuProcessingDiagnostic('menu_link_import_job_recovered_after_ambiguous_persistence', {
+                        ...getMenuProcessingProjectLogContext(projectId),
+                        ...getBoundedMenuProcessingStringContext('artifactId', artifactRef.id),
+                        ...getBoundedMenuProcessingStringContext('jobId', jobRef.id),
+                    });
+                    return NextResponse.json({
+                        success: true,
+                        jobId: jobRef.id,
+                        projectId,
+                    });
+                }
+
+                cleanupDeferred = jobSnapshot.exists || artifactSnapshot.exists;
+            } catch (probeError) {
+                cleanupDeferred = true;
+                logMenuProcessingFailure(MENU_LINK_IMPORT_PERSISTENCE_PROBE_FAILED, probeError, {
+                    ...getMenuProcessingProjectLogContext(projectId),
+                    ...getBoundedMenuProcessingStringContext('artifactId', artifactRef.id),
+                    ...getBoundedMenuProcessingStringContext('jobId', jobRef.id),
+                    cleanupDeferred: true,
+                });
+            }
+        }
+
+        if (!cleanupDeferred) {
             await Promise.all(createdStoragePaths.map((path) => deleteMenuLinkImportStoragePath(path, {
                 cleanupReason: 'job_create_failed',
                 projectId,
@@ -335,8 +386,8 @@ export const POST = withAuth(async (request: NextRequest, session) => {
 
         logMenuProcessingFailure('menu_link_import_route_failed', error, {
             ...getMenuProcessingProjectLogContext(projectId),
-            artifactDocCreated,
-            jobDocCreated,
+            cleanupDeferred,
+            persistenceAttempted,
             storagePathCount: createdStoragePaths.length,
         });
         return NextResponse.json(

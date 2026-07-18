@@ -1,4 +1,7 @@
 import type { MenuItemForSlide } from "@type/campaigns";
+import { formatMenuPrice, parseSingleMenuPrice } from "@lib/pricing/formatMenuPrice";
+import { getActivePublicItemPriceAttributes } from "@lib/pricing/publicItemPricePresentation";
+import { normalizeOptionalMenuPrice } from "@lib/validation/pricing.schema";
 
 const SCREEN_TEXT_MAX_DEFAULT = 120;
 const OWNER_CAPTION_MAX = 48;
@@ -60,24 +63,50 @@ export function truncateScreenText(value: unknown, maxLength = SCREEN_TEXT_MAX_D
     return `${cut.trim()}...`;
 }
 
-export function parseScreenPrice(value: unknown): number | undefined {
+export function parseScreenPrice(value: unknown): number | string | undefined {
     if (typeof value === "number") {
         return Number.isFinite(value) && value > 0 ? value : undefined;
     }
 
-    const text = resolveScreenText(value);
-    if (!text) return undefined;
+    const priceResult = normalizeOptionalMenuPrice(truncateScreenText(value, 40));
+    if (!priceResult.success || !priceResult.data) return undefined;
+    const text = priceResult.data;
 
-    const match = text.replace(/,/g, "").match(/-?\d+(?:\.\d+)?/);
-    if (!match) return undefined;
-
-    const parsed = Number(match[0]);
-    return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+    const parsed = parseSingleMenuPrice(text);
+    if (parsed !== null) return parsed > 0 ? parsed : undefined;
+    return text;
 }
 
-export function formatScreenPrice(price?: number, currencySymbol = "₹"): string {
-    if (price == null || price <= 0) return "Ask";
-    return `${currencySymbol || ""}${price.toLocaleString("en-IN")}`;
+export function formatScreenPrice(price?: number | string, currencySymbol = "₹"): string {
+    const normalized = parseScreenPrice(price);
+    if (normalized === undefined) return "Ask";
+    if (typeof normalized === "number") {
+        return `${currencySymbol || ""}${normalized.toLocaleString("en-IN")}`;
+    }
+    return formatMenuPrice(normalized, currencySymbol);
+}
+
+export function hasScreenPrice(price: unknown): boolean {
+    return parseScreenPrice(price) !== undefined;
+}
+
+export function getScreenItemPrice(item: unknown): number | string | undefined {
+    const priceAttributes = getActivePublicItemPriceAttributes(item);
+    if (priceAttributes.length === 0) {
+        return parseScreenPrice((item as { price?: unknown } | null)?.price);
+    }
+
+    const numericPrices = priceAttributes.map((attribute) => parseSingleMenuPrice(attribute.price as string | number));
+    if (numericPrices.every((price): price is number => price !== null && price > 0)) {
+        const min = Math.min(...numericPrices);
+        const max = Math.max(...numericPrices);
+        return min === max ? min : `${min}-${max}`;
+    }
+
+    const labels = Array.from(new Set(priceAttributes
+        .map((attribute) => truncateScreenText(attribute.price, 40))
+        .filter(Boolean)));
+    return labels.slice(0, 2).join(" / ") || undefined;
 }
 
 export function normalizeScreenCategoryName(value: unknown, fallback = "Menu"): string {
@@ -219,7 +248,7 @@ export function extractScreenMenuItemsFromProject(
             if (!itemName) continue;
 
             const itemDesc = resolveScreenText(item?.description) || undefined;
-            const parsedPrice = parseScreenPrice(item?.price);
+            const parsedPrice = getScreenItemPrice(item);
             const categoryInfo = item?.category ? categoryMap[item.category] : undefined;
 
             extractedItems.push(withoutUndefined({

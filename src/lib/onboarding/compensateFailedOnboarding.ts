@@ -1,8 +1,18 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { requireOnboardingUserId } from "./onboardingUserId";
 import { deleteOwnerReferralAttributionInTransaction } from "@lib/ownerReferral/ownerReferralAttributionServer";
+import { FieldValue } from "firebase-admin/firestore";
+import {
+    normalizePersistedOnboardingScopeId,
+    removeCompensatedStoreFromMappings,
+    removeCompensatedStoreId,
+} from "./compensatedStoreMappings";
+
+export {
+    removeCompensatedStoreFromMappings,
+    removeCompensatedStoreId,
+} from "./compensatedStoreMappings";
 
 export type FailedOnboardingCompensationSource = "WEBSITE_ONBOARDING" | "RESELLER_ONBOARDING";
 
@@ -29,30 +39,6 @@ const normalizePositiveId = (value: string | number): OnboardingCompensationScop
     return { documentId, numericId };
 };
 
-const normalizePersistedOnboardingScopeId = (value: unknown): number | null => {
-    const raw = typeof value === "string" || typeof value === "number" ? String(value) : "";
-    if (!ONBOARDING_COMPENSATION_SCOPE_DOCUMENT_ID_PATTERN.test(raw)) return null;
-    const numericId = Number(raw);
-    return Number.isSafeInteger(numericId) && String(numericId) === raw ? numericId : null;
-};
-
-export const removeCompensatedStoreFromMappings = (stores: unknown, storeId: number) => (
-    Array.isArray(stores)
-        ? stores.filter((store) => (
-            !store
-            || typeof store !== "object"
-            || Array.isArray(store)
-            || normalizePersistedOnboardingScopeId((store as Record<string, unknown>).storeId) !== storeId
-        ))
-        : []
-);
-
-export const removeCompensatedStoreId = (storeIds: unknown, storeId: number) => (
-    Array.isArray(storeIds)
-        ? storeIds.filter((id) => normalizePersistedOnboardingScopeId(id) !== storeId)
-        : []
-);
-
 export async function compensateFailedTenantStoreOnboarding(params: {
     db: FirebaseFirestore.Firestore;
     reason: string;
@@ -69,7 +55,7 @@ export async function compensateFailedTenantStoreOnboarding(params: {
     const reason = params.reason.slice(0, 80);
 
     await params.db.runTransaction(async (transaction) => {
-        const now = admin.firestore.FieldValue.serverTimestamp();
+        const now = FieldValue.serverTimestamp();
         const tenantRef = params.db.collection(DB_COLLECTIONS.TENANTS).doc(tenantScope.documentId);
         const storeRef = params.db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
         const storesSummaryRef = params.db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc("storesSummary");

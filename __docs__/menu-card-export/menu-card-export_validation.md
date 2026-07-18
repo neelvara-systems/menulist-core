@@ -2,7 +2,7 @@
 
 **Status:** Validated implementation evidence; not current launch certification
 **Validated:** June 3, 2026
-**Boundary Reviewed:** July 10, 2026
+**Boundary Reviewed:** July 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Card Export evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, Digital Menu Output Constitution checks for print/menu outputs, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, applicable target deploy evidence, and production-host smoke.
 
@@ -13,6 +13,18 @@
 This June 2026 validation report preserves source, cost, route, authenticated demo-runtime, and artifact evidence for Menu Card Export. It is not current release approval.
 
 Current release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks for print/menu outputs, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, target deploy evidence, and production-host smoke.
+
+## July 16 Browser Delivery And Multi-Store Cross-Check
+
+- Menu Card Export and Menu Kit share `src/lib/export/browserFileShare.ts`: `shared`, `unsupported`, and `cancelled` are distinct outcomes. Cancellation does not download, track success, or add history; unsupported file sharing downloads; real failures use existing error paths.
+- Menu Card history and compatibility-PDF freshness markers use tenant/store/project-scoped device keys. Project-only legacy keys are intentionally not read because their owning store cannot be proven.
+- Device storage writes are best-effort after delivery. Quota/private-mode rejection cannot overwrite a successful download/share acknowledgement.
+- Store identity is part of the controller reload dependency, including the equal-project-ID outlet-switch case.
+- Remote logo work and PDF.js CDN work are bounded to five seconds with safe logo omission or local PDF.js fallback.
+- Empty/non-Latin-only QR filename labels use stable `menu` fallbacks.
+- `npm run test:print-export-browser-boundaries`, `npm run verify:menu-card-export`, `npm run verify:menu-export`, `npm run verify:printable-asset-templates`, `npm run verify:communication-kit-boundary`, `npm run verify:print-share-tools`, `npm run verify:qr-link-health-check`, and `npm run verify:menu-pdf-cleanup-check` pass.
+
+No export persistence, Firestore/Storage schema, rule, index, Cloud Function, server artifact route, or owner setting was added.
 
 ## Engineering Checklist Verification
 

@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
  * POST /api/outlets/create — internal outlet creation
  * Billing-first: Razorpay-managed accounts update provider quantity before
  * creation; manual/offline accounts must already have prepaid capacity.
- * @see __docs__/multi-outlet-consistency/store-onboarding-billing_impl.md §5
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding-billing_impl.md §5
  */
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
 import { FEATURE_FLAGS } from "@config/features";
@@ -20,6 +20,7 @@ import { isReservedOutletSlug } from "@constant/reservedSlugs";
 import { createDefaultRoles, getOwnerRoleId } from "@data/defaultRoles";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
     getRazorpayManagedSubscriptionId,
     isRazorpayQuantityUpdateUnsupported,
@@ -28,6 +29,7 @@ import {
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/multiOutlet/diagnostics";
 import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     buildUserStoreAccessUpdate,
     normalizeUserStoreAccessDocumentId,
@@ -54,9 +56,12 @@ import { z } from "zod";
 import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
-const schema = z.object({ outletName: z.string().min(1).max(200) });
+const schema = z.object({ outletName: z.string().trim().min(1).max(200) }).strict();
 const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const OUTLET_CREATE_EFFECT_CHUNK_SIZE = 2;
+const MAX_OUTLET_CREATION_MASTER_PROJECTS = 200;
 const OUTLET_CREATE_LOCK_HELD_CODE = "LOCK_HELD";
+const OUTLET_CREATE_SCOPE_CHANGED_CODE = "OUTLET_CREATE_SCOPE_CHANGED";
 
 class OutletCreateLockHeldError extends Error {
     readonly code = OUTLET_CREATE_LOCK_HELD_CODE;
@@ -73,6 +78,24 @@ const isOutletCreateLockHeldError = (error: unknown): error is OutletCreateLockH
         typeof error === "object"
         && error !== null
         && (error as { code?: unknown }).code === OUTLET_CREATE_LOCK_HELD_CODE
+    )
+);
+
+class OutletCreateScopeChangedError extends Error {
+    readonly code = OUTLET_CREATE_SCOPE_CHANGED_CODE;
+
+    constructor() {
+        super(OUTLET_CREATE_SCOPE_CHANGED_CODE);
+        this.name = "OutletCreateScopeChangedError";
+    }
+}
+
+const isOutletCreateScopeChangedError = (error: unknown): error is OutletCreateScopeChangedError => (
+    error instanceof OutletCreateScopeChangedError
+    || (
+        typeof error === "object"
+        && error !== null
+        && (error as { code?: unknown }).code === OUTLET_CREATE_SCOPE_CHANGED_CODE
     )
 );
 
@@ -184,6 +207,14 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Store not found" }, { status: 404 });
         }
         let masterStore = storeSnap.data()!;
+        if (
+            Number(masterStore.tenantId) !== Number(tenantId)
+            || masterStore.active === false
+            || masterStore.deleted === true
+            || isPlatformEntityBlocked(masterStore)
+        ) {
+            return NextResponse.json({ error: "Store not available" }, { status: 403 });
+        }
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
             session,
@@ -197,11 +228,19 @@ export const POST = withAuth(async (request, session) => {
 
         const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`);
         const initialTenantSnap = await tenantRef.get();
-        const initialStoresList = initialTenantSnap.data()?.storesList || [];
+        const initialTenant = initialTenantSnap.data();
+        if (
+            !initialTenantSnap.exists
+            || initialTenant?.active === false
+            || initialTenant?.deleted === true
+            || isPlatformEntityBlocked(initialTenant)
+        ) {
+            return NextResponse.json({ error: "Account not available" }, { status: 403 });
+        }
+        const initialStoresList = Array.isArray(initialTenant?.storesList) ? initialTenant.storesList : [];
         const activeStoreCount = initialStoresList.filter((s: any) => s?.active !== false).length || 1;
         const targetQty = activeStoreCount + 1;
         const hasMasterStore = initialStoresList.some((s: any) => s?.isMaster === true);
-        const masterListRepairNeeded = masterStore.isMaster === true && !hasMasterStore;
         masterPromoted = (
             masterStore.isMaster !== true
             && !hasMasterStore
@@ -221,8 +260,6 @@ export const POST = withAuth(async (request, session) => {
                 outletPolicy: masterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
             };
         }
-        const shouldMarkCurrentStoreAsMasterInTenant = masterPromoted || masterListRepairNeeded;
-
         // Enforce outlet count limit against active outlets only. Deactivated
         // outlets preserve history, but should not block replacement locations.
         const maxOutlets = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT;
@@ -274,9 +311,17 @@ export const POST = withAuth(async (request, session) => {
         // Acquire creation lock ATOMICALLY via transaction (Architecture Audit §3.2a)
         await db.runTransaction(async (t) => {
             const tenantDoc = await t.get(tenantRef);
-            const data = tenantDoc.data();
-            if (data?.outletCreationLock) {
-                const lockAge = Date.now() - (data.outletCreationLockAt?.toMillis() || 0);
+            const tenantData = tenantDoc.data();
+            if (
+                !tenantDoc.exists
+                || tenantData?.active === false
+                || tenantData?.deleted === true
+                || isPlatformEntityBlocked(tenantData)
+            ) {
+                throw new OutletCreateScopeChangedError();
+            }
+            if (tenantData?.outletCreationLock) {
+                const lockAge = Date.now() - (tenantData.outletCreationLockAt?.toMillis() || 0);
                 if (lockAge < 300_000) throw new OutletCreateLockHeldError();
             }
             t.update(tenantRef, {
@@ -307,18 +352,12 @@ export const POST = withAuth(async (request, session) => {
             subscriptionQuantityUpdated = true;
         }
 
-        // Pre-fetch master projects OUTSIDE transaction (Firestore requirement)
-        const masterProjectsSnap = await db
-            .collection(`${DB_COLLECTIONS.PROJECTS}/${tenantDocumentId}/${storeDocumentId}`)
-            .where('deleted', '!=', true)
-            .get();
-        const masterProjectsSummarySnap = await db
+        const masterProjectsQuery = db.collection(
+            `${DB_COLLECTIONS.PROJECTS}/${tenantDocumentId}/${storeDocumentId}`,
+        );
+        const masterProjectsSummaryRef = db
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-            .doc(`projects_${storeDocumentId}`)
-            .get();
-        const masterProjectsSummary = masterProjectsSummarySnap.exists
-            ? parseSummaryProjects(masterProjectsSummarySnap.data())
-            : {};
+            .doc(`projects_${storeDocumentId}`);
         // ═══ PATH 2: INTERNAL CREATION (atomic transaction) ═══
         const summaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/${PLATFORM_COUNTER_DOCUMENT_ID}`);
         const legacySummaryRef = db.doc(
@@ -327,15 +366,110 @@ export const POST = withAuth(async (request, session) => {
         const storesSummaryRef = db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`);
         const result = await db.runTransaction(async (tx) => {
             const userRef = db.collection(DB_COLLECTIONS.USERS).doc(sessionUserDocumentId);
-            const [summary, legacySummary, storesSummary, userSnap, freshTenantSnap] = await Promise.all([
+            const [
+                summary,
+                legacySummary,
+                storesSummary,
+                userSnap,
+                freshTenantSnap,
+                freshMasterSnap,
+                freshMasterProjectsSnap,
+                freshMasterProjectsSummarySnap,
+            ] = await Promise.all([
                 tx.get(summaryRef),
                 tx.get(legacySummaryRef),
                 tx.get(storesSummaryRef),
                 tx.get(userRef),
                 tx.get(tenantRef),
+                tx.get(masterStoreRef),
+                tx.get(masterProjectsQuery),
+                tx.get(masterProjectsSummaryRef),
             ]);
-            if (!freshTenantSnap.exists) throw new Error('outlet_create_tenant_missing');
+            if (!freshTenantSnap.exists || !userSnap.exists || !freshMasterSnap.exists) {
+                throw new OutletCreateScopeChangedError();
+            }
             const freshTenantData = freshTenantSnap.data() || {};
+            const freshMasterStore = freshMasterSnap.data() || {};
+            if (
+                freshTenantData.active === false
+                || freshTenantData.deleted === true
+                || isPlatformEntityBlocked(freshTenantData)
+                || Number(freshMasterStore.tenantId) !== Number(tenantId)
+                || freshMasterStore.active === false
+                || freshMasterStore.deleted === true
+                || isPlatformEntityBlocked(freshMasterStore)
+            ) {
+                throw new OutletCreateScopeChangedError();
+            }
+            const freshPermissionError = requireAnyStorePermissionForStoreData(
+                request,
+                session,
+                freshMasterStore,
+                [PERMISSIONS.MANAGE_OUTLETS],
+                "Outlet creation",
+                Number(storeId),
+                Number(tenantId),
+            );
+            if (freshPermissionError) throw new OutletCreateScopeChangedError();
+            const currentStoresList = Array.isArray(freshTenantData.storesList) ? freshTenantData.storesList : [];
+            const freshCurrentStoreSummary = currentStoresList.find((store: any) => (
+                Number(store?.storeId) === Number(storeId)
+            ));
+            const freshHasMasterStore = currentStoresList.some((store: any) => store?.isMaster === true);
+            const freshMasterPromoted = (
+                freshMasterStore.isMaster !== true
+                && !freshHasMasterStore
+                && currentStoresList.length === 1
+                && Number(currentStoresList[0]?.storeId) === Number(storeId)
+            );
+            if (freshMasterStore.isMaster !== true && !freshMasterPromoted) {
+                throw new OutletCreateScopeChangedError();
+            }
+            if (
+                !freshCurrentStoreSummary
+                || freshCurrentStoreSummary.active === false
+                || (
+                    freshHasMasterStore
+                    && freshMasterStore.isMaster === true
+                    && freshCurrentStoreSummary.isMaster !== true
+                )
+            ) {
+                throw new OutletCreateScopeChangedError();
+            }
+            const freshMasterListRepairNeeded = freshMasterStore.isMaster === true && !freshHasMasterStore;
+            const shouldMarkCurrentStoreAsMasterInTenant = freshMasterPromoted || freshMasterListRepairNeeded;
+            const freshActiveStoreCount = currentStoresList.filter((store: any) => store?.active !== false).length || 1;
+            if (FEATURE_FLAGS.ENABLE_OUTLET_BILLING && freshActiveStoreCount + 1 > newQty) {
+                throw new OutletCreateScopeChangedError();
+            }
+            const freshOutletCount = currentStoresList.filter((store: any) => (
+                Number(store?.storeId) !== Number(storeId)
+                && !store.isMaster
+                && store?.active !== false
+            )).length;
+            if (maxOutlets > 0 && freshOutletCount >= maxOutlets) {
+                throw new OutletCreateScopeChangedError();
+            }
+            masterPromoted = freshMasterPromoted;
+            masterStore = freshMasterPromoted
+                ? {
+                    ...freshMasterStore,
+                    isMaster: true,
+                    outletPolicy: freshMasterStore.outletPolicy || DEFAULT_OUTLET_POLICY,
+                }
+                : freshMasterStore;
+            const masterProjectsSummary = freshMasterProjectsSummarySnap.exists
+                ? parseSummaryProjects(freshMasterProjectsSummarySnap.data())
+                : {};
+            const masterProjectDocs = freshMasterProjectsSnap.docs.filter((projectDocument) => {
+                const project = projectDocument.data();
+                return project.deleted !== true
+                    && !project.masterProjectId
+                    && project.projectType !== 'localOnly';
+            });
+            if (masterProjectDocs.length > MAX_OUTLET_CREATION_MASTER_PROJECTS) {
+                throw new OutletCreateScopeChangedError();
+            }
             const storeCounterFloor = resolvePlatformCounterFloor(
                 summary.data(),
                 legacySummary.data(),
@@ -449,7 +583,6 @@ export const POST = withAuth(async (request, session) => {
             }
 
             // Update tenant storesList
-            const currentStoresList = Array.isArray(freshTenantData.storesList) ? freshTenantData.storesList : [];
             const normalizedStoresList = currentStoresList.map((store: any) => (
                 shouldMarkCurrentStoreAsMasterInTenant && Number(store?.storeId) === Number(storeId)
                     ? { ...store, isMaster: true }
@@ -468,12 +601,14 @@ export const POST = withAuth(async (request, session) => {
                 outletCreationLock: false,
             });
 
-            const userAccessUpdate = userSnap
-                ? buildUserStoreAccessUpdate(userSnap.data(), newStoreId, outletName, getOwnerRoleId(newStoreId))
-                : null;
-            if (userAccessUpdate) {
-                tx.set(userRef, userAccessUpdate, { merge: true });
-            }
+            const userAccessUpdate = buildUserStoreAccessUpdate(
+                userSnap.data(),
+                newStoreId,
+                outletName,
+                getOwnerRoleId(newStoreId),
+            );
+            if (!userAccessUpdate) throw new OutletCreateScopeChangedError();
+            tx.set(userRef, userAccessUpdate, { merge: true });
 
             // Update platform summary counts
             tx.set(summaryRef, {
@@ -482,13 +617,13 @@ export const POST = withAuth(async (request, session) => {
             }, { merge: true });
 
             // Replicate master projects to outlet (data already fetched outside tx)
-            for (let pi = 0; pi < masterProjectsSnap.docs.length; pi++) {
-                const projDoc = masterProjectsSnap.docs[pi];
+            for (let pi = 0; pi < masterProjectDocs.length; pi++) {
+                const projDoc = masterProjectDocs[pi];
                 const masterProject = projDoc.data();
                 const masterProjectId = projDoc.id;
                 const masterSummary = masterProjectsSummary[masterProjectId] || {};
                 const timestamp = Date.now().toString(36);
-            const outletProjectId = `${tenantDocumentId}-${timestamp}${pi > 0 ? pi : ''}-${newStoreId}`;
+                const outletProjectId = `${tenantDocumentId}-${timestamp}${pi > 0 ? pi : ''}-${newStoreId}`;
                 const masterSummaryName = masterSummary.name || masterProject.name || projDoc.id;
                 const outletProjectSlug = typeof masterSummary.slug === "string" && masterSummary.slug.trim()
                     ? masterSummary.slug.trim()
@@ -528,34 +663,35 @@ export const POST = withAuth(async (request, session) => {
 
             return { newStoreId, outletSlug, tenantName };
         });
-        revalidateTag(`menu-store-${result.newStoreId}`);
-        revalidateTag(`store-${result.newStoreId}`);
-        if (masterPromoted) {
-            revalidateTag(`menu-store-${storeDocumentId}`);
-            revalidateTag(`store-${storeDocumentId}`);
+        const newStoreDocumentId = String(result.newStoreId);
+        const postCommit = await runStorePublicTruthPostCommitEffects({
+            chunkSize: OUTLET_CREATE_EFFECT_CHUNK_SIZE,
+            storeIds: [newStoreDocumentId, ...(masterPromoted ? [storeDocumentId] : [])],
+            tenantId: tenantDocumentId,
+            deps: {
+                invalidateAssistant: (effectStoreId, effectTenantId) => (
+                    invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: effectStoreId })
+                ),
+                revalidate: (tag) => revalidateTag(tag),
+                touchScreen: (effectStoreId) => touchDigitalScreenContentVersionForStoreServer(
+                    effectStoreId,
+                    effectStoreId === newStoreDocumentId ? 'outletCreate' : 'outletCreateMasterPromoted',
+                ),
+            },
+        });
+        if (postCommit.effectsPending) {
+            logMultiOutletFailure('multi_outlet_create_post_commit_effect_failed', postCommit.firstError, {
+                ...getOutletCreateLogContext(tenantDocumentId, storeDocumentId, {
+                    failedEffectCount: postCommit.failedEffectCount,
+                    masterPromoted,
+                }),
+                newStoreId: result.newStoreId,
+            });
         }
-        revalidateTag('client-stores');
-        revalidateTag('screen-data');
-        await touchDigitalScreenContentVersionForStoreServer(result.newStoreId, 'outletCreate');
-        if (masterPromoted) {
-            await touchDigitalScreenContentVersionForStoreServer(storeDocumentId, 'outletCreateMasterPromoted');
-        }
-        await Promise.all([
-            invalidateOwnerBusinessAssistantPacketCache({
-                tId: tenantDocumentId,
-                sId: result.newStoreId,
-            }),
-            ...(masterPromoted
-                ? [
-                    invalidateOwnerBusinessAssistantPacketCache({
-                        tId: tenantDocumentId,
-                        sId: storeDocumentId,
-                    }),
-                ]
-                : []),
-        ]);
 
         return NextResponse.json({
+            effectsPending: postCommit.effectsPending,
+            failedEffectCount: postCommit.failedEffectCount,
             success: true,
             storeId: result.newStoreId,
             outletSlug: result.outletSlug,
@@ -567,6 +703,7 @@ export const POST = withAuth(async (request, session) => {
         });
     } catch (error) {
         const isBillingUpdateError = error instanceof OutletBillingUpdateError;
+        const isScopeChangedError = isOutletCreateScopeChangedError(error);
 
         // Handle lock contention gracefully
         if (isOutletCreateLockHeldError(error)) {
@@ -587,7 +724,7 @@ export const POST = withAuth(async (request, session) => {
                     ...getBoundedMultiOutletStringContext("providerSubscriptionId", providerSubId),
                 }),
             );
-        } else {
+        } else if (!isScopeChangedError) {
             logMultiOutletFailure(
                 "multi_outlet_create_failed",
                 error,
@@ -662,6 +799,13 @@ export const POST = withAuth(async (request, session) => {
                     targetQuantity: newQty,
                 },
                 { status: 402 },
+            );
+        }
+
+        if (isScopeChangedError) {
+            return NextResponse.json(
+                { error: "Outlet setup changed. Refresh and try again." },
+                { status: 409 },
             );
         }
 

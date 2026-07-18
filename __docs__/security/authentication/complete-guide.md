@@ -3,6 +3,8 @@
 **Last Updated**: July 13, 2026
 **Status**: Security implementation guide; not current launch certification
 
+> **Current-source note:** This broad guide includes retained historical examples. For the current signup, claim, first workspace, Razorpay handoff, custom-claim, session-refresh, and returning-owner flow, use [Auth and Onboarding](../../auth-onboarding/README.md) and current source. Historical snippets do not override current security helpers or the seven-day NextAuth session contract.
+
 ---
 
 ## Current Launch Boundary

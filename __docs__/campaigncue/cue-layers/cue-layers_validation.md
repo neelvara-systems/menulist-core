@@ -1,6 +1,6 @@
 # CueLayers - Implementation Validation
 
-**Date:** June 12, 2026
+**Date:** July 13, 2026
 **Product:** CampaignCue
 **Feature:** CueLayers
 **Verdict:** Safe upload spine is implementation-ready after verification. Provider-driven editable decomposition is not active and remains gated.
@@ -11,14 +11,14 @@ CueLayers currently supports the conservative production path:
 
 1. Owner opens CampaignCue Editor or Asset Library.
 2. Owner uploads a PNG, JPEG, or WebP image under the current 3 MB direct-upload cap.
-3. Server validates CampaignCue runtime, session scope, rate limit, MIME, size, and dimensions.
+3. Server validates CampaignCue runtime, session scope, rate limit, canonical base64, byte-derived MIME/dimensions, maximum pixels, and container boundaries.
 4. Server creates a CampaignCue source package artifact with inline business truth, protected text truth, brand truth, and rights snapshots.
 5. Server creates only the active v1 immutable artifacts needed for reuse: original image, source package JSON, layer index JSON, and initial editor snapshot JSON.
 6. Server creates compact design/job/version records under the CampaignCue workspace.
 7. Server projects the original image into `CreativeEditorDocumentSnapshot` as a locked image object using `cue-asset://assetId`.
-8. Editor boot hydrates the signed URL at runtime only.
-9. Autosave writes immutable editor document snapshots and updates the design pointer.
-10. Export requires the saved source revision, uploads the rendered PNG bytes to immutable CampaignCue Storage, and registers the output in CampaignCue Asset Library for manual download/reuse.
+8. Editor boot validates the persisted design, editor snapshot, and layer index, then signs only image assets referenced by the document.
+9. Autosave validates root/page editor state and layer-owned assets, writes an immutable editor snapshot, and atomically rechecks/updates the design revision and version pointer.
+10. Export requires the saved source revision and exact saved-document fingerprint, verifies rendered dimensions and image bytes, then atomically registers the output, export record, and audit event after a final revision check.
 11. Asset Library download uses a scoped API route that returns a short-lived URL at request time; signed URLs are not persisted.
 
 ## Files Reviewed
@@ -27,11 +27,11 @@ CueLayers currently supports the conservative production path:
 | --- | --- |
 | Constants | `src/constants/campaigncue/cueLayers.ts`, `src/constants/campaigncue/database.ts`, `src/constants/campaigncue/routes.ts`, `src/config/features.ts` |
 | Types/schemas | `src/types/campaigncueCueLayers.ts`, `src/lib/validation/campaigncueCueLayersSchemas.ts` |
-| Server | `src/lib/campaigncue/cue-layers/server.ts`, `src/lib/campaigncue/cue-layers/storagePaths.ts`, `src/lib/campaigncue/cue-layers/editorProjection.ts`, `src/lib/campaigncue/cue-layers/modelRegistry.ts` |
+| Server | `src/lib/campaigncue/cue-layers/server.ts`, `documentBoundary.ts`, `recordBoundary.ts`, `layerIndexBoundary.ts`, `idempotency.ts`, `imageMetadata.ts`, `storagePaths.ts`, `editorProjection.ts`, `modelRegistry.ts` |
 | API routes | `src/app/api/campaigncue/cue-layers/**/route.ts`, `src/app/api/campaigncue/assets/[assetId]/download/route.ts` |
 | Owner UI | `src/components/templates/campaigncue/CampaignCueWorkspaceApp.tsx` |
 | Firebase | `firestore-campaigncue.rules`, `storage-campaigncue.rules`, `firestore-campaigncue.indexes.json` |
-| Verification | `scripts/verification/verify-campaigncue-runtime.js` |
+| Verification | `scripts/verification/verify-campaigncue-runtime.js`, `scripts/verification/test-campaigncue-cue-layers-*.ts` |
 | Docs | `__docs__/campaigncue/cue-layers/*`, `__docs__/changelog.md` |
 
 ## Issues Found And Fixed
@@ -47,6 +47,13 @@ CueLayers currently supports the conservative production path:
 | Storage-backed exports had Asset Library records but no owner download handoff. | Added authenticated asset download API and Asset Library Download action that generates short-lived URLs at request time. |
 | Autosave accepted URL-shaped `cue-asset://` references without proving they belonged to the current design. | Autosave now validates image asset ids against the current CueLayers layer index before writing a new version. |
 | Active v1 wrote too many provider-grade artifacts for a flat-safe upload path. | Source truth snapshots are now inlined into the source package, catalog snapshots are compacted to fact fields, protected text includes item/service price labels, projection/reconstruction/quality JSON persistence is dormant, upload no longer writes quality/event documents, autosave reuses the unchanged layer index, repair writes only a repair request, and export no longer writes duplicate report/event records. |
+| Persisted editor validation dropped pages, gradients, print metadata, QR fields, and editor-only flags. | The allowlisted document schema and hydrate/dehydrate boundary now preserve root and page state while stripping unknown metadata and external durable URLs. |
+| Persisted design/job/layer-index records relied on shallow casts, and the direct job reader compared `designId` with itself. | Pure record boundaries now validate tenant/design identity, enums, revisions, pointers, asset scope/path/hash/size, duplicate ids, and fallback references. |
+| Autosave and export checked revisions before Storage work but did not recheck at final registration. | Both paths now use final Firestore transactions; stale uploaded artifacts are removed best-effort and stale idempotency outcomes replay consistently. |
+| Export accepted a current revision with a different submitted document or canvas size. | Export now reads the saved snapshot, compares a canonical durable fingerprint, and rejects rendered dimensions that do not match the saved canvas. |
+| Image probes accepted trailing bytes and export pixel count was not bounded. | PNG/JPEG/WebP container endings and all WebP dimension encodings are checked; upload and export enforce long-edge and pixel-count limits. |
+| A transient failure after creating an idempotency row left the key permanently `in_progress`; completion had no worker ownership token. | Claims now use a five-minute transaction lease. Live work conflicts, completed work replays, abandoned legacy/malformed/expired rows recover, and every upload/autosave/repair/export completion proves exact claim ownership. |
+| The public feature page showed automatic text, offer, and photo layer candidates even though active v1 produces one locked flat-safe image. | Public code and website docs now show the implemented upload, locked source, owner-added editor elements, saved revision, and export flow. Automatic decomposition remains a gated expansion. |
 
 ## Security Result
 
@@ -58,7 +65,7 @@ CueLayers currently supports the conservative production path:
 | Storage write boundary | Client writes are denied; server/Admin writes immutable artifacts. |
 | Durable asset references | Saved editor snapshots persist `cue-asset://assetId`, not signed URLs or base64 payloads. |
 | Image asset ownership | Autosave rejects image references that are not in the current design layer index. |
-| Export safety | CueLayers export is revision-pinned; stale saved state is rejected. SVG export from reused-image flow is blocked in the owner UI, and export registration requires rendered output bytes before an Asset Library record is created. |
+| Export safety | CueLayers export is revision- and saved-document-pinned; stale/different editor state and mismatched canvas dimensions are rejected. SVG export is blocked in the owner UI, and output/asset/export/audit registration is atomic after immutable bytes exist. |
 | Download safety | Asset Library download uses workspace-scoped asset lookup and runtime-only signed URLs. |
 
 ## Firebase Cost Result
@@ -66,11 +73,11 @@ CueLayers currently supports the conservative production path:
 | Path | Cost posture |
 | --- | --- |
 | Design list | One bounded query ordered by `updatedAt`, limited by `CAMPAIGNCUE_PAGE_SIZE`. |
-| Upload | Client blocks images over 3 MB before base64 conversion. Server uses one workspace bootstrap/read path, one optional idempotency claim, one original-image Storage object, three JSON artifacts, and batched design/job/version/idempotency writes. No quality/event/cost collection writes and no provider calls. |
-| Boot | One design doc read plus two Storage JSON reads, layer-index lookup through `current.layerIndexVersionId`, and signed URL generation. No Firestore broad scans. |
-| Autosave | Debounced client save; one design doc read, one editor-snapshot Storage write, one design update, and one version pointer write. The layer index is not rewritten unless a future asset/decomposition flow changes it. |
-| Repair | Records one restore-fallback repair request. No patch artifact, correction-event write, model call, or worker cost. |
-| Export | Requires saved revision, writes one immutable Storage output, registers Asset Library metadata, writes one CueLayers export doc, and creates a signed URL only when the owner downloads. No export report artifact, job event, direct provider posting, or social integration cost. |
+| Upload | Client blocks images over 3 MB before base64 conversion. Server uses one workspace bootstrap/read path, one optional one-document idempotency lease transaction, one original-image Storage object, three JSON artifacts, and a claim-owned design/job/version/idempotency transaction. No quality/event/cost collection writes and no provider calls. |
+| Boot | One design read, two bounded Storage JSON reads, and signed URL generation only for document-referenced assets. No Firestore broad scans. |
+| Autosave | Debounced client save; initial design read, one layer-index Storage read, one editor-snapshot Storage write, then a transaction re-read and batched design/version/idempotency writes. The layer index is not rewritten. |
+| Repair | Initial design read; optional layer-index Storage read; final transaction re-read; one compact restore-fallback request. No patch artifact, correction event, model call, or worker cost. |
+| Export | Initial design read, one saved-snapshot Storage read, one immutable output write, then a transaction re-read and atomic Asset Library/export/audit/idempotency writes. No export report artifact, job event, direct provider posting, or social integration cost. |
 
 ## UX Result
 
@@ -95,8 +102,9 @@ Docs now separate current runtime from long-term architecture:
 | Check | Status |
 | --- | --- |
 | TypeScript | Passed: `npx tsc --noEmit --incremental false` |
-| CampaignCue verifier | Passed: `npm run verify:campaigncue` with 1076 runtime checks plus pack template registry checks. |
-| Lint | Passed: `npm run lint` |
+| Focused CueLayers boundaries | Passed: document, idempotency, image metadata, layer-index, and persisted-record suites. |
+| CampaignCue verifier | Passed locally before the Moda website-truth correction: `npm run verify:campaigncue`, including 1,723 runtime checks, the Asset Library and CueLayers boundary suites, pack-template/PWA/operating-loop/Pattern Cue checks, and CampaignCue Firestore and Storage rules emulator suites. Rerun required after the public-copy correction. |
+| Lint | Passed for the touched CueLayers source and verification files. |
 | Production build | Not rerun in this cost-optimization pass because production builds are opt-in. |
 | Diff whitespace | Passed: `git diff --check` |
 | Firebase deploy | Not required in this pass; no Firestore rules, Storage rules, indexes, or Cloud Function logic changed. |
@@ -112,6 +120,8 @@ These are not active runtime claims:
 - Cloud Tasks/Firebase Functions/Cloud Run worker dispatcher.
 - Provider cost estimator and cost ledger writes for expensive model paths.
 - Server-rendered high-resolution export worker.
+- Full pixel decoding, EXIF orientation normalization, and metadata stripping; active v1 structurally validates supported image containers and preserves the original bytes.
+- Automated orphan cleanup for a process crash or ambiguous infrastructure failure between immutable Storage upload and Firestore registration.
 - MenuList adapter adoption for menu item image editing.
 
 ## Production Readiness Verdict

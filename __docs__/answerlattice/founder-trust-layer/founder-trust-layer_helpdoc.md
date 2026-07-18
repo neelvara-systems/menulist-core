@@ -30,7 +30,9 @@ You'll find it in your Answerlattice Governance Hub.
 
 **What it means:** The percentage of AI-handled questions that are resolved without needing human support.
 
-**Example:** If AI handles 85 questions and 75 are resolved without escalation, your resolution rate is 88%.
+**No escalation** means the support flow did not trigger an escalation. It is a routing metric, not proof that the customer issue was solved.
+
+**Confirmed resolution** counts only end users who explicitly selected **Solved** in the widget. Answerlattice also reports same-session recontact when another question follows that confirmation inside the observation window.
 
 **What to do:**
 - **Green (85%+):** AI is resolving well. No action needed.

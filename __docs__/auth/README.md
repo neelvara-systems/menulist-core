@@ -1,20 +1,20 @@
 # 🔐 Authentication Documentation
 
-**Complete authentication system documentation for MenuListAI**
+**Current authentication documentation hub for MenuList**
 
-> **Status:** Auth documentation hub; not current launch certification
+> **Status:** Maintained source guide; not current launch certification
 >
-> **Launch Boundary:** This hub routes current auth approval to the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:agent-readiness`, `npm run verify:auth-security-failure-matrix`, auth browser/API smoke, Firebase Auth custom-claims/token smoke, App Check/session-cookie review, login/logout/OAuth/password/staff-passcode QA, target deploy evidence where auth-adjacent routes or rules change, and production-host smoke.
+> **Launch Boundary:** Current behavior is summarized in [Auth and Onboarding](../auth-onboarding/README.md) and verified by `npm run verify:auth-onboarding-flow`. Production approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), auth browser/API smoke, Firebase Auth custom-claims/token smoke, App Check/session-cookie review, login/logout/OAuth/password/staff-passcode QA, target deployment, and production-host smoke.
 
 ---
 
 ## 📚 Documentation Structure
 
-This folder contains the **complete authentication guide** split into manageable parts:
+This folder contains maintained implementation notes plus older architecture guides. The November 2025 “complete guide” and its Part 2/3 companions are historical reference; do not use their session duration, code samples, or route descriptions as current truth.
 
 ### Main Guide
 
-📖 **[authentication-complete-guide.md](./authentication-complete-guide.md)** - Start here!
+📖 **[../auth-onboarding/README.md](../auth-onboarding/README.md)** - Start here for the current end-to-end flow.
 
 - Executive Summary
 - Architecture Overview
@@ -46,9 +46,9 @@ This folder contains the **complete authentication guide** split into manageable
 
 **Read in this order:**
 
-1. [authentication-complete-guide.md](./authentication-complete-guide.md) - Architecture overview
-2. [auth-guide-part2-firebase.md](./auth-guide-part2-firebase.md) - Firebase integration
-3. [auth-guide-part3-flows.md](./auth-guide-part3-flows.md) - Login flows
+1. [Auth and Onboarding](../auth-onboarding/README.md) - Current end-to-end contract
+2. [firebase-auth-sync.md](./firebase-auth-sync.md) - Current bridge and claim acknowledgement boundaries
+3. [auth_firebase.md](./auth_firebase.md) - Current operation and cost evidence
 
 ### For Specific Tasks
 
@@ -86,7 +86,7 @@ Firebase SDK `accessToken` and `refreshToken` values must not be copied into app
 │  ┌──────────────┐              ┌──────────────┐            │
 │  │   NextAuth   │              │ Firebase Auth │            │
 │  │     JWT      │◄─────sync────┤    Tokens     │            │
-│  │  (30 days)   │              │  (1hr + auto) │            │
+│  │   (7 days)   │              │  (1hr + auto) │            │
 │  └──────────────┘              └──────────────┘            │
 │         │                              │                     │
 │         │                              │                     │
@@ -128,11 +128,11 @@ Firebase SDK `accessToken` and `refreshToken` values must not be copied into app
 - ✅ Easy OAuth (Google)
 - ✅ Secure HTTP-only cookies
 - ✅ Server-side middleware
-- ✅ 30-day sessions
+- ✅ 7-day sessions
 
 **Storage:** HTTP-only cookie (XSS-safe)
 
-**Expiration:** 30 days (then re-login required)
+**Expiration:** 7 days (then re-login required)
 
 ### Firebase Auth (Client-Side Tokens)
 
@@ -480,8 +480,9 @@ Compatibility route for staff creation. Current owner UI uses `POST /api/staff`,
 - **Auth:** Requires active NextAuth session
 - **Admission:** `AUTH_SENSITIVE` limiter, then 16KB bounded JSON body before validation, Firebase Auth, or Firestore writes
 - **Returns:** `{ success, userId, email, passwordResetEmailSent, staffLoginId?, temporaryPasscode? }`
-- **Browser request/response boundary:** Platform Users sends the compatibility request with the shared staff request policy: same-origin credentials, no browser cache, and manual redirect handling. It then parses the response through `readCreateStaffCompatibilityResponse()` in `src/lib/staffManagement/client.ts`, using the shared 256KB bounded staff response reader before marking a user verified. Successful verification must match create-staff modes (`new_user_created` or `existing_user_added_to_store`) and return user identity. The existing `EMAIL_EXISTS` compatibility code remains bounded and allowlisted.
-- **User document acknowledgement:** After staff verification or platform user edits, Platform Users requires `assertUserUpdateSucceeded()` before local table state, drawer close, or success copy changes.
+- **Browser request/response boundary:** Platform Users sends the compatibility request with the shared staff request policy: same-origin credentials, no browser cache, and manual redirect handling. It parses the response through the shared 256KB bounded reader, then accepts verification only when `isCreateStaffCompatibilityVerificationResponse()` proves `existing_user_auth_bound`, the exact expected Firestore user ID/email, and returned `isVerified: true` state.
+- **Auth binding:** An unverified placeholder is marked verified only after the server creates a new Firebase Auth user and transactionally binds that UID plus canonical store mapping to the same Firestore user. `EMAIL_EXISTS` and incomplete pre-existing UID bindings are rejected; MenuList never adopts an unrelated Auth identity by email. A failed Firestore commit deletes only the Auth UID created by that request.
+- **User document acknowledgement:** Platform user edits still require `assertUserUpdateSucceeded()` before local table state, drawer close, or success copy changes. Verification uses the server's explicit Auth-binding acknowledgement and does not issue a second browser Firestore write.
 - **Staff login handoff:** Desktop and mobile staff login detail copy actions use `src/lib/staffManagement/shareLoginDetails.ts`, which waits for Clipboard API success or an acknowledged textarea fallback before showing copied feedback. Failed copy diagnostics include clipboard/fallback support booleans and bounded Staff ID/passcode/text length metadata only.
 
 ### `POST /api/staff/password-reset`
@@ -540,7 +541,7 @@ Links a messaging-onboarded business to a real account. Three modes:
 - **MODE 2 (Email/Password):** `{ claimToken, email, password, name? }` — no session required. Creates Firebase Auth user and converts placeholder user doc. The WhatsApp phone also becomes a login alias for the same password.
 - **MODE 3 (WhatsApp Phone/Passcode):** `{ claimToken, password, name?, useWhatsappPhone: true }` — no session required. Uses the verified WhatsApp number as the login identifier with the generated messaging email behind Firebase Auth.
 
-Modes 1 and 2 also sync the claimed tenant/store email. Because store email is public business truth, the route revalidates public menu, Official Business Page, store, and client-store cache tags after those store email writes.
+Modes 1 and 2 also sync the claimed tenant/store email. Because store email is public business truth, the route revalidates public menu, Official Business Page, store, and client-store cache tags after those store email writes. That invalidation is post-commit and best-effort: a cache-provider failure is recorded as `claim_account_cache_revalidation_failed`, but it cannot turn an already committed identity transfer into a false claim failure or prevent the custom-claims mirror attempt. The next cache read may remain stale until the existing cache lifetime or a later invalidation, while the committed account/store truth remains authoritative.
 
 The route applies the `AUTH_SENSITIVE` hashed-IP limiter before a 16KB bounded JSON body and claim-token lookup. Claim-token lookup boundary: `normalizeAuthClaimToken()` caps tokens to 20-256 base64url/hex-safe characters before the indexed `users.claimToken` query. The shared lookup reads at most two matches and rejects ambiguity before selecting a business. Missing-token diagnostics record only claim-token presence and length, never token characters.
 

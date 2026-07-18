@@ -4,7 +4,9 @@ import {
     CAMPAIGNCUE_CUE_LAYER_SOURCE_KINDS,
     CAMPAIGNCUE_CUE_LAYERS,
 } from "@constant/campaigncue/cueLayers";
+import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import { z } from "zod";
+import { CREATIVE_EDITOR_SCHEMA_VERSION } from "@/modules/creative-editor/types";
 
 const idPattern = /^[a-zA-Z0-9_-]+$/;
 const cueAssetUriPattern = /^cue-asset:\/\/[a-zA-Z0-9_-]+$/;
@@ -22,6 +24,11 @@ const renderedExportDataUrlSchema = z.string()
     .regex(/^data:image\/(png|jpeg|jpg|webp);base64,[a-zA-Z0-9+/=]+$/);
 
 const colorSchema = z.string().trim().min(1).max(120);
+const durableSourceRefValueSchema = z.string().trim().max(500).superRefine((value, ctx) => {
+    if (/^(?:data|https?|javascript):/i.test(value)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Editor source references cannot persist external URLs." });
+    }
+});
 const strokeStyleSchema = z.enum(["solid", "dashed", "dashed-round", "dash-dot", "dash-dot-round", "dotted", "dotted-round", "long-dashed", "long-dashed-round"]);
 const strokeLineCapSchema = z.enum(["butt", "round", "square"]);
 const gradientSchema = z.object({
@@ -85,9 +92,9 @@ const CreativeEditorSourceRefSchema = z.object({
     locked: z.boolean().optional(),
     outputId: CampaignCueCueLayerIdSchema.optional(),
     productId: z.string().trim().max(80).optional(),
-    sourceRef: z.string().trim().max(500).optional(),
+    sourceRef: durableSourceRefValueSchema.optional(),
     value: z.string().trim().max(1000).optional(),
-});
+}).strip();
 
 const CreativeEditorElementBaseSchema = z.object({
     align: z.enum(["left", "center", "right"]).optional(),
@@ -97,6 +104,9 @@ const CreativeEditorElementBaseSchema = z.object({
     charSpacing: z.number().min(-1000).max(4000).optional(),
     color: colorSchema.optional(),
     darkColor: colorSchema.optional(),
+    editorGuide: z.boolean().optional(),
+    errorCorrectionLevel: z.enum(["L", "M", "Q", "H"]).optional(),
+    excludeFromExport: z.boolean().optional(),
     fill: colorSchema.optional(),
     filter: z.enum(["none", "blackwhite", "brownie", "grayscale", "invert", "kodachrome", "polaroid", "sepia", "technicolor", "vintage"]).optional(),
     filterAdjustments: imageFilterAdjustmentSchema.optional(),
@@ -114,6 +124,7 @@ const CreativeEditorElementBaseSchema = z.object({
     lineHeight: z.number().min(0.5).max(3).optional(),
     linethrough: z.boolean().optional(),
     locked: z.boolean().optional(),
+    margin: z.number().int().min(0).max(64).optional(),
     name: z.string().trim().min(1).max(160),
     opacity: z.number().min(0).max(1).optional(),
     outlineColor: colorSchema.optional(),
@@ -127,6 +138,8 @@ const CreativeEditorElementBaseSchema = z.object({
         x: z.number().min(-CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
         y: z.number().min(-CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
     }).strip()).min(3).max(80).optional(),
+    printFrameId: z.string().trim().regex(idPattern).min(2).max(160).optional(),
+    printFrameLocked: z.boolean().optional(),
     radius: z.number().min(0).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE).optional(),
     rotation: z.number().min(-360).max(360).optional(),
     shadow: shadowSchema.optional(),
@@ -192,27 +205,125 @@ const CreativeEditorElementSchema = CreativeEditorElementBaseSchema.superRefine(
     }
 });
 
-export const CampaignCueCueLayerEditorDocumentSchema = z.object({
-    canvas: z.object({
-        backgroundColor: z.string().trim().min(1).max(80),
-        height: z.number().int().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
-        width: z.number().int().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
-    }),
+const CreativeEditorCanvasSchema = z.object({
+    backgroundColor: z.string().trim().min(1).max(80),
+    backgroundGradient: gradientSchema.optional(),
+    height: z.number().int().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
+    width: z.number().int().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
+}).strip().superRefine((canvas, ctx) => {
+    if (canvas.width * canvas.height > CAMPAIGNCUE_CUE_LAYERS.MAX_CANVAS_PIXELS) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Editor canvas is too large." });
+    }
+});
+
+const CreativeEditorPageSchema = z.object({
+    canvas: CreativeEditorCanvasSchema,
+    elements: z.array(CreativeEditorElementSchema).max(CAMPAIGNCUE_CUE_LAYERS.MAX_FINAL_LAYERS),
+    id: CampaignCueCueLayerIdSchema,
+    locked: z.boolean().optional(),
+    title: z.string().trim().min(1).max(160),
+    updatedAt: z.string().datetime({ offset: true }).optional(),
+}).strip();
+
+const CreativeEditorMetadataSchema = z.object({
+    brand: z.object({
+        accentColor: colorSchema.optional(),
+        fontFamily: z.string().trim().max(160).optional(),
+        name: z.string().trim().max(160).optional(),
+        primaryColor: colorSchema.optional(),
+        secondaryColor: colorSchema.optional(),
+        voice: z.string().trim().max(500).optional(),
+    }).strip().optional(),
+    campaignId: CampaignCueCueLayerIdSchema.optional(),
+    channel: z.string().trim().max(80).optional(),
+    createdAt: z.string().datetime({ offset: true }).optional(),
+    cueLayers: z.object({
+        designId: CampaignCueCueLayerIdSchema,
+        jobId: CampaignCueCueLayerIdSchema.optional(),
+        outcome: z.enum(CAMPAIGNCUE_CUE_LAYER_JOB_OUTCOMES),
+        reconstructionId: CampaignCueCueLayerIdSchema,
+        revision: z.number().int().min(0),
+        sourcePackageId: CampaignCueCueLayerIdSchema,
+    }).strip().optional(),
+    outputId: CampaignCueCueLayerIdSchema.optional(),
+    printFrames: z.array(z.object({
+        height: z.number().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
+        id: CampaignCueCueLayerIdSchema,
+        label: z.string().trim().min(1).max(160),
+        locked: z.boolean().optional(),
+        width: z.number().min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
+        x: z.number().min(-CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
+        y: z.number().min(-CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE).max(CAMPAIGNCUE_CUE_LAYERS.MAX_SOURCE_LONG_EDGE),
+    }).strip()).max(24).optional(),
+    sourceRefs: z.array(CreativeEditorSourceRefSchema).max(40).optional(),
+    templateId: z.string().trim().max(160).optional(),
+    textPlaceholders: z.array(z.object({
+        id: CampaignCueCueLayerIdSchema,
+        label: z.string().trim().min(1).max(160),
+        sourceRef: durableSourceRefValueSchema.optional(),
+        value: z.string().max(4000),
+    }).strip()).max(40).optional(),
+    trustGate: z.string().trim().max(120).optional(),
+    updatedAt: z.string().datetime({ offset: true }).optional(),
+    visibleWatermark: z.object({
+        color: colorSchema,
+        enabled: z.boolean(),
+        fontFamily: z.string().trim().max(160).optional(),
+        fontSize: z.number().min(4).max(320),
+        opacity: z.number().min(0).max(1),
+        position: z.enum(["bottom-left", "bottom-right", "center", "top-left", "top-right", "tiled"]),
+        rotation: z.number().min(-360).max(360).optional(),
+        text: z.string().max(500),
+    }).strip().optional(),
+}).strip();
+
+const CampaignCueCreativeEditorDocumentBaseSchema = z.object({
+    activePageId: CampaignCueCueLayerIdSchema.optional(),
+    canvas: CreativeEditorCanvasSchema,
     elements: z.array(CreativeEditorElementSchema).min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_FINAL_LAYERS),
     id: CampaignCueCueLayerIdSchema,
-    metadata: z.record(z.unknown()).optional(),
+    metadata: CreativeEditorMetadataSchema.optional(),
+    pages: z.array(CreativeEditorPageSchema).min(1).max(CAMPAIGNCUE_CUE_LAYERS.MAX_EDITOR_PAGES).optional(),
     productContext: z.object({
-        productId: z.string().trim().min(1).max(80),
+        productId: z.literal(CAMPAIGNCUE_PRODUCT_CODE),
         sourceSurface: z.string().trim().max(120).optional(),
         workspaceId: z.string().trim().max(160).optional(),
     }),
-    schemaVersion: z.string().trim().min(1).max(80),
+    schemaVersion: z.literal(CREATIVE_EDITOR_SCHEMA_VERSION),
     title: z.string().trim().min(1).max(160),
-}).superRefine((documentValue, ctx) => {
-    if (Buffer.byteLength(JSON.stringify(documentValue), "utf8") > CAMPAIGNCUE_CUE_LAYERS.MAX_EDITOR_DOCUMENT_BYTES) {
+});
+
+const refineCampaignCueCreativeEditorDocument = (
+    documentValue: z.infer<typeof CampaignCueCreativeEditorDocumentBaseSchema>,
+    ctx: z.RefinementCtx,
+    requireCueLayersMetadata: boolean,
+) => {
+    if (requireCueLayersMetadata && !documentValue.metadata?.cueLayers) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "CueLayers editor metadata is required." });
+    }
+    if (documentValue.pages?.length) {
+        const pageIds = new Set(documentValue.pages.map((page) => page.id));
+        if (pageIds.size !== documentValue.pages.length) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Editor page ids must be unique." });
+        }
+        if (!documentValue.activePageId || !pageIds.has(documentValue.activePageId)) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Active editor page is invalid." });
+        }
+    } else if (documentValue.activePageId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Active editor page requires pages." });
+    }
+    if (new TextEncoder().encode(JSON.stringify(documentValue)).length > CAMPAIGNCUE_CUE_LAYERS.MAX_EDITOR_DOCUMENT_BYTES) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Editor document is too large." });
     }
-});
+};
+
+export const CampaignCuePackTemplateEditorDocumentSchema = CampaignCueCreativeEditorDocumentBaseSchema.superRefine(
+    (documentValue, ctx) => refineCampaignCueCreativeEditorDocument(documentValue, ctx, false),
+);
+
+export const CampaignCueCueLayerEditorDocumentSchema = CampaignCueCreativeEditorDocumentBaseSchema.superRefine(
+    (documentValue, ctx) => refineCampaignCueCreativeEditorDocument(documentValue, ctx, true),
+);
 
 export const CampaignCueCueLayerAutosaveSchema = z.object({
     document: CampaignCueCueLayerEditorDocumentSchema,
@@ -232,11 +343,12 @@ export const CampaignCueCueLayerRepairSchema = z.object({
         "image_replaced",
     ]).default("restore_fallback"),
     expectedRevision: z.number().int().min(0),
+    idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
     layerId: z.string().trim().regex(idPattern).min(2).max(160).optional(),
 });
 
 export const CampaignCueCueLayerExportSchema = z.object({
-    document: CampaignCueCueLayerEditorDocumentSchema.optional(),
+    document: CampaignCueCueLayerEditorDocumentSchema,
     format: z.enum(["png", "jpeg", "webp", "pdf_flattened", "json"]).default("png"),
     idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
     mimeType: z.string().trim().max(120).optional(),

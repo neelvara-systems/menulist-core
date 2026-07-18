@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'MenuList Tools - Public Business Truth Checks';
 const description = 'Free MenuList tools that help SMB owners check public business facts, customer links, menus, prices, hours, QR links, WhatsApp actions, and setup gaps before creating one current customer link.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools',
   },
-};
+});
 
 export default function Page() {
   if (

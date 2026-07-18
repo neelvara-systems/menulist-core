@@ -1,4 +1,5 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
@@ -16,6 +17,7 @@ import { Project } from '../types';
 import {
     DESCRIPTION_LENGTH_OPTIONS,
     DESCRIPTION_TONE_OPTIONS,
+    getDescriptionGenerationRequestCount,
     getDescriptionGenerationStats,
     runDescriptionGeneration,
     type DescriptionContentLength,
@@ -78,6 +80,14 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
         () => getDescriptionGenerationStats(projectData, modalData.sourceFile, governance),
         [governance, modalData.sourceFile, projectData]
     );
+    const refreshCreditCount = useMemo(() => (
+        getDescriptionGenerationRequestCount(
+            projectData,
+            modalData.sourceFile,
+            AI_ACTIONS_TYPES.REWRITE_DESCRIPTION,
+            governance,
+        ) * CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE
+    ), [governance, modalData.sourceFile, projectData]);
 
     const getDescriptionModalLogContext = (action: string) => ({
         action,
@@ -115,7 +125,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                 file.extractedData?.data && (modalData.sourceFile ? modalData.sourceFile.uid === file.uid : true)
             ).length || 0);
 
-            const updatedProject = await runDescriptionGeneration({
+            await runDescriptionGeneration({
                 action,
                 contentLength: nextContentLength,
                 governance,
@@ -138,11 +148,6 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
             });
 
             dispatch(stopLoader("adding description"));
-            if (isMasterLinked) {
-                setProjectData?.(removeObjRef(updatedProject));
-            } else {
-                setActiveProject(updatedProject);
-            }
             setHasChanges(false); // Already saved, no pending changes
             antdMessage.success('Descriptions updated.');
             onClose();
@@ -219,7 +224,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                                     <div style={{ maxWidth: 280 }}>
                                         <Text>This will update descriptions created by MenuList.</Text>
                                         <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                                            Your manual edits will not be changed.
+                                            Uses {refreshCreditCount} enhancement credit{refreshCreditCount === 1 ? '' : 's'}. Your manual edits will not be changed.
                                         </Text>
                                     </div>
                                 }
@@ -315,7 +320,7 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                         <div style={{ marginTop: 20, textAlign: 'center' }}>
                             <Text type="secondary">
                                 {totalFiles > 1
-                                    ? `Processing file ${processedCount + 1} of ${totalFiles}`
+                                    ? `Processing file ${Math.min(processedCount + 1, totalFiles)} of ${totalFiles}`
                                     : `Working on your ${labels.offeringLower}…`}
                             </Text>
                             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 4 }}>
@@ -343,14 +348,14 @@ const DescriptionGenerationModal: React.FC<DescriptionGenerationModalProps> = ({
                         </Button>
 
                         {/* Secondary: Refresh with confirmation */}
-                        {itemsWithDescriptions > 0 && (
+                        {refreshableCount > 0 && (
                             <Popconfirm
                                 title="Refresh descriptions?"
                                 description={
                                     <div style={{ maxWidth: 280 }}>
                                         <Text>This will update descriptions created by MenuList.</Text>
                                         <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
-                                            Your manual edits will not be changed.
+                                            Uses {refreshCreditCount} enhancement credit{refreshCreditCount === 1 ? '' : 's'}. Your manual edits will not be changed.
                                         </Text>
                                     </div>
                                 }

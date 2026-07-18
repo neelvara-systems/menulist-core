@@ -1,12 +1,12 @@
 # Owner Support Assistant - Architecture Alignment
 
-> **Status:** TARGET ARCHITECTURE - read-only summary runtime live; expansion deferred
+> **Status:** TARGET ARCHITECTURE - summary-only runtime live; optional Support Board prefill disabled by default; expansion deferred
 > **Created:** 2026-06-07
 > **Purpose:** End-to-end storage, function, API, reuse, and ChatGPT alignment contract before runtime implementation.
 
 ---
 
-Current runtime uses a consolidated deterministic library, five compact summary documents, two protected APIs, and no writes/provider calls. The action, AI, feedback, owner-analytics, bounded-detail, compact-assistant-summary, and scheduler paths below are target constraints, not current runtime inventory.
+Current runtime uses a consolidated deterministic library, six compact summary documents, two protected APIs, and no writes/provider calls. A disabled-by-default client handoff can open the existing Support Board create form with bounded query parameters; the handoff has no action endpoint and performs no write. Direct action adapters, AI, feedback, owner-analytics, bounded-detail, compact-assistant-summary, and scheduler paths below are target constraints, not current runtime inventory.
 
 ## Architecture Verdict
 

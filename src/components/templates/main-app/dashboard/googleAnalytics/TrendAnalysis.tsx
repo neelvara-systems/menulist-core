@@ -4,6 +4,7 @@ import { Line } from '@ant-design/plots';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { fetchDateRangeStats } from '@services/analytics';
 import { formatDateKey } from '@util/dateTime';
+import { formatNumber } from '@util/formatters';
 import { Spin, Tabs, Typography } from 'antd';
 import { useFormatter } from 'next-intl';
 import React, { useEffect, useState } from 'react';
@@ -95,8 +96,8 @@ const TrendAnalysis: React.FC<TrendAnalysisProps> = ({ propertyId, dateRange }) 
                     return {
                         name: metricName,
                         value: metricName === 'Revenue'
-                            ? `$${datum.value.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
-                            : datum.value.toLocaleString()
+                            ? formatNumber(datum.value, { currency: 'USD', minimumFractionDigits: 2, style: 'currency' })
+                            : formatNumber(datum.value)
                     };
                 }
             },

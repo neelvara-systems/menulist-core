@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -6,7 +7,7 @@ import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
 import '@/styles/website.css';
 import { Metadata } from 'next';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
     title: 'Terms of Service - MenuList',
     description: 'Read MenuList\'s terms of service. Understand the terms and conditions for using our platform.',
     alternates: {
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
         description: 'Read MenuList\'s terms of service. Understand the terms and conditions for using our platform.',
         url: '/terms-of-service',
     },
-};
+});
 
 export default function Page() {
     return (

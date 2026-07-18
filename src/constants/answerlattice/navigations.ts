@@ -169,11 +169,14 @@ export interface AnswerlatticeNavItem {
     requiredPermission?: AnswerlatticePermissionKey;
     /** Optional feature flag key — if set, nav item is hidden when flag is OFF */
     featureFlag?: string;
+    /** Kept out of primary navigation and exposed through an explicit advanced-tools menu. */
+    advanced?: boolean;
     subNav?: AnswerlatticeNavItem[];
 }
 
 export const ANSWERLATTICE_LAUNCH_SETUP_SUB_NAV: AnswerlatticeNavItem[] = [
     { key: 'launch-activation', label: 'Activation', route: ANSWERLATTICE_ROUTES.ACTIVATION, icon: LuRocket, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.VIEW_READINESS, featureFlag: 'ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER' },
+    { key: 'launch-first-answers', label: 'First 10 Answers', route: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS, icon: LuClipboardCheck, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_ANSWER_TESTS' },
     { key: 'launch-install-center', label: 'Install Center', route: ANSWERLATTICE_ROUTES.INSTALL_CENTER, icon: LuCode, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WIDGET, featureFlag: 'ENABLE_ANSWERLATTICE_AGENT_INSTALL' },
     { key: 'launch-settings', label: 'Product Details', route: ANSWERLATTICE_ROUTES.SETTINGS, icon: LuSettings, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_WORKSPACE },
     { key: 'launch-knowledge-intake', label: 'Teach Answerlattice', route: ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE, icon: LuFileInput, managementOnly: true, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_KNOWLEDGE, featureFlag: 'ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE' },
@@ -215,17 +218,17 @@ export const ANSWERLATTICE_GOVERNANCE_SUB_NAV: AnswerlatticeNavItem[] = [
     { key: 'governance-answer-tests', label: 'Answer Tests', route: ANSWERLATTICE_ROUTES.ANSWER_TESTS, icon: LuClipboardCheck, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_ANSWER_TESTS' },
     { key: 'governance-answers', label: 'Canonical Answers', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS), icon: LuBookOpen, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
     { key: 'governance-entities', label: 'Product Ontology', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ENTITIES), icon: LuBoxes, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
-    { key: 'governance-analytics', label: 'Answer Analytics', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANALYTICS), icon: LuBarChart3, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
-    { key: 'governance-health', label: 'Entity Health', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.HEALTH), icon: LuHeart, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
-    { key: 'governance-history', label: 'Version History', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.HISTORY), icon: LuHistory, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE },
-    { key: 'governance-candidates', label: 'Entity Candidates', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.CANDIDATES), icon: LuGitPullRequest, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_ONTOLOGY' },
+    { key: 'governance-analytics', label: 'Answer Analytics', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANALYTICS), icon: LuBarChart3, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, advanced: true },
+    { key: 'governance-health', label: 'Entity Health', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.HEALTH), icon: LuHeart, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, advanced: true },
+    { key: 'governance-history', label: 'Version History', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.HISTORY), icon: LuHistory, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, advanced: true },
+    { key: 'governance-candidates', label: 'Entity Candidates', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.CANDIDATES), icon: LuGitPullRequest, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_ONTOLOGY', advanced: true },
     { key: 'governance-drift', label: 'Drift Review', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.DRIFT), icon: LuShieldAlert, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_DRIFT_DETECTION' },
     { key: 'governance-signal-queue', label: 'Signal Queue', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.SIGNAL_QUEUE), icon: LuGitPullRequest, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_SIGNAL_MUTATION' },
     { key: 'governance-trust', label: 'Trust Metrics', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.TRUST), icon: LuShieldCheck, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_TRUST_METRICS' },
-    { key: 'governance-branding', label: 'Branding', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.BRANDING), icon: LuPaintbrush, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_WHITE_LABEL' },
-    { key: 'governance-friction', label: 'Friction', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.FRICTION), icon: LuFlame, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE' },
-    { key: 'governance-languages', label: 'Languages', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.LANGUAGES), icon: LuLanguages, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_MULTI_LANGUAGE' },
-    { key: 'governance-triggers', label: 'Predictive Triggers', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.TRIGGERS), icon: LuZap, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT' },
+    { key: 'governance-branding', label: 'Branding', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.BRANDING), icon: LuPaintbrush, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_WHITE_LABEL', advanced: true },
+    { key: 'governance-friction', label: 'Friction', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.FRICTION), icon: LuFlame, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE', advanced: true },
+    { key: 'governance-languages', label: 'Languages', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.LANGUAGES), icon: LuLanguages, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_MULTI_LANGUAGE', advanced: true },
+    { key: 'governance-triggers', label: 'Predictive Triggers', route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.TRIGGERS), icon: LuZap, requiredPermission: ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE, featureFlag: 'ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT', advanced: true },
 ];
 
 export const ANSWERLATTICE_SIDEBAR_NAV: AnswerlatticeNavItem[] = [

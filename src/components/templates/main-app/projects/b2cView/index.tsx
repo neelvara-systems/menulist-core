@@ -1,10 +1,14 @@
 import { assertProjectUpdateSucceeded, publishProject, uploadFile } from "@database/projects";
 import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
+import { collectObpMediaReferences } from "@lib/media/obpMediaReferences";
 import { getDataUrlMimeType } from "@lib/media/imageProfiles";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import { assertStoreUpdateSucceeded, updateStore } from "@database/stores";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { resolveRenderLanguage } from "@lib/localization/languageResolver";
 import { getProjectDefaultLanguage } from "@lib/localization/projectContent";
+import { normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
+import { getStoreDeepDifference } from "@lib/store/storeNestedUpdateProjection";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ProjectsDataContext, ProjectsDataProviderType } from "@providers/projectsDataProvider";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
@@ -14,8 +18,13 @@ import MainContentRenderer from "@template/website/mainContentRenderer";
 import { StoreDataType } from "@type/platform/store";
 import { removeObjRef } from "@util/utils";
 import { generateProjectUrl } from "@lib/utils/slugify";
+import {
+    MENULIST_ANSWERLATTICE_EVENTS,
+    emitMenuListAnswerlatticeWorkflowEvent,
+    isVerifiedMenuPublishResult,
+} from "@lib/answerlattice/referenceClients/menuListGuidedResolution";
 import { Flex, message } from "antd";
-import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useState } from "react";
+import { forwardRef, useCallback, useContext, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { resolveMenuDesignConfig } from "./designSystem";
 import { getBoundedProjectPageStringContext, getProjectPageProjectLogContext, getProjectPageStoreLogContext, logProjectPageFailure } from "../utils/projectPageDiagnostics";
 import { Project } from '../types';
@@ -52,6 +61,8 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     const [storeDraft, setStoreDraft] = useState<StoreDataType | null>(storeDetails ? removeObjRef(storeDetails) : null);
     const [lastPublishedStoreDraft, setLastPublishedStoreDraft] = useState<StoreDataType | null>(storeDetails ? removeObjRef(storeDetails) : null);
     const [obpPhotoDeleteQueue, setObpPhotoDeleteQueue] = useState<string[]>([]);
+    const obpPhotoDeleteQueueRef = useRef<string[]>([]);
+    const persistedPublicPresenceRef = useRef(storeDetails?.publicPresence);
     const [obpPhotoDeleteResetToken, setObpPhotoDeleteResetToken] = useState(0);
     const [previewModalOpen, setPreviewModalOpen] = useState(false);
     const [lastPublishedState, setLastPublishedState] = useState<Project | null>(null);
@@ -75,11 +86,28 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     };
 
     const handleObpPhotoDeleteQueueChange = useCallback((photoUrls: string[]) => {
+        obpPhotoDeleteQueueRef.current = [...photoUrls];
         setObpPhotoDeleteQueue((previous) => {
             const previousKey = JSON.stringify(previous);
             const nextKey = JSON.stringify(photoUrls);
             return previousKey === nextKey ? previous : [...photoUrls];
         });
+    }, []);
+
+    useEffect(() => {
+        obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueue;
+    }, [obpPhotoDeleteQueue]);
+
+    useEffect(() => {
+        persistedPublicPresenceRef.current = lastPublishedStoreDraft?.publicPresence;
+    }, [lastPublishedStoreDraft?.publicPresence]);
+
+    useEffect(() => () => {
+        if (obpPhotoDeleteQueueRef.current.length === 0) return;
+        void deleteOBPPhotos(
+            obpPhotoDeleteQueueRef.current,
+            collectObpMediaReferences(persistedPublicPresenceRef.current),
+        );
     }, []);
 
     // Expose functions to parent via ref
@@ -92,6 +120,13 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                 let updatedProjectCopy: Project | null = null;
                 const hasOfficialChanges = hasOfficialPageChanges();
                 const queuedObpPhotoDeletes = [...obpPhotoDeleteQueue];
+                const normalizedOfficialLinks = hasOfficialChanges
+                    ? normalizeOwnerPublicPresenceLinks(storeDraft?.publicPresence || {})
+                    : null;
+                if (normalizedOfficialLinks?.invalidKeys.length) {
+                    message.error('Enter valid HTTPS public-page links before publishing.');
+                    return;
+                }
 
                 if (hasProjectChanges()) {
                     const projectCopy: Project = removeObjRef(projectData);
@@ -100,11 +135,13 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     }
 
                     const menuBg = projectCopy?.config?.design?.menu?.backgroundImage;
-                    if (menuBg && menuBg.includes('base64')) {
+                    if (isDataUrl(menuBg)) {
                         projectCopy.config.design.menu.backgroundImage = await uploadFile({ url: menuBg, type: getDataUrlMimeType(menuBg, 'image/jpeg'), uid: projectData.projectId }, 'assets');
                     }
 
-                    const updatedProject: Project = await publishProject(projectCopy);
+                    const updatedProject: Project = await publishProject(projectCopy, {
+                        expectedModifiedOn: (projectCopy as Project & { modifiedOn?: unknown }).modifiedOn,
+                    });
                     assertProjectUpdateSucceeded(
                         updatedProject,
                         projectCopy.projectId,
@@ -114,6 +151,19 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     setProjectData(updatedProjectCopy);
                     setActiveProject(updatedProjectCopy);
                     setLastPublishedState(updatedProjectCopy);
+                    if (updatedProjectCopy.lastPublishedAt) {
+                        setStoreDetails((current: StoreDataType | null) => (
+                            current && String(current.storeId) === String(storeDetails?.storeId)
+                                ? { ...current, lastPublishedAt: updatedProjectCopy?.lastPublishedAt }
+                                : current
+                        ));
+                        setStoreDraft((current) => current
+                            ? { ...current, lastPublishedAt: updatedProjectCopy?.lastPublishedAt }
+                            : current);
+                        setLastPublishedStoreDraft((current) => current
+                            ? { ...current, lastPublishedAt: updatedProjectCopy?.lastPublishedAt }
+                            : current);
+                    }
 
                     // 🩺 Post-publish health verification (fire-and-forget)
                     // Runs in background — does NOT block UI or affect success toast
@@ -128,10 +178,20 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                                 updatedProjectCopy?.name || projectCopy.name,
                                 Boolean(updatedProjectCopy?.isDefault ?? projectCopy.isDefault),
                             );
-                            verifyMenuPublish({
+                            void verifyMenuPublish({
                                 storeId: String(storeDetails.storeId),
                                 tenantId: String(storeDetails.tenantId),
                                 publicMenuUrl: verificationPublicMenuUrl,
+                            }).then((verificationResult) => {
+                                if (isVerifiedMenuPublishResult(verificationResult)) {
+                                    emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_VERIFIED);
+                                }
+                            }).catch((verificationError) => {
+                                logProjectPageFailure('projects_b2c_publish_verification_failed', verificationError, {
+                                    ...getProjectPageProjectLogContext(projectData?.projectId, projectData?.masterProjectId),
+                                    ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                                    ...getBoundedProjectPageStringContext('publicMenuUrl', verificationPublicMenuUrl),
+                                });
                             });
                         }
                     } catch (verificationSetupError) {
@@ -148,7 +208,7 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                 if (hasOfficialChanges && storeDraft?.storeId) {
                     const storeUpdate: any = {
                         storeId: storeDraft.storeId,
-                        publicPresence: storeDraft.publicPresence || {},
+                        publicPresence: normalizedOfficialLinks?.presence || storeDraft.publicPresence || {},
                     };
 
                     if (hasBusinessCopyPresenceChanges()) {
@@ -158,7 +218,10 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                         });
                     }
 
-                    const writeResult = await updateStore(storeUpdate);
+                    const writeResult = await updateStore({
+                        ...getStoreDeepDifference(storeUpdate, storeDetails || {}),
+                        storeId: storeDraft.storeId,
+                    });
                     assertStoreUpdateSucceeded(
                         writeResult,
                         storeDraft.storeId,
@@ -167,20 +230,33 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
                     const nextStoreDetails = removeObjRef({
                         ...(storeDetails || {}),
                         ...storeUpdate,
+                        ...(updatedProjectCopy?.lastPublishedAt
+                            ? { lastPublishedAt: updatedProjectCopy.lastPublishedAt }
+                            : {}),
                     });
+                    persistedPublicPresenceRef.current = nextStoreDetails.publicPresence;
                     setStoreDetails(nextStoreDetails);
                     setStoreDraft(nextStoreDetails);
                     setLastPublishedStoreDraft(removeObjRef(nextStoreDetails));
                 }
 
                 if (queuedObpPhotoDeletes.length > 0) {
-                    await deleteOBPPhotos(queuedObpPhotoDeletes);
-                    setObpPhotoDeleteQueue([]);
-                    setObpPhotoDeleteResetToken((token) => token + 1);
+                    const failedPhotoDeletes = await deleteOBPPhotos(
+                        queuedObpPhotoDeletes,
+                        collectObpMediaReferences(storeDraft?.publicPresence),
+                    );
+                    obpPhotoDeleteQueueRef.current = failedPhotoDeletes;
+                    setObpPhotoDeleteQueue(failedPhotoDeletes);
+                    if (failedPhotoDeletes.length === 0) {
+                        setObpPhotoDeleteResetToken((token) => token + 1);
+                    }
                 }
 
                 if (updatedProjectCopy || hasOfficialChanges || queuedObpPhotoDeletes.length > 0) {
                     dispatch(showSuccessToast("Public page changes published"));
+                }
+                if (updatedProjectCopy) {
+                    emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_PUBLISH_COMPLETED);
                 }
                 setHasChanges?.(false);
             } catch (error) {
@@ -210,12 +286,23 @@ const B2CView = forwardRef<B2CViewRef, B2CViewProps>(({ activeDeviceType, setHas
     }, [projectData, lastPublishedState, storeDraft, lastPublishedStoreDraft, obpPhotoDeleteQueue, setHasChanges]);
 
     useEffect(() => {
+        const abandonedPhotoCandidates = [...obpPhotoDeleteQueueRef.current];
+        if (abandonedPhotoCandidates.length > 0) {
+            void deleteOBPPhotos(
+                abandonedPhotoCandidates,
+                collectObpMediaReferences(persistedPublicPresenceRef.current),
+            );
+        }
         if (!storeDetails) {
+            obpPhotoDeleteQueueRef.current = [];
+            persistedPublicPresenceRef.current = undefined;
             setStoreDraft(null);
             setLastPublishedStoreDraft(null);
             return;
         }
         const clonedStore = removeObjRef(storeDetails);
+        obpPhotoDeleteQueueRef.current = [];
+        persistedPublicPresenceRef.current = clonedStore.publicPresence;
         setStoreDraft(clonedStore);
         setLastPublishedStoreDraft(removeObjRef(clonedStore));
         setObpPhotoDeleteQueue([]);

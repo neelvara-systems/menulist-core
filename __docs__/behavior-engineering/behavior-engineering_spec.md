@@ -318,7 +318,8 @@ Based on BJ Fogg's Behavior Model (Stanford): **Behavior = Motivation × Ability
 **Our nudges are:**
 
 - **Operational guidance**, not system intelligence nudges
-- **Dismissible** — owner can permanently dismiss the dashboard card
+- **Embedded** — guidance stays inside existing Dashboard and Share surfaces;
+  there is no duplicate dashboard card or persistence decision
 - **Feature-flagged** — can be turned off instantly via `ENABLE_BEHAVIOR_NUDGES`
 - **Contextual** — appear at action moments (copy, share, QR download), not randomly
 - **Calm tone** — factual guidance, not promotional noise
@@ -332,7 +333,7 @@ Based on BJ Fogg's Behavior Model (Stanford): **Behavior = Motivation × Ability
 | Risk                        | Mitigation                                                                                                    |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | Nudges feel pushy/salesy    | 90/10 tone rule. Calm, factual, helpful. Never promotional.                                                   |
-| Constitution Law 2 conflict | Nudges are owner-operational (like editor onboarding), not system intelligence. Dismissible. Feature-flagged. |
+| Constitution Law 2 conflict | Guidance is owner-operational, embedded in existing action surfaces, and feature-flagged; it does not create a new banner. |
 | Owner ignores nudges        | Nudges appear at action moments (when copying, sharing, downloading) — not random                             |
 | Staff doesn't adopt         | Owner shares link with staff. Staff sends same link.                                                          |
 | PDF habit too strong        | Reinforce current-approved-source link repeatedly                                                             |
@@ -340,5 +341,5 @@ Based on BJ Fogg's Behavior Model (Stanford): **Behavior = Motivation × Ability
 
 ---
 
-**Last Updated:** February 19, 2026  
+**Last Updated:** July 17, 2026
 **Authority:** Founder decision on all positioning and tone

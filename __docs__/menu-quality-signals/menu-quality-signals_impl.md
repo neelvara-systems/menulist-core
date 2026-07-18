@@ -1,7 +1,7 @@
 # Menu Quality Signals — Implementation Plan
 
-> **Version:** 1.3
-> **Last Updated:** June 29, 2026
+> **Version:** 1.4
+> **Last Updated:** July 16, 2026
 > **Audience:** Developers
 > **Status:** ✅ IMPLEMENTED
 
@@ -9,17 +9,18 @@
 
 ## 1. Architecture Overview
 
-Menu Quality Signals is a **pure read + compute layer** with **3 UI surfaces**. The owner-facing name is **Menu Check**. It reads the active project's `extractedData` items and computes simple quality signals. No new collections, no new API routes.
+Menu Quality Signals is a **pure read + compute layer** with four adapters: dashboard, editor banner, publish intercept, and MobileShell menu. The owner-facing name is **Menu Check**. It reads the active project's `extractedData` and public-content fields. No new collections or API routes.
 
 ```
 Project Document (files[].extractedData.data.items)
   ↓
 qualitySignals.ts (compute signals)
   ↓
-3 Surface Adapters:
+4 Surface Adapters:
   • Dashboard Panel (awareness)
   • Editor Banner (action context)
   • Publish Intercept (highest leverage)
+  • Mobile Menu Check (repair + exact filters)
   ↓
 Action buttons → open exact editor context, filters, or repair tools
 ```
@@ -54,7 +55,7 @@ src/components/templates/main-app/projects/editorView/
 src/components/mobile/components/
 ├── MenuQualitySignals.tsx            # ~115 lines — Mobile version
 
-src/config/features.ts                # Modified — ENABLE_MENU_QUALITY_SIGNALS: false
+src/config/features.ts                # ENABLE_MENU_QUALITY_SIGNALS: true
 
 src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx  # Modified — embeds dashboard panel
 src/components/templates/main-app/projects/editorView/Editor.tsx      # Modified — embeds banner + publish intercept
@@ -77,13 +78,13 @@ src/components/mobile/screens/MobileMenuScreen.tsx                    # Modified
 
 ---
 
-## 5. Three Surfaces
+## 5. Four Surfaces
 
 ### 5.1 Dashboard Panel (`MenuQualitySignals.tsx`)
 
 - Mounted in the owner dashboard overview directly below the hero card through `OwnerDashboard/OverviewView`
 - Still renders in the overview no-analytics state when a selected/fallback project exists
-- Fetches project data via `getProjectData(projectId)` — 1 additional read per dashboard load
+- Reuses the Owner Dashboard's one SWR project read shared with setup progress; the read is deduped for ten minutes and the quality component does not issue a second read when that payload is supplied
 - Calls `computeQualitySignals()` with project files, languages, design visibility settings, and project public content → `getVisibleSignals()` to cap at 4 warnings
 - Shows contextual `helpText` below each signal label
 - Owner-facing title is "Menu Check"
@@ -132,6 +133,13 @@ Repair Menu intentionally does not invent prices, create item photos, or show hi
 - Failure never blocks the publish flow
 - If the dynamic import or signal computation fails, `Editor.tsx` logs `menu_editor_quality_signals_publish_intercept_failed` through `src/components/templates/main-app/projects/utils/editorDiagnostics.ts` with bounded project/count metadata only
 
+### 5.4 Mobile Menu Check
+
+- Mounted inside `MobileMenuScreen`, so it inherits `MobileShell` authentication, store context, localization, and the already-loaded project.
+- Repairable signals open the existing mobile Repair Menu sheet.
+- Images, prices, hidden items, translations, category icons, and price outliers map to exact mobile filters or review state.
+- The panel performs no Firestore read or write and never bypasses the shared mobile save path.
+
 ---
 
 ## 6. Price Outlier Detection
@@ -139,7 +147,7 @@ Repair Menu intentionally does not invent prices, create item photos, or show hi
 Algorithm:
 
 1. Group active items by `item.category` (skip items with variants)
-2. Parse prices to numbers (strip currency symbols)
+2. Parse only a single numeric value; currency symbols and grouping separators are accepted, while text prices and ranges are skipped
 3. Skip categories with < 4 priced items
 4. Compute median price per category
 5. Flag items where `price < median * 0.35` OR `price > median * 3.0`
@@ -176,4 +184,4 @@ Algorithm:
 
 **Document Signature:** Technical Implementation Plan
 **Created:** March 15, 2026
-**Updated:** June 29, 2026 — v1.3 (dashboard and publish-intercept failure diagnostics)
+**Updated:** July 16, 2026 — v1.4 (primary-language description and single-value outlier boundaries)

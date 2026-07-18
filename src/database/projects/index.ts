@@ -1,5 +1,6 @@
 import { FEATURE_FLAGS } from "@config/features";
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
+import { resolveNextSpecialMenuTransitionAt } from "@data/shared/specialMenuSchedule";
 import {
     addMenuDriftSummaryContribution,
     readMenuDriftContributions,
@@ -33,6 +34,7 @@ import {
     normalizeSpecialMenuMetadata,
     transitionSpecialMenuLifecycle,
 } from "@database/projects/specialMenuLifecycle";
+import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
 import {
@@ -79,6 +81,7 @@ import {
     normalizeProjectLanguages,
 } from "@lib/localization/languagePolicy";
 import { logger } from "@lib/monitoring/logger";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     appendImageBatchSelectionsToProject,
     normalizeImageBatchProjectSelections,
@@ -95,11 +98,22 @@ import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { revalidatePublicClientCacheForProject } from "@lib/cache/publicClientCache";
 import { getMenuDesignPresetPatch, getRecommendedMenuDesignPresets } from "@lib/menu/menuDesignPresets";
 import {
+    getMenuSnapshotPayloadSizeBytes,
+    MENU_SNAPSHOT_MAX_ESTIMATED_BYTES,
+} from "@lib/menu/menuSnapshotBoundary";
+import {
     buildProjectAfterPartialUpdate,
+    preserveExistingProjectImageMetadata,
     sanitizeProjectPartialUpdate,
 } from "@lib/menu/projectUpdateProjection";
 import {
+    projectDocumentMutationVersionMillis,
+    projectMutationVersionMillis,
+} from "@lib/menu/projectMutationVersion";
+import { preserveExistingProjectVisualDefaults } from "@lib/extraction/projectVisualDefaults";
+import {
     isProjectSlugClaimed,
+    isRecentlyDeletedProjectSlugReservation,
     resolveAvailableProjectSlug,
 } from "@lib/menu/projectSlugOwnership";
 import { createSpecialMenuOverlayFiles } from "@lib/menu/specialMenuOverlay";
@@ -107,6 +121,12 @@ import {
     normalizeProjectDocumentScope,
     projectDocumentMatchesScope,
 } from "@lib/menu/projectDocumentScope";
+import {
+    nextProjectMenuVersion,
+    resolveStoredProjectMasterId,
+} from "@lib/menu/projectMutationAuthority";
+import { buildProjectUploadObjectId } from "@lib/menu/projectUploadIdentity";
+import { validateProjectUploadDataUrl } from "@lib/menu/projectUploadPayload";
 import {
     normalizeTimeSlotPreset,
     normalizeTimeSlotPresetId,
@@ -123,9 +143,11 @@ import {
 import {
     normalizeMultiOutletProjectId,
 } from "@lib/multiOutlet/projectIdBoundary";
+import { triggerPosSyncForAcknowledgedProjectSave } from "@lib/posSync/eventBuilder";
 import type { MediaImageType, MediaImageVariantId } from "@lib/media/imageProfiles";
 import { isDataUrl } from "@lib/media/mediaStorage";
 import { prepareMediaImage } from "@lib/media/prepareMediaImage";
+import { normalizeProjectPriceTruth } from "@lib/pricing/projectPriceTruth";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
 import { slugify } from "@lib/utils/slugify";
 import { DEFAULTS } from "@template/main-app/projects/b2cView/designSystem";
@@ -598,6 +620,17 @@ async function createMenuSnapshot(
         }, {
             undefinedObjectValue: 'omit',
         });
+        const estimatedPayloadBytes = getMenuSnapshotPayloadSizeBytes(snapshotPayload);
+        if (estimatedPayloadBytes > MENU_SNAPSHOT_MAX_ESTIMATED_BYTES) {
+            logProjectPersistenceInfo('project_snapshot_skipped_oversize', {
+                ...getProjectPersistenceProjectLogContext(projectId),
+                categoryCount: Object.keys(categories).length,
+                estimatedPayloadBytes,
+                itemCount: Object.keys(items).length,
+                retentionDays,
+            });
+            return;
+        }
         await addDocFn(snapshotRef, snapshotPayload);
 
         logProjectPersistenceInfo('project_snapshot_created', {
@@ -741,6 +774,7 @@ const normalizeParsedProjectSummaryData = (
     if (typeof projectData.isDefault === 'boolean') normalized.isDefault = projectData.isDefault;
     if (projectData.createdOn instanceof Timestamp) normalized.createdOn = projectData.createdOn;
     if (projectData.modifiedOn instanceof Timestamp) normalized.modifiedOn = projectData.modifiedOn;
+    if (projectData.lastPublishedAt instanceof Timestamp) normalized.lastPublishedAt = projectData.lastPublishedAt;
     if (typeof projectData.slug === 'string') normalized.slug = projectData.slug;
     if (previousSlugs) normalized.previousSlugs = previousSlugs;
     if (typeof projectData.isSpecialMenu === 'boolean') normalized.isSpecialMenu = projectData.isSpecialMenu;
@@ -883,20 +917,21 @@ const revalidateProjectSummaryMutation = async (
  * reserved so a same-slug replacement can't hijack incoming QR scans.
  */
 const SLUG_RESERVATION_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+const SLUG_RESERVATION_QUERY_LIMIT = 25;
 
 /**
  * Check whether a proposed slug is currently reserved by a project that
  * was soft-deleted within the last 90 days.
  *
  * Queries the projects subcollection directly (NOT the summary, which
- * has deleted projects removed) and walks any project with
- * `deleted === true` AND `deletedAt > now - 90d`. A match on either the
- * deleted project's current slug OR any of its previousSlugs[] blocks
- * re-use of the slug.
+ * has deleted projects removed) by exact current slug and exact
+ * `previousSlugs` membership. Matching rows are then checked for
+ * `deleted === true` and `deletedAt > now - 90d`.
  *
- * Firebase cost: 1 query per create/rename; bounded (typical store has
- * very few deleted projects in any 90-day window). Skipped entirely
- * when the proposed slug is empty.
+ * Firebase cost: 2 targeted queries per create/rename, capped at 25
+ * matching rows each. This replaces the old arbitrary 50-row deleted
+ * scan, so unrelated tombstones are never read. A full page fails closed
+ * because an unexamined matching tombstone may still own the URL.
  *
  * @see __docs__/client-menu/public-routing-doctrine.md §A-12, T1-N-04
  */
@@ -909,33 +944,35 @@ const isSlugReservedByRecentlyDeleted = async (
     const normalized = proposedSlug.toLowerCase();
 
     try {
-        const deletedQuery = query(
-            scopedCollectionRef,
-            where('deleted', '==', true),
-            limit(50),
-        );
-        const snapshot = await getDocs(deletedQuery);
+        const [currentSlugSnapshot, previousSlugSnapshot] = await Promise.all([
+            getDocs(query(
+                scopedCollectionRef,
+                where('slug', '==', normalized),
+                limit(SLUG_RESERVATION_QUERY_LIMIT),
+            )),
+            getDocs(query(
+                scopedCollectionRef,
+                where('previousSlugs', 'array-contains', normalized),
+                limit(SLUG_RESERVATION_QUERY_LIMIT),
+            )),
+        ]);
         const cutoffMs = Date.now() - SLUG_RESERVATION_WINDOW_MS;
+        const matchingDocuments = new Map(
+            [...currentSlugSnapshot.docs, ...previousSlugSnapshot.docs]
+                .map((docSnap) => [docSnap.id, docSnap] as const),
+        );
 
-        for (const docSnap of snapshot.docs) {
+        for (const docSnap of Array.from(matchingDocuments.values())) {
             if (excludeProjectId && docSnap.id === excludeProjectId) continue;
-            const data = docSnap.data() as Record<string, any>;
-
-            // Reservation only applies while inside the 90-day window.
-            const deletedAt = data?.deletedAt;
-            const deletedAtMs =
-                deletedAt?.toMillis?.() ??
-                (deletedAt instanceof Date ? deletedAt.getTime() : null);
-            if (deletedAtMs == null || deletedAtMs < cutoffMs) continue;
-
-            const currentSlug = typeof data?.slug === 'string' ? data.slug.toLowerCase() : '';
-            if (currentSlug && currentSlug === normalized) return true;
-
-            const previousSlugs: string[] = Array.isArray(data?.previousSlugs)
-                ? data.previousSlugs.filter((s: unknown) => typeof s === 'string')
-                : [];
-            if (previousSlugs.some((s) => s.toLowerCase() === normalized)) return true;
+            if (isRecentlyDeletedProjectSlugReservation(docSnap.data(), normalized, cutoffMs)) {
+                return true;
+            }
         }
+
+        if (
+            currentSlugSnapshot.size === SLUG_RESERVATION_QUERY_LIMIT
+            || previousSlugSnapshot.size === SLUG_RESERVATION_QUERY_LIMIT
+        ) return true;
     } catch (error) {
         // Treat unknown reservation state as reserved so QR/public URL permanence
         // does not depend on a best-effort lookup succeeding.
@@ -1034,47 +1071,44 @@ export const removeProjectFromSummary = async (projectId: string) => {
     );
 };
 
-const getTenantScopedProjectUploadFileId = (projectId: string, fileId: string): string => {
-    const stableId = `${projectId || 'project'}-${fileId || Date.now()}`;
-    const normalizedId = stableId
-        .trim()
-        .replace(/[^a-zA-Z0-9._-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 120);
-
-    return normalizedId || `${Date.now()}`;
-};
-
 export const uploadProjectFile = async (
-    data: any,
+    data: {
+        fileToUpdate?: unknown;
+        fileType?: unknown;
+    },
     type = "",
     projectId: string,
-    fileId: string,
+    fileId: unknown,
+    operationSession?: Awaited<ReturnType<typeof getActiveSession>>,
 ) => {
-    let newUrl: any = "";
-    let fileType: any = data.fileType;
-    let fileToUpdate: any = data.fileToUpdate;
-    const storageFileId = getTenantScopedProjectUploadFileId(projectId, fileId);
+    const fileType = data?.fileType;
+    const fileToUpdate: unknown = data?.fileToUpdate;
+    const session = operationSession || await getActiveSession();
+    const scope = normalizeProjectDocumentScope({ tId: session.tId, sId: session.sId, projectId });
+    if (!scope) throw new Error('project_file_upload_scope_invalid');
+    if (typeof fileToUpdate !== 'string' || !isDataUrl(fileToUpdate)) return "";
+    const validatedPayload = validateProjectUploadDataUrl({
+        claimedType: fileType,
+        dataUrl: fileToUpdate,
+    });
+    const storageFileId = buildProjectUploadObjectId({
+        attemptId: doc(collection(firebaseClient, DATA_COLLECTION)).id,
+        fileId,
+        projectId,
+    });
     const storageFileType = type || "files";
 
-    if (fileToUpdate) {
-        if (fileToUpdate?.includes("base64")) {
-            const session = await getActiveSession();
-            newUrl = await uploadBase64ToStorage({
-                fileId: storageFileId,
-                url: fileToUpdate,
-                path: generateStoragePath({
-                    collection: DATA_COLLECTION,
-                    fileType: storageFileType,
-                    session,
-                    fileId: storageFileId,
-                }),
-                type: fileType,
-            });
-        }
-        return newUrl;
-    }
-    return "";
+    return await uploadBase64ToStorage({
+        fileId: storageFileId,
+        url: fileToUpdate,
+        path: generateStoragePath({
+            collection: DATA_COLLECTION,
+            fileType: storageFileType,
+            session,
+            fileId: storageFileId,
+        }),
+        type: validatedPayload.mimeType,
+    });
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -1284,7 +1318,10 @@ export const addProject = async (data: Partial<ProjectMetadata> & {
 export const updateProjectMetadata = async (
     projectId: string,
     data: Partial<ProjectSummaryData>,
-    options: { defaultHandoff?: ProjectDefaultHandoffOptions | null } = {},
+    options: {
+        defaultHandoff?: ProjectDefaultHandoffOptions | null;
+        preserveExistingProjectImage?: boolean;
+    } = {},
 ) => {
     return await apiCallComposer(
         async () => {
@@ -1390,7 +1427,10 @@ export const updateProjectMetadata = async (
                     : typeof data.description === 'string'
                         ? updateLocalizedText(freshCurrentSummary.description, data.description, freshTextLanguage, 'en')
                         : toLocalizedText(data.description as any, freshTextLanguage);
-                const { slug: _ignoredSlug, previousSlugs: _ignoredPreviousSlugs, ...safeData } = data;
+                const currentAwareData = options.preserveExistingProjectImage
+                    ? preserveExistingProjectImageMetadata(data, freshCurrentSummary)
+                    : data;
+                const { slug: _ignoredSlug, previousSlugs: _ignoredPreviousSlugs, ...safeData } = currentAwareData;
                 const applySlugChange = Boolean(
                     shouldChangeSlug
                     && requestedSlug
@@ -1531,7 +1571,12 @@ export async function appendImageBatchProjectSelections({
         if (!currentSnap.exists()) throw new Error('image_batch_project_missing');
         const current = currentSnap.data() as Project;
         if (
-            (current.projectId !== undefined && String(current.projectId) !== projectId)
+            current.deleted === true
+            || !projectDocumentMatchesScope(current, {
+                projectId,
+                sId: String(operationScope.sId),
+                tId: String(operationScope.tId),
+            })
             || current.masterProjectId
         ) {
             throw new Error('image_batch_project_selection_contract_mismatch');
@@ -1597,20 +1642,90 @@ export function assertProjectDeleteSucceeded(
     throw new Error(rejectionCode);
 }
 
-const runUpdateProject = async (data: Partial<Project>) => {
+interface ProjectUpdateOptions {
+    preserveExistingVisualDefaults?: boolean;
+    expectedModifiedOn?: number | string | Date | Timestamp;
+}
+
+type ProjectPublishOptions = {
+    expectedModifiedOn?: unknown;
+};
+
+function assertGenericSpecialMenuUpdateBoundary(
+    currentProject: Project,
+    requestedUpdate: Partial<Project>,
+): void {
+    const currentMetadata = currentProject._specialMenu
+        ? normalizeSpecialMenuMetadata(currentProject._specialMenu)
+        : null;
+    if (!currentMetadata) {
+        if (requestedUpdate._specialMenu !== undefined) {
+            throw new Error('Use the special-menu creation flow to add lifecycle metadata.');
+        }
+        return;
+    }
+
+    if (requestedUpdate.active === false || requestedUpdate.deleted === true) {
+        throw new Error('Use the special-menu lifecycle controls to end, cancel, or delete this menu.');
+    }
+    if (requestedUpdate._specialMenu === undefined) return;
+
+    const requestedMetadata = normalizeSpecialMenuMetadata(requestedUpdate._specialMenu);
+    if (
+        !requestedMetadata
+        || requestedMetadata.baseProjectId !== currentMetadata.baseProjectId
+        || requestedMetadata.behaviorTemplate !== currentMetadata.behaviorTemplate
+        || requestedMetadata.mode !== currentMetadata.mode
+        || requestedMetadata.startsAt !== currentMetadata.startsAt
+        || requestedMetadata.endsAt !== currentMetadata.endsAt
+        || requestedMetadata.status !== currentMetadata.status
+        || requestedMetadata.activatedAt !== currentMetadata.activatedAt
+        || requestedMetadata.deactivatedAt !== currentMetadata.deactivatedAt
+    ) {
+        throw new Error('Use the special-menu schedule controls to change lifecycle metadata.');
+    }
+}
+
+const runUpdateProject = async (data: Partial<Project>, options: ProjectUpdateOptions = {}) => {
     data = sanitizeProjectPartialUpdate(stripGeneratedProjectReadModels(data));
+    normalizeProjectPriceTruth(data);
     const operationSession = await getActiveSession();
     const operationScope = normalizeMenuChangeLogScope(operationSession);
     if (!operationScope) {
         throw new Error('Invalid active project operation scope');
     }
     const operationProjectId = normalizeMenuChangeLogIdentifier(data.projectId, 'projectId');
+    const projectScope = normalizeProjectDocumentScope({
+        tId: operationScope.tId,
+        sId: operationScope.sId,
+        projectId: operationProjectId,
+    });
+    if (!projectScope) throw new Error('Invalid project update identity');
     data.projectId = operationProjectId;
     const operationProjectRef = doc(
         firebaseClient,
-        `${DATA_COLLECTION}/${operationScope.tId}/${operationScope.sId}`,
-        operationProjectId,
+        `${DATA_COLLECTION}/${projectScope.tId}/${projectScope.sId}`,
+        projectScope.projectId,
     );
+
+    const currentProjectDoc = await getDoc(operationProjectRef);
+    if (
+        !currentProjectDoc.exists()
+        || currentProjectDoc.data().deleted === true
+        || !projectDocumentMatchesScope(currentProjectDoc.data(), projectScope)
+    ) {
+        throw new Error('Project update identity mismatch');
+    }
+    const oldProject = currentProjectDoc.data() as Project;
+    assertGenericSpecialMenuUpdateBoundary(oldProject, data);
+    const expectedModifiedOnMillis = options.expectedModifiedOn === undefined
+        ? null
+        : projectMutationVersionMillis(options.expectedModifiedOn);
+    if (options.expectedModifiedOn !== undefined && expectedModifiedOnMillis === null) {
+        throw new Error('Invalid project update precondition');
+    }
+    const storedMasterProjectId = resolveStoredProjectMasterId(oldProject, data) || '';
+    if (storedMasterProjectId) data.masterProjectId = storedMasterProjectId;
 
     if (Array.isArray(data.languages)) {
         const normalizedPolicy = normalizeProjectLanguagePolicy({
@@ -1645,63 +1760,26 @@ const runUpdateProject = async (data: Partial<Project>) => {
         ) as any;
     }
 
-    // MOL v0 + Awareness: Fetch current state for change detection (if enabled)
-    let oldProject: Project | null = null;
-    if ((FEATURE_FLAGS.ENABLE_MENU_OBSERVATION || FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS || FEATURE_FLAGS.ENABLE_MCE) && data.projectId) {
-        try {
-            const docSnap = await getDoc(operationProjectRef);
-            if (docSnap.exists()) {
-                oldProject = docSnap.data() as Project;
-            }
-        } catch (e) {
-            logProjectPersistenceFailure('project_current_state_load_failed', e, {
-                ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
-            });
-        }
-    }
-
     // INVARIANT: All customer-facing truth must pass through updateProject().
     // MCE validation assumes no direct Firestore writes bypass this path.
     // Direct writes bypassing the DAL are treated as a security breach.
     // @see __docs__/menu-correctness-engine/menu-correctness-engine_spec.md §19
 
-    // MCE: Validate project data BEFORE write (client-side, < 100ms)
-    // Stamps _mce verification metadata as part of the same setDoc call.
-    // Zero extra Firebase operations. Silent fail — never blocks save.
-    // @see __docs__/menu-correctness-engine/menu-correctness-engine_impl.md §5.1
-    if (FEATURE_FLAGS.ENABLE_MCE && data.projectId) {
-        try {
-            const { mceValidate, toMCEMetadata } = await import("@lib/mce");
-            const projectForValidation = oldProject
-                ? buildProjectAfterPartialUpdate(oldProject, data)
-                : (Array.isArray(data.files) ? data as Project : null);
-            if (projectForValidation) {
-                const result = mceValidate({
-                    projectData: projectForValidation as Record<string, any>,
-                    isOutlet: !!projectForValidation.masterProjectId,
-                    masterProjectId: projectForValidation.masterProjectId,
-                    oldProjectData: oldProject as Record<string, any> | undefined,
-                });
-                // Merge verification metadata into save data
-                (data as any)._mce = toMCEMetadata(result);
-                logMCEValidationResult(result);
-            }
-        } catch (e) {
-            // Silent fail — MCE failure never blocks owner
-            logMCEValidationFailure(e, {
-                isOutlet: Boolean(oldProject?.masterProjectId),
-                oldProjectPresent: Boolean(oldProject),
-            });
-        }
-    }
-
-    if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.projectId && data.masterProjectId) {
-        const linkedOutletLogContext = getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId);
+    if (data.projectId && storedMasterProjectId) {
+        const linkedOutletLogContext = getProjectPersistenceProjectLogContext(data.projectId, storedMasterProjectId);
+        const extractedVisualDefaults = options.preserveExistingVisualDefaults ? {
+            brandAccentColor: data.config?.design?.brand?.accentColor,
+            imageBackgroundColor: data.aiPreferences?.image?.backgroundColor,
+        } : null;
         const response = await fetch('/api/projects/outlet-save', {
             ...LINKED_OUTLET_SAVE_REQUEST_POLICY,
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ project: data }),
+            body: JSON.stringify({
+                project: { ...data, masterProjectId: storedMasterProjectId },
+                ...(expectedModifiedOnMillis !== null ? { expectedModifiedOnMillis } : {}),
+                ...(extractedVisualDefaults ? { extractedVisualDefaults } : {}),
+            }),
         });
         if (!response.ok) {
             const error = createProjectPersistenceStatusError(
@@ -1721,7 +1799,7 @@ const runUpdateProject = async (data: Partial<Project>) => {
             "linked_outlet_save_response_parse_failed",
             "Linked outlet save failed. Please try again.",
         );
-        if (!isLinkedOutletSaveResponse(result, data.projectId, data.masterProjectId)) {
+        if (!isLinkedOutletSaveResponse(result, data.projectId, storedMasterProjectId)) {
             const error = createProjectPersistenceStatusError(
                 "linked_outlet_save_response_invalid",
                 response.status,
@@ -1746,13 +1824,88 @@ const runUpdateProject = async (data: Partial<Project>) => {
             );
         }
 
+        triggerPosSyncForAcknowledgedProjectSave(
+            operationScope.sId,
+            operationScope.tId,
+            data.projectId as string,
+        );
+
         return updateData;
     }
 
     const updateData = composeRequestBody(data, operationSession, { isNew: false });
-    await setDoc(operationProjectRef, updateData, {
-        merge: true,
+    let mceRuntime: null | typeof import("@lib/mce") = null;
+    if (FEATURE_FLAGS.ENABLE_MCE) {
+        try {
+            mceRuntime = await import("@lib/mce");
+        } catch (error) {
+            logMCEValidationFailure(error, {
+                isOutlet: false,
+                oldProjectPresent: true,
+            });
+        }
+    }
+
+    const transactionResult = await runTransaction(firebaseClient, async (transaction) => {
+        const freshProjectDoc = await transaction.get(operationProjectRef);
+        if (
+            !freshProjectDoc.exists()
+            || freshProjectDoc.data().deleted === true
+            || !projectDocumentMatchesScope(freshProjectDoc.data(), projectScope)
+        ) {
+            throw new Error('Project update state changed');
+        }
+        const freshProject = freshProjectDoc.data() as Project;
+        assertGenericSpecialMenuUpdateBoundary(freshProject, data);
+        if (
+            expectedModifiedOnMillis !== null
+            && projectDocumentMutationVersionMillis(freshProject as unknown as Record<string, unknown>) !== expectedModifiedOnMillis
+        ) {
+            throw new Error('Project update state changed');
+        }
+        if (resolveStoredProjectMasterId(freshProject, data)) {
+            throw new Error('Project update state changed');
+        }
+
+        const persistedUpdateData = options.preserveExistingVisualDefaults
+            ? preserveExistingProjectVisualDefaults(
+                { ...updateData },
+                freshProject,
+            )
+            : { ...updateData };
+        let mceResult: ReturnType<NonNullable<typeof mceRuntime>["mceValidate"]> | null = null;
+        let mceError: unknown = null;
+        if (mceRuntime) {
+            try {
+                const projectForValidation = buildProjectAfterPartialUpdate(freshProject, persistedUpdateData);
+                mceResult = mceRuntime.mceValidate({
+                    projectData: projectForValidation as Record<string, any>,
+                    isOutlet: false,
+                    oldProjectData: freshProject as Record<string, any>,
+                });
+                persistedUpdateData._mce = mceRuntime.toMCEMetadata(mceResult);
+            } catch (error) {
+                mceError = error;
+            }
+        }
+
+        transaction.set(operationProjectRef, persistedUpdateData, { merge: true });
+        return {
+            mceError,
+            mceResult,
+            previousProject: freshProject,
+            savedProject: buildProjectAfterPartialUpdate(freshProject, persistedUpdateData),
+        };
     });
+    const previousProject = transactionResult.previousProject;
+    const savedProject = transactionResult.savedProject;
+    if (transactionResult.mceResult) logMCEValidationResult(transactionResult.mceResult);
+    if (transactionResult.mceError) {
+        logMCEValidationFailure(transactionResult.mceError, {
+            isOutlet: false,
+            oldProjectPresent: true,
+        });
+    }
 
     // Public menu and OBP pages share Vercel Data Cache tags. Invalidate after
     // every owner-side project save, including local/dev, so refreshes do not
@@ -1769,13 +1922,30 @@ const runUpdateProject = async (data: Partial<Project>) => {
     if (
         FEATURE_FLAGS.ENABLE_MULTI_OUTLET &&
         data.projectId &&
-        !oldProject?.masterProjectId // No masterProjectId = this is a master project
+        !previousProject.masterProjectId // No masterProjectId = this is a master project
     ) {
         try {
             const { invalidateMasterCache } = await import("@lib/multiOutlet");
             invalidateMasterCache(data.projectId as string);
         } catch (e) {
             logProjectPersistenceFailure('project_master_cache_invalidation_failed', e, {
+                ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
+            });
+        }
+    }
+
+    let hasOperationalChange = false;
+    if (
+        FEATURE_FLAGS.ENABLE_MULTI_OUTLET &&
+        data.projectId &&
+        !previousProject.masterProjectId &&
+        (FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS || FEATURE_FLAGS.ENABLE_MENU_OBSERVATION)
+    ) {
+        try {
+            const { detectOperationalChange } = await import("@lib/multiOutlet/masterUpdateDiff");
+            hasOperationalChange = detectOperationalChange(previousProject, data);
+        } catch (e) {
+            logProjectPersistenceFailure('project_operational_change_detection_failed', e, {
                 ...getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId),
             });
         }
@@ -1789,34 +1959,28 @@ const runUpdateProject = async (data: Partial<Project>) => {
         FEATURE_FLAGS.ENABLE_MULTI_OUTLET &&
         FEATURE_FLAGS.ENABLE_MASTER_UPDATE_AWARENESS &&
         data.projectId &&
-        oldProject &&
-        !oldProject.masterProjectId // This IS a master project
+        !previousProject.masterProjectId && // This IS a master project
+        hasOperationalChange
     ) {
         try {
-            const { detectOperationalChange } = await import("@lib/multiOutlet/masterUpdateDiff");
+            const signalDocRef = doc(
+                firebaseClient,
+                DB_COLLECTIONS.MASTER_OPERATIONAL_STATE,
+                data.projectId as string,
+            );
 
-            const hasOperationalChange = detectOperationalChange(oldProject, data);
-
-            if (hasOperationalChange) {
-                const signalDocRef = doc(
-                    firebaseClient,
-                    DB_COLLECTIONS.MASTER_OPERATIONAL_STATE,
-                    data.projectId as string,
-                );
-
-                // Atomic increment — no read needed, handles concurrent saves safely.
-                // setDoc with merge: creates doc if absent (version starts at 1).
-                // increment() is a Firestore field transform — server-side atomic operation.
-                const { increment } = await import("@firebase/firestore");
-                await setDoc(
-                    signalDocRef,
-                    {
-                        operationalVersion: increment(1),
-                        lastUpdatedAt: Timestamp.now(),
-                    },
-                    { merge: true },
-                );
-            }
+            // Atomic increment — no read needed, handles concurrent saves safely.
+            // setDoc with merge: creates doc if absent (version starts at 1).
+            // increment() is a Firestore field transform — server-side atomic operation.
+            const { increment } = await import("@firebase/firestore");
+            await setDoc(
+                signalDocRef,
+                {
+                    operationalVersion: increment(1),
+                    lastUpdatedAt: Timestamp.now(),
+                },
+                { merge: true },
+            );
         } catch (e) {
             // Silent fail — don't block master save
             logProjectPersistenceFailure('master_update_awareness_signal_update_failed', e, {
@@ -1826,11 +1990,11 @@ const runUpdateProject = async (data: Partial<Project>) => {
     }
 
     // MOL v0: Detect and log changes (fire-and-forget, non-blocking)
-    if (data.projectId && oldProject) {
+    if (data.projectId) {
         void detectAndLogChanges(
             data.projectId,
-            oldProject,
-            buildProjectAfterPartialUpdate(oldProject, updateData),
+            previousProject,
+            savedProject,
             operationScope,
         );
     }
@@ -1840,7 +2004,12 @@ const runUpdateProject = async (data: Partial<Project>) => {
     // - masterProjectId present → OUTLET (linked to master)
     // - masterProjectId absent + multi-outlet enabled → MASTER (or standalone, can't distinguish without store lookup)
     // - multi-outlet disabled → STANDALONE
-    if (oldProject) {
+    if (
+        previousProject
+        && FEATURE_FLAGS.ENABLE_MULTI_OUTLET
+        && FEATURE_FLAGS.ENABLE_MENU_OBSERVATION
+        && hasOperationalChange
+    ) {
         try {
             const { logMultiOutletEvent } =
                 await import("@lib/multiOutlet/molEvents");
@@ -1852,7 +2021,7 @@ const runUpdateProject = async (data: Partial<Project>) => {
                 // Multi-outlet disabled = standalone store
                 eventType = "STANDALONE_MENU_UPDATED";
                 actionDescription = "standalone_content_edited";
-            } else if (oldProject.masterProjectId) {
+            } else if (previousProject.masterProjectId) {
                 // Has masterProjectId = this is an outlet project
                 eventType = "OUTLET_MENU_UPDATED";
                 actionDescription = "outlet_content_edited";
@@ -1884,7 +2053,15 @@ const runUpdateProject = async (data: Partial<Project>) => {
         }
     }
 
-    return updateData;
+    if (data.projectId) {
+        triggerPosSyncForAcknowledgedProjectSave(
+            operationScope.sId,
+            operationScope.tId,
+            data.projectId as string,
+        );
+    }
+
+    return savedProject;
 };
 
 export const updateProject = async (data: Partial<Project>) => {
@@ -1895,9 +2072,12 @@ export const updateProject = async (data: Partial<Project>) => {
     );
 };
 
-export const updateProjectWithoutLoader = async (data: Partial<Project>) => {
+export const updateProjectWithoutLoader = async (
+    data: Partial<Project>,
+    options: ProjectUpdateOptions = {},
+) => {
     return await apiCallComposerClientWithoutLoader(
-        () => runUpdateProject(data),
+        () => runUpdateProject(data, options),
         data,
         "updateProjectWithoutLoader",
     );
@@ -1932,6 +2112,16 @@ export const setProjectActive = async (projectId: string, active: boolean) => {
                     || !projectDocumentMatchesScope(projectData, scope)
                 ) {
                     throw new Error('Project active identity mismatch');
+                }
+                if (
+                    active === false
+                    && projectData._specialMenu
+                    && (
+                        projectData._specialMenu.status === 'active'
+                        || projectData._specialMenu.status === 'scheduled'
+                    )
+                ) {
+                    throw new Error('End or cancel this special menu before making it inactive.');
                 }
 
                 if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && active === false && projectData.masterProjectId) {
@@ -2109,33 +2299,66 @@ export const updatePresetInAllCategories = async (preset: TimeSlotPreset) => {
     );
 };
 
-export const publishProject = async (data: Partial<Project>) => {
+export const publishProject = async (
+    data: Partial<Project>,
+    options: ProjectPublishOptions = {},
+) => {
+    const requestedModifiedOn = options.expectedModifiedOn
+        ?? (data as Partial<Project> & { modifiedOn?: unknown }).modifiedOn;
     return await apiCallComposer(
         async () => {
+            data = sanitizeProjectPartialUpdate(stripGeneratedProjectReadModels(data));
+            normalizeProjectPriceTruth(data);
             const operationSession = await getActiveSession();
             const operationScope = normalizeMenuChangeLogScope(operationSession);
             if (!operationScope) {
                 throw new Error('Invalid active project publish scope');
             }
             const operationProjectId = normalizeMenuChangeLogIdentifier(data.projectId, 'projectId');
+            const projectScope = normalizeProjectDocumentScope({
+                tId: operationScope.tId,
+                sId: operationScope.sId,
+                projectId: operationProjectId,
+            });
+            if (!projectScope) throw new Error('Invalid project publish identity');
             data.projectId = operationProjectId;
             const operationProjectRef = doc(
                 firebaseClient,
-                `${DATA_COLLECTION}/${operationScope.tId}/${operationScope.sId}`,
-                operationProjectId,
+                `${DATA_COLLECTION}/${projectScope.tId}/${projectScope.sId}`,
+                projectScope.projectId,
             );
+            const currentProjectDoc = await getDoc(operationProjectRef);
+            if (
+                !currentProjectDoc.exists()
+                || currentProjectDoc.data().deleted === true
+                || !projectDocumentMatchesScope(currentProjectDoc.data(), projectScope)
+            ) {
+                throw new Error('Project publish identity mismatch');
+            }
+            const currentProject = currentProjectDoc.data() as Project;
+            const currentModifiedOnMillis = projectDocumentMutationVersionMillis(
+                currentProject as unknown as Record<string, unknown>,
+            );
+            const expectedModifiedOnMillis = requestedModifiedOn === undefined
+                ? currentModifiedOnMillis
+                : projectMutationVersionMillis(requestedModifiedOn);
+            if (requestedModifiedOn !== undefined && expectedModifiedOnMillis === null) {
+                throw new Error('Invalid project publish precondition');
+            }
+            if (
+                requestedModifiedOn !== undefined
+                && currentModifiedOnMillis !== expectedModifiedOnMillis
+            ) {
+                throw new Error('Project publish state changed');
+            }
+            const storedMasterProjectId = resolveStoredProjectMasterId(currentProject, data) || '';
+            let linkedMasterProject: Project | null = null;
+            if (storedMasterProjectId) data.masterProjectId = storedMasterProjectId;
 
             // T14: Multi-outlet chain validation - ensure master exists before publish
-            if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.masterProjectId) {
-                // Parse master project ID to get correct tId/sId for the master
-                const { parseProjectId } =
-                    await import("@lib/multiOutlet/resolveProject");
-                const { tId: masterTId, sId: masterSId } = parseProjectId(
-                    data.masterProjectId,
-                );
-
-                // Security: Validate master is within same tenant
-                if (Number(masterTId) !== operationScope.tId) {
+            if (storedMasterProjectId) {
+                const masterScope = normalizeMultiOutletProjectId(storedMasterProjectId);
+                if (!masterScope || masterScope.tId !== operationScope.tId) {
                     throw new Error(
                         "Publish blocked: Cross-tenant master reference is not allowed.",
                     );
@@ -2144,120 +2367,258 @@ export const publishProject = async (data: Partial<Project>) => {
                 // Validate master project actually exists
                 const masterRef = doc(
                     firebaseClient,
-                    `${DATA_COLLECTION}/${masterTId}/${masterSId}`,
-                    data.masterProjectId,
+                    `${DATA_COLLECTION}/${masterScope.tId}/${masterScope.sId}`,
+                    storedMasterProjectId,
                 );
                 const masterSnap = await getDoc(masterRef);
-                if (!masterSnap.exists() || masterSnap.data()?.deleted) {
+                if (
+                    !masterSnap.exists()
+                    || masterSnap.data()?.deleted === true
+                    || !projectDocumentMatchesScope(masterSnap.data(), masterScope)
+                ) {
                     throw new Error(
                         "Publish blocked: Linked master project no longer exists. Please unlink or reassign master.",
                     );
                 }
+                linkedMasterProject = masterSnap.data() as Project;
             }
 
             const updatedData = composeRequestBody(data, operationSession, { isNew: false });
+            const uploadedProjectFileUrls: string[] = [];
+            let persistenceCommitted = false;
+            let persistenceOutcomeAmbiguous = false;
 
-            if (data.files?.length) {
-                for (let i = 0; i < data.files.length; i++) {
-                    if (updatedData.files[i].url.includes("base64")) {
-                        updatedData.files[i].url = await uploadProjectFile(
-                            { fileType: data.files[i].type, fileToUpdate: data.files[i].url },
-                            "files",
-                            data.projectId,
-                            data.files[i].name,
-                        );
+            try {
+                if (Array.isArray(data.files) && Array.isArray(updatedData.files)) {
+                    for (let i = 0; i < data.files.length; i += 1) {
+                        if (isDataUrl(updatedData.files[i]?.url)) {
+                            const uploadedUrl = await uploadProjectFile(
+                                { fileType: data.files[i].type, fileToUpdate: data.files[i].url },
+                                "files",
+                                operationProjectId,
+                                data.files[i].name || data.files[i].uid || `file-${i}`,
+                                operationSession,
+                            );
+                            if (!uploadedUrl) throw new Error('project_file_upload_failed');
+                            updatedData.files[i].url = uploadedUrl;
+                            uploadedProjectFileUrls.push(uploadedUrl);
+                        }
                     }
                 }
-            }
 
-            // ═══════════════════════════════════════════════════════════════
-            // CANONICAL TRUTH: Version increment on publish
-            // Monotonic — versions only move forward, never mutated
-            // Uses Firestore increment() for atomic, conflict-safe versioning
-            // @see __docs__/canonical-truth-infrastructure/
-            // ═══════════════════════════════════════════════════════════════
-            if (FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.masterProjectId) {
-                const linkedOutletPublishLogContext = getProjectPersistenceProjectLogContext(data.projectId, data.masterProjectId);
-                const response = await fetch('/api/projects/outlet-save', {
-                    ...LINKED_OUTLET_SAVE_REQUEST_POLICY,
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        project: {
-                            ...updatedData,
-                            projectId: data.projectId,
-                            masterProjectId: data.masterProjectId,
-                        },
-                        publish: true,
-                    }),
-                });
-                if (!response.ok) {
-                    const error = createProjectPersistenceStatusError(
-                        "linked_outlet_publish_rejected",
-                        response.status,
+                // ═══════════════════════════════════════════════════════════════
+                // CANONICAL TRUTH: Version increment on publish
+                // Monotonic — versions only move forward, never mutated
+                // @see __docs__/canonical-truth-infrastructure/
+                // ═══════════════════════════════════════════════════════════════
+                if (storedMasterProjectId) {
+                    const linkedOutletPublishLogContext = getProjectPersistenceProjectLogContext(
+                        operationProjectId,
+                        storedMasterProjectId,
+                    );
+                    persistenceOutcomeAmbiguous = true;
+                    const response = await fetch('/api/projects/outlet-save', {
+                        ...LINKED_OUTLET_SAVE_REQUEST_POLICY,
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            project: {
+                                ...updatedData,
+                                projectId: operationProjectId,
+                                masterProjectId: storedMasterProjectId,
+                            },
+                            publish: true,
+                            ...(expectedModifiedOnMillis !== null ? { expectedModifiedOnMillis } : {}),
+                        }),
+                    });
+                    persistenceOutcomeAmbiguous = false;
+                    if (!response.ok) {
+                        const error = createProjectPersistenceStatusError(
+                            "linked_outlet_publish_rejected",
+                            response.status,
+                            "Linked outlet publish failed. Please try again.",
+                        );
+                        logProjectPersistenceFailure("project_linked_outlet_publish_rejected", error, {
+                            ...linkedOutletPublishLogContext,
+                        });
+                        throw error;
+                    }
+                    // The route returns 2xx only after its Firestore transaction commits.
+                    // Response parsing and post-commit observation failures must not delete
+                    // immutable objects already referenced by the committed project.
+                    persistenceCommitted = true;
+
+                    const result = await readLinkedOutletSaveResponse(
+                        response,
+                        linkedOutletPublishLogContext,
+                        "linked_outlet_publish_response_parse_failed",
                         "Linked outlet publish failed. Please try again.",
                     );
-                    logProjectPersistenceFailure("project_linked_outlet_publish_rejected", error, {
-                        ...linkedOutletPublishLogContext,
-                    });
-                    throw error;
+                    if (!isLinkedOutletSaveResponse(result, operationProjectId, storedMasterProjectId)) {
+                        const error = createProjectPersistenceStatusError(
+                            "linked_outlet_publish_response_invalid",
+                            response.status,
+                            "Linked outlet publish failed. Please try again.",
+                        );
+                        logProjectPersistenceFailure("project_linked_outlet_publish_response_invalid", error, {
+                            ...linkedOutletPublishLogContext,
+                            responseOk: response.ok,
+                            responseStatus: response.status,
+                        });
+                        throw error;
+                    }
+
+                    await revalidatePublicClientCacheForProject(operationProjectId, "publishProject");
+                    try {
+                        if (!linkedMasterProject) throw new Error('linked_outlet_publish_master_missing');
+                        const { populateMasterCache, resolveProjectForRender } = await import("@lib/multiOutlet");
+                        populateMasterCache(storedMasterProjectId, linkedMasterProject);
+                        const publishedTruthProject = await resolveProjectForRender({
+                            storeProject: result.project as Project,
+                        });
+                        if (publishedTruthProject._resolved?.isMasterLinked !== true) {
+                            throw new Error('linked_outlet_publish_truth_unresolved');
+                        }
+                        await recordPublishedMenuTruth(
+                            operationProjectId,
+                            publishedTruthProject,
+                            operationScope,
+                        );
+                    } catch (error) {
+                        // The authoritative publish already committed. Do not
+                        // write a misleading raw-outlet snapshot or fail the
+                        // owner action because optional observation failed.
+                        logProjectPersistenceFailure('linked_outlet_publish_truth_observation_failed', error, {
+                            ...getProjectPersistenceProjectLogContext(operationProjectId, storedMasterProjectId),
+                        });
+                    }
+                    return result.project;
                 }
 
-                const result = await readLinkedOutletSaveResponse(
-                    response,
-                    linkedOutletPublishLogContext,
-                    "linked_outlet_publish_response_parse_failed",
-                    "Linked outlet publish failed. Please try again.",
+                const publishedAt = Timestamp.now();
+                const publishStoreRef = doc(firebaseClient, DB_COLLECTIONS.STORES, String(operationScope.sId));
+                const publishSummaryRef = doc(
+                    firebaseClient,
+                    PLATFORM_SUMMARY,
+                    `projects_${operationScope.sId}`,
                 );
-                if (!isLinkedOutletSaveResponse(result, data.projectId, data.masterProjectId)) {
-                    const error = createProjectPersistenceStatusError(
-                        "linked_outlet_publish_response_invalid",
-                        response.status,
-                        "Linked outlet publish failed. Please try again.",
-                    );
-                    logProjectPersistenceFailure("project_linked_outlet_publish_response_invalid", error, {
-                        ...linkedOutletPublishLogContext,
-                        responseOk: response.ok,
-                        responseStatus: response.status,
-                    });
-                    throw error;
+                let publishMceRuntime: null | typeof import("@lib/mce") = null;
+                if (FEATURE_FLAGS.ENABLE_MCE) {
+                    try {
+                        publishMceRuntime = await import("@lib/mce");
+                    } catch (error) {
+                        logMCEValidationFailure(error, {
+                            isOutlet: false,
+                            oldProjectPresent: true,
+                        });
+                    }
                 }
+                const publishTransactionResult = await runTransaction(firebaseClient, async (transaction) => {
+                    const [freshProjectDoc, freshStoreDoc] = await Promise.all([
+                        transaction.get(operationProjectRef),
+                        transaction.get(publishStoreRef),
+                    ]);
+                    if (
+                        !freshProjectDoc.exists()
+                        || freshProjectDoc.data().deleted === true
+                        || !projectDocumentMatchesScope(freshProjectDoc.data(), projectScope)
+                        || Boolean(freshProjectDoc.data().masterProjectId)
+                    ) {
+                        throw new Error('Project publish state changed');
+                    }
+                    if (
+                        !freshStoreDoc.exists()
+                        || String(freshStoreDoc.data().storeId) !== String(operationScope.sId)
+                        || String(freshStoreDoc.data().tenantId) !== String(operationScope.tId)
+                        || freshStoreDoc.data().active === false
+                        || freshStoreDoc.data().deleted === true
+                        || isPlatformEntityBlocked(freshStoreDoc.data())
+                    ) {
+                        throw new Error('Project publish store state changed');
+                    }
+                    const freshProject = freshProjectDoc.data() as Project;
+                    if (
+                        projectDocumentMutationVersionMillis(
+                            freshProject as unknown as Record<string, unknown>,
+                        ) !== currentModifiedOnMillis
+                    ) {
+                        throw new Error('Project publish state changed');
+                    }
+                    const nextMenuVersion = nextProjectMenuVersion(freshProject.menuVersion);
+                    const nextProject = buildProjectAfterPartialUpdate(freshProject, updatedData);
+                    const persistedPublishData: Record<string, any> = {
+                        ...updatedData,
+                        menuVersion: nextMenuVersion,
+                        lastPublishedAt: publishedAt,
+                    };
+                    let mceResult: ReturnType<NonNullable<typeof publishMceRuntime>["mceValidate"]> | null = null;
+                    let mceError: unknown = null;
+                    if (publishMceRuntime) {
+                        try {
+                            mceResult = publishMceRuntime.mceValidate({
+                                projectData: nextProject as Record<string, any>,
+                                isOutlet: false,
+                                oldProjectData: freshProject as Record<string, any>,
+                            });
+                            persistedPublishData._mce = publishMceRuntime.toMCEMetadata(mceResult);
+                        } catch (error) {
+                            mceError = error;
+                        }
+                    }
+                    transaction.set(operationProjectRef, persistedPublishData, { merge: true });
+                    transaction.set(publishSummaryRef, {
+                        lastUpdated: publishedAt,
+                        ...buildSummaryProjectFieldPayload(operationProjectId, 'lastPublishedAt', publishedAt),
+                    }, { merge: true });
+                    transaction.update(publishStoreRef, {
+                        lastPublishedAt: publishedAt,
+                        modifiedOn: publishedAt,
+                    });
+                    return {
+                        mceError,
+                        mceResult,
+                        project: {
+                            ...nextProject,
+                            ...persistedPublishData,
+                        } as Project,
+                    };
+                });
+                const publishedProject = publishTransactionResult.project;
+                if (publishTransactionResult.mceResult) {
+                    logMCEValidationResult(publishTransactionResult.mceResult);
+                }
+                if (publishTransactionResult.mceError) {
+                    logMCEValidationFailure(publishTransactionResult.mceError, {
+                        isOutlet: false,
+                        oldProjectPresent: true,
+                    });
+                }
+                persistenceCommitted = true;
+                await revalidatePublicClientCacheForProject(operationProjectId, "publishProject");
 
-                await revalidatePublicClientCacheForProject(data.projectId, "publishProject");
                 await recordPublishedMenuTruth(
                     operationProjectId,
-                    result.project,
+                    publishedProject,
                     operationScope,
                 );
-                return result.project;
+
+                return publishedProject;
+            } catch (error) {
+                if (uploadedProjectFileUrls.length && !persistenceCommitted && !persistenceOutcomeAmbiguous) {
+                    const cleanupResults = await Promise.all(
+                        uploadedProjectFileUrls.map((url) => deleteFileByUrl(url)),
+                    );
+                    const failedCleanupCount = cleanupResults.filter((result) => !result.success).length;
+                    if (failedCleanupCount) {
+                        logProjectPersistenceFailure('project_publish_upload_cleanup_failed', error, {
+                            ...getProjectPersistenceProjectLogContext(operationProjectId, storedMasterProjectId),
+                            failedCleanupCount,
+                            uploadedFileCount: uploadedProjectFileUrls.length,
+                        });
+                    }
+                }
+                throw error;
             }
-
-            const { increment } = await import("@firebase/firestore");
-            const publishedAt = Timestamp.now();
-            const persistedPublishData = {
-                ...updatedData,
-                menuVersion: increment(1),
-                lastPublishedAt: publishedAt,
-            };
-
-            await setDoc(operationProjectRef, persistedPublishData, {
-                merge: true,
-            });
-            await revalidatePublicClientCacheForProject(data.projectId, "publishProject");
-
-            await recordPublishedMenuTruth(
-                operationProjectId,
-                updatedData,
-                operationScope,
-            );
-
-            return {
-                ...updatedData,
-                lastPublishedAt: publishedAt,
-                ...(typeof data.menuVersion === "number" && Number.isSafeInteger(data.menuVersion)
-                    ? { menuVersion: data.menuVersion + 1 }
-                    : {}),
-            };
         },
         data,
         "publishProject",
@@ -2579,7 +2940,10 @@ export const uploadFile = async (
     from: string = "files",
 ) => {
     let fileUrl: any = "";
-    const docId = `${new Date().getTime()}-${data.uid}`;
+    const docId = buildProjectUploadObjectId({
+        attemptId: doc(collection(firebaseClient, DATA_COLLECTION)).id,
+        stableParts: [data.uid, data.name],
+    });
     const mediaProfileByFolder: Partial<Record<string, MediaImageType>> = {
         assets: 'menuBackground',
         itemImages: 'menuItem',
@@ -2608,24 +2972,25 @@ export const uploadFile = async (
         });
     }
 
-    if (data.url) {
-        if (data.url.includes("base64")) {
-            const session = await getActiveSession();
-            //upload logo image to firebase storage
-            fileUrl = await uploadBase64ToStorage({
-                fileId: docId,
-                url: data.url,
-                path: generateStoragePath({
-                    collection: DATA_COLLECTION,
-                    fileType: from,
-                    session,
-                    fileId: docId,
-                }),
-                type: data.type,
-            });
-        }
-        return fileUrl;
-    } else return "";
+    if (!data.url || !isDataUrl(data.url)) return "";
+
+    const validatedPayload = validateProjectUploadDataUrl({
+        claimedType: data.type,
+        dataUrl: data.url,
+    });
+    const session = await getActiveSession();
+    fileUrl = await uploadBase64ToStorage({
+        fileId: docId,
+        url: data.url,
+        path: generateStoragePath({
+            collection: DATA_COLLECTION,
+            fileType: from,
+            session,
+            fileId: docId,
+        }),
+        type: validatedPayload.mimeType,
+    });
+    return fileUrl;
 };
 
 /**
@@ -2706,6 +3071,16 @@ export const deleteProject = async (
                     )
                     : {};
                 if (FEATURE_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) {
+                    const currentSummary = summaryProjects[projectId];
+                    if (
+                        currentSummary?.isSpecialMenu === true
+                        && (
+                            currentSummary.specialMenuStatus === "active"
+                            || currentSummary.specialMenuStatus === "scheduled"
+                        )
+                    ) {
+                        throw new Error("End or cancel this special menu before deleting it.");
+                    }
                     for (const [smId, smData] of Object.entries(summaryProjects) as [string, any][]) {
                         if (
                             smData.isSpecialMenu
@@ -2749,6 +3124,11 @@ export const deleteProject = async (
                     lastUpdated: serverTimestamp(),
                     ...buildSummaryProjectDeletePayload(projectId, deleteField()),
                 };
+                const remainingSummaryProjects = { ...summaryProjects };
+                delete remainingSummaryProjects[projectId];
+                summaryUpdate.specialMenuNextTransitionAt = resolveNextSpecialMenuTransitionAt(
+                    remainingSummaryProjects,
+                ) || deleteField();
                 if (fallbackDefaultEntry) {
                     const [fallbackProjectId, fallbackSummary] = fallbackDefaultEntry;
                     const fallbackDefaultSummary = stripUndefinedProjectSummaryFields({
@@ -3358,10 +3738,15 @@ export const createSpecialMenuProject = async (params: {
                     specialMenuMode: mode,
                     specialMenuBaseProjectId: baseProjectId,
                 };
+                const specialMenuNextTransitionAt = resolveNextSpecialMenuTransitionAt({
+                    ...summaryProjects,
+                    [newProjectId]: summaryData,
+                });
 
                 transaction.set(projectRef, newProjectData);
                 transaction.set(summaryRef, {
                     lastUpdated: serverTimestamp(),
+                    specialMenuNextTransitionAt: specialMenuNextTransitionAt || deleteField(),
                     ...buildSummaryProjectPayload(newProjectId, summaryData),
                 }, { merge: true });
                 if (activateImmediately) {
@@ -3498,6 +3883,19 @@ export const updateSpecialMenuProject = async (params: {
                         ? { activatedAt: currentStatus === "active" && previousActivatedAt ? previousActivatedAt : now.toISOString() }
                         : {}),
                 };
+                const specialMenuNextTransitionAt = resolveNextSpecialMenuTransitionAt({
+                    ...summaryProjects,
+                    [projectId]: {
+                        ...summaryProjects[projectId],
+                        active: true,
+                        deleted: false,
+                        isSpecialMenu: true,
+                        specialMenuDisplayName: resolvedLocalizedDisplayName,
+                        specialMenuEndsAt: endsAt,
+                        specialMenuStartsAt: startsAt,
+                        specialMenuStatus: nextStatus,
+                    },
+                });
 
                 transaction.set(projectRef, {
                     name: resolvedLocalizedDisplayName,
@@ -3508,6 +3906,7 @@ export const updateSpecialMenuProject = async (params: {
                 }, { merge: true });
                 transaction.set(summaryDocRef, {
                     lastUpdated: serverTimestamp(),
+                    specialMenuNextTransitionAt: specialMenuNextTransitionAt || deleteField(),
                     ...buildSummaryProjectFieldPayload(projectId, "name", resolvedLocalizedDisplayName),
                     ...buildSummaryProjectFieldPayload(projectId, "description", trimmedDescription ? resolvedLocalizedDescription : ""),
                     ...buildSummaryProjectFieldPayload(projectId, "specialMenuDisplayName", resolvedLocalizedDisplayName),

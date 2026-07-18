@@ -2,7 +2,7 @@
 
 **Generated:** 2026-07-10
 **Brand:** menulist
-**Status:** approved
+**Status:** retired
 **Approval:** automatic
 **Autonomy level:** 2
 **Output file:** packages/asset-factory/briefs/menulist.industry.service-list-businesses.proof-placeholder.md
@@ -17,7 +17,7 @@ Show the shape of fictional service-list categories while routed demo screenshot
 - Route: /industries/service-list-businesses
 - Placement: bounded multi-category demo proof
 - Component: src/content/websiteIndustries.ts
-- Destination: public/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg
+- Historical internal file: packages/asset-factory/published/placeholders/service-list-proof-grid-placeholder.svg
 
 ## Output Contract
 
@@ -25,7 +25,7 @@ Show the shape of fictional service-list categories while routed demo screenshot
 
 ## Existing Files
 
-- primary: public/images/website/demo-placeholders/service-list-proof-grid-placeholder.svg
+- primary: packages/asset-factory/published/placeholders/service-list-proof-grid-placeholder.svg
 
 ## Narrative Rules
 

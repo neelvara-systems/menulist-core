@@ -148,13 +148,19 @@ export async function finalizeAiOperationAccounting({
                 ) {
                     throw new Error(`${logLabel} billing subscription is required for idempotent accounting.`);
                 }
+                const billingStoreId = Number(data.accountingBillingStoreId ?? data.sId);
                 const monthlyCredits = Number(data.remainingMonthlyCredits);
                 const topUpCredits = Number(data.remainingTopUpCredits);
-                if (!Number.isFinite(monthlyCredits) || !Number.isFinite(topUpCredits)) {
+                if (
+                    !Number.isSafeInteger(billingStoreId)
+                    || billingStoreId <= 0
+                    || !Number.isFinite(monthlyCredits)
+                    || !Number.isFinite(topUpCredits)
+                ) {
                     throw new Error(`${logLabel} accounting replay balance is invalid.`);
                 }
                 return {
-                    remainingBalance: { monthlyCredits, topUpCredits },
+                    remainingBalance: { billingStoreId, monthlyCredits, topUpCredits },
                     transactionId: operationId,
                     unitsConsumed,
                 };

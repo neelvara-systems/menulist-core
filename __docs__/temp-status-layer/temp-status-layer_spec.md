@@ -1,85 +1,49 @@
-# Temporary Status Layer — Spec
+# Temporary Status Layer - Specification
 
-**Status:** ✅ IMPLEMENTED  
-**Author:** Cascade (Lead Architect)  
-**Date:** February 19, 2026  
-**Audience:** CEO, PM, Clients (non-technical)
+**Status:** Implemented from current code truth
+**Last reviewed:** July 16, 2026
 
----
+## Owner Problem
 
-## Executive Summary
+An owner sometimes needs to warn customers about a short-lived exception without changing the recurring weekly schedule. The action must be quick, reversible, and unable to leave an expired customer notice visible.
 
-**What:** Quick temporary status banners on the official page and digital menu — "Closed today", "Opening late", "Special menu only" — with automatic expiry.
+## Shipped Scope
 
-**Why:** Customers arrive and find the place closed, running a special menu, or opening late. This creates frustration and bad reviews. A simple temporary banner prevents these situations.
+- One active store-level notice at a time.
+- Six admitted types: `closed_today`, `opening_late`, `closing_early`, `kitchen_closed`, `special_menu`, and `custom`.
+- A normalized message of at most 100 characters and a required future ISO expiry.
+- Desktop Business Settings, Mobile More > Temporary Status, and Mobile Today/Hours controls.
+- Customer display on supported OBP, digital-menu, and feedback surfaces.
+- Active status in the MenuList public pull API and allowlisted browser store payload.
+- Special Menu lifecycle integration with project ownership.
+- Public cache, Digital Screens, and Owner Business Assistant invalidation after a committed owner mutation.
 
-**For whom:** MenuList business owners who need to communicate temporary changes.
+## Required Behavior
 
-**Impact:** Small but emotionally significant. Prevents specific customer anger scenarios. Low effort, high satisfaction.
+| Boundary | Requirement |
+| --- | --- |
+| Set | Reject invalid type, malformed input, or an expiry at/past the server's current time. Normalize the message before persistence. |
+| Clear | Delete the existing store `tempStatus` field. |
+| Authority | Require an authenticated session and `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE`. Never accept tenant/store identity from the request body. |
+| Owner UI | Optimistic state must roll back on rejection, invalid/oversized response, or network failure. Success appears only after acknowledgement. |
+| Expiry | Treat `expiresAt <= now` as inactive. Mounted banners and owner status controls must self-expire. |
+| Public payload | Omit malformed/expired status. Return `null` from the public pull API when no active status exists. |
+| Structured data | Only `closed_today` can describe the complete LocalBusiness as closed, using the store-timezone current day. |
+| Special Menu | Clear only a `special_menu` notice owned by the transitioning project, including the bounded legacy pointer fallback. |
+| Committed write | Cache/screen/assistant effect failure must not be reported as a failed Firestore mutation. Return `effectsPending: true`. |
 
----
+## Non-Goals
 
-## Scope
+- No recurring or date-exception calendar; use Working Hours and explicit owner status changes.
+- No customer push notification or external-profile update.
+- No history/ledger, multiple simultaneous notices, media, link, or rich-text notice.
+- No background cleanup worker. Public correctness cannot depend on eventual deletion.
+- No claim that every external surface refreshes instantly.
 
-### In-Scope
+## Owner Copy Boundary
 
-- Predefined status types: Closed Today, Opening Late, Special Menu Only, Custom
-- Custom message field (max 100 chars)
-- Expiry time (auto-remove after specified time)
-- Banner display on OBP and digital menu
-- Quick toggle on dashboard and mobile
-- Auto-expiry cleanup
+Use plain confirmation such as “Customers can see this now.” If post-commit refresh work is pending, say customer pages may take a moment. Do not claim real-time notification, universal publishing, or provider delivery.
 
-### Out-of-Scope
+## Acceptance
 
-- Recurring schedules (use working hours for that)
-- Multiple simultaneous statuses
-- Rich content (images, links)
-- Push notifications to customers
-- Historical status log
-
----
-
-## User Stories
-
-### Story 1: Closed for Event
-
-> As an **owner**, I'm hosting a private event tonight. I tap "Closed Today" on my dashboard, set expiry to tomorrow morning. Customers who check my page see a yellow banner: "Closed for a private event today."
-
-### Story 2: Opening Late
-
-> As an **owner**, I'm running late this morning. I tap "Opening Late", type "Opening at 12pm instead of 10am", set expiry to 12pm. Banner auto-removes when I open.
-
-### Story 3: Auto-Expiry
-
-> As an **owner**, I set "Special Menu Only" for a festival with 24-hour expiry. Next morning, the banner is gone automatically. I don't need to remember to remove it.
-
----
-
-## Status Types
-
-| Type              | Default Message                | Use Case                          |
-| ----------------- | ------------------------------ | --------------------------------- |
-| Closed Today      | "Closed today"                 | Private events, emergency closure |
-| Opening Late      | "Opening late today"           | Staff issues, weather             |
-| Closing Early     | "Closing early today"          | Early closure, staff shortage     |
-| Kitchen Closed    | "Kitchen is closed"            | Kitchen off, drinks only          |
-| Special Menu Only | "Special menu available today" | Festival, themed event            |
-| Custom            | Owner writes message           | Any temporary notice              |
-
----
-
-## Requirements
-
-| ID    | Requirement                              | Priority |
-| ----- | ---------------------------------------- | -------- |
-| FR-01 | Quick status toggle (1-2 taps on mobile) | P0       |
-| FR-02 | Auto-expiry after specified duration     | P0       |
-| FR-03 | Banner visible on OBP and digital menu   | P0       |
-| FR-04 | Custom message (max 100 chars)           | P1       |
-| FR-05 | Feature flag `ENABLE_TEMP_STATUS`        | P0       |
-| FR-06 | Mobile quick toggle on More screen       | P0       |
-
----
-
-**Last Updated:** February 22, 2026
+The local acceptance gate is `npm run verify:temporary-status-boundary`, plus exact TypeScript, scoped lint, public-business, public-delivery, tenant-safety, MobileShell, dependency, docs-link, and diff checks. Live browser/device/host evidence is release-operator work.

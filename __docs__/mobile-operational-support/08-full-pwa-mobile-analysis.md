@@ -1,202 +1,65 @@
-# Full PWA-Only Mobile Experience — Deep Analysis
+# Full PWA-Only Mobile Experience
 
-**Created:** February 14, 2026  
 **Status:** Implemented source analysis; not current launch certification
-**Author:** Lead Architect (Cascade)  
-**Source:** Codebase deep analysis + existing mobile doctrine + feature audit
+**Last updated:** July 17, 2026
 
----
+This analysis is rebuilt from the current MobileShell route map and screens. Release approval still requires the active production-readiness and external-certification evidence, authenticated mobile browser/device QA, installed-PWA install/update/offline checks, and the approved app deployment.
 
-## The Question
+## Current Operational Baseline
 
-> "If a user is ONLY using the mobile device and app via PWA, do we need to give the whole application in mobile screens?"
+The owner MobileShell now covers the main phone workflows:
 
----
+| Area | Current mobile coverage |
+| --- | --- |
+| Today | Current status, hours, owner actions, dashboard and history |
+| Menu creation | Photo/PDF/link upload, extraction progress, review and first-run setup |
+| Menu maintenance | Item/category edits, price/availability, descriptions, photos, generated images, translations, quality filters and time slots |
+| Sharing | Customer links, WhatsApp, QR, print assets, menu-card export and official page |
+| Business truth | Identity, public information, working hours, temporary status, attributes, compliance pages and Customer App settings |
+| Operations | Feedback/replies, analytics, AI history, billing, locations, users/roles and owner notifications |
+| Platform roles | Maintained platform, operations and reseller sub-screens when the signed-in role permits them |
 
-## Short Answer
+The exact route-to-screen contract is maintained in `src/components/mobile/MobileShell.tsx` and guarded by `npm run verify:mobile-shell-route-map`. Mobile screens inherit authentication, tenant/store context, localization, RTL, network status, feature flags, permissions, billing entitlement, and shared DAL/server acknowledgements.
 
-**No — and here's why.**
+## PWA lifecycle boundary
 
-The current mobile scope covers **90%+ of daily operational needs**, including the original identity, locale, and working-hours gaps. The solution is NOT to rebuild everything for mobile — it is to keep high-frequency owner actions truth-safe and provide a clear desktop escape hatch for rare admin work.
+- Owner manifest: `public/manifest.json`, stable MenuList identity, `/today` launch.
+- Owner worker: generated `public/sw.js` in production app builds only.
+- Preview and development: owner worker registration is disabled and stale registrations are removed.
+- Connectivity: non-blocking shared notice; no automatic reload when the connection returns.
+- Offline navigation: generic `/offline` fallback only.
+- Private data: authenticated owner/sign-in/screen HTML, APIs and Firestore responses are not runtime-cached.
+- Offline mutations: not supported; MenuList does not claim success, queue, or replay owner writes.
+- Updates: current workers are checked on full app load; a server build mismatch shows a refresh prompt that can be deferred for the current session.
 
----
+## Desktop escape hatch
 
-## Part 1: What We Currently Cover (Mobile v1.0)
+MobileShell remains the default handheld owner experience. A maintained switch-to-desktop path covers a rare workflow that is not admitted to the mobile shell, and the desktop shell provides a return-to-mobile control. This is a safety valve, not permission to leave high-frequency owner work unavailable on a phone.
 
-| Screen                                                           | Frequency    | Coverage     |
-| ---------------------------------------------------------------- | ------------ | ------------ |
-| Menu (browse, search, availability toggle, price edit, add item) | Multiple/day | ✅ Full      |
-| Hours & Status (open/close, weekly hours)                        | Daily        | ✅ Full      |
-| Feedback Inbox + Detail (read, reply, resolve)                   | Daily        | ✅ Full      |
-| Share & QR (copy link, WhatsApp share)                           | Daily        | ✅ Full      |
-| Business Profile / Brand Settings (phone, address, coordinates)  | Monthly      | ✅ Full      |
-| Billing (plan view, AI capacity, support)                        | Monthly      | ✅ Read-only |
-| More (navigation hub, contact support, switch to desktop)        | As needed    | ✅ Full      |
+## Admission rule for more mobile work
 
-**These 10 screens cover: price editing, availability, hours, feedback, sharing, business profile edits, billing view.**
+Add a mobile surface only when it materially reduces owner responsibility, is useful on a phone, can use the existing tenant/DAL/permission boundary, and can remain understandable with touch-first controls. Do not duplicate a desktop screen merely for route-count parity.
 
----
+## Conditional Additions (Only If PWA Adoption Proves Need)
 
-## Part 2: What's Missing for a PWA-Only User
+Potential new mobile work requires usage evidence and a Separate scoped audit. Examples include genuinely requested advanced layout controls, provider onboarding that can be made non-technical, or new device-native capture flows. Do not infer demand from this document.
 
-### Tier A: Needed Rarely but CAN'T be skipped forever
+## Permanent architectural constraints
 
-| Feature                                                 | Desktop Screen                 | Why Missing from Mobile              | Impact on PWA-only User           |
-| ------------------------------------------------------- | ------------------------------ | ------------------------------------ | --------------------------------- |
-| **Initial menu setup** (upload PDF/link, AI extraction) | Projects/Editor                | Complex multi-step flow, file upload | Can't create first menu on mobile |
-| **AI description generation**                           | Editor > AI tools              | Heavy UI, batch processing           | No AI-generated descriptions      |
-| **Image management** (upload, crop, AI generate)        | Editor > Images                | File handling, cropping UI           | No menu images from mobile        |
-| **Category management** (reorder, rename, add)          | Editor > Categories            | Drag-and-drop, complex UI            | Can't restructure menu            |
-| **Translation management**                              | Editor > Languages             | Complex multi-language UI            | Can't manage translations         |
-| **Theme/branding** (colors, fonts, layout)              | Business Settings > Appearance | Visual editor, design work           | Can't change look                 |
-| **Subscription management** (upgrade, cancel, payment)  | Billing page                   | Complex payment flows                | Can't upgrade plan                |
-| **User/role management**                                | Settings > Users               | Table-based management               | Can't add/remove staff            |
-| **SEO settings**                                        | Business Settings > SEO        | Form-heavy, technical                | Can't change SEO                  |
-| **Analytics/reports**                                   | Dashboard                      | Charts, data tables                  | No insights                       |
+- Do not create a second mobile backend, auth flow, cache, or tenant model.
+- Do not add offline write queues or automatic mutation replay without an explicit idempotency/conflict architecture.
+- Do not cache authenticated HTML or stale public business truth as an offline success.
+- Do not auto-reload on reconnect while an owner may be editing.
+- Do not bypass MobileShell with forced desktop navigation for a maintained mobile sub-screen.
+- Do not add an owner setting for connectivity or worker policy.
 
-### Tier B: Would be NICE but truly not needed on mobile
+## Verification
 
-| Feature                         | Why Desktop-Only is Fine   |
-| ------------------------------- | -------------------------- |
-| Multi-outlet master linking     | One-time configuration     |
-| POS webhook setup               | One-time technical setup   |
-| Decision block settings         | Rare configuration         |
-| Digital screen configuration    | One-time setup             |
-| Chat management / KB generation | Admin tools, not daily ops |
-| Import/export operations        | Desktop workflow           |
-
----
-
-## Part 3: The Realistic PWA-Only Scenario
-
-### Who would be PWA-only?
-
-A small business owner who:
-
-- Only has a phone (no laptop/computer access)
-- Set up their menu via someone else or customer support
-- Day-to-day runs entirely from phone
-
-### Their journey:
-
-1. **Day 1 (setup):** Someone helps set up menu on desktop (owner, staff, or support). This is a one-time event.
-2. **Day 2+ (operations):** Owner uses mobile for EVERYTHING daily:
-   - Open/close hours ✅
-   - Toggle item availability ✅
-   - Change prices ✅
-   - Read & reply to feedback ✅
-   - Share menu on WhatsApp ✅
-   - Add simple items ✅
-
-3. **Monthly:** View billing ✅, update phone/address ✅
-4. **Rarely:** Need theme change, AI generation, translations → **"Available on desktop" message** OR use "Switch to Desktop" from More screen.
-
----
-
-## Part 4: Recommendation — Current Scope And Conditional Additions
-
-### Current Operational Baseline
-
-10 operational screens. This is what we built. Covers daily operations.
-
-### Implemented Core Gap Closure
-
-The original gap-closure recommendation was to add identity, locale, and full working-hours screens for PWA-only owners. Current runtime has those routes in `MobileMoreScreen`: `MobileBasicSettingsScreen`, `MobileLocaleSettingsScreen`, and `MobileWorkingHoursEditScreen`. Remaining work is truth-safety polish and action routing, not rebuilding these screens.
-
-| Screen                                                  | Priority | Why                                                        | Complexity            |
-| ------------------------------------------------------- | -------- | ---------------------------------------------------------- | --------------------- |
-| **Basic Settings** (name, logo, business type)          | P1       | Owner should be able to update basic identity              | ✅ Built              |
-| **Locale Settings** (language, timezone, currency)      | P1       | Already in AppSettings Redux, just need mobile UI          | ✅ Built              |
-| **Working Hours Editor** (full edit, not just override) | P1       | Current mobile only has quick close/open, not full editing | ✅ Built              |
-| **Notification Preferences**                            | P2       | If we add push notifications                               | Low                   |
-| **Simple Item Edit** (description, image from camera)   | P2       | Mobile camera → item image is natural mobile flow          | Medium — camera API   |
-
-### Conditional Additions (Only If PWA Adoption Proves Need)
-
-| Screen                                           | When                       | Why                                         |
-| ------------------------------------------------ | -------------------------- | ------------------------------------------- |
-| Simple menu creation wizard                      | If 30%+ users are PWA-only | Can't do initial setup without desktop      |
-| Camera-to-menu (take photo of menu, AI extracts) | AI feature maturity        | This would be a killer mobile-first feature |
-| Simple analytics summary                         | If owners request it       | "How's my menu doing?" quick answer         |
-
-### Permanent Mobile Rejections
-
-| Feature                                      | Permanent Rejection         |
-| -------------------------------------------- | --------------------------- |
-| Full editor (drag-and-drop, bulk operations) | Too complex for touch       |
-| AI image generation                          | Slow, complex, expensive    |
-| Multi-outlet master configuration            | One-time setup, too complex |
-| POS webhook settings                         | Technical, one-time         |
-| Translation management                       | Multi-language table UI     |
-| User/role management                         | Table-based admin UI        |
-| Chat management                              | Admin surface               |
-
----
-
-## Part 5: Business Settings — Mobile Assessment
-
-Analyzing `src/components/templates/main-app/businessSettings/index.tsx` (615 lines, 12 tabs):
-
-| Tab                     | Mobile Relevance                                         | Feature Admission Test                                                         | Decision                                |
-| ----------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------ | --------------------------------------- |
-| **BasicInfoTab**        | ✅ YES (core gap closure)                                | Freq: rare but needed, Speed: yes, Touch: yes, Value: yes                      | Mobile — simple form                    |
-| **WorkingHoursTab**     | ✅ PARTIAL (quick status exists; full edit is built)     | Freq: weekly, Speed: yes, Touch: doable, Value: yes                            | Mobile — time pickers                   |
-| **ContactPersonTab**    | ❌ NO                                                    | Freq: never after setup, Speed: yes, Touch: yes, Value: no                     | Desktop only — one-time                 |
-| **LocationInfoTab**     | ⚠️ PARTIAL                                               | Freq: rare, Speed: yes, Touch: yes, Value: moderate                            | Mobile basics only — address already in PublicInfo |
-| **SeoTab**              | ❌ NO                                                    | Freq: rare, Speed: no (needs thought), Touch: form-heavy, Value: no urgency    | Desktop only — technical                |
-| **SocialMediaTab**      | ❌ NO                                                    | Freq: one-time setup, Speed: yes, Touch: yes, Value: no urgency                | Desktop only                            |
-| **AnalyticsTab**        | ❌ NO                                                    | Freq: monthly, Speed: no (data-heavy), Touch: poor (charts), Value: no urgency | Desktop only                            |
-| **LocaleSettingsTab**   | ✅ YES (core gap closure)                                | Freq: rare but important, Speed: yes, Touch: picker, Value: yes                | Mobile — selector                       |
-| **IntegrationsTab**     | ❌ NO                                                    | Freq: one-time, Speed: no, Touch: technical, Value: no urgency                 | Desktop only                            |
-| **TimeSlotPresetsTab**  | ❌ NO                                                    | Freq: rare config, Speed: no (complex), Touch: poor, Value: no urgency         | Desktop only                            |
-| **FeedbackSettingsTab** | ❌ NO                                                    | Freq: one-time, Speed: yes, Touch: toggles, Value: moderate                    | Desktop only — config                   |
-| **PosSyncTab**          | ❌ NO                                                    | Freq: one-time, Speed: no, Touch: technical, Value: no urgency                 | Desktop only                            |
-
-**Summary:** 2 tabs pass for core mobile coverage (BasicInfo, LocaleSettings), 1 partial is already implemented for full working-hours edit. The rest are correctly desktop-only per our doctrine.
-
----
-
-## Part 6: The "Switch to Desktop" Escape Hatch
-
-Current implementation in `MobileMoreScreen.tsx` already has "Switch to Desktop" option. This is the safety valve for PWA-only users:
-
-```
-User hits a feature not available on mobile
-→ "Available on desktop" message with "Switch to Desktop" button
-→ Sets localStorage flag → reloads with desktop layout
-→ Owner completes the action
-→ Returns to mobile via clearing the flag
+```bash
+npm run verify:owner-pwa-lifecycle
+npm run verify:mobile-shell-route-map
+npm run verify:customer-app-pwa
+npx tsc --noEmit --incremental false --pretty false
 ```
 
-This pattern means we NEVER need to rebuild complex features for mobile. We just need clear messaging.
-
----
-
-## Part 7: Architecture Decision
-
-**Decision: Keep the current mobile scope model.**
-
-Rationale:
-
-1. **90% coverage now** — daily operations are fully covered
-2. **Escape hatch exists** — "Switch to Desktop" handles edge cases
-3. **Avoid scope creep** — rebuilding 12 Business Settings tabs for mobile = weeks of work for <5% usage
-4. **Core mobile gap is closed** — identity, locale, and working-hours mobile screens exist; polish should focus on truth safety and action routing
-5. **Solo founder maintainability** — fewer mobile screens = less maintenance burden
-
----
-
-## Action Items
-
-| Item                                                                 | Priority | When                    |
-| -------------------------------------------------------------------- | -------- | ----------------------- |
-| Keep the current 10 operational screens release-ready                 | P0       | Current release gate    |
-| Keep core-gap screens polished and truth-safe                         | P1       | Current release gate    |
-| Track PWA adoption metrics                                           | P1       | Controlled rollout evidence |
-| Decide conditional additions from PWA adoption data                   | P2       | Separate scoped audit   |
-
----
-
-**Document Signature:** Full PWA-Only Mobile Experience Analysis  
-**Version:** 1.0  
-**Last Updated:** February 14, 2026
+Pending owner/release evidence includes fresh install, upgrade, deferred update, logout/account switch, offline launch, reconnect during an unsaved edit, slow-network simulation, cache inspection, rotation, and iOS/Android standalone smoke.

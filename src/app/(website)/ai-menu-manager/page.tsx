@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -9,7 +10,7 @@ import { Metadata } from 'next';
 const title = 'AI Menu Manager for Owner-Approved Updates | MenuList';
 const description = 'Prepare price, sold-out, special, photo, import, design, and publishing cards from simple messages. MenuList prepares the card; you approve before supported changes go live.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description,
     url: '/ai-menu-manager',
   },
-};
+});
 
 export default function Page() {
   return (

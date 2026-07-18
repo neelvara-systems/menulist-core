@@ -1,30 +1,30 @@
-# Knowledge Base Embedding 2 Migration Validation
+# Knowledge Base Pre-Launch Embedding Validation
 
-> **Date:** 2026-07-13
-> **Scope:** Answerlattice RAG embedding-space migration
-> **Status:** Source gates passed; Firebase deployment and live corpus evidence are recorded below
+> **Date:** 2026-07-17
+> **Scope:** Answerlattice RAG embedding contract
+> **Status:** Source gates passed; Firebase deployment is pending a clean source archive and project access
 
 ## Required invariants
 
-1. `gemini-embedding-001` and `gemini-embedding-2` vectors never share a query/index path.
-2. Active query and document vectors use `gemini-embedding-2`, 768 dimensions, `embeddingV2`, and cache version `gemini-embedding-2:768:v2` together.
-3. Embedding 2 query content is `task: question answering | query: ...`; document content is `title: ... | text: ...`; v2 requests omit legacy `taskType`.
-4. New/changed articles require v2. A valid same-source legacy vector is preserved; missing/stale rollback coverage is best-effort dual-written without making legacy failure fatal.
-5. The backfill is cursor-based, idempotent, published/active-only, limited to 100 articles per scheduler run, and uses provider concurrency 3.
-6. Query traffic switches only with an app deployment containing both the v2 query formatter and the `embeddingV2` Firestore vector field. Rollback uses the preceding app deployment plus retained v1 vectors/index.
+1. Query and article vectors use only `gemini-embedding-2`, 768 dimensions, Firestore field `embedding`, and cache key `gemini-embedding-2:768:v1`.
+2. Document content is `title: ... | text: ...`; query content is `task: question answering | query: ...`; requests do not send `taskType`.
+3. New and changed articles write one canonical vector with model, dimension, cache, and source-hash metadata.
+4. Search uses one scoped `embedding` vector index. The response projection rejects vector fields and allowlists reference data.
+5. The source tree contains no retired embedding model, alternate vector field, dual-write helper, migration task, migration-state document, or corpus backfill.
+6. Because Answerlattice has no live client corpus, launch uses the normal publish/re-embed lifecycle and requires no one-time data operation.
 
 ## Source evidence
 
 | Boundary | Source |
 | --- | --- |
-| Versioned registry and provider request format | `src/data/shared/answerlatticeEmbedding.ts` and byte-identical Functions mirrors |
+| Canonical registry and provider request format | `src/data/shared/answerlatticeEmbedding.ts` and byte-identical Functions mirrors |
 | Root query generation and metadata | `src/lib/vectorEmbeddings/index.ts` |
 | Active vector search field and versioned cache key | `src/lib/search/searchCore.ts` |
-| Root article persistence and dual-write | `src/lib/answerlattice/articleEmbeddingServer.ts` |
-| Dedicated Functions persistence and dual-write | `functions-answerlattice/src/logic/articleEmbedding.ts`, `functions-answerlattice/src/logic/startGeneration.ts` |
-| Bounded backfill and durable state | `functions-answerlattice/src/answerlattice/embeddingV2Migration.ts` |
-| Existing scheduler ownership | `functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts` |
-| v1/v2 vector indexes | `firestore-answerlattice.indexes.json` |
+| Root article persistence | `src/lib/answerlattice/articleEmbeddingServer.ts` |
+| Dedicated/shared Functions persistence | `functions-answerlattice/src/logic/articleEmbedding.ts`, `functions-answerlattice/src/logic/startGeneration.ts`, and shared mirrors |
+| Master scheduler without an embedding migration task | `functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts` |
+| Single scoped vector index | `firestore-answerlattice.indexes.json` |
+| Reference projection and vector rejection | `src/lib/answerlattice/faqRetrieval.ts` and `src/lib/search/searchCore.ts` |
 
 ## Local verification
 
@@ -35,35 +35,37 @@
 | `node scripts/verification/verify-answerlattice-runtime-truth.js` | Passed |
 | `npm --prefix functions-answerlattice run build` | Passed |
 | `npm --prefix functions run build` | Passed |
+| `npm run verify:answerlattice-runtime-truth` | Passed, including dedicated/shared Firestore and Storage rule emulators |
+| `env -u GOOGLE_APPLICATION_CREDENTIALS npm run test:answerlattice-kb-publishing:emulator` | Passed |
+| `npm run verify:answerlattice-final-readiness` | Passed |
+| `npm run verify:dependency-freeze` | Passed |
+| `npm run verify:ai-accounting` | Passed |
+| `npm run verify:data-flow-audit-tools` | Passed after canonical manifest/catalog regeneration |
 | `npx tsc --noEmit --incremental false --pretty false` | Passed |
-| `npm run verify:answerlattice-runtime-truth` | Passed, including Firestore/Storage rule suites and all child runtime contracts |
-| `npm run verify:dependency-freeze` | Passed; all Functions packages remain on the frozen dependency set and Node.js 22 runtime declarations |
-| `npm run verify:ai-accounting` | Passed, including provider usage and image accounting/cache boundaries |
-| `npm run docs:check-links` | Passed with zero broken links and zero naming violations |
+| `npx eslint <touched source and verifier files>` | Passed |
+| `npm run docs:check-links` | Answerlattice links passed; global scan remains red only for an unrelated missing Owner Ease v1.16 MP4 |
 | `git diff --check` | Passed |
 
-## Firebase rollout evidence
+## Firebase release boundary
 
-| Step | Target | Result |
-| --- | --- | --- |
-| Deploy v2 index | `answerlattice-qa` | Blocked before upload: Firebaserules `projects/answerlattice-qa:test` returned HTTP 403 for the active CLI account |
-| Deploy v2 index | `answerlattice` | Blocked before upload: Firebaserules `projects/answerlattice:test` returned HTTP 403 for the active CLI account |
-| Deploy dedicated Functions | `answerlattice-qa` | Not attempted after the same project-access blocker was confirmed |
-| Deploy dedicated Functions | `answerlattice` | Not attempted after the same project-access blocker was confirmed |
-| Run/observe `embedding_v2_migration` | production | Blocked until index and Functions deploy succeed |
-| Confirm state document `status=completed` and current cache version | production | Blocked until migration can run |
+No Firebase mutation was attempted from this worktree:
 
-Blocked commands:
+- the current `functions-answerlattice` source archive and Answerlattice index/rule manifests contain unrelated in-progress changes;
+- a filtered Functions deploy still uploads and builds the current package archive and its top-level imports;
+- the active Firebase CLI account does not expose `answerlattice-qa` or `answerlattice`.
+
+After the embedding patch is isolated in a clean worktree and project access is restored, deploy and smoke QA before production. No migration or backfill command follows deployment.
 
 ```bash
 firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only firestore:indexes --non-interactive
-firebase deploy --project answerlattice --config firebase-answerlattice.json --only firestore:indexes --non-interactive
+firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only functions:answerlattice:startGeneration,functions:answerlattice:retryGeneration,functions:answerlattice:embedArticleWorker,functions:answerlattice:regenerateEmbedding,functions:answerlattice:answerlatticeNightly,functions:answerlattice:triggerAnswerlatticeNightly --non-interactive
 ```
 
-## Cutover and rollback stop rules
+Production uses the same targets with `--project answerlattice` only after QA succeeds.
 
-- Do not deploy the app-side v2 query cutover until the production v2 vector index is ready and the migration state is complete.
-- Do not retire `embedding`, its vector index, or v1 metadata in this migration session.
-- If live v2 retrieval cannot be compared against approved Answer Test cases or known support queries, keep the app deployment pending.
-- If the active app is deployed and retrieval quality regresses, roll back the app deployment; the retained v1 vectors/index remain the rollback surface.
-- Vercel deployment is not implied by Firebase deployment and requires explicit user authorization in the active session.
+## Stop rules
+
+- Do not deploy from a source archive containing unrelated Answerlattice Functions changes.
+- Do not claim the Firebase contract is live without authorized QA deploy and a provider-backed publish/search smoke.
+- Do not add a backfill or migration task while no legacy corpus exists.
+- Vercel deployment is not implied by Firebase deployment and requires explicit authorization in the active session.

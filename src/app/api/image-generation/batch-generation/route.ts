@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { FEATURE_FLAGS } from "@config/features";
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from "@constant/AI";
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
@@ -278,6 +279,15 @@ export async function POST(request: Request) {
         }, 'critical');
 
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Keep already-enqueued Cloud Tasks retryable while the master switch is off.
+    // No job state or credit reservation is changed until the switch is restored.
+    if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) {
+        return NextResponse.json(
+            { error: 'Image generation is temporarily unavailable.' },
+            { status: 503, headers: { 'Retry-After': '60' } },
+        );
     }
 
     let userIdForLog = 'N/A';
@@ -733,7 +743,7 @@ export async function POST(request: Request) {
                 ? []
                 : Array.from(new Set([
                     ...failure.cleanupStoragePaths,
-                    ...(!stagedResultPersisted ? uploadedStoragePaths : []),
+                    ...(!stagedResultPersisted && !failure.retainsStagedResult ? uploadedStoragePaths : []),
                 ]));
             if (cleanupStoragePaths.length > 0) {
                 await Promise.allSettled(

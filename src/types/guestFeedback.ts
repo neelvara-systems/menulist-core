@@ -14,7 +14,7 @@ export type GuestFeedbackTimestamp = {
  * @see __docs__/projects/internal-feedback-system/
  */
 export interface GuestFeedback {
-    /** Auto-generated Firestore document ID */
+    /** Server-derived Firestore document ID (stable for an idempotent public submission) */
     id?: string;
 
     // ─────────────────────────────────────────────────────────────

@@ -17,6 +17,6 @@ export const ANSWERLATTICE_PRODUCT_AREAS = [
     {
         label: 'Review approved answers',
         href: '/product/knowledge-governance',
-        description: 'Review drafts, repeated misses, stale answers, coverage, readiness, and critical answer tests before support becomes official.',
+        description: 'Review drafts, repeated misses, stale answers, coverage, readiness, and evidence-backed answer tests before support becomes official.',
     },
 ];

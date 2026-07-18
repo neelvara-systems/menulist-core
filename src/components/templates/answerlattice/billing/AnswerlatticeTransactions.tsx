@@ -5,6 +5,7 @@ import { getPaginatedAnswerlatticeAiOperations } from '@database/answerlattice/a
 import { getAnswerlatticeBillingHistoryForStore } from '@database/answerlattice/billing';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, getAiOperationTone } from '@lib/ai/operationPresentation';
+import type { AiOperationHistoryRow } from '@lib/ai/operationHistoryClientContract';
 import { formatBillingHistoryEvents } from '@lib/billing/billingHistoryFormatter';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import type { BillingHistoryItem } from '@type/razorpay';
@@ -81,8 +82,8 @@ export default function AnswerlatticeTransactions() {
     const [billingHistory, setBillingHistory] = useState<BillingHistoryItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const currentHostname = getCurrentHostname();
-    const [aiOperations, setAiOperations] = useState<any[]>([]);
-    const [aiOperationsCursor, setAiOperationsCursor] = useState<{ id?: string } | null>(null);
+    const [aiOperations, setAiOperations] = useState<AiOperationHistoryRow[]>([]);
+    const [aiOperationsCursor, setAiOperationsCursor] = useState<{ id: string } | null>(null);
     const [hasMoreAiOperations, setHasMoreAiOperations] = useState(false);
     const [isLoadingMoreAiOperations, setIsLoadingMoreAiOperations] = useState(false);
 
@@ -197,7 +198,7 @@ export default function AnswerlatticeTransactions() {
         {
             title: 'Result',
             key: 'result',
-            render: (_: unknown, record: any) => (
+            render: (_: unknown, record: AiOperationHistoryRow) => (
                 <Flex vertical gap={2}>
                     <Text>{getAiOperationOwnerSummary(record)}</Text>
                     <Text type="secondary">{formatSourceLabel(record.source)}</Text>
@@ -218,7 +219,7 @@ export default function AnswerlatticeTransactions() {
             key: 'totalTokenCount',
             width: 150,
             align: 'right' as const,
-            render: (value: number, record: any) => (
+            render: (value: number, record: AiOperationHistoryRow) => (
                 <Space size={4}>
                     <Text>{formatTokens(value)}</Text>
                     {record.tokenCountSource === 'estimated' ? <Tag color="default">est.</Tag> : null}

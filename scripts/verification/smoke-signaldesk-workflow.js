@@ -97,40 +97,72 @@ async function main() {
     brandRisk: "low",
     complaintRate: 0,
     domain: "menulist.test",
+    idempotencyKey: "smoke-sender-domain-ready-v1",
     provider: "owned-email",
     status: "active",
     unsubscribeReady: true,
-    volumeRampState: "warm",
+    volumeRampState: "low_volume",
   });
 
   const sourcePolicy = await createSignalDeskSourcePolicyServer(access, {
+    accessMethod: "permissioned-referral",
     allowContact: true,
     allowEvidence: true,
     allowPersonalization: true,
+    allowedContactChannels: ["email", "manual"],
+    allowedFields: ["displayName", "category", "city", "country", "currentListUrl", "website", "email", "phone", "instagram", "notes"],
+    attributionRequirements: ["Keep source references attached."],
+    blockedFields: ["personal-profile"],
+    expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    idempotencyKey: "smoke-source-policy-v1",
+    lastReviewedAt: new Date().toISOString(),
     name: "Smoke approved source",
     notes: "Local emulator workflow source policy.",
+    policyOwner: access.userId,
+    prohibitedUses: ["unapproved send"],
+    rawPayloadPolicy: "never-store",
+    refreshMethod: "manual-review",
     retentionDays: 30,
     sourceType: "manual-research",
+    termsVersion: "smoke-v1",
   });
 
   const expiredPolicy = await createSignalDeskSourcePolicyServer(access, {
+    accessMethod: "permissioned-referral",
     allowContact: true,
     allowEvidence: true,
     allowPersonalization: true,
-    expiresAt: "2000-01-01T00:00:00.000Z",
+    allowedContactChannels: ["email", "manual"],
+    allowedFields: ["displayName", "email"],
+    attributionRequirements: [],
+    blockedFields: [],
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    idempotencyKey: "smoke-expired-policy-v1",
+    lastReviewedAt: new Date().toISOString(),
     name: "Expired smoke source",
     notes: "Used only to assert expired source policy is blocked.",
+    policyOwner: access.userId,
+    prohibitedUses: ["unapproved send"],
+    rawPayloadPolicy: "never-store",
+    refreshMethod: "manual-review",
     retentionDays: 1,
     sourceType: "manual-research",
+    termsVersion: "smoke-v1",
   });
+  await db.collection(SIGNALDESK_COLLECTIONS.SOURCE_POLICIES).doc(expiredPolicy.sourcePolicyId).set({
+    expiresAt: new Date("2000-01-01T00:00:00.000Z"),
+    updatedAt: new Date(),
+  }, { merge: true });
 
   await expectRejects(() => importSignalDeskTargetsServer(access, {
-    rows: [{ displayName: "Expired Cafe", email: "expired@example.invalid" }],
+    idempotencyKey: "smoke-import-expired-v1",
+    rows: [{ displayName: "Expired Cafe", email: "expired@example.invalid", permissionEvidenceRef: "smoke:expired-permission" }],
     sourceName: "expired smoke",
     sourcePolicyId: expiredPolicy.sourcePolicyId,
   }), "SOURCE_POLICY_EXPIRED");
 
   const importResult = await importSignalDeskTargetsServer(access, {
+    idempotencyKey: "smoke-import-target-v1",
     rows: [{
       category: "restaurant",
       city: "Mumbai",
@@ -139,6 +171,7 @@ async function main() {
       displayName: "SignalDesk Smoke Cafe",
       email: "owner@example.invalid",
       notes: "Local smoke target.",
+      permissionEvidenceRef: "smoke:permissioned-owner-introduction",
       phone: "+10000000000",
       website: "https://example.invalid",
     }],
@@ -170,6 +203,7 @@ async function main() {
 
   const reply = await captureSignalDeskReplyServer(access, {
     channel: "email",
+    idempotencyKey: `smoke-reply-${targetId}`,
     message: "Yes, send details.",
     targetId,
   });
@@ -189,6 +223,7 @@ async function main() {
   assert(outcome.outcomeEventId, "Outcome event was not recorded");
 
   const demand = await captureSignalDeskDemandSignalServer(access, {
+    idempotencyKey: `smoke-demand-${targetId}`,
     signalType: "claim_attempt",
     sourceSurface: "manual",
     targetId,

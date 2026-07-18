@@ -29,9 +29,3 @@ export const normalizeIngestionJobQueryLimit = (
 export const isDeletableIngestionJobStatus = (status: unknown): boolean => (
     typeof status === 'string' && DELETABLE_INGESTION_JOB_STATUSES.has(status)
 );
-
-export const countFailedStorageCleanupResults = (results: readonly unknown[]): number => (
-    results.reduce<number>((failedCount, result) => (
-        isRecord(result) && result.success === true ? failedCount : failedCount + 1
-    ), 0)
-);

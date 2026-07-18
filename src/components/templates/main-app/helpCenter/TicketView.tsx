@@ -83,7 +83,6 @@ function TicketView() {
 
     const onTicketSubmitted = (ticket: SupportTicketType) => {
         updateItem(ticket, 'first', 'displayId');
-        message.success(t('requestSubmitted'));
     };
 
     // Memoize styles to prevent re-renders

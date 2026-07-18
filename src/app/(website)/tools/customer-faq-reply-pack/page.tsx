@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Customer FAQ Reply Pack - MenuList | Reusable Customer Answers';
 const description = 'Create reusable FAQ and auto-reply text from owner-entered customer questions and business facts without reading conversations, creating a chatbot, sending messages, or calling AI providers.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/customer-faq-reply-pack',
   },
-};
+});
 
 export default function Page() {
   if (

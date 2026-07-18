@@ -3,8 +3,7 @@ export const dynamic = "force-dynamic";
 import {
     buildGrowthOSKitId,
     toGrowthOSAdminTimestamp,
-    writeGrowthOSKitServer,
-    writeGrowthOSSummaryServer,
+    writeGrowthOSKitAndSummaryServer,
 } from "@database/growthos/server";
 import { findGrowthOSAction } from "@lib/growthos/actionRanking";
 import { getGrowthOSBoundedStringContext, getGrowthOSSecurityLogContext, logGrowthOSApiFailure } from "@lib/growthos/diagnostics";
@@ -91,8 +90,6 @@ export const POST = withAuth(async (request, session) => {
             kitId: buildGrowthOSKitId(session.tId, session.sId),
             timestampFactory: toGrowthOSAdminTimestamp,
         });
-        await writeGrowthOSKitServer(kit);
-
         const summary = {
             tId: String(session.tId),
             sId: String(session.sId),
@@ -115,7 +112,7 @@ export const POST = withAuth(async (request, session) => {
                 isStale: false,
             },
         };
-        await writeGrowthOSSummaryServer(session.sId, summary);
+        await writeGrowthOSKitAndSummaryServer(kit, summary);
 
         return NextResponse.json({ data: { kit, summary } }, { status: 200 });
     } catch (error) {

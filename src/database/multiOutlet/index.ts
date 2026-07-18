@@ -772,19 +772,8 @@ export const removeItemOverride = async (
                 storeProjectId,
             );
 
-            // Get current overrides
-            const storeSnap = await getDoc(storeRef);
-            const currentOverrides: ProjectOverrides =
-                storeSnap.data()?.overrides || createEmptyOverrides();
-
-            // Remove the item override
-            const { [itemId]: removed, ...remainingItems } = currentOverrides.items;
-
             const updateData = withOutletLocalState(replaceUndefined({
-                overrides: {
-                    ...currentOverrides,
-                    items: remainingItems,
-                },
+                [`overrides.items.${itemId}`]: deleteField(),
             }), session.uId);
 
             await updateDoc(storeRef, updateData);
@@ -818,20 +807,8 @@ export const removeCategoryOverride = async (
                 storeProjectId,
             );
 
-            // Get current overrides
-            const storeSnap = await getDoc(storeRef);
-            const currentOverrides: ProjectOverrides =
-                storeSnap.data()?.overrides || createEmptyOverrides();
-
-            // Remove the category override
-            const { [categoryId]: removed, ...remainingCategories } =
-                currentOverrides.categories;
-
             const updateData = withOutletLocalState(replaceUndefined({
-                overrides: {
-                    ...currentOverrides,
-                    categories: remainingCategories,
-                },
+                [`overrides.categories.${categoryId}`]: deleteField(),
             }), session.uId);
 
             await updateDoc(storeRef, updateData);

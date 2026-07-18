@@ -173,5 +173,6 @@ export interface SearchPerfMetrics {
     faqRetrieval?: number;
     embeddingGeneration?: number;
     vectorSearch?: number;
+    entityEvidenceRetrieval?: number;
     answerGeneration?: number;
 }

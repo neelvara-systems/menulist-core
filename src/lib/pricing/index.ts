@@ -2,20 +2,16 @@
  * Pricing Module Exports
  * ═══════════════════════════════════════════════════════════════
  *
- * Central export point for Pricing Integrity System.
- * Part of Feature #1.
+ * Public exports for the active menu-price presentation boundary.
+ *
+ * The historical integrity engine, MOL writer, and PDF queue are intentionally
+ * not re-exported. They have no active caller and must not be activated through
+ * a convenient barrel import without a separate architecture/release decision.
  */
 
-// Core engine
+export { formatMenuPrice, normalizeMenuPrice, parseSingleMenuPrice } from './formatMenuPrice';
 export {
-    getDefaultIntegrityState, getIntegrityState, markPDFFailed, markPDFFresh, runPricingIntegrity, type IntegrityParams
-} from "./integrityEngine";
-
-// MOL logging
-export { logMOLEvent, logPDFEvent, logPriceChange } from "./molLogger";
-
-// PDF queue (flagged OFF by default)
-export {
-    enqueuePDFRegen, getDebounceMs, isBackgroundPDFRegenEnabled
-} from "./pdfQueue";
-
+    getActivePublicItemPriceAttributes,
+    getPublicItemListPriceLabel,
+    hasPublicItemDisplayPrice,
+} from './publicItemPricePresentation';

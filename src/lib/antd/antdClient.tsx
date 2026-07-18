@@ -1,5 +1,6 @@
 "use client";
 import { useAppSelector } from "@hook/useAppSelector";
+import { isRtlLocale } from '@lib/localization/config';
 import { getDarkColorState, getDarkModeState, getLightColorState, getRTLDirectionState } from '@reduxSlices/clientThemeConfig';
 import { App, ConfigProvider, theme, type ThemeConfig } from "antd";
 import { useLocale } from "next-intl";
@@ -95,7 +96,7 @@ const AntdClient = ({ children, removeComponent }: any) => {
     const { token } = theme.useToken();
     const appLocale = useLocale();
     const [antdLocale, setAntdLocale] = useState(en_US)
-    const direction = isRTLDirection ? "rtl" : "ltr";
+    const direction = isRTLDirection || isRtlLocale(appLocale) ? "rtl" : "ltr";
     const antdThemeConfig = useMemo<ThemeConfig>(() => ({
         algorithm: isDarkMode ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {

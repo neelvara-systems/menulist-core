@@ -1,6 +1,6 @@
 # Print & Share Tools - Implementation
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -59,7 +59,7 @@ Every report includes:
 - asset metadata
 - creative-editor document metadata
 
-The report states that public HTTPS URL format was checked locally and the destination was not fetched. The parser accepts bare public domains by normalizing them to HTTPS, rejects explicit `http://`, localhost, `.local`, private IP, raw IP, and credentialed URLs, and leaves invalid links out of the generated QR target so the asset falls back away from unsafe customer links.
+The report states that public HTTPS URL format was checked locally and the destination was not fetched. `printShareToolReport.ts` imports the shared `parsePublicHttpsUrl(...)` helper rather than maintaining a second parser. It accepts bare public domains by normalizing them to HTTPS; rejects explicit `http://`, localhost including trailing-dot forms, `.local`, private/raw IPv4, raw IPv6 including IPv4-mapped IPv6, empty hostname labels, and credentialed URLs; and leaves invalid links out of the generated QR target so the asset falls back away from unsafe customer links.
 
 ---
 

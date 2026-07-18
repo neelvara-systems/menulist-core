@@ -38,14 +38,12 @@ export function createInitialScreenState(): DigitalScreenState {
     };
 }
 
-/**
- * Calculate default expiry for owner uploads (14 days)
- * Per spec: Auto-expire after 14 days (silent fallback)
- */
-export function getOwnerUploadExpiry(): Timestamp {
-    const expiryDate = new Date();
-    expiryDate.setDate(expiryDate.getDate() + 14);
-    return Timestamp.fromDate(expiryDate);
+/** Calculate owner-upload expiry from the shared feature contract. */
+export function getOwnerUploadExpiry(expiryDays: number): Timestamp {
+    const normalizedExpiryDays = Number.isFinite(expiryDays)
+        ? Math.max(1, Math.floor(expiryDays))
+        : 1;
+    return Timestamp.fromMillis(Date.now() + normalizedExpiryDays * 24 * 60 * 60 * 1000);
 }
 
 /**
@@ -65,6 +63,14 @@ export function isSlideExpired(slide: ScreenSlide): boolean {
  */
 export function filterExpiredSlides(slides: ScreenSlide[]): ScreenSlide[] {
     return slides.filter(slide => !isSlideExpired(slide));
+}
+
+/** Keep only currently usable slides within the configured owner-upload cap. */
+export function getActiveScreenSlides(slides: ScreenSlide[], maxUploads: number): ScreenSlide[] {
+    const normalizedMaxUploads = Number.isFinite(maxUploads)
+        ? Math.max(0, Math.floor(maxUploads))
+        : 0;
+    return filterExpiredSlides(slides).slice(0, normalizedMaxUploads);
 }
 
 /**

@@ -1,5 +1,8 @@
 import { computeQualitySignals, type QualitySignal } from '@lib/mce/qualitySignals';
-import { buildStarterActivationSummary } from '@lib/onboarding/starterActivation';
+import {
+    buildStarterActivationSummary,
+    normalizeStarterActivationTimestamp,
+} from '@lib/onboarding/starterActivation';
 import type { ProjectFileType, Project } from '@template/main-app/projects/types/project.types';
 import type { StoreDataType } from '@type/platform/store';
 
@@ -9,7 +12,6 @@ export type MenuSetupProgressPhase =
     | 'review'
     | 'publish'
     | 'place'
-    | 'improve'
     | 'running';
 
 export type MenuSetupProgressStepStatus =
@@ -81,21 +83,25 @@ interface BuildMenuSetupProgressInput {
 const CRITICAL_MENU_SETUP_SIGNAL_IDS = new Set(['prices', 'priceOutliers']);
 
 function getAllItems(files: ProjectFileType[] | undefined) {
-    if (!files?.length) return [];
-    return files.flatMap((file) => file.extractedData?.data?.items || []);
+    if (!Array.isArray(files) || files.length === 0) return [];
+    return files.flatMap((file) => (
+        Array.isArray(file?.extractedData?.data?.items)
+            ? file.extractedData.data.items.filter((item) => item && typeof item === 'object')
+            : []
+    ));
 }
 
-function hasValue(value: unknown): boolean {
-    if (typeof value === 'string') return value.trim().length > 0;
-    if (Array.isArray(value)) return value.some(hasValue);
+function hasText(value: unknown): value is string {
+    return typeof value === 'string' && value.trim().length > 0;
+}
+
+function hasStringValue(value: unknown): boolean {
+    if (hasText(value)) return true;
+    if (Array.isArray(value)) return value.some(hasStringValue);
     if (value && typeof value === 'object') {
-        return Object.values(value as Record<string, unknown>).some(hasValue);
+        return Object.values(value as Record<string, unknown>).some(hasStringValue);
     }
-    return Boolean(value);
-}
-
-function hasTimestamp(value: unknown): boolean {
-    return Boolean(value);
+    return false;
 }
 
 function getSignal(signals: QualitySignal[], id: string): QualitySignal | null {
@@ -121,7 +127,7 @@ function buildStep(input: Omit<MenuSetupProgressStep, 'done'>): MenuSetupProgres
 
 function resolveQualitySignals(project: BuildMenuSetupProgressInput['project'], qualitySignals?: QualitySignal[]) {
     if (qualitySignals) return qualitySignals;
-    if (!project?.files) return [];
+    if (!Array.isArray(project?.files)) return [];
 
     return computeQualitySignals(project.files, project.languages, {
         projectPublicContent: project,
@@ -136,10 +142,10 @@ export function buildMenuSetupProgress({
     storeDetails,
 }: BuildMenuSetupProgressInput): MenuSetupProgressSummary {
     const signals = resolveQualitySignals(project, qualitySignals);
-    const files = project?.files;
+    const files = Array.isArray(project?.files) ? project.files : [];
     const allItems = getAllItems(files);
     const activeItems = allItems.filter((item) => item.active !== false);
-    const hasProjectSource = Boolean(project?.projectId || storeDetails?.onboardingSource);
+    const hasProjectSource = hasText(project?.projectId);
     const hasMenuItems = activeItems.length > 0;
     const criticalWarnings = signals.filter((signal) => (
         signal.status === 'warning' && CRITICAL_MENU_SETUP_SIGNAL_IDS.has(signal.id)
@@ -149,23 +155,22 @@ export function buildMenuSetupProgress({
     const hasTranslationSignals = translationSignals.length > 0;
     const translationsReady = hasMenuItems && hasTranslationSignals && translationSignals.every((signal) => signal.status === 'ok');
     const translationWarning = translationSignals.find((signal) => signal.status === 'warning');
-    const published = hasTimestamp(project?.lastPublishedAt);
+    const published = Boolean(normalizeStarterActivationTimestamp(project?.lastPublishedAt));
     const starterActivation = buildStarterActivationSummary(storeDetails as StoreDataType | null);
     const placementDone = published && (
-        starterActivation.activated
-        || (!starterActivation.appliesToStarterActivation && starterActivation.signalCount === 0)
-        || starterActivation.signalCount > 0
+        !starterActivation.appliesToStarterActivation
+        || starterActivation.activated
     );
-    const hasPublicLinks = hasValue(storeDetails?.socialMedia)
-        || hasValue(storeDetails?.publicPresence?.whatsappNumber)
-        || hasValue(storeDetails?.publicPresence?.googleMapsUrl)
-        || hasValue(storeDetails?.publicPresence?.reservationUrl)
-        || hasValue(storeDetails?.publicPresence?.orderUrl)
-        || hasValue(storeDetails?.publicPresence?.googleReviewUrl);
-    const hasPublicPhoto = hasValue(storeDetails?.publicPresence?.businessCover)
-        || hasValue(storeDetails?.publicPresence?.photos)
-        || hasValue((storeDetails as any)?.logo)
-        || hasValue(project?.projectImage);
+    const hasPublicLinks = hasStringValue(storeDetails?.socialMedia)
+        || hasText(storeDetails?.publicPresence?.whatsappNumber)
+        || hasText(storeDetails?.publicPresence?.googleMapsUrl)
+        || hasText(storeDetails?.publicPresence?.reservationUrl)
+        || hasText(storeDetails?.publicPresence?.orderUrl)
+        || hasText(storeDetails?.publicPresence?.googleReviewUrl);
+    const hasPublicPhoto = hasText(storeDetails?.publicPresence?.businessCover)
+        || (Array.isArray(storeDetails?.publicPresence?.photos) && storeDetails.publicPresence.photos.some(hasText))
+        || hasText((storeDetails as any)?.logo)
+        || hasText(project?.projectImage);
 
     const requiredSteps: MenuSetupProgressStep[] = [
         buildStep({
@@ -269,7 +274,7 @@ export function buildMenuSetupProgress({
 
     const requiredDone = requiredSteps.filter((step) => step.done).length;
     const optionalDone = optionalSteps.filter((step) => step.done).length;
-    const nextStep = requiredSteps.find((step) => !step.done) || optionalSteps.find((step) => !step.done);
+    const nextStep = requiredSteps.find((step) => !step.done);
     const nextAction = nextStep?.action;
     const requiredTotal = requiredSteps.length;
     const progressPercent = requiredTotal ? Math.round((requiredDone / requiredTotal) * 100) : 0;
@@ -280,13 +285,11 @@ export function buildMenuSetupProgress({
         if (!keyDetailsChecked) return 'review';
         if (!published) return 'publish';
         if (!placementDone) return 'place';
-        if (optionalDone < optionalSteps.length) return 'improve';
         return 'running';
     })();
 
     const compactCopy = (() => {
         if (phase === 'running') return 'Menu setup is complete.';
-        if (phase === 'improve') return 'Required setup is complete. Optional improvements are still available.';
         if (nextStep) return nextStep.description;
         return 'Menu setup is ready.';
     })();

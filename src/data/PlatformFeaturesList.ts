@@ -2,10 +2,10 @@ const PlatformFeaturesList = {
     "B2C": [
         {
             "id": "projects",
-            "name": "Number of Projects",
+            "name": "Customer lists",
             "category": "Core Platform",
-            "description": "A project is a unique digital catalog. Each project can have its own set of items, design, and settings.",
-            "valueLabel": "{value} Projects",
+            "description": "Each list has its own items, design, customer link, and settings.",
+            "valueLabel": "{value} lists",
             "values": {
                 "starter": 1,
                 "pro": 5,
@@ -14,9 +14,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_data_extraction",
-            "name": "AI Data Extraction (from PDF/Image)",
-            "category": "AI Data Processing",
-            "description": "Automatically extract items, categories, prices, and descriptions from any uploaded menu or price list.",
+            "name": "Menu and list import",
+            "category": "Content preparation",
+            "description": "Prepare items, categories, prices, and available descriptions from a supported photo, image, PDF, or owned public source.",
             "valueLabel": "{name}",
             "values": {
                 "starter": "Included",
@@ -26,9 +26,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_descriptions",
-            "name": "AI Description Generation",
-            "category": "AI Content Suite",
-            "description": "Programmatically generate compelling, SEO-friendly descriptions for your items.",
+            "name": "Prepared item descriptions",
+            "category": "Content preparation",
+            "description": "Prepare clear item descriptions for the owner to review before publishing.",
             "valueLabel": "{name}",
             "values": {
                 "starter": "Included",
@@ -38,9 +38,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_multi_language",
-            "name": "AI Multi-Language Translation",
-            "category": "AI Content Suite",
-            "description": "Translate your entire catalog into multiple languages with a single click.",
+            "name": "Menu translations",
+            "category": "Content preparation",
+            "description": "Prepare supported customer-language versions for the owner to review before publishing.",
             "valueLabel": "{name}",
             "values": {
                 "starter": "Included",
@@ -50,9 +50,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_image_generator",
-            "name": "AI Image Generator (with Batch Processing)",
-            "category": "AI Content Suite",
-            "description": "Generate stunning, on-brand visuals and photoshoots from a simple text prompt. Batch processing allows you to generate multiple images at once.",
+            "name": "Generated item images",
+            "category": "Content preparation",
+            "description": "Generate one or more item-image options from an owner prompt, then keep only the approved results.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,
@@ -62,9 +62,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_image_editor",
-            "name": "AI Image Editor",
-            "category": "AI Content Suite",
-            "description": "Enhance your existing photos, remove backgrounds, or make smart edits with one-click industry presets.",
+            "name": "Photo editing",
+            "category": "Content preparation",
+            "description": "Prepare supported photo improvements, background removal, and preset edits for owner review.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,
@@ -74,9 +74,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "interactive_studio",
-            "name": "Interactive Studio (Virtual Try-On)",
-            "category": "AI Content Suite",
-            "description": "Programmatically create hyper-realistic composite images like on-model photography or product-in-space visualizations.",
+            "name": "Composite image studio",
+            "category": "Content preparation",
+            "description": "Prepare composite product-image options, such as an item in a selected setting, for owner review.",
             "valueLabel": "{name}",
             "values": {
                 "starter": false,
@@ -86,9 +86,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "social_sharing",
-            "name": "One-Click Social Sharing",
+            "name": "Shareable customer link",
             "category": "Marketing & Growth",
-            "description": "Directly share your catalog to WhatsApp, Facebook, and Instagram with tracked links.",
+            "description": "Copy or share the approved customer link through the apps already available on your device.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,
@@ -136,7 +136,7 @@ const PlatformFeaturesList = {
             "id": "business_attributes",
             "name": "Business Discovery Attributes",
             "category": "Online Presence",
-            "description": "Mark your amenities (WiFi, parking, outdoor seating), dietary options, service modes, and payment methods to appear in search results.",
+            "description": "Add amenities, dietary options, service modes, and payment methods to your Official Business Page.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,
@@ -146,9 +146,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "analytics_dashboard",
-            "name": "Analytics Dashboard",
+            "name": "Customer activity",
             "category": "Marketing & Growth",
-            "description": "See menu sessions, engaged sessions, intent, action rate, top items, top categories, source quality, searches, and official-page actions.",
+            "description": "See visits, popular items and categories, searches, and customer actions from the menu and Official Business Page.",
             "valueLabel": "{name} - {value}",
             "values": {
                 "starter": "Core metrics",
@@ -158,9 +158,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "analytics_action_summaries",
-            "name": "Analytics Action Summaries",
+            "name": "Owner action summaries",
             "category": "Marketing & Growth",
-            "description": "Plain-language dashboard summaries and a short owner action list generated from settled menu and official-page analytics.",
+            "description": "Get a plain-language summary and a short action list from settled customer activity.",
             "valueLabel": "{name}",
             "values": {
                 "starter": false,
@@ -170,9 +170,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "seo_settings",
-            "name": "Advanced SEO Settings",
+            "name": "Search page settings",
             "category": "Marketing & Growth",
-            "description": "Optimize your catalog for search engines with custom meta tags and sitemaps.",
+            "description": "Set supported page titles and descriptions and use the generated sitemap for your customer pages.",
             "valueLabel": "{name}",
             "values": {
                 "starter": false,
@@ -182,9 +182,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "google_pixel",
-            "name": "Connect Google Analytics & Meta Pixel",
+            "name": "Connect Google Analytics and Meta Pixel",
             "category": "Marketing & Growth",
-            "description": "Connect your catalog to Google Analytics and Facebook Pixel for tracking and measurement.",
+            "description": "Connect your own supported analytics IDs for additional measurement on customer pages.",
             "valueLabel": "{name}",
             "values": {
                 "starter": false,
@@ -206,9 +206,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "remove_branding",
-            "name": "Remove MenulListAI Branding",
+            "name": "Remove MenuList branding",
             "category": "Marketing & Growth",
-            "description": "Remove MenulListAI branding from your catalog.",
+            "description": "Remove MenuList branding from your customer pages.",
             "valueLabel": "{name}",
             "values": {
                 "starter": false,
@@ -268,9 +268,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_descriptions",
-            "name": "AI Description Generation",
-            "category": "AI Content Suite",
-            "description": "Programmatically generate compelling, SEO-friendly descriptions for your items.",
+            "name": "Prepared item descriptions",
+            "category": "Content preparation",
+            "description": "Prepare clear item descriptions for review before downstream use.",
             "valueLabel": "{name}",
             "values": {
                 "starter": "Included",
@@ -280,9 +280,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_multi_language",
-            "name": "AI Multi-Language Translation",
-            "category": "AI Content Suite",
-            "description": "Translate your entire catalog into multiple languages with a single click.",
+            "name": "Prepared translations",
+            "category": "Content preparation",
+            "description": "Prepare supported-language versions for review before downstream use.",
             "valueLabel": "{name}",
             "values": {
                 "starter": "Included",
@@ -292,9 +292,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_image_generator",
-            "name": "AI Image Generator (with Batch Processing)",
-            "category": "AI Content Suite",
-            "description": "Generate stunning, on-brand visuals and photoshoots from a simple text prompt. Batch processing allows you to generate multiple images at once.",
+            "name": "Generated item images",
+            "category": "Content preparation",
+            "description": "Generate one or more item-image options from a prompt and keep the approved results.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,
@@ -304,9 +304,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "ai_image_editor",
-            "name": "AI Image Editor",
-            "category": "AI Content Suite",
-            "description": "Enhance your existing photos, remove backgrounds, or make smart edits with one-click industry presets.",
+            "name": "Photo editing",
+            "category": "Content preparation",
+            "description": "Prepare supported photo improvements, background removal, and preset edits for review.",
             "valueLabel": "{name}",
             "values": {
                 "starter": true,
@@ -316,9 +316,9 @@ const PlatformFeaturesList = {
         },
         {
             "id": "interactive_studio",
-            "name": "Interactive Studio (Virtual Try-On)",
-            "category": "AI Content Suite",
-            "description": "Programmatically create hyper-realistic composite images like on-model photography or product-in-space visualizations.",
+            "name": "Composite image studio",
+            "category": "Content preparation",
+            "description": "Prepare composite product-image options, such as an item in a selected setting, for review.",
             "valueLabel": "{name}",
             "values": {
                 "starter": false,
@@ -382,7 +382,7 @@ export const commonFeaturesList = {
         {
             "id": "verification_dashboard",
             "name": "Side-by-Side Verification Dashboard",
-            "description": "Visually confirm and edit the extracted data next to your original document for 100% accuracy.",
+            "description": "Review and edit prepared data beside the original source before publishing.",
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {
@@ -393,8 +393,8 @@ export const commonFeaturesList = {
         },
         {
             "id": "creative_design_studio",
-            "name": "Full Creative Design Studio",
-            "description": "Complete control over your catalog's branding with custom layouts, colors, fonts, and backgrounds.",
+            "name": "Design studio",
+            "description": "Choose supported layouts, colors, fonts, and backgrounds for customer pages.",
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {
@@ -408,7 +408,7 @@ export const commonFeaturesList = {
         {
             "id": "verification_dashboard",
             "name": "Side-by-Side Verification Dashboard",
-            "description": "Visually confirm and edit the extracted data next to your original document for 100% accuracy.",
+            "description": "Review and edit prepared data beside the original source before downstream use.",
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {
@@ -420,7 +420,7 @@ export const commonFeaturesList = {
         {
             "id": "visual_json_editor",
             "name": "Visual JSON Editor",
-            "description": "The perfect workbench for developers to visually inspect and perfect the AI's data output before using it in an application.",
+            "description": "Inspect and edit prepared structured data before using it in another application.",
             "category": "Platform Essentials",
             "valueLabel": "Included",
             "values": {

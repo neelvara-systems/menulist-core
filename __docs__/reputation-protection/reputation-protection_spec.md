@@ -141,7 +141,7 @@ The table below is historical concept research and was not refreshed in the July
 | State | Trigger | Action |
 |-------|---------|--------|
 | **Now** | — | Docs complete, architecture designed |
-| **GBP Approved** | Google grants API access | Enable review ingestion |
+| **GBP Approved** | Google grants API access | Re-enter docs-first implementation; do not enable yet |
 | **Testing** | Internal stores | Validate classification + reply assist |
 | **Activation** | Confidence threshold met | Enable for all stores with GBP connected |
 
@@ -151,7 +151,7 @@ The table below is historical concept research and was not refreshed in the July
 
 | Risk | Mitigation |
 |------|-----------|
-| GBP API never approved | Guest Feedback System acts as private firewall |
+| GBP API never approved | Guest Feedback remains a separate private correction channel |
 | AI suggests inappropriate reply | Owner MUST review before posting |
 | Owners ignore review notifications | Calm persistence — not alarm, not silence |
 | Review volume overwhelms owner | Only surface actionable reviews (needs attention + high risk) |
@@ -159,4 +159,4 @@ The table below is historical concept research and was not refreshed in the July
 ---
 
 **Document Signature:** Cascade (Lead Architect)  
-**Last Updated:** July 11, 2026
+**Last Updated:** July 16, 2026

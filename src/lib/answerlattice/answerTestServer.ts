@@ -10,26 +10,43 @@ import {
 import {
     attemptCanonicalRetrieval,
     CANONICAL_GOVERNED_FALLBACK_MESSAGES,
+    getAnswerlatticeCanonicalAnswerCacheKey,
     isCanonicalGovernedFallbackReason,
 } from '@lib/answerlattice/canonicalRetrieval';
 import { attemptFaqAnswerRetrieval } from '@lib/answerlattice/faqRetrieval';
 import {
+    ANSWERLATTICE_ANSWER_TEST_CITATION_POLICIES,
     ANSWERLATTICE_ANSWER_TEST_MAX_RUNS,
     ANSWERLATTICE_ANSWER_TEST_MAX_RESERVATIONS,
+    ANSWERLATTICE_ANSWER_TEST_RISK_LEVELS,
+    ANSWERLATTICE_ANSWER_TEST_SOURCES,
     AnswerlatticeAnswerTestCaseSchema,
     createEmptyAnswerlatticeAnswerTestSummary,
     getAnswerlatticeAnswerTestSummaryId,
+    normalizeAnswerlatticeAnswerTestSourceVersions,
     type AnswerlatticeAnswerTestCase,
     type AnswerlatticeAnswerTestCaseResult,
     type AnswerlatticeAnswerTestMode,
     type AnswerlatticeAnswerTestRun,
     type AnswerlatticeAnswerTestRunReservation,
+    type AnswerlatticeAnswerTestSourceVersions,
     type AnswerlatticeAnswerTestSource,
     type AnswerlatticeAnswerTestSummary,
 } from '@lib/answerlattice/answerTestContracts';
+import {
+    evaluateAnswerTestCase,
+    extractAnswerTestReferenceIds,
+    getAnswerTestProofSummary,
+    type AnswerlatticeResolvedTestAnswer,
+} from '@lib/answerlattice/answerTestEvaluation';
+import {
+    classifyAnswerlatticeProposalImpact,
+    type AnswerlatticeProposalImpactComparison,
+} from '@lib/answerlattice/proposalImpactContracts';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import { getAnswerlatticeCacheVersionServer } from '@lib/answerlattice/cacheVersionServer';
+import { getAnswerlatticeCompiledSourceVersionsAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { normalizeAnswerlatticeReleaseId } from '@lib/answerlattice/releaseIdBoundary';
 import {
     parseAnswerlatticeRetrievalRelease,
@@ -45,28 +62,24 @@ import type {
 } from '@type/answerlattice';
 import type { FirestoreSubscriptionDoc } from '@type/razorpay';
 
-const ANSWER_PREVIEW_MAX_LENGTH = 360;
 const ANSWER_TEST_RUN_RESERVATION_TTL_MS = 15 * 60 * 1000;
 const ANSWER_TEST_SUMMARY_MAX_BYTES = 480 * 1024;
-const CONFIDENCE_ORDER = { none: 0, low: 1, medium: 2, high: 3 } as const;
 
 type AnswerTestScope = { tId: number; sId: number };
 
-type AnswerTestPreload = {
+type AnswerTestRetrievalPreload = {
     searchIndex: AnswerlatticeEntitySearchIndex[];
     latestRelease: AnswerlatticeRelease | null;
+    currentVersion?: number;
     activeAnswerCache: Map<string, AnswerlatticeCanonicalAnswer[]>;
     kbSourceVersion?: number;
 };
 
-type ResolvedAnswer = {
-    source: AnswerlatticeAnswerTestSource;
-    answer: string;
-    answerId?: string;
-    faqId?: string;
-    relatedEntityIds?: string[];
-    confidence?: 'high' | 'medium' | 'low' | 'none';
-    aiProviderUsed: boolean;
+type AnswerTestPreload = AnswerTestRetrievalPreload & {
+    sourceVersions: AnswerlatticeAnswerTestSourceVersions;
+};
+
+type ResolvedAnswer = AnswerlatticeResolvedTestAnswer & {
     aiProviderOperations?: string[];
     aiProviderTokenUsage?: CoreSearchResult['aiProviderTokenUsage'];
 };
@@ -139,26 +152,94 @@ const getSummaryRef = (scope: AnswerTestScope) => (
         .doc(getAnswerlatticeAnswerTestSummaryId(scope.tId, scope.sId))
 );
 
+const normalizeStringList = (value: unknown, limit: number, maxLength: number): string[] => (
+    Array.isArray(value)
+        ? Array.from(new Set(value
+            .map(item => typeof item === 'string' ? item.trim().slice(0, maxLength) : '')
+            .filter(Boolean)))
+            .slice(0, limit)
+        : []
+);
+
+const normalizeNonNegativeInteger = (value: unknown): number => {
+    const normalized = Number(value);
+    return Number.isFinite(normalized) && normalized > 0 ? Math.floor(normalized) : 0;
+};
+
+const normalizeResult = (value: unknown): AnswerlatticeAnswerTestCaseResult | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const result = value as Partial<AnswerlatticeAnswerTestCaseResult>;
+    const caseId = String(result.caseId || '').trim().slice(0, 80);
+    if (!caseId) return null;
+    const source = ANSWERLATTICE_ANSWER_TEST_SOURCES.includes(result.source as AnswerlatticeAnswerTestSource)
+        ? result.source as AnswerlatticeAnswerTestSource
+        : 'no_answer';
+    const riskLevel = ANSWERLATTICE_ANSWER_TEST_RISK_LEVELS.includes(result.riskLevel as 'standard' | 'critical')
+        ? result.riskLevel as 'standard' | 'critical'
+        : 'standard';
+    const citationPolicy = ANSWERLATTICE_ANSWER_TEST_CITATION_POLICIES.includes(result.citationPolicy as 'not_required' | 'at_least_one' | 'specific_sources')
+        ? result.citationPolicy as 'not_required' | 'at_least_one' | 'specific_sources'
+        : 'not_required';
+    const referenceIds = normalizeStringList(result.referenceIds, 8, 160);
+    const missingReferenceIds = normalizeStringList(result.missingReferenceIds, 8, 160);
+
+    return {
+        caseId,
+        title: String(result.title || 'Untitled test').trim().slice(0, 120),
+        passed: result.passed === true,
+        source,
+        ...(result.answerId ? { answerId: String(result.answerId).trim().slice(0, 160) } : {}),
+        ...(result.faqId ? { faqId: String(result.faqId).trim().slice(0, 160) } : {}),
+        riskLevel,
+        relatedEntityIds: normalizeStringList(result.relatedEntityIds, 10, 160),
+        referenceIds,
+        citationPolicy,
+        citationPassed: typeof result.citationPassed === 'boolean'
+            ? result.citationPassed
+            : citationPolicy === 'not_required',
+        missingReferenceIds,
+        ...(result.confidence === 'high' || result.confidence === 'medium' || result.confidence === 'low' || result.confidence === 'none'
+            ? { confidence: result.confidence }
+            : {}),
+        answerPreview: String(result.answerPreview || '').replace(/\s+/g, ' ').trim().slice(0, 360),
+        failures: normalizeStringList(result.failures, 20, 240),
+        aiProviderUsed: result.aiProviderUsed === true,
+        durationMs: normalizeNonNegativeInteger(result.durationMs),
+    };
+};
+
 const normalizeRun = (value: unknown): AnswerlatticeAnswerTestRun | null => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
     const run = value as Partial<AnswerlatticeAnswerTestRun>;
     if (!run.id || !run.mode || !Array.isArray(run.results)) return null;
 
+    const results = run.results
+        .slice(0, 25)
+        .map(normalizeResult)
+        .filter((result): result is AnswerlatticeAnswerTestCaseResult => Boolean(result));
+    if (results.length === 0) return null;
+    const passedCount = results.filter(result => result.passed).length;
+    const failedCount = results.length - passedCount;
+    const proof = getAnswerTestProofSummary(results);
+    const sourceVersions = normalizeAnswerlatticeAnswerTestSourceVersions(run.sourceVersions);
+
     return {
         id: String(run.id).slice(0, 120),
         mode: run.mode === 'full_runtime' ? 'full_runtime' : 'canonical_only',
-        status: run.status === 'passed' || run.status === 'failed' || run.status === 'partial' ? run.status : 'failed',
+        status: failedCount === 0 ? 'passed' : passedCount === 0 ? 'failed' : 'partial',
         startedAt: String(run.startedAt || ''),
         completedAt: String(run.completedAt || ''),
         createdBy: String(run.createdBy || 'unknown').slice(0, 180),
-        caseCount: Math.max(0, Number(run.caseCount || 0)),
-        passedCount: Math.max(0, Number(run.passedCount || 0)),
-        failedCount: Math.max(0, Number(run.failedCount || 0)),
-        providerCaseCount: Math.max(0, Number(run.providerCaseCount || 0)),
-        durationMs: Math.max(0, Number(run.durationMs || 0)),
+        caseCount: results.length,
+        passedCount,
+        failedCount,
+        ...proof,
+        providerCaseCount: results.filter(result => result.aiProviderUsed).length,
+        durationMs: normalizeNonNegativeInteger(run.durationMs),
         ...(run.releaseId ? { releaseId: String(run.releaseId).slice(0, 160) } : {}),
         ...(run.releaseVersion ? { releaseVersion: String(run.releaseVersion).slice(0, 80) } : {}),
-        results: run.results.slice(0, 25) as AnswerlatticeAnswerTestCaseResult[],
+        ...(sourceVersions ? { sourceVersions } : {}),
+        results,
     };
 };
 
@@ -300,7 +381,7 @@ export const loadAnswerlatticeAnswerTestSummary = async (
 export const loadAnswerlatticeAnswerTestPreload = async (
     scope: AnswerTestScope,
 ): Promise<AnswerTestPreload> => {
-    const [indexSnapshot, releaseSnapshot, kbSourceVersion] = await Promise.all([
+    const [indexSnapshot, releaseSnapshot, kbSourceVersion, compiledSourceVersions] = await Promise.all([
         getDb().collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
             .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
             .where('tId', '==', scope.tId)
@@ -316,6 +397,7 @@ export const loadAnswerlatticeAnswerTestPreload = async (
             .limit(1)
             .get(),
         getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId),
+        getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId),
     ]);
 
     if (indexSnapshot.size > 500) {
@@ -332,17 +414,52 @@ export const loadAnswerlatticeAnswerTestPreload = async (
             scope,
         );
 
-    return { searchIndex, latestRelease, activeAnswerCache: new Map(), kbSourceVersion };
+    const sourceVersions = normalizeAnswerlatticeAnswerTestSourceVersions(compiledSourceVersions);
+    if (!sourceVersions) {
+        throw new Error('Answerlattice answer-test source versions are unavailable.');
+    }
+
+    return { searchIndex, latestRelease, activeAnswerCache: new Map(), kbSourceVersion, sourceVersions };
+};
+
+const loadAnswerlatticeProposalImpactPreload = async (
+    scope: AnswerTestScope,
+    currentVersion: number,
+): Promise<AnswerTestRetrievalPreload> => {
+    const [indexSnapshot, kbSourceVersion] = await Promise.all([
+        getDb().collection(DB_COLLECTIONS.ANSWERLATTICE_ENTITY_SEARCH_INDEX)
+            .where('pId', '==', PRODUCT_IDS.ANSWERLATTICE)
+            .where('tId', '==', scope.tId)
+            .where('sId', '==', scope.sId)
+            .limit(501)
+            .get(),
+        getAnswerlatticeCacheVersionServer(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId),
+    ]);
+    if (indexSnapshot.size > 500) {
+        throw new Error('Answerlattice proposal-impact search index exceeds the supported preload boundary.');
+    }
+    const searchIndex = indexSnapshot.docs.map(doc => parseAnswerlatticeRetrievalSearchIndex(
+        { ...doc.data(), id: doc.id },
+        scope,
+    ));
+    return {
+        searchIndex,
+        latestRelease: null,
+        currentVersion,
+        activeAnswerCache: new Map(),
+        kbSourceVersion,
+    };
 };
 
 const runDeterministicAnswer = async (
     testCase: AnswerlatticeAnswerTestCase,
     scope: AnswerTestScope,
-    preload: AnswerTestPreload,
+    preload: AnswerTestRetrievalPreload,
 ): Promise<ResolvedAnswer> => {
     const canonical = await attemptCanonicalRetrieval(testCase.query, {
         tId: scope.tId,
         sId: scope.sId,
+        currentVersion: preload.currentVersion,
         context: testCase.context,
         preloadedSearchIndex: preload.searchIndex,
         preloadedLatestRelease: preload.latestRelease,
@@ -356,6 +473,7 @@ const runDeterministicAnswer = async (
             answerId: canonical.answer.id,
             relatedEntityIds: canonical.matchedEntityIds,
             confidence: canonical.confidence,
+            referenceIds: [],
             aiProviderUsed: false,
         };
     }
@@ -366,6 +484,7 @@ const runDeterministicAnswer = async (
             answer: CANONICAL_GOVERNED_FALLBACK_MESSAGES[canonical.fallbackReason],
             relatedEntityIds: canonical.matchedEntityIds,
             confidence: 'low',
+            referenceIds: [],
             aiProviderUsed: false,
         };
     }
@@ -383,6 +502,7 @@ const runDeterministicAnswer = async (
             answer: faq.faq.answer,
             faqId: faq.faq.id,
             relatedEntityIds: Array.isArray(faq.faq.entityIds) ? faq.faq.entityIds.map(String).slice(0, 10) : [],
+            referenceIds: extractAnswerTestReferenceIds(faq.references),
             confidence: faq.confidence,
             aiProviderUsed: false,
         };
@@ -394,7 +514,84 @@ const runDeterministicAnswer = async (
         confidence: canonical.confidence,
         aiProviderUsed: false,
         relatedEntityIds: [],
+        referenceIds: [],
     };
+};
+
+const cloneAnswerTestRetrievalPreload = (
+    preload: AnswerTestRetrievalPreload,
+): AnswerTestRetrievalPreload => ({
+    ...preload,
+    activeAnswerCache: new Map(
+        Array.from(preload.activeAnswerCache.entries()).map(([key, answers]) => [key, [...answers]]),
+    ),
+});
+
+const overlayAnswerlatticeProposalCandidate = (
+    preload: AnswerTestRetrievalPreload,
+    scope: AnswerTestScope,
+    candidate: AnswerlatticeCanonicalAnswer,
+    targetAnswerId: string | null,
+) => {
+    const candidateEntityIds = new Set(candidate.scope.entityIds);
+    for (const [cacheKey, answers] of Array.from(preload.activeAnswerCache.entries())) {
+        const entityId = candidate.scope.entityIds.find(
+            id => getAnswerlatticeCanonicalAnswerCacheKey(scope.tId, scope.sId, id) === cacheKey,
+        );
+        const nextAnswers = answers.filter(answer => (
+            answer.id !== candidate.id
+            && (!targetAnswerId || answer.id !== targetAnswerId)
+        ));
+        if (entityId && candidateEntityIds.has(entityId) && candidate.status === 'active') {
+            nextAnswers.push(candidate);
+        }
+        preload.activeAnswerCache.set(cacheKey, nextAnswers);
+    }
+};
+
+export const runAnswerlatticeProposalImpactTests = async ({
+    candidate,
+    cases,
+    currentVersion,
+    scope,
+    targetAnswerId,
+}: {
+    candidate: AnswerlatticeCanonicalAnswer;
+    cases: AnswerlatticeAnswerTestCase[];
+    currentVersion: number;
+    scope: AnswerTestScope;
+    targetAnswerId: string | null;
+}): Promise<{
+    comparisons: AnswerlatticeProposalImpactComparison[];
+    currentResults: AnswerlatticeAnswerTestCaseResult[];
+    proposedResults: AnswerlatticeAnswerTestCaseResult[];
+}> => {
+    const currentPreload = await loadAnswerlatticeProposalImpactPreload(scope, currentVersion);
+    const currentResults: AnswerlatticeAnswerTestCaseResult[] = [];
+    for (const testCase of cases) {
+        const startedAt = Date.now();
+        const resolved = await runDeterministicAnswer(testCase, scope, currentPreload);
+        currentResults.push(evaluateAnswerTestCase(testCase, resolved, Date.now() - startedAt));
+    }
+
+    const proposedPreload = cloneAnswerTestRetrievalPreload(currentPreload);
+    overlayAnswerlatticeProposalCandidate(proposedPreload, scope, candidate, targetAnswerId);
+    const proposedResults: AnswerlatticeAnswerTestCaseResult[] = [];
+    for (const testCase of cases) {
+        const startedAt = Date.now();
+        const resolved = await runDeterministicAnswer(testCase, scope, proposedPreload);
+        proposedResults.push(evaluateAnswerTestCase(testCase, resolved, Date.now() - startedAt));
+    }
+
+    const comparisons = cases.map((testCase, index): AnswerlatticeProposalImpactComparison => ({
+        caseId: testCase.id,
+        title: testCase.title,
+        riskLevel: testCase.riskLevel,
+        classification: classifyAnswerlatticeProposalImpact(currentResults[index], proposedResults[index]),
+        current: currentResults[index],
+        proposed: proposedResults[index],
+    }));
+    return { comparisons, currentResults, proposedResults };
 };
 
 const resolveCoreSearchAnswer = (result: CoreSearchResult): ResolvedAnswer => {
@@ -414,61 +611,11 @@ const resolveCoreSearchAnswer = (result: CoreSearchResult): ResolvedAnswer => {
         answerId: result.canonicalAnswerId,
         faqId: result.faqAnswerId,
         relatedEntityIds: [],
+        referenceIds: extractAnswerTestReferenceIds(result.references),
         confidence: result.confidence,
         aiProviderUsed: Boolean(result.aiProviderUsed),
         aiProviderOperations: result.aiProviderOperations,
         aiProviderTokenUsage: result.aiProviderTokenUsage,
-    };
-};
-
-const evaluateAnswer = (
-    testCase: AnswerlatticeAnswerTestCase,
-    resolved: ResolvedAnswer,
-    durationMs: number,
-): AnswerlatticeAnswerTestCaseResult => {
-    const failures: string[] = [];
-    const expected = testCase.expected;
-    const normalizedAnswer = resolved.answer.toLowerCase();
-
-    if (resolved.source !== expected.source) {
-        failures.push(`Expected ${expected.source}, received ${resolved.source}.`);
-    }
-    if (expected.answerId && resolved.answerId !== expected.answerId) {
-        failures.push('The canonical answer did not match the expected answer.');
-    }
-    if (expected.faqId && resolved.faqId !== expected.faqId) {
-        failures.push('The FAQ did not match the expected FAQ.');
-    }
-    if (
-        expected.minimumConfidence
-        && CONFIDENCE_ORDER[resolved.confidence || 'none'] < CONFIDENCE_ORDER[expected.minimumConfidence]
-    ) {
-        failures.push(`Confidence was below ${expected.minimumConfidence}.`);
-    }
-    expected.mustInclude.forEach((phrase) => {
-        if (!normalizedAnswer.includes(phrase.toLowerCase())) {
-            failures.push(`Answer did not include required phrase: ${phrase}`);
-        }
-    });
-    expected.mustNotInclude.forEach((phrase) => {
-        if (normalizedAnswer.includes(phrase.toLowerCase())) {
-            failures.push(`Answer included blocked phrase: ${phrase}`);
-        }
-    });
-
-    return {
-        caseId: testCase.id,
-        title: testCase.title,
-        passed: failures.length === 0,
-        source: resolved.source,
-        ...(resolved.answerId ? { answerId: resolved.answerId } : {}),
-        ...(resolved.faqId ? { faqId: resolved.faqId } : {}),
-        relatedEntityIds: (resolved.relatedEntityIds || []).slice(0, 10),
-        ...(resolved.confidence ? { confidence: resolved.confidence } : {}),
-        answerPreview: resolved.answer.replace(/\s+/g, ' ').trim().slice(0, ANSWER_PREVIEW_MAX_LENGTH),
-        failures,
-        aiProviderUsed: resolved.aiProviderUsed,
-        durationMs,
     };
 };
 
@@ -584,10 +731,11 @@ export const runAnswerlatticeAnswerTests = async ({
     }
 
     const results = cases.map((testCase, index) => (
-        evaluateAnswer(testCase, resolvedAnswers[index], caseDurations[index] || 0)
+        evaluateAnswerTestCase(testCase, resolvedAnswers[index], caseDurations[index] || 0)
     ));
     const passedCount = results.filter(result => result.passed).length;
     const failedCount = results.length - passedCount;
+    const proof = getAnswerTestProofSummary(results);
     const completedAt = new Date().toISOString();
 
     return {
@@ -600,10 +748,12 @@ export const runAnswerlatticeAnswerTests = async ({
         caseCount: results.length,
         passedCount,
         failedCount,
+        ...proof,
         providerCaseCount: results.filter(result => result.aiProviderUsed).length,
         durationMs: Date.now() - startedAtMs,
         ...(release?.id ? { releaseId: release.id } : {}),
         ...(release?.versionLabel ? { releaseVersion: release.versionLabel } : {}),
+        sourceVersions: preload.sourceVersions,
         results,
     };
 };

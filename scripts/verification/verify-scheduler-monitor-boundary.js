@@ -39,13 +39,18 @@ function verifySchedulerDal(dal) {
     'getSchedulerDashboardSnapshot(',
     'collection(firebaseClient, DB_COLLECTIONS.SCHEDULER_RUN_LOGS)',
     "orderBy('startedAt', 'desc')",
-    'constraints.push(limit(filter?.limit || 20))',
+    'constraints.push(limit(historyLimit))',
+    'SCHEDULER_HISTORY_LIMIT = 30',
     'query(logsRef, orderBy(\'startedAt\', \'desc\'), limit(10))',
     'collection(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY)',
     "where(documentId(), '>=', 'nightlyState_')",
     "where(documentId(), '<=', 'nightlyState_~')",
     'orderBy(documentId())',
-    'limit(maxResults)',
+    'limit(settlementLimit)',
+    'SCHEDULER_SETTLEMENT_LIMIT = 100',
+    'await assertCurrentPlatformAccess();',
+    "throw new Error('ops_scheduler_run_history_unavailable')",
+    "throw new Error('ops_scheduler_settlement_summary_unavailable')",
     'buildSchedulerHealthSummaryFromRuns(runHistory.slice(0, 10))',
     "logOpsFailure('ops_scheduler_run_history_load_failed'",
     "logOpsFailure('ops_scheduler_health_summary_load_failed'",
@@ -111,6 +116,9 @@ function verifyDesktopMonitor(component) {
     'Details: {flattenDetails(err.details)}',
     "httpsCallable(fns, 'triggerStoreNightlyScheduler', { timeout: 600000 })",
     'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'normalizeSchedulerRecoveryResponse(result?.data)',
+    'normalizeSchedulerRecoveryRunLogId(',
+    'Scheduler state unavailable',
     "logOpsFailure('ops_scheduler_manual_recovery_failed'",
     "getBoundedOpsStringContext('storeId', selectedStore.sId)",
     "getBoundedOpsStringContext('tenantId', selectedStore.tId)",
@@ -124,6 +132,8 @@ function verifyDesktopMonitor(component) {
     'Modal.confirm({',
     "httpsCallable(fns, 'triggerStoreNightlyScheduler', { timeout: 600000 })",
     'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'normalizeSchedulerRecoveryResponse(result?.data)',
+    'normalizeSchedulerRecoveryRunLogId(',
     "logOpsFailure('ops_scheduler_manual_recovery_failed'",
   ], 'Desktop Scheduler Monitor manual recovery order');
 
@@ -156,6 +166,9 @@ function verifyMobileMonitor(screen) {
     "Dialog.confirm({",
     "httpsCallable(getFunctions(), 'triggerStoreNightlyScheduler', { timeout: 600000 })",
     'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'normalizeSchedulerRecoveryResponse(result?.data)',
+    'normalizeSchedulerRecoveryRunLogId(',
+    'Scheduler state unavailable',
     "logOpsFailure('mobile_scheduler_recovery_trigger_failed'",
     "getBoundedOpsStringContext('selectedStoreId', selectedStore.sId)",
     "getBoundedOpsStringContext('selectedTenantId', selectedStore.tId)",
@@ -169,6 +182,8 @@ function verifyMobileMonitor(screen) {
     'Dialog.confirm({',
     "httpsCallable(getFunctions(), 'triggerStoreNightlyScheduler', { timeout: 600000 })",
     'triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId })',
+    'normalizeSchedulerRecoveryResponse(result?.data)',
+    'normalizeSchedulerRecoveryRunLogId(',
     "logOpsFailure('mobile_scheduler_recovery_trigger_failed'",
   ], 'Mobile Scheduler Monitor manual recovery order');
 
@@ -244,22 +259,22 @@ function verifyDocsAndPackage(packageJson, opsDoc, readme, mobileDoc, auditDoc) 
   ].forEach((token) => assertIncludes(opsDoc, token, 'Ops Control Room scheduler source gate docs'));
 
   [
-    'Manual recovery creates a deterministic `schedulerRunLogs/manual_store_{tId}_{sId}_{timestamp}` document',
-    'Source gate: `npm run verify:scheduler-monitor-boundary`',
-    'read-only scheduler DAL',
-    'store-level manual recovery boundary',
+    'Scheduler run logs retain their existing 90-day boundary.',
+    'Recovery callable responses require a valid status/count/run-log envelope',
+    'npm run verify:scheduler-monitor-boundary',
+    '/ops/scheduler',
   ].forEach((token) => assertIncludes(readme, token, 'Ops Control Room README scheduler docs'));
 
   [
-    'Scheduler Monitor mobile support is platform-only',
-    'same `platformRole === \'PLATFORM\'` gate',
+    'Ops Control Room, Scheduler Monitor and Extraction Monitor use dedicated touch-sized mobile screens.',
+    "The signed `platformRole === 'PLATFORM'` check controls visibility",
     'Source gate: `npm run verify:scheduler-monitor-boundary`',
-    'store-scoped manual recovery',
+    'Scheduler recovery uses the shared validated callable response',
   ].forEach((token) => assertIncludes(mobileDoc, token, 'Ops Control Room mobile scheduler docs'));
 
   [
-    'Scheduler monitor boundary source gate: `npm run verify:scheduler-monitor-boundary`',
-    'source-only read-only scheduler DAL, bounded detail rendering, store-scoped manual recovery, desktop/mobile route, and docs gate',
+    '## Internal Ops Control Room And Platform Monitoring - July 16, 2026',
+    'store-nightly callable acknowledgements are normalized and capped',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit scheduler monitor checkpoint'));
 }
 
@@ -279,7 +294,16 @@ function verifySchedulerMonitorBoundary() {
     readme: read('__docs__/ops-control-room/README.md'),
     mobileDoc: read('__docs__/ops-control-room/ops-control-room_mobile-support.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    recoveryResponse: read('src/lib/ops/schedulerRecoveryResponse.ts'),
   };
+
+  [
+    'normalizeSchedulerRecoveryResponse',
+    'normalizeSchedulerRecoveryRunLogId',
+    "value.success !== (status !== 'failed')",
+    'value.totalStores !== 1',
+    'isValidFirestoreDocumentId(value)',
+  ].forEach((token) => assertIncludes(files.recoveryResponse, token, 'Scheduler recovery response boundary'));
 
   verifySchedulerDal(files.dal);
   verifyStoreSummaryHook(files.hook);

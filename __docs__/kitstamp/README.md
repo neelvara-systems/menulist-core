@@ -6,6 +6,7 @@
 **Created:** May 31, 2026
 **Product decision:** Treat KitStamp as a separate product, with separation discipline similar to Answerlattice.
 **Naming lock:** Active implementation naming is only `KitStamp`, `kitstamp`, and `KS`.
+**Current source gate:** `npm run verify:kitstamp-boundary`
 
 ---
 
@@ -150,6 +151,13 @@ KitStamp should follow the Answerlattice split pattern:
 | Cross-product imports | copied snapshots with `sourceContext`, never live shared writes |
 
 Do not activate the existing KitStamp product-domain placeholder until deployment targets, Firebase targets, public site, and host-header smoke tests are documented and verified.
+
+The maintained source gate proves the current planning-only state: only the
+reserved product code/domain placeholder exists, all KitStamp product-domain
+flags remain false, and there is no route, API, Firebase config, rules/index
+target, Functions package, environment namespace, provider call, billing flow,
+or publishing runtime. A future implementation must intentionally update this
+gate together with the approved foundation.
 
 ## Document Map
 

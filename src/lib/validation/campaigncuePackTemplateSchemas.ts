@@ -14,6 +14,8 @@ const campaignCueDailyDeskOwnerGoals = [
     "book_service",
     "remind_customers",
     "prepare_local_pack",
+    "collect_reviews",
+    "bring_back_customers",
 ] as const;
 
 const safeIdSchema = z.string()
@@ -25,6 +27,10 @@ const storagePathSchema = z.string()
     .min(1)
     .max(420)
     .regex(/^campaigncue\/templates\//, "Template assets must live under campaigncue/templates");
+
+const previewDataUrlSchema = z.string()
+    .max(CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_PREVIEW_BYTES)
+    .regex(/^data:image\/(?:png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/i, "Preview must be a PNG, JPEG, or WebP data URL");
 
 export const campaignCuePackTemplateBusinessCategorySchema = z.enum(
     BUSINESS_CATEGORIES.map((category) => category.value) as [string, ...string[]],
@@ -93,7 +99,19 @@ export const campaignCuePackTemplatePayloadSchema = z.object({
         protected: z.boolean(),
         required: z.boolean(),
         type: safeIdSchema,
-    })).max(20),
+    })).max(20).superRefine((slots, ctx) => {
+        const seen = new Set<string>();
+        slots.forEach((slot, index) => {
+            if (seen.has(slot.type)) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Template fact slot types must be unique",
+                    path: [index, "type"],
+                });
+            }
+            seen.add(slot.type);
+        });
+    }),
     outputPackShape: z.object({
         channels: z.array(z.string().trim().min(1).max(80)).max(16),
         copyBlocks: z.array(z.string().trim().min(1).max(80)).max(24),
@@ -115,7 +133,7 @@ export const campaignCueWorkspacePackTemplateSaveSchema = z.object({
     businessCategory: campaignCuePackTemplateBusinessCategorySchema,
     editorDocument: z.unknown().optional(),
     payload: campaignCuePackTemplatePayloadSchema,
-    previewDataUrl: z.string().max(CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_PREVIEW_BYTES).optional(),
+    previewDataUrl: previewDataUrlSchema.optional(),
     summary: campaignCuePackTemplateSummarySchema.omit({
         createdAt: true,
         editorDocumentPath: true,
@@ -131,6 +149,11 @@ export const campaignCueWorkspacePackTemplateSaveSchema = z.object({
     }),
     workspaceId: safeIdSchema,
 });
+
+export const campaignCueWorkspacePackTemplateDeleteSchema = z.object({
+    templateId: safeIdSchema,
+    workspaceId: safeIdSchema,
+}).strict();
 
 export type CampaignCuePackTemplateSummaryInput = z.infer<typeof campaignCuePackTemplateSummarySchema>;
 export type CampaignCuePackTemplatePayloadInput = z.infer<typeof campaignCuePackTemplatePayloadSchema>;

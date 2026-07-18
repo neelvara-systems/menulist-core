@@ -1,97 +1,81 @@
-# Ops Control Room — Product Specification
+# Internal Ops Control Room And Platform Monitoring — Specification
 
-**Status:** ✅ IMPLEMENTED
-**Created:** February 20, 2026  
-**Last Updated:** July 13, 2026
-**Audience:** CEO, PM, Non-developers
+**Status:** Implemented; local source complete for audit item 29
+**Last updated:** July 16, 2026
 
----
+## Purpose
 
-## Executive Summary
+Give the founder/operator a small, truthful recovery and observability surface without creating an owner-facing analytics product, realtime control plane or second monitoring datastore.
 
-**What:** Internal dashboard at `/ops` that gives the founder instant system-wide visibility.  
-**Why:** Without it, the founder must check Firebase Console, Sentry, and Vercel separately to understand system health.  
-**For Whom:** MenuList founder/superadmin only (not visible to SMB owners).
+## Required flows
 
----
+1. A current platform operator opens an internal route. Server layout admission rechecks persisted authority.
+2. Direct browser monitors recheck current authority immediately before bounded Firestore reads.
+3. A monitor either presents a verified snapshot, a clearly labelled previous snapshot, or unavailable state. Read failure must never appear as healthy zero state.
+4. SAFE_MODE and alert-mute actions are bounded, fail-closed on limiter outage, current-authorized and acknowledged before success copy.
+5. Scheduler recovery selects a canonical store summary row, invokes the existing store-level nightly callable, validates its response and refreshes the monitor.
+6. Extraction retry revalidates the original failed job, project and Storage ownership on the server before an active-job claim.
+7. Notification and messaging monitors read only capped recent windows and expose only bounded operational DTOs.
+8. Entity block mutations revalidate tenant/store/user state transactionally and report post-commit effects separately.
+9. Operational history has explicit retention: scheduler runs and system alerts are kept for 90 days rather than forever.
 
-## Problem Statement
+## Access requirements
 
-Currently, to answer "Is MenuList stable right now?" the founder must:
-1. Open Firebase Console → check Firestore usage
-2. Open Sentry → check error rates
-3. Open Vercel → check deployment status
-4. Manually query Firestore → check store counts
+- Product: MenuList platform operator only.
+- Signed role claim: exact `PLATFORM`.
+- Persisted authority: exact current user document identity/email/role/lifecycle/revocation.
+- Browser data: Firestore rules plus fresh current-access admission.
+- High-risk mutation/provider work: server or callable current-authority check.
+- No SMB owner, customer, public website or sibling-product tenant access.
 
-This takes 5-10 minutes and requires context-switching between 4 tools. The ops control room consolidates the answers into a single page that loads in <10 seconds.
+## Functional surfaces
 
----
+### Control Room
 
-## Goals
+Shows SAFE_MODE, alert mute state, bounded recent alert presence, new stores, recently publishing stores and 60-day publish inactivity. It also links the specialized monitors and exposes SAFE_MODE, mute and force-republish controls.
 
-| Goal | Target |
-|------|--------|
-| Time to assess system health | <10 seconds |
-| Number of external tools needed | 0 (everything on one page) |
-| Data freshness | Current session (manual refresh) |
+It does not currently compute the historical placeholder metrics `publishedToday`, `feedbackToday`, `noProject` or `unpublished48h`; those typed fields remain zero for compatibility and are not a claimed complete health model.
 
----
+### Scheduler Monitor
 
-## Sections (5)
+Shows capped recent run logs, health derived from the latest ten valid runs and at most 100 nightly settlement rows. Manual recovery runs analytics settlement, Decision Blocks, Menu Intelligence and current store-nightly work for one selected store. It is not a generic scheduler replay console.
 
-### Section 1: System State
-- Store health summary (OK / WARNING / FAILED counts)
-- Recent publish success rate
-- SAFE_MODE status (ON/OFF)
-- Last alert type + timestamp
+### Extraction Monitor
 
-### Section 2: Adoption Pulse (last 24h)
-- New stores onboarded
-- Menus published
-- Active stores (published in last 7 days)
-- Feedback submissions count
-- AI generations count
+Shows the latest 150 job rows and up to 100 current-day extraction operation rows per snapshot. Desktop supports bounded inspection and platform-only failed-job retry; mobile is summary/recovery awareness only.
 
-### Section 3: Store Integrity Signals
-- Stores without active project
-- Stores unpublished >48h after onboarding
-- Stores with zero publish in 60 days
-- Stores with MCE failures (if MCE enabled)
+### Notification and messaging monitors
 
-### Section 4: Recent Alerts
-- Last 10 alerts from `systemAlerts` collection
-- Severity, title, timestamp, acknowledged status
+Platform alerts, owner notifications and messaging onboarding use server Admin APIs because their data is server-only or recovery-sensitive. Counts describe bounded recent windows, not lifetime totals.
 
-### Section 5: Emergency Controls
-- Enable/Disable SAFE_MODE (with confirmation dialog)
-- Mute Alerts for 20 minutes (deploy window)
+### Founder, cost and specialist monitors
 
-### Related Internal Page: Scheduler Monitor
-- URL: `/ops/scheduler`
-- Shows scheduler run health from `schedulerRunLogs`
-- Shows store-local analytics settlement state from `platformSummary/nightlyState_*`
-- Highlights failed or stale settlements after the timezone-aware nightly flow
-- Manual recovery is limited to Decision Blocks recomputation; it is not a full scheduler run
+Founder, Cost Posture, Business Health and Answerlattice intake are read-only manual-refresh views. They use precomputed summaries or capped source reads. Cost Posture must keep the Cloud Billing export gap explicit.
 
----
+### Entity blocks
 
-## Non-Functional Requirements
+Tenant/store/user block controls are platform recovery tools. They preserve current transaction, Firebase Auth reconciliation, public cache/screen and Business Health invalidation contracts.
 
-- **Access:** Superadmin only; signed platform admission plus exact current persisted role/lifecycle/identity/revocation verification on high-risk ops APIs
-- **Data loading:** Fetch-on-open, no real-time listeners, manual refresh button
-- **Design:** Numeric blocks only, no charts, no graphs (Lean v1)
-- **Cost:** Core `/ops` load stays manually bounded. Linked notification monitors add one direct current-user authorization read and one bounded recent-window scan; their counts never aggregate over collection history.
-- **Not in sidebar:** Direct URL access only (`/ops`)
+## Non-functional requirements
 
----
+- No realtime listeners.
+- Every list/query has a hard cap.
+- No raw provider/callable error in browser copy.
+- No false healthy/zero state on read failure.
+- No raw signed URLs, secrets, recipient data or unbounded stored metadata in overview diagnostics.
+- Current authorization before private/expensive work.
+- Fail-closed rate limiting for privileged mutations and bounded platform monitor APIs.
+- Desktop and MobileShell parity for admitted platform recovery flows.
+- One consolidated maintenance scheduler owns retention.
 
-## What This Is NOT
+## Non-goals
 
-- Not an analytics dashboard (no trend lines, no historical data)
-- Not a store management tool (no edit capabilities)
-- Not customer-visible (superadmin only)
-- Not real-time (manual refresh)
+- No public status page.
+- No automatic incident remediation engine.
+- No whole Firebase bill forecast without Cloud Billing export.
+- No new ops event warehouse, baseline collection, realtime listener or standalone scheduler.
+- No owner settings or notifications for internal platform controls.
 
----
+## Completion boundary
 
-**Document Policy:** Single spec. Implementation details in `_impl.md`.
+Local source completion requires focused verifiers/tests, exact TypeScript, focused lint, Functions build/lint/preflight, docs links and diff integrity. It does not certify deployed IAM, Upstash, Firebase target data, provider delivery, browser/device UI or production hosts.

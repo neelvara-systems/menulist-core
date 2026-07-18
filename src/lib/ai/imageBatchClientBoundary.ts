@@ -421,6 +421,15 @@ export function isAllowedImageBatchOwnerTransition(
         ].includes(currentStatus as BatchImageGenerationJobStatusType);
 }
 
+export function isImageBatchOwnerOutcomeAlreadyCommitted(
+    currentJob: Pick<BatchImageGenerationJobType, 'selectedImagesPersisted' | 'status'>,
+    nextStatus: BatchImageGenerationJobStatusType,
+    selectedImagesPersisted: boolean,
+): boolean {
+    return currentJob.status === nextStatus
+        && currentJob.selectedImagesPersisted === selectedImagesPersisted;
+}
+
 export function normalizeImageBatchJobForClient(
     value: unknown,
     id: unknown,
@@ -492,7 +501,9 @@ export function normalizeImageBatchJobForClient(
         projectId: projectScope.projectId,
         ...(projectJobKey ? { projectJobKey } : {}),
         requestedItemIds,
-        ...(value.selectedImagesPersisted === true ? { selectedImagesPersisted: true } : {}),
+        ...(typeof value.selectedImagesPersisted === 'boolean'
+            ? { selectedImagesPersisted: value.selectedImagesPersisted }
+            : {}),
         status,
         statusHistory,
         totalImages: Number(value.totalImages),

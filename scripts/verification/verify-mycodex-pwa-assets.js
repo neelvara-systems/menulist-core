@@ -192,6 +192,15 @@ function verifyMetadataAndRegistration() {
   assertIncludes(serviceWorkerRegister, "const MYCODEX_SW_URL = '/mycodex-sw.js';", 'service worker registration');
   assertIncludes(serviceWorkerRegister, "resolved.productSite?.id === 'mycodex'", 'service worker registration');
   assertIncludes(middleware, 'mycodex-sw\\\\.js', 'middleware matcher');
+  assertIncludes(middleware, "const MYCODEX_INTERNAL_BASE_PATH = '/sites/mycodex';", 'MyCodex private internal route boundary');
+  assertIncludes(middleware, 'pathname === MYCODEX_INTERNAL_BASE_PATH', 'MyCodex private internal route boundary');
+  assertIncludes(middleware, 'pathname.startsWith(`${MYCODEX_INTERNAL_BASE_PATH}/`)', 'MyCodex private internal route boundary');
+  assertIncludes(middleware, 'setMyCodexResponseHeaders(new NextResponse(null, { status: 404 }))', 'MyCodex private internal route boundary');
+  assert(
+    middleware.indexOf('pathname === MYCODEX_INTERNAL_BASE_PATH')
+      < middleware.indexOf("if (domainInfo.type === 'product' && domainInfo.productSite)"),
+    'MyCodex direct internal path must fail before product rewrite routing',
+  );
   assertIncludes(domainResolver, "'/mycodex-sw.js'", 'domain resolver bypass');
   assertIncludes(productIds, "MYCODEX: 'MC'", 'MyCodex internal product code');
   assertIncludes(auth, 'MYCODEX_PRODUCT_CODE = PRODUCT_IDS.MYCODEX', 'MyCodex product code boundary');
@@ -215,7 +224,8 @@ function verifyMetadataAndRegistration() {
   assertIncludes(billingPlans, 'isProductBillingDisabled', 'MyCodex disabled billing boundary');
   assertIncludes(billingServer, 'MyCodex billing is not configured.', 'MyCodex billing fails closed');
   assertIncludes(nextConfig, 'outputFileTracingIncludes', 'MyCodex Vercel filesystem tracing');
-  assertIncludes(nextConfig, "'/sites/mycodex/**/*': ['./__docs__/**/*']", 'MyCodex Vercel filesystem tracing');
+  assertIncludes(nextConfig, "const myCodexDocsTraceIncludes = ['./__docs__/**/*.md'];", 'MyCodex Markdown-only Vercel filesystem tracing');
+  assertIncludes(nextConfig, "'/sites/mycodex/**/*': myCodexDocsTraceIncludes", 'MyCodex Vercel filesystem tracing');
   assertIncludes(clientContainer, "const normalizedTargetPath = String(targetPath || '').trim();", 'MyCodex client route builder boundary');
   assertIncludes(clientContainer, "const safeTargetPath = !normalizedTargetPath || normalizedTargetPath.startsWith('//') ? '/' : normalizedTargetPath;", 'MyCodex client route builder protocol-relative guard');
   assertIncludes(clientContainer, "const cleanPath = safeTargetPath.startsWith('/') ? safeTargetPath : '/' + safeTargetPath;", 'MyCodex client route builder same-origin path normalization');

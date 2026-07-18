@@ -122,6 +122,16 @@ Changed-function subset note: the July 2, 2026 Founder Monitor scheduler slice c
 firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive
 ```
 
+Owner-pending billing scale subset (July 14, 2026): checkout/provider-plan coordination adds explicit deny rules, status-scoped health observations add two exact composite indexes, and reconciliation cursor/health work changes only the consolidated maintenance scheduler. After the current caller has `menulist-qa` Cloud Resource Manager/Firebase deploy permission, run the exact scoped command and retain its output:
+
+```bash
+firebase deploy --project menulist-qa --config firebase.json --only firestore:rules,firestore:indexes,functions:menulistMaintenanceScheduler --non-interactive
+```
+
+**Pending — owner:** restore/assign the required `menulist-qa` IAM permission, run the command above, and record successful rules/index upload plus the deployed scheduler revision. Do not mark the checkout coordination rules, status-scoped health indexes, reconciliation cursor, or billing-health snapshot deployed until that evidence exists.
+
+Latest billing subset attempt (July 14, 2026): Functions predeploy lint/build passed, then Firestore rules validation failed with Firebase Rules API HTTP 403 (`The caller does not have permission`) before rules or Function upload. Do not retry until IAM changes.
+
 Changed-function subset note: the July 2, 2026 menu extraction SAFE_MODE worker guard changes `functions/src/logic/processMenuImagesJob.ts`. If only this slice is being retried, deploy exactly the queued extraction worker target and record the result separately from the broader blocked set:
 
 ```bash
@@ -401,7 +411,7 @@ npm run smoke:razorpay-sandbox-readonly
 
 The command hard-rejects `rzp_live_` keys, requires exact private/public `rzp_test_` key-ID agreement, performs four bounded GET-only provider inventory calls (`payments.all`, `orders.all`, `plans.all`, and `subscriptions.all`, each with `count: 1`), and performs a synthetic raw-body webhook HMAC self-test that must accept the exact body and reject a one-byte change. It prints only mode, operation, entity, count, and pass/fail metadata. It does not create, update, capture, cancel, refund, or delete provider objects and does not access Firestore or Storage.
 
-Current partial evidence refreshed July 11, 2026: `npm run smoke:razorpay-sandbox-readonly` passed against the local test-mode account. All four provider operations returned `entity: collection` with one bounded item, the exact synthetic raw body passed signature validation, and a one-byte body change failed validation. This proves the configured test-mode credentials can read the four provider families and the installed SDK's raw-body signature primitive behaves as expected with the configured local webhook secret. It does not prove the secret matches a deployed Razorpay webhook endpoint, checkout, subscription creation, payment verification, top-up purchase, webhook delivery, provider failure compensation, local/provider state parity, deployed Functions secrets, or no-real-charge behavior.
+Current partial evidence refreshed July 14, 2026 after the final billing cross-check: `npm run smoke:razorpay-sandbox-readonly` passed against the local test-mode account. All four provider operations returned `entity: collection` with one bounded item, the exact synthetic raw body passed signature validation, and a one-byte body change failed validation. This proves the configured test-mode credentials can read the four provider families and the installed SDK's raw-body signature primitive behaves as expected with the configured local webhook secret. It does not prove the secret matches a deployed Razorpay webhook endpoint, checkout, subscription creation, payment verification, top-up purchase, webhook delivery, provider failure compensation, local/provider state parity, deployed Functions secrets, or no-real-charge behavior.
 
 Provider references: [Test Subscriptions](https://razorpay.com/docs/payments/subscriptions/test/?preferred-country=IN) and [Validate and Test Webhooks](https://razorpay.com/docs/webhooks/validate-test/?locale=en-US).
 
@@ -417,11 +427,18 @@ Provider references: [Test Subscriptions](https://razorpay.com/docs/payments/sub
 **Minimum Flow Set**
 
 - New owner subscription checkout.
+- Two concurrent identical subscription-create requests converge on one provider subscription, including the timing where request B passed the pending read just before request A persisted and completed; a changed intent receives a conflict.
+- Simulated lost create response recovers the exact `checkoutAttemptId` subscription before any second provider create.
 - Payment verification with signature.
 - Failed provider setup after local tenant/store/user creation, confirming compensation behavior.
 - Top-up purchase flow.
+- Two concurrent identical top-up creates converge on one attempt receipt/order, including the post-persistence lease-reacquire boundary; simulated lost response recovers the receipt-filtered order.
+- An inherited-outlet top-up credits the shared HQ subscription and its paid transaction appears in the same HQ billing-history scope shown on desktop and mobile.
+- A lost-browser `order.paid` webhook applies the pending top-up exactly once and replay does not add credits again.
 - Reseller payment flow if reseller launch is in scope.
 - Webhook signature rejection and accepted webhook handling.
+
+**Pending — owner:** after the app-side changes and scoped Firebase rules/scheduler revision are deployed to the intended non-production target, run this disposable Razorpay test-mode mutation set and attach sanitized provider/local state evidence. The maintained read-only preflight is already green but does not pass these mutation checks.
 
 **Pass Evidence**
 
@@ -540,7 +557,7 @@ env -u FIREBASE_PROJECT_ID -u FIREBASE_PROJECT_LOCATION -u BATCH_IMAGE_GENERATIO
 
 Passing preflight proves local batch-trigger admission, accounting/capacity ordering, worker secret/header guards, and missing-config cheap-fail behavior only. It does not prove Cloud Tasks enqueue, worker invocation, worker secret acceptance, provider image generation, review state, or project persistence.
 
-Current blocker refreshed July 9, 2026: local `.env` has `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, and an HTTPS `BATCH_IMAGE_GENERATION_WORKER_URL`, but `BATCH_IMAGE_GENERATION_WORKER_SECRET` is missing. MenuList Functions dotenv files do not contain the batch worker keys. A no-enqueue status probe using the app helper returned `ready:false`, `hasProjectId:true`, `hasQueueLocation:true`, `hasQueueId:true`, `hasWorkerUrl:true`, and `hasWorkerSecret:false`. Gate 7 remains blocked until the worker secret is configured for the target, the worker target is deployed, and a controlled Cloud Tasks enqueue/worker smoke is run.
+Current blocker refreshed July 15, 2026: local `.env` has `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, and an HTTPS `BATCH_IMAGE_GENERATION_WORKER_URL`, but `BATCH_IMAGE_GENERATION_WORKER_SECRET` is missing. MenuList Functions dotenv files do not contain the batch worker keys. A no-enqueue status probe using the app helper returned `ready:false`, `hasProjectId:true`, `hasQueueLocation:true`, `hasQueueId:true`, `hasWorkerUrl:true`, and `hasWorkerSecret:false`. Gate 7 remains blocked until the worker secret is configured for the target, the worker target is deployed, the existing queue policy is captured, and a controlled Cloud Tasks enqueue/worker smoke is run. Application-side task creation is capped at eight concurrent requests, but that does not replace queue-level dispatch and retry controls.
 
 **Prerequisites**
 
@@ -549,7 +566,20 @@ Current blocker refreshed July 9, 2026: local `.env` has `FIREBASE_PROJECT_ID`, 
 - `BATCH_IMAGE_GENERATION_WORKER_SECRET`
 - `FIREBASE_PROJECT_ID`
 - `FIREBASE_PROJECT_LOCATION`
-- Firebase Function deploy completed for the worker target.
+- Target app deployment completed for the HTTPS worker route. This is a Vercel/app deployment boundary, not a Firebase Function deployment.
+
+**Queue Policy Evidence**
+
+Run this read-only command after loading the intended target values:
+
+```bash
+gcloud tasks queues describe "$BATCH_IMAGE_GENERATION_QUEUE_ID" \
+  --location="$FIREBASE_PROJECT_LOCATION" \
+  --project="$FIREBASE_PROJECT_ID" \
+  --format=json
+```
+
+Record `rateLimits.maxConcurrentDispatches`, `rateLimits.maxDispatchesPerSecond`, and the complete `retryConfig`. Confirm they fit the deployed worker capacity and current Gemini target quota before changing them; do not copy unverified values between QA and production.
 
 **Minimum Flow Set**
 
@@ -563,6 +593,7 @@ Current blocker refreshed July 9, 2026: local `.env` has `FIREBASE_PROJECT_ID`, 
 **Pass Evidence**
 
 - Queue ID and project ID.
+- Captured queue dispatch and retry policy, with target-capacity review.
 - Job ID presence only, not full payload.
 - Worker auth rejection and acceptance.
 - Owner-visible job result.

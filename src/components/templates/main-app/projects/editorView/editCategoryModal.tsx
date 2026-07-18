@@ -3,6 +3,7 @@ import CategoryIcon from '@atoms/CategoryIcon';
 import IconPicker from '@atoms/IconPicker';
 import { getSuggestedCategoryIcons, normalizeCategoryIconValue } from '@lib/categoryIcons';
 import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
+import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import TimeSlotPresetForm, { DEFAULT_PRESET_COLORS } from '@atoms/timeSlotPresetForm';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
@@ -110,7 +111,9 @@ const EditCategoryModal = ({
     const shouldShowGenerateTranslations = useMemo(() => {
         if (!categoryData || selectedLanguages.length <= 1) return false;
         if (!categoryData.name?.[primaryLanguage]?.trim()) return false;
-        return selectedLanguages.slice(1).some((language) => !categoryData.name?.[language]?.trim());
+        return selectedLanguages
+            .filter((language) => language !== primaryLanguage)
+            .some((language) => !categoryData.name?.[language]?.trim());
     }, [categoryData, primaryLanguage, selectedLanguages]);
     const suggestedIcons = useMemo(
         () => getSuggestedCategoryIcons(categoryData?.name?.[primaryLanguage], storeDetails?.businessType, storeDetails?.businessCategory).map((entry) => entry.replace('lu:', '')),
@@ -175,6 +178,10 @@ const EditCategoryModal = ({
         // Check for duplicate labels
         if (timeSlotPresets.some(p => p.label.toLowerCase() === newPresetData.label.trim().toLowerCase())) {
             antdMessage.error('A preset with this name already exists');
+            return;
+        }
+        if (!isValidClockRange(newPresetData.startTime, newPresetData.endTime)) {
+            antdMessage.error('Enter valid, different start and end times');
             return;
         }
 
@@ -252,13 +259,12 @@ const EditCategoryModal = ({
         // Deep clone to ensure immutability (handles Timestamps properly)
         const extractedData = removeObjRef(fileData.extractedData);
 
-        // Translation drift protection: if primary language name changed,
+        // Translation drift protection: if canonical English source name changed,
         // clear stale translations so they get retranslated instead of showing wrong data
         let finalCategory = categoryData;
         if (modalData.status === 'edit' && modalData.category && selectedLanguages.length > 1) {
-            const primaryLang = selectedLanguages[0];
             const clearedName = clearStaleCategoryTranslations(
-                modalData.category.name, categoryData.name, primaryLang, selectedLanguages
+                modalData.category.name, categoryData.name, primaryLanguage, selectedLanguages
             );
             if (clearedName !== categoryData.name) {
                 finalCategory = { ...categoryData, name: clearedName };
@@ -285,7 +291,7 @@ const EditCategoryModal = ({
 
         const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLanguage);
         const targetLanguages = selectedLanguages
-            .slice(1)
+            .filter((languageCode) => languageCode !== primaryLanguage)
             .map((languageCode) => GlobalLanguagesList.find((language) => language.code === languageCode))
             .filter(Boolean);
 
@@ -296,12 +302,11 @@ const EditCategoryModal = ({
         }
 
         dispatch(startLoader("generating_category_content"));
+        let nextCategory = removeObjRef(categoryData);
+        const completedLanguages: string[] = [];
         try {
-            let nextCategory = removeObjRef(categoryData);
-            let updatedCount = 0;
-
             for (const targetLanguage of targetLanguages) {
-                const { updatedCategory, messageType } = await translateCategory(
+                const { updatedCategory, message, messageType } = await translateCategory(
                     projectData,
                     fileData,
                     targetLanguage as any,
@@ -309,20 +314,26 @@ const EditCategoryModal = ({
                     AI_ACTIONS_TYPES.ITEM_TRANSLATION,
                     nextCategory
                 );
+                if (messageType === 'error') {
+                    throw new Error(message || 'Category translation failed.');
+                }
                 nextCategory = updatedCategory;
                 if (messageType === 'success') {
-                    updatedCount += 1;
+                    completedLanguages.push(targetLanguage!.name);
                 }
             }
 
             setCategoryData(nextCategory);
-            if (updatedCount > 0) {
+            if (completedLanguages.length > 0) {
                 antdMessage.success('Category translations updated successfully');
             } else {
                 antdMessage.info('No missing category translations found.');
             }
         } catch (error) {
-            if (error instanceof AICapacityError) {
+            if (completedLanguages.length > 0) {
+                setCategoryData(nextCategory);
+                antdMessage.warning(`${completedLanguages.join(', ')} updated. Remaining translations stopped.`);
+            } else if (error instanceof AICapacityError) {
                 antdMessage.info('Get more enhancements to continue. Visit Billing to add an enhancement pack.');
             } else {
                 antdMessage.error('Category translation failed. Please try again.');

@@ -6,7 +6,10 @@ import {
     type OwnerNotificationChannel,
     type OwnerNotificationProductId,
 } from '@data/shared/ownerNotificationRegistry';
-import { getNextOwnerNotificationProcessingAttempt } from '@data/shared/ownerNotificationDeliveryBoundary';
+import {
+    getNextOwnerNotificationProcessingAttempt,
+    isOwnerNotificationEventWithinByteLimit,
+} from '@data/shared/ownerNotificationDeliveryBoundary';
 import { getAnswerlatticeRetentionFields, type AnswerlatticeRetentionKey } from '@lib/answerlattice/dataRetention';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -144,16 +147,17 @@ async function incrementRateLimit(
         tenantId: string;
     },
 ): Promise<boolean> {
+    const dateKey = todayKey();
     const recipientLimitId = safeId([
         params.productId,
         params.channel,
         params.recipientHash,
-        todayKey(),
+        dateKey,
     ].join('|'));
     const recipientRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS).doc(recipientLimitId);
 
     const storeLimitId = params.storeId
-        ? safeId([params.productId, 'store', params.tenantId, params.storeId, todayKey()].join('|'))
+        ? safeId([params.productId, 'store', params.tenantId, params.storeId, dateKey].join('|'))
         : null;
     const storeRef = storeLimitId
         ? db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS).doc(storeLimitId)
@@ -174,7 +178,7 @@ async function incrementRateLimit(
                 scope: 'store',
                 tenantId: params.tenantId,
                 storeId: params.storeId,
-                dateKey: todayKey(),
+                dateKey,
                 count: FieldValue.increment(1),
                 updatedAt: now,
                 ...getRetentionFieldsForProduct(params.productId, 'ownerNotificationRateLimits', now),
@@ -185,7 +189,7 @@ async function incrementRateLimit(
             productId: params.productId,
             channel: params.channel,
             recipientHash: params.recipientHash,
-            dateKey: todayKey(),
+            dateKey,
             count: FieldValue.increment(1),
             updatedAt: now,
             ...getRetentionFieldsForProduct(params.productId, 'ownerNotificationRateLimits', now),
@@ -313,6 +317,13 @@ export async function enqueueOwnerNotification(
         updatedAt: now,
         ...getRetentionFieldsForProduct(input.productId, 'ownerNotificationEvents', now),
     };
+    if (!isOwnerNotificationEventWithinByteLimit(doc)) {
+        logNotificationFailure('owner_notification_event_too_large', undefined, {
+            ...getBoundedNotificationStringContext('productId', input.productId),
+            ...getBoundedNotificationStringContext('triggerType', input.triggerType),
+        });
+        return { eventId: '', status: 'skipped' };
+    }
 
     const enqueueResult = await db.runTransaction(async (transaction): Promise<{
         created: boolean;

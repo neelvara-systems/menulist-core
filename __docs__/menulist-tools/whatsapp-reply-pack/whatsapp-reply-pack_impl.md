@@ -1,7 +1,7 @@
 # WhatsApp Reply Pack - Implementation
 
 **Status:** Implemented V0 public browser-local tool  
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -46,6 +46,8 @@ Boundary flags are all false:
 ## Runtime Rules
 
 The report builder is deterministic string assembly from owner-entered facts. It performs only local shape checks for phone and URL fields.
+
+Phone checks reuse `phoneValidation.ts`. `normalizePhoneDigits(...)` returns no digits when the entered value contains characters outside the allowed phone format, and `makePreviewLink(...)` receives digits only when the international-phone check passes. An unclear/local or malformed number therefore cannot produce a misleading `wa.me` preview.
 
 The only allowed network write is the optional consented `/api/public/contact` handoff.
 

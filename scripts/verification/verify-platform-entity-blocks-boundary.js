@@ -63,6 +63,9 @@ function verifyRoute(route) {
     "getRateLimitForFeature('PLATFORM_ENTITY_BLOCK_MUTATION')",
     'hashPublicRateLimitValue(getPlatformEntityBlockOperatorId(session))',
     'key: `${PLATFORM_ENTITY_BLOCK_RATE_LIMIT_KEY}:${operatorRateLimitHash}`',
+    'failClosedOnProviderError: true',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
+    "Authorization Failed - Platform Entity Blocks Current Role",
     "logger.security('Rate Limit Exceeded - Platform Entity Blocks'",
     'getBoundedSecurityRouteContext(session, request)',
     "'X-RateLimit-Limit'",
@@ -91,18 +94,20 @@ function verifyRoute(route) {
     'transaction.set(summaryRef, {',
     'affectedStoreIds.length > MAX_TENANT_BLOCK_STORES',
     'const result = await updateTenantBlockStateAtomically({',
-    'offset += TENANT_BLOCK_EFFECT_CHUNK_SIZE',
-    'revalidateTag(`menu-store-${storeId}`)',
-    'revalidateTag(`store-${storeId}`)',
-    "revalidateTag('client-stores')",
-    "revalidateTag('screen-data')",
+    'runStorePublicTruthPostCommitEffects({',
+    'chunkSize: TENANT_BLOCK_EFFECT_CHUNK_SIZE',
+    'storeIds: result.affectedStoreIds.map(String)',
+    'revalidate: (tag) => revalidateTag(tag)',
     "touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')",
-    'invalidateOwnerBusinessAssistantPacketCache({',
+    'platform_entity_block_tenant_post_commit_effect_failed',
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
     'const storeScope = entityScope;',
     'const freshStoreSnap = await transaction.get(docRef);',
     "hasExactStoredEntityIdentity(freshStore, 'storeId', storeScope)",
     'transaction.set(summaryRef, {',
-    'await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);',
+    'storeIds: [storeScope.documentId]',
+    'platform_entity_block_store_post_commit_effect_failed',
     'const USER_AUTH_RECONCILIATION_MAX_ATTEMPTS = 5;',
     'const USER_AUTH_SYNC_LEASE_MS = 2 * 60 * 1000;',
     'await authAdmin.updateUser(firebaseUser.uid, { disabled: desiredDisabled })',
@@ -139,6 +144,7 @@ function verifyRoute(route) {
     'const operatorRateLimitHash = hashPublicRateLimitValue(getPlatformEntityBlockOperatorId(session));',
     'const rateLimit = await checkRateLimit({',
     'if (!rateLimit.allowed) {',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
     'readBoundedJsonBody(request, PLATFORM_ENTITY_BLOCK_MAX_BODY_BYTES',
   ], 'Platform entity-block route rate-limit before body order');
 
@@ -158,7 +164,7 @@ function verifyRoute(route) {
     'transaction.update(docRef, { blocked, blockDetails, modifiedOn });',
     'transaction.set(summaryRef, {',
     'committed = true;',
-    'await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);',
+    'storeIds: [storeScope.documentId]',
   ], 'Store block public-summary/cache update order');
 
   assertOrder(route, [
@@ -343,34 +349,17 @@ function verifyDocsAndPackage(packageJson, opsDoc, auditDoc, changelog, lowercas
   );
 
   [
-    'Entity Blocks keeps the same platform-only mutation route',
-    'route body cap',
-    'Firebase Auth disable/token-revoke handling',
-    'public cache invalidation',
-    'Business Health packet invalidation',
-    'caps response JSON at 64KB',
-    'requires `success: true`, a returned entity object, the requested entity ID, and the requested blocked state',
-    'Source gate: `npm run verify:platform-entity-blocks-boundary`',
-    'July 5 follow-up: entity ID values now use the shared Firestore document-ID boundary',
-    'July 6 follow-up: entity-block target IDs now use strict platform entity-block document-ID normalization',
-    'July 6 follow-up: `/api/platform/entity-blocks` now applies the shared `PLATFORM_ENTITY_BLOCK_MUTATION` rate limit',
-    'July 11 follow-up: tenant and store block mutations now re-read exact document identity and ownership inside Firestore transactions',
-    'up to 200 existing store mirrors',
-    'refresh begins afterward in chunks of 20',
-    'July 11 user-auth follow-up: user block/unblock writes the current Firestore access decision',
-    'Up to five reconciliation attempts apply the latest desired disabled state',
+    '`/api/platform/entity-blocks`',
+    'The following now all re-prove current persisted platform authority',
+    'Their privileged read/mutation limiters fail closed on provider outage.',
+    'Entity block mutations revalidate tenant/store/user state transactionally',
+    'Firebase Auth reconciliation',
+    'public cache/screen and Business Health invalidation contracts',
   ].forEach((token) => assertIncludes(opsDoc, token, 'Ops docs entity-block source gate'));
 
   [
-    'Platform Entity Blocks Entity ID Boundary checkpoint',
-    'Platform Entity Blocks Strict Target Document ID Boundary checkpoint',
-    'Platform Entity Blocks Rate-Limit Boundary checkpoint',
-    'Platform Entity Blocks Atomic Scope Boundary checkpoint',
-    'caps tenant fanout at 200 affected stores',
-    'Platform Entity Blocks User Auth Reconciliation checkpoint',
-    'reconciles Firebase Auth for up to five attempts',
-    'Platform entity-block boundary source gate: `npm run verify:platform-entity-blocks-boundary`',
-    'source-only tenant/store/user block route, auth sync, public cache invalidation, desktop/mobile, and docs gate',
+    '## Internal Ops Control Room And Platform Monitoring - July 16, 2026',
+    'Entity Blocks apply fail-closed limiter behavior plus exact current persisted platform-user reauthorization',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit entity-block checkpoint'));
 
   [

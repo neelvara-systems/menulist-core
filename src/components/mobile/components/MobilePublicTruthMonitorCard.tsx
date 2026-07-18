@@ -4,6 +4,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getPublicTruthMonitorExportText } from '@database/publicTruthMonitor';
 import { usePublicTruthMonitor } from '@hook/publicTruthTools/usePublicTruthMonitor';
 import type { PublicTruthMonitorHistoryEntry } from '@type/publicTruthMonitor';
+import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useMemo, useState } from 'react';
 import { LuDownload, LuHistory, LuRefreshCw } from 'react-icons/lu';
@@ -11,12 +12,7 @@ import { Button, Card, Flex, Tag, Text, Toast } from '../antd';
 
 function formatDate(value?: string): string {
     if (!value) return 'Not run yet';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleDateString(undefined, {
-        day: 'numeric',
-        month: 'short',
-    });
+    return formatDateTime(value, 'date');
 }
 
 function statusTag(entry?: PublicTruthMonitorHistoryEntry | null) {

@@ -1,6 +1,8 @@
 import GlobalLanguagesList from '@data/languages';
+import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import { CANONICAL_SOURCE_LANGUAGE } from '@lib/localization/languagePolicy';
 import { LocalizedStringList, LocalizedText, normalizeStringList, toLocalizedStringList, toLocalizedText } from '@lib/localization/text';
+import { normalizeBatchTranslationMaps, normalizeTranslationCoverageSummary } from '@lib/ai/translationOutput';
 import { syncBalanceFromResponse } from '@services/ai/balanceSync';
 import { AICapacityError, checkCapacityResponse } from '@services/ai/capacityError';
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, readAiServiceResponseJson } from '@services/ai/aiServiceDiagnostics';
@@ -18,6 +20,7 @@ export type LocalizedBusinessCopyFields = {
     pwaShortName?: LocalizedText;
     specialNote?: LocalizedText;
     tagline?: LocalizedText;
+    translationIncomplete?: boolean;
 };
 
 export const FIELD_LIMITS = BUSINESS_COPY_FIELD_LIMITS;
@@ -28,6 +31,7 @@ type BusinessCopyTranslationApiResponse = {
         translationsByLanguage?: unknown;
     } | null;
     remainingBalance?: unknown;
+    translationCoverage?: unknown;
     transaction?: unknown;
 };
 
@@ -44,6 +48,22 @@ export const resolveLanguage = (code?: string | null): LanguageType | null => {
 };
 
 export const clampValue = (value: unknown, maxLength: number) => String(value || '').trim().slice(0, maxLength);
+
+export function getBoundedBatchTranslationTargets(
+    targetLanguages: LanguageType[],
+    sourceLanguageCode: string,
+): LanguageType[] {
+    const seen = new Set<string>();
+
+    return targetLanguages
+        .filter((language) => {
+            const code = resolveLanguageCode(language?.code);
+            if (!code || code === resolveLanguageCode(sourceLanguageCode) || seen.has(code)) return false;
+            seen.add(code);
+            return true;
+        })
+        .slice(0, LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT - 1);
+}
 
 const toFieldPayload = (generated: BusinessCopyGenerationResult): Record<BusinessCopyLocalizedFieldKey, string> => (
     Object.fromEntries(
@@ -75,10 +95,13 @@ export async function getBatchTranslations({
 }: {
     fileId: string;
     inputJson: Record<string, string>;
-    projectId: string;
+    projectId?: string;
     sourceLang: LanguageType;
     targetLang: LanguageType[];
 }): Promise<Record<string, Record<string, string>> | null> {
+    const boundedTargetLanguages = getBoundedBatchTranslationTargets(targetLang, sourceLang.code);
+    if (!boundedTargetLanguages.length) return null;
+
     try {
         const response = await fetch('/api/translations', {
             ...AI_SERVICE_ROUTE_REQUEST_OPTIONS,
@@ -90,9 +113,9 @@ export async function getBatchTranslations({
                 action: 'language_addition',
                 fileId,
                 inputJson,
-                projectId,
+                ...(projectId ? { projectId } : {}),
                 sourceLang,
-                targetLang,
+                targetLang: boundedTargetLanguages,
             }),
         });
 
@@ -107,7 +130,7 @@ export async function getBatchTranslations({
             context: {
                 ...getTranslationScopeLogContext(projectId, fileId),
                 ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
-                targetLanguageCount: targetLang.length,
+                targetLanguageCount: boundedTargetLanguages.length,
                 inputFieldCount: Object.keys(inputJson).length,
             },
             invalidFailureCode: 'business_copy_batch_translation_response_invalid',
@@ -115,16 +138,52 @@ export async function getBatchTranslations({
             parseFailureCode: 'business_copy_batch_translation_response_parse_failed',
         });
         syncBalanceFromResponse(responseJson);
-        const translationsByLanguage = responseJson.data?.translationsByLanguage;
-        return translationsByLanguage && typeof translationsByLanguage === 'object' && !Array.isArray(translationsByLanguage)
-            ? translationsByLanguage as Record<string, Record<string, string>>
-            : null;
+        const requestedKeys = Object.keys(inputJson);
+        const targetLanguageCodes = boundedTargetLanguages.map((language) => language.code);
+        const coverage = normalizeTranslationCoverageSummary(responseJson.translationCoverage, {
+            inputKeyCount: requestedKeys.length,
+            targetLanguageCount: targetLanguageCodes.length,
+        });
+        if (responseJson.translationCoverage !== undefined && !coverage) {
+            logTranslationFailure('business_copy_batch_translation_coverage_summary_invalid', undefined, {
+                ...getTranslationScopeLogContext(projectId, fileId),
+                ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
+                inputFieldCount: Object.keys(inputJson).length,
+                targetLanguageCount: boundedTargetLanguages.length,
+            });
+            return null;
+        }
+        if (coverage?.hasPartialCoverage) {
+            logTranslationFailure('business_copy_batch_translation_partial_response_rejected', undefined, {
+                ...getTranslationScopeLogContext(projectId, fileId),
+                ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
+                fallbackKeyCount: coverage.fallbackKeyCount,
+                inputFieldCount: Object.keys(inputJson).length,
+                targetLanguageCount: boundedTargetLanguages.length,
+                translatedKeyCount: coverage.translatedKeyCount,
+            });
+            return null;
+        }
+        const translationsByLanguage = normalizeBatchTranslationMaps(
+            responseJson.data?.translationsByLanguage,
+            targetLanguageCodes,
+            requestedKeys,
+        );
+        if (!translationsByLanguage) {
+            logTranslationFailure('business_copy_batch_translation_map_invalid', undefined, {
+                ...getTranslationScopeLogContext(projectId, fileId),
+                ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
+                inputFieldCount: requestedKeys.length,
+                targetLanguageCount: targetLanguageCodes.length,
+            });
+        }
+        return translationsByLanguage;
     } catch (error) {
         if (error instanceof AICapacityError) throw error;
         logTranslationFailure('business_copy_batch_translation_failed', error, {
             ...getTranslationScopeLogContext(projectId, fileId),
             ...getBoundedTranslationStringContext('sourceLanguageCode', sourceLang?.code),
-            targetLanguageCount: targetLang.length,
+            targetLanguageCount: boundedTargetLanguages.length,
             inputFieldCount: Object.keys(inputJson).length,
         });
         return null;
@@ -197,13 +256,16 @@ export default async function localizeBusinessCopyResult({
             ...payload,
             keywords: generated.keywords.join(', '),
         },
-        projectId: projectId || String(storeDetails?.storeId || 'business-copy'),
+        projectId,
         sourceLang: sourceLanguageDef,
         targetLang: targetLanguages,
     });
 
     if (!translatedByLanguage) {
-        return localized;
+        return {
+            ...localized,
+            translationIncomplete: true,
+        };
     }
 
     targetLanguages.forEach((targetLanguage) => {

@@ -1,7 +1,7 @@
 # Business Facts Copy Pack - Firebase Cost And Storage
 
 **Status:** Implemented V0 public browser-local tool
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Engineering, finance, security
 
 ---
@@ -22,6 +22,8 @@ The report and copy blocks are generated in the browser from owner-entered field
 | Google/Instagram/Facebook/WhatsApp API calls | 0 |
 
 No new collection, document, index, bucket, Cloud Function, or API route is introduced for report generation.
+
+The strict local contact-shape boundary is browser-local and adds no Firebase, Storage, Function, provider, DNS, or network operation.
 
 ## Optional Follow-Up
 

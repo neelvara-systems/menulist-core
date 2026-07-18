@@ -29,7 +29,10 @@ import {
 } from "./extractionLifecycle";
 import type { MessagingLifecycleSession } from "./extractionLifecycle";
 import { logOnboardingEvent, maskUserId } from "./eventLogger";
-import { recordMessagingOnboardingHealth } from "./healthMonitor";
+import {
+  recordMessagingOnboardingHealth,
+  shouldCheckMessagingOnboardingHealth,
+} from "./healthMonitor";
 import { drainPendingInboundMessages } from "./inboundQueue";
 import {
   claimMessagingPendingMessage,
@@ -147,15 +150,17 @@ function logDiscardedPendingMessage(
  */
 export async function intakeProcessorLogic(): Promise<{
   inboundProcessed: number;
+  outboundSent: number;
   processed: number;
   errors: number;
 }> {
   if (!FEATURE_FLAGS.ENABLE_MESSAGING_ONBOARDING) {
-    return { inboundProcessed: 0, processed: 0, errors: 0 };
+    return { inboundProcessed: 0, outboundSent: 0, processed: 0, errors: 0 };
   }
 
   const now = Timestamp.now();
   let inboundProcessed = 0;
+  let outboundSent = 0;
   let processed = 0;
   let errors = 0;
 
@@ -201,15 +206,24 @@ export async function intakeProcessorLogic(): Promise<{
   }
 
   // Send pending publish confirmations (M-5: WhatsApp message after publish)
-  await sendPendingPreviewMessages();
-  await sendPendingPublishConfirmations();
+  const previewDelivery = await sendPendingPreviewMessages();
+  outboundSent += previewDelivery.sent;
+  errors += previewDelivery.errors;
+
+  const confirmationDelivery = await sendPendingPublishConfirmations();
+  outboundSent += confirmationDelivery.sent;
+  errors += confirmationDelivery.errors;
 
   // Send pending fix request WhatsApp messages (spec §Story 5)
-  await sendPendingFixMessages();
+  const fixDelivery = await sendPendingFixMessages();
+  outboundSent += fixDelivery.sent;
+  errors += fixDelivery.errors;
 
-  await recordMessagingOnboardingHealth({ inboundProcessed, processed, errors });
+  if (shouldCheckMessagingOnboardingHealth(now.toMillis())) {
+    await recordMessagingOnboardingHealth({ inboundProcessed, processed, errors });
+  }
 
-  return { inboundProcessed, processed, errors };
+  return { inboundProcessed, outboundSent, processed, errors };
 }
 
 /**
@@ -217,7 +231,11 @@ export async function intakeProcessorLogic(): Promise<{
  * This protects the first owner touchpoint: once the preview exists, the owner
  * must receive the next WhatsApp response even if the first send attempt fails.
  */
-async function sendPendingPreviewMessages(): Promise<void> {
+type PendingMessageRunResult = { errors: number; sent: number };
+
+async function sendPendingPreviewMessages(): Promise<PendingMessageRunResult> {
+  let errors = 0;
+  let sent = 0;
   try {
     const pendingSnapshot = await db
       .collection(sessionsCol)
@@ -258,6 +276,7 @@ async function sendPendingPreviewMessages(): Promise<void> {
           leaseToken: deliveryClaim.leaseToken,
           sessionId: session.sessionId,
         });
+        sent += 1;
 
         logOnboardingEvent({
           sessionId: session.sessionId,
@@ -273,6 +292,7 @@ async function sendPendingPreviewMessages(): Promise<void> {
           ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
         });
       } catch (err) {
+        errors += 1;
         if (deliveryClaim?.status === "claimed") {
           await releasePendingMessageLease("preview", deliveryClaim);
         }
@@ -283,10 +303,12 @@ async function sendPendingPreviewMessages(): Promise<void> {
       }
     }
   } catch (err) {
+    errors += 1;
     logger.error("[IntakeProcessor] Failed to query pending preview links", {
       ...getIntakeProcessorErrorContext(err),
     });
   }
+  return { errors, sent };
 }
 
 /**
@@ -295,7 +317,9 @@ async function sendPendingPreviewMessages(): Promise<void> {
  * This function picks them up and sends "Your menu is live" via provider adapter.
  * @see __docs__/messaging-onboarding/messaging-onboarding_spec.md §WhatsApp Message Templates
  */
-async function sendPendingPublishConfirmations(): Promise<void> {
+async function sendPendingPublishConfirmations(): Promise<PendingMessageRunResult> {
+  let errors = 0;
+  let sent = 0;
   try {
     const pendingSnapshot = await db
       .collection(sessionsCol)
@@ -338,6 +362,7 @@ async function sendPendingPublishConfirmations(): Promise<void> {
           leaseToken: deliveryClaim.leaseToken,
           sessionId: session.sessionId,
         });
+        sent += 1;
 
         logOnboardingEvent({
           sessionId: session.sessionId,
@@ -353,6 +378,7 @@ async function sendPendingPublishConfirmations(): Promise<void> {
           ...getIntakeProcessorIdLogContext("sessionId", session.sessionId),
         });
       } catch (err) {
+        errors += 1;
         if (deliveryClaim?.status === "claimed") {
           await releasePendingMessageLease("confirmation", deliveryClaim);
         }
@@ -364,10 +390,12 @@ async function sendPendingPublishConfirmations(): Promise<void> {
       }
     }
   } catch (err) {
+    errors += 1;
     logger.error("[IntakeProcessor] Failed to query pending confirmations", {
       ...getIntakeProcessorErrorContext(err),
     });
   }
+  return { errors, sent };
 }
 
 /**
@@ -375,7 +403,9 @@ async function sendPendingPublishConfirmations(): Promise<void> {
  * The fix route sets fixMessagePending=true when transitioning back to COLLECTING_INPUT.
  * @see __docs__/messaging-onboarding/messaging-onboarding_spec.md §Story 5
  */
-async function sendPendingFixMessages(): Promise<void> {
+async function sendPendingFixMessages(): Promise<PendingMessageRunResult> {
+  let errors = 0;
+  let sent = 0;
   try {
     const pendingSnapshot = await db
       .collection(sessionsCol)
@@ -410,6 +440,7 @@ async function sendPendingFixMessages(): Promise<void> {
           leaseToken: deliveryClaim.leaseToken,
           sessionId: session.sessionId,
         });
+        sent += 1;
 
         logOnboardingEvent({
           sessionId: session.sessionId,
@@ -421,6 +452,7 @@ async function sendPendingFixMessages(): Promise<void> {
           sessionCreatedAt: session.createdAt,
         });
       } catch (err) {
+        errors += 1;
         if (deliveryClaim?.status === "claimed") {
           await releasePendingMessageLease("fix", deliveryClaim);
         }
@@ -431,10 +463,12 @@ async function sendPendingFixMessages(): Promise<void> {
       }
     }
   } catch (err) {
+    errors += 1;
     logger.error("[IntakeProcessor] Failed to query pending fix messages", {
       ...getIntakeProcessorErrorContext(err),
     });
   }
+  return { errors, sent };
 }
 
 /**

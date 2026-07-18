@@ -7,7 +7,7 @@
  * Called in sessionProvider when store is NOT master (i.e., outlet store).
  * Master store users keep their full role permissions — policy only restricts outlets.
  *
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §12
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §12
  */
 
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from "@type/multiOutlet.types";

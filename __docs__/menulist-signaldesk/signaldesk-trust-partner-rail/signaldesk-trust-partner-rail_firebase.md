@@ -26,7 +26,7 @@
 | Create brief | 4-8 | 3-5 | Reads partner/deal/CTA/policy; writes brief, approval packet, audit. |
 | Review deal | 4-8 | 3-6 | Reads budget and profile; writes deal, budget hold, audit, timeline. |
 | Record deliverable | 2-5 | 2-4 | Writes deliverable and audit; post URL only, not raw social payload. |
-| Record metrics | 3-7 | 3-6 | Compact metrics, demand/outcome refs, audit, cost summary. |
+| Record metrics | 3-7 | 4-7 | Transaction reads actor/key claim, partner and optional deliverable; writes one incremental compact metric, demand observation, claim, audit, timeline and cost summary. |
 | Renewal decision | 4-9 | 3-6 | Reads metrics/outcomes; writes decision, timeline, audit. |
 
 ## Cost Controls
@@ -38,6 +38,7 @@
 5. Use manual metric entry or approved provider summaries only.
 6. Use capped page sizes and no real-time broad listeners.
 7. Deny all client writes in Firestore rules; write through protected action API only.
+8. Treat metric rows as incremental observations: exact retries are claim-deduped and daily demand summaries increment each independent row.
 
 ## Indexes
 

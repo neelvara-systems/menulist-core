@@ -11,6 +11,7 @@ import {
     isValidAiOperationCursorId,
     normalizeAiOperationHistoryDateRange,
 } from '@lib/ai/operationHistoryQuery';
+import { projectAiOperationHistoryFields } from '@lib/ai/operationHistoryProjection';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -71,31 +72,36 @@ const OWNER_VISIBLE_FIELDS = new Set([
     'unitsConsumed',
 ]);
 
-function serializeFirestoreValue(value: any): any {
-    if (value == null) return value;
-    if (typeof value?.toDate === 'function') {
-        return value.toDate().toISOString();
-    }
-    if (Array.isArray(value)) {
-        return value.map(serializeFirestoreValue);
-    }
-    if (typeof value === 'object') {
-        return Object.fromEntries(
-            Object.entries(value).map(([key, entry]) => [key, serializeFirestoreValue(entry)]),
-        );
-    }
-    return value;
+const PLATFORM_VISIBLE_FIELDS = new Set([
+    ...Array.from(OWNER_VISIBLE_FIELDS),
+    'chargePerCredit',
+    'fileId',
+    'marginPaise',
+    'ourChargePaise',
+    'realCostPaise',
+    'tokenPerCredit',
+    'totalCharge',
+    'totalCredits',
+]);
+
+const OWNER_RESPONSE_FIELDS = new Set(
+    Array.from(OWNER_VISIBLE_FIELDS).filter((key) => !PLATFORM_ONLY_FIELDS.has(key)),
+);
+
+function sanitizeOwnerOperation(id: string, data: Record<string, unknown>) {
+    return projectAiOperationHistoryFields({
+        data,
+        documentId: id,
+        visibleFields: OWNER_RESPONSE_FIELDS,
+    });
 }
 
-function sanitizeOwnerOperation(id: string, data: Record<string, any>) {
-    const serialized = serializeFirestoreValue({ id, ...data });
-    return Object.fromEntries(
-        Object.entries(serialized).filter(([key]) => OWNER_VISIBLE_FIELDS.has(key) && !PLATFORM_ONLY_FIELDS.has(key)),
-    );
-}
-
-function serializePlatformOperation(id: string, data: Record<string, any>) {
-    return serializeFirestoreValue({ id, ...data });
+function sanitizePlatformOperation(id: string, data: Record<string, unknown>) {
+    return projectAiOperationHistoryFields({
+        data,
+        documentId: id,
+        visibleFields: PLATFORM_VISIBLE_FIELDS,
+    });
 }
 
 async function getCursorDoc(
@@ -297,7 +303,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
 
         const data = result.docs.map((doc) => (
             isPlatform
-                ? serializePlatformOperation(doc.id, doc.data())
+                ? sanitizePlatformOperation(doc.id, doc.data())
                 : sanitizeOwnerOperation(doc.id, doc.data())
         ));
 

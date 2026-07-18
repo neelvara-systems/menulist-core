@@ -2,7 +2,7 @@
 
 **Feature:** Google Business Profile Minimal Sync  
 **Status:** 🔶 BLOCKED — Awaiting GBP API Access  
-**Last Updated:** July 10, 2026
+**Last Updated:** July 17, 2026
 **Priority:** Reserved integration; no active GBP Firebase cost.
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records disabled/reserved GBP Sync evidence only: `ENABLE_GBP_SYNC` remains false, token operations fail closed with `GBP_TOKEN_STORE_DISABLED`, and manual Google handoff is the only current owner path. Current implementation or release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:public-business-truth`, Google Business Profile API access, OAuth and target-secret setup, provider smoke, scoped deploy evidence, browser/device QA, and production-host smoke.
@@ -57,3 +57,14 @@ No active GBP cost exists today. Re-estimate before activation using real provid
 ## Implementation Status
 
 ❌ **Not active runtime.** Blocked on GBP API access, OAuth setup, provider smoke, deploy evidence, browser/device QA, and production-host smoke.
+
+## July 17, 2026 Scale And Cost Recheck
+
+The disabled flow remains the correct lowest-cost design:
+
+- zero Firestore reads, writes, listeners, indexes, Storage operations, or Functions invocations;
+- no OAuth/token/provider route and no scheduler task to accidentally run while disabled;
+- every reserved token operation fails closed before Firebase access;
+- the type-only Firestore `Timestamp` import keeps the dormant server-side contract from creating an avoidable runtime SDK dependency.
+
+No cache, read model, TTL policy, index exemption, queue, or cleanup task is justified until the full provider flow is implemented and approved. Google API access by itself is not an activation decision.

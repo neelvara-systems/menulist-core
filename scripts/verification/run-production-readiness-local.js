@@ -93,12 +93,18 @@ function formatCommand(command, args) {
   return [command, ...args].join(' ');
 }
 
+function getLocalReadinessEnvironment() {
+  const environment = { ...process.env };
+  delete environment.GOOGLE_APPLICATION_CREDENTIALS;
+  return environment;
+}
+
 function runCheck(label, command, args, attempt = 1) {
   const attemptLabel = attempt > 1 ? `${label} retry ${attempt}` : label;
   console.log(`\n[local-readiness] ${attemptLabel}`);
   const result = spawnSync(command, args, {
     cwd: ROOT,
-    env: process.env,
+    env: getLocalReadinessEnvironment(),
     stdio: 'inherit',
   });
 

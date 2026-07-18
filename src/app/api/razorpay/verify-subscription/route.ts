@@ -15,6 +15,7 @@ import {
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
+import { finalizeProductSubscriptionReplacement } from '@lib/billing/subscriptionReplacementFinalization';
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -408,7 +409,28 @@ export const POST = withAuth(async (request, session) => {
         if (!paymentApplication.applied && !paymentApplication.duplicate) {
             return NextResponse.json({ error: 'Subscription cannot be activated in its current state.' }, { status: 409 });
         }
-        const activatedSubscription = paymentApplication.subscription;
+        const replacementSubscriptionId = String(
+            paymentApplication.previousSubscription.founderMonitorReplacementForSubscriptionId
+            || internalSub.founderMonitorReplacementForSubscriptionId
+            || '',
+        ).trim();
+        const replacementMrrPaise = Number(
+            paymentApplication.previousSubscription.founderMonitorReplacementMrrPaise
+            || internalSub.founderMonitorReplacementMrrPaise
+            || 0,
+        );
+        let activatedSubscription = paymentApplication.subscription;
+        if (replacementSubscriptionId) {
+            const replacementApplication = await finalizeProductSubscriptionReplacement({
+                newSubscriptionId: razorpay_subscription_id,
+                oldSubscriptionId: replacementSubscriptionId,
+                productId,
+                source: 'api:verify-subscription:replacement',
+                storeId: Number(storeId),
+                tenantId: Number(tenantId),
+            });
+            activatedSubscription = replacementApplication.newSubscription;
+        }
         if (!isAnswerlatticeBillingProduct(productId)) {
             await markResellerTransactionsActiveForSubscription(razorpay_subscription_id, 'api:verify-subscription');
         }
@@ -443,8 +465,6 @@ export const POST = withAuth(async (request, session) => {
             subscriptionId: razorpay_subscription_id,
             tenantId: internalSub.tenantId,
         });
-        const replacementSubscriptionId = (internalSub as any).founderMonitorReplacementForSubscriptionId;
-        const replacementMrrPaise = Number((internalSub as any).founderMonitorReplacementMrrPaise || 0);
         if (paymentApplication.applied && replacementSubscriptionId && replacementMrrPaise > 0) {
             await recordFounderSubscriptionMrrChange({
                 eventKey: `${replacementSubscriptionId}:${razorpay_subscription_id}`,
@@ -463,7 +483,7 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        if (!isAnswerlatticeBillingProduct(productId)) {
+        if (!isAnswerlatticeBillingProduct(productId) && paymentApplication.applied) {
             // 📧 LIFECYCLE MESSAGE: First payment / subscription activation (fire-and-forget)
             try {
                 const { sendLifecycleMessage } = await import('@lib/messaging');

@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { unstable_cache } from "next/cache";
 
 const COLLECTION = DB_COLLECTIONS.COMPLIANCE_PAGES;
 
@@ -27,12 +28,31 @@ const getComplianceDocRefServer = (sId: string | number) => {
     return firestoreAdmin.collection(COLLECTION).doc(documentId);
 };
 
+export const getComplianceCacheTag = (sId: string | number): string => {
+    const documentId = normalizeComplianceStoreDocumentId(sId);
+    if (!documentId) throw new Error("invalid_compliance_store_id");
+    return `compliance-store-${documentId}`;
+};
+
 export async function getComplianceOverridesServer(
     sId: string | number,
 ): Promise<ComplianceOverrideDocServer | null> {
     const docSnap = await getComplianceDocRefServer(sId).get();
     if (!docSnap.exists) return null;
     return docSnap.data() as ComplianceOverrideDocServer;
+}
+
+export async function getCachedComplianceOverridesServer(
+    sId: string | number,
+): Promise<ComplianceOverrideDocServer | null> {
+    const documentId = normalizeComplianceStoreDocumentId(sId);
+    if (!documentId) throw new Error("invalid_compliance_store_id");
+    const readCachedOverrides = unstable_cache(
+        () => getComplianceOverridesServer(documentId),
+        ['public-compliance-overrides', documentId],
+        { revalidate: 60, tags: [getComplianceCacheTag(documentId)] },
+    );
+    return readCachedOverrides();
 }
 
 export async function saveComplianceOverrideServer(

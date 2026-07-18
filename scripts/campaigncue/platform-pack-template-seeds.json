@@ -24,6 +24,9 @@
     "factSlots": [
       { "type": "menu_item", "required": true, "ownerQuestion": "Which item should this campaign promote?", "protected": true },
       { "type": "price", "required": true, "ownerQuestion": "What confirmed price should be shown?", "protected": true },
+      { "type": "availability_date", "required": true, "ownerQuestion": "Which date or time is this item available?", "protected": true },
+      { "type": "whatsapp_number", "required": true, "ownerQuestion": "Which WhatsApp number should customers use?", "protected": true },
+      { "type": "location_detail", "required": true, "ownerQuestion": "Which location should this campaign show?", "protected": true },
       { "type": "offer_end_date", "required": false, "ownerQuestion": "When should this offer stop?", "protected": true },
       { "type": "photo", "required": false, "ownerQuestion": "Upload one real food photo if available.", "protected": false }
     ],
@@ -60,7 +63,10 @@
     "factSlots": [
       { "type": "availability", "required": true, "ownerQuestion": "Which time slots are open?", "protected": true },
       { "type": "price", "required": true, "ownerQuestion": "What package price should be shown?", "protected": true },
-      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true }
+      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true },
+      { "type": "whatsapp_number", "required": true, "ownerQuestion": "Which WhatsApp number should customers use?", "protected": true },
+      { "type": "photo", "required": false, "ownerQuestion": "Add one approved service photo if available.", "protected": false },
+      { "type": "location_detail", "required": false, "ownerQuestion": "Confirm the location if this pack should show it.", "protected": true }
     ],
     "outputPackShape": {
       "channels": ["whatsapp", "creative", "google_local"],
@@ -95,7 +101,10 @@
     "factSlots": [
       { "type": "product", "required": true, "ownerQuestion": "Which product should be promoted?", "protected": true },
       { "type": "price", "required": true, "ownerQuestion": "What confirmed price should be shown?", "protected": true },
-      { "type": "photo", "required": true, "ownerQuestion": "Upload one product photo.", "protected": false }
+      { "type": "photo", "required": true, "ownerQuestion": "Upload one product photo.", "protected": false },
+      { "type": "whatsapp_number", "required": true, "ownerQuestion": "Which WhatsApp number should customers use?", "protected": true },
+      { "type": "offer_end_date", "required": false, "ownerQuestion": "When should this product offer stop?", "protected": true },
+      { "type": "terms", "required": false, "ownerQuestion": "Add any offer terms customers should know.", "protected": true }
     ],
     "outputPackShape": {
       "channels": ["whatsapp", "creative", "ads"],
@@ -130,7 +139,10 @@
     "factSlots": [
       { "type": "service", "required": true, "ownerQuestion": "Which service should be promoted?", "protected": true },
       { "type": "booking_link", "required": true, "ownerQuestion": "Which booking or inquiry link should be used?", "protected": true },
-      { "type": "approved_claim", "required": true, "ownerQuestion": "Which claim is approved to use?", "protected": true }
+      { "type": "location_detail", "required": true, "ownerQuestion": "Which location should this campaign show?", "protected": true },
+      { "type": "approved_claim", "required": true, "ownerQuestion": "Which claim is approved to use?", "protected": true },
+      { "type": "photo", "required": false, "ownerQuestion": "Add one approved service photo if available.", "protected": false },
+      { "type": "terms", "required": false, "ownerQuestion": "Add any terms that apply to this service.", "protected": true }
     ],
     "outputPackShape": {
       "channels": ["google_local", "creative", "ads"],
@@ -163,9 +175,12 @@
       "whyNow": ["Seasonal and portfolio pushes need rights-safe assets before sharing."]
     },
     "factSlots": [
+      { "type": "service", "required": true, "ownerQuestion": "Which service should this showcase promote?", "protected": true },
       { "type": "photo", "required": true, "ownerQuestion": "Which approved work photo should be used?", "protected": false },
       { "type": "usage_rights", "required": true, "ownerQuestion": "Do you have permission to use this photo?", "protected": true },
-      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true }
+      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true },
+      { "type": "price", "required": false, "ownerQuestion": "Add a confirmed price only if this showcase needs one.", "protected": true },
+      { "type": "terms", "required": false, "ownerQuestion": "Add any booking terms that apply.", "protected": true }
     ],
     "outputPackShape": {
       "channels": ["creative", "whatsapp", "ads"],
@@ -200,7 +215,11 @@
     "factSlots": [
       { "type": "service", "required": true, "ownerQuestion": "Which class or service should be promoted?", "protected": true },
       { "type": "availability", "required": true, "ownerQuestion": "Which time or date is available?", "protected": true },
-      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true }
+      { "type": "booking_link", "required": true, "ownerQuestion": "Which booking link should be used?", "protected": true },
+      { "type": "location_detail", "required": true, "ownerQuestion": "Which location should this campaign show?", "protected": true },
+      { "type": "price", "required": false, "ownerQuestion": "Add a confirmed price only if this campaign needs one.", "protected": true },
+      { "type": "photo", "required": false, "ownerQuestion": "Add one approved service photo if available.", "protected": false },
+      { "type": "terms", "required": false, "ownerQuestion": "Add any booking terms that apply.", "protected": true }
     ],
     "outputPackShape": {
       "channels": ["whatsapp", "google_local", "creative"],
@@ -235,7 +254,11 @@
     "factSlots": [
       { "type": "business_name", "required": true, "ownerQuestion": "Which business name should be used?", "protected": true },
       { "type": "location_detail", "required": true, "ownerQuestion": "Which location should be shown?", "protected": true },
-      { "type": "service", "required": true, "ownerQuestion": "Which service or business update should be shared?", "protected": true }
+      { "type": "phone", "required": true, "ownerQuestion": "Which phone number should customers use?", "protected": true },
+      { "type": "service", "required": true, "ownerQuestion": "Which service or business update should be shared?", "protected": true },
+      { "type": "photo", "required": false, "ownerQuestion": "Add one approved business photo if available.", "protected": false },
+      { "type": "website", "required": false, "ownerQuestion": "Add the current website if this update should link to it.", "protected": true },
+      { "type": "terms", "required": false, "ownerQuestion": "Add any terms that apply to this update.", "protected": true }
     ],
     "outputPackShape": {
       "channels": ["google_local", "creative"],

@@ -58,20 +58,29 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!verifyTenantAccess(session, tenantId, storeId, request)) {
         return NextResponse.json({ error: 'Forbidden - Access denied' }, { status: 403 });
     }
-    if (!(await canManageBillingMutation(session, request, '/api/owner-referrals'))) {
-        return NextResponse.json({ error: 'Forbidden - Access denied' }, { status: 403 });
-    }
 
     const config = getRateLimitForFeature('OWNER_REFERRAL_READ');
     const rateLimit = await checkRateLimit({
         key: `owner-referral:${hashPublicRateLimitValue(session.user.id)}:${hashPublicRateLimitValue(storeId)}`,
         ...config,
+        failClosedOnProviderError: process.env.NODE_ENV === 'production',
     });
     if (!rateLimit.allowed) {
+        const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
         return NextResponse.json(
             { error: 'Too many requests. Please try again later.' },
-            { status: 429, headers: { 'Cache-Control': 'private, no-store' } },
+            {
+                status: 429,
+                headers: {
+                    'Cache-Control': 'private, no-store',
+                    'Retry-After': String(retryAfter),
+                    'X-RateLimit-Reset': String(rateLimit.resetAt),
+                },
+            },
         );
+    }
+    if (!(await canManageBillingMutation(session, request, '/api/owner-referrals'))) {
+        return NextResponse.json({ error: 'Forbidden - Access denied' }, { status: 403 });
     }
 
     try {

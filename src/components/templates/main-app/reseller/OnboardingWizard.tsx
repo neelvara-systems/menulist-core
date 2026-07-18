@@ -14,6 +14,9 @@ import {
     copyResellerTextToClipboard,
     createResellerStatusError,
     getBoundedResellerStringContext,
+    getOrCreateResellerOperationId,
+    getResellerOperationIntentKey,
+    clearResellerOperationId,
     hasResellerClipboardWrite,
     hasResellerCopyFallback,
     logResellerFailure,
@@ -37,6 +40,7 @@ interface OnboardResult {
     subscriptionId: string;
     shortUrl?: string;
     status: string;
+    transactionId: string;
 }
 
 type ResellerOnboardingCopyKind =
@@ -51,7 +55,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
     return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
 
-function isValidOnboardResult(data: unknown): data is OnboardResult {
+function isValidOnboardResult(data: unknown, expectedOperationId: string): data is OnboardResult {
     if (!isRecord(data)) return false;
     const storeId = Number(data.storeId);
     const tenantId = Number(data.tenantId);
@@ -60,7 +64,8 @@ function isValidOnboardResult(data: unknown): data is OnboardResult {
         && typeof data.subscriptionId === 'string'
         && data.subscriptionId.length > 0
         && typeof data.status === 'string'
-        && data.status.length > 0;
+        && data.status.length > 0
+        && data.transactionId === expectedOperationId;
 }
 
 async function readOnboardResponse(
@@ -141,6 +146,26 @@ function OnboardingWizard() {
                 ...(form.getFieldValue('paymentMode') === 'offline' ? ['commitmentMonths'] : ['billingInterval']),
             ]);
             const values = form.getFieldsValue(true);
+            const normalizedOwnerPhone = normalizePhoneNumberForStorage({
+                countryCode: values.ownerCountryCode || DEFAULT_PHONE_COUNTRY_CODE,
+                dialCode: values.ownerDialCode || getDialCodeForCountry(values.ownerCountryCode || DEFAULT_PHONE_COUNTRY_CODE),
+                phoneNumber: values.ownerPhone,
+            });
+            const operationIntentKey = getResellerOperationIntentKey('onboard-client', [
+                values.billingInterval || 'MONTH',
+                values.businessName,
+                values.businessType,
+                values.commitmentMonths || null,
+                values.locationCount || 1,
+                values.ownerEmail || '',
+                values.ownerPassword,
+                normalizedOwnerPhone.countryCode,
+                normalizedOwnerPhone.dialCode,
+                normalizedOwnerPhone.phoneNumber,
+                values.paymentMode,
+                values.pricingTier,
+            ]);
+            const operationId = getOrCreateResellerOperationId(operationIntentKey);
             const onboardLogContext: ResellerLogContext = {
                 action: 'onboard_client',
                 locationCount: Number(values?.locationCount || 0),
@@ -156,6 +181,7 @@ function OnboardingWizard() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    operationId,
                     businessName: values.businessName,
                     businessType: values.businessType,
                     ownerCountryCode: values.ownerCountryCode || DEFAULT_PHONE_COUNTRY_CODE,
@@ -176,7 +202,7 @@ function OnboardingWizard() {
                 throw createResellerStatusError('desktop_reseller_onboard_rejected', response.status);
             }
 
-            if (!isValidOnboardResult(data)) {
+            if (!isValidOnboardResult(data, operationId)) {
                 const invalidResponseError = createResellerStatusError(
                     'desktop_reseller_onboard_response_invalid',
                     response.status,
@@ -188,6 +214,7 @@ function OnboardingWizard() {
                 });
                 throw invalidResponseError;
             }
+            clearResellerOperationId(operationIntentKey);
             setResult(data);
             setCurrentStep(3); // Success step
             message.success('Client onboarded successfully!');

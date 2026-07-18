@@ -1,7 +1,8 @@
 /**
  * Menu Correctness Engine (MCE) — Type Definitions
  *
- * MCE is a client-side validation layer that runs on every menu save.
+ * MCE is a pure validation layer used by supported project mutations and the
+ * editor Publish-Gate.
  * It stamps verification metadata (_mce) on the existing project document.
  *
  * Zero new Firestore collections. Zero additional Firebase cost.

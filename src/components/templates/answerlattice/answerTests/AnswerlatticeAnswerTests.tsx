@@ -1,24 +1,43 @@
 'use client';
 
 import { FEATURE_FLAGS } from '@config/features';
-import { ANSWERLATTICE_GOVERNANCE_TABS, getAnswerlatticeGovernanceRoute } from '@constant/answerlattice/navigations';
+import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGovernanceRoute } from '@constant/answerlattice/navigations';
 import { getAnswerVersionHistory } from '@database/answerlattice/auditLogs';
 import { getReleases } from '@database/answerlattice/releases';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
 import {
     ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES,
+    ANSWERLATTICE_ANSWER_TEST_MAX_CASES,
     ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES,
     createEmptyAnswerlatticeAnswerTestSummary,
     type AnswerlatticeAnswerTestCase,
     type AnswerlatticeAnswerTestCaseResult,
+    type AnswerlatticeAnswerTestCitationPolicy,
     type AnswerlatticeAnswerTestMode,
+    type AnswerlatticeAnswerTestRiskLevel,
     type AnswerlatticeAnswerTestRun,
     type AnswerlatticeAnswerTestSource,
     type AnswerlatticeAnswerTestSummary,
 } from '@lib/answerlattice/answerTestContracts';
+import {
+    ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS,
+    countAnswerlatticeFirstTrustedAnswerCases,
+    createAnswerlatticeFirstTrustedAnswerCases,
+    replaceAnswerlatticeFirstTrustedAnswerCases,
+} from '@lib/answerlattice/answerTestStarterPack';
+import {
+    AnswerlatticeProductStarterPackResponseSchema,
+    isAnswerlatticeProductStarterPackCaseId,
+} from '@lib/answerlattice/firstTrustedAnswerPackContracts';
+import { AnswerlatticeKnowledgeIntakeJobSchema } from '@lib/answerlattice/knowledgeIntakeContracts';
 import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
-import type { AnswerlatticeAuditLog, AnswerlatticeRelease } from '@type/answerlattice';
+import type {
+    AnswerlatticeActivationAnswerTestSummary,
+    AnswerlatticeAuditLog,
+    AnswerlatticeKnowledgeIntakeJob,
+    AnswerlatticeRelease,
+} from '@type/answerlattice';
 import {
     Alert,
     Button,
@@ -54,6 +73,7 @@ import {
     LuRefreshCw,
     LuRocket,
     LuShieldCheck,
+    LuSparkles,
     LuTrash2,
     LuX,
 } from 'react-icons/lu';
@@ -67,7 +87,13 @@ const ICON_ACTION_BUTTON_STYLE = { width: 44, minWidth: 44, height: 44, padding:
 type AnswerTestResponse = {
     summary?: AnswerlatticeAnswerTestSummary;
     run?: AnswerlatticeAnswerTestRun;
+    launchProof?: AnswerlatticeActivationAnswerTestSummary;
     proposalId?: string;
+    error?: string;
+};
+
+type IntakeJobsResponse = {
+    jobs?: AnswerlatticeKnowledgeIntakeJob[];
     error?: string;
 };
 
@@ -78,8 +104,11 @@ type TestFormValues = {
     expectedAnswerId?: string;
     expectedFaqId?: string;
     minimumConfidence?: 'high' | 'medium' | 'low' | 'none';
+    citationPolicy: AnswerlatticeAnswerTestCitationPolicy;
+    referenceIds?: string;
     mustInclude?: string;
     mustNotInclude?: string;
+    riskLevel: AnswerlatticeAnswerTestRiskLevel;
     relatedEntityIds?: string;
     contextKey?: string;
     path?: string;
@@ -106,6 +135,24 @@ const SOURCE_COLORS: Record<AnswerlatticeAnswerTestSource, string> = {
     no_answer: 'default',
 };
 
+const CITATION_POLICY_LABELS: Record<AnswerlatticeAnswerTestCitationPolicy, string> = {
+    not_required: 'No reference check',
+    at_least_one: 'Require a supporting reference',
+    specific_sources: 'Require specific references',
+};
+
+const PROOF_STATUS_LABELS = {
+    ready: 'Ready',
+    review: 'Review',
+    blocked: 'Blocked',
+} as const;
+
+const PROOF_STATUS_COLORS = {
+    ready: 'green',
+    review: 'orange',
+    blocked: 'red',
+} as const;
+
 const splitLines = (value?: string, maxItems = 8) => (
     Array.from(new Set(String(value || '')
         .split(/[\n,]/)
@@ -122,6 +169,42 @@ const readResponse = async (response: Response): Promise<AnswerTestResponse | nu
     readJsonResponseWithLimit<AnswerTestResponse>(response, RESPONSE_MAX_BYTES)
 );
 
+const normalizeLaunchProof = (value: unknown): AnswerlatticeActivationAnswerTestSummary | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    const candidate = value as Record<string, unknown>;
+    const activeCaseCount = candidate.activeCaseCount;
+    const firstTenCount = candidate.firstTenCount;
+    const latestCriticalFailureCount = candidate.latestCriticalFailureCount;
+    const latestProofStatus = candidate.latestProofStatus;
+    const lastRunAt = candidate.lastRunAt;
+    if (
+        !Number.isInteger(activeCaseCount)
+        || Number(activeCaseCount) < 0
+        || !Number.isInteger(firstTenCount)
+        || Number(firstTenCount) < 0
+        || Number(firstTenCount) > 10
+        || !Number.isInteger(latestCriticalFailureCount)
+        || Number(latestCriticalFailureCount) < 0
+        || Number(latestCriticalFailureCount) > 10
+        || typeof candidate.latestProofStale !== 'boolean'
+        || ![null, 'ready', 'review', 'blocked'].includes(latestProofStatus as null | string)
+        || (lastRunAt !== null && (
+            typeof lastRunAt !== 'string'
+            || !Number.isFinite(Date.parse(lastRunAt))
+        ))
+    ) {
+        return null;
+    }
+    return {
+        activeCaseCount: Number(activeCaseCount),
+        firstTenCount: Number(firstTenCount),
+        latestCriticalFailureCount: Number(latestCriticalFailureCount),
+        latestProofStale: candidate.latestProofStale,
+        latestProofStatus: latestProofStatus as AnswerlatticeActivationAnswerTestSummary['latestProofStatus'],
+        lastRunAt: lastRunAt as string | null,
+    };
+};
+
 const formatDateTime = (value?: string | null) => {
     if (!value) return 'Not run';
     const date = new Date(value);
@@ -135,8 +218,11 @@ const buildFormValues = (testCase?: AnswerlatticeAnswerTestCase | null): TestFor
     expectedAnswerId: testCase?.expected.answerId || '',
     expectedFaqId: testCase?.expected.faqId || '',
     minimumConfidence: testCase?.expected.minimumConfidence,
+    citationPolicy: testCase?.expected.citationPolicy || 'not_required',
+    referenceIds: testCase?.expected.referenceIds.join('\n') || '',
     mustInclude: testCase?.expected.mustInclude.join('\n') || '',
     mustNotInclude: testCase?.expected.mustNotInclude.join('\n') || '',
+    riskLevel: testCase?.riskLevel || 'standard',
     relatedEntityIds: testCase?.relatedEntityIds.join('\n') || '',
     contextKey: testCase?.context?.contextKey || '',
     path: testCase?.context?.path || '',
@@ -160,12 +246,18 @@ const buildContext = (values: TestFormValues) => {
     return Object.keys(context).length > 1 ? context : undefined;
 };
 
-export default function AnswerlatticeAnswerTests() {
+type AnswerlatticeAnswerTestsProps = {
+    entryMode?: 'suite' | 'launch';
+};
+
+export default function AnswerlatticeAnswerTests({ entryMode = 'suite' }: AnswerlatticeAnswerTestsProps) {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const router = useRouter();
     const isMobile = screens.md !== true;
+    const isLaunchMode = entryMode === 'launch';
+    const launchProofQuery = isLaunchMode ? '?includeLaunchProof=1' : '';
     const tId = Number(session?.tId || 0);
     const sId = Number(session?.sId || 0);
     const [form] = Form.useForm<TestFormValues>();
@@ -185,12 +277,18 @@ export default function AnswerlatticeAnswerTests() {
     const [selectedAuditLogId, setSelectedAuditLogId] = useState<string>();
     const [rollbackReason, setRollbackReason] = useState('Restore the last known answer version after a failed regression test.');
     const [rollbackLoading, setRollbackLoading] = useState(false);
+    const [intakeJobs, setIntakeJobs] = useState<AnswerlatticeKnowledgeIntakeJob[]>([]);
+    const [selectedIntakeJobId, setSelectedIntakeJobId] = useState<string>();
+    const [intakeJobsLoading, setIntakeJobsLoading] = useState(false);
+    const [productPackGenerating, setProductPackGenerating] = useState(false);
+    const [lastPackWasCached, setLastPackWasCached] = useState<boolean | null>(null);
+    const [currentLaunchProof, setCurrentLaunchProof] = useState<AnswerlatticeActivationAnswerTestSummary | null>(null);
 
     const loadSummary = useCallback(async () => {
         if (!tId || !sId || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS) return;
         setLoading(true);
         try {
-            const response = await fetch('/api/answerlattice/answer-tests', {
+            const response = await fetch(`/api/answerlattice/answer-tests${launchProofQuery}`, {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
@@ -198,21 +296,66 @@ export default function AnswerlatticeAnswerTests() {
             const payload = await readResponse(response);
             if (!response.ok || !payload?.summary) throw new Error(getErrorMessage(payload, 'Could not load answer tests.'));
             setSummary(payload.summary);
+            setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not load answer tests.');
         } finally {
             setLoading(false);
         }
-    }, [sId, tId]);
+    }, [launchProofQuery, sId, tId]);
 
     useEffect(() => {
         void loadSummary();
     }, [loadSummary]);
 
+    const loadIntakeJobs = useCallback(async () => {
+        if (
+            entryMode !== 'launch'
+            || !tId
+            || !sId
+            || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_STARTER_PACK
+            || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE
+        ) return;
+        setIntakeJobsLoading(true);
+        try {
+            const response = await fetch('/api/answerlattice/knowledge-intake/jobs', {
+                cache: 'no-store',
+                credentials: 'same-origin',
+                redirect: 'manual',
+            });
+            const payload = await readJsonResponseWithLimit<IntakeJobsResponse>(response, RESPONSE_MAX_BYTES);
+            if (!response.ok || !Array.isArray(payload?.jobs)) {
+                throw new Error(typeof payload?.error === 'string' ? payload.error : 'Could not load product sources.');
+            }
+            const jobs = payload.jobs.filter(job => AnswerlatticeKnowledgeIntakeJobSchema.safeParse(job).success);
+            setIntakeJobs(jobs);
+            setSelectedIntakeJobId(current => (
+                current && jobs.some(job => (
+                    job.id === current
+                    && Number(job.readySourceCount || 0) > 0
+                    && !['publishing', 'published', 'cancelled'].includes(job.status)
+                ))
+                    ? current
+                    : jobs.find(job => (
+                        Number(job.readySourceCount || 0) > 0
+                        && !['publishing', 'published', 'cancelled'].includes(job.status)
+                    ))?.id
+            ));
+        } catch (error) {
+            message.warning(error instanceof Error ? error.message : 'Could not load product sources.');
+        } finally {
+            setIntakeJobsLoading(false);
+        }
+    }, [entryMode, sId, tId]);
+
+    useEffect(() => {
+        void loadIntakeJobs();
+    }, [loadIntakeJobs]);
+
     const saveCases = useCallback(async (cases: AnswerlatticeAnswerTestCase[]) => {
         setSaving(true);
         try {
-            const response = await fetch('/api/answerlattice/answer-tests', {
+            const response = await fetch(`/api/answerlattice/answer-tests${launchProofQuery}`, {
                 method: 'PUT',
                 cache: 'no-store',
                 credentials: 'same-origin',
@@ -223,6 +366,7 @@ export default function AnswerlatticeAnswerTests() {
             const payload = await readResponse(response);
             if (!response.ok || !payload?.summary) throw new Error(getErrorMessage(payload, 'Could not save answer tests.'));
             setSummary(payload.summary);
+            setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
             return true;
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not save answer tests.');
@@ -230,7 +374,7 @@ export default function AnswerlatticeAnswerTests() {
         } finally {
             setSaving(false);
         }
-    }, [summary.revision]);
+    }, [launchProofQuery, summary.revision]);
 
     const openCreate = useCallback(() => {
         setEditingCase(null);
@@ -257,10 +401,14 @@ export default function AnswerlatticeAnswerTests() {
                 ...(values.expectedAnswerId?.trim() ? { answerId: values.expectedAnswerId.trim() } : {}),
                 ...(values.expectedFaqId?.trim() ? { faqId: values.expectedFaqId.trim() } : {}),
                 ...(values.minimumConfidence ? { minimumConfidence: values.minimumConfidence } : {}),
+                citationPolicy: values.citationPolicy,
+                referenceIds: splitLines(values.referenceIds),
                 mustInclude: splitLines(values.mustInclude),
                 mustNotInclude: splitLines(values.mustNotInclude),
             },
+            riskLevel: values.riskLevel,
             relatedEntityIds: splitLines(values.relatedEntityIds, 10),
+            ...(editingCase?.launchPack ? { launchPack: editingCase.launchPack } : {}),
             active: values.active !== false,
             createdAt: editingCase?.createdAt || now,
             updatedAt: now,
@@ -283,6 +431,109 @@ export default function AnswerlatticeAnswerTests() {
         }
     }, [saveCases, summary.cases]);
 
+    const addStarterCases = useCallback(() => {
+        if (summary.cases.some(testCase => isAnswerlatticeProductStarterPackCaseId(testCase.id))) {
+            message.info('The product-specific starter set already replaces the general fallback questions.');
+            return;
+        }
+        const availableSlots = Math.max(ANSWERLATTICE_ANSWER_TEST_MAX_CASES - summary.cases.length, 0);
+        const starterCases = createAnswerlatticeFirstTrustedAnswerCases(
+            summary.cases.map(testCase => testCase.id),
+        ).slice(0, availableSlots);
+
+        if (starterCases.length === 0) {
+            message.info(summary.cases.length >= ANSWERLATTICE_ANSWER_TEST_MAX_CASES
+                ? 'The answer-test suite is already at its 100-case limit.'
+                : 'The editable starter questions are already in this suite.');
+            return;
+        }
+
+        Modal.confirm({
+            title: `Add ${starterCases.length} editable starter question${starterCases.length === 1 ? '' : 's'}?`,
+            content: 'These are prompts for onboarding, billing, access, integrations, errors, and releases. Review every question before treating the suite as launch proof.',
+            okText: 'Add starter questions',
+            onOk: async () => {
+                const saved = await saveCases([...summary.cases, ...starterCases]);
+                if (saved) {
+                    message.success(`${starterCases.length} starter question${starterCases.length === 1 ? '' : 's'} added.`);
+                }
+            },
+        });
+    }, [saveCases, summary.cases]);
+
+    const performProductStarterPackGeneration = useCallback(async () => {
+        if (!selectedIntakeJobId) {
+            message.warning('Choose a knowledge intake with readable product sources first.');
+            return;
+        }
+        if (summary.cases.length > ANSWERLATTICE_ANSWER_TEST_MAX_CASES - 10) {
+            const genericStarterIds = new Set<string>(ANSWERLATTICE_FIRST_TRUSTED_ANSWER_CASE_IDS);
+            const replaceableCount = summary.cases.filter(testCase => (
+                isAnswerlatticeProductStarterPackCaseId(testCase.id)
+                || genericStarterIds.has(testCase.id)
+            )).length;
+            if (summary.cases.length - replaceableCount > ANSWERLATTICE_ANSWER_TEST_MAX_CASES - 10) {
+                message.warning('Remove some Answer Tests before adding the ten-question product pack.');
+                return;
+            }
+        }
+
+        setProductPackGenerating(true);
+        try {
+            const response = await fetch(
+                `/api/answerlattice/knowledge-intake/jobs/${encodeURIComponent(selectedIntakeJobId)}/launch-pack`,
+                {
+                    method: 'POST',
+                    cache: 'no-store',
+                    credentials: 'same-origin',
+                    redirect: 'manual',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ requestId: createRuntimeId('product_pack') }),
+                },
+            );
+            const payload = await readJsonResponseWithLimit<unknown>(response, RESPONSE_MAX_BYTES);
+            if (!response.ok) {
+                const error = payload && typeof payload === 'object' && !Array.isArray(payload)
+                    ? (payload as { error?: unknown }).error
+                    : null;
+                throw new Error(typeof error === 'string' && error.trim()
+                    ? error
+                    : 'Could not generate the product-specific starter pack.');
+            }
+            const parsed = AnswerlatticeProductStarterPackResponseSchema.safeParse(payload);
+            if (!parsed.success) throw new Error('The product-specific starter pack response was invalid.');
+            const nextCases = replaceAnswerlatticeFirstTrustedAnswerCases(summary.cases, parsed.data.pack.cases);
+            const casesChanged = JSON.stringify(nextCases) !== JSON.stringify(summary.cases);
+            if (casesChanged && !await saveCases(nextCases)) {
+                message.warning('The answer drafts are safe in Knowledge Intake. Retry this unchanged pack to add its tests.');
+                return;
+            }
+            setLastPackWasCached(parsed.data.pack.cached);
+            setSelectedIds(parsed.data.pack.cases.map(testCase => testCase.id));
+            message.success(parsed.data.pack.cached
+                ? 'Saved the existing product-specific set. No support credit was used.'
+                : `Prepared ten product-specific questions and review drafts. ${parsed.data.pack.usage.unitsConsumed} support credit used.`);
+        } catch (error) {
+            message.error(error instanceof Error ? error.message : 'Could not generate the product-specific starter pack.');
+        } finally {
+            setProductPackGenerating(false);
+        }
+    }, [saveCases, selectedIntakeJobId, summary.cases]);
+
+    const generateProductStarterPack = useCallback(() => {
+        const hasExistingProductPack = summary.cases.some(testCase => isAnswerlatticeProductStarterPackCaseId(testCase.id));
+        if (!hasExistingProductPack) {
+            void performProductStarterPackGeneration();
+            return;
+        }
+        Modal.confirm({
+            title: 'Refresh the product-specific set?',
+            content: 'Unchanged product inputs reuse the saved pack and preserve your test edits. If the included sources or launch context changed, one support credit prepares new review drafts and replaces only the ten product-launch tests. Custom tests stay unchanged.',
+            okText: 'Refresh set',
+            onOk: performProductStarterPackGeneration,
+        });
+    }, [performProductStarterPackGeneration, summary.cases]);
+
     const executeRun = useCallback(async (
         mode: AnswerlatticeAnswerTestMode,
         options?: { releaseId?: string },
@@ -294,9 +545,10 @@ export default function AnswerlatticeAnswerTests() {
         }
         setRunningMode(mode);
         try {
-            const endpoint = options?.releaseId
+            const endpointPath = options?.releaseId
                 ? '/api/answerlattice/answer-tests/release-check'
                 : '/api/answerlattice/answer-tests/run';
+            const endpoint = `${endpointPath}${launchProofQuery}`;
             const body = options?.releaseId
                 ? { requestId: createRuntimeId('release_check'), releaseId: options.releaseId, mode }
                 : { requestId: createRuntimeId('answer_test'), caseIds: selectedIds, mode };
@@ -313,18 +565,21 @@ export default function AnswerlatticeAnswerTests() {
                 throw new Error(getErrorMessage(payload, 'Could not complete the answer test run.'));
             }
             setSummary(payload.summary);
+            setCurrentLaunchProof(normalizeLaunchProof(payload.launchProof));
             setReleaseModalOpen(false);
-            message[payload.run.failedCount === 0 ? 'success' : 'warning'](
-                payload.run.failedCount === 0
-                    ? `${payload.run.passedCount} answer tests passed.`
-                    : `${payload.run.failedCount} answer tests need review.`,
+            message[payload.run.proofStatus === 'ready' ? 'success' : 'warning'](
+                payload.run.proofStatus === 'ready'
+                    ? `${payload.run.passedCount} answer tests passed. The latest run proof is ready.`
+                    : payload.run.proofStatus === 'blocked'
+                        ? `${payload.run.criticalFailureCount} release-blocking answer tests failed in the latest run.`
+                        : `${payload.run.failedCount} answer tests need review in the latest run.`,
             );
         } catch (error) {
             message.error(error instanceof Error ? error.message : 'Could not complete the answer test run.');
         } finally {
             setRunningMode(null);
         }
-    }, [selectedIds, summary.cases]);
+    }, [launchProofQuery, selectedIds, summary.cases]);
 
     const updateSelectedIds = useCallback((nextIds: string[]) => {
         const uniqueActiveIds = Array.from(new Set(nextIds)).filter(id => (
@@ -344,7 +599,7 @@ export default function AnswerlatticeAnswerTests() {
         }
         Modal.confirm({
             title: 'Run the full support pipeline?',
-            content: 'Canonical and FAQ matches remain free. Each case that reaches an AI provider uses one support credit.',
+            content: `Canonical and FAQ matches use no provider credits. This run can use at most ${selectedCount} support credit${selectedCount === 1 ? '' : 's'} if every selected case reaches an AI provider.`,
             okText: 'Run tests',
             onOk: () => executeRun('full_runtime'),
         });
@@ -375,6 +630,8 @@ export default function AnswerlatticeAnswerTests() {
                 ...(target.expected.minimumConfidence ? { minimumConfidence: target.expected.minimumConfidence } : {}),
                 mustInclude: target.expected.mustInclude,
                 mustNotInclude: target.expected.mustNotInclude,
+                citationPolicy: result.referenceIds.length > 0 ? 'specific_sources' : 'not_required',
+                referenceIds: result.referenceIds,
                 ...(result.answerId ? { answerId: result.answerId } : {}),
                 ...(result.faqId ? { faqId: result.faqId } : {}),
             },
@@ -435,6 +692,60 @@ export default function AnswerlatticeAnswerTests() {
     const activeCount = summary.cases.filter(testCase => testCase.active).length;
     const latestRun = summary.runs[0];
     const selectedActiveCount = selectedIds.filter(id => summary.cases.some(testCase => testCase.id === id && testCase.active)).length;
+    const starterCaseCount = Math.min(10, countAnswerlatticeFirstTrustedAnswerCases(summary.cases));
+    const hasProductStarterPack = summary.cases.some(testCase => isAnswerlatticeProductStarterPackCaseId(testCase.id));
+    const selectedIntakeJob = intakeJobs.find(job => job.id === selectedIntakeJobId);
+    const productPackEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_PRODUCT_STARTER_PACK
+        && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE;
+    const currentLaunchProofAlert = (() => {
+        if (!currentLaunchProof) {
+            return {
+                type: 'warning' as const,
+                message: 'Current First 10 proof could not be verified',
+                description: 'Refresh this screen before relying on the latest run. The retained run result is historical and never publishes support truth.',
+            };
+        }
+        if (currentLaunchProof.firstTenCount < 10) {
+            return {
+                type: 'info' as const,
+                message: `${currentLaunchProof.firstTenCount}/10 launch questions are ready`,
+                description: 'Complete the First 10 set, approve the required support truth, then run all ten checks to establish current launch proof.',
+            };
+        }
+        if (currentLaunchProof.latestProofStale) {
+            return {
+                type: 'warning' as const,
+                message: 'First 10 proof is stale',
+                description: 'A launch question or governed source changed after the saved run. Run all ten checks again; no content is published automatically.',
+            };
+        }
+        if (currentLaunchProof.latestProofStatus === 'ready') {
+            return {
+                type: 'success' as const,
+                message: 'Current First 10 proof is ready',
+                description: 'All ten launch questions passed against the current governed sources. This proof is advisory and does not publish or approve content.',
+            };
+        }
+        if (currentLaunchProof.latestProofStatus === 'blocked') {
+            return {
+                type: 'error' as const,
+                message: 'Current First 10 proof is blocked',
+                description: `${currentLaunchProof.latestCriticalFailureCount} critical launch answer${currentLaunchProof.latestCriticalFailureCount === 1 ? '' : 's'} failed. Review the latest result, correct the governed source, and rerun all ten checks.`,
+            };
+        }
+        if (currentLaunchProof.latestProofStatus === 'review') {
+            return {
+                type: 'warning' as const,
+                message: 'Current First 10 proof needs review',
+                description: 'At least one launch answer did not meet its expected source, evidence, or response rule. Correct it and rerun all ten checks.',
+            };
+        }
+        return {
+            type: 'info' as const,
+            message: 'Run the First 10 checks',
+            description: 'Run all ten launch questions together to establish current proof against the governed sources.',
+        };
+    })();
 
     const columns = useMemo<ColumnsType<AnswerlatticeAnswerTestCase>>(() => [
         {
@@ -451,7 +762,13 @@ export default function AnswerlatticeAnswerTests() {
             title: 'Expected',
             key: 'expected',
             width: 180,
-            render: (_, testCase) => <Tag color={SOURCE_COLORS[testCase.expected.source]}>{SOURCE_LABELS[testCase.expected.source]}</Tag>,
+            render: (_, testCase) => (
+                <Space size={[4, 4]} wrap>
+                    <Tag color={SOURCE_COLORS[testCase.expected.source]}>{SOURCE_LABELS[testCase.expected.source]}</Tag>
+                    {testCase.riskLevel === 'critical' && <Tag color="red">Release blocking</Tag>}
+                    {testCase.expected.citationPolicy !== 'not_required' && <Tag color="geekblue">Evidence checked</Tag>}
+                </Space>
+            ),
         },
         {
             title: 'Context',
@@ -500,10 +817,14 @@ export default function AnswerlatticeAnswerTests() {
                 <div>
                     <Space align="center">
                         <LuClipboardCheck size={22} color={token.colorPrimary} />
-                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>Answer Tests</Title>
+                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>
+                            {isLaunchMode ? 'First 10 Trusted Answers' : 'Answer Tests'}
+                        </Title>
                     </Space>
                     <Paragraph type="secondary" style={{ margin: '6px 0 0', maxWidth: 760 }}>
-                        Lock important support behavior before releases. Tests use the same canonical-first retrieval path without creating customer search history or support signals.
+                        {isLaunchMode
+                            ? 'Define the ten questions most likely to interrupt your launch, approve the required support truth, and prove the expected answer or safe escalation before users depend on it.'
+                            : 'Prove important support answers before releases. Tests use the same canonical-first retrieval path and can verify claims, evidence references, safe abstention, and escalation without creating customer search history or support signals.'}
                     </Paragraph>
                 </div>
                 <Space wrap>
@@ -512,17 +833,145 @@ export default function AnswerlatticeAnswerTests() {
                 </Space>
             </Flex>
 
+            {isLaunchMode ? (
+                <Card>
+                    <Flex vertical gap={16}>
+                        <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} vertical={isMobile} gap={12}>
+                            <Flex vertical gap={5}>
+                                <Space wrap>
+                                    <LuSparkles size={18} color={token.colorPrimary} />
+                                    <Text strong>Founder launch path</Text>
+                                    <Tag color={starterCaseCount >= 10 ? 'green' : 'processing'}>{starterCaseCount}/10 starter questions</Tag>
+                                </Space>
+                                <Text type="secondary">
+                                    Generate the first ten from your approved product sources. Answer drafts stay in Knowledge Intake until you review them, and canonical answers still require Governance approval.
+                                </Text>
+                            </Flex>
+                        </Flex>
+                        {productPackEnabled ? (
+                            <Card size="small" styles={{ body: { padding: isMobile ? 12 : 16 } }}>
+                                <Flex vertical gap={12}>
+                                    <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} vertical={isMobile} gap={12}>
+                                        <Flex vertical gap={3}>
+                                            <Text strong>Product-specific launch pack</Text>
+                                            <Text type="secondary">
+                                                One new source or launch-context version uses one support credit. Reopening unchanged inputs uses the saved pack for free.
+                                            </Text>
+                                        </Flex>
+                                        {lastPackWasCached !== null ? (
+                                            <Tag color={lastPackWasCached ? 'green' : 'blue'}>
+                                                {lastPackWasCached ? 'Saved pack reused' : 'New pack generated'}
+                                            </Tag>
+                                        ) : null}
+                                    </Flex>
+                                    <Flex gap={10} vertical={isMobile} align={isMobile ? 'stretch' : 'center'}>
+                                        <Select
+                                            aria-label="Knowledge intake for product-specific questions"
+                                            loading={intakeJobsLoading}
+                                            value={selectedIntakeJobId}
+                                            onChange={setSelectedIntakeJobId}
+                                            placeholder="Choose product sources"
+                                            style={{ flex: 1, minWidth: isMobile ? 0 : 300 }}
+                                            options={intakeJobs.map(job => ({
+                                                value: job.id,
+                                                label: `${job.title} (${Number(job.readySourceCount || 0)} ready source${Number(job.readySourceCount || 0) === 1 ? '' : 's'})`,
+                                                disabled: Number(job.readySourceCount || 0) === 0
+                                                    || ['publishing', 'published', 'cancelled'].includes(job.status),
+                                            }))}
+                                        />
+                                        <Button
+                                            type="primary"
+                                            icon={<LuSparkles />}
+                                            onClick={generateProductStarterPack}
+                                            loading={productPackGenerating}
+                                            disabled={
+                                                !selectedIntakeJobId
+                                                || Number(selectedIntakeJob?.readySourceCount || 0) === 0
+                                                || ['publishing', 'published', 'cancelled'].includes(String(selectedIntakeJob?.status || ''))
+                                            }
+                                            style={ACTION_BUTTON_STYLE}
+                                        >
+                                            Generate product-specific set
+                                        </Button>
+                                        <Button icon={<LuRefreshCw />} onClick={loadIntakeJobs} loading={intakeJobsLoading} style={ICON_ACTION_BUTTON_STYLE} aria-label="Refresh knowledge intakes" />
+                                    </Flex>
+                                    {intakeJobs.length === 0 ? (
+                                        <Alert
+                                            type="warning"
+                                            showIcon
+                                            message="Add product sources first"
+                                            description="Teach Answerlattice from your website, docs, notes, releases, screenshots, or recordings before generating product-specific questions."
+                                            action={<Button onClick={() => router.push(ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE)}>Open Knowledge Intake</Button>}
+                                        />
+                                    ) : null}
+                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                        Generated answers are draft evidence, never approved truth. Review them in Knowledge Intake, then use the existing Governance queue for canonical approval.
+                                    </Text>
+                                </Flex>
+                            </Card>
+                        ) : null}
+                        <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} vertical={isMobile} gap={10}>
+                            <Text type="secondary">
+                                No product intake yet? Use the general questions as an editable fallback and replace anything that does not apply.
+                            </Text>
+                            <Button
+                                icon={<LuClipboardCheck />}
+                                onClick={addStarterCases}
+                                loading={saving}
+                                disabled={hasProductStarterPack}
+                                style={ACTION_BUTTON_STYLE}
+                            >
+                                Use general starter set
+                            </Button>
+                        </Flex>
+                        <Flex gap={10} wrap="wrap">
+                            <Button onClick={() => router.push(ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE)} style={ACTION_BUTTON_STYLE}>1. Teach Answerlattice</Button>
+                            <Button onClick={() => router.push(ANSWERLATTICE_ROUTES.KNOWLEDGE_INTAKE)} style={ACTION_BUTTON_STYLE}>2. Review answer drafts</Button>
+                            <Button onClick={() => router.push(getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS))} style={ACTION_BUTTON_STYLE}>3. Approve support truth</Button>
+                            <Button onClick={() => executeRun('canonical_only')} disabled={activeCount === 0} loading={runningMode === 'canonical_only'} style={ACTION_BUTTON_STYLE}>4. Run free checks</Button>
+                            <Button onClick={() => router.push(ANSWERLATTICE_ROUTES.INSTALL_CENTER)} style={ACTION_BUTTON_STYLE}>5. Verify install</Button>
+                        </Flex>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            A failed case is useful evidence: fix the answer, FAQ, article, context, or escalation rule in its existing governed screen, then run the same case again.
+                        </Text>
+                    </Flex>
+                </Card>
+            ) : null}
+
+            {isLaunchMode ? (
+                <Alert
+                    type={currentLaunchProofAlert.type}
+                    showIcon
+                    message={currentLaunchProofAlert.message}
+                    description={currentLaunchProofAlert.description}
+                />
+            ) : null}
+
             <Alert
                 type="info"
                 showIcon
                 message="Deterministic checks are free"
-                description="Canonical-only runs verify approved answers and FAQs. Full-runtime runs continue into knowledge fallback and use one support credit only when an AI provider is reached."
+                description="Canonical-only runs verify approved answers, FAQs, abstention, and evidence references. Full-runtime runs continue into knowledge fallback and use one support credit only when an AI provider is reached. Proof status is advisory and never publishes content or changes a deployment."
             />
 
             <Flex gap={12} wrap="wrap">
                 <Card size="small" style={{ flex: '1 1 180px' }}><Statistic title="Active tests" value={activeCount} /></Card>
                 <Card size="small" style={{ flex: '1 1 180px' }}><Statistic title="Latest pass rate" value={latestRun?.caseCount ? Math.round((latestRun.passedCount / latestRun.caseCount) * 100) : 0} suffix="%" /></Card>
                 <Card size="small" style={{ flex: '1 1 180px' }}><Statistic title="Needs review" value={latestRun?.failedCount || 0} valueStyle={{ color: latestRun?.failedCount ? token.colorWarning : token.colorSuccess }} /></Card>
+                <Card size="small" style={{ flex: '1 1 180px' }}>
+                    <Statistic
+                        title="Latest run proof"
+                        value={latestRun ? PROOF_STATUS_LABELS[latestRun.proofStatus] : 'Not run'}
+                        valueStyle={{
+                            color: latestRun?.proofStatus === 'blocked'
+                                ? token.colorError
+                                : latestRun?.proofStatus === 'review'
+                                    ? token.colorWarning
+                                    : token.colorSuccess,
+                            fontSize: 18,
+                        }}
+                    />
+                </Card>
                 <Card size="small" style={{ flex: '1 1 220px' }}><Statistic title="Last run" value={formatDateTime(latestRun?.completedAt)} valueStyle={{ fontSize: 16 }} /></Card>
             </Flex>
 
@@ -551,6 +1000,11 @@ export default function AnswerlatticeAnswerTests() {
                     </Button>
                     <Button icon={<LuRocket />} onClick={openReleaseCheck} disabled={activeCount === 0} style={ACTION_BUTTON_STYLE}>Check a release</Button>
                 </Flex>
+                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
+                    Canonical and release checks use 0 provider credits. {(selectedActiveCount || activeCount) > ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES
+                        ? `Select no more than ${ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES} cases before a full-runtime run; the current selection cannot be submitted.`
+                        : `A full-runtime run uses at most ${selectedActiveCount || activeCount} support credit${(selectedActiveCount || activeCount) === 1 ? '' : 's'} for the current selection.`}
+                </Text>
 
                 {isMobile ? (
                     <List
@@ -577,6 +1031,8 @@ export default function AnswerlatticeAnswerTests() {
                                     <Text type="secondary">{testCase.query}</Text>
                                     <Space wrap>
                                         <Tag color={SOURCE_COLORS[testCase.expected.source]}>{SOURCE_LABELS[testCase.expected.source]}</Tag>
+                                        {testCase.riskLevel === 'critical' && <Tag color="red">Release blocking</Tag>}
+                                        {testCase.expected.citationPolicy !== 'not_required' && <Tag color="geekblue">Evidence checked</Tag>}
                                         {testCase.relatedEntityIds.length > 0 && <Tag>{testCase.relatedEntityIds.length} entities</Tag>}
                                     </Space>
                                     <Flex gap={8}>
@@ -622,6 +1078,7 @@ export default function AnswerlatticeAnswerTests() {
                                 {latestRun.status === 'passed' ? 'Passed' : latestRun.status === 'failed' ? 'Failed' : 'Needs review'}
                             </Tag>
                             <Tag>{latestRun.mode === 'full_runtime' ? 'Full runtime' : 'Canonical only'}</Tag>
+                            <Tag color={PROOF_STATUS_COLORS[latestRun.proofStatus]}>Latest run proof: {PROOF_STATUS_LABELS[latestRun.proofStatus]}</Tag>
                             {latestRun.releaseVersion && <Tag color="purple">Release {latestRun.releaseVersion}</Tag>}
                             <Text type="secondary">{latestRun.passedCount}/{latestRun.caseCount} passed · {latestRun.providerCaseCount} provider-backed</Text>
                         </Flex>
@@ -637,10 +1094,19 @@ export default function AnswerlatticeAnswerTests() {
                                             </Space>
                                             <Space wrap>
                                                 <Tag color={SOURCE_COLORS[result.source]}>{SOURCE_LABELS[result.source]}</Tag>
+                                                {result.riskLevel === 'critical' && <Tag color="red">Release blocking</Tag>}
+                                                {result.citationPolicy !== 'not_required' && (
+                                                    <Tag color={result.citationPassed ? 'green' : 'red'}>
+                                                        Evidence {result.citationPassed ? 'passed' : 'failed'}
+                                                    </Tag>
+                                                )}
                                                 <Text type="secondary">{result.durationMs} ms</Text>
                                             </Space>
                                         </Flex>
                                         {result.answerPreview && <Text>{result.answerPreview}</Text>}
+                                        {result.referenceIds.length > 0 && (
+                                            <Text type="secondary">References: {result.referenceIds.join(', ')}</Text>
+                                        )}
                                         {result.failures.map(failure => <Text key={failure} type="danger">{failure}</Text>)}
                                         <Space wrap>
                                             {!result.passed && (
@@ -697,6 +1163,32 @@ export default function AnswerlatticeAnswerTests() {
                         </Form.Item>
                     </Flex>
                     <Flex gap={12} vertical={isMobile}>
+                        <Form.Item name="riskLevel" label="Release importance" style={{ flex: 1 }} rules={[{ required: true }]}>
+                            <Select options={[
+                                { value: 'standard', label: 'Standard - review failures' },
+                                { value: 'critical', label: 'Critical - mark release proof blocked' },
+                            ]} />
+                        </Form.Item>
+                        <Form.Item name="citationPolicy" label="Evidence requirement" style={{ flex: 1 }} rules={[{ required: true }]}>
+                            <Select options={Object.entries(CITATION_POLICY_LABELS).map(([value, label]) => ({ value, label }))} />
+                        </Form.Item>
+                    </Flex>
+                    <Form.Item
+                        name="referenceIds"
+                        label="Expected reference IDs"
+                        dependencies={['citationPolicy']}
+                        extra="Use article IDs returned by the support answer. Canonical answers can be verified by their answer ID without a separate reference."
+                        rules={[({ getFieldValue }) => ({
+                            validator: async (_, value) => {
+                                if (getFieldValue('citationPolicy') === 'specific_sources' && splitLines(value).length === 0) {
+                                    throw new Error('Add at least one expected reference ID.');
+                                }
+                            },
+                        })]}
+                    >
+                        <TextArea rows={3} maxLength={1400} placeholder="One reference ID per line" />
+                    </Form.Item>
+                    <Flex gap={12} vertical={isMobile}>
                         <Form.Item name="expectedAnswerId" label="Expected canonical answer ID" style={{ flex: 1 }}>
                             <Input maxLength={160} placeholder="Optional" />
                         </Form.Item>
@@ -743,7 +1235,7 @@ export default function AnswerlatticeAnswerTests() {
                 cancelButtonProps={{ style: ACTION_BUTTON_STYLE }}
             >
                 <Paragraph type="secondary">
-                    Answerlattice runs only tests linked to entities changed by the selected release. No product state is changed.
+                    Answerlattice runs only tests linked to entities changed by the selected release. Critical failures mark the proof as blocked, but no product state or deployment is changed automatically.
                 </Paragraph>
                 <Select
                     loading={releaseLoading}

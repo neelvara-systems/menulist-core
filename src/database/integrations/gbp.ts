@@ -13,7 +13,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
-import { Timestamp } from "firebase/firestore";
+import type { Timestamp } from "firebase/firestore";
 
 /**
  * GBP Token document structure

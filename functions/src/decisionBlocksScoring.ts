@@ -8,18 +8,21 @@ import { processGuestFeedbackRetention } from './analytics/guestFeedbackRetentio
 import { processMenuDriftMetricsForAllStores } from './analytics/menuDriftMetrics';
 import { FUNCTION_MAX_INSTANCES, SECRET_GROUPS, SECRETS } from './config/secrets';
 import { DB_COLLECTIONS, getMenuIntelligenceDocId } from './constants/database';
-import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG } from './constants/features';
+import { FUNCTION_FLAGS, FUNCTION_RETENTION_CONFIG, isFunctionFeatureEnabled } from './constants/features';
 import { ECOMSAI_PLATFORM_USER_ROLE } from './constants/user';
 import { firestoreAdmin } from './firebaseAdmin';
 import { flush as flushSentry, initSentry } from './lib/sentry';
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from './sharedData/platformNotificationRegistry';
-import { computeIntelligenceState, fetchCurrentIntelligence, setAuditLogRunContext } from './intelligence/menuIntelligence';
+import { resolveNextSpecialMenuTransitionAt } from './sharedData/specialMenuSchedule';
+import { computeIntelligenceState, createAuditLogRunContext, fetchCurrentIntelligence } from './intelligence/menuIntelligence';
 import { AggregatedAnalytics, fetch7DayAnalytics } from './intelligence/shared/analyticsAggregator';
 import { extractActiveItems } from './intelligence/shared/itemExtractor';
-import { DEFAULT_DURATIONS, normalize, QUICK_PICK_THRESHOLDS, WEIGHTS } from './intelligence/shared/scoreNormalizer';
+import { getQuickPickThreshold, isQuickPickEnabledForCategory, normalize, WEIGHTS } from './intelligence/shared/scoreNormalizer';
 import { revalidatePublicClientCacheForStore } from './logic/publicCacheRevalidation';
 import { transitionScheduledSpecialMenu } from './schedulers/specialMenuLifecycle';
 import { resolveBusinessCategoryOrFallback } from './sharedData/businessTypes';
+import { DEFAULT_DECISION_BLOCK_CATEGORY } from './sharedData/decisionBlockConfig';
+import { normalizeOwnerNotificationDocumentId } from './sharedData/ownerNotificationDeliveryBoundary';
 import { parsePlatformStoreSummary, type PlatformStoreSummaryData } from './sharedData/storeSummaryBoundary';
 import { addDaysToAnalyticsDateKey, getAnalyticsDateRange } from './utils/analyticsDate';
 import { getBusinessAnalyticsDateKey, isAnalyticsSettlementDue, resolveBusinessDayEndTime } from './utils/businessDay';
@@ -43,12 +46,10 @@ const SCHEDULER_SPECIAL_MENU_TASK_FAILED = 'SCHEDULER_SPECIAL_MENU_TASK_FAILED';
 const SCHEDULER_EXTRACTION_LEARNING_FAILED = 'SCHEDULER_EXTRACTION_LEARNING_FAILED';
 const SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED = 'SCHEDULER_STORE_TRUTH_CONFIDENCE_FAILED';
 const SCHEDULER_STALENESS_CHECK_FAILED = 'SCHEDULER_STALENESS_CHECK_FAILED';
-const SCHEDULER_KB_GENERATION_WATCHDOG_FAILED = 'SCHEDULER_KB_GENERATION_WATCHDOG_FAILED';
 const SCHEDULER_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_RUN_LOG_PERSIST_FAILED';
 const SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED = 'SCHEDULER_NO_STORES_RUN_LOG_PERSIST_FAILED';
 const SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED';
 const SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED = 'SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED';
-const SCHEDULER_KB_GENERATION_WATCHDOG_JOB_UPDATE_FAILED = 'SCHEDULER_KB_GENERATION_WATCHDOG_JOB_UPDATE_FAILED';
 const SCHEDULER_DECISION_BLOCKS_FATAL_FAILED = 'SCHEDULER_DECISION_BLOCKS_FATAL_FAILED';
 const SCHEDULER_COMPLETION_ALERT_FAILED = 'SCHEDULER_COMPLETION_ALERT_FAILED';
 const SCHEDULER_MANUAL_STORE_NOT_FOUND = 'SCHEDULER_MANUAL_STORE_NOT_FOUND';
@@ -70,9 +71,9 @@ const MANUAL_STORE_TENANT_MISMATCH_MESSAGE = 'Store does not match the requested
  * - Each Project gets its own project-embedded Decision Blocks projection
  * 
  * SCORING LOGIC:
- * - Popular Right Now: views (40%) + clicks (30%) + orders (20%) + ownerBoost (10%)
+ * - Popular Right Now: views + clicks + recommendation clicks + owner signals
  * - Quick Pick: duration score (60%) + popularity (30%) + ownerBoost (10%)
- * - Best Value: popularity/price ratio (70%) + ownerBoost (10%) + reviews (20%)
+ * - Best Value: popularity/price ratio + owner signals
  * 
  * OUTPUT:
  * Creates/updates project field:
@@ -106,6 +107,7 @@ interface ItemStats {
     category: string;
     views: number;
     clicks: number;
+    decisionBlockClicks: number;
     orders: number;
     price: number;
     duration?: number;
@@ -132,6 +134,18 @@ const DECISION_BLOCKS_TTL_HOURS = 48;
 const NIGHTLY_STATE_PREFIX = 'nightlyState';
 const NIGHTLY_LOCK_PREFIX = 'nightlyLock';
 const NIGHTLY_LOCK_LEASE_MS = 8 * 60 * 1000;
+const PLATFORM_DAILY_TASK_STATE_ID = 'decisionBlocksPlatformDaily';
+const PLATFORM_DAILY_TASK_LEASE_MS = 10 * 60 * 1000;
+const PLATFORM_DAILY_TASK_RETRY_MS = 55 * 60 * 1000;
+const PLATFORM_DAILY_TASK_NAMES = new Set([
+    'authority_maturation',
+    'menu_drift',
+    'guest_feedback_retention',
+    'lifecycle_messaging',
+    'extraction_learning',
+    'store_truth_confidence',
+    'staleness_check',
+]);
 const MAX_CATCH_UP_DAYS_PER_RUN = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -284,20 +298,34 @@ function parseSummaryProjects(data: unknown): Record<string, Record<string, unkn
     return result;
 }
 
+function hasProjectSummaryShape(data: unknown): boolean {
+    if (!isSummaryRecord(data)) return false;
+    if (Object.prototype.hasOwnProperty.call(data, 'projects')) {
+        return isSummaryRecord(data.projects);
+    }
+    return Object.keys(data).some((key) => key.startsWith('projects.'));
+}
+
 async function loadActiveProjectsForScheduler(
     db: FirebaseFirestore.Firestore,
     tId: string,
     sId: string,
 ): Promise<{ projectEntries: ActiveProjectEntry[]; activeProjectIds: string[]; source: 'summary' | 'query' }> {
     const summarySnap = await db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`projects_${sId}`).get();
-    const summaryProjects = summarySnap.exists ? parseSummaryProjects(summarySnap.data()) : {};
+    const summaryData = summarySnap.exists ? summarySnap.data() : undefined;
+    const summaryProjects = parseSummaryProjects(summaryData);
+    const hasUsableSummary = summarySnap.exists && hasProjectSummaryShape(summaryData);
     const activeProjectIds = Object.entries(summaryProjects)
         .filter(([, project]) => {
             return project.active !== false && project.deleted !== true;
         })
         .map(([projectId]) => projectId);
 
-    if (activeProjectIds.length > 0) {
+    if (hasUsableSummary) {
+        if (activeProjectIds.length === 0) {
+            return { projectEntries: [], activeProjectIds: [], source: 'summary' };
+        }
+
         const refs = activeProjectIds.map((projectId) => getProjectDocRef(db, tId, sId, projectId));
         const projectSnaps = await db.getAll(...refs);
         const projectEntries = projectSnaps
@@ -436,6 +464,66 @@ async function completeNightlyDateLock(
     }, { merge: true });
 }
 
+function getPlatformDailyTaskDayKey(now: Date): string {
+    return now.toISOString().slice(0, 10);
+}
+
+async function acquirePlatformDailyTaskLease(
+    db: FirebaseFirestore.Firestore,
+    now: Date,
+): Promise<FirebaseFirestore.DocumentReference | null> {
+    const stateRef = db.collection(DB_COLLECTIONS.SYSTEM).doc(PLATFORM_DAILY_TASK_STATE_ID);
+    const dayKey = getPlatformDailyTaskDayKey(now);
+    const nowMs = now.getTime();
+
+    return db.runTransaction(async (transaction) => {
+        const stateSnapshot = await transaction.get(stateRef);
+        const state = stateSnapshot.data() || {};
+        const leaseExpiresAtMs = state.leaseExpiresAt?.toMillis?.() || 0;
+        const lastAttemptAtMs = state.lastAttemptAt?.toMillis?.() || 0;
+
+        if (state.lastCompletedDayKey === dayKey) return null;
+        if (state.status === 'running' && leaseExpiresAtMs > nowMs) return null;
+        if (
+            state.status === 'failed'
+            && state.lastAttemptDayKey === dayKey
+            && lastAttemptAtMs > nowMs - PLATFORM_DAILY_TASK_RETRY_MS
+        ) {
+            return null;
+        }
+
+        transaction.set(stateRef, {
+            status: 'running',
+            lastAttemptDayKey: dayKey,
+            lastAttemptAt: Timestamp.fromDate(now),
+            leaseExpiresAt: Timestamp.fromMillis(nowMs + PLATFORM_DAILY_TASK_LEASE_MS),
+            attempts: FieldValue.increment(1),
+            updatedAt: FieldValue.serverTimestamp(),
+        }, { merge: true });
+
+        return stateRef;
+    });
+}
+
+async function completePlatformDailyTaskLease(
+    stateRef: FirebaseFirestore.DocumentReference,
+    dayKey: string,
+    status: 'completed' | 'failed',
+): Promise<void> {
+    await stateRef.set({
+        status,
+        leaseExpiresAt: FieldValue.delete(),
+        lastCompletedDayKey: status === 'completed' ? dayKey : FieldValue.delete(),
+        lastCompletedAt: status === 'completed' ? FieldValue.serverTimestamp() : FieldValue.delete(),
+        lastFailedAt: status === 'failed' ? FieldValue.serverTimestamp() : FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp(),
+    }, { merge: true });
+}
+
+export const acquirePlatformDailyTaskLeaseForTest = acquirePlatformDailyTaskLease;
+export const completePlatformDailyTaskLeaseForTest = completePlatformDailyTaskLease;
+export const getPlatformDailyTaskDayKeyForTest = getPlatformDailyTaskDayKey;
+
 // Scoring weights, duration thresholds, and normalize() imported from
 // functions/src/intelligence/shared/scoreNormalizer.ts (single source of truth)
 
@@ -444,7 +532,7 @@ async function completeNightlyDateLock(
  */
 function calculatePopularScore(item: ItemStats, maxViews: number, maxClicks: number, maxOrders: number): number {
     const viewScore = normalize(item.views, maxViews) * WEIGHTS.popular.views;
-    const clickScore = normalize(item.clicks, maxClicks) * WEIGHTS.popular.clicks;
+    const clickScore = normalize(getWeightedClickCount(item), maxClicks) * WEIGHTS.popular.clicks;
     const orderScore = normalize(item.orders, maxOrders) * WEIGHTS.popular.orders;
     const boostScore = ((item.ownerBoost || 0) + 20) / 40 * 100 * WEIGHTS.popular.ownerBoost; // Normalize -20 to +20 to 0-100
 
@@ -454,23 +542,30 @@ function calculatePopularScore(item: ItemStats, maxViews: number, maxClicks: num
     return viewScore + clickScore + orderScore + boostScore + bestSellerBonus;
 }
 
+function getBehavioralClickCount(item: ItemStats): number {
+    return item.clicks + item.decisionBlockClicks;
+}
+
+function getWeightedClickCount(item: ItemStats): number {
+    return item.clicks + item.decisionBlockClicks * 2;
+}
+
 /**
  * Calculate Quick Pick score (lower duration = higher score)
  */
 function calculateQuickPickScore(item: ItemStats, businessCategory: string, maxPopularity: number): number {
-    const threshold = QUICK_PICK_THRESHOLDS[businessCategory] || QUICK_PICK_THRESHOLDS.default;
-    const defaultDuration = DEFAULT_DURATIONS[businessCategory] || DEFAULT_DURATIONS.default;
-
-    const duration = item.duration || defaultDuration;
+    if (item.duration === undefined) return -1;
+    const threshold = getQuickPickThreshold(businessCategory);
+    const duration = item.duration;
 
     // If duration exceeds threshold, item is not eligible for Quick Pick
-    if (duration > threshold * 2) return -1;
+    if (duration > threshold) return -1;
 
     // Duration score: lower is better (inverted)
     const durationScore = Math.max(0, 100 - (duration / threshold) * 50) * WEIGHTS.quickPick.duration;
 
     // Popularity component
-    const popularity = item.views + item.clicks * 2 + item.orders * 5;
+    const popularity = item.views + getWeightedClickCount(item) * 2 + item.orders * 5;
     const popularityScore = normalize(popularity, maxPopularity) * WEIGHTS.quickPick.popularity;
 
     // Owner boost
@@ -485,7 +580,7 @@ function calculateQuickPickScore(item: ItemStats, businessCategory: string, maxP
 function calculateBestValueScore(item: ItemStats, maxPopularity: number, avgPrice: number): number {
     if (!item.price || item.price <= 0) return -1;
 
-    const popularity = item.views + item.clicks * 2 + item.orders * 5;
+    const popularity = item.views + getWeightedClickCount(item) * 2 + item.orders * 5;
 
     // Value ratio: popularity per dollar (normalized)
     const valueRatio = popularity / item.price;
@@ -553,16 +648,15 @@ function generateReason(
 
     switch (blockType) {
         case 'popular': {
-            const keys = REASON_KEYS.popular[category] || REASON_KEYS.popular.default;
-            if (item.isBestSeller || item.orders > 10) {
-                return { reason: 'favorite' in keys ? keys.favorite : REASON_KEYS.popular.default.favorite };
-            }
-            return { reason: 'trending' in keys ? keys.trending : REASON_KEYS.popular.default.popular };
+            // Automatic popular choices require behavioral evidence. Keep the
+            // public reason neutral instead of inferring favorites, ratings,
+            // bookings, orders, or a trend from owner-authored flags.
+            return { reason: REASON_KEYS.popular.default.popular };
         }
 
         case 'quickPick': {
             const keys = REASON_KEYS.quickPick[category] || REASON_KEYS.quickPick.default;
-            const duration = item.duration || DEFAULT_DURATIONS[businessCategory] || 15;
+            const duration = item.duration ?? 0;
 
             if (duration <= 5) {
                 return { reason: 'instant' in keys ? keys.instant : REASON_KEYS.quickPick.default.instant };
@@ -597,15 +691,13 @@ async function computeForProject(
     sId: string,
     projectId: string,
     projectData: FirebaseFirestore.DocumentData,
-    businessCategory: string = 'specialty',
+    businessCategory: string = DEFAULT_DECISION_BLOCK_CATEGORY,
     prefetchedAnalytics?: AggregatedAnalytics,  // OPTIMIZATION: Reuse analytics if already fetched
     timeZone?: string,
     businessDayEndTime?: string,
 ): Promise<DecisionBlocksDocument | null> {
     const logger = functions.logger;
 
-    // Aggregate item stats from analytics
-    const itemStatsMap = new Map<string, ItemStats>();
     const analyticsForScoring = prefetchedAnalytics || await fetch7DayAnalytics(
         db,
         tId,
@@ -627,84 +719,22 @@ async function computeForProject(
         }
     }
 
-    // Build itemStatsMap from the compact scheduler-written analytics snapshot.
-    for (const [itemId, views] of Object.entries(analyticsForScoring.viewsByItem)) {
-        itemStatsMap.set(itemId, {
-            itemId,
-            itemName: analyticsForScoring.itemNames[itemId] || itemId,
-            category: '',
-            views,
-            clicks: analyticsForScoring.clicksByItem[itemId] || 0,
-            orders: 0,
-            price: 0
-        });
-    }
-    // Add items with clicks but no views
-    for (const [itemId, clicks] of Object.entries(analyticsForScoring.clicksByItem)) {
-        if (!itemStatsMap.has(itemId)) {
-            itemStatsMap.set(itemId, {
-                itemId,
-                itemName: analyticsForScoring.itemNames[itemId] || itemId,
-                category: '',
-                views: 0,
-                clicks,
-                orders: 0,
-                price: 0
-            });
-        }
-    }
-    // Apply 2x weight for recommendation clicks (high-value interactions)
-    for (const [itemId, clicks] of Object.entries(analyticsForScoring.recommendationClicksByItem)) {
-        const existing = itemStatsMap.get(itemId);
-        if (existing) {
-            existing.clicks += clicks * 2;
-        }
-    }
-
-    // Extract items from project files
-    // IMPORTANT: Only check permanent state (active), NOT temporary state (available)
-    // Availability is volatile - item available at 2 AM may be sold out at lunch
-    // Runtime gate owns availability filtering, not the scheduler
-    const files = projectData.files || [];
-    for (const file of files) {
-        const items = file.extractedData?.data?.items || [];
-        for (const item of items) {
-            // Only skip permanently disabled items (active=false)
-            // DO NOT check 'available' - that's temporary state for runtime
-            if (item.active === false) continue;
-
-            const existing = itemStatsMap.get(item.id) || {
-                itemId: item.id,
-                itemName: '',
-                category: item.category || '',
-                views: 0,
-                clicks: 0,
-                orders: 0,
-                price: 0,
-                duration: 0,
-                ownerBoost: 0,
-                isBestSeller: false
-            };
-
-            // Get item name (first language)
-            const nameObj = item.name || {};
-            existing.itemName = Object.values(nameObj)[0] as string || item.id;
-            existing.category = item.category || '';
-            existing.price = parseFloat(item.price?.replace(/[^0-9.]/g, '') || '0');
-            existing.duration = item.duration;
-            existing.ownerBoost = item.ownerBoost;
-            existing.isBestSeller = item.isBestSeller;
-
-            // Add base view count for active items
-            if (!itemStatsMap.has(item.id)) {
-                existing.views = 1; // Minimum view count
-            }
-
-            itemStatsMap.set(item.id, existing);
-        }
-    }
-
-    const items = Array.from(itemStatsMap.values()).filter(i => i.itemName);
+    // The live project catalog is authoritative. The shared extractor only
+    // enriches current active items, including retained extraction aliases;
+    // deleted or stale analytics-only IDs cannot become candidates.
+    const items: ItemStats[] = extractActiveItems(projectData, analyticsForScoring).map((item) => ({
+        itemId: item.itemId,
+        itemName: item.itemName,
+        category: item.category,
+        views: item.views,
+        clicks: item.clicks,
+        decisionBlockClicks: item.decisionBlockClicks,
+        orders: item.orders,
+        price: item.price,
+        duration: item.duration,
+        ownerBoost: item.ownerBoost,
+        isBestSeller: item.isBestSeller,
+    }));
 
     if (items.length === 0) {
         logSchedulerInfo(logger, '[DecisionBlocks] No items found for scoring', {
@@ -718,23 +748,26 @@ async function computeForProject(
 
     // Calculate maximums for normalization
     const maxViews = Math.max(...items.map(i => i.views), 1);
-    const maxClicks = Math.max(...items.map(i => i.clicks), 1);
+    const maxClicks = Math.max(...items.map(getWeightedClickCount), 1);
     const maxOrders = Math.max(...items.map(i => i.orders), 1);
-    const maxPopularity = Math.max(...items.map(i => i.views + i.clicks * 2 + i.orders * 5), 1);
-    const avgPrice = items.reduce((sum, i) => sum + (i.price || 0), 0) / items.length || 1;
+    const maxPopularity = Math.max(...items.map(i => i.views + getWeightedClickCount(i) * 2 + i.orders * 5), 1);
+    const pricedItems = items.filter((item) => item.price > 0);
+    const avgPrice = pricedItems.length > 0
+        ? pricedItems.reduce((sum, item) => sum + item.price, 0) / pricedItems.length
+        : 1;
 
     // Score items for each block type
-    const popularScores = items.map(item => ({
+    const popularScores = items.filter((item) => getBehavioralClickCount(item) >= 3).map(item => ({
         item,
         score: calculatePopularScore(item, maxViews, maxClicks, maxOrders)
     })).sort((a, b) => b.score - a.score);
 
-    const quickPickScores = items.map(item => ({
+    const quickPickScores = isQuickPickEnabledForCategory(businessCategory) ? items.map(item => ({
         item,
         score: calculateQuickPickScore(item, businessCategory, maxPopularity)
-    })).filter(i => i.score >= 0).sort((a, b) => b.score - a.score);
+    })).filter(i => i.score >= 0).sort((a, b) => b.score - a.score) : [];
 
-    const bestValueScores = items.map(item => ({
+    const bestValueScores = items.filter((item) => item.price > 0 && item.price <= avgPrice).map(item => ({
         item,
         score: calculateBestValueScore(item, maxPopularity, avgPrice)
     })).filter(i => i.score >= 0).sort((a, b) => b.score - a.score);
@@ -773,7 +806,7 @@ async function computeForProject(
     };
 
     const popular = getTopCandidates(popularScores, 'popular');
-    const quickPick = businessCategory !== 'retail' ? getTopCandidates(quickPickScores, 'quickPick') : [];
+    const quickPick = getTopCandidates(quickPickScores, 'quickPick');
     const bestValue = getTopCandidates(bestValueScores, 'bestValue');
 
     // Create decision blocks projection with TTL
@@ -792,13 +825,13 @@ async function computeForProject(
         statsUsed: {
             totalItems: items.length,
             itemsWithViews: items.filter(i => i.views > 0).length,
-            itemsWithDuration: items.filter(i => i.duration !== undefined && i.duration > 0).length,
+            itemsWithDuration: items.filter(i => i.duration !== undefined).length,
             // Hardening fields — used by runtime for lifecycle gating + block eligibility
             totalViews: items.reduce((sum, i) => sum + i.views, 0),
-            totalClicks: items.reduce((sum, i) => sum + i.clicks, 0),
-            itemsWithClicks: items.filter(i => i.clicks >= 3).length,
+            totalClicks: items.reduce((sum, i) => sum + getBehavioralClickCount(i), 0),
+            itemsWithClicks: items.filter(i => getBehavioralClickCount(i) >= 3).length,
             itemsWithPrice: items.filter(i => i.price > 0).length,
-            durationCoverage: items.length > 0 ? items.filter(i => i.duration !== undefined && i.duration > 0).length / items.length : 0,
+            durationCoverage: items.length > 0 ? items.filter(i => i.duration !== undefined).length / items.length : 0,
             priceCoverage: items.length > 0 ? items.filter(i => i.price > 0).length / items.length : 0,
             daysWithData: analyticsForScoring.daysWithData,
         }
@@ -818,6 +851,101 @@ async function saveDecisionBlocksForProject(
     }, { merge: true });
 
     return projectRef.path;
+}
+
+async function computeAndSaveMenuIntelligence(
+    db: FirebaseFirestore.Firestore,
+    tId: string,
+    sId: string,
+    projectId: string,
+    projectData: FirebaseFirestore.DocumentData,
+    analytics: AggregatedAnalytics,
+    source: 'nightly_job' | 'manual_trigger',
+): Promise<boolean> {
+    if (!isFunctionFeatureEnabled('ENABLE_CONTINUOUS_MENU_INTELLIGENCE')) return false;
+
+    const items = extractActiveItems(projectData, analytics);
+    if (items.length === 0) return false;
+
+    const currentIntelligence = await fetchCurrentIntelligence(
+        db,
+        tId,
+        sId,
+        projectId,
+        DB_COLLECTIONS.MENU_INTELLIGENCE,
+    );
+    const runContext = createAuditLogRunContext(
+        (currentIntelligence?.runCount || 0) + 1,
+        source,
+    );
+    const intelligence = computeIntelligenceState(
+        items,
+        analytics,
+        currentIntelligence,
+        { tId, sId, projectId },
+        runContext,
+    );
+
+    const miDocId = getMenuIntelligenceDocId(tId, sId, projectId);
+    // This document is a complete scheduler-owned projection. Replacing it
+    // prunes deleted item keys and keeps map growth bounded.
+    await db.collection(DB_COLLECTIONS.MENU_INTELLIGENCE).doc(miDocId).set(intelligence);
+    return true;
+}
+
+async function assertCurrentPlatformOwner(
+    db: FirebaseFirestore.Firestore,
+    auth: {
+        uid: string;
+        token: Record<string, any>;
+    },
+    action: string,
+): Promise<string> {
+    const userDocumentId = normalizeOwnerNotificationDocumentId(auth.uid);
+    if (!userDocumentId) {
+        throw new HttpsError('permission-denied', 'Account is not allowed to perform this action.');
+    }
+
+    const userSnap = await db.collection(DB_COLLECTIONS.USERS).doc(userDocumentId).get();
+    const userData = userSnap.exists ? userSnap.data() : undefined;
+    const tokenRole = String(auth.token.platformRole || auth.token.role || '');
+    const currentRole = String(userData?.platformRole || userData?.role || '');
+    if (
+        tokenRole !== ECOMSAI_PLATFORM_USER_ROLE
+        || currentRole !== ECOMSAI_PLATFORM_USER_ROLE
+        || userData?.active === false
+        || userData?.deleted === true
+        || userData?.authDisabled === true
+        || userData?.blocked === true
+        || userData?.isVerified === false
+    ) {
+        throw new HttpsError('permission-denied', `Only active platform owners can ${action}.`);
+    }
+    return currentRole;
+}
+
+function assertActiveStoreScope(
+    storeData: FirebaseFirestore.DocumentData | undefined,
+    tId: string,
+): void {
+    const storedTenantId = String(storeData?.tId || storeData?.tenantId || '');
+    if (
+        !storeData
+        || storeData.active === false
+        || storeData.deleted === true
+        || storedTenantId !== tId
+    ) {
+        throw new HttpsError('failed-precondition', 'Store is not active in the requested tenant.');
+    }
+}
+
+function normalizeCallableDocumentId(value: unknown, fieldName: string): string {
+    if (value === undefined || value === null || value === '') return '';
+    const normalized = normalizeOwnerNotificationDocumentId(value);
+    if (!normalized) {
+        throw new HttpsError('invalid-argument', `${fieldName} is invalid.`);
+    }
+    return normalized;
 }
 
 function createNightlyAnalyticsCounters(): NightlyAnalyticsCounters {
@@ -968,6 +1096,7 @@ async function runNightlySchedulerForStore(
     sId: string,
     storeInfo: FirebaseFirestore.DocumentData,
     analyticsRunAt: Date,
+    intelligenceSource: 'nightly_job' | 'manual_trigger' = 'nightly_job',
 ): Promise<StoreNightlySchedulerResult> {
     const logger = functions.logger;
     const tId = storeInfo?.tId != null ? String(storeInfo.tId) : '';
@@ -1195,6 +1324,7 @@ async function runNightlySchedulerForStore(
             }
         }
 
+        let publicDecisionBlocksChanged = false;
         for (const { projectId, data: projectData } of projectEntries) {
             try {
                 const analytics = await fetch7DayAnalytics(db, tId, sId, projectId, storeInfo.timeZone, businessDayEndTime);
@@ -1214,78 +1344,71 @@ async function runNightlySchedulerForStore(
                     });
                 }
 
-                const blocks = await computeForProject(
-                    db,
-                    tId,
-                    sId,
-                    projectId,
-                    projectData,
-                    businessCategory,
-                    analytics,
-                    storeInfo.timeZone,
-                    businessDayEndTime,
-                );
-
-                if (blocks) {
-                    await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
-
-                    logSchedulerInfo(logger, '[DecisionBlocks] Computed decision blocks', {
+                if (isFunctionFeatureEnabled('ENABLE_DECISION_BLOCKS_SCORING')) {
+                    const blocks = await computeForProject(
+                        db,
                         tId,
                         sId,
                         projectId,
-                        phase: 'project_scoring',
-                        operation: 'save_decision_blocks',
-                    });
-                    storeRun.successCount++;
+                        projectData,
+                        businessCategory,
+                        analytics,
+                        storeInfo.timeZone,
+                        businessDayEndTime,
+                    );
 
-                    try {
-                        const items = extractActiveItems(projectData, analytics);
+                    if (blocks) {
+                        await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
+                        publicDecisionBlocksChanged = true;
+                        logSchedulerInfo(logger, '[DecisionBlocks] Computed decision blocks', {
+                            tId,
+                            sId,
+                            projectId,
+                            phase: 'project_scoring',
+                            operation: 'save_decision_blocks',
+                        });
+                        storeRun.successCount++;
+                    } else {
+                        logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
+                            tId,
+                            sId,
+                            projectId,
+                            phase: 'project_scoring',
+                            operation: 'compute_project_blocks',
+                        });
+                        storeRun.skippedCount++;
+                    }
+                }
 
-                        if (items.length > 0) {
-                            const currentIntelligence = await fetchCurrentIntelligence(
-                                db, tId, sId, projectId, DB_COLLECTIONS.MENU_INTELLIGENCE
-                            );
-                            const runNumber = (currentIntelligence?.runCount || 0) + 1;
-                            setAuditLogRunContext(runNumber, 'nightly_job');
-
-                            const intelligence = computeIntelligenceState(
-                                items,
-                                analytics,
-                                currentIntelligence,
-                                { tId, sId, projectId }
-                            );
-
-                            const miDocId = getMenuIntelligenceDocId(tId, sId, projectId);
-                            await db.collection(DB_COLLECTIONS.MENU_INTELLIGENCE).doc(miDocId).set(intelligence, { merge: true });
-
-                            logSchedulerInfo(logger, '[DecisionBlocks] Computed menu intelligence', {
-                                tId,
-                                sId,
-                                projectId,
-                                phase: 'project_intelligence',
-                                operation: 'compute_intelligence_state',
-                            });
-                            storeRun.intelligenceSuccess++;
-                        }
-                    } catch (intError: any) {
-                        logSchedulerFailure(logger, '[DecisionBlocks] Project intelligence failed', SCHEDULER_PROJECT_INTELLIGENCE_FAILED, intError, {
+                try {
+                    const intelligenceSaved = await computeAndSaveMenuIntelligence(
+                        db,
+                        tId,
+                        sId,
+                        projectId,
+                        projectData,
+                        analytics,
+                        intelligenceSource,
+                    );
+                    if (intelligenceSaved) {
+                        logSchedulerInfo(logger, '[DecisionBlocks] Computed menu intelligence', {
                             tId,
                             sId,
                             projectId,
                             phase: 'project_intelligence',
                             operation: 'compute_intelligence_state',
                         });
-                        storeRun.intelligenceFailed++;
+                        storeRun.intelligenceSuccess++;
                     }
-                } else {
-                    logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
+                } catch (intError: any) {
+                    logSchedulerFailure(logger, '[DecisionBlocks] Project intelligence failed', SCHEDULER_PROJECT_INTELLIGENCE_FAILED, intError, {
                         tId,
                         sId,
                         projectId,
-                        phase: 'project_scoring',
-                        operation: 'compute_project_blocks',
+                        phase: 'project_intelligence',
+                        operation: 'compute_intelligence_state',
                     });
-                    storeRun.skippedCount++;
+                    storeRun.intelligenceFailed++;
                 }
             } catch (error: any) {
                 logSchedulerFailure(logger, '[DecisionBlocks] Project scoring failed', SCHEDULER_PROJECT_SCORING_FAILED, error, {
@@ -1304,6 +1427,10 @@ async function runNightlySchedulerForStore(
                     operation: 'decision_blocks_menu_intelligence',
                 }));
             }
+        }
+
+        if (publicDecisionBlocksChanged) {
+            await revalidatePublicClientCacheForStore(sId, 'decisionBlocksScoring:store');
         }
 
         if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE) {
@@ -1387,6 +1514,8 @@ export const computeDecisionBlocksScores = onSchedule({
 
     const db = firestoreAdmin;
     const runStartTime = Date.now();
+    let platformDailyTaskLease: FirebaseFirestore.DocumentReference | null = null;
+    let platformDailyTaskDayKey: string | null = null;
     const taskResults: Array<{ name: string; status: 'success' | 'failed' | 'skipped'; durationMs?: number; details?: Record<string, any>; error?: string }> = [];
     const results = {
         totalStores: 0,
@@ -1437,8 +1566,13 @@ export const computeDecisionBlocksScores = onSchedule({
         });
 
         results.totalStores = storeIds.length;
+        platformDailyTaskLease = await acquirePlatformDailyTaskLease(db, now);
+        platformDailyTaskDayKey = platformDailyTaskLease
+            ? getPlatformDailyTaskDayKey(now)
+            : null;
+        const runPlatformDailyTasks = platformDailyTaskLease !== null;
 
-        if (storeIds.length === 0) {
+        if (storeIds.length === 0 && !runPlatformDailyTasks) {
             logger.info('[DecisionBlocks] No stores scheduled for current hour', {
                 currentUTCHour,
                 totalStoresInPlatform: allStoreIds.length,
@@ -1471,6 +1605,7 @@ export const computeDecisionBlocksScores = onSchedule({
 
         logger.info('[DecisionBlocks] Processing scheduled stores', {
             currentUTCHour,
+            runPlatformDailyTasks,
             scheduledStoreCount: storeIds.length,
             totalStoresInPlatform: allStoreIds.length,
         });
@@ -1715,6 +1850,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 }
 
                 // Process EACH project
+                let publicDecisionBlocksChanged = false;
                 for (const { projectId, data: projectData } of projectEntries) {
                     try {
                         // OPTIMIZATION: Fetch the scheduler-written 7-day
@@ -1738,81 +1874,71 @@ export const computeDecisionBlocksScores = onSchedule({
                             });
                         }
 
-                        const blocks = await computeForProject(
-                            db,
-                            tId,
-                            sId,
-                            projectId,
-                            projectData,
-                            businessCategory,
-                            analytics,
-                            timeZone,
-                            businessDayEndTime,
-                        );
-
-                        if (blocks) {
-                            // Save the customer-safe projection on the project document.
-                            await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
-
-                            logSchedulerInfo(logger, '[DecisionBlocks] Computed decision blocks', {
+                        if (isFunctionFeatureEnabled('ENABLE_DECISION_BLOCKS_SCORING')) {
+                            const blocks = await computeForProject(
+                                db,
                                 tId,
                                 sId,
                                 projectId,
-                                phase: 'project_scoring',
-                                operation: 'save_decision_blocks',
-                            });
-                            results.successCount++;
+                                projectData,
+                                businessCategory,
+                                analytics,
+                                timeZone,
+                                businessDayEndTime,
+                            );
 
-                            // Compute Menu Intelligence state (reuses same analytics)
-                            try {
-                                const items = extractActiveItems(projectData, analytics);
-
-                                if (items.length > 0) {
-                                    const currentIntelligence = await fetchCurrentIntelligence(
-                                        db, tId, sId, projectId, DB_COLLECTIONS.MENU_INTELLIGENCE
-                                    );
-                                    // Set run context for enriched audit logs (Item 4)
-                                    const runNumber = (currentIntelligence?.runCount || 0) + 1;
-                                    setAuditLogRunContext(runNumber, 'nightly_job');
-
-                                    const intelligence = computeIntelligenceState(
-                                        items,
-                                        analytics,
-                                        currentIntelligence,
-                                        { tId, sId, projectId }
-                                    );
-
-                                    const miDocId = getMenuIntelligenceDocId(tId, sId, projectId);
-                                    await db.collection(DB_COLLECTIONS.MENU_INTELLIGENCE).doc(miDocId).set(intelligence, { merge: true });
-
-                                    logSchedulerInfo(logger, '[DecisionBlocks] Computed menu intelligence', {
-                                        tId,
-                                        sId,
-                                        projectId,
-                                        phase: 'project_intelligence',
-                                        operation: 'compute_intelligence_state',
-                                    });
-                                    results.intelligenceSuccess++;
-                                }
-                            } catch (intError: any) {
-                                logSchedulerFailure(logger, '[DecisionBlocks] Project intelligence failed', SCHEDULER_PROJECT_INTELLIGENCE_FAILED, intError, {
+                            if (blocks) {
+                                await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
+                                publicDecisionBlocksChanged = true;
+                                logSchedulerInfo(logger, '[DecisionBlocks] Computed decision blocks', {
                                     tId,
                                     sId,
                                     projectId,
-                                    phase: 'menu_intelligence',
-                                    operation: 'compute_intelligence_state',
+                                    phase: 'project_scoring',
+                                    operation: 'save_decision_blocks',
                                 });
-                                results.intelligenceFailed++;
+                                results.successCount++;
+                            } else {
+                                logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
+                                    tId,
+                                    sId,
+                                    projectId,
+                                    phase: 'project_scoring',
+                                    operation: 'compute_project_blocks',
+                                });
+                                results.skippedCount++;
                             }
-                        } else {
-                            logSchedulerInfo(logger, '[DecisionBlocks] Project has no items to score', {
+                        }
+
+                        try {
+                            const intelligenceSaved = await computeAndSaveMenuIntelligence(
+                                db,
                                 tId,
                                 sId,
                                 projectId,
-                                phase: 'project_scoring',
-                                operation: 'compute_project_blocks',
+                                projectData,
+                                analytics,
+                                'nightly_job',
+                            );
+                            if (intelligenceSaved) {
+                                logSchedulerInfo(logger, '[DecisionBlocks] Computed menu intelligence', {
+                                    tId,
+                                    sId,
+                                    projectId,
+                                    phase: 'project_intelligence',
+                                    operation: 'compute_intelligence_state',
+                                });
+                                results.intelligenceSuccess++;
+                            }
+                        } catch (intError: any) {
+                            logSchedulerFailure(logger, '[DecisionBlocks] Project intelligence failed', SCHEDULER_PROJECT_INTELLIGENCE_FAILED, intError, {
+                                tId,
+                                sId,
+                                projectId,
+                                phase: 'menu_intelligence',
+                                operation: 'compute_intelligence_state',
                             });
-                            results.skippedCount++;
+                            results.intelligenceFailed++;
                         }
                     } catch (error: any) {
                         logSchedulerFailure(logger, '[DecisionBlocks] Project scoring failed', SCHEDULER_PROJECT_SCORING_FAILED, error, {
@@ -1831,6 +1957,9 @@ export const computeDecisionBlocksScores = onSchedule({
                             operation: 'compute_project_blocks',
                         }));
                     }
+                }
+                if (publicDecisionBlocksChanged) {
+                    await revalidatePublicClientCacheForStore(sId, 'decisionBlocksScoring:scheduled');
                 }
                 // Infrastructure Compounding 10.3: Collect freshness data for batch write
                 // Piggybacked on existing project reads — zero extra Firestore reads
@@ -1945,51 +2074,59 @@ export const computeDecisionBlocksScores = onSchedule({
 
         // Authority Maturation Analysis (Item 3: Expand Nightly Job Coverage)
         // Analyzes owner control usage patterns for Phase 1 → Phase 2 → Phase 3 progression
-        try {
-            const taskStart = Date.now();
-            logger.info('=== Starting Authority Maturation Analysis ===');
-            const maturationResult = await processAuthorityMaturationForAllStores();
-            logger.info(`Authority Maturation: ${maturationResult.processed} stores analyzed`);
-            logger.info(`  Phase 1 (Active): ${maturationResult.phase1Count}`);
-            logger.info(`  Phase 2 (Passive): ${maturationResult.phase2Count}`);
-            logger.info(`  Phase 3 (Dormant): ${maturationResult.phase3Count}`);
-            taskResults.push({ name: 'authority_maturation', status: 'success', durationMs: Date.now() - taskStart, details: { processed: maturationResult.processed, phase1: maturationResult.phase1Count, phase2: maturationResult.phase2Count, phase3: maturationResult.phase3Count } });
-        } catch (maturationError: any) {
-            // Non-blocking - log but continue
-            logSchedulerFailure(logger, 'Authority Maturation analysis failed', SCHEDULER_AUTHORITY_MATURATION_FAILED, maturationError, {
-                phase: 'authority_maturation',
-                operation: 'process_authority_maturation',
-            });
-            taskResults.push({ name: 'authority_maturation', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
+        if (runPlatformDailyTasks) {
+            try {
+                const taskStart = Date.now();
+                logger.info('=== Starting Authority Maturation Analysis ===');
+                const maturationResult = await processAuthorityMaturationForAllStores();
+                logger.info(`Authority Maturation: ${maturationResult.processed} stores analyzed`);
+                logger.info(`  Phase 1 (Active): ${maturationResult.phase1Count}`);
+                logger.info(`  Phase 2 (Passive): ${maturationResult.phase2Count}`);
+                logger.info(`  Phase 3 (Dormant): ${maturationResult.phase3Count}`);
+                taskResults.push({ name: 'authority_maturation', status: 'success', durationMs: Date.now() - taskStart, details: { processed: maturationResult.processed, phase1: maturationResult.phase1Count, phase2: maturationResult.phase2Count, phase3: maturationResult.phase3Count } });
+            } catch (maturationError: any) {
+                // Non-blocking - log but continue
+                logSchedulerFailure(logger, 'Authority Maturation analysis failed', SCHEDULER_AUTHORITY_MATURATION_FAILED, maturationError, {
+                    phase: 'authority_maturation',
+                    operation: 'process_authority_maturation',
+                });
+                taskResults.push({ name: 'authority_maturation', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
+            }
+        } else {
+            taskResults.push({ name: 'authority_maturation', status: 'skipped', details: { reason: 'daily_cadence' } });
         }
 
         // MOL v0: Menu Drift Metrics (Category D & E of Internal Tracking System)
         // Computes 30-day rolling drift counters from menu change logs
         // @see __docs__/internal-tracking/mol-v0-implementation-plan.md
-        try {
-            const taskStart = Date.now();
-            logger.info('=== Starting Menu Drift Metrics Computation ===');
-            const driftResult = await processMenuDriftMetricsForAllStores();
-            logger.info(`Menu Drift Metrics: ${driftResult.itemsProcessed} items processed`);
-            logger.info(`  Stores: ${driftResult.storesProcessed}, Projects: ${driftResult.projectsProcessed}`);
-            logger.info(`  Reads: ${driftResult.readsCount}, Writes: ${driftResult.writesCount}`);
-            if (driftResult.errors.length > 0) {
-                logger.warn(`  Errors: ${driftResult.errors.length}`);
+        if (runPlatformDailyTasks) {
+            try {
+                const taskStart = Date.now();
+                logger.info('=== Starting Menu Drift Metrics Computation ===');
+                const driftResult = await processMenuDriftMetricsForAllStores();
+                logger.info(`Menu Drift Metrics: ${driftResult.itemsProcessed} items processed`);
+                logger.info(`  Stores: ${driftResult.storesProcessed}, Projects: ${driftResult.projectsProcessed}`);
+                logger.info(`  Reads: ${driftResult.readsCount}, Writes: ${driftResult.writesCount}`);
+                if (driftResult.errors.length > 0) {
+                    logger.warn(`  Errors: ${driftResult.errors.length}`);
+                }
+                taskResults.push({ name: 'menu_drift', status: driftResult.errors.length > 0 ? 'success' : 'success', durationMs: Date.now() - taskStart, details: { items: driftResult.itemsProcessed, stores: driftResult.storesProcessed, projects: driftResult.projectsProcessed, reads: driftResult.readsCount, writes: driftResult.writesCount, errors: driftResult.errors.length } });
+            } catch (driftError: any) {
+                // Non-blocking - log but continue
+                logSchedulerFailure(logger, 'Menu Drift Metrics computation failed', SCHEDULER_MENU_DRIFT_FAILED, driftError, {
+                    phase: 'menu_drift',
+                    operation: 'process_menu_drift_metrics',
+                });
+                taskResults.push({ name: 'menu_drift', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
-            taskResults.push({ name: 'menu_drift', status: driftResult.errors.length > 0 ? 'success' : 'success', durationMs: Date.now() - taskStart, details: { items: driftResult.itemsProcessed, stores: driftResult.storesProcessed, projects: driftResult.projectsProcessed, reads: driftResult.readsCount, writes: driftResult.writesCount, errors: driftResult.errors.length } });
-        } catch (driftError: any) {
-            // Non-blocking - log but continue
-            logSchedulerFailure(logger, 'Menu Drift Metrics computation failed', SCHEDULER_MENU_DRIFT_FAILED, driftError, {
-                phase: 'menu_drift',
-                operation: 'process_menu_drift_metrics',
-            });
-            taskResults.push({ name: 'menu_drift', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
+        } else {
+            taskResults.push({ name: 'menu_drift', status: 'skipped', details: { reason: 'daily_cadence' } });
         }
 
         // Guest Feedback Retention (Internal Feedback System)
         // Deletes expired guest feedback documents (90-day retention)
         // @see __docs__/projects/internal-feedback-system/internal-feedback-system_spec.md
-        if (FUNCTION_FLAGS.ENABLE_GUEST_FEEDBACK_RETENTION) {
+        if (runPlatformDailyTasks && FUNCTION_FLAGS.ENABLE_GUEST_FEEDBACK_RETENTION) {
             try {
                 const taskStart = Date.now();
                 logger.info('=== Starting Guest Feedback Retention ===');
@@ -1997,6 +2134,7 @@ export const computeDecisionBlocksScores = onSchedule({
                 logger.info(`Guest Feedback Retention: ${retentionResult.deleted} documents deleted`);
                 if (retentionResult.errors > 0) {
                     logger.warn(`  Errors: ${retentionResult.errors}`);
+                    throw new Error(GUEST_FEEDBACK_RETENTION_TASK_FAILED);
                 }
                 taskResults.push({ name: 'guest_feedback_retention', status: 'success', durationMs: Date.now() - taskStart, details: { deleted: retentionResult.deleted, errors: retentionResult.errors } });
             } catch (retentionError: unknown) {
@@ -2012,70 +2150,79 @@ export const computeDecisionBlocksScores = onSchedule({
                 });
             }
         } else {
-            taskResults.push({ name: 'guest_feedback_retention', status: 'skipped' });
+            taskResults.push({
+                name: 'guest_feedback_retention',
+                status: 'skipped',
+                details: { reason: runPlatformDailyTasks ? 'feature_disabled' : 'daily_cadence' },
+            });
         }
 
         // Lifecycle Messaging — Renewal Reminders + Suspension Warnings
         // Scans subscriptions renewing in 3 days and past-due 7+ days
         // @see __docs__/lifecycle-messaging/lifecycle-messaging_impl.md
         let messagingTasksOk = true;
-        try {
-            const taskStart = Date.now();
-            logger.info('=== Starting Lifecycle Messaging Tasks ===');
-            const { checkRenewalReminders, checkSuspensionWarnings, retryFailedMessages, getDailyMessageDigest } = await import('./messaging/messagingEngine');
-            await checkRenewalReminders();
-            await checkSuspensionWarnings();
-
-            // Retry failed messages from last 24h (max 1 retry per message)
-            // Industry best practice: transient SMTP failures should be retried
-            let retryDetails = { retried: 0, succeeded: 0 };
+        if (runPlatformDailyTasks) {
             try {
-                retryDetails = await retryFailedMessages();
-                if (retryDetails.retried > 0) {
-                    logger.info(`Message Retry: ${retryDetails.retried} retried, ${retryDetails.succeeded} succeeded`);
-                }
-            } catch (retryError) {
-                logSchedulerFailure(logger, 'Lifecycle Messaging retry task failed', SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED, retryError, {
-                    phase: 'lifecycle_messaging',
-                    operation: 'retry_failed_messages',
-                });
-            }
+                const taskStart = Date.now();
+                logger.info('=== Starting Lifecycle Messaging Tasks ===');
+                const { checkRenewalReminders, checkSuspensionWarnings, retryFailedMessages, getDailyMessageDigest } = await import('./messaging/messagingEngine');
+                await checkRenewalReminders();
+                await checkSuspensionWarnings();
 
-            // Daily messaging digest — solo founder visibility
-            let digestDetails = { sent: 0, failed: 0, total: 0 };
-            try {
-                digestDetails = await getDailyMessageDigest();
-                if (digestDetails.total > 0) {
-                    logger.info(`Messaging Digest: ${digestDetails.sent} sent, ${digestDetails.failed} failed, ${digestDetails.total} total`);
+                // Retry failed messages from last 24h (max 1 retry per message)
+                // Industry best practice: transient SMTP failures should be retried
+                let retryDetails = { retried: 0, succeeded: 0 };
+                try {
+                    retryDetails = await retryFailedMessages();
+                    if (retryDetails.retried > 0) {
+                        logger.info(`Message Retry: ${retryDetails.retried} retried, ${retryDetails.succeeded} succeeded`);
+                    }
+                } catch (retryError) {
+                    logSchedulerFailure(logger, 'Lifecycle Messaging retry task failed', SCHEDULER_LIFECYCLE_MESSAGE_RETRY_FAILED, retryError, {
+                        phase: 'lifecycle_messaging',
+                        operation: 'retry_failed_messages',
+                    });
                 }
-            } catch (digestError) {
-                logSchedulerFailure(logger, 'Lifecycle Messaging digest task failed', SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED, digestError, {
-                    phase: 'lifecycle_messaging',
-                    operation: 'daily_message_digest',
-                });
-            }
 
-            logger.info('Lifecycle Messaging tasks completed');
-            taskResults.push({ name: 'lifecycle_messaging', status: 'success', durationMs: Date.now() - taskStart, details: { retry: retryDetails, digest: digestDetails } });
-        } catch (msgError: any) {
-            messagingTasksOk = false;
-            // Non-blocking - log but continue
-            logSchedulerFailure(logger, 'Lifecycle Messaging tasks failed', SCHEDULER_LIFECYCLE_MESSAGING_FAILED, msgError, {
-                phase: 'lifecycle_messaging',
-                operation: 'run_lifecycle_messaging_tasks',
-            });
-            taskResults.push({ name: 'lifecycle_messaging', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
+                // Daily messaging digest — solo founder visibility
+                let digestDetails = { sent: 0, failed: 0, total: 0 };
+                try {
+                    digestDetails = await getDailyMessageDigest();
+                    if (digestDetails.total > 0) {
+                        logger.info(`Messaging Digest: ${digestDetails.sent} sent, ${digestDetails.failed} failed, ${digestDetails.total} total`);
+                    }
+                } catch (digestError) {
+                    logSchedulerFailure(logger, 'Lifecycle Messaging digest task failed', SCHEDULER_LIFECYCLE_MESSAGE_DIGEST_FAILED, digestError, {
+                        phase: 'lifecycle_messaging',
+                        operation: 'daily_message_digest',
+                    });
+                }
+
+                logger.info('Lifecycle Messaging tasks completed');
+                taskResults.push({ name: 'lifecycle_messaging', status: 'success', durationMs: Date.now() - taskStart, details: { retry: retryDetails, digest: digestDetails } });
+            } catch (msgError: any) {
+                messagingTasksOk = false;
+                // Non-blocking - log but continue
+                logSchedulerFailure(logger, 'Lifecycle Messaging tasks failed', SCHEDULER_LIFECYCLE_MESSAGING_FAILED, msgError, {
+                    phase: 'lifecycle_messaging',
+                    operation: 'run_lifecycle_messaging_tasks',
+                });
+                taskResults.push({ name: 'lifecycle_messaging', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
+            }
+        } else {
+            taskResults.push({ name: 'lifecycle_messaging', status: 'skipped', details: { reason: 'daily_cadence' } });
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // SPECIAL MENU SWITCHING — Nightly Activation/Deactivation
-        // Checks all stores for special menus that need to activate or expire.
+        // SPECIAL MENU SWITCHING — Nightly Recovery/Marker Backfill
+        // The two-minute maintenance task is the precise path. This existing
+        // store pass repairs legacy/missing markers and any missed transition.
         // @see __docs__/special-menu-switching/special-menu-switching_impl.md
         // ═══════════════════════════════════════════════════════════════
-        if (FUNCTION_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) {
+        if (storeIds.length > 0 && FUNCTION_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING) {
             try {
                 const taskStart = Date.now();
-                logger.info('=== Starting Special Menu Switching Check ===');
+                logger.info('=== Starting Special Menu Switching Recovery ===');
                 const smResult = { activated: 0, blocked: 0, deactivated: 0, checked: 0, errors: 0 };
                 const now = new Date();
 
@@ -2092,7 +2239,8 @@ export const computeDecisionBlocksScores = onSchedule({
                             .doc(`projects_${sId}`).get();
                         if (!summaryDoc.exists) continue;
 
-                        const specialMenus = Object.entries(parseSummaryProjects(summaryDoc.data()))
+                        const parsedSummaryProjects = parseSummaryProjects(summaryDoc.data());
+                        const specialMenus = Object.entries(parsedSummaryProjects)
                             .filter(([, project]) => project.isSpecialMenu === true)
                             .map(([projectId, project]) => ({
                                 projectId,
@@ -2105,6 +2253,17 @@ export const computeDecisionBlocksScores = onSchedule({
                                 status: project.specialMenuStatus,
                             }));
                         smResult.checked += specialMenus.length;
+
+                        const nextTransitionAt = resolveNextSpecialMenuTransitionAt(parsedSummaryProjects);
+                        const currentTransitionAt = typeof summaryDoc.data()?.specialMenuNextTransitionAt === 'string'
+                            ? summaryDoc.data()?.specialMenuNextTransitionAt
+                            : null;
+                        if (currentTransitionAt !== nextTransitionAt) {
+                            await summaryDoc.ref.set({
+                                specialMenuNextTransitionAt: nextTransitionAt || FieldValue.delete(),
+                                lastUpdated: FieldValue.serverTimestamp(),
+                            }, { merge: true });
+                        }
 
                         const transitions = [
                             ...specialMenus
@@ -2142,7 +2301,7 @@ export const computeDecisionBlocksScores = onSchedule({
                                     smResult.blocked++;
                                     continue;
                                 }
-                                if (result.outcome === 'noop' || result.outcome === 'repaired') continue;
+                                if (result.outcome === 'noop') continue;
 
                                 await revalidatePublicClientCacheForStore(
                                     sId,
@@ -2158,7 +2317,9 @@ export const computeDecisionBlocksScores = onSchedule({
                                     phase: 'special_menu_switching',
                                     operation: result.outcome === 'activated'
                                         ? 'activate_special_menu'
-                                        : 'expire_special_menu',
+                                        : result.outcome === 'expired'
+                                            ? 'expire_special_menu'
+                                            : 'repair_special_menu_state',
                                 });
                             } catch (error: any) {
                                 const failureCode = transition.action === 'activate'
@@ -2197,7 +2358,15 @@ export const computeDecisionBlocksScores = onSchedule({
                 taskResults.push({ name: 'special_menu_switching', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
-            taskResults.push({ name: 'special_menu_switching', status: 'skipped' });
+            taskResults.push({
+                name: 'special_menu_switching',
+                status: 'skipped',
+                details: {
+                    reason: FUNCTION_FLAGS.ENABLE_SPECIAL_MENU_SWITCHING
+                        ? 'no_due_stores'
+                        : 'feature_disabled',
+                },
+            });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -2208,7 +2377,7 @@ export const computeDecisionBlocksScores = onSchedule({
         // ═══════════════════════════════════════════════════════════════
 
         // 10.2: Extraction Learning Loop — Aggregate owner corrections
-        if (FUNCTION_FLAGS.ENABLE_EXTRACTION_LEARNING) {
+        if (runPlatformDailyTasks && FUNCTION_FLAGS.ENABLE_EXTRACTION_LEARNING) {
             try {
                 const taskStart = Date.now();
                 logger.info('=== Starting Extraction Learning Aggregation ===');
@@ -2224,11 +2393,15 @@ export const computeDecisionBlocksScores = onSchedule({
                 taskResults.push({ name: 'extraction_learning', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
-            taskResults.push({ name: 'extraction_learning', status: 'skipped' });
+            taskResults.push({
+                name: 'extraction_learning',
+                status: 'skipped',
+                details: { reason: runPlatformDailyTasks ? 'feature_disabled' : 'daily_cadence' },
+            });
         }
 
         // 10.3: Store Truth Confidence Score — Composite reliability per store
-        if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE) {
+        if (runPlatformDailyTasks && FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE) {
             try {
                 const taskStart = Date.now();
                 logger.info('=== Starting Store Truth Confidence Computation ===');
@@ -2244,11 +2417,15 @@ export const computeDecisionBlocksScores = onSchedule({
                 taskResults.push({ name: 'store_truth_confidence', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
-            taskResults.push({ name: 'store_truth_confidence', status: 'skipped' });
+            taskResults.push({
+                name: 'store_truth_confidence',
+                status: 'skipped',
+                details: { reason: runPlatformDailyTasks ? 'feature_disabled' : 'daily_cadence' },
+            });
         }
 
         // 10.4: Periodic Staleness Check — Detect stale stores for lifecycle messaging
-        if (FUNCTION_FLAGS.ENABLE_STALENESS_CHECK) {
+        if (runPlatformDailyTasks && FUNCTION_FLAGS.ENABLE_STALENESS_CHECK) {
             try {
                 const taskStart = Date.now();
                 logger.info('=== Starting Periodic Staleness Check ===');
@@ -2264,7 +2441,11 @@ export const computeDecisionBlocksScores = onSchedule({
                 taskResults.push({ name: 'staleness_check', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
             }
         } else {
-            taskResults.push({ name: 'staleness_check', status: 'skipped' });
+            taskResults.push({
+                name: 'staleness_check',
+                status: 'skipped',
+                details: { reason: runPlatformDailyTasks ? 'feature_disabled' : 'daily_cadence' },
+            });
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -2280,55 +2461,11 @@ export const computeDecisionBlocksScores = onSchedule({
             });
         });
 
-        // ═══════════════════════════════════════════════════════════════
-        // KB GENERATION — Job Timeout Watchdog
-        // Auto-fails jobs stuck in 'processing' for >30 minutes.
-        // Prevents orphaned jobs that never complete.
-        // ═══════════════════════════════════════════════════════════════
-        try {
-            const taskStart = Date.now();
-            const thirtyMinAgo = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
-            const stuckJobsSnap = await db
-                .collection(DB_COLLECTIONS.KB_GENERATION_JOBS)
-                .where('status', '==', 'processing')
-                .where('modifiedOn', '<', thirtyMinAgo)
-                .limit(10)
-                .get();
-
-            let timedOutCount = 0;
-            for (const jobDoc of stuckJobsSnap.docs) {
-                try {
-                    await jobDoc.ref.update({
-                        status: 'failed',
-                        errorMessage: 'Job timed out — stuck in processing for >30 minutes. You can retry this job.',
-                        modifiedOn: Timestamp.now(),
-                    });
-                    timedOutCount++;
-                } catch (jobUpdateError) {
-                    logSchedulerFailure(logger, '[KB Gen Watchdog] Job timeout update failed', SCHEDULER_KB_GENERATION_WATCHDOG_JOB_UPDATE_FAILED, jobUpdateError, {
-                        phase: 'kb_generation_watchdog',
-                        operation: 'mark_stuck_job_failed',
-                        jobId: jobDoc.id,
-                    });
-                }
-            }
-
-            if (timedOutCount > 0) {
-                logger.info(`[KB Gen Watchdog] Timed out ${timedOutCount} stuck processing job(s).`);
-            }
-            taskResults.push({
-                name: 'kb_generation_watchdog',
-                status: 'success',
-                durationMs: Date.now() - taskStart,
-                details: { timedOut: timedOutCount },
-            });
-        } catch (watchdogError: any) {
-            logSchedulerFailure(logger, 'KB Gen watchdog failed', SCHEDULER_KB_GENERATION_WATCHDOG_FAILED, watchdogError, {
-                phase: 'kb_generation_watchdog',
-                operation: 'expire_stuck_kb_generation_jobs',
-            });
-            taskResults.push({ name: 'kb_generation_watchdog', status: 'failed', error: SCHEDULER_TASK_FAILED_MESSAGE });
-        }
+        taskResults.push({
+            name: 'kb_generation_watchdog',
+            status: 'skipped',
+            details: { reason: 'moved_to_answerlattice_runtime' },
+        });
 
         // ═══════════════════════════════════════════════════════════════
         // ANSWERLATTICE — MOVED TO SEPARATE FIREBASE PROJECT
@@ -2336,6 +2473,18 @@ export const computeDecisionBlocksScores = onSchedule({
         // @see __docs__/answerlattice/doctrine/07-multi-product-tenancy.md
         // @see __docs__/answerlattice/doctrine/08-product-separation-playbook.md
         // ═══════════════════════════════════════════════════════════════
+
+        if (platformDailyTaskLease && platformDailyTaskDayKey) {
+            const platformDailyTaskFailed = taskResults.some(
+                (task) => PLATFORM_DAILY_TASK_NAMES.has(task.name) && task.status === 'failed',
+            );
+            await completePlatformDailyTaskLease(
+                platformDailyTaskLease,
+                platformDailyTaskDayKey,
+                platformDailyTaskFailed ? 'failed' : 'completed',
+            );
+            platformDailyTaskLease = null;
+        }
 
         // ═══════════════════════════════════════════════════════════════
         // PERSIST RUN LOG (for Scheduler Monitor Dashboard)
@@ -2464,18 +2613,19 @@ export const triggerStoreNightlyScheduler = onCall({
         throw new HttpsError('unauthenticated', 'You must be logged in to trigger nightly scheduler recovery');
     }
 
-    const requesterRole = String(request.auth.token.platformRole || request.auth.token.role || '');
-    if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
-        throw new HttpsError('permission-denied', 'Only platform owners can trigger nightly scheduler recovery');
-    }
+    const db = firestoreAdmin;
+    const requesterRole = await assertCurrentPlatformOwner(
+        db,
+        request.auth,
+        'trigger nightly scheduler recovery',
+    );
 
-    const tId = String(request.data?.tId || '').trim();
-    const sId = String(request.data?.sId || '').trim();
+    const tId = normalizeCallableDocumentId(request.data?.tId, 'tId');
+    const sId = normalizeCallableDocumentId(request.data?.sId, 'sId');
     if (!tId || !sId) {
         throw new HttpsError('invalid-argument', 'tId and sId are required');
     }
 
-    const db = firestoreAdmin;
     const runStartTime = Date.now();
     const runLogId = `manual_store_${tId}_${sId}_${runStartTime}`;
     const runLogRef = db.collection(DB_COLLECTIONS.SCHEDULER_RUN_LOGS).doc(runLogId);
@@ -2561,6 +2711,27 @@ export const triggerStoreNightlyScheduler = onCall({
             throw new HttpsError('failed-precondition', MANUAL_STORE_TENANT_MISMATCH_MESSAGE, { runLogId, diagnostic });
         }
 
+        const canonicalStoreSnap = await db.collection(DB_COLLECTIONS.STORES).doc(sId).get();
+        try {
+            assertActiveStoreScope(canonicalStoreSnap.exists ? canonicalStoreSnap.data() : undefined, tId);
+        } catch (scopeError) {
+            const diagnostic = buildSchedulerFailureDiagnostic(scopeError, {
+                tId,
+                sId,
+                phase: 'canonical_store_validation',
+                operation: 'validate_active_store_scope',
+            });
+            await writeRunLog({
+                completedAt: Timestamp.now(),
+                durationMs: Date.now() - runStartTime,
+                status: 'failed',
+                phase: diagnostic.phase,
+                failedCount: 1,
+                errors: [diagnostic],
+            });
+            throw scopeError;
+        }
+
         logSchedulerInfo(logger, 'Manual store nightly scheduler recovery started', {
             tId,
             sId,
@@ -2583,7 +2754,13 @@ export const triggerStoreNightlyScheduler = onCall({
             },
         });
 
-        const storeRun = await runNightlySchedulerForStore(db, sId, storeInfo, new Date(runStartTime));
+        const storeRun = await runNightlySchedulerForStore(
+            db,
+            sId,
+            storeInfo,
+            new Date(runStartTime),
+            'manual_trigger',
+        );
 
         if (FUNCTION_FLAGS.ENABLE_STORE_TRUTH_CONFIDENCE && storeRun.enrichment) {
             await writeRunLog({ phase: 'stores_summary_enrichment' });
@@ -2741,10 +2918,8 @@ export const triggerStoreNightlyScheduler = onCall({
 /**
  * Manual trigger for testing/backfill (callable function)
  * 
- * Supports:
- * - { tId, sId, projectId } - Process single project
- * - { tId, sId } - Process all projects in a store
- * - { runAll: true } or { scope: 'all' } - Process all projects in all stores
+ * Supports a single project or one store. Platform-wide recovery belongs to
+ * the scheduled function so one callable cannot open an unbounded scan.
  */
 export const triggerDecisionBlocksScoring = onCall({
     region: 'us-central1',
@@ -2766,24 +2941,23 @@ export const triggerDecisionBlocksScoring = onCall({
         throw new HttpsError('unauthenticated', 'You must be logged in to trigger Decision Blocks scoring');
     }
 
-    const requesterRole = String(request.auth.token.platformRole || request.auth.token.role || '');
-    if (requesterRole !== ECOMSAI_PLATFORM_USER_ROLE) {
-        throw new HttpsError('permission-denied', 'Only platform owners can trigger Decision Blocks scoring');
+    const db = firestoreAdmin;
+    await assertCurrentPlatformOwner(db, request.auth, 'trigger Decision Blocks scoring');
+    if (!isFunctionFeatureEnabled('ENABLE_DECISION_BLOCKS_SCORING')) {
+        throw new HttpsError('failed-precondition', 'Decision Blocks scoring is currently disabled.');
     }
 
     const data = request.data || {};
-    const tId = data.tId === undefined || data.tId === null ? '' : String(data.tId).trim();
-    const sId = data.sId === undefined || data.sId === null ? '' : String(data.sId).trim();
-    const projectId = data.projectId === undefined || data.projectId === null ? '' : String(data.projectId).trim();
+    const tId = normalizeCallableDocumentId(data.tId, 'tId');
+    const sId = normalizeCallableDocumentId(data.sId, 'sId');
+    const projectId = normalizeCallableDocumentId(data.projectId, 'projectId');
     const runAll = data.runAll === true || data.scope === 'all';
-    const db = firestoreAdmin;
-
-    if (runAll && (tId || sId || projectId)) {
-        throw new HttpsError('invalid-argument', 'Use either runAll=true or a scoped tId/sId/projectId request, not both');
+    if (runAll) {
+        throw new HttpsError('invalid-argument', 'Platform-wide manual scoring is not supported; run one store or project at a time.');
     }
 
-    if (!runAll && !tId && !sId && !projectId) {
-        throw new HttpsError('invalid-argument', 'Provide tId and sId, or explicitly set runAll=true for an all-store run');
+    if (!tId && !sId && !projectId) {
+        throw new HttpsError('invalid-argument', 'Provide tId and sId; projectId is optional.');
     }
 
     if ((tId && !sId) || (!tId && sId) || (projectId && (!tId || !sId))) {
@@ -2812,6 +2986,10 @@ export const triggerDecisionBlocksScoring = onCall({
 
         const storeData = storeDoc.data();
         const projectData = projectDoc.data()!;
+        assertActiveStoreScope(storeData, tId);
+        if (projectData.deleted === true || projectData.active === false) {
+            throw new HttpsError('failed-precondition', 'Project is not active.');
+        }
         const businessCategory = resolveBusinessCategoryOrFallback(storeData?.businessType, storeData?.businessCategory);
 
         const blocks = await computeForProject(
@@ -2828,7 +3006,17 @@ export const triggerDecisionBlocksScoring = onCall({
 
         if (blocks) {
             const projectPath = await saveDecisionBlocksForProject(db, tId, sId, projectId, blocks);
-            return { success: true, projectPath, docId: projectPath, blocks };
+            await revalidatePublicClientCacheForStore(sId, 'decisionBlocksScoring:manual-project');
+            return {
+                success: true,
+                projectId,
+                projectPath,
+                candidateCounts: {
+                    popular: blocks.popular.length,
+                    quickPick: blocks.quickPick.length,
+                    bestValue: blocks.bestValue.length,
+                },
+            };
         }
 
         return { success: false, message: 'No items to score' };
@@ -2849,25 +3037,18 @@ export const triggerDecisionBlocksScoring = onCall({
         }
 
         const storeData = storeDoc.data();
+        assertActiveStoreScope(storeData, tId);
         const businessCategory = resolveBusinessCategoryOrFallback(storeData?.businessType, storeData?.businessCategory);
 
-        const projectsQuery = await getProjectCollectionRef(db, String(tId), String(sId)).get();
-
-        if (projectsQuery.empty) {
+        const { projectEntries } = await loadActiveProjectsForScheduler(db, tId, sId);
+        if (projectEntries.length === 0) {
             return { success: false, message: 'No projects found for this store' };
         }
 
         let successCount = 0;
         let failedCount = 0;
-        const results: Array<{ projectId: string; projectPath: string; docId: string }> = [];
 
-        for (const projectDoc of projectsQuery.docs) {
-            const projectData = projectDoc.data();
-            const pId = projectData.projectId || projectDoc.id;
-
-            // Skip inactive or deleted projects
-            if (projectData.deleted === true || projectData.active === false) continue;
-
+        for (const { projectId: pId, data: projectData } of projectEntries) {
             try {
                 const blocks = await computeForProject(
                     db,
@@ -2882,73 +3063,35 @@ export const triggerDecisionBlocksScoring = onCall({
                 );
 
                 if (blocks) {
-                    const projectPath = await saveDecisionBlocksForProject(db, tId, sId, pId, blocks);
-                    results.push({ projectId: pId, projectPath, docId: projectPath });
+                    await saveDecisionBlocksForProject(db, tId, sId, pId, blocks);
                     successCount++;
                 }
             } catch (error) {
                 failedCount++;
+                logSchedulerFailure(logger, '[DecisionBlocks] Manual project scoring failed', SCHEDULER_PROJECT_SCORING_FAILED, error, {
+                    tId,
+                    sId,
+                    projectId: pId,
+                    phase: 'manual_decision_blocks_trigger',
+                    operation: 'score_store_project',
+                });
             }
         }
 
-        return { success: true, successCount, failedCount, total: projectsQuery.size, results };
-    }
-
-    // Case 3: Process all projects in all stores (same as scheduler)
-    logger.info('Manual trigger for all stores and projects');
-
-    const storesSnapshot = await db.collection(DB_COLLECTIONS.STORES).get();
-    let successCount = 0;
-    let failedCount = 0;
-    let totalProjects = 0;
-
-    for (const storeDoc of storesSnapshot.docs) {
-        const storeData = storeDoc.data();
-        const storeSId = storeDoc.id;
-        const storeTId = String(storeData.tenantId || storeData.tId);
-        const businessCategory = resolveBusinessCategoryOrFallback(storeData.businessType, storeData.businessCategory);
-
-        if (!storeTId) continue;
-
-        const projectsQuery = await getProjectCollectionRef(db, storeTId, storeSId).get();
-
-        totalProjects += projectsQuery.size;
-
-        for (const projectDoc of projectsQuery.docs) {
-            const projectData = projectDoc.data();
-            const pId = projectData.projectId || projectDoc.id;
-
-            // Skip inactive or deleted projects
-            if (projectData.deleted === true || projectData.active === false) continue;
-
-            try {
-                const blocks = await computeForProject(
-                    db,
-                    storeTId,
-                    storeSId,
-                    pId,
-                    projectData,
-                    businessCategory,
-                    undefined,
-                    storeData.timeZone,
-                    storeData.businessDayEndTime,
-                );
-
-                if (blocks) {
-                    await saveDecisionBlocksForProject(db, storeTId, storeSId, pId, blocks);
-                    successCount++;
-                }
-            } catch (error) {
-                failedCount++;
-            }
+        if (successCount > 0) {
+            await revalidatePublicClientCacheForStore(sId, 'decisionBlocksScoring:manual-store');
         }
+        const status = failedCount === 0
+            ? 'success'
+            : successCount > 0 ? 'partial' : 'failed';
+        return {
+            success: status !== 'failed',
+            status,
+            successCount,
+            failedCount,
+            total: projectEntries.length,
+        };
     }
 
-    return {
-        success: true,
-        successCount,
-        failedCount,
-        totalStores: storesSnapshot.size,
-        totalProjects
-    };
+    throw new HttpsError('invalid-argument', 'Provide a valid store or project scope.');
 });

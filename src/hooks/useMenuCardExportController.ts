@@ -34,6 +34,7 @@ import { generateProjectUrl } from '@lib/utils/slugify';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import getMenuCardDesignAdviceViaAPI, { MenuCardDesignAdvisorPlanError } from '@services/ai/menuCardExport/getDesignAdviceViaAPI';
+import { resolveLocalExportStorageScope } from '@lib/export/localExportHistory';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 
 export type MenuCardProjectOption = {
@@ -156,6 +157,12 @@ export default function useMenuCardExportController({
         (storeDetails as any)?.subdomain,
         (storeDetails as any)?.customDomain,
     ]);
+    const historyStorageScope = useMemo(() => resolveLocalExportStorageScope(storeDetails as any), [
+        (storeDetails as any)?.tenantId,
+        (storeDetails as any)?.tId,
+        (storeDetails as any)?.storeId,
+        (storeDetails as any)?.sId,
+    ]);
 
     useEffect(() => {
         const nextInitialProjectId = initialProjectId || null;
@@ -242,7 +249,7 @@ export default function useMenuCardExportController({
                 setProjectData(cachedProject);
                 setLoadedProjectId(selectedProject.projectId);
                 setHistory(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY
-                    ? listLocalMenuCardExports(selectedProject.projectId)
+                    ? listLocalMenuCardExports(selectedProject.projectId, historyStorageScope)
                     : []);
                 setLoading(false);
                 return;
@@ -254,7 +261,7 @@ export default function useMenuCardExportController({
                 setProjectData(providedProjectData);
                 setLoadedProjectId(selectedProject.projectId);
                 setHistory(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY
-                    ? listLocalMenuCardExports(selectedProject.projectId)
+                    ? listLocalMenuCardExports(selectedProject.projectId, historyStorageScope)
                     : []);
                 setLoading(false);
                 return;
@@ -268,7 +275,7 @@ export default function useMenuCardExportController({
             setProjectData(data);
             setLoadedProjectId(selectedProject.projectId);
             setHistory(FEATURE_FLAGS.ENABLE_MENU_CARD_EXPORT_HISTORY
-                ? listLocalMenuCardExports(selectedProject.projectId)
+                ? listLocalMenuCardExports(selectedProject.projectId, historyStorageScope)
                 : []);
             setLoading(false);
         }
@@ -283,7 +290,7 @@ export default function useMenuCardExportController({
         return () => {
             mounted = false;
         };
-    }, [loadProjectData, projectDataById, selectedProject?.projectId]);
+    }, [historyStorageScope, loadProjectData, projectDataById, selectedProject?.projectId, storeRouteKey]);
 
     const source = useMemo<MenuCardPrintSource | null>(() => {
         if (!projectData || !selectedProject || !storeDetails) return null;
@@ -511,9 +518,18 @@ export default function useMenuCardExportController({
                 ? await buildPrintShopPacket(source, settings, overrides)
                 : await renderPdf(source, settings, overrides);
 
+            let delivery: 'downloaded' | 'shared' = 'downloaded';
             if (share) {
-                const shared = await shareMenuCardArtifact(artifact as any, 'Menu file');
-                if (!shared) downloadMenuCardArtifact(artifact as any);
+                const shareResult = await shareMenuCardArtifact(artifact as any, 'Menu file');
+                if (shareResult === 'cancelled') {
+                    notify?.({ content: 'Share cancelled', type: 'info' });
+                    return false;
+                }
+                if (shareResult === 'shared') {
+                    delivery = 'shared';
+                } else {
+                    downloadMenuCardArtifact(artifact as any);
+                }
             } else {
                 downloadMenuCardArtifact(artifact as any);
             }
@@ -524,6 +540,7 @@ export default function useMenuCardExportController({
                     projectName: resolveMenuCardProjectName(selectedProject.name, 'Menu'),
                     storeName,
                     preset: settings.preset,
+                    storageScope: historyStorageScope,
                     styleId: settings.styleId,
                     artifact: artifact as any,
                 });
@@ -531,17 +548,19 @@ export default function useMenuCardExportController({
             }
 
             notify?.({
-                content: settings.preset === 'print_shop_packet' ? 'Print-shop packet created' : 'PDF created',
+                content: settings.preset === 'print_shop_packet'
+                    ? `Print-shop packet ${delivery}`
+                    : `PDF ${delivery}`,
                 type: 'success',
             });
             return true;
         } catch {
-            notify?.({ content: 'Could not create file', type: 'error' });
+            notify?.({ content: share ? 'Could not share file' : 'Could not create file', type: 'error' });
             return false;
         } finally {
             setRendering(false);
         }
-    }, [notify, overrides, preview?.preflight.status, selectedProject, settings, source, storeName]);
+    }, [historyStorageScope, notify, overrides, preview?.preflight.status, selectedProject, settings, source, storeName]);
 
     return {
         adviceError,

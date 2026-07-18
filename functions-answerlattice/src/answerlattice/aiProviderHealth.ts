@@ -70,7 +70,7 @@ export async function runAnswerlatticeAiProviderHealthCheck(params: {
         model: ANSWERLATTICE_TEXT_MODEL,
         productId: 'AL',
         provider: PROVIDER,
-        sdkSurface: 'answerlattice-functions-vertex',
+        sdkSurface: 'answerlattice-functions-google-genai',
         source: 'answerlatticeMasterScheduler',
     };
 

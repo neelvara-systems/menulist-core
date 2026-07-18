@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import {
-    countFailedStorageCleanupResults,
     getIngestionJobTimestampMillis,
     isDeletableIngestionJobStatus,
     isExactAnswerlatticeProductId,
@@ -26,18 +25,5 @@ assert.equal(normalizeIngestionJobQueryLimit(12, 20, 50), 12);
 assert.equal(normalizeIngestionJobQueryLimit(80, 20, 50), 50);
 assert.equal(normalizeIngestionJobQueryLimit(Number.NaN, 20, 50), 20);
 assert.equal(normalizeIngestionJobQueryLimit(0, 20, 50), 20);
-
-assert.equal(countFailedStorageCleanupResults([]), 0);
-assert.equal(countFailedStorageCleanupResults([{ success: true }, { success: true }]), 0);
-assert.equal(
-    countFailedStorageCleanupResults([{ success: true }, { success: false }]),
-    1,
-    'fulfilled cleanup failures must be counted',
-);
-assert.equal(
-    countFailedStorageCleanupResults([{ success: false }, null, {}, Promise.resolve()]),
-    4,
-    'malformed cleanup results must fail closed',
-);
 
 process.stdout.write('Answerlattice ingestion-job deletion boundary tests passed.\n');

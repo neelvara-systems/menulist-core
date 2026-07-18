@@ -1,31 +1,37 @@
-# Pricing Integrity System - Help Documentation
+# Pricing Integrity System - Help
 
-**Status:** Source-backed help copy boundary, not current launch certification
+**Status:** Source-backed owner guidance, not current launch certification
+**Last updated:** July 16, 2026
 
-## Quick Summary
+## Add or change a price
 
-Edit prices in the MenuList editor and save. The saved menu is the source for customer menus, staff-facing views, configured Digital Screens refresh signals, and PDF downloads generated from the current menu data.
+Open the menu item, enter the price as customers should see it, and save. You can use a number, a price range, or wording such as `Market Price`. Options such as Small/Large can each have their own price.
 
-## What Updates Automatically
+MenuList rejects unsafe or unusually long input. If a price is not accepted, remove emoji or formatting markup and keep the value within 40 characters.
 
-1. QR/menu links use the saved menu data after public cache refresh.
-2. Staff-facing views use the saved menu data.
-3. Digital Screens receive a content-version update when screens are configured for the store.
+## Bulk price changes
 
-## PDF Downloads
+Percentage and add/reduce actions work only on items with one clear numeric price. Text prices, ranges, and missing prices are left unchanged so MenuList does not guess. Use the fixed-price action only when you intentionally want to replace those values.
 
-PDFs are generated when you use the PDF/download action. The download uses the current menu data available in the editor. MenuList does not currently run a background PDF regeneration job after every price edit.
+## What customers see
 
-## If Prices Do Not Match
+- A normal item shows its saved price.
+- An item with priced options shows the active option range or labels.
+- Hidden/inactive options do not appear as current price choices.
+- Customer links use saved menu truth after the normal cache refresh.
+- Configured Digital Screens receive the existing refresh signal after a successful save.
 
-1. Confirm the editor save completed.
-2. Reopen the customer menu link after the brief public cache refresh window.
-3. If using Digital Screens, confirm the screen setup is active and allow the screen to refresh.
-4. Generate a new PDF download from the current menu.
-5. Contact support if a saved price still does not appear.
+## PDF downloads
 
-## Current Boundary
+Generate a new PDF after changing prices. The new file uses the current menu data. MenuList does not currently run a background PDF regeneration job after every price edit. A PDF already shared outside MenuList cannot update itself.
 
-There is nothing separate to configure for price consistency. Background PDF regeneration and a dedicated Pricing Integrity engine are reserved implementation paths and are not active owner controls today.
+## If a saved price does not match
 
-Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/mobile price-change QA, public menu and PDF artifact QA, configured-screen QA where applicable, target deploy evidence, and production-host smoke.
+1. Confirm the save completed.
+2. Reopen the customer link after the brief cache-refresh window.
+3. Confirm the option is active if it is an option price.
+4. Allow a configured screen to refresh.
+5. Generate a new PDF.
+6. Contact support if the saved value still differs.
+
+This help page is not current launch certification. Release approval requires the production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/MobileShell QA, public menu and PDF artifact QA, configured-screen QA, target deploy evidence, and production-host smoke.

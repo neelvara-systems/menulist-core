@@ -123,8 +123,13 @@ Add flags in `src/config/features.ts`.
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/autosave/route.ts` | Save debounced runtime snapshot pointer. |
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/versions/route.ts` | Not implemented as a separate route. Autosave creates immutable version snapshots. |
 | `src/app/api/campaigncue/cue-layers/designs/[designId]/repair/route.ts` | Implemented for one restore-fallback repair request record. Correction-event learning stream remains gated with provider repair. |
-| `src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts` | Implemented. Revision-pins, stores rendered export bytes, and registers exported assets for manual download/reuse. |
+| `src/app/api/campaigncue/cue-layers/designs/[designId]/exports/route.ts` | Implemented. Requires the saved revision and exact saved editor fingerprint, validates rendered dimensions/bytes, and atomically registers manual-download exports. |
 | `src/lib/campaigncue/cue-layers/server.ts` | CampaignCue Admin reads/writes, idempotency, state transitions. |
+| `src/lib/campaigncue/cue-layers/documentBoundary.ts` | Root/page asset hydration, durable URL dehydration, document scope, and canonical export binding. |
+| `src/lib/campaigncue/cue-layers/recordBoundary.ts` | Persisted design/job runtime-shape and identity validation. |
+| `src/lib/campaigncue/cue-layers/layerIndexBoundary.ts` | Layer-index identity, duplicate, asset-scope/path/hash/size, and fallback validation. |
+| `src/lib/campaigncue/cue-layers/imageMetadata.ts` | PNG/JPEG/WebP byte metadata and container-boundary validation. |
+| `src/lib/campaigncue/cue-layers/idempotency.ts` | Actor/action/request-bound replay validation. |
 | `src/lib/campaigncue/cue-layers/storagePaths.ts` | Canonical Storage paths and asset ref helpers. |
 | `src/lib/campaigncue/cue-layers/runtimeAssetUrls.ts` | Folded into `server.ts` for current implementation. Extract only if reuse grows. |
 | `src/lib/campaigncue/cue-layers/modelRegistry.ts` | CampaignCue model/provider selection using server-side config, feature flags, and cost gates. |
@@ -229,6 +234,7 @@ Every protected API route must:
 - Validate request body with Zod before database access.
 - Apply CampaignCue rate limits before expensive operations.
 - Use idempotency keys for job creation, autosave commit, repair, and export.
+- Treat each keyed operation as a five-minute transaction lease. A live lease rejects duplicate work, completed truth replays, and missing, legacy, malformed, or expired `in_progress` rows may be reclaimed. Every terminal design/job/version/repair/export write must prove the exact current claim id so an expired worker cannot finish over its replacement.
 - Return safe errors only.
 - Log security-relevant failures without raw images, prompts, tokens, or contact data.
 
@@ -343,6 +349,11 @@ Registry selection rules:
 - Default image generation chooses the cheapest enabled model with `image_generation`.
 - Premium generation chooses an enabled `premium` model with `image_generation` only after route and cost approval.
 - Segmentation chooses an enabled adapter with `segmentation_masks`; do not assume every Gemini image model supports pixel-level masks.
+- Boolean environment gates use explicit recognized values; a non-empty
+  `"false"` string is never treated as enabled.
+- Rollout percentages are bounded to 0-100. Zero admits nothing, 100 admits
+  without a cohort bucket, and a 1-99 rollout requires a stable caller-derived
+  bucket from 0 through 99.
 - OCR/text truth chooses a provider that returns word/line boxes, confidence, and language; CampaignCue/MenuList facts remain protected truth.
 - Repair/inpaint stays conservative, selected-region only, flagged, and cost-estimated before dispatch.
 - Store model family, model id, prompt/version id, release stage, cost tier, and gate result in provider-mode quality/cost reports only when provider routes are enabled.
@@ -522,6 +533,8 @@ Export invariant:
 
 ```text
 exportRequest.sourceRevision === cueLayerDesigns.current.revision
+exportRequest.documentFingerprint === savedCreativeEditorDocumentSnapshotFingerprint
+renderedOutput.size === savedCreativeEditorDocumentSnapshot.canvas.size
 ```
 
 If the browser has unsaved changes, the UI must autosave/refresh before export. If the saved revision changed after the export request was created, the worker rejects the export or asks for an explicit conflict flow.
@@ -621,7 +634,8 @@ Every durable artifact must carry a `schemaVersion` and be readable through back
 - Do not load arbitrary external URLs, JavaScript URLs, raw user SVG, remote fonts, or base64 blobs in the renderer.
 - Hydrate only workspace-owned asset ids into short-lived signed URLs.
 - Strip signed URLs before autosave/version persistence.
-- Validate persisted image references against the current CueLayers layer index before writing a version.
+- Validate persisted design/job/layer-index/editor records before use and validate image references against the current layer index before writing a version.
+- Bind export registration to the exact saved editor document fingerprint and canvas dimensions, not only a client-provided revision number.
 - Generate Asset Library download URLs only at request time; never persist signed URLs.
 - Enforce max image bytes, pixels, object count, layer count, vector path count, total editor document snapshot bytes, and export dimensions.
 - Add deletion paths for user-requested removal and failed temporary artifacts.

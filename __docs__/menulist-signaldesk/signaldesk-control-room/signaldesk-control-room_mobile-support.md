@@ -20,7 +20,6 @@ Mobile support is limited to emergency visibility and tightly scoped pause contr
 
 - Clear incidents.
 - Edit thresholds.
-- Edit kill-switch expiry.
 - Export reports.
 - Drill into raw events.
 - Change source/channel configuration.

@@ -65,7 +65,7 @@ This project uses the real MenuList website theme and supplied MenuList symbol, 
 ## Audio
 
 - Voice: local macOS Indian English `Tara` candidate at rate `192`, lightly EQ/compressed for clarity.
-- BGM: founder-selected `Digital Platforms` track, clearly audible from the opening, lowered moderately during narration, and recovered smoothly through speech pauses before the final brand lockup.
+- BGM: founder-approved and frozen `Midnight Lo-Fi Focus` Lyria production edit, clearly audible from the opening, lowered decisively during narration, and recovered smoothly through speech pauses before the final brand lockup.
 - Sonic mark: original subtle D-major approval sting, used at final lockup only in this cut.
 - Mix target: roughly `-15.5 LUFS`, true peak below clipping after AAC encoding.
 - Audio status: Pixabay Content License evidence and Content ID warning retained locally; still subject to founder listening approval.

@@ -27,6 +27,7 @@ import {
     theme,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FEATURE_FLAGS } from '@config/features';
 import {
     LuClipboard,
     LuCode,
@@ -45,11 +46,13 @@ import {
     LuTrash2,
     LuEyeOff,
     LuExternalLink,
+    LuListChecks,
 } from 'react-icons/lu';
 import {
     AnswerlatticeWidgetConfig,
     DEFAULT_ANSWERLATTICE_WIDGET_CONFIG,
     buildAnswerlatticeWidgetEmbedCode,
+    buildAnswerlatticeGuidedResolutionSnippet,
     buildAnswerlatticeWidgetRouteSnippet,
     normalizeWidgetBlockedRoute,
     normalizeWidgetAllowedOrigin,
@@ -93,7 +96,7 @@ const { Title, Text, Paragraph } = Typography;
 const ANSWERLATTICE_WIDGET_MANAGEMENT_COPY_CLIPBOARD_UNAVAILABLE = 'answerlattice_widget_management_copy_clipboard_unavailable';
 const ANSWERLATTICE_WIDGET_MANAGEMENT_COPY_FALLBACK_FAILED = 'answerlattice_widget_management_copy_fallback_failed';
 
-type SnippetType = 'html' | 'env' | 'spa' | 'next' | 'react' | 'vue' | 'vanilla';
+type SnippetType = 'html' | 'env' | 'spa' | 'guidance' | 'next' | 'react' | 'vue' | 'vanilla';
 const FULL_WIDGET_KEY_PLACEHOLDER = 'al_full_widget_key_shown_once';
 const ANSWERLATTICE_WIDGET_SETTINGS_LOAD_FAILED = 'Could not load widget settings';
 const ANSWERLATTICE_WIDGET_SETTINGS_SAVE_FAILED = 'Could not save widget settings';
@@ -472,6 +475,11 @@ const isRuntimePathBlocked = (path: string | null | undefined, blockedRoutes: st
         return path === route;
     });
 };
+
+const GUIDED_RESOLUTION_UI_ENABLED = (
+    FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS
+    && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION
+);
 
 export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, initialTab }: AnswerlatticeWidgetManagementProps) {
     const { token } = theme.useToken();
@@ -882,6 +890,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         scriptSrc,
     }), [apiKey, config, scriptSrc]);
     const spaSnippet = useMemo(() => buildAnswerlatticeWidgetRouteSnippet(), []);
+    const guidanceSnippet = useMemo(() => buildAnswerlatticeGuidedResolutionSnippet(), []);
     const envSnippet = useMemo(() => [
         '# Next.js / Vercel',
         `NEXT_PUBLIC_ANSWERLATTICE_WIDGET_KEY=${apiKey || FULL_WIDGET_KEY_PLACEHOLDER}`,
@@ -927,6 +936,7 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
         html: embedCode,
         env: envSnippet,
         spa: spaSnippet,
+        guidance: guidanceSnippet,
         next: nextSnippet,
         react: reactSnippet,
         vue: vueSnippet,
@@ -1253,6 +1263,21 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     ]}
                                                 />
                                             </Flex>
+                                            {GUIDED_RESOLUTION_UI_ENABLED && (
+                                                <Flex vertical gap={4}>
+                                                    <Text strong style={CONTROL_LABEL_STYLE}>Guided resolution</Text>
+                                                    <Switch
+                                                        checked={config.guidedResolutionEnabled}
+                                                        checkedChildren="Enabled"
+                                                        unCheckedChildren="Disabled"
+                                                        onChange={(checked) => updateConfig('guidedResolutionEnabled', checked)}
+                                                    />
+                                                    <Text type="secondary" style={{ fontSize: 12 }}>
+                                                        <LuListChecks size={13} style={{ marginRight: 6, verticalAlign: -2 }} />
+                                                        Highlight semantic targets for approved procedures. The widget never clicks or changes product data.
+                                                    </Text>
+                                                </Flex>
+                                            )}
                                             <Flex vertical gap={4}>
                                                 <Text strong style={CONTROL_LABEL_STYLE}>Layer priority</Text>
                                                 <InputNumber value={config.zIndex} min={1000} max={2147483646} style={{ width: '100%' }} onChange={(value) => updateConfig('zIndex', Number(value ?? DEFAULT_ANSWERLATTICE_WIDGET_CONFIG.zIndex))} />
@@ -1320,6 +1345,9 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                                     { value: 'html', label: 'HTML' },
                                                     { value: 'env', label: 'Env' },
                                                     { value: 'spa', label: 'Route Context' },
+                                                    ...(GUIDED_RESOLUTION_UI_ENABLED
+                                                        ? [{ value: 'guidance', label: 'Guided Steps' }]
+                                                        : []),
                                                     { value: 'next', label: 'Next.js' },
                                                     { value: 'react', label: 'React' },
                                                     { value: 'vue', label: 'Vue/Nuxt' },
@@ -1349,6 +1377,14 @@ export default function AnswerlatticeWidgetManagement({ embeddedMobile = false, 
                                             <Text type="secondary" style={{ fontSize: 12 }}>
                                                 The script reads saved dashboard settings automatically. New installs should use the v1 script URL and the window.AnswerlatticeWidget browser contract directly.
                                             </Text>
+                                            {snippetType === 'guidance' && (
+                                                <Alert
+                                                    type="warning"
+                                                    showIcon
+                                                    message="Guidance cannot operate your product"
+                                                    description="Semantic targets only highlight controls. Workflow events should be emitted after your own product verifies a state change. Never expose form values, tokens, private state, tenant IDs, or customer records."
+                                                />
+                                            )}
                                         </Flex>
                                     </Card>
                                 </Col>

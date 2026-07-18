@@ -8,14 +8,7 @@ Current runtime:
 | --- | --- |
 | `campaigncueWorkspaces/{workspaceId}/assets/{assetId}` | Asset metadata, rights status, optional file refs, and usage refs. |
 
-Logical expansion:
-
-| Collection | Purpose |
-| --- | --- |
-| `campaigncueWorkspaces/{workspaceId}/assetRecords` | Asset metadata and state. |
-| `campaigncueWorkspaces/{workspaceId}/assetFiles` | Storage refs and file metadata. |
-| `campaigncueWorkspaces/{workspaceId}/assetRights` | Permission and restriction metadata. |
-| `campaigncueWorkspaces/{workspaceId}/assetUsageRefs` | Campaign and export references. |
+Do not split file, rights, or usage metadata into extra collections. These bounded fields belong in the existing asset document and cost one document read together.
 
 ## Storage
 
@@ -25,16 +18,21 @@ Assets should use:
 
 ## Cost Guardrails
 
-- Store thumbnails separately from originals.
+- Do not create thumbnail objects until a measured owner-grid need justifies their Storage and lifecycle cost.
 - Do not embed base64 media in Firestore.
 - Deduplicate files using checksum where practical.
 - Paginate asset grids.
 - `GET /api/campaigncue/assets` uses a workspace-only guard read plus a bounded asset query instead of loading the full CampaignCue overview.
-- Asset registration uses a workspace-only guard read and writes only the asset metadata record plus one event in one Firestore batch; it does not invoke provider generation, Storage upload, or overview reload cost.
+- Metadata-only registration uses one workspace guard read and writes one asset plus one event in one batch.
+- Registration with a campaign usage reference adds one direct campaign read; it does not scan campaigns.
+- Registration with a Storage path adds one Storage metadata lookup so persisted size/type come from the object rather than the browser. It does not upload or duplicate the object.
+- `GET /api/campaigncue/assets` and overview/decision reads use the same one bounded asset query and strict in-memory projection; malformed rows add no repair write.
+- Download uses one workspace guard read, one direct asset read, and one runtime signed-URL operation. Signed or external URLs are never persisted.
 - Apply retention rules for failed drafts and temporary renders.
 
 ## Security
 
 - Private assets require workspace role checks.
-- Public export links must be explicit and revocable where possible.
+- Private downloads use short-lived runtime signed URLs generated only from a path owned by the current workspace.
 - Rights notes are internal by default.
+- The owner registration schema is strict and does not accept `downloadUrl`; campaign/output/channel references are server-verified before write.

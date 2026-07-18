@@ -1,7 +1,7 @@
 # Design System — MenuList Main Website
 
 **Status:** 🔒 LOCKED — Implementation Reference  
-**Last Updated:** June 29, 2026
+**Last Updated:** July 18, 2026
 
 ---
 
@@ -37,7 +37,7 @@
   /* Text */
   --text-primary: #0f172a; /* Headlines, body text (slate-900) */
   --text-secondary: #475569; /* Supporting text (slate-600) */
-  --text-muted: #94a3b8; /* Captions, meta text (slate-400) */
+  --text-muted: #64748b; /* Captions and meta text with readable light-theme contrast */
   --text-on-accent: #ffffff; /* Text on colored backgrounds */
 
   /* Brand */
@@ -128,6 +128,8 @@ The public website supports system dark mode through the same website tokens. Th
 | Use `--text-primary` for all headings                         | Use pure black (#000000) for text     |
 | Use `--text-secondary` for supporting text                    | Use colored text for body content     |
 | Use `--bg-accent` sparingly for one key section               | Use multiple colored backgrounds      |
+
+Muted text is still user-facing text. It must retain readable contrast and must not be used to make required information look disabled. Warning text on a light warning background uses the dedicated warning-text token rather than the lighter decorative warning color.
 
 Brand gradient rule:
 
@@ -298,6 +300,14 @@ All spacing is multiples of 4px, aligned with Tailwind's default scale.
 - Desktop: `px-8` (32px sides, centered with max-width)
 - Website routes use a website-scoped `border-box` baseline and `width: 100%` containers so inline padding, cards, and grids do not create mobile horizontal overflow.
 
+**Primary conversion pages:**
+
+- A conversion route may use an asymmetric context/action split instead of the default centered narrow form when the form is understandable only with supporting process or trust context.
+- Keep the active task in one bounded action column; do not place a card around the entire page or nest supporting cards inside the action card.
+- Below the tablet breakpoint, collapse to one in-flow column with heading first, active action second, and supporting context third.
+- Do not use sticky action panels when authentication, validation, or progress states can make the panel taller than a short viewport.
+- Keep one canonical copy of process steps and proof. Layout must not create repeated reassurance blocks.
+
 ---
 
 ## 5. Components
@@ -434,7 +444,8 @@ Rules:
 - Resource hubs, resource article bodies, related-resource blocks, industry proof grids, industry fit cards, industry resource links, and industry final CTAs must also use the shared reveal wrappers so long-form discovery pages do not feel static beside the homepage and feature pages.
 - For Business Health, keep the sticky story layout reveal opacity-only. Do not apply parent translate transforms around the sticky stacked-card layout because the cards already manage their own scroll-state transforms.
 - The header Features dropdown should link to these pages, but it should remain smaller and calmer than the Answerlattice product mega-menu. A compact proof/CTA panel is allowed when it reinforces one approved source without making MenuList feel like a broad software suite.
-- Menu Quality Validation is a dedicated feature route and `/features` card destination, but it is intentionally not in the desktop dropdown in v3.6.39. The dropdown stays limited to the nine primary owner-evaluation paths.
+- Feature route cards in the desktop dropdown must look clickable at rest. Keep the visible arrow affordance, coordinated hover/focus movement, and stronger supporting-copy contrast so first-time owners understand the cards are navigation, not static feature notes.
+- Menu Quality Validation is a dedicated feature route and `/features` card destination. In the current dropdown it belongs under Operate because quality/readiness checks are ongoing confidence work after setup, not the first intake action.
 - Do not use unsupported ranking, AI-placement, POS replacement, or full business-automation claims.
 
 ### 5.3 Owner Reassurance Placement
@@ -491,6 +502,9 @@ no backdrop-filter / glass blur on public website routes
 
 - Mobile hamburger navigation should not render long feature/resource lists as one always-expanded column. Use accordions for dense groups, keep `Features` open by default, keep `Resources` collapsed unless already on a resource page, and use nested Start/Publish/Operate groups for feature links.
 - Mobile drawer rows must keep 44px+ touch targets, token-based light/dark colors, visible focus states, and active-route highlighting without duplicating the same destination in both top-level and nested navigation.
+- Header active state must use the public pathname returned after removing the current website product base path. Do not hardcode `/ml` in shared header state.
+- `WebsiteLink` and language destinations must preserve the current website product base path for FAQ, Tools, WhatsApp, Invite, and reviewed locale-prefixed Resource routes.
+- The language trigger exposes `aria-expanded` and `aria-haspopup`; the open menu closes on Escape and restores focus to that trigger.
 
 ### 5.5 Brand Mark
 
@@ -545,7 +559,7 @@ Rules:
 
 - Place it in `InteractiveWorkflowSection`, not the hero. The hero stays product/customer-output led.
 - Use the official `LogoMark` at the center.
-- Left stack shows source inputs: photo, PDF, existing menu link, typed text.
+- Left stack shows the public setup inputs: photo/image upload and owned public menu/service-list/image/PDF link.
 - Center keeps the owner-review gate visible.
 - Right stack shows public outputs: official page, menu link, QR code, print/PDF.
 - Desktop may wrap the source map in a guided story rail when it improves pacing. The rail should be sticky, token-backed, and limited to the four source/review/publish/share moments; it must not become a second feature checklist.

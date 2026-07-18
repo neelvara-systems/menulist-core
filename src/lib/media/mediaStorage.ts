@@ -56,8 +56,16 @@ export function getMediaDataFingerprint(value: string): string {
     return (hash >>> 0).toString(16).padStart(8, '0');
 }
 
-export function isDataUrl(value: string | null | undefined): value is string {
-    return typeof value === 'string' && /^data:[^;]+;base64,/.test(value);
+export function isDataUrl(value: unknown): value is string {
+    if (typeof value !== 'string') return false;
+    const separatorIndex = value.indexOf(',');
+    if (separatorIndex < 0 || separatorIndex > 128) return false;
+    if (!/^data:[^;,]+;base64$/i.test(value.slice(0, separatorIndex))) return false;
+
+    const payload = value.slice(separatorIndex + 1);
+    return Boolean(payload)
+        && payload.length % 4 === 0
+        && /^[A-Za-z0-9+/]+={0,2}$/.test(payload);
 }
 
 export function getDataUrlBlob(dataUrl: string): Blob {

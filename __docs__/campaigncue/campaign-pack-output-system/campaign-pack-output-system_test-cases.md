@@ -35,6 +35,13 @@
 | Brand Playbook is missing | Proof deck is Needs review, not blocked, and campaign output can still proceed if other trust gates allow it. |
 | No rendered visual exists | ZIP includes image/print briefs, not fake PNG/PDF binaries. |
 | Result options exist | ZIP includes result-memory file and UI keeps one-tap result actions. |
+| Owner selects an output focus | Campaign stores canonical intent id, requested output types, and optional source-template provenance; Output Pack summary and bundle manifest retain the focus. |
+| Output focus has missing grouped facts | Browser routes to Missing Input Inbox and server independently rejects a forged request. Any confirmed alternative can satisfy an any-of group. |
+| Goal-specific focus conflicts with current decisions | A compatible Decision Engine candidate is selected, or creation is rejected; the system never relabels an unrelated recipe. |
+| Client tampers with channels | Server uses canonical channels from the allowlisted output intent. |
+| Unknown intent/unknown request field | Strict campaign-create schema rejects the request. |
+| Reuse/custom-size intent sent to campaign API | Server rejects it; owner flow uses CueLayers/shared editor. |
+| Reuse campaign combined with template/output intent | Schema rejects the conflicting request modes. |
 
 ## Commands
 

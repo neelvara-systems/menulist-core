@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Product Spec
 
 **Status:** Implemented V0
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 **Audience:** CEO / PM
 
 ---
@@ -104,7 +104,11 @@ The user must not need to be a MenuList user to open a report link. The base vie
 
 Invalid report hashes must fail closed to the invalid-link state. Decode diagnostics may record failure stage and payload shape metadata, but must not log the hash payload, decoded JSON, business context, check rows, setup jobs, or contact details.
 
+Hash payloads are not digitally signed records. The decoder must require summary counts to match the displayed check rows, rebuild setup jobs from visible gaps, require a primary label and at least one report-limit statement, and confine the next action to the MenuList origin. The viewer must display a static self-report notice that cannot be removed through payload edits.
+
 The viewer may accept a consented follow-up request through the existing `/api/public/contact` route. That request sends a bounded report summary, contact details, and a small `sourceContext` object with tool id, report status, owner-entered business context, summary counts, and setup job list. It does not create a report record, stored report URL, or recurring report history.
+
+Internal Report Lead Ops must use the bounded `sourceKind = shareable_tool_report`, `createdOn DESC` query. It must fail closed on production rate-limit-provider failure and disclose when the 120-report-lead cap means older matching leads may exist.
 
 ---
 

@@ -15,7 +15,7 @@ import {
     logRazorpayNonBlockingFailure,
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId, resolveProviderBillingProductId } from "@lib/billing/productBillingPlans";
-import { resolveVerifiedTopupSettlement } from '@lib/billing/topupSettlement';
+import { resolveCurrentTopupSubscriptionSettlement, resolveVerifiedTopupSettlement } from '@lib/billing/topupSettlement';
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { logger } from "@lib/monitoring/logger";
 import { checkRateLimit } from "@lib/rateLimit";
@@ -334,6 +334,49 @@ export const POST = withAuth(async (request, session) => {
 
         const packId = storedSettlement.packId;
 
+        // Resolve the current target before a provider capture. The transaction
+        // below re-reads and revalidates the same subscription before crediting.
+        const internalSub = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
+        if (!internalSub) {
+            logger.error('No active subscription for top-up', undefined, {
+                ...getBoundedRazorpayStringContext('tenantId', tenantId),
+                ...getBoundedRazorpayStringContext('storeId', storeId),
+                ...getBoundedRazorpayStringContext('productId', productId),
+            });
+            return NextResponse.json({ success: false, error: "No active subscription found." }, { status: 404 });
+        }
+
+        // Store may differ when an outlet inherits HQ billing.
+        if (Number(internalSub.tenantId) !== tenantId) {
+            logger.security('Unauthorized Topup Verification Attempt', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Subscription tenant mismatch',
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getBoundedRazorpayStringContext('subscriptionTenantId', internalSub.tenantId),
+                ...getBoundedRazorpayStringContext('subscriptionStoreId', internalSub.storeId),
+                ...getBoundedRazorpayStringContext('requestStoreId', storeId),
+            }, 'critical');
+
+            return NextResponse.json(
+                { error: 'Forbidden - Access denied' },
+                { status: 403 }
+            );
+        }
+
+        const subscriptionId = normalizeBillingSubscriptionDocumentId(internalSub.id);
+        const subscriptionTenantId = Number(internalSub.tenantId ?? internalSub.tId);
+        const subscriptionStoreId = Number(internalSub.storeId ?? internalSub.sId);
+        if (
+            !subscriptionId
+            || !Number.isSafeInteger(subscriptionTenantId)
+            || subscriptionTenantId !== tenantId
+            || !Number.isSafeInteger(subscriptionStoreId)
+            || subscriptionStoreId <= 0
+        ) {
+            return NextResponse.json({ success: false, error: "Active subscription not found." }, { status: 404 });
+        }
+
         // Step B: Fetch the payment from Razorpay to verify its status is 'captured'
         // --- NEW LOGIC: PROGRAMMATIC CAPTURE ---
         const payment = await razorpayClient.payments.fetch(razorpay_payment_id);
@@ -376,36 +419,6 @@ export const POST = withAuth(async (request, session) => {
             );
         }
 
-        // Step D: Find the user's active subscription document in our database
-        const internalSub = await getActiveProductSubscriptionForStore(productId, tenantId, storeId);
-        if (!internalSub) {
-            logger.error('No active subscription for top-up', undefined, {
-                ...getBoundedRazorpayStringContext('tenantId', tenantId),
-                ...getBoundedRazorpayStringContext('storeId', storeId),
-                ...getBoundedRazorpayStringContext('productId', productId),
-            });
-            return NextResponse.json({ success: false, error: "No active subscription found." }, { status: 404 });
-        }
-
-        // 🔒 CRITICAL: Double-check subscription belongs to this tenant.
-        // Store may differ when an outlet inherits HQ billing.
-        if (Number(internalSub.tenantId) !== tenantId) {
-            logger.security('Unauthorized Topup Verification Attempt', {
-                ...getBoundedRazorpaySecurityContext(session, request),
-                endpoint: '/api/razorpay/verify-topup',
-                error: 'Subscription tenant mismatch',
-                ...getBoundedRazorpayStringContext('productId', productId),
-                ...getBoundedRazorpayStringContext('subscriptionTenantId', internalSub.tenantId),
-                ...getBoundedRazorpayStringContext('subscriptionStoreId', internalSub.storeId),
-                ...getBoundedRazorpayStringContext('requestStoreId', storeId),
-            }, 'critical');
-
-            return NextResponse.json(
-                { error: 'Forbidden - Access denied' },
-                { status: 403 }
-            );
-        }
-
         // Settle the immutable order-creation snapshot, not mutable live pack constants.
         const creditsToAdd = storedSettlement.creditsToAdd;
 
@@ -418,17 +431,10 @@ export const POST = withAuth(async (request, session) => {
             ...getBoundedRazorpayStringContext('storeId', storeId),
         });
 
-        const subscriptionId = normalizeBillingSubscriptionDocumentId(internalSub.id);
-        if (!subscriptionId) {
-            return NextResponse.json({ success: false, error: "Active subscription not found." }, { status: 404 });
-        }
-
         const subscriptionRef = billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId);
         const answerlatticeStoreRef = isAnswerlatticeProduct
             ? billingDb.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId)
             : null;
-        const subscriptionTenantId = Number(internalSub.tenantId ?? internalSub.tId ?? tenantId);
-        const subscriptionStoreId = Number(internalSub.storeId ?? internalSub.sId ?? storeId);
         const transactionResult = await billingDb.runTransaction(async (tx) => {
             const [topupSnap, subscriptionSnap] = await Promise.all([
                 tx.get(topupRef),
@@ -471,21 +477,28 @@ export const POST = withAuth(async (request, session) => {
                 };
             }
 
-            const currentTopUpCredits = Number(subscriptionData?.topUpCredits ?? internalSub.topUpCredits ?? 0);
-            const newBalance = currentTopUpCredits + transactionSettlement.creditsToAdd;
-            const monthlyCredits = Number(subscriptionData?.monthlyCredits ?? internalSub.monthlyCredits ?? 0);
-            const monthlyCreditsAllowance = Number(subscriptionData?.monthlyCreditsAllowance ?? internalSub.monthlyCreditsAllowance ?? 0);
-            const creditsLastResetMonth = Number(subscriptionData?.creditsLastResetMonth ?? internalSub.creditsLastResetMonth ?? 0) || null;
+            const currentSubscription = resolveCurrentTopupSubscriptionSettlement({
+                allowMissingProductId: !isAnswerlatticeProduct,
+                expectedProductId: productId,
+                expectedStoreId: subscriptionStoreId,
+                expectedTenantId: subscriptionTenantId,
+                subscriptionSnapshot: subscriptionData,
+            });
+            if (!currentSubscription) {
+                return {
+                    alreadyVerified: false,
+                    invalidSettlement: false,
+                    invalidSubscription: true,
+                    newBalance: 0,
+                    paymentMismatch: false,
+                };
+            }
+
+            const newBalance = currentSubscription.topUpCredits + transactionSettlement.creditsToAdd;
             const serverNow = admin.firestore.FieldValue.serverTimestamp();
 
             tx.set(subscriptionRef, {
                 topUpCredits: newBalance,
-                productId,
-                pId: productId,
-                tenantId: subscriptionTenantId,
-                storeId: subscriptionStoreId,
-                tId: subscriptionTenantId,
-                sId: subscriptionStoreId,
                 modifiedOn: serverNow,
             }, { merge: true });
             tx.set(topupRef, {
@@ -517,10 +530,10 @@ export const POST = withAuth(async (request, session) => {
                     answerlatticeSubscription: {
                         id: internalSub.id || internalSub.providerSubscriptionId || null,
                         providerSubscriptionId: internalSub.providerSubscriptionId || internalSub.id || null,
-                        monthlyCreditsAllowance,
-                        monthlyCredits,
+                        monthlyCreditsAllowance: currentSubscription.monthlyCreditsAllowance,
+                        monthlyCredits: currentSubscription.monthlyCredits,
                         topUpCredits: newBalance,
-                        creditsLastResetMonth,
+                        creditsLastResetMonth: currentSubscription.creditsLastResetMonth,
                         updatedAt: serverNow,
                     },
                     answerlatticeBillingUpdatedAt: serverNow,
@@ -551,6 +564,20 @@ export const POST = withAuth(async (request, session) => {
                 ...getBoundedRazorpayStringContext('paymentId', razorpay_payment_id),
             }, 'critical');
             return NextResponse.json({ error: 'Payment order could not be matched.' }, { status: 409 });
+        }
+
+        if (transactionResult.invalidSubscription) {
+            logger.security('Topup Subscription Transaction Mismatch', {
+                ...getBoundedRazorpaySecurityContext(session, request),
+                endpoint: '/api/razorpay/verify-topup',
+                error: 'Current subscription is missing, malformed, or outside the selected billing scope',
+                ...getBoundedRazorpayStringContext('orderId', razorpay_order_id),
+                ...getBoundedRazorpayStringContext('subscriptionId', subscriptionId),
+                ...getBoundedRazorpayStringContext('productId', productId),
+                ...getBoundedRazorpayStringContext('tenantId', tenantId),
+                ...getBoundedRazorpayStringContext('storeId', storeId),
+            }, 'critical');
+            return NextResponse.json({ error: 'Top-up requires billing reconciliation.' }, { status: 409 });
         }
 
         if (transactionResult.alreadyVerified) {

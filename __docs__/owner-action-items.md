@@ -19,6 +19,171 @@
 
 ## Active Items
 
+### Cross-System Features 42-50 — July 17, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Isolate the reviewed MenuList Functions/index changes, then with authorized IAM run `env -u GOOGLE_APPLICATION_CREDENTIALS firebase deploy --project menulist-qa --config firebase.json --only firestore:indexes,functions:computeDecisionBlocksScores --non-interactive` | Feature 50's UTC-day platform-task lease and deduplicated MenuList index source are locally complete but are not active in QA. The current shared worktree contains multiple reviewed changes, so it was not deployed as one mixed bundle. | P0 (before Firebase scale QA) | ⬜ |
+| 2 | Isolate the reviewed Answerlattice index changes, then with authorized IAM run `env -u GOOGLE_APPLICATION_CREDENTIALS firebase deploy --project answerlattice-qa --config firebase-answerlattice.json --only firestore:indexes --non-interactive` | The source manifest removes an exact duplicate while retaining the query shape. Existing Help Center index exemptions in the same dirty manifest also remain undeployed after the earlier HTTP 403. | P0 (before Answerlattice scale QA) | ⬜ |
+| 3 | Include source-complete features 42-48 in the approved QA app release, then run authenticated desktop, MobileShell, iOS/Android PWA and public-output smoke for locale/RTL/time formatting, accessibility, PWA update/offline recovery, configuration gates, failure recovery, logout/account cleanup, staff ownership wording and dormant behavior | Local source/type/verifier gates cannot prove a deployed host, browser focus/zoom/screen-reader behavior, installed-PWA lifecycle, real sessions, legal/support execution, or device-specific rendering. | P0 (before cross-system QA sign-off) | ⬜ |
+| 4 | After task 1, observe one complete UTC day of `computeDecisionBlocksScores` QA logs and state: one completed daily lease, later `daily_cadence` skips, every due-store cohort processed, Special Menu recovery retained per cohort, and failed-attempt retry behavior | This proves the scale optimization did not suppress store-local work or duplicate global work under real scheduler timing. | P0 (before production scheduler release) | ⬜ |
+| 5 | Compare Cloud Billing export and the platform cost-posture read model over equivalent pre/post traffic windows, then approve production only if Firebase operation growth and error/alert volume are stable | Source gates prove operation shape, not real traffic distribution, provider latency, billing export lag, or production cost. | P1 (before production cost certification) | ⬜ |
+
+### Feature 15-30 Firebase Cost And Scale Audit — July 17, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | With Firebase IAM that can deploy indexes to `menulist-qa`, rerun `env -u GOOGLE_APPLICATION_CREDENTIALS firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json --non-interactive` | The July 17 current-worktree attempt loaded the validated MenuList index configuration, then the Firebase Rules test endpoint returned HTTP 403 `The caller does not have permission` before upload. This deploy carries the scoped cost exemptions and required reseller/report-lead composites from items 15-25 and 27-30. | P0 (before QA cost/scale certification) | ⬜ |
+| 2 | With Firebase IAM that can deploy indexes to `answerlattice-qa`, rerun `env -u GOOGLE_APPLICATION_CREDENTIALS firebase deploy --only firestore:indexes --project answerlattice-qa --config firebase-answerlattice.json --non-interactive` | The July 17 attempt loaded the validated dedicated index configuration, then the Firebase Rules test endpoint returned the same HTTP 403 before upload. The Help Center ticket message/status/document/log index exemptions are not live until this succeeds. | P0 (before QA ticket scale certification) | ⬜ |
+| 3 | With Firebase IAM that can deploy Functions to `menulist-qa`, rerun `env -u GOOGLE_APPLICATION_CREDENTIALS firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json --non-interactive` | The July 17 attempt passed configured Functions lint/build, then Cloud Resource Manager returned HTTP 403 `The caller does not have permission` before upload. Snapshot retention, draft cleanup, pending entitlement repair, alert retention, and paid-cycle expiry changes share this existing scheduler target. | P0 (before QA scheduler/retention certification) | ⬜ |
+| 4 | Include the verified app-side item 17, 19, and 27 changes in the approved QA Vercel release | Reseller query ordering, presentation-only observation-write suppression, and selective Report Leads querying are Next.js/app changes. Codex did not run a Vercel build or deploy. | P0 (before corresponding QA smoke) | ⬜ |
+| 5 | After tasks 1-4, run focused QA smoke for reseller newest-first lists and entitlement repair, cosmetic versus operational menu saves, report-lead filtering/caps, public contact submission, and Help Center reply/status growth | Local source/type/runtime gates prove the contracts but cannot prove deployed indexes, scheduler behavior, target data, provider/session state, or hosted browser/device behavior. | P0 (before production certification) | ⬜ |
+
+All feature 15-30 focused gates, exact TypeScript, focused lint, dependency freeze, both index JSON checks, Functions lint/build/preflight, and diff integrity passed locally before the deploy attempts. All three Firebase attempts stopped before upload; no QA index or Function revision changed.
+
+### Main Website, Legal, I18n/SEO And Paid-Cycle Truth — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | With Firebase IAM that can deploy indexes to `menulist-qa`, rerun `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json --non-interactive` | The July 16 attempt read the index source, then the Firebase Rules test endpoint returned HTTP 403 `The caller does not have permission` before upload. The bounded hourly query still needs `subscriptions(status ASC, cycleEndDate ASC)`. | P0 (before cycle-end QA) | ⬜ |
+| 2 | With Firebase IAM that can deploy Functions to `menulist-qa`, rerun `firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json --non-interactive` | The July 16 attempt passed configured Functions lint/build, then Cloud Resource Manager returned HTTP 403 `The caller does not have permission` before upload. The hourly expiry and item-29 alert retention share this target. | P0 (before cycle-end QA) | ⬜ |
+| 3 | Include item-30 app/website changes in the approved QA Vercel release; no Vercel build or deploy was run by Codex | Alias-safe links/language state, legal copy and root entitlement selection are Next.js/app changes. | P0 (before website/billing QA) | ⬜ |
+| 4 | On QA, smoke canonical `menulist.ai` and `menulist.digital/ml` at desktop and phone widths: every header/footer/CTA/legal/tool/resource route, all eight language choices including RTL Arabic, refresh/back/forward, keyboard Escape/focus, 320px overflow and noindex utility routes | Source gates cannot prove deployed middleware headers, CDN rewrites, browser history, focus rendering, RTL layout or device behavior. | P0 (before production certification) | ⬜ |
+| 5 | With a disposable Razorpay test-mode store, verify activate → cancel and enabled pause → cycle-end behavior: owner access/UI and store/platform plan mirrors remain through `cycleEndDate`, the leased expiry run changes the row to expired, and a forced entitlement-sync failure is repaired from `billingEntitlementSyncPending` | Local unit/source/emulator gates do not mutate provider state or prove deployed scheduler/index/cache behavior. Pause remains disabled unless intentionally enabled for the fixture. | P0 (before billing certification) | ⬜ |
+| 6 | Have the owner and qualified legal counsel approve the current Privacy Policy, Terms of Service and Refund Policy, including business identity, governing law/jurisdiction, generated-output rights, applicable-law/refund exceptions and retention wording | Code truth removes known false claims but is not legal advice or legal certification. | P0 (before public legal release) | ⬜ |
+| 7 | Verify production analytics/contact dependencies and discovery: consent-gated Plausible/GA4/Clarity choices, Turnstile and Upstash normal/exhausted/outage behavior, contact delivery ownership, sitemap/robots/LLM fetches, canonical/hreflang in Search Console and production-host logs | Local source tests cannot certify provider accounts, consent telemetry, contact operations, crawler fetches, DNS/CDN or search-console state. | P0 (before production certification) | ⬜ |
+
+Both smallest-scope QA deploys were attempted after local validation and both stopped before upload on IAM 403. No index or Function revision changed. Production Firebase and Vercel deployment require later QA evidence and explicit approval.
+
+### Internal Ops Control Room And Platform Monitoring — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | With Firebase IAM that can deploy Functions to `menulist-qa`, rerun `firebase deploy --only functions:menulistMaintenanceScheduler --project menulist-qa --config firebase.json --non-interactive` | The 90-day `systemAlerts` cleanup passed local Functions lint/build/preflight, but the scoped QA deploy stopped before upload at Cloud Resource Manager HTTP 403: `The caller does not have permission`. No Function revision changed. | P0 (before retention QA) | ⬜ |
+| 2 | Include the verified item-29 app/API changes in the approved QA Vercel release | Current platform layout/browser/API authorization, truthful unavailable states, recovery response validation and SAFE_MODE copy are Next.js/app changes. Codex did not run a Vercel build or deploy. | P0 (before platform QA) | ⬜ |
+| 3 | Run authenticated desktop and MobileShell QA with a current PLATFORM user, then downgrade/block/deactivate/revoke that user and retry every internal monitor/control without a fresh login | Local gates prove source ordering and parsers, but target sessions, Firebase ID-token/rule behavior, cookies and mounted MobileShell sub-screens need deployed evidence. All stale-authority reads and mutations must fail. | P0 (before production certification) | ⬜ |
+| 4 | Run target Upstash normal/exhausted/outage behavior plus SAFE_MODE activate/replay/deactivate, alert mute, force republish, scheduler success/partial/failure, extraction read/retry and Entity Block post-commit-effect smoke | Local tests do not prove target limiter state, callable revisions, cache/CDN, Storage ownership, Firebase Auth reconciliation or current tenant/store fixtures. | P0 (before production certification) | ⬜ |
+| 5 | Verify Telegram, platform email/WhatsApp, owner-notification SMTP/Meta and messaging-onboarding provider delivery/failure/retry behavior with secrets redacted from evidence | Provider accounts, egress, templates, delivery windows and target secrets are external to source gates. | P0 (before provider certification) | ⬜ |
+| 6 | After the QA scheduler is live, seed or retain eligible old alert fixtures and observe one leased cleanup run; confirm at most 100 rows older than 90 days are removed and newer/unresolved current alerts remain | Local build proves the query/task registration but not deployed scheduler lease, target data or delete behavior. | P0 (before retention certification) | ⬜ |
+
+No Firestore rule, index or Storage rule changed in item 29. Production Function deployment must wait for successful QA evidence and explicit approval.
+
+### MenuList Help Center And Support Flow — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | With a Firebase identity that can test and release Firestore rules for `answerlattice-qa`, rerun `firebase deploy --only firestore:rules --project answerlattice-qa --config firebase-answerlattice.json` | The item-28 append-only support-ticket and write-once satisfaction rules passed the dedicated emulator, but this session's QA upload stopped before compilation/upload with Firebaserules HTTP 403: `The caller does not have permission`. | P0 (before QA ticket smoke) | ⬜ |
+| 2 | With equivalent Firebase permission for `menulist-qa`, rerun `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json` | The explicit shared-mode rule file carries the same ticket boundary. Its QA upload also stopped before compilation/upload with the same Firebaserules HTTP 403, so no shared rule revision changed. | P0 (before shared-mode QA ticket smoke) | ⬜ |
+| 3 | Include the verified Help Center app changes in the approved QA Vercel release, then run authenticated desktop and MobileShell smoke for search/fallback, article/changelog/feedback/contact navigation, ticket create/history/reply/status/satisfaction, valid and rejected attachments, signed-link opening, duplicate-submit prevention, product-account loss, and provider/SMTP failure | Source/type/lint/emulator gates cannot certify deployed Next.js code, Answerlattice product-account/Auth claims, Firebase Storage links, provider delivery, browser/device navigation, or production hosts. Codex did not run a Vercel deploy. | P0 (before production certification) | ⬜ |
+
+The two rule deploy commands were attempted on July 16, 2026 after local source/emulator validation. Both were rejected by the Firebaserules test endpoint before upload, so they remain owner/IAM tasks and production deployment must wait for QA evidence and explicit approval.
+
+### Digital Screens End-To-End Hardening — July 16, 2026
+
+Complete these in order. Do not deploy the tightened Firestore rule before the safe writers and mirror backfill are live; legacy mirrors contain the bearer screen token and intentionally fail the new token-free allowlist.
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified token-free Digital Screens app changes in the approved QA Vercel release | Current deployed owner/server writers can still recreate a token-bearing `screen_{storeId}` mirror. The app release also carries route/seen kill switches, permission gates, expired-slide recovery, and cache/index safety. Codex did not run a Vercel deploy. | P0 (before mirror migration) | ⬜ |
+| 2 | After isolating the intended Functions release, deploy the affected QA targets: `processMenuImagesJob`, `menulistMaintenanceScheduler`, `computeDecisionBlocksScores`, `triggerStoreNightlyScheduler`, `triggerDecisionBlocksScoring`, and `forceRepublish` | These paths can touch the public screen mirror through the shared cache-revalidation helper; every active writer must be token-free before migration. | P0 (before mirror migration) | ⬜ |
+| 3 | Dry-run and then write the token-free public-mirror backfill against `menulist-qa`; retain the counts as evidence | Existing `screen_{storeId}` documents must be replaced before the new `hasOnly` rule is deployed, or connected listeners will lose access. The script requires explicit project, scope, write, and project confirmation. | P0 (before Firestore rule deploy) | ⬜ |
+| 4 | Deploy the tightened Firestore rule to `menulist-qa` only after tasks 1–3 pass | The rule removes bearer tokens from the public shape and changes anonymous access from broad read to exact-document get, preventing token recovery and public listing. | P0 (before QA screen smoke) | ⬜ |
+| 5 | Run QA smoke on Menu Board and Highlights for valid/invalid/disabled/blocked tokens; save/publish/sold-out/special-menu/store-profile propagation; two connected screens; offline-after-load/reconnect; failed seen write retry; expired-slide replacement; owner/manager/custom-role/no-permission desktop and MobileShell access | Local gates cannot certify deployed rules, target data, browser listener behavior, cache/CDN, real Upstash, TV fullscreen, or physical-device recovery. | P0 (before production certification) | ⬜ |
+| 6 | Repeat the same writer → backfill → rule → smoke order for `menulist` only after QA evidence and explicit production approval | Production mirrors and connected devices must never pass through a mixed token-bearing/token-free writer state. | P0 (before production rollout) | ⬜ |
+
+```bash
+# Task 2: scoped QA Functions writers
+npm run verify:functions-deploy-preflight
+firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:forceRepublish --non-interactive
+
+# Task 3: dry-run first, then explicit write
+npm run backfill:digital-screen-public-mirrors -- --project-id menulist-qa --all-screens
+npm run backfill:digital-screen-public-mirrors -- --project-id menulist-qa --all-screens --write --confirm-project menulist-qa
+
+# Task 4: only after the token-free app/Functions writers and backfill are verified
+firebase deploy --project menulist-qa --config firebase.json --only firestore:rules --non-interactive
+```
+
+### Staff, Roles And Permissions — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified staff/roles app changes in the approved QA Vercel release | Owner-target protection, explicit placeholder Auth binding, post-commit token ordering, access-status lifecycle checks, response validation, and desktop/mobile guards are Next.js/app changes. Codex did not run a Vercel build or deploy. | P0 (before QA staff smoke) | ⬜ |
+| 2 | Run the hosted desktop and MobileShell matrix for Owner, Manager, Staff, and one custom role: list/add/edit, allowed role choices, Owner row read-only behavior, role create/edit/deactivate, last-owner demotion/removal race, force-sign-out, deactivate/reactivate, remove one/last store, multi-store visibility, and self Account access | Source/type/emulator gates cannot certify deployed sessions, browser/device state, real tenant mappings, password handoff, or target Firebase Auth behavior. | P0 (before production certification) | ⬜ |
+| 3 | Exercise email setup, Staff ID/passcode, phone alias, forgot-password, self password change, owner reset, exact reset retry, simultaneous reset, session revocation on two devices, unverified placeholder verification, unrelated Auth email collision, incomplete UID binding refusal, and failed-commit compensation on the approved QA target | Local source tests do not create target Firebase Auth identities or prove email delivery, cookies, refresh-token timing, or provider/account state. Do not manually mark a collision as verified. | P0 (before production certification) | ⬜ |
+| 4 | Verify target Upstash credentials and run normal, exhausted, and provider-failure behavior for staff list/write/auth-sensitive limits; keep Owner credentials and one-time passcodes private during evidence capture | Local checks intentionally ran without target Upstash credentials. Rate-limit/provider behavior and safe evidence handling are operator responsibilities. | P0 (before production certification) | ⬜ |
+| 5 | Run session lifecycle QA for inactive/deleted user, tenant, and store; direct user/tenant/store block; missing/cross-tenant store; revoked session; and reactivation | Source checks lock the rejection reasons, but deployed access-status cadence, cookies, and target records require hosted evidence. | P0 (before production certification) | ⬜ |
+
+No Firestore rules, indexes, Storage rules, or Cloud Function logic changed in this pass, so there is no new Firebase deploy task from this feature checkpoint.
+
+### Guest Feedback And Dormant Reviews Boundary — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified Guest Feedback app/server changes in the approved QA Vercel release | Public-page data minimization, idempotent submit handling, strict review-link saving, and mobile pagination/manual reply behavior are Next.js/app changes. Codex did not run a Vercel build or deploy. | P0 (before QA feedback smoke) | ⬜ |
+| 2 | Run authenticated QA on public feedback, desktop inbox, and MobileShell: valid/invalid project/store/tenant, Turnstile, rate limit, exact retry after lost response, all filters, 50+ pagination, resolve/reopen, Unicode name, copy/WhatsApp, valid/invalid Google link, and custom domain | Source and emulator gates cannot certify deployed credentials, CDN/browser payload, target data, device handoff, or production host behavior. Inspect the public RSC/network payload to confirm owner contact/internal fields are absent. | P0 (before production certification) | ⬜ |
+| 3 | Keep `ENABLE_REVIEWS_REPUTATION` and `ENABLE_AI_REPLY_ASSIST` disabled | The repo has no GBP review ingestion/classifier writer, review DAL/inbox, scheduler, Google reply route, or mobile review UI. Provider access alone does not make it safe to enable. | P0 (until a separate implementation is completed) | ⬜ |
+
+No Firebase rules, indexes, Storage rules, or Cloud Function logic changed in this pass, so there is no new Firebase deploy task from this feature checkpoint.
+
+### Owner Notifications And Messaging Onboarding — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified owner-notification and messaging app changes in the approved QA Vercel release | The fake desktop notification feed removal, app-side owner event/consent/provider boundaries, preview/publish routes, and maintained docs are in the shared app worktree. Codex did not run a Vercel build or deploy. | P0 (before QA smoke) | ⬜ |
+| 2 | Isolate the intended Functions changes, run `npm run verify:functions-deploy-preflight`, and approve a QA deploy of `functions:verifyMenuPublish,functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler,functions:menulistMaintenanceScheduler,functions:messagingOnboarding,functions:msgExtractionWatcher` | Owner provider timeouts/consent/event caps, daily publish-failure identity, messaging WhatsApp redirect refusal, and messaging worker behavior require updated Functions. The shared dirty bundle was not deployed blindly. | P0 (before QA provider smoke) | ⬜ |
+| 3 | Provision the final owned Meta WhatsApp Business number and real `WHATSAPP_PHONE_NUMBER_ID`, access token, app secret, verify token, webhook registration, preview base URL, and target-specific enablement | Checked-in Functions environments intentionally keep messaging onboarding disabled. Dummy secrets or an unowned test number do not certify the provider flow. | P0 (before enabling messaging onboarding) | ⬜ |
+| 4 | Run QA SMTP and WhatsApp provider smoke for success, provider rejection, expired token/template, redirect refusal, bounded timeout, dedupe/retry, consent granted, and consent revoked | Local tests cannot prove real SMTP/Meta account, approved templates/session window, egress, provider status, or delivery receipt behavior. | P0 (before production certification) | ⬜ |
+| 5 | Run authenticated desktop/mobile QA for billing, credits, publish success/failure replay, staleness, platform recovery, messaging upload/PDF, invalid upload, preview, multi-device fix/approve race, publish, public cache, copy/share, claim, expiry, and post-publish tunnel closure | Source and emulator gates do not certify deployed tenant data, browser/device behavior, public output, account claim, cache/CDN, or production-host behavior. Confirm that owners see real email/WhatsApp outcomes and never a fake order/activity feed. | P0 (before production certification) | ⬜ |
+
+### Public Customer Delivery Flow — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified public customer delivery app changes in the approved QA Vercel release | Unknown-slug handling, browser DTOs, scoped OBP/sitemap/manifest/pull selection, and sitemap cache tags are Next.js/app changes. Codex did not run a Vercel build or deploy. | P0 (before QA public smoke) | ⬜ |
+| 2 | Run the hosted single-store and multi-location route matrix on current/previous subdomain, verified custom domain, current/previous outlet/project slug, owner-claimed `/menu`, default-backed `/menu`, no-default `/menu`, unknown slug, and inactive/deleted/blocked targets | Local gates cannot prove deployed redirects, cache/CDN state, tenant data, status/canonical/noindex output, or DNS/host behavior. | P0 (before production certification) | ⬜ |
+| 3 | Inspect hosted page source, RSC/network payloads, robots and sitemap after publish/rename/delete to confirm no canonical store credentials/internal project workflow metadata and immediate per-store sitemap/menu refresh | The code now uses explicit DTOs and publish-compatible tags, but the deployed bundle/cache needs direct evidence. | P0 (before production certification) | ⬜ |
+| 4 | Run iOS/Android and installed-PWA QA for low bandwidth, language, menu/OBP/outlet navigation, browser back, unknown/deleted recovery countdown, manifest start URL, and call/directions/WhatsApp/order/reservation shortcuts | Source and static PWA gates do not certify browser install behavior, device navigation, or OS handoffs. | P0 (before production certification) | ⬜ |
+| 5 | Smoke the MenuList public pull API with a scoped QA key for default menu, linked outlet, invalid/cross-scope summary row fixture, revocation, rate limit, and ETag 304; then submit/inspect the canonical tenant sitemap in Search Console | Local tests prove target guards and response identity, but live credentials, rate-limit provider, deployed data, crawler ingestion, and indexing are external outcomes. | P0 (before integration/SEO certification) | ⬜ |
+
+### Authentication And Onboarding Flow — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified auth/onboarding app changes in the approved QA Vercel release | Fail-closed public auth limits, claim handoff serialization, store-role claim rejection, pending-payment recovery, and onboarding persistence convergence are app-side changes. Codex did not run a Vercel build or deploy. | P0 (before QA auth smoke) | ⬜ |
+| 2 | Run the full QA identity matrix on the target host: Google OAuth, email/password, phone/passcode, WhatsApp OTP, staff alias where applicable, all three messaging claim modes, logout, expired/revoked/blocked user, and returning-owner login | Local source tests cannot prove provider credentials, redirects, templates, Firebase Auth state, cookies, or deployed account data. | P0 (before production certification) | ⬜ |
+| 3 | Run Razorpay sandbox onboarding for success, checkout dismissal, Pricing/Billing resume, verification, webhook convergence, duplicate submit, ambiguous create response, local persistence acknowledgement loss, cancellation, and compensation | The source protects these boundaries, but live provider behavior and webhook ordering require sandbox evidence. | P0 (before paid onboarding launch) | ⬜ |
+| 4 | Verify Firebase custom claims and forced token refresh for owner, manager/staff/custom role, platform/support, missing role, wrong tenant/store, store switch, and revoked access | Source gates prove the role resolver and canonical store read; deployed token contents and Firestore rule effects still require target evidence. | P0 (before production certification) | ⬜ |
+| 5 | Run narrow iOS and Android browser/PWA QA for OTP keyboards, Google/claim return, checkout open-dismiss-resume, session refresh, and first dashboard entry | Responsive source code is not device or browser certification. | P0 (before production certification) | ⬜ |
+
+### Multi-Location Master And Outlet Flow — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified multi-location app changes in the approved QA Vercel release | Fresh tenant, store, membership, permission, capacity, linked-menu, and public-render checks are app-side changes. Codex did not run a Vercel build or deploy. | P0 (before QA owner smoke) | ⬜ |
+| 2 | Run authenticated QA smoke on desktop and MobileShell for Locations access, add outlet, switch to outlet, return to HQ, rename, policy changes, linked-menu override/publish, and deactivation | Local source and type gates cannot prove deployed auth claims, browser state, mobile navigation, or real tenant data. Include master, permitted staff, unpermitted staff, inactive outlet, and blocked tenant/store cases. | P0 (before production certification) | ⬜ |
+| 3 | Run Razorpay sandbox evidence for card/eMandate quantity increase and decrease, UPI replacement checkout/finalization, failed replacement, failed/unsupported deactivation reduction, and safe retry | The source now returns a truthful `CONTACT_SUPPORT` acknowledgement whenever an immediate provider reduction remains unresolved; real provider and webhook behavior still needs target evidence. | P0 (before paid multi-location launch) | ⬜ |
+| 4 | Run manual/reseller prepaid-capacity QA for outlet creation and deactivation | Offline/manual quantity is prepaid capacity and is intentionally not auto-reduced on deactivation. Real entitlement records must prove capacity admission and owner copy on the deployed target. | P0 (before manual/reseller multi-location launch) | ⬜ |
+| 5 | Verify the new outlet and a linked outlet menu through public menu, OBP/custom-domain/QR output, cache refresh, and initialized Digital Screen behavior | Local guards prove scope and fail-closed behavior, but deployed cache/CDN, domain, and screen acknowledgements require hosted evidence. | P0 (before production certification) | ⬜ |
+
+### Project Publish And Public Cache Flow — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified project publish/cache app changes in the approved QA Vercel release | Desktop/mobile stale-publish protection and observed post-publish verification handoff are app-side changes. Codex did not run a Vercel build or deploy. | P0 (before QA owner smoke) | ⬜ |
+| 2 | After isolating the intended Functions release from the shared dirty worktree, deploy the affected QA targets: `firebase deploy --project menulist-qa --config firebase.json --only functions:processMenuImagesJob,functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores,functions:triggerStoreNightlyScheduler,functions:triggerDecisionBlocksScoring,functions:forceRepublish --non-interactive` | Scheduled special-menu repairs, independent Digital Screen touch, and acknowledged force-republish cache refresh require the updated Functions code. The deploy was not run blindly because the Functions tree contains other in-progress changes. | P0 (before QA recovery/scheduler smoke) | ⬜ |
+| 3 | Run authenticated QA smoke for desktop publish, MobileShell Design publish, linked-outlet stale conflict, project create/edit/duplicate/delete/restore/active toggle, scheduled special-menu repair, public menu/OBP/custom-domain/QR output, initialized Digital Screen refresh, and Ops force republish with both valid and missing cache configuration | Local source gates, TypeScript, Functions build/lint, and Firestore emulators pass; hosted auth, cache/CDN, device, DNS, and deployed-secret behavior still require real-target evidence. | P0 (before production certification) | ⬜ |
+
+### Global Media And Storage Lifecycle — July 16, 2026
+
+| # | Task | Why | Priority | Status |
+| --- | --- | --- | --- | --- |
+| 1 | Include the verified media/server changes in the approved QA Vercel release | Immutable Admin upload reuse, prompt-cache destination reuse, batch review cleanup safety, and owner copy are app/server changes. Codex did not run a Vercel build or deploy. | P0 (before QA media smoke) | ⬜ |
+| 2 | Deploy the validated MenuList Storage rules to QA with `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` | Prepared public media is now create-only and static JPEG/PNG/WebP; the local Storage emulator passes, but the target rule version must be captured before production approval. | P0 (before QA media smoke) | ⬜ |
+| 3 | After isolating the intended shared Functions release, deploy `functions:menulistMaintenanceScheduler` to QA | Image-batch retention is now metadata-only; the updated scheduler must be live before relying on seven-day payload pruning and 30-day terminal-row cleanup. | P0 (before batch-image launch) | ⬜ |
+| 4 | Run authenticated desktop and MobileShell QA for upload, adjust, save, replace, remove, duplicate, linked-outlet, retry, acknowledgement-loss, offline/interrupted, and public-render behavior across item/project/background/logo/OBP/PWA/screen/generated images | Source/emulator tests cannot prove deployed Auth claims, real Storage tokens, upload progress, browser memory, cache/CDN, installed PWA, screen device, or low-bandwidth behavior. | P0 (before production certification) | ⬜ |
+| 5 | Capture QA bucket inventory, orphan growth, lifecycle configuration, quota/alerting, and cache/CDN evidence before proposing physical public-media cleanup | Current code intentionally retains public media when exclusive references are unknown. A future cleanup requires measured cost plus global project/outlet/store reference proof; do not enable destructive cleanup from one job or project. | P1 (after representative usage) | ⬜ |
+
 ### SignalDesk First Revenue Trial
 
 | # | Task | Why | Priority | Status |
@@ -55,8 +220,8 @@
 
 | #   | Task                                                                             | Why                                                                                                                                         | Priority                                | Status |
 | --- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- | ------ |
-| 1   | Enable `ENABLE_EXTRACTION_MONITORING_DASHBOARD` flag in `src/config/features.ts` | Turns on the extraction pipeline health dashboard at `/ops/extraction`. Read-only, ~$0.04/month cost.                                       | P1 (after first real extractions)       | ⬜     |
-| 2   | Verify Firestore indexes for extraction monitoring queries                       | May already exist — run `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json` after `npm run verify:env-targets` passes; production requires QA evidence and explicit production approval. | P1 (before enabling flag)               | ⬜     |
+| 1   | Confirm the enabled extraction monitor in the deployed QA app and run authenticated platform-role QA | `ENABLE_EXTRACTION_MONITORING_DASHBOARD` is already `true` in current source. The remaining work is target app deployment evidence plus desktop/mobile platform access, bounded loading/error state, filter, inspector, retry, and cost-panel smoke. | P1 (after first real extractions)       | ⬜     |
+| 2   | Verify Firestore indexes for extraction monitoring queries                       | Run `firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json` after `npm run verify:env-targets` passes; production requires QA evidence and explicit production approval. | P1 (before live dashboard use)          | ⬜     |
 | 3   | P2: Wire Telegram alerts for extraction failure spikes                           | Auto-alerts when failure rate > 5% or quality drops. Infrastructure exists (`sendTelegramAlert()`), just needs wiring in nightly scheduler. | P2 (when extraction volume grows)       | ⬜     |
 | 4   | P3: Add HCR (Human Correction Rate) metric from extraction learning loop data    | Data already collected via `menuChangeLog` + `platformSummary/extractionLearning`. Just needs dashboard display.                            | P3 (when enough correction data exists) | ⬜     |
 
@@ -67,8 +232,8 @@
 | #   | Task                                                                         | Why                                                                                                                                                  | Priority                               | Status |
 | --- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- | ------ |
 | 1   | Add 2nd-4th Gemini API keys to Vercel env vars + Firebase Secrets            | Enables key rotation for higher AI throughput. Single key still works with retry/backoff, but multi-key gives immediate failover on 429 rate limits. | Optional (do when hitting rate limits) | ⬜     |
-| 2   | Phase 2: Build `aiUsageLog` cost tracking collection                         | Gives per-feature, per-tenant AI cost visibility. Currently no cross-feature cost tracking exists.                                                   | P2 (when you need cost visibility)     | ⬜     |
-| 3   | Phase 3: Build knowledge reuse layer (translation memory, description cache) | Reduces AI costs ~25-35% by caching repeated operations.                                                                                             | P3 (when 1000+ menus)                  | ⬜     |
+| 2   | Review current compact AI operation/cost summaries before adding another metric | `menulistAiOperations` and existing bounded summaries already provide cross-feature accounting evidence. Add a new aggregate only when production review identifies a specific unanswered question. | Optional (evidence-triggered)           | ⬜     |
+| 3   | Evaluate translation/description reuse only after repeated-request evidence | Do not add translation memory or a description cache from a guessed scale threshold or savings claim. Revisit only when bounded telemetry shows materially repeated identical work and defines safe tenant/content invalidation. | Optional (evidence-triggered)           | ⬜     |
 
 **How to do #1:**
 
@@ -90,6 +255,9 @@ firebase functions:secrets:set GEMINI_AI_KEY_4 --project menulist-qa
 | --- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ------ |
 | 1   | Deploy updated Firestore rules to QA: `firebase deploy --only firestore:rules --project menulist-qa --config firebase.json` | 3 security fixes: tenant validation on job creation (CRITICAL), AI operations rules, platform admin read override for monitoring. Production requires QA evidence and explicit production approval. | P0 (before launch) | ⬜     |
 | 2   | Deploy updated Cloud Functions                                           | Server-side defense-in-depth: projectId ↔ tId/sId mismatch validation in extraction CF                                           | P0 (before launch) | ⬜     |
+| 3   | Include the current owner extraction job API in the approved Vercel release | The July 15 source fix rejects empty files/arbitrary actions, canonicalizes business context, and preserves the 15-file/page contract through bounded document headroom. No Vercel deploy was authorized in this session. | P0 (before extraction launch) | ⬜     |
+| 4   | Run authenticated desktop and mobile extraction smoke in QA | Exercise image upload, a multi-page PDF up to the 15-page cap, identity confirmation, progress, review/apply/discard, retry/cancel, owner Transactions history, and reset/create-new recovery on the deployed target. | P0 (before extraction launch) | ⬜     |
+| 5   | Run real-provider QA for every enabled extraction producer | Prove owner upload, authenticated link import, public create-menu image/link intake, and messaging onboarding where enabled; record provider quota, failure, partial-result, cleanup, and final public-output evidence in the External Certification Runbook. | P0 (before each producer launches) | ⬜     |
 
 **How to do #1 + #2:**
 
@@ -104,21 +272,39 @@ npm run verify:functions-deploy-preflight
 
 > **Fixed by Cascade (Mar 13, 2026):** Security Surface Audit — 3 vulnerabilities fixed (1 CRITICAL). See `__docs__/projects/ai-data-extraction/security-surface-audit-mar13-2026.md`
 
+### Special Menu Switching — Deployment and QA
+
+| # | Task | Why | Priority | Status |
+| - | ---- | --- | -------- | ------ |
+| 1 | Deploy `menulistMaintenanceScheduler` and `computeDecisionBlocksScores` to `menulist-qa` after project access is restored | The July 16 scoped attempt passed predeploy lint/build, then Cloud Resource Manager rejected the project lookup with HTTP 403 (`The caller does not have permission`) before upload. Local source/emulator verification does not activate the scheduler changes in QA. | P0 before special-menu QA | ⬜ |
+| 2 | Run one deployed schedule smoke at least five minutes in the future | Confirm `specialMenuNextTransitionAt`, activation, public/OBP output, initialized Digital Screen refresh where configured, expiry, regular-menu return, and owned temp-banner cleanup on the real QA target. | P0 before launch | ⬜ |
+| 3 | Check for pre-existing QA schedules after deploy | The nightly recovery backfills old missing markers. If an existing schedule must switch before its next nightly pass, edit/save it once or recreate the QA schedule so the marker is written immediately. | P1 conditional | ⬜ |
+| 4 | Include the current owner web/mobile code in the approved Vercel release | Generic deactivate/delete/reset guards and alternate mobile/desktop edit parity are app-side changes. No Vercel deploy was authorized in this session. | P0 before launch | ⬜ |
+
+No Firestore rules or composite-index deploy is required for this change; the due query uses one automatically indexed top-level summary field.
+
+```bash
+npm run verify:functions-deploy-preflight
+firebase deploy --only functions:menulistMaintenanceScheduler,functions:computeDecisionBlocksScores --project menulist-qa --config firebase.json --non-interactive
+```
+
 ### Production Readiness (Monitoring Stack)
 
 | #   | Task                               | Why                                                                     | Priority           | Status |
 | --- | ---------------------------------- | ----------------------------------------------------------------------- | ------------------ | ------ |
 | 1   | Create Telegram Bot + set secrets  | Required for ops alerts (payment failures, publish errors, cost spikes) | P0 (before launch) | ⬜     |
 | 2   | Set GCP Budget Alerts              | Auto-activates SAFE_MODE when cost threshold exceeded                   | P0 (before launch) | ⬜     |
-| 3   | Deploy Cloud Functions             | Deploys verifyMenuPublish, alertEscalation, gcpBudgetAlertWebhook, menu extraction worker updates, source-file path hardening updates, and the consolidated maintenance scheduler. Latest package-local scoped `menulist-qa` retry on July 9, 2026 targeted the current Gate 1 function set, completed predeploy lint/build, and then failed before upload with Cloud Resource Manager HTTP 403 caller permission. | P0 (before launch) | ⬜     |
+| 3   | Deploy Cloud Functions             | Deploys verifyMenuPublish, alertEscalation, gcpBudgetAlertWebhook, menu extraction worker updates, source-file path hardening updates, and the consolidated maintenance scheduler. The latest scoped `menulist-qa` retry on July 16, 2026 (`menulistMaintenanceScheduler,computeDecisionBlocksScores`) completed predeploy lint/build and then failed before upload with Cloud Resource Manager HTTP 403 caller permission. | P0 (before launch) | ⬜     |
 | 4   | Deploy Firestore indexes           | Required for alert escalation queries                                   | P0 (before launch) | ⬜     |
 | 5   | Confirm monitoring feature flag evidence | Check current `src/config/features.ts` source state, QA secrets/deploy evidence, provider smoke evidence where applicable, and External Certification Runbook records for `ENABLE_COST_PROTECTION`, `ENABLE_OPS_ALERTS`, and `ENABLE_MENU_HEALTH_MONITOR`. | P0 (before launch) | ⬜     |
 | 6   | Setup UptimeRobot                  | External uptime monitoring (free)                                       | P1 (before launch) | ⬜     |
 | 7   | Setup SMTP for lifecycle messaging | Enables billing emails, renewal reminders, suspension warnings          | P1 (before launch) | ⬜     |
 | 8   | Run the external certification runbook | Full MenuList production certification still needs Firebase deploy, mobile/browser QA, full Razorpay sandbox checkout/webhook smoke, WhatsApp provider, POS provider, batch worker, and production-host evidence recorded in the audit. Read-only Razorpay test-mode credential auth is recorded as partial Gate 4 evidence only. | P0 (before production certification) | ⬜     |
-| 9   | Deploy MenuList Storage rules cutover to QA | Legacy project Storage paths are now read-only in code. Gate 2A requires `npm run verify:storage-paths`, then `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` before production approval. Latest local retry on July 9, 2026 passed `npm run verify:storage-paths`, then was blocked before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied. | P0 (before production certification) | ⬜     |
-| 10  | Configure and smoke the batch image Cloud Tasks worker secret | Local `.env` has project/location/queue/HTTPS worker URL but is missing `BATCH_IMAGE_GENERATION_WORKER_SECRET`; Functions dotenv files have no batch worker keys. Gate 7 needs the worker secret, deployed worker target, enqueue proof, wrong-secret rejection, correct-secret acceptance, review-state proof, and selected-image persistence. | P0 (before batch AI image launch) | ⬜     |
+| 9   | Deploy MenuList Storage rules cutover to QA | Legacy project paths are read-only and prepared media is create-only/static JPEG-PNG-WebP in current code. Gate 2A requires `npm run verify:storage-paths`, then `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` before production approval. Local Storage emulation passes; prior target attempts were blocked while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied. | P0 (before production certification) | ⬜     |
+| 10  | Configure and smoke the batch image Cloud Tasks worker secret and queue policy | Local `.env` has project/location/queue/HTTPS worker URL but is missing `BATCH_IMAGE_GENERATION_WORKER_SECRET`; Functions dotenv files have no batch worker keys. Gate 7 needs the worker secret, deployed worker target, a captured queue description showing dispatch/retry/backoff settings appropriate to the target quota, enqueue proof, wrong-secret rejection, correct-secret acceptance, review-state proof, and selected-image persistence. Do not change queue throughput blindly before the target quota and worker capacity are known. | P0 (before batch AI image launch) | ⬜     |
 | 11  | Provision a controlled public HTTPS POS receiver for Gate 6 | The POS source gate passes locally, but external certification still needs a staging receiver endpoint that verifies MenuList signatures, accepts a signed full-menu snapshot, exercises failed-endpoint behavior, and proves secret rotation before UI success. | P0 (before POS launch) | ⬜     |
+| 12  | Release the compatible POS app before deploying the new POS secret Firestore rule | The new UI/routes store secrets server-side; the previous deployed UI writes `store.posSync.webhookSecret`, which the new rule rejects. Deploying rules first would break enable/rotation. | P0 (ordered POS rollout) | ⬜ |
+| 13  | After the compatible app and rules are live, migrate and verify every existing POS connection, then run staging and production test/delivery/application smoke | Lazy migration occurs on settings read, test, or delivery, but source cannot prove all dormant legacy rows migrated or that the provider applied a 2xx request. Record secret version, old-secret invalidation, signature verification, delivery history, and applied-menu evidence. | P0 (before POS certification) | ⬜ |
 
 > **Full setup guide:** `__docs__/production-readiness/launch-prerequisites.md`
 > **External certification guide:** `__docs__/production-readiness/external-certification-runbook.md`
@@ -160,7 +346,7 @@ npm run verify:functions-deploy-preflight
 | 16  | Store production WhatsApp secrets separately from dev/staging secrets                    | Prevents test tokens, test phone IDs, or staging webhooks from leaking into production                          | P0 (before production launch)    | ⬜     |
 | 17  | Review current Meta WhatsApp pricing and convert the expected launch cost to INR         | Vendor pricing can change; launch cost planning must be based on current Meta pricing                           | P1 (before paid traffic)         | ⬜     |
 
-**Current website CTA note (June 22, 2026):** `/whatsapp` uses the supplied test number `+1 555 657 1424` for click-to-WhatsApp testing. This does not complete Meta app setup, Firebase secrets, webhook registration, approved test-recipient setup, or the dedicated production WhatsApp number.
+**Current website CTA note (July 16, 2026):** `/whatsapp` is informational while provider intake remains disabled and routes owners to the existing `/create-menu` intake. It exposes no active `wa.me` onboarding test number. Meta app setup, Firebase secrets, webhook registration, approved test-recipient setup, and the dedicated production WhatsApp number remain pending.
 
 **How to do the development/staging setup:**
 
@@ -236,5 +422,5 @@ _Move items here when done. Keep as history._
 
 ---
 
-_Last Updated: July 10, 2026_
-_Updated By: Codex (SignalDesk first revenue trial action items)_
+_Last Updated: July 16, 2026_
+_Updated By: Codex (Digital Screens end-to-end hardening and ordered token-removal rollout)_

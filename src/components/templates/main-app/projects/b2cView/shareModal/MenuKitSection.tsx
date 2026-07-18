@@ -123,7 +123,8 @@ export default function MenuKitSection({
                 activePlanType,
                 locale,
             }, assetKey);
-            const shared = await shareBlob(asset.blob, asset.filename, label);
+            const shareResult = await shareBlob(asset.blob, asset.filename, label);
+            if (shareResult === 'cancelled') return;
             // Track individual asset share/download
             const actionMap: Partial<Record<MenuKitAssetKey, 'share_instagram' | 'share_whatsapp' | 'share_google_maps'>> = {
                 google_maps: 'share_google_maps',
@@ -131,7 +132,9 @@ export default function MenuKitSection({
                 whatsapp_status: 'share_whatsapp',
             };
             if (actionMap[assetKey]) trackMenuKitDownload(actionMap[assetKey]!);
-            if (!shared) {
+            if (shareResult === 'shared') {
+                message.success(`${label} shared`);
+            } else {
                 downloadBlob(asset.blob, asset.filename);
                 message.success(`${label} downloaded`);
             }

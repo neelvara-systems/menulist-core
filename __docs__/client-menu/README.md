@@ -2,7 +2,7 @@
 
 **Feature:** Client Menu
 **Status:** Implemented customer-facing menu documentation; not current launch certification
-**Last Updated:** May 10, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -31,6 +31,7 @@ Public menu external link normalization uses the shared OBP public-link policy f
 | [\_spec.md](./_spec.md)           | Product, CEO, Business | Non-technical PRD, requirements, user stories |
 | [\_impl.md](./_impl.md)           | Engineers, Tech Leads  | Technical blueprint, architecture, validation |
 | [\_marketing.md](./_marketing.md) | Sales, Marketing       | Pitch deck, copy, messaging                   |
+| [public-customer-delivery_verification.md](./public-customer-delivery_verification.md) | Engineering, Release | Current end-to-end source evidence and pending hosted QA |
 
 ### Sub-Feature Documentation
 
@@ -79,12 +80,12 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 | Offline fallback         | Customer service worker shows `/offline`; no stale menu cache | ✅     |
 | State persistence        | Scroll, filter preserved                            | ✅     |
 | Infrastructure hardening | Timeout, retry, skeleton, Vercel Data Cache         | ✅     |
-| OBP Integration          | Root = Official Business Page, /menu = default menu | ✅     |
+| OBP Integration          | Root = Official Business Page; `/menu` = owner claim or explicit default alias | ✅     |
 | Special Menu Switching   | Replace/overlay modes for special occasions         | ✅     |
 | Multi-Outlet Resolution  | Master/outlet merge for chain restaurants           | ✅     |
 | URL Routing Architecture | Slug chain redirects, reserved namespaces           | ✅     |
 | Menu Correctness Engine  | 17-rule validation + publish-gate                   | ✅     |
-| Client Sanitization      | Internal metadata stripped before customer exposure | ✅     |
+| Client Sanitization      | Explicit browser-safe project and store DTOs | ✅     |
 | Public UI Governance     | Locked output primitives over project-wise presets  | ✅     |
 | Structured public truth  | JSON-LD aligned to active menu data and freshness   | ✅     |
 | Special note disclosure  | Menu/store DB note renders in the public menu footer trust zone | ✅     |
@@ -93,9 +94,9 @@ The **Customer-Facing Digital Menu** (Client Menu) is the public-facing interfac
 
 | URL Pattern                      | Example                        | Behavior         |
 | -------------------------------- | ------------------------------ | ---------------- |
-| `{subdomain}.menulist.ai`        | `joespizza.menulist.ai`        | Default menu     |
+| `{subdomain}.menulist.ai`        | `joespizza.menulist.ai`        | Official Business Page |
 | `{subdomain}.menulist.ai/{slug}` | `joespizza.menulist.ai/drinks` | Specific project |
-| `{custom-domain}`                | `joespizza.com`                | Default menu     |
+| `{custom-domain}`                | `joespizza.com`                | Official Business Page |
 | `{custom-domain}/{slug}`         | `joespizza.com/bar-menu`       | Specific project |
 
 ---

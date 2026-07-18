@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import QrLinkHealthCheckPage from '@/components/website/qrLinkHealthCheck/QrLinkHealthCheckPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'QR Link Health Check - MenuList | Check Your QR Target';
 const description = 'Check whether a QR code opens a clear current customer link for a menu, services, booking, WhatsApp, directions, or public business page.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/qr-link-health-check',
   },
-};
+});
 
 export default function Page() {
   if (

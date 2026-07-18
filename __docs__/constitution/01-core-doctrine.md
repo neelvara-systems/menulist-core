@@ -1,6 +1,6 @@
 # MenuList Core Doctrine
 
-**Version:** 2.0  
+**Version:** 2.1
 **Status:** 🔒 LOCKED — NON-NEGOTIABLE  
 **Authority:** Maximum — Overrides all other considerations
 
@@ -47,22 +47,20 @@ MenuList earns trust by being **rarely wrong**, not by being verbose.
 
 ### Law 1 — Default Authority
 
-MenuList decides by default. Owner action is optional, temporary, and reversible.
+MenuList handles routine preparation and supported propagation by default. The owner remains authoritative for public truth, high-impact approval, billing, access, and exceptional correction.
 
 ### Law 2 — Silence Is a Feature
 
 If MenuList has nothing to act on, it does nothing. No banners, no nudges, no suggestions.  
 **Silence = confidence.**
 
-### Law 3 — No Explanations
+### Law 3 — No Unnecessary Explanations
 
-MenuList never explains _why_ it made a decision. No scores, percentages, comparisons, or causal claims.  
-**If a decision needs explanation, it should not have been made.**
+Normal operation does not narrate itself. Required approvals, charges, access changes, failures, and public-content corrections receive a short factual explanation and a safe next step. Do not expose speculative model reasoning, noisy scores, or unsupported causal claims.
 
-### Law 4 — Owners Override, Systems Resume
+### Law 4 — Owners Correct, Defaults Resume When Safe
 
-Owners may override temporarily. The system **always resumes control** automatically.  
-Permanent overrides are a system failure.
+Owners may correct public truth or choose a supported exception. Automatic defaults resume only where the product contract says they do; permanent business facts and explicit owner choices remain authoritative.
 
 ### Law 5 — Public Surfaces Demand Perfection
 
@@ -74,10 +72,9 @@ Anything visible to customers must be conservative, stable, availability-safe, a
 If a feature causes the owner to think, compare, choose, or analyze — it does not ship.  
 MenuList removes decisions. It does not add better ones.
 
-### Law 7 — No Feature Without Autonomy
+### Law 7 — No Feature Without Owner Relief
 
-If a feature cannot act autonomously, it is not a MenuList feature.  
-Dashboards do not qualify.
+A feature must remove repeated work, protect public truth, or make a required approval/correction materially easier. Engagement dashboards do not qualify. Compact approval, exception, billing, and health surfaces may qualify when they prevent owner supervision instead of creating it.
 
 ### Law 8 — Trust > Engagement
 
@@ -120,8 +117,8 @@ Every decision must assume: **"This will be publicly visible and remembered."**
 
 - **Support language** must never imply owner should have been watching
 - **Error messages** must frame issues as system-domain, not owner-domain
-- **Analytics** track usage as signal, not as audit trail for blame
-- **UI copy** never suggests "check regularly" or "monitor performance"
+- **Analytics** provide compact, settled signals and never create an audit trail for blame
+- **UI copy** never suggests routine checking or performance monitoring; required review and exception actions stay explicit
 
 ---
 
@@ -174,4 +171,4 @@ That's what infrastructure feels like.
 ---
 
 **Document Signature:** Founder Constitution  
-**Last Updated:** January 2026
+**Last Updated:** July 18, 2026

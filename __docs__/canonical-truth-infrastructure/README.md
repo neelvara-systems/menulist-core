@@ -16,7 +16,7 @@ Canonical Truth Infrastructure is the foundational layer that makes MenuList **i
 1. **Schema & Data Integrity** — Strict validation at every gate (import, save, publish)
 2. **Event Ledger** — Append-only change tracking (MOL) for data gravity
 3. **Versioning** — Global version ID per publish, monotonic, immutable
-4. **Menu Snapshots** — Point-in-time menu state on every publish
+4. **Menu Snapshots** — Best-effort, short-term point-in-time menu state on publish
 5. **Reliability Metrics** — Completeness scores, truth metrics per store
 
 ## Architecture Overview
@@ -48,8 +48,17 @@ Owner clicks publish → publishProject() → version++ → snapshot saved → s
 | `ENABLE_MENU_OBSERVATION` | Menu change tracking (MOL) | `true` |
 | `ENABLE_MENU_SNAPSHOTS` | Publish-time menu snapshots | `true` |
 
+## Current runtime boundaries
+
+- MOL defaults to one compact revision summary only when menu item truth changes; detailed per-item mode is an explicit debugging/learning switch.
+- A publish queues one PUBLISH event and at most one snapshot. Observation failure never rolls back the authoritative project publish.
+- Linked outlet publish observation uses the resolved master-plus-outlet menu and reuses the master read already required for publish admission.
+- Snapshot payloads above the 900 KiB preflight boundary are skipped rather than sent to Firestore as guaranteed oversize failures.
+- Snapshot documents carry `expiresAt` at 90 days. Because the current path uses dynamic store-named subcollections, native collection-group TTL cannot target the snapshot documents. The existing leased maintenance scheduler rotates a bounded daily page across all known stores, including inactive stores, and deletes expired rows in capped per-store batches.
+
 ## Version History
 
 | Date | Change | By |
 |------|--------|-----|
 | 2025-02-24 | Initial creation — Phase 0 verification + Phase 1 implementation | Cascade |
+| 2026-07-16 | Resolved outlet snapshots, size preflight, summary-mode and TTL truth documented | Codex |

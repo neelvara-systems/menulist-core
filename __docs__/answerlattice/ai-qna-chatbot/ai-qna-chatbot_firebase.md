@@ -1,7 +1,7 @@
 # AI QnA Chatbot — Firebase Cost & Operations Tracking
 
-> **Version:** 1.0.1
-> **Last Updated:** 2026-07-06
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -47,10 +47,10 @@
 |----------|-------|
 | **Collection** | `queryEmbeddings` |
 | **DB_COLLECTIONS constant** | `DB_COLLECTIONS.QUERY_EMBEDDINGS` |
-| **Doc ID** | Cache key string (normalized query or query+image hash) |
-| **Scoping** | Global (no tenant filter) |
+| **Doc ID** | SHA-256-derived ID from the scoped search cache key |
+| **Scoping** | Exact `pId + tId + sId`; mismatched stored scope is rejected |
 | **Avg Doc Size** | 3-4 KB (768-dimension vector as number array) |
-| **Growth Rate** | Per-unique-query |
+| **Growth Rate** | Per unique scoped cache key |
 | **Uses Admin SDK** | Yes — `firestoreAdmin` (server-side only) |
 | **Retention** | 30-day `expiresAt`, Firestore TTL override, stale-read cleanup, scheduler cleanup by `createdAt` |
 | **Cleanup Diagnostics** | `answerlattice_query_embedding_stale_delete_failed` with bounded cache-key presence/length and cache age only |
@@ -67,15 +67,13 @@
 
 ## 3. Operations Per Action
 
-### 3.1 Search — Cache HIT
+### 3.1 Search — Response-Cache Segment
 
 | Step | Reads | Writes | Gemini Calls |
 |------|:-----:|:------:|:------------:|
-| Rate limit (Upstash) | 0 | 0 | 0 |
-| Session check | 0 | 0 | 0 |
 | Response cache lookup | 1 | 0 | 0 |
-| Performance logging | 0 | 1 | 0 |
-| **Total** | **1** | **1** | **0** |
+| Configured logging sink | Separate bounded operation | Separate bounded operation | 0 |
+| **Segment shown** | **1 response-cache read** | **Logging is separate** | **0** |
 
 ### 3.2 Search — Cache MISS (Text Only)
 
@@ -84,45 +82,60 @@
 | Rate limit (Upstash) | 0 | 0 | 0 |
 | Session check | 0 | 0 | 0 |
 | Response cache lookup | 1 | 0 | 0 |
-| Embedding cache check | 1 | 1 (hitCount) | 0 |
-| Embedding generation (if miss) | 0 | 1 | 1 (`gemini-embedding-001`) |
+| Embedding cache check | 1 | 0 | 0 |
+| Embedding generation (if miss) | 0 | 1 | 1 (`gemini-embedding-2`) |
 | Vector search (12 docs) | 12 | 0 | 0 |
 | Answer generation | 0 | 0 | 1 (gemini-2.5-flash) |
 | Save to search history | 0 | 1 | 0 |
-| Performance logging | 0 | 1 | 0 |
-| **Total** | **14** | **3-4** | **1-2** |
+| Configured logging sink | Separate bounded operation | Separate bounded operation | 0 |
+| **Fallback segment** | **Up to 14 reads** | **2-3 writes depending on cache miss and logging sink** | **1-2** |
 
 ### 3.3 Search — Cache MISS (With Image)
 
 | Step | Reads | Writes | Gemini Calls |
 |------|:-----:|:------:|:------------:|
-| All of 3.2 above | 14 | 3-4 | 1-2 |
+| Text fallback segment | Up to 14 | 2-3 depending on embedding miss and logging sink | 1-2 |
 | Image fetch (Firebase Storage) | 1 storage | 0 | 0 |
 | Image → visual search context | 0 | 0 | 1 (`gemini-2.5-flash`) |
-| **Total** | **14 + 1 storage** | **3-4** | **2-3** |
+| **Fallback segment** | **Up to 14 reads + image fetch** | **2-3 writes depending on cache miss and logging sink** | **2-3** |
 
-### 3.4 Save Chat Session (New)
+### 3.4 Gated Hybrid Evidence Lookup
+
+This lookup is disabled by default. On an eligible technical query after canonical and FAQ miss:
+
+| Step | Reads | Writes | Provider calls |
+|------|:-----:|:------:|:--------------:|
+| Existing vector search | Up to 12 | 0 | 0 |
+| Exact entity-linked article query | Up to 12 | 0 | 0 |
+| In-memory qualification and rank fusion | 0 | 0 | 0 |
+| **Increment over existing fallback** | **0-12** | **0** | **0** |
+
+Eligibility requires both a bounded exact technical literal and one or more normalized resolved entity IDs. The additional query uses only active published articles in the exact `AL + tId + sId` workspace and is capped at 12 documents. Ordinary natural-language questions add zero hybrid-lane reads.
+
+These tables describe the fallback segment, not the complete request total. Canonical retrieval, FAQ retrieval, source-version/cache-state checks, support accounting, escalation, and the configured logging sink have separate bounded operation shapes.
+
+### 3.5 Save Chat Session (New)
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
 | `addDoc` to chatSessions | 0 | 1 |
 | **Total** | **0** | **1** |
 
-### 3.5 Update Chat Session (Add Message)
+### 3.6 Update Chat Session (Add Message)
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
 | `setDoc` merge | 0 | 1 |
 | **Total** | **0** | **1** |
 
-### 3.6 Get User Chat Sessions
+### 3.7 Get User Chat Sessions
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
 | Query: `tId + uId`, orderBy modifiedOn | N | 0 |
 | **Total** | **N** | **0** |
 
-### 3.7 Submit Feedback (Per Message)
+### 3.8 Submit Feedback (Per Message)
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
@@ -130,7 +143,7 @@
 | Update message in session (read-modify-write) | 1 | 1 |
 | **Total** | **1** | **2** |
 
-### 3.8 Nightly Analytics Aggregation (Cloud Function)
+### 3.9 Nightly Analytics Aggregation (Cloud Function)
 
 | Step | Reads | Writes |
 |------|:-----:|:------:|
@@ -144,7 +157,7 @@
 
 | Model | Cost behavior | Avg Payload | Calls/Search |
 |-------|---------------|:-----------:|:------------:|
-| `gemini-embedding-001` | Charged only on embedding cache miss | ~500 chars | 1 (cache miss only) |
+| `gemini-embedding-2` | Charged only on embedding cache miss | ~500 chars | 1 (cache miss only) |
 | `gemini-2.5-flash` | Charged on answer generation cache miss | ~2K input, ~500 output | 1 |
 | `gemini-2.5-flash` vision | Charged only when an image is attached | One bounded image + prompt | 1 (image only) |
 
@@ -159,34 +172,18 @@
 
 ---
 
-## 5. Monthly Cost Estimates
+## 5. Cost Measurement
 
-### Scenario: 10 stores, 50 searches/day
+Do not derive a monthly estimate from assumed cache-hit rates or fixed model prices. Measure:
 
-| Component | Daily Reads | Daily Writes | Monthly Cost |
-|-----------|:-----------:|:------------:|:------------:|
-| Search (60% cache hit) | 20×1 + 20×14 = 300 | 20×1 + 20×4 = 100 | ~$0.02 |
-| Session management | ~100 | ~50 | ~$0.01 |
-| Feedback submissions | ~10 | ~20 | ~$0.001 |
-| Nightly aggregation | 500 | 10 | ~$0.02 |
-| **Firestore subtotal** | **~910/day** | **~180/day** | **~$0.05/month** |
+- canonical, FAQ, response-cache, embedding-cache, vector, and empty-result path counts;
+- returned documents for each bounded Firestore query;
+- eligible hybrid-evidence requests and their returned article count;
+- image-context, embedding, and answer-generation provider operations;
+- provider-reported or explicitly estimated token usage;
+- feedback, session, analytics, and cache-invalidation writes.
 
-| Gemini Model | Calls/Day | Monthly Cost |
-|-------------|:---------:|:------------:|
-| gemini-embedding-001 | ~20 | Check current provider pricing |
-| gemini-2.5-flash | ~20 | Check current provider pricing |
-| gemini-2.5-flash vision (images) | ~2 | Check current provider pricing |
-| **Gemini subtotal** | | Recalculate from current provider pricing before launch |
-
-**Total:** Firestore estimate above plus current provider AI pricing. Recalculate before launch because provider pricing can change.
-
-### Scale: 1,000 stores, 500 searches/day
-
-| Component | Monthly Cost |
-|-----------|:------------:|
-| Firestore | ~$5 |
-| Gemini | ~$13 |
-| **Total** | **~$18/month** |
+Recalculate from current Firebase and provider pricing before changing packaging or publishing a cost claim.
 
 ---
 
@@ -201,17 +198,18 @@
 | `chatAnalytics` | `tId ASC, sId ASC, date ASC` | Aggregated stats |
 | `chatAnalytics` | `tId ASC, sId ASC, modifiedOn DESC` | Last update check |
 | `aiSearchHistory` | `cacheKey ASC, tId ASC, sId ASC, createdOn DESC` | Cache lookup |
-| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embeddingV2`, 768, COSINE) | Active v2 vector search |
+| `kb_articles` | `pId+tId+sId+status+active` + Vector(`embedding`, 768, COSINE) | Canonical vector search |
+| `kb_articles` | `pId+tId+sId+status+active+entityIds ARRAY` | Gated exact/entity article lookup |
 
 ---
 
 ## 7. Cost Optimization Strategies In Place
 
-| Strategy | Savings | Implementation |
-|----------|---------|----------------|
-| **Response cache** | ~60% fewer Gemini calls | `findCachedSearchByCacheKey()` |
-| **Embedding cache** | 40-60% fewer embedding calls | `getCachedEmbedding()` + hitCount tracking |
-| **Aggregated analytics** | 99.95% read reduction | Daily chatAnalytics docs vs raw session scans |
+| Strategy | Cost behavior | Implementation |
+|----------|---------------|----------------|
+| **Response cache** | Avoids provider work on a fresh scoped hit | `findCachedSearchByCacheKey()` |
+| **Embedding cache** | Avoids an embedding call on a fresh scoped hit | `getCachedEmbedding()` with exact stored `pId + tId + sId` validation |
+| **Aggregated analytics** | Avoids repeated full raw-session scans for historical views | Daily `chatAnalytics` documents |
 | **Hybrid dashboard** | Fresh + cheap | Today's live + historical aggregate |
 | **SWR deduplication** | Prevents redundant fetches | 60s dedupe interval on sessions |
 | **Client-side filtering** | No extra queries | Search/feedback filters on fetched data |
@@ -221,7 +219,9 @@ HelpChat answer-feedback acknowledgement hardening is cost-neutral. Feedback sub
 
 Search-history server scope hardening is cost-neutral. `src/database/aiSearchHistory/server.ts` now requires exact positive numeric Firestore document-ID tenant/store scope before composing new `aiSearchHistory` rows or querying the cache by `cacheKey + tId + sId`. Valid cache hits and search-history writes keep the same one-read / one-write operation shape; malformed scope returns no cache row or fails before writing a row with fallback `0` scope. This adds no reads/writes/deletes for valid requests, Storage operations, routes, rules, indexes, Cloud Functions, provider calls, Firebase deployment, or Vercel deployment.
 
-HelpChat session-delete acknowledgement hardening is also cost-neutral. The delete path still performs the existing session read, best-effort Storage cleanup for attached chat images, and one chat-session delete, but the UI now requires explicit delete acknowledgement before success copy and restores the previous active-session/search state if acknowledgement fails.
+HelpChat session-delete acknowledgement hardening performs one transaction-current session read and one chat-session delete. Persisted chat images are tenant/store-scoped and may be shared by another session, so delete, branch replacement, and message compaction retain them and report `storageFilesDeleted: 0` until a scope-wide reference inventory can authorize cleanup. The UI still requires explicit delete acknowledgement before success copy and restores the previous active-session/search state if acknowledgement fails.
+
+The development-only clear control is a bounded composition of the same operation for the at-most-50 sessions already loaded for the signed-in user: **N session reads + N session deletes**, processed sequentially; persisted images remain retained under the shared-reference policy. It does not scan collections, does not use the MenuList Firebase client, and does not attempt forbidden client deletes against `aiSearchHistory` or `queryEmbeddings`. Failed acknowledgements remain visible in local state, so partial failure cannot be presented as a complete wipe.
 
 HelpChat message copy, AI Search answer copy, and ArticleView link copy acknowledgement hardening is browser-local and cost-neutral. `src/lib/answerlattice/supportClipboard.ts` checks Clipboard API support, falls back to a textarea copy path only when available, and requires `document.execCommand('copy') === true` before copied feedback appears. This adds no Firestore reads/writes/deletes, no Storage operations, no Firebase Auth operations, no API routes, no Cloud Functions, no indexes, no rules, no provider calls, and no deployment requirement.
 

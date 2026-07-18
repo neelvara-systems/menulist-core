@@ -1,13 +1,79 @@
 # AI Image Generation — Verification Report
 
 **Feature:** Menu Image Generation & Editing
-**Verification Date:** June 29, 2026 (worker/auth/logging and owner result-action diagnostics update)
-**Auditor:** Cascade (AI Assistant)  
-**Status:** Controlled owner testing ready; full MenuList certification still incomplete
+**Verification Date:** July 16, 2026
+**Auditor:** Codex
+**Status:** Runtime/docs cross-check completed; verification commands and external release evidence are recorded below
 
 ---
 
-## Executive Summary
+## Current cross-check — July 15, 2026
+
+The codebase was traced across single generation, reference-image input, image editing, batch job creation/trigger/worker/listener/review/retry, prompt cache, AI capacity/accounting, generated-media upload, owner acceptance, linked-outlet policy, desktop/mobile parity, project-cover generation, Official Business Page cover generation, public cache invalidation, and retention cleanup.
+
+### Confirmed findings and fixes
+
+| Finding | Resolution |
+| --- | --- |
+| `ENABLE_AI_IMAGE_GENERATION` existed but did not gate routes or UI | Enforced in single/edit/batch-trigger/authenticated-worker routes, central cover helpers, item modal/editing, and desktop/mobile project/business-cover entry points |
+| Mobile **Generate image** opened upload instead of generation | Corrected to open the shared modal with `preferredInitialTab='generate'` |
+| Batch UI could select more than the server maximum | Shared 50-item limit now applies to individual, category, visible-all, quick-select, initial mobile selection, modal admission, schema, and server projection |
+| Batch UI showed an unsupported fixed duration | Removed; owner sees selected count and shared credit estimate |
+| Batch settings used a second icon library and prohibited `Smart` copy | Replaced with `react-icons/lu` and **Recommended Defaults** |
+| Batch review and retention inferred delete authority from browser/job plus one-project state | Browser review actions no longer delete generated media. Job retention prunes heavy metadata after seven days and deletes terminal job rows after 30 days, but keeps public media objects until global cross-project/outlet exclusive-reference proof exists. |
+| Deterministic Admin uploads could overwrite bytes and rotate Firebase download tokens on retry | Batch-worker and prompt-cache destination copies now use generation-match create-only writes, verify an existing object's size/cache policy/content type/checksummed metadata on conflict, and reuse its existing download token. |
+| Prepared-media Storage rules still admitted animated GIF writes through direct SDK access | `media/{profile}/...` now accepts static JPEG/PNG/WebP only; the Storage emulator proves GIF bypass rejection while legacy non-profile image rules remain compatible. |
+| Mandatory mobile feature documentation was missing | Added `ai-image-generation_mobile-support.md` with shared-shell/persistence/failure truth |
+| Active spec and verification language contained historical guarantees/contradictions | Rebuilt the active spec and marked the older audit material below as retained history, not current runtime truth |
+| AI Menu Manager could recommend image work after the master feature was disabled | Image action definitions and photo-gap suggestions now require `ENABLE_AI_IMAGE_GENERATION` |
+| Daily retention repeatedly scanned only the first 200 active stores | Added deterministic sorted UTC-day page rotation with no new state document or owner-flow change |
+| Prompt-cache cleanup could remove only 25 expired rows per day | Kept the 25-row burst cap, changed cadence to hourly oldest-first cleanup, and exposed `hasMoreExpired` in scheduler task details |
+| A transient prompt-cache source deletion failure could still remove its Firestore pointer | Cache rows now remain available for the next hourly retry when private-source deletion fails |
+| Batch trigger created all task requests simultaneously | Reused `mapWithConcurrency()` with an eight-request cap while preserving the same task IDs and per-item failure projection |
+| Implementation docs overstated batch request-body limits | Corrected the batch trigger and worker limits to the source-enforced 4MB and 256KB boundaries |
+| Aggregate readiness assertions still expected pre-cross-check Gate 7 and Razorpay evidence | Aligned the verifier with the July 15 batch-worker/queue-policy blocker, scheduler-only deploy attempt, and July 14 Razorpay read-only evidence |
+
+The July 16 media changes preserve generated-image selection, provider prompts/models, job schema, AI reservation/accounting, subscription balances, accepted-image persistence, public cache invalidation, and worker retry semantics. Owner review copy now truthfully says that discarding adds no images instead of promising immediate physical deletion. Hot job/subscription documents remain unchanged until measured contention justifies a migration.
+
+### Current release boundary
+
+Source verification does not equal target release certification. The July 15 scoped QA scheduler deploy passed predeploy lint/build and then stopped before upload at Cloud Resource Manager HTTP 403. The current workspace app env files also lack `BATCH_IMAGE_GENERATION_WORKER_SECRET`. Remaining owner/external evidence is target app deployment, Firebase scheduler permission/deployment, complete target Cloud Tasks configuration/secrets and queue-policy capture, live Gemini smoke, authenticated desktop/mobile owner flow QA, and public menu/Official Business Page render/cache smoke.
+
+### Current command evidence
+
+Passed:
+
+- `npm run verify:ai-accounting`
+- `npm run verify:ai-menu-manager`
+- `npm run test:image-batch:rules`
+- `npm run test:image-batch-item-concurrency:emulator`
+- `npm run verify:storage-paths`
+- `npm run test:admin-immutable-object-boundary`
+- `npm run test:media-storage-boundary`
+- `npm run verify:menu-project-editor-boundary`
+- `npm run verify:public-business-truth`
+- `npm run verify:dependency-freeze`
+- `npx tsc --noEmit`
+- scoped root ESLint
+- `npm --prefix functions run build`
+- `npm --prefix functions run lint`
+- `npm run verify:functions-deploy-preflight`
+- `git diff --check`
+
+Blocked outside this feature slice:
+
+- `npm run verify:auth-security-failure-matrix` stops on an existing `Math.random()` violation in `src/components/templates/main-app/reseller/resellerDiagnostics.ts`.
+- `npm run verify:agent-readiness` now accepts the refreshed batch/Razorpay evidence and then stops on an unrelated historical production-audit documentation-health assertion while the concurrent video-doc changes keep the global link gate red.
+- The latest global `npm run docs:check-links` sees no AI image-generation link failure, but stops on two unrelated missing video deliverables (`menulist-owner-ease-30s-v1.10.mp4` and `v1.11.mp4`) plus existing/new video naming warnings in the concurrently changing worktree.
+- The scoped QA scheduler deploy stops before upload with Cloud Resource Manager HTTP 403.
+
+### Historical material boundary
+
+The remainder of this file preserves earlier verification history. Where it conflicts with the current section or current code, it is superseded. In particular, historical statements about a declaration-only flag being “fixed,” disabled transaction recording, no batch limit, an active older model, fixed timing/reliability, or future P2/P3 commitments are not current truth.
+
+---
+
+## Historical Executive Summary
 
 Comprehensive verification of the AI Image Generation feature against:
 
@@ -197,7 +263,7 @@ All items discussed in the Cascade session have been implemented.
 | **Law 1: 3-Year Freeze**          | Complete at launch        | ✅       | All features implemented                 |
 | **Law 2: Codebase Truth**         | Code > ChatGPT            | ✅       | Verified against actual code             |
 | **Law 3: Single Doc Rule**        | One doc set               | ✅       | `__docs__/projects/ai-image-generation/` |
-| **Law 4: Feature Flags**          | Required for all features | ✅ Fixed | Added `ENABLE_AI_IMAGE_GENERATION`       |
+| **Law 4: Feature Flags**          | Required for all features | ✅ Fixed | Master flag enforced across reviewed API/UI/assistant entries |
 | **Law 5: Path Verification**      | Exact file:line refs      | ✅       | All docs have file references            |
 | **Law 6: Cascade Primary**        | Cascade enhances          | ✅       | This verification demonstrates           |
 | **Law 7: Continuous Improvement** | Update prompts            | ✅       | Will update if patterns found            |
@@ -207,7 +273,7 @@ All items discussed in the Cascade session have been implemented.
 | Anti-Pattern            | Found?   | Evidence                                               |
 | ----------------------- | -------- | ------------------------------------------------------ |
 | Multiple scattered docs | ❌ No    | Single `__docs__/projects/ai-image-generation/` folder |
-| Missing feature flag    | ✅ Fixed | Was missing, now added                                 |
+| Missing feature admission | ✅ Fixed | Master flag is declared and enforced across reviewed entry points |
 | Vague file references   | ❌ No    | All docs have exact paths                              |
 | Future-phase mentions   | ❌ No    | Everything ships complete                              |
 
@@ -356,25 +422,25 @@ All items discussed in the Cascade session have been implemented.
 
 ---
 
-## 10. Performance Considerations
+## 10. Historical performance notes (not a runtime SLA)
 
 ### Current State
 
-| Metric            | Current       | Impact            |
-| ----------------- | ------------- | ----------------- |
-| Single generation | ~5-15 seconds | Acceptable        |
-| Batch (50 items)  | ~5-10 minutes | Uses Cloud Tasks  |
-| Image upload      | ~1-2 seconds  | Firebase Storage  |
-| Modal load        | Instant       | Static components |
+| Metric            | Current source truth | Release evidence |
+| ----------------- | -------------------- | ---------------- |
+| Single generation | Provider- and payload-dependent; no fixed duration is promised | Target Gemini smoke pending |
+| Batch (1–50 items) | Queue dispatch, retries, provider behavior, and item count determine duration | Queue-policy capture and controlled worker smoke pending |
+| Image upload      | Network, prepared media size, and Storage availability determine duration | Authenticated desktop/mobile smoke pending |
+| Modal load        | Local UI path with shared desktop/mobile logic | Browser/device QA pending |
 
 ### Optimization Opportunities
 
 | Optimization                           | Effort | Impact                     | Priority |
 | -------------------------------------- | ------ | -------------------------- | -------- |
-| Parallel prompt execution              | Medium | 2-3x faster for multi-mode | P2       |
-| Image compression before upload        | Low    | 50% storage reduction      | P2       |
-| Context caching for repeated prompts   | Medium | 20-40% cost reduction      | P3       |
-| Batch Prediction API for large batches | High   | 50% cost reduction         | P3       |
+| Parallel prompt execution              | Already bounded in current source | Preserve the cap; measure before changing | Closed |
+| Image preparation before upload        | Shared browser/Admin media profiles | Preserve current WebP/size boundary | Closed |
+| Prompt caching                         | Eligible batch requests use the private-source cache | Measure hit rate and cleanup backlog before tuning | Observe |
+| Batch Prediction API                   | Not used; current batch maximum is 50 | Do not migrate without measured provider/queue evidence | No action |
 
 ### Doctrine Alignment
 
@@ -415,15 +481,15 @@ Per MenuList Constitution:
 
 ---
 
-## 12. Items for Discussion
+## 12. Historical Items for Discussion (Superseded)
 
 ### Decisions Required
 
 | Topic                         | Options                                   | Recommendation                    |
 | ----------------------------- | ----------------------------------------- | --------------------------------- |
-| **Model Upgrade**             | Stay on 2.0 Flash vs upgrade to 2.5 Flash | Evaluate quality/cost tradeoff    |
-| **Transaction Recording**     | Enable vs keep disabled                   | Enable for billing accuracy       |
-| **Batch Size Limit**          | No limit vs 50 max                        | Add 50 item limit for cost safety |
+| **Model Upgrade**             | Historical 2.0/2.5 decision               | Resolved: current source uses `gemini-2.5-flash-image` |
+| **Transaction Recording**     | Historical disabled/enabled decision      | Resolved: shared reservation/accounting is active |
+| **Batch Size Limit**          | Historical unlimited/50 decision          | Resolved: 50 is enforced across UI/client/server |
 | **Quality Guard Integration** | Add vs skip                               | Add for Law 5 compliance          |
 
 ### Open Questions
@@ -434,23 +500,23 @@ Per MenuList Constitution:
 
 ---
 
-## 13. Decision Rationale Documentation
+## 13. Historical Decision Rationale (Superseded)
 
 ### Why Feature Flag Was Missing
 
-The feature was developed incrementally and the flag requirement (Law 4) was added later. Fixed during this verification.
+The feature was developed incrementally and the flag declaration was added later. Runtime/API/UI enforcement was completed in the July 14, 2026 cross-check.
 
-### Why Transaction Recording Is Disabled
+### Why Transaction Recording Was Disabled Historically
 
-Code comment suggests it was disabled during testing. Should be re-enabled for production to track token usage and costs.
+An older test-era path disabled recording. Current source uses shared reservation, settlement, refund, and owner-history presentation; this historical rationale is not current behavior.
 
-### Why Some console.log Remain
+### Why Some Console Output Remained Historically
 
-Backend API routes have more console.log for debugging. Frontend has been cleaned. Backend cleanup is P2 priority.
+Earlier backend and frontend paths retained raw debugging. Current reviewed routes use bounded diagnostics and the active verifier rejects the retired raw-output patterns.
 
-### Why No Batch Size Limit
+### Why There Was No Batch Size Limit Historically
 
-Initial implementation didn't anticipate very large batches. Adding limit is recommended for cost protection.
+The initial implementation did not cap every selection path. Current source enforces a shared 50-item ceiling before configuration/job creation and again at client/server projection boundaries.
 
 ---
 

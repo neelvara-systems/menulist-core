@@ -2,10 +2,32 @@
 
 **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
 **Status:** Source-implemented, provider-disabled — not a current launch or deploy certification
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026
 **Priority:** HIGH — Every onboarding session triggers multiple operations. Scales with acquisition volume.
 
 **Launch boundary:** Not current launch certification or deploy approval. This Firebase cost doc describes source/cost behavior and fail-closed provider setup; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped Functions deploy evidence, real non-production Meta provider smoke, browser/device QA where relevant, and production-host smoke.
+
+## July 16, 2026 Provider Network Cost Boundary
+
+WhatsApp Graph lookups, downloads, and outbound sends now refuse redirects and use bounded abort timeouts. This adds no Firestore read/write/delete, Storage operation, collection, index, or scheduled task. It bounds provider-worker occupancy and avoids unintended repeated work caused by a stalled upstream call. Because Functions source changed, an isolated approved QA Functions deploy and real Meta provider smoke remain pending before enablement; checked-in target flags stay disabled.
+
+## July 13, 2026 Ops Monitor Read/Cost Boundary
+
+One successful manual `/api/ops/messaging-onboarding` refresh performs at most 30 document reads plus 18 aggregation-count queries:
+
+| Source | Maximum per refresh | Reason |
+| --- | ---: | --- |
+| Health control + referenced snapshot | 2 document reads | Direct `lastSnapshotId` lookup; no health collection scan |
+| Recent onboarding events | 12 document reads | Closed 24-hour window, descending timestamp, hard limit 12 |
+| Recent onboarding sessions | 8 document reads | Descending `updatedAt`, hard limit 8 |
+| Recent messaging alerts | 8 document reads | Indexed subsystem filter, descending timestamp, hard limit 8 |
+| Inbound status counts | 3 aggregation queries | `PENDING`, `PROCESSING`, `FAILED` |
+| Session-state counts | 8 aggregation queries | Fixed watched state set |
+| 24-hour event-type counts | 7 aggregation queries | Fixed webhook event set and the same closed time window |
+
+The prior alert path read 30 latest alerts across all subsystems and filtered afterward. It could miss messaging alerts and charged up to 22 unnecessary document reads. The current composite index on `systemAlerts(metadata.subsystem ASC, timestamp DESC)` makes the result correct and lowers the maximum document-read part of one refresh from 52 to 30. Aggregation queries remain deliberate because they avoid downloading unbounded session/event collections; the shared `DATA_READ` limiter and manual/no-store monitor keep refresh frequency bounded. This route performs no writes, provider calls, Storage operations, or browser Firestore reads.
+
+The route also projects Firestore documents through `messagingOnboardingOpsBoundary.ts`; malformed counters, timestamps, nested objects, or excess rows do not become a browser read model. No new collection or summary-document write loop was added.
 
 The public `/whatsapp` page is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. It must not expose a test number or active provider action while checked-in Functions targets remain disabled.
 
@@ -58,7 +80,7 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 | Read session for preview page      | `messagingOnboardingSessions`   | Preview page load              | Per preview view | 1         | Direct doc                                    | Server-side read in Next.js; rate-limited per session/IP before the read |
 | Read extraction job result         | `menuImageProcessingJobs`       | After extraction completes     | Per extraction   | 1         | Direct doc                                    | Polls/listens for job completion                          |
 | Read platform counter floors       | `platformSummary/summary`, legacy `default`, `storesSummary` | Publish pipeline | Per publish | 3 + bounded occupied-candidate probes | Direct docs | Inside Firestore transaction; exact numeric values only |
-| Health snapshot control            | `systemHealth/messaging_onboarding_control` | Intake processor | Every 2 min cheap guard; expensive scans hourly | 1 | Direct doc | Prevents the 2-minute scheduler from doing expensive health scans every run |
+| Health snapshot control            | `systemHealth/messaging_onboarding_control` | Intake processor | First 4 minutes of each UTC hour; at most 48 checks/day on the 2-minute cadence | 1 | Direct doc | Existing transaction lease remains final authority; idle runs outside the window make no health-control read |
 | Health/cost sample                 | Sessions + events + `systemHealth` | Health monitor | Hourly | Up to 200 sessions + 1000 events + 250 live sessions | Single-field/composite indexes | Bounded sample for cost, publish rate, failure, and retained-source storage monitoring |
 
 ### Writes
@@ -68,7 +90,7 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 | Create session                     | Sessions + per-user rate-limit doc | First valid upload from new user | Per new session | 2 in one transaction | Session plus counters and `activeSessionId` | Prevents concurrent first uploads from creating two active sessions |
 | Create inbound queue message       | `messagingOnboardingInboundMessages` | Every unique provider message | Per message | 1 | Sanitized normalized payload, status, attempt counters | Enables provider ACK after durable write and retry drain       |
 | Update inbound queue status        | `messagingOnboardingInboundMessages` | Queue claim/checkpoint/finalize/retry | Per queued message | 3 normal writes after create | status, token, handlerCompletedAt, replyText, processedAt | Delivery retry reuses the checkpointed reply; max 5 attempts |
-| Update session (add upload)        | `messagingOnboardingSessions`   | Each media message               | Per upload      | 1 transactional write | uploads[], lastUploadAt, intakeExpiresAt | Exact cap/dedup/current-state check; deterministic Storage path is cleaned on rejected append |
+| Update session (add upload)        | `messagingOnboardingSessions`   | Each media message               | Per upload      | 1 transactional write | uploads[], lastUploadAt, intakeExpiresAt | Exact cap/dedup/current-state check; attempt-unique Storage paths avoid retry overwrite, and rejected/throwing finalization adds one exact session read before cleanup so committed references survive acknowledgement loss |
 | Update session (state change)      | `messagingOnboardingSessions`   | State transitions                | 5-8 per session | 1            | state, stateHistory[], updatedAt                          | Append to stateHistory array                                  |
 | Update session (validation result) | `messagingOnboardingSessions`   | After asset intelligence         | Per session     | 1 transactional write | validMenuFiles, invalidFiles, extractedBusinessInfo, etc. | Commits only if the exact upload snapshot is unchanged; otherwise returns to intake |
 | Update session (extraction result) | `messagingOnboardingSessions`   | After extraction completes       | Per session     | 1            | extractedMenuData, extractedProjectFiles, qualityScore     | Heavy write (~10-80 KB depending on menu size and per-file extraction data) |
@@ -109,7 +131,7 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 
 **Diagnostic boundary:** the shared lifecycle-event writer sanitizes retained event metadata before Firestore writes, stores event errors as code/retry metadata only, and caps event write/preparation source error names/codes before logging. The app-side preview/publish event writes use the same bounded metadata policy, and the platform-only ops reader applies the bounded display policy for older 30-day event rows. They keep allowlisted scalar telemetry, truncate allowed string enums, record sensitive identifiers/URLs/names/hashes as presence/length metadata, and drop nested objects/arrays. Preview approve/fix and app-side publish events do not retain raw business names, issue arrays, tenant IDs, store IDs, or project IDs in metadata. Webhook signature-failure events store IP presence/length metadata only. Webhook logger diagnostics also keep provider path, IP, inbound message ID, and provider-user values as presence/length metadata with source error name/code/status only. Inbound queue lifecycle event metadata and processing-failure logger diagnostics keep message IDs as presence/length metadata and source error names/codes capped; real message IDs remain only in required queue document IDs and return values for idempotency. Session-engine, intake-processor, and health-monitor logger diagnostics keep session IDs and source error metadata bounded; real session IDs remain only in required state documents, event records, queue/session fields, and Storage paths. Intake processor state-history reasons for validation retry failure and extraction-job creation use fixed local text instead of raw exception or job IDs, and intake queue/query/send/validation diagnostics cap source error names/codes before logging. WhatsApp provider parse diagnostics cap source error names/codes; send diagnostics keep provider-user and provider response body values as presence/length metadata only, and failed text sends throw stable provider failure codes for downstream retry diagnostics. WhatsApp provider media URL rejections keep media URL and validation errors as presence/length metadata only after the shared Functions public HTTPS + DNS target validator runs. The retained Cloud Functions publish-pipeline reference logs session, tenant, store, and project identifiers as presence/length metadata only, and caps provider confirmation source error names/codes before logging.
 
-**Duplicate-upload cleanup diagnostics:** duplicate media uploads are still acknowledged silently after the orphaned Storage delete attempt. If the delete fails, `sessionEngine.ts` logs bounded session/upload/storage-path presence-length metadata and bounded source error name/code only. This adds no Firestore reads/writes/deletes and no Storage operations beyond the already-attempted duplicate-object delete.
+**Upload finalization cleanup diagnostics:** duplicate/capped/stale append results and thrown create/append finalization now perform one exact session read before Storage compensation. Valid persisted upload arrays that do not reference the attempt path authorize deletion; a matching reference, malformed persisted row, or read failure defers cleanup with bounded session/upload presence-length diagnostics. Attempt-unique object IDs prevent a replay from overwriting the download token of a previously committed source. This adds one Firestore read only on rejected or throwing finalization paths and no read on an ordinary admitted upload.
 
 **Legacy temp-project cleanup diagnostics:** current messaging extraction jobs set `skipProjectSave: true`, so the temp project delete path is legacy-only. If a legacy temp project delete fails, `msgExtractionWatcher` logs bounded session/temp-project presence-length metadata, a fixed cleanup target, and bounded source error name/code only. This adds no Firestore reads/writes/deletes beyond the already-attempted temp project delete and no Storage operations.
 
@@ -209,7 +231,8 @@ The public `/whatsapp` page is informational and routes its actions to the signe
 - **Asset Intelligence filtering** — Only valid menu files sent to extraction (reduces Gemini calls by ~30%)
 - **Single collection for all providers** — No per-provider collection overhead, simpler queries
 - **Extraction-only project save skip** — Messaging jobs set `skipProjectSave: true`, so shared extraction avoids the manual-dashboard temp project read/write/verify/delete cycle
-- **Hourly health snapshots** — Cost and failure scans are bounded and hourly, not every two-minute scheduler run
+- **Hourly health snapshots** — Cost and failure scans are bounded and hourly. The control lease is checked only during the first four UTC minutes of the hour, reducing the enabled idle control path from about 720 reads/day to at most 48 without a new task or document.
+- **Outbound retry observability** — Preview, publish-confirmation, and fix delivery helpers return sent/error counts to the consolidated scheduler. Successful outbound work becomes meaningful activity, and provider query/send failures contribute to the existing health error metric instead of being logged as a quiet successful run.
 - **Published source retention monitor** — Published media is retained because projects reference it; `systemHealth` samples retained bytes and raises alerts instead of deleting live source files blindly
 
 ### Conditional Optimizations
@@ -230,7 +253,7 @@ Asset Intelligence diagnostics add no Firestore reads/writes. Each readable sour
 
 Session cleanup diagnostics add no Firestore reads/writes or Storage operations beyond the existing expiry, reminder, cleanup, and inbound queue cleanup paths. Failures are logged with stable `MESSAGING_*` codes plus bounded source metadata instead of raw session IDs or exception messages.
 
-Active publish cache revalidation diagnostics add no Firestore reads/writes, Storage operations, Cloud Function calls, provider calls, indexes, rules, or cache tags beyond the existing successful publish path. Revalidation failures are logged with stable `messaging_onboarding_publish_cache_revalidation_failed` diagnostics, bounded tenant/store/project/user metadata, tag count, owner-assistant packet cache state, and source error metadata only; raw IDs and exception messages must not be logged.
+Active publish cache revalidation diagnostics add no Firestore reads/writes, Storage operations, Cloud Function calls, provider calls, indexes, rules, or cache tags beyond the existing successful publish path. The existing store/global tags, Digital Screens touch, and project-scoped Owner Business Assistant invalidation are independently settled after commit so one failure cannot skip later effects. Revalidation failures are logged once with stable `messaging_onboarding_publish_cache_revalidation_failed` diagnostics, bounded tenant/store/project/user metadata, tag count, failed-effect count, and source error metadata only; raw IDs and exception messages must not be logged.
 
 Active publish lifecycle-event diagnostics add no Firestore reads/writes beyond the existing best-effort event write attempt. If `PUBLISH_STARTED` or `PUBLISH_COMPLETED` event creation fails, `messaging_onboarding_publish_event_write_failed` records session/provider presence-length metadata, fixed event type/state, metadata key count, and bounded source error metadata only. Publish success, session finalization, cache revalidation, and public output are unchanged.
 

@@ -23,6 +23,8 @@ import {
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from '../sharedData/platformNotificationRegistry';
 import {
   getNextOwnerNotificationProcessingAttempt,
+  hasOwnerNotificationWhatsAppConsent,
+  isOwnerNotificationEventWithinByteLimit,
   normalizeOwnerNotificationNumericScopeDocumentId,
   normalizeOwnerNotificationReferenceId,
 } from '../sharedData/ownerNotificationDeliveryBoundary';
@@ -47,6 +49,8 @@ const OWNER_NOTIFICATION_LIFECYCLE_FLAG_CHECK_FAILED = 'owner_notification_lifec
 const OWNER_NOTIFICATION_UNKNOWN_MENULIST_TRIGGER = 'owner_notification_unknown_menulist_trigger';
 const MAX_OWNER_NOTIFICATION_WHATSAPP_PROVIDER_MESSAGE_ID_LENGTH = 200;
 const OWNER_NOTIFICATION_WHATSAPP_RESPONSE_JSON_MAX_BYTES = 64 * 1024;
+const OWNER_NOTIFICATION_PROVIDER_TIMEOUT_MS = 15_000;
+const OWNER_NOTIFICATION_EVENT_TOO_LARGE = 'owner_notification_event_too_large';
 
 type EventStatus = 'pending' | 'processing' | 'delivered' | 'partial' | 'failed' | 'skipped';
 
@@ -216,16 +220,6 @@ function resolveFirstPhone(context: Record<string, any> | null | undefined, ...v
   return undefined;
 }
 
-function hasWhatsAppConsent(settings?: Record<string, any> | null): boolean {
-  if (!settings) return false;
-  const status = String(settings.whatsappConsentStatus || '').toLowerCase();
-  return settings.whatsappConsent === true
-    || settings.whatsappConsented === true
-    || status === 'granted'
-    || status === 'active'
-    || status === 'verified';
-}
-
 function sanitizeForFirestore(value: any): any {
   return sanitizeFirestoreValue(value, {
     dateTransform: (date) => date.toISOString(),
@@ -298,7 +292,7 @@ async function getStoreInfo(event: OwnerNotificationEventDoc): Promise<StoreInfo
       data.phone,
       data.phoneNumber,
     ),
-    whatsappConsent: hasWhatsAppConsent(settings),
+    whatsappConsent: hasOwnerNotificationWhatsAppConsent(settings),
     formattingSource: data,
   };
 }
@@ -398,10 +392,11 @@ async function incrementRateLimit(
   channel: OwnerNotificationChannel,
   recipientHash: string,
 ): Promise<boolean> {
+  const dateKey = todayKey();
   const recipientRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS)
-    .doc(safeId(['ML', channel, recipientHash, todayKey()].join('|')));
+    .doc(safeId(['ML', channel, recipientHash, dateKey].join('|')));
   const storeRef = db.collection(OWNER_NOTIFICATION_COLLECTIONS.RATE_LIMITS)
-    .doc(safeId(['ML', 'store', event.tenantId, event.storeId, todayKey()].join('|')));
+    .doc(safeId(['ML', 'store', event.tenantId, event.storeId, dateKey].join('|')));
 
   return db.runTransaction(async (tx) => {
     const recipientSnap = await tx.get(recipientRef);
@@ -413,7 +408,7 @@ async function incrementRateLimit(
       productId: 'ML',
       channel,
       recipientHash,
-      dateKey: todayKey(),
+      dateKey,
       count: FieldValue.increment(1),
       expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS),
       updatedAt: Timestamp.now(),
@@ -423,7 +418,7 @@ async function incrementRateLimit(
       scope: 'store',
       tenantId: event.tenantId,
       storeId: event.storeId,
-      dateKey: todayKey(),
+      dateKey,
       count: FieldValue.increment(1),
       expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RATE_LIMIT_RETENTION_DAYS),
       updatedAt: Timestamp.now(),
@@ -532,11 +527,13 @@ async function sendWhatsApp(params: {
   try {
     const response = await fetch(`https://graph.facebook.com/${GRAPH_API_VERSION}/${encodedPhoneNumberId}/messages`, {
       method: 'POST',
+      redirect: 'manual',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(OWNER_NOTIFICATION_PROVIDER_TIMEOUT_MS),
     });
     if (!response.ok) {
       logger.warn('[OwnerNotifications] WhatsApp delivery failed', {
@@ -645,6 +642,13 @@ export async function sendOwnerLifecycleNotification(payload: SendMessagePayload
       expiresAt: getRetentionExpiry(FUNCTION_RETENTION_CONFIG.OWNER_NOTIFICATION_RETENTION_DAYS),
       updatedAt: now,
   };
+  if (!isOwnerNotificationEventWithinByteLimit(eventDoc)) {
+    logger.warn('[OwnerNotifications] Event payload exceeded the bounded document contract', {
+      failureCode: OWNER_NOTIFICATION_EVENT_TOO_LARGE,
+      ...getOwnerNotificationTriggerLogContext(normalizedPayload.eventType),
+    });
+    return false;
+  }
 
   await db.runTransaction(async (tx) => {
     const existing = await tx.get(eventRef);

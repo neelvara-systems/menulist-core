@@ -393,7 +393,7 @@ export interface MenuItemForSlide {
     id: string;
     name: string;
     imageUrl?: string;
-    price?: number;
+    price?: number | string;
     available: boolean;
     isBestSeller?: boolean;
     categoryName?: string;
@@ -442,7 +442,7 @@ export interface ScreenSlide {
     imageUrl: string;
     itemId?: string;
     itemName?: string;
-    price?: number; // v2.0: Price display — data exists in MenuItemForSlide, now propagated
+    price?: number | string; // Preserves numeric, range, and bounded text-price truth.
     description?: string; // v2.2: Item description for poster-style slides
     tags?: string[]; // v2.2: Dietary/category tags (e.g. "Vegetarian", "Spicy")
     caption?: string;

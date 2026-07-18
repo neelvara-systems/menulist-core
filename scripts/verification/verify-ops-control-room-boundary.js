@@ -161,7 +161,14 @@ function verifyOpsDal(dal) {
     'getCountFromServer(newStoresQuery)',
     'getCountFromServer(activeQuery)',
     'getCountFromServer(staleQuery)',
-    'limit(maxResults)',
+    'limit(boundedMaxResults)',
+    'Math.min(Math.max(maxResults, 1), 30)',
+    'await assertCurrentPlatformAccess();',
+    'getOpsControlRoomSnapshot()',
+    "throw new Error('ops_system_state_unavailable')",
+    "throw new Error('ops_adoption_pulse_unavailable')",
+    "throw new Error('ops_integrity_signals_unavailable')",
+    "throw new Error('ops_recent_alerts_unavailable')",
     'buildOpsStoredTextSummary',
     "logOpsFailure('ops_system_state_load_failed'",
     "logOpsFailure('ops_adoption_pulse_load_failed'",
@@ -186,10 +193,7 @@ function verifyDesktopSurface(component) {
   [
     "platformRole === 'PLATFORM'",
     "redirect('/dashboard')",
-    'getSystemState()',
-    'getAdoptionPulse()',
-    'getIntegritySignals()',
-    'getRecentAlerts(10)',
+    'getOpsControlRoomSnapshot()',
     "fetch('/api/ops/safe-mode'",
     "fetch('/api/ops/mute-alerts'",
     '...OPS_CONTROL_ROOM_REQUEST_POLICY',
@@ -206,7 +210,8 @@ function verifyDesktopSurface(component) {
     "logOpsFailure('ops_control_room_safe_mode_toggle_failed'",
     "logOpsFailure('ops_control_room_mute_alerts_failed'",
     "logOpsFailure('ops_control_room_force_republish_failed'",
-    'SAFE_MODE blocks AI generation and bulk operations. Public menus remain unaffected.',
+    'SAFE_MODE stops guarded AI generation and provider-upload paths.',
+    'Ops state unavailable',
   ].forEach((token) => assertIncludes(component, token, 'Desktop Ops Control Room'));
 
   [
@@ -222,10 +227,8 @@ function verifyMobileSurface(screen, mobileShell, mobileMore) {
   [
     "platformRole === 'PLATFORM'",
     'This screen is available only to platform admins.',
-    'getSystemState()',
-    'getAdoptionPulse()',
-    'getIntegritySignals()',
-    'getRecentAlerts(10)',
+    'getOpsControlRoomSnapshot()',
+    'Ops state unavailable',
     "fetch('/api/ops/safe-mode'",
     "fetch('/api/ops/mute-alerts'",
     '...OPS_CONTROL_ROOM_REQUEST_POLICY',
@@ -276,20 +279,18 @@ function verifyDocsAndPackage(packageJson, opsDoc, mobileDoc, auditDoc) {
   );
 
   [
-    '/ops` keeps the same platform-only route',
-    'SAFE_MODE toggle',
-    'alert-mute button',
-    'force-republish callable behavior',
-    'OPS_CONTROL_ROOM_REQUEST_POLICY',
-    'caps browser JSON parsing at 16KB',
-    'desktop and mobile force-republish callable results require `success`, a bounded `projectCount` from 1 to 100',
-    'bounded `ops_control_room_response_*` diagnostics',
+    '`/api/platform/current-access` exists for direct browser Firestore monitors',
+    '`src/database/ops/index.ts::getOpsControlRoomSnapshot()`',
+    'Any source error is logged with bounded `ops_*` diagnostics and rejects the snapshot.',
+    'SAFE_MODE wording follows the actual boundary',
+    'Desktop and mobile force-republish callable results require `success`, a bounded `projectCount` from 1 to 100',
     'Source gate: `npm run verify:ops-control-room-boundary`',
-    'does not run Firestore reads/writes, callable invocations, provider calls, browser smoke, Firebase deploy, or Vercel deploy',
+    'It does not run Firestore reads/writes, callable invocations, provider calls, browser smoke, Firebase deploy, or Vercel deploy.',
   ].forEach((token) => assertIncludes(opsDoc, token, 'Ops Control Room implementation docs'));
 
   [
-    'platform-only emergency surface',
+    'platform-only MobileShell layer',
+    '`/api/platform/current-access` boundary',
     'SAFE_MODE confirmation',
     'alert-mute action',
     'force-republish confirmation pattern',
@@ -297,8 +298,8 @@ function verifyDocsAndPackage(packageJson, opsDoc, mobileDoc, auditDoc) {
   ].forEach((token) => assertIncludes(mobileDoc, token, 'Ops Control Room mobile docs'));
 
   [
-    'Ops Control Room boundary source gate: `npm run verify:ops-control-room-boundary`',
-    'source-only SAFE_MODE/mute-alerts/force-republish route, desktop, mobile, and docs gate',
+    '## Internal Ops Control Room And Platform Monitoring - July 16, 2026',
+    'Control Room, Scheduler and Extraction failures now reject snapshots',
   ].forEach((token) => assertIncludes(auditDoc, token, 'Production audit ops control room checkpoint'));
 }
 
@@ -316,7 +317,22 @@ function verifyOpsControlRoomBoundary() {
     opsDoc: read('__docs__/ops-control-room/ops-control-room_impl.md'),
     mobileDoc: read('__docs__/ops-control-room/ops-control-room_mobile-support.md'),
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
+    currentAccessRoute: read('src/app/api/platform/current-access/route.ts'),
+    currentAccessClient: read('src/lib/auth/currentPlatformAccessClient.ts'),
+    platformRouteGuard: read('src/lib/auth/platformRouteGuard.ts'),
   };
+
+  [
+    'failClosedOnProviderError: true',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
+    "accessModel: 'current_persisted_platform_user'",
+  ].forEach((token) => assertIncludes(files.currentAccessRoute, token, 'Platform current-access route'));
+  [
+    "fetch('/api/platform/current-access'",
+    'readJsonResponseWithLimit(response, CURRENT_PLATFORM_ACCESS_MAX_BYTES)',
+    "accessModel === 'current_persisted_platform_user'",
+  ].forEach((token) => assertIncludes(files.currentAccessClient, token, 'Platform current-access client'));
+  assertIncludes(files.platformRouteGuard, 'await getCurrentPlatformUser(session)', 'Platform route current authorization');
 
   verifySafeModeRoute(files.safeModeRoute);
   verifyMuteAlertsRoute(files.muteAlertsRoute);

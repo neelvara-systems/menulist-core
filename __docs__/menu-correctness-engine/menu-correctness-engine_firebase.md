@@ -1,9 +1,9 @@
 # Menu Correctness Engine — Firebase Cost Tracking
 
-**Version:** 3.1
+**Version:** 3.2
 **Status:** ✅ IMPLEMENTED — Active with verified $0.00/month additional Firebase cost
 **Audience:** Engineering, DevOps, Cost Audit
-**Last Updated:** June 27, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -13,7 +13,7 @@
 | ---------------------- | -------- | ---------------------------------------- | ------------------------------------------ |
 | `projects/{tId}/{sId}` | Existing | Project data + new `_mce` metadata field | Write on save (existing), read by surfaces |
 
-**No new Firestore collections.** MCE adds a single `_mce` field to the existing project document as part of the existing `setDoc` call.
+**No new Firestore collections.** Standalone update and publish transactions add `_mce` to their existing project write. The linked-outlet server transaction does not stamp `_mce` and adds no compensating write.
 
 ---
 
@@ -21,7 +21,7 @@
 
 ### MCE adds ZERO new Firestore reads
 
-CSR validation runs entirely client-side. It operates on the project data that `updateProject()` already has in memory. No additional Firestore reads are needed.
+CSR is a pure local computation. Standalone transactions evaluate the fresh project document already required for concurrency-safe mutation; MCE itself adds no read. The editor gate evaluates its existing in-memory project.
 
 | Operation      | Collection             | New Reads | Reason                                         |
 | -------------- | ---------------------- | --------- | ---------------------------------------------- |
@@ -34,7 +34,7 @@ CSR validation runs entirely client-side. It operates on the project data that `
 
 ### MCE adds ZERO new Firestore writes
 
-The `_mce` metadata field is merged into the existing `setDoc` call that `updateProject()` already performs. No additional write operation.
+The `_mce` metadata field is merged into the existing standalone update/publish transaction write. No additional write operation is created.
 
 | Operation       | Collection             | New Writes | Reason                               |
 | --------------- | ---------------------- | ---------- | ------------------------------------ |
@@ -75,7 +75,7 @@ None in v1. Drift Guardian deferred to Phase 2 (see spec §17 Decision 3).
 
 | Function          | File                             | Change                                 | Cost Impact                  |
 | ----------------- | -------------------------------- | -------------------------------------- | ---------------------------- |
-| `updateProject()` | `src/database/projects/index.ts` | Add `_mce` field to existing save data | $0.00 — same write operation |
+| `updateProject()` / standalone `publishProject()` | `src/database/projects/index.ts` | Add `_mce` to the existing transaction write | $0.00 — same write operation |
 
 ---
 

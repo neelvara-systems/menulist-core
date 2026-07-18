@@ -75,22 +75,36 @@ const seedReferral = async (params: {
 }) => {
     const now = admin.firestore.Timestamp.now();
     const referralId = getOwnerReferralDocumentId(params.referredTenantId, params.referredStoreId);
-    await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_REFERRALS).doc(referralId).set({
-        programVersion: 2,
-        status: OWNER_REFERRAL_STATUS.ATTRIBUTED,
-        referrerTenantId: params.referrerTenantId,
-        referrerStoreId: params.referrerStoreId,
-        referrerBusinessNameSnapshot: 'Referrer Business',
-        referredTenantId: params.referredTenantId,
-        referredStoreId: params.referredStoreId,
-        referredBusinessNameSnapshot: `Referred ${params.referredStoreId}`,
-        attributionSource: 'owner_invite',
-        onboardingSource: 'EMULATOR_TEST',
-        attributionTokenIdHash: `token_${referralId}`,
-        attributedAt: now,
-        createdAt: now,
-        updatedAt: now,
-    });
+    await Promise.all([
+        firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(params.referrerStoreId)).set({
+            active: true,
+            blocked: false,
+            storeId: params.referrerStoreId,
+            tenantId: params.referrerTenantId,
+        }),
+        firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(params.referredStoreId)).set({
+            active: true,
+            blocked: false,
+            storeId: params.referredStoreId,
+            tenantId: params.referredTenantId,
+        }),
+        firestoreAdmin.collection(DB_COLLECTIONS.OWNER_REFERRALS).doc(referralId).set({
+            programVersion: 2,
+            status: OWNER_REFERRAL_STATUS.ATTRIBUTED,
+            referrerTenantId: params.referrerTenantId,
+            referrerStoreId: params.referrerStoreId,
+            referrerBusinessNameSnapshot: 'Referrer Business',
+            referredTenantId: params.referredTenantId,
+            referredStoreId: params.referredStoreId,
+            referredBusinessNameSnapshot: `Referred ${params.referredStoreId}`,
+            attributionSource: 'owner_invite',
+            onboardingSource: 'EMULATOR_TEST',
+            attributionTokenIdHash: `token_${referralId}`,
+            attributedAt: now,
+            createdAt: now,
+            updatedAt: now,
+        }),
+    ]);
     return referralId;
 };
 
@@ -210,10 +224,126 @@ const verifyPendingRepairAndNoCap = async (): Promise<void> => {
     );
     const repair = await settlePendingOwnerReferralsForPaidStore(referrerScope);
     assert(repair.issued === 4, 'All four paid referrals must issue without a rolling cap');
+    assert(repair.hasMore === false, 'Small pending repair must complete in one bounded batch');
     assert(await readCredits(referrerSubscriptionId) === 11 + (4 * OWNER_REFERRAL_REFERRER_CREDITS), 'Uncapped referrer total is wrong');
     for (let index = 0; index < referredScopes.length; index += 1) {
         assert(await readCredits(`owner_referral_test_uncapped_referred_${index}`) === 50, `Referred wallet ${index} was not credited`);
     }
+};
+
+const verifySaturatedHistoryFailsClosed = async (): Promise<void> => {
+    const referredScope = { tenantId: 8711, storeId: 8811 };
+    const referrerScope = { tenantId: 8712, storeId: 8812 };
+    await Promise.all(Array.from({ length: 25 }, (_, index) => (
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .doc(`owner_referral_test_history_saturation_${index}`)
+            .set({
+                productId: DEFAULT_PRODUCT_ID,
+                tenantId: referredScope.tenantId,
+                storeId: referredScope.storeId,
+                status: 'expired',
+                totalPaymentsMadeCount: 0,
+                billingHistory: [],
+            })
+    )));
+
+    const result = await setOwnerReferralAttributionBeforeSubscription({
+        referredBusinessName: 'Saturated History Business',
+        referredScope,
+        resolvedToken: {
+            payload: {
+                version: 2,
+                referrerTenantId: referrerScope.tenantId,
+                referrerStoreId: referrerScope.storeId,
+                issuedAt: Math.floor(Date.now() / 1000),
+                expiresAt: Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60),
+                tokenId: 'saturated_history_test_token',
+            },
+            referrerBusinessName: 'Referrer Business',
+        },
+        onboardingSource: 'EMULATOR_TEST',
+    });
+
+    assert(result.status === 'prior_paid', 'A saturated subscription history must fail closed before attribution');
+};
+
+const verifyMalformedWalletBalanceFailsClosed = async (): Promise<void> => {
+    const referrerScope = { tenantId: 8721, storeId: 8821 };
+    const referredScope = { tenantId: 8722, storeId: 8822 };
+    const referrerSubscriptionId = 'owner_referral_test_invalid_wallet_referrer';
+    const referredSubscriptionId = 'owner_referral_test_invalid_wallet_referred';
+    await Promise.all([
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referrerSubscriptionId).set({
+            ...makePaidSubscription({ ...referrerScope, topUpCredits: 0 }),
+            topUpCredits: 'corrupt',
+        }),
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referredSubscriptionId).set(
+            makePaidSubscription({ ...referredScope, topUpCredits: 9 }),
+        ),
+    ]);
+    const referralId = await seedReferral({
+        referredStoreId: referredScope.storeId,
+        referredTenantId: referredScope.tenantId,
+        referrerStoreId: referrerScope.storeId,
+        referrerTenantId: referrerScope.tenantId,
+    });
+
+    let rejected = false;
+    try {
+        await recordReferredOwnerReferralPaymentAndSettle({
+            referredScope,
+            evidence: {
+                paidAt: new Date(),
+                paymentEvidenceId: 'invalid_wallet_payment',
+                source: 'emulator:invalid-wallet',
+                subscriptionId: referredSubscriptionId,
+            },
+        });
+    } catch (error) {
+        rejected = error instanceof Error && error.message === 'owner_referral_wallet_credit_invalid';
+    }
+    assert(rejected, 'Malformed Pack balance must reject settlement without normalization');
+    assert(await readCredits(referredSubscriptionId) === 9, 'Malformed peer wallet must not change the referred balance');
+    const referral = await firestoreAdmin.collection(DB_COLLECTIONS.OWNER_REFERRALS).doc(referralId).get();
+    assert(referral.data()?.status !== OWNER_REFERRAL_STATUS.REWARD_ISSUED, 'Malformed wallet must not mark referral issued');
+};
+
+const verifyBlockedStoreCannotSettle = async (): Promise<void> => {
+    const referrerScope = { tenantId: 8731, storeId: 8831 };
+    const referredScope = { tenantId: 8732, storeId: 8832 };
+    const referrerSubscriptionId = 'owner_referral_test_blocked_referrer';
+    const referredSubscriptionId = 'owner_referral_test_blocked_referred';
+    await Promise.all([
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referrerSubscriptionId).set(
+            makePaidSubscription({ ...referrerScope, topUpCredits: 4 }),
+        ),
+        firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(referredSubscriptionId).set(
+            makePaidSubscription({ ...referredScope, topUpCredits: 6 }),
+        ),
+    ]);
+    await seedReferral({
+        referredStoreId: referredScope.storeId,
+        referredTenantId: referredScope.tenantId,
+        referrerStoreId: referrerScope.storeId,
+        referrerTenantId: referrerScope.tenantId,
+    });
+    await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(referrerScope.storeId)).set(
+        { blocked: true },
+        { merge: true },
+    );
+
+    const result = await recordReferredOwnerReferralPaymentAndSettle({
+        referredScope,
+        evidence: {
+            paidAt: new Date(),
+            paymentEvidenceId: 'blocked_store_payment',
+            source: 'emulator:blocked-store',
+            subscriptionId: referredSubscriptionId,
+        },
+    });
+    assert(result === 'payment_pending', 'Blocked store must keep the referral pending');
+    assert(await readCredits(referrerSubscriptionId) === 4, 'Blocked referrer balance must not change');
+    assert(await readCredits(referredSubscriptionId) === 6, 'Blocked peer must not receive partial credits');
 };
 
 const verifyPriorPaymentCannotBind = async (): Promise<void> => {
@@ -303,6 +433,9 @@ const run = async (): Promise<void> => {
     await verifyAtomicSettlementAndReplay();
     await verifyPendingRepairAndNoCap();
     await verifyPriorPaymentCannotBind();
+    await verifySaturatedHistoryFailsClosed();
+    await verifyMalformedWalletBalanceFailsClosed();
+    await verifyBlockedStoreCannotSettle();
     await verifyRules();
     console.log('Owner referral emulator verification passed.');
 };

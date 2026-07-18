@@ -62,6 +62,41 @@ export const getNextAnswerlatticeBundleVersion = (manifest: unknown): number | n
     return current === null || current >= Number.MAX_SAFE_INTEGER ? null : current + 1;
 };
 
+export type AnswerlatticeBundleBuildClaimDecision =
+    | { status: 'active'; bundleVersion: number }
+    | { status: 'claimable'; bundleVersion: number }
+    | { status: 'invalid'; bundleVersion: number };
+
+export const getAnswerlatticeBundleBuildClaimDecision = (
+    manifest: unknown,
+    lock: unknown,
+    nowMillis: number,
+): AnswerlatticeBundleBuildClaimDecision => {
+    const currentVersion = resolveAnswerlatticeExistingBundleVersion(manifest);
+    if (currentVersion === null || !Number.isFinite(nowMillis) || nowMillis < 0) {
+        return { status: 'invalid', bundleVersion: currentVersion ?? 0 };
+    }
+    const lockRecord = lock && typeof lock === 'object' && !Array.isArray(lock)
+        ? lock as Record<string, unknown>
+        : {};
+    const expiresAt = lockRecord.expiresAt as { toMillis?: () => number } | undefined;
+    let expiresAtMillis = 0;
+    try {
+        expiresAtMillis = typeof expiresAt?.toMillis === 'function' ? expiresAt.toMillis() : 0;
+    } catch {
+        expiresAtMillis = 0;
+    }
+    if (lockRecord.status === 'building' && Number.isFinite(expiresAtMillis) && expiresAtMillis > nowMillis) {
+        return { status: 'active', bundleVersion: currentVersion };
+    }
+
+    const abandonedReservedVersion = normalizeAnswerlatticeStoredBundleVersion(lockRecord.bundleVersion) ?? 0;
+    const nextVersion = getNextAnswerlatticeBundleVersion({ bundleVersion: Math.max(currentVersion, abandonedReservedVersion) });
+    return nextVersion === null
+        ? { status: 'invalid', bundleVersion: currentVersion }
+        : { status: 'claimable', bundleVersion: nextVersion };
+};
+
 export const hasExactAnswerlatticeReadyBundleVersions = (manifest: Record<string, unknown>): boolean => (
     typeof manifest.bundleVersion === 'number'
     && normalizeAnswerlatticeStoredBundleVersion(manifest.bundleVersion) !== null

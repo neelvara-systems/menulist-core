@@ -1,7 +1,7 @@
 # Booking Inquiry Readiness Check - Implementation
 
 **Status:** Implemented V0 route and V1 owner module; release still depends on current production-readiness gates
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Local Source Gate:** `npm run verify:booking-inquiry-readiness-check`
 
 ---
@@ -46,6 +46,8 @@ The report builder returns boundary flags:
 - `rankingPromise: false`
 
 Do not add provider login, booking-provider checks, calendar checks, payment checks, message sending, external source crawling, AI/search provider calls, file upload, or report storage in V0.
+
+`isValidActionDestination(...)` uses the shared `phoneValidation.ts` boundary before attempting public-URL validation. It accepts a public HTTPS URL, valid raw/formatted phone, valid `tel:`, valid `mailto:`, or `whatsapp://send?phone=...`. It rejects arbitrary letters in phone values and unknown WhatsApp scheme hosts/actions without producing a false valid preview.
 
 ## V1 Owner Module
 

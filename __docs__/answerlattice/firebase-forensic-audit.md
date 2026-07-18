@@ -96,7 +96,7 @@ Workspace summaries include activation, coverage, trust, friction, context conte
 | `answerlattice-context/public/{bundleId}/{version}/**` | Public read | Immutable compiled bundle |
 | `answerlattice-context/private/{tId}/{sId}/{version}/**` | Server only | Private compiled bundle |
 
-Ingestion files require `retentionPolicy=delete_on_job_delete`, `sourceUse=knowledge_generation_only`, and `uploadedVia=answerlattice_kb_generation`. Failed upload-to-job handoff deletes successful partial uploads; generation-job deletion owns source cleanup.
+Ingestion files use `sourceUse=knowledge_generation_only` and `uploadedVia=answerlattice_kb_generation`. Failed upload-to-job handoff deletes successful attempt-owned partial uploads. A persisted job does not own global deletion because another valid job in the workspace may reference the same path; reclamation requires a bounded workspace-wide non-reference inventory.
 
 ### Cloud Functions Inventory
 

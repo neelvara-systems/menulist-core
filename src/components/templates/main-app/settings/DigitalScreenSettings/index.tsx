@@ -14,15 +14,17 @@
  */
 
 import { FEATURE_FLAGS } from "@config/features";
+import { PERMISSIONS } from "@constant/permissions";
 import { assertDigitalScreenMutationSucceeded, getScreenState, initializeScreenState, updateScreenSettings } from "@database/campaigns";
 import { trackOwnerControlUsage } from "@database/ownerControlUsage";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
+import { hasAnyPermission } from "@lib/permissions/permissionRequirements";
 import { getBoundedScreenStringContext, logScreenSettingsFailure } from "@lib/screen/screenDiagnostics";
 import { buildScreenUrl } from "@lib/screen/utils";
 import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import { ScreenSlide } from "@type/campaigns";
 import { Card, Divider, Empty, message, Space, Spin, Switch, theme, Typography } from "antd";
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { LuCheckCircle } from "react-icons/lu";
 import CurrentSlides from "./CurrentSlides";
 import OwnerUploads from "./OwnerUploads";
@@ -43,7 +45,8 @@ interface ScreenSettingsData {
 
 export default function DigitalScreenSettings() {
     const { token } = theme.useToken();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const canAccessDigitalScreens = hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const publicBaseUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
         [storeDetails?.customDomain, storeDetails?.subdomain]
@@ -51,13 +54,22 @@ export default function DigitalScreenSettings() {
     const [loading, setLoading] = useState(true);
     const [settings, setSettings] = useState<ScreenSettingsData | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const loadRequestRef = useRef(0);
 
     // Fetch settings on mount
     useEffect(() => {
+        if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !canAccessDigitalScreens) {
+            loadRequestRef.current += 1;
+            setSettings(null);
+            setError(null);
+            setLoading(false);
+            return;
+        }
         void fetchSettings();
-    }, [publicBaseUrl]);
+    }, [canAccessDigitalScreens, publicBaseUrl]);
 
     const fetchSettings = async () => {
+        const requestId = ++loadRequestRef.current;
         try {
             setLoading(true);
 
@@ -67,6 +79,7 @@ export default function DigitalScreenSettings() {
             if (!screenState) {
                 screenState = await initializeScreenState();
             }
+            if (requestId !== loadRequestRef.current) return;
 
             setSettings({
                 enabled: screenState.enabled,
@@ -80,6 +93,7 @@ export default function DigitalScreenSettings() {
             });
             setError(null);
         } catch (err) {
+            if (requestId !== loadRequestRef.current) return;
             setError('Unable to load screen settings');
             logScreenSettingsFailure('digital_screen_settings_load_failed', err, {
                 ...getBoundedScreenStringContext('publicBaseUrl', publicBaseUrl),
@@ -87,7 +101,7 @@ export default function DigitalScreenSettings() {
                 hasCustomDomain: Boolean(storeDetails?.customDomain),
             });
         } finally {
-            setLoading(false);
+            if (requestId === loadRequestRef.current) setLoading(false);
         }
     };
 
@@ -133,7 +147,7 @@ export default function DigitalScreenSettings() {
         void fetchSettings(); // Refresh to get new slide
     };
 
-    if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED) {
+    if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED || !canAccessDigitalScreens) {
         return null;
     }
 

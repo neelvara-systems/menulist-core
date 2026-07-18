@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
+import { useEffect, useState } from 'react';
 import { LuArrowRight, LuBot, LuFileText, LuGlobe, LuLayoutGrid, LuMonitor, LuQrCode, LuShieldCheck, LuSmartphone } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import WebsiteButton from '../shared/WebsiteButton';
@@ -19,6 +20,15 @@ const surfaceKeys = [
 
 export default function HeroSection() {
   const t = useTranslations('Website');
+  const [allowMotion, setAllowMotion] = useState(false);
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotionPreference = () => setAllowMotion(!motionPreference.matches);
+    updateMotionPreference();
+    motionPreference.addEventListener?.('change', updateMotionPreference);
+    return () => motionPreference.removeEventListener?.('change', updateMotionPreference);
+  }, []);
 
   return (
     <section
@@ -66,7 +76,7 @@ export default function HeroSection() {
             <div className="ws-hero-official__proof">
               {[LuShieldCheck, LuQrCode, LuSmartphone].map((Icon, index) => (
                 <div key={index} className="ws-hero-proof-item">
-                  <Icon size={16} />
+                  <Icon size={16} aria-hidden="true" />
                   <span>{t(`Hero.proof${index}`)}</span>
                 </div>
               ))}
@@ -75,19 +85,21 @@ export default function HeroSection() {
 
           <AnimateOnScroll preset="media" delay={0.12} className="ws-hero-official__visual">
             <div className="ws-hero-product-stage ws-hero-product-stage--image" aria-label={t('Hero.visualLabel')}>
-              <video
-                className="ws-hero-product-stage__video"
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-                poster="/images/website/menulist-business-truth-loop-poster.webp"
-                aria-hidden="true"
-              >
-                <source src="/images/website/menulist-business-truth-loop.webm" type="video/webm" />
-                <source src="/images/website/menulist-business-truth-loop.mp4" type="video/mp4" />
-              </video>
+              {allowMotion ? (
+                <video
+                  className="ws-hero-product-stage__video"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  preload="metadata"
+                  poster="/images/website/menulist-business-truth-loop-poster.webp"
+                  aria-hidden="true"
+                >
+                  <source src="/images/website/menulist-business-truth-loop.webm" type="video/webm" />
+                  <source src="/images/website/menulist-business-truth-loop.mp4" type="video/mp4" />
+                </video>
+              ) : null}
               <Image
                 src="/images/website/menulist-business-truth-loop-poster.webp"
                 alt={t('Hero.visualLabel')}
@@ -96,7 +108,7 @@ export default function HeroSection() {
                 priority
                 unoptimized
                 sizes="(min-width: 1180px) 620px, (min-width: 768px) 52vw, 100vw"
-                className="ws-hero-product-stage__image ws-hero-product-stage__image--fallback"
+                className={`ws-hero-product-stage__image${allowMotion ? ' ws-hero-product-stage__image--fallback' : ''}`}
               />
             </div>
 
@@ -105,7 +117,7 @@ export default function HeroSection() {
                 const Icon = surface.icon;
                 return (
                   <div key={surface.key} className="ws-hero-surface-pill">
-                    <Icon size={15} />
+                    <Icon size={15} aria-hidden="true" />
                     <span>{t(`Hero.${surface.key}`)}</span>
                   </div>
                 );

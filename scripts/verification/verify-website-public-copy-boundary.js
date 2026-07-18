@@ -120,6 +120,56 @@ function verifyPackageScript() {
       'node scripts/verification/verify-website-public-copy-boundary.js',
     'package.json must expose verify:website-public-copy-boundary',
   );
+  assert(
+    packageJson.scripts['test:website-product-path-boundary'] ===
+      'ts-node --compiler-options \'{"module":"CommonJS","jsx":"react-jsx"}\' -r tsconfig-paths/register scripts/verification/test-website-product-path-boundary.ts',
+    'package.json must expose test:website-product-path-boundary',
+  );
+}
+
+function verifyWebsiteSocialMetadataBoundary() {
+  const helperPath = 'src/lib/seo/websiteMetadata.ts';
+  const helper = read(helperPath);
+  const contactPage = read('src/app/(website)/contact/page.tsx');
+  const resourceShell = read('src/components/website/resources/ResourcePageShell.tsx');
+  const metadataPages = walkRepoFiles('src/app/(website)')
+    .filter((relativePath) => relativePath.endsWith('/page.tsx'))
+    .filter((relativePath) => read(relativePath).includes('openGraph:'));
+
+  assert(metadataPages.length > 0, 'MenuList website must expose route-specific Open Graph metadata');
+
+  [
+    'MENULIST_SITE_IMAGE',
+    'MENULIST_SITE_IMAGE_ALT',
+    'siteName: "MenuList"',
+    'card: "summary_large_image"',
+    'title: completedOpenGraph?.title || metadata.title',
+    'description: completedOpenGraph?.description || metadata.description',
+  ].forEach((token) => assertIncludes(helper, token, 'MenuList website social metadata completion'));
+
+  for (const relativePath of metadataPages) {
+    assertIncludes(
+      read(relativePath),
+      'completeWebsiteMetadata({',
+      `MenuList route social metadata completion (${relativePath})`,
+    );
+  }
+
+  assertIncludes(
+    resourceShell,
+    'return completeWebsiteMetadata({',
+    'MenuList localized resource social metadata completion',
+  );
+  assertIncludes(
+    contactPage,
+    'Send a MenuList question or product note through the contact form',
+    'MenuList contact metadata acknowledgement boundary',
+  );
+  assertNotIncludes(
+    contactPage,
+    'We are here to help you get your menu online.',
+    'MenuList contact metadata unmonitored-response implication',
+  );
 }
 
 function verifyMountedHomepageBoundary() {
@@ -365,11 +415,13 @@ function verifyAssetOsPublicMediaBoundary() {
   );
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
-  const governedSlotIds = [
+  const retiredIndustrySlotIds = [
     'menulist.industry.salons-spas.demo-placeholder',
-    'menulist.marketing.launch-video.poster-placeholder',
     'menulist.industry.service-list-businesses.proof-placeholder',
     'menulist.industry.local-service-businesses.demo-placeholder',
+  ];
+  const governedSlotIds = [
+    'menulist.marketing.launch-video.poster-placeholder',
     'menulist.feature.customer-feedback-loop.public-form',
     'menulist.feature.menu-import.source-link',
     'menulist.feature.public-discovery.presence-checklist',
@@ -447,14 +499,22 @@ function verifyAssetOsPublicMediaBoundary() {
     }
   }
 
-  [
-    'menulist.industry.salons-spas.demo-placeholder',
-    'menulist.industry.service-list-businesses.proof-placeholder',
-    'menulist.industry.local-service-businesses.demo-placeholder',
-  ].forEach((slotId) => {
-    assertIncludes(manifest.assets[slotId].review.notes, 'temporary', `AssetOS temporary-placeholder review ${slotId}`);
+  retiredIndustrySlotIds.forEach((slotId) => {
+    assertIncludes(slotRegistry, `id: '${slotId}'`, `AssetOS retired MenuList slot ${slotId}`);
+    const entry = manifest.assets?.[slotId];
+    assert(entry?.status === 'retired', `AssetOS retired industry placeholder ${slotId} must stay retired`);
+    assert(entry.review?.decision === 'approved', `AssetOS retired industry placeholder ${slotId} must preserve its historical review`);
+    assertIncludes(entry.review.notes, 'Retired from the public website', `AssetOS retired-placeholder review ${slotId}`);
+    for (const outputPath of Object.values(entry.files || {})) {
+      assert(
+        outputPath.startsWith('packages/asset-factory/published/placeholders/'),
+        `AssetOS retired industry placeholder ${slotId} must remain outside public media`,
+      );
+      assert(fs.existsSync(resolvePath(outputPath)), `AssetOS retired industry placeholder ${slotId} must be preserved internally`);
+    }
   });
   assertIncludes(placeholderDocs, 'They are not customer proof.', 'AssetOS industry placeholder customer-proof boundary');
+  assertIncludes(placeholderDocs, 'removed from the public routes on July 18, 2026', 'AssetOS retired industry placeholder boundary');
 
   assert(!manifest.assets['menulist.feature.customer-feedback-loop.owner-inbox'], 'Loading-state owner inbox must not remain an approved public AssetOS slot');
   assert(!manifest.assets['menulist.feature.qr-menu-links.public-menu'], 'Broken feature-local public menu must not remain an approved public AssetOS slot');
@@ -501,12 +561,24 @@ function verifyAssetOsPublicMediaBoundary() {
 function verifyPricingPublicCopyBoundary() {
   const pricingFaq = read('src/components/website/pricing-pages/PricingFaq.tsx');
   const platformFeatures = read('src/data/PlatformFeaturesList.ts');
+  const onboardingModal = read('src/components/website/pricing-pages/OnboardingModal.tsx');
+  const pricingPage = read('src/components/website/pricing-pages/index.tsx');
+  const createMenuPreview = read('src/components/website/home/CreateMenuPreviewSection.tsx');
+  const industries = read('src/content/websiteIndustries.ts');
+  const footer = read('src/components/website/Footer.tsx');
+  const englishLocale = JSON.parse(read('public/locales/menulist.ai/en-US.json'));
+  const hindiLocale = JSON.parse(read('public/locales/menulist.ai/hi-IN.json'));
+  const englishPricing = englishLocale.Website?.Pricing;
+  const hindiPricing = hindiLocale.Website?.Pricing;
+  const englishHero = englishLocale.Website?.Hero;
+  const englishCreateMenuPreview = englishLocale.Website?.CreateMenuPreview;
 
   assertIncludes(
     pricingFaq,
-    'Approved updates through the public menu and business page refresh paths',
-    'Pricing FAQ bounded public-update copy',
+    "{ category: 'gettingStarted', key: 'dayEight' }",
+    'Pricing FAQ seven-day setup boundary',
   );
+  assertIncludes(pricingPage, '<main id="main-content"', 'Pricing page main-content landmark');
   assertIncludes(
     platformFeatures,
     'A professional business page with your menu, hours, location, and current status.',
@@ -517,11 +589,145 @@ function verifyPricingPublicCopyBoundary() {
     'Receive event notifications for supported account activity.',
     'Platform features bounded webhook notification copy',
   );
+  [
+    'Start with a clear photo or an owned public menu, service-list, image, or PDF link.',
+    'keeps every public place tied to what you approve',
+  ].forEach((token) => assertIncludes(englishHero?.subtitle || '', token, 'Homepage supported intake copy'));
+  assert(
+    englishPricing?.setupStateBody ===
+      'The starter link and QR can go live during setup. Choose a paid plan before the setup deadline to keep the same URL live after day seven.',
+    'English pricing setup state must describe the live starter URL and paid deadline',
+  );
+  assert(
+    typeof hindiPricing?.setupStateBody === 'string'
+      && hindiPricing.setupStateBody.includes('setup के दौरान live')
+      && hindiPricing.setupStateBody.includes('deadline से पहले paid plan'),
+    'Hindi pricing setup state must describe the live starter URL and paid deadline',
+  );
+  assert(
+    typeof englishPricing?.faqDayEightAnswer === 'string'
+      && englishPricing.faqDayEightAnswer.includes('starter access stops after the setup deadline'),
+    'English pricing FAQ must explain the no-plan state after day seven',
+  );
+  assert(
+    typeof hindiPricing?.faqDayEightAnswer === 'string'
+      && hindiPricing.faqDayEightAnswer.includes('starter access setup deadline के बाद रुक जाता है'),
+    'Hindi pricing FAQ must explain the no-plan state after day seven',
+  );
+  [
+    'Custom domains',
+    'Supported content enhancements use the capacity included with Starter.',
+  ].forEach((token) => assertIncludes(englishPricing?.starterNotIncluded || '', token, 'Starter plan capacity copy'));
+  assert(!('typedTitle' in englishCreateMenuPreview), 'English create-menu preview locale must not advertise unsupported typed intake');
+  assert(!('typedTitle' in (hindiLocale.Website?.CreateMenuPreview || {})), 'Hindi create-menu preview locale must not advertise unsupported typed intake');
+  assertNotIncludes(createMenuPreview, "{ key: 'typed'", 'Homepage create-menu preview source boundary');
+  assertNotIncludes(industries, 'Placeholder proof asset', 'Industry public proof boundary');
+  assertNotIncludes(industries, 'Replace this placeholder', 'Industry public proof boundary');
+  assertNotIncludes(onboardingModal, '[Animation Here]', 'Pricing onboarding owner-copy boundary');
+  assertNotIncludes(onboardingModal, 'Look Brilliant', 'Pricing onboarding owner-copy boundary');
+  [
+    "{ href: '/#included-with-link', key: 'publicProof' }",
+    "{ href: '/features/official-business-page', key: 'officialPage' }",
+    "{ href: '/about', key: 'about' }",
+    "{ href: '/contact', key: 'contact' }",
+  ].forEach((token) => assertIncludes(footer, token, 'Website footer route boundary'));
+  assertNotIncludes(footer, "{ href: '/#public-proof'", 'Website footer stale public-proof anchor');
 
   const pricingPublicCopy = `${pricingFaq}\n${platformFeatures}`;
   for (const staleClaim of BLOCKED_PRICING_COPY_CLAIMS) {
     assertNotIncludes(pricingPublicCopy, staleClaim, 'Pricing and feature public copy freshness boundary');
   }
+  [
+    'from any uploaded menu',
+    'SEO-friendly descriptions',
+    'Generate stunning',
+    'Virtual Try-On',
+    'Directly share your catalog',
+    'to appear in search results',
+    'Remove MenulListAI',
+    '100% accuracy',
+  ].forEach((claim) => assertNotIncludes(pricingPublicCopy, claim, 'Pricing and feature unsupported-claim boundary'));
+}
+
+function verifyWebsiteAliasAndLocaleRoutingBoundary() {
+  const pathProvider = read('src/components/website/shared/WebsiteProductPathProvider.tsx');
+  const languageSwitcher = read('src/components/website/shared/WebsiteLanguageSwitcher.tsx');
+  const header = read('src/components/website/Header.tsx');
+  const createMenuClient = read('src/app/(website)/create-menu/CreateMenuClient.tsx');
+  const ownerLayout = read('src/app/(main)/layout.tsx');
+
+  [
+    "'/faq'",
+    "'/invite'",
+    "'/tools'",
+    "'/whatsapp'",
+    'isReviewedWebsiteResourceLocale(firstPathPart)',
+    "secondPathPart === 'resources'",
+    'export function withoutWebsiteBasePath(pathname: string, basePath: string): string',
+    'export function useWebsiteBasePath(): string',
+  ].forEach((token) => assertIncludes(pathProvider, token, 'MenuList website product-alias route boundary'));
+  [
+    'const publicPathname = withoutWebsiteBasePath(pathname, basePath);',
+    'const aliasedNextPath = withWebsiteBasePath(nextPath, basePath);',
+    'aria-expanded={open}',
+    'aria-haspopup="menu"',
+    'btnRef.current?.focus();',
+  ].forEach((token) => assertIncludes(languageSwitcher, token, 'MenuList alias-safe resource language switcher'));
+  assertNotIncludes(languageSwitcher, "const pathParts = pathname.split('/').filter(Boolean);", 'MenuList resource locale routing must not inspect the raw aliased pathname');
+  [
+    'const basePath = useWebsiteBasePath();',
+    'withoutWebsiteBasePath(pathname, basePath)',
+    'const isFeaturesPath = Boolean(publicPathname?.startsWith("/features"));',
+    'const isActive = publicPathname === item.href',
+  ].forEach((token) => assertIncludes(header, token, 'MenuList alias-safe website header state'));
+  [
+    "const createMenuPath = useWebsitePath(buildCreateMenuPath(growthAcquisition));",
+    "const createMenuPreviewPath = useWebsitePath('/create-menu/preview');",
+  ].forEach((token) => assertIncludes(createMenuClient, token, 'MenuList alias-safe create-menu route boundary'));
+  [
+    "title: 'MenuList Owner Dashboard'",
+    'index: false',
+    'follow: false',
+    'nocache: true',
+  ].forEach((token) => assertIncludes(ownerLayout, token, 'MenuList protected owner metadata boundary'));
+  [
+    'MenuList AI Dashboard Main',
+    'The everything app',
+    '🄴🄲🄾🄼🅂🄰🄸',
+  ].forEach((token) => assertNotIncludes(ownerLayout, token, 'MenuList protected owner stale metadata boundary'));
+}
+
+function verifyWebsiteLegalRuntimeTruthBoundary() {
+  const refundPolicy = read('src/components/website/legal/RefundPolicyPage.tsx');
+  const terms = read('src/components/website/legal/TermsOfServicePage.tsx');
+
+  [
+    'July 16, 2026',
+    'Current paid plan continues until the end of its billing period',
+    'purpose-based retention terms in our Privacy Policy',
+    'applicable law requires otherwise or MenuList confirms a duplicate or incorrect charge',
+    'Features and limits remain specific to the purchased plan',
+  ].forEach((token) => assertIncludes(refundPolicy, token, 'MenuList refund policy runtime-truth boundary'));
+  [
+    'Preserved for 30 days after subscription expires',
+    'Data preserved for 30 days',
+    'All features unlocked without delay',
+    'All fees are final and non-refundable.',
+  ].forEach((token) => assertNotIncludes(refundPolicy, token, 'MenuList refund policy stale absolute claim boundary'));
+  [
+    'July 17, 2026',
+    'You retain the rights you already hold in content you upload',
+    'subject to applicable law, your input rights, and relevant provider terms',
+    'Razorpay handles checkout and payment-method entry',
+    'MenuList QR links, web pages, screens, and fresh downloadable assets',
+  ].forEach((token) => assertIncludes(terms, token, 'MenuList terms runtime-truth boundary'));
+  [
+    'Publish everywhere',
+    'All generated content belongs to you',
+    'You own 100% of your uploaded content',
+    'No attribution required to MenuList',
+    'Razorpay (PCI-DSS compliant)',
+  ].forEach((token) => assertNotIncludes(terms, token, 'MenuList terms stale absolute claim boundary'));
 }
 
 function verifyWebsiteAnalyticsBoundary() {
@@ -763,12 +969,46 @@ function verifyDocsBoundary() {
   const mainWebsiteReadme = read('__docs__/main-website/README.md');
   const mainWebsiteContent = read('__docs__/main-website/main-website_content.md');
   const mainWebsiteMarketing = read('__docs__/main-website/main-website_marketing.md');
+  const mainWebsiteImpl = read('__docs__/main-website/main-website_impl.md');
+  const mainWebsiteDesignSystem = read('__docs__/main-website/main-website_design-system.md');
   const stage7LaunchOutput = read(
     '__docs__/main-website/website-prep-codex-prompts/stage-07-output-final-launch-polish-production-readiness.md',
   );
   const seoVerification = read('__docs__/menulist-seo-launch/menulist-seo-launch_verification.md');
   const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
+
+  [
+    '3.6.115 (Website Truth and Owner Journey Audit)',
+    'The owner journey now advertises only supported intake',
+    'A monitored general-enquiry consumer/alert and response owner remain production-owner work',
+    'No extraction, publish, cache, subscription, Razorpay, owner data, Firebase, Cloud Function, provider, dependency, Vercel deployment, or production build contract changed',
+  ].forEach((token) => assertIncludes(mainWebsiteReadme, token, 'Main website owner-journey canonical boundary'));
+  [
+    '`WebsiteProductPathProvider` is the canonical browser routing boundary',
+    'Cancelled/paused subscriptions keep the purchased plan mirror only through a valid paid `cycleEndDate`',
+    '**Alias-safe resource switching:**',
+  ].forEach((token) => assertIncludes(mainWebsiteImpl, token, 'Main website alias and paid-cycle implementation docs'));
+  [
+    'The v3.6.115 audit aligns the complete acquisition journey with current runtime',
+    'The general `/contact` success state is intentionally bounded to persisted acknowledgement',
+    'Protected owner pages emit `noindex, nofollow, nocache`',
+  ].forEach((token) => assertIncludes(mainWebsiteImpl, token, 'Main website owner-journey implementation docs'));
+  [
+    'Website alias and legal truth note (July 16, 2026)',
+    'Generated-output use stays subject to input rights, applicable law, and provider terms',
+    'Do not promise all-plan features or fixed 30-day deletion',
+  ].forEach((token) => assertIncludes(mainWebsiteContent, token, 'Main website legal content governance'));
+  [
+    'Header active state must use the public pathname',
+    'The language trigger exposes `aria-expanded` and `aria-haspopup`',
+    '--text-muted: #64748b',
+  ].forEach((token) => assertIncludes(mainWebsiteDesignSystem, token, 'Main website alias accessibility design governance'));
+  assertIncludes(mainWebsiteMarketing, 'Legal, billing, and alias truth note (July 16, 2026)', 'Main website marketing runtime-truth boundary');
+  assertIncludes(productionAudit, 'Main Website, Legal, I18n/SEO And Paid-Cycle Truth', 'Production audit item 30 website boundary');
+  assertIncludes(changelog, 'Main Website Alias, Legal And Paid-Cycle Truth Boundary', 'Changelog item 30 website boundary');
+  assertIncludes(productionAudit, 'Main Website Truth And Owner Journey Audit', 'Production audit website owner-journey boundary');
+  assertIncludes(changelog, 'Main Website Truth And Owner Journey Audit', 'Changelog website owner-journey boundary');
 
   assertIncludes(
     mainWebsiteReadme,
@@ -1117,12 +1357,15 @@ function verifyDocsBoundary() {
 }
 
 verifyPackageScript();
+verifyWebsiteSocialMetadataBoundary();
 verifyMountedHomepageBoundary();
 verifyLocaleAndDiscoveryCopy();
 verifyWhatsAppOnboardingFailClosedBoundary();
 verifyMenuListLaunchAssetPackBoundary();
 verifyAssetOsPublicMediaBoundary();
 verifyPricingPublicCopyBoundary();
+verifyWebsiteAliasAndLocaleRoutingBoundary();
+verifyWebsiteLegalRuntimeTruthBoundary();
 verifyWebsiteAnalyticsBoundary();
 verifyDocsBoundary();
 

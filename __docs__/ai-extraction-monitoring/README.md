@@ -41,7 +41,7 @@ An internal-only dashboard that gives the solo founder fast visibility into extr
 
 - **Desktop routes:** `/ops/extraction` and `/platform/extraction-monitor`
 - **Mobile route state:** `MobileShell` → More → Platform → Extraction Monitor
-- **Access:** `platformRole === 'PLATFORM'` only
+- **Access:** signed `platformRole === 'PLATFORM'`, followed by `/api/platform/current-access` exact current persisted authorization before browser snapshot reads
 - **Navigation:** Ops Control Room → "Extraction Monitor" button, or direct URL
 
 ### Data Sources
@@ -61,6 +61,10 @@ No separate `aiUsageLog` collection is read by this dashboard. Current extractio
 4. **Job Inspector** — Drill into any job: normalized extraction output, stored raw provider responses, file results, token usage, owner units, retry status, and acknowledged raw-data copy actions with bounded failure diagnostics
 5. **Cost Monitor** — Gemini calls/day, actual INR cost/extraction, daily spend, and highest job cost. Values are stored as paise and rendered as INR. Platform rows include `jobId`, tenant/store/user context, destination, source, token counts, failure status/error code, retry-after seconds when present, and Firestore `createdAt` timestamps. If the standalone cost-panel compatibility load fails, the panel logs bounded `extraction_cost_monitor_load_failed` diagnostics and shows fixed "Cost metrics unavailable" copy instead of reporting zero extraction calls.
 6. **Mobile summary** — Manual-refresh health, cost, quality, and recent-job cards. Mobile does not expose the desktop Job Inspector or retry action.
+
+Persisted monitor rows are runtime-projected before aggregation. Invalid timestamps exclude only their own row; malformed numeric quality, duration, confidence, and charge fields cannot coerce or poison the dashboard. Desktop retry uses a platform-only server recovery route with current-user reauthorization, original-job/project/Storage ownership validation, SAFE_MODE, fail-closed rate limiting, and active-job transaction protection.
+
+Snapshot read failure rejects the load and renders unavailable/previous-snapshot copy on desktop and mobile. It is never converted into zero calls, zero failures or a healthy pipeline.
 
 ---
 

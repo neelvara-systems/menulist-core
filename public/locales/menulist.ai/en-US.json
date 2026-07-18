@@ -84,7 +84,7 @@
         "Knowledge Base": "Knowledge Base",
         "KB Generation": "KB Generation",
         "Changelog": "Changelog",
-        "App Appearance": "App Appearance",
+        "App Appearance": "App settings",
         "Dark Mode": "Dark Mode",
         "Support": "Support",
         "Use MenuList": "Use MenuList",
@@ -165,7 +165,7 @@
         "timeFormat": "Time Format",
         "selectTimeFormat": "Select a time format",
         "themeMode": "Theme Mode",
-        "darkMode": "Dark Mode",
+        "darkMode": "Dark mode",
         "lightMode": "Light Mode",
         "darkThemeEnabled": "Dark theme mode enabled",
         "lightThemeEnabled": "Light theme mode enabled",
@@ -173,19 +173,21 @@
         "saveChanges": "Save Changes"
     },
     "AppSettings": {
-        "title": "App Appearance",
-        "subtitle": "Customize & Preview in Real Time",
+        "title": "App settings",
+        "subtitle": "Choose how your dashboard looks and how information is displayed.",
+        "summary": "Language, time zone, appearance, and display options",
         "closeSettings": "Close settings (ESC)",
         "appearance": "Appearance",
         "themeColors": "Theme Colors",
         "layout": "Layout",
-        "textDirection": "Text Direction",
-        "rtl": "RTL",
-        "ltr": "LTR",
+        "textDirection": "Reading direction",
+        "rtl": "Right to left",
+        "ltr": "Left to right",
         "rtlAriaLabel": "Right to left text direction",
         "ltrAriaLabel": "Left to right text direction",
-        "localization": "Localization",
-        "advancedSettings": "Advanced Settings",
+        "localization": "Language and region",
+        "language": "Language",
+        "advancedSettings": "Display options",
         "showTodaysDate": "Show today's date",
         "showTodaysDateDesc": "Display the current date in the header",
         "showUserName": "Show user name",
@@ -378,6 +380,7 @@
         "regenerateBusinessCopy": "Regenerate Business Copy",
         "businessCopyMissingName": "Add your business name first",
         "businessCopySuccess": "Business copy generated and applied",
+        "businessCopyPartialSuccess": "Business copy saved. Some translations still need review.",
         "businessCopyFailed": "Could not generate business copy",
         "businessCopyApplyNote": "This applies the generated copy immediately across supported business presence surfaces.",
         "businessCopyCoverageTitle": "Language coverage",
@@ -1066,6 +1069,7 @@
         "noCreditActions": "No-credit actions",
         "pageSummary": "Page {page} - {count} shown",
         "moreAvailable": "- More available",
+        "continueFilteredHistory": "No matches in this scan. Continue to check older activity.",
         "previous": "Previous",
         "next": "Next",
         "notRecorded": "Not recorded",
@@ -1126,7 +1130,7 @@
         "descriptions": "Descriptions",
         "sourceWithValue": "Source: {value}",
         "targetWithValue": "Target: {value}",
-        "noDescriptionsRecorded": "No descriptions recorded.",
+        "noDescriptionsRecorded": "This history stores the result count, not the generated text. Your saved menu is the current version.",
         "moreDescriptionsSaved": "{count, plural, one {# more description is saved in desktop details.} other {# more descriptions are saved in desktop details.}}",
         "languageDetails": "Language Details",
         "noTranslationRowsRecorded": "No translation rows recorded.",
@@ -1164,6 +1168,7 @@
             "menu_intake_identity": "Menu upload check",
             "review_reply_suggestion": "Review reply draft",
             "owner_business_assistant_answer": "Business Health answer",
+            "ai_menu_manager_planner": "Menu update plan",
             "weekly_narrative": "Weekly narrative",
             "help_center_search": "Help center search",
             "help_center_embedding": "Help center indexing",
@@ -1191,6 +1196,8 @@
             "revisedDescriptions": "Revised descriptions.",
             "translatedRowsToTargets": "Translated {rowText} to {targets}.",
             "translatedRows": "Translated {rowText}.",
+            "translationCompletedWithGapsCount": "{count, plural, one {Translation returned # incomplete row. Review the content and retry.} other {Translation returned # incomplete rows. Review the content and retry.}}",
+            "translationCompletedWithGaps": "Translation returned incomplete text. Review the content and retry.",
             "generatedImagesForItem": "{count, plural, one {Generated # image for {itemName}.} other {Generated # images for {itemName}.}}",
             "generatedImages": "{count, plural, one {Generated # image.} other {Generated # images.}}",
             "generatedMenuImage": "Generated menu image output.",
@@ -1203,6 +1210,7 @@
             "preparedReviewReplyDraft": "Prepared review reply draft.",
             "preparedMenuCardExportGuidance": "Prepared menu card export guidance.",
             "businessHealthQuestionAnswered": "Answered a Business Health question.",
+            "preparedMenuUpdatePlan": "Prepared a menu update plan.",
             "checkedMenuUploadDetails": "Checked menu upload details.",
             "activityRecorded": "Activity recorded."
         }
@@ -1241,6 +1249,7 @@
         "markResolved": "Mark Resolved",
         "markNew": "Mark as New",
         "failedToUpdate": "Failed to update status",
+        "failedToLoad": "Could not load feedback. Pull to refresh.",
         "note": "Note",
         "viaQr": "via QR Code",
         "viaMenu": "via Menu"
@@ -1316,18 +1325,19 @@
         "anonymous": "Anonymous",
         "markedResolved": "Marked as resolved",
         "failedToUpdate": "Failed to update. Please retry.",
-        "replySavedResolved": "Reply saved & resolved",
-        "failedToSend": "Failed to send. Please retry.",
-        "reply": "Reply",
-        "writeReply": "Write a reply...",
-        "sendReply": "Send Reply",
+        "replyCopied": "Reply copied",
+        "failedToCopy": "Could not copy. Please retry.",
+        "reply": "Reply draft",
+        "writeReply": "Edit reply draft...",
+        "copyReply": "Copy reply",
+        "openWhatsApp": "WhatsApp",
         "resolve": "Resolve",
         "needsAttention": "Needs Attention",
         "statusNew": "New",
         "feedbackLabel": "Feedback",
         "contactLabel": "Contact",
         "replyDrafts": "Reply drafts",
-        "replyHint": "Reply and resolve in one step, or mark this feedback handled automatically.",
+        "replyHint": "Choose or edit a draft, then copy it or open WhatsApp. MenuList does not send it automatically.",
         "alreadyResolved": "No action needed. This feedback is already resolved."
     },
     "LanguageSelector": {
@@ -1378,7 +1388,7 @@
         "contactEmailDesc": "Use email when you cannot access tickets or need to forward context from your inbox.",
         "contactPartnershipNote": "Partnership or business enquiries can go to <email>partners@menulist.ai</email>.",
         "backToDashboard": "Back to Dashboard",
-        "allSystemsOperational": "All Systems Operational",
+        "allSystemsOperational": "Support options available",
         "terms": "Terms",
         "privacy": "Privacy",
         "blog": "Blog",
@@ -1685,6 +1695,8 @@
         "deactivateOutlet": "Deactivate outlet?",
         "deactivateOutletConfirm": "This turns off {name} and removes it from normal store switching.",
         "outletDeactivated": "Outlet deactivated",
+        "outletDeactivatedBillingPending": "Outlet deactivated. Billing is still being updated.",
+        "outletDeactivatedBillingSupport": "Outlet deactivated. Contact support to finish the billing reduction.",
         "failedToDeactivate": "Failed to deactivate outlet",
         "inactive": "Inactive",
         "inactiveStore": "This store is inactive"
@@ -2150,7 +2162,7 @@
         "smartRecommendationsNoEligibleItems": "No eligible items available",
         "smartRecommendationsClearPinned": "Use automatic choice",
         "smartRecommendationsPinnedWarning": "Chosen item is currently unavailable",
-        "smartRecommendationsPinnedWarningDesc": "\"{item}\" is {reason}. The next best available item will be shown to customers instead.",
+        "smartRecommendationsPinnedWarningDesc": "\"{item}\" is {reason}. MenuList may show another available choice; if none qualifies, this choice stays hidden.",
         "smartRecommendationsPinnedUnavailable": "Chosen item",
         "smartRecommendationsUnavailableReason": "currently unavailable",
         "smartRecommendationsSaved": "Featured section updated",
@@ -2160,7 +2172,7 @@
         "smartRecommendationsOwnerNoteTitle": "Owner note",
         "smartRecommendationsOwnerNoteOrder": "This changes only the Featured section. It does not change the normal menu order.",
         "smartRecommendationsOwnerNoteAuto": "Leave a choice empty when you want MenuList to choose automatically.",
-        "smartRecommendationsOwnerNoteSignals": "Best seller, prep time, price, and customer activity help automatic choices. Your selected item wins when it can be shown.",
+        "smartRecommendationsOwnerNoteSignals": "Automatic choices stay within items that can be shown. Your selected item is used whenever it is available.",
         "smartRecommendationsOwnerNoteSkipped": "Hidden, unavailable, out-of-time, or repeated items may be skipped on the public menu.",
         "addImagesSelectionHint": "Choose an item to add or update its photo",
         "atLeastOneLanguageRequired": "At least one language is required.",
@@ -2172,17 +2184,18 @@
         "languageUpdateFailed": "Failed to update languages",
         "languageAdded": "{language} added",
         "translationCreditsRequired": "More translation credits are needed to continue.",
+        "enhancementPackRequired": "Get more enhancements to continue. Open Billing to add an enhancement pack.",
         "languageAddFailed": "Failed to add language",
         "updating": "Updating...",
         "manageLanguages": "Manage Languages",
         "menuLanguages": "Menu Languages",
-        "menuLanguagesDesc": "The first language is your source language. New languages are translated from it automatically.",
+        "menuLanguagesDesc": "English is the translation source. The default customer language only controls what owners and customers see first.",
         "menuLanguagesManualDesc": "Use this when you want to add, remove, or reorder languages manually.",
         "addMissingDescriptions": "Add missing descriptions",
         "addMissingDescriptionsDesc": "Use this when descriptions are the only thing still missing.",
-        "primaryLanguage": "Primary language",
+        "primaryLanguage": "Default customer language",
         "languageActive": "{code} active",
-        "primary": "Primary",
+        "primary": "Default",
         "addLanguage": "Add a translation language",
         "chooseLanguage": "Select a language to add",
         "languagesLimit": "The selected language will be available during the translation process. Up to {max} languages per menu.",
@@ -2283,7 +2296,7 @@
         "descriptionsAutoSaved": "Descriptions are saved automatically after generation.",
         "generateMissing": "Generate missing",
         "refresh": "Refresh",
-        "refreshDescriptionsConfirm": "This refreshes generated descriptions and keeps manual edits unchanged.",
+        "refreshDescriptionsConfirm": "This refresh uses {credits, plural, one {# enhancement credit} other {# enhancement credits}}. Generated descriptions are replaced; manual edits stay unchanged.",
         "refreshDescriptionsCta": "Refresh descriptions",
         "refreshDescriptionsTitle": "Refresh descriptions?",
         "generateContent": "Generate Content",
@@ -2630,13 +2643,13 @@
         "viewModes": {
             "today": "Today",
             "overview": "Overview",
-            "daily": "Yesterday",
+            "daily": "Previous day",
             "weekly": "Last 7 Days",
             "monthly": "This Month",
             "overall": "Overall"
         },
         "menu": "Menu",
-        "engagedSessions": "Engaged Sessions",
+        "engagedSessions": "Sessions with activity",
         "actionRate": "Action Rate",
         "customerActions": "Customer Actions",
         "searches": "Searches",
@@ -2644,8 +2657,8 @@
         "unavailableInterest": "Unavailable Interest",
         "loadingCurrentActivity": "Loading current activity",
         "noMenuActivityToday": "No menu activity yet today.",
-        "todayPartialActivity": "This is the current business day's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.",
-        "todayPartialActivityUpdated": "Updated {updated}. This is the current business day's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.",
+        "todayPartialActivity": "This is the current business day's partial activity only. It is not included yet in Previous day, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.",
+        "todayPartialActivityUpdated": "Updated {updated}. This is the current business day's partial activity only. It is not included yet in Previous day, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.",
         "refreshHint": "Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.",
         "metricsHint": "Searches are de-duplicated within a session. Actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.",
         "topSearchNow": "Top search right now: {term} ({count})",
@@ -2659,7 +2672,7 @@
         "activeDaysThisMonth": "{count, plural, one {# active day this month} other {# active days this month}}",
         "noLifetimeMenuActivityYet": "No lifetime menu activity yet.",
         "todaySoFar": "Today so far",
-        "settledTabHelper": "Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.",
+        "settledTabHelper": "Complete analytics load only when you open this tab. After the first load, this device uses the saved results until the location completes its next end-of-day update.",
         "noSettledMenuActivityLast7Days": "No settled menu activity yet for the last 7 days.",
         "menuIntelligenceActionPlan": "Menu Intelligence Action Plan",
         "fourWeekTrend": "4-Week Trend",
@@ -2911,8 +2924,8 @@
         "helpCenterDesc": "FAQ, contact, support tickets",
         "contactSupport": "Contact Support",
         "contactSupportDesc": "Chat with us on WhatsApp",
-        "appSettings": "App Appearance",
-        "appSettingsDesc": "Dark mode, layout, display options",
+        "appSettings": "App settings",
+        "appSettingsDesc": "Language, time zone, appearance, and display options",
         "switchToDesktop": "Switch to Desktop",
         "switchToDesktopDesc": "Use the full desktop dashboard",
         "logOut": "Log Out",
@@ -2924,12 +2937,29 @@
         "refreshApp": "Refresh app",
         "refreshAppDesc": "Load the latest MenuList version on this device."
     },
+    "MobileNavigation": {
+        "ariaLabel": "Primary mobile navigation",
+        "today": "Today",
+        "menu": "Menu",
+        "menuHelp": "Menu help",
+        "share": "Share",
+        "more": "More"
+    },
+    "MobileShell": {
+        "loadingDashboard": "Dashboard",
+        "loadingToday": "Today",
+        "loadingBusinessHealth": "Business Health",
+        "loadingMobileApp": "Mobile App",
+        "subscribeTitle": "Subscribe to Get Started",
+        "subscribeDescription": "Choose a plan to start creating your digital menu and managing your business.",
+        "viewPlans": "View Plans"
+    },
     "Dashboard": {
         "title": "Dashboard",
         "welcome": "Welcome back",
         "overview": "Overview",
         "recentActivity": "Recent Activity",
-        "noStoreSelected": "No store selected",
+        "noStoreSelected": "No location selected",
         "loadingAnalytics": "Loading analytics data...",
         "errorLoadingAnalytics": "Error Loading Analytics",
         "owner": {
@@ -2937,11 +2967,11 @@
             "menu": "Menu",
             "unableToLoad": "Unable to load dashboard",
             "refreshOrContactSupport": "Please try refreshing the page. If the problem persists, contact support.",
-            "settledTabHelper": "Settled analytics are fetched only when this tab is opened. After the first fetch, this device uses cached settled data until the next store end-of-day cycle.",
+            "settledTabHelper": "Complete analytics load only when you open this tab. After the first load, this device uses the saved results until the location completes its next end-of-day update.",
             "views": {
                 "todaySoFar": "Today so far",
                 "overview": "Overview",
-                "yesterday": "Yesterday",
+                "yesterday": "Previous day",
                 "last7Days": "Last 7 Days",
                 "thisMonth": "This Month",
                 "overall": "Overall"
@@ -2949,14 +2979,14 @@
             "viewModes": {
                 "today": "Today",
                 "overview": "Overview",
-                "daily": "Yesterday",
+                "daily": "Previous day",
                 "weekly": "Last 7 Days",
                 "monthly": "This Month",
                 "overall": "Overall"
             },
             "today": {
                 "noMenuActivityToday": "No menu activity yet today.",
-                "partialActivity": "This is the current business day's partial activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.",
+                "partialActivity": "This is the current business day's partial activity only. It is not included yet in Previous day, Last 7 Days, This Month, or lifetime totals. Those views update after the next nightly settlement.",
                 "refreshHint": "Fresh data appears when this screen is opened again or refreshed after 10 minutes. It does not auto-update continuously.",
                 "metricsHint": "Searches are de-duplicated within a session. Customer actions count final clicks only, and unavailable interest shows demand rather than confirmed lost sales.",
                 "topSearchNow": "Top search right now: {term} ({count})",
@@ -2971,7 +3001,7 @@
             },
             "metrics": {
                 "itemClicks": "Item Clicks",
-                "engagedSessions": "Engaged Sessions",
+                "engagedSessions": "Sessions with activity",
                 "actionRate": "Action Rate",
                 "customerActions": "Customer Actions",
                 "searches": "Searches",
@@ -3054,7 +3084,7 @@
                 "historicalDataWillAppear": "Historical data will appear after a few weeks"
             },
             "aiSummary": {
-                "daily": "Yesterday at a glance",
+                "daily": "Previous day at a glance",
                 "weekly": "This week at a glance",
                 "monthly": "This month in summary"
             },
@@ -3062,7 +3092,7 @@
                 "call": "Call",
                 "calls": "Calls",
                 "whatsapp": "WhatsApp",
-                "directions": "Directions",
+                "directions": "Get directions",
                 "reserve": "Reserve",
                 "order": "Order"
             },
@@ -3078,9 +3108,9 @@
                 "actionRateBySource": "Action rate by source",
                 "sourceQualityTag": "{source}: {visits} visits · {sessions} action sessions · {rate}%",
                 "sourceQualityTagCompact": "{source}: {visits} visits · {rate}%",
-                "markDone": "Mark done",
-                "markDoneSaved": "Marked done. Results will update after settled analytics are available.",
-                "markDoneFailed": "Could not mark this action done."
+                "markDone": "Mark as done",
+                "markDoneSaved": "Marked as done. Results will update when the next analytics summary is ready.",
+                "markDoneFailed": "This action could not be marked done. Try again."
             },
             "details": {
                 "menuDetails": "Menu Details",
@@ -3094,7 +3124,7 @@
                     "topItems": "Top Items",
                     "categories": "Categories",
                     "customerActions": "Customer Actions",
-                    "openHoursActions": "Open/Closed Action Timing",
+                    "openHoursActions": "Actions by business hours",
                     "searchDemand": "Search Demand",
                     "unavailableInterest": "Unavailable Interest",
                     "languages": "Languages",
@@ -3104,13 +3134,13 @@
                 "descriptions": {
                     "visitorSources": "Sessions and final actions by entry source.",
                     "campaignTracking": "UTM traffic saved from links and QR placements.",
-                    "openHoursActions": "Final customer actions grouped by the business hours state customers saw."
+                    "openHoursActions": "Final customer actions grouped by whether the business was open, closed, or its hours status was unavailable when the customer visited."
                 },
                 "metrics": {
                     "menuViews": "Menu views",
                     "itemTaps": "Item taps",
                     "menuSessions": "Menu sessions",
-                    "engagedSessions": "Engaged sessions",
+                    "engagedSessions": "Sessions with activity",
                     "actionSessions": "Action sessions",
                     "totalSearches": "Total searches"
                 },
@@ -3133,10 +3163,10 @@
                     "content": "Content"
                 },
                 "openHours": {
-                    "open": "Actions while open",
-                    "closed": "Actions while closed",
-                    "unknown": "Actions with hours hidden",
-                    "closedShare": "{rate}% of timed actions"
+                    "open": "Actions when open",
+                    "closed": "Actions when closed",
+                    "unknown": "Actions when hours status was unavailable",
+                    "closedShare": "{rate}% of all recorded actions happened while closed"
                 },
                 "searchTerm": "Search term",
                 "noResultTerm": "No-result term",
@@ -3193,7 +3223,7 @@
                 "shares": "Shares",
                 "titles": {
                     "overall": "Official Business Page · Overall",
-                    "daily": "Official Business Page · Yesterday",
+                    "daily": "Official Business Page · Previous day",
                     "weekly": "Official Business Page · Last 7 Days",
                     "monthly": "Official Business Page · This Month"
                 },
@@ -3202,11 +3232,11 @@
                 "lifetimeSummary": "Lifetime: {views} views, {menuClicks} View Menu clicks, {actions} actions, {links} link taps, {shares} shares",
                 "noLifetimeActivity": "No lifetime OBP activity yet.",
                 "actionBreakdown": "Action breakdown",
-                "shareBreakdown": "Share breakdown",
+                "shareBreakdown": "Sharing breakdown",
                 "mobileInfoIntro": "This card shows how customers interact with your Official Business Page before or around opening the menu.",
                 "mobileInfoActions": "Actions count final clicks on Call, WhatsApp, Directions, Reserve, and Order.",
                 "mobileInfoLinks": "Shares come from the official business link card, and link taps count Google review, Instagram, Facebook, and website visits from the public OBP.",
-                "todayPartialInfo": "Today so far is partial live activity only. It is not included yet in Yesterday, Last 7 Days, This Month, or lifetime totals."
+                "todayPartialInfo": "Today so far is partial live activity only. It is not included yet in Previous day, Last 7 Days, This Month, or lifetime totals."
             },
             "customerApp": {
                 "title": "Customer App",
@@ -3269,7 +3299,7 @@
                     "strong": "Strong",
                     "stable": "Stable",
                     "weak": "Weak",
-                    "watch": "Watch",
+                    "watch": "Needs attention",
                     "at_risk": "At Risk"
                 }
             },
@@ -3463,7 +3493,7 @@
             "titlePart1": "Turn your current menu or service list into",
             "titleHighlight": "your official customer link.",
             "titlePart2": "",
-            "subtitle": "Start with a photo, PDF, existing menu or service link, or typed list. MenuList prepares the customer-facing version for review and keeps every public place tied to what you approve.",
+            "subtitle": "Start with a clear photo or an owned public menu, service-list, image, or PDF link. MenuList prepares the customer-facing version for review and keeps every public place tied to what you approve.",
             "cta": "Create customer link →",
             "ctaAria": "Create your official customer link",
             "secondaryCta": "See example customer page",
@@ -3613,8 +3643,6 @@
             "photoBody": "Use the menu or service list customers already see.",
             "linkTitle": "Paste an owned public link",
             "linkBody": "MenuList reads supported public menu, catalogue, price-list, service-list, image, or PDF links.",
-            "typedTitle": "Paste a typed list",
-            "typedBody": "Use the items, services, prices, or packages you already send to customers.",
             "previewLabel": "Private preview",
             "previewUrl": "menulist.ai/your-business",
             "previewStatus": "Not public yet",
@@ -3630,11 +3658,6 @@
             "linkSample0": "Supported public pages are read after sign-in",
             "linkSample1": "MenuList prepares the customer-facing list",
             "linkSample2": "The public customer link is created only after confirmation",
-            "typedPreviewKicker": "Starting from typed text",
-            "typedPreviewTitle": "Typed list becomes a private preview",
-            "typedSample0": "Items, services, and prices are organized for customers",
-            "typedSample1": "Business details stay connected to the same list",
-            "typedSample2": "Review keeps unfinished text away from customers",
             "previewStep0": "Source connected after sign-in",
             "previewStep1": "Items prepared for owner review",
             "previewStep2": "Customer link created after confirmation",
@@ -3822,7 +3845,7 @@
             "phoneDashboardDesc": "Owners can check and update the important parts from a phone-friendly view.",
             "activityFeedbackTitle": "Activity and feedback",
             "activityFeedbackDesc": "See what customers open and collect wrong-price or missing-item reports.",
-            "caption": "This is the homepage summary only. Deeper workflows stay on their feature pages so the first visit stays easy to read."
+            "caption": "Open the relevant feature page when you need exact limits, setup steps, or owner controls."
         },
         "AnalyticsInsights": {
             "title": "See what customers do after publishing.",
@@ -3869,7 +3892,7 @@
             "healthPoint1": "Fixes hand off safely",
             "healthPoint2": "Works from the owner phone view",
             "healthCta": "View Business Health",
-            "caption": "This is homepage proof only. The deeper workflows live on their feature pages."
+            "caption": "Important changes stay reviewable; stable checks stay quiet."
         },
         "BusinessHealth": {
             "title": "Business Health shows what needs attention.",
@@ -4246,7 +4269,7 @@
                 "proofTitle": "Choice guidance should never break menu accuracy.",
                 "proofSubtitle": "The feature helps customers decide while keeping availability, owner controls, and the approved menu in charge.",
                 "proof0Title": "Owner can choose items",
-                "proof0Desc": "Featured slots can be pinned by the owner when a specific dish, service, or item should be highlighted.",
+                "proof0Desc": "Owners can select an item for a Featured slot. It appears while it remains eligible on the current menu.",
                 "proof1Title": "Normal menu order stays intact",
                 "proof1Desc": "Featured Choices change the first-screen guidance, not the underlying menu structure customers can still browse.",
                 "proof2Title": "Availability stays respected",
@@ -4300,13 +4323,13 @@
                 "journey2Nav": "Control",
                 "journey2Summary": "Let owners choose when direct highlighting is better.",
                 "journey2Eyebrow": "Owner control",
-                "journey2Title": "Owners can pin what should be noticed.",
-                "journey2Desc": "A business can choose the items shown in Featured, Quick, or Value positions when direct control is better than automatic guidance.",
+                "journey2Title": "Owners can select eligible choices.",
+                "journey2Desc": "A business can select items for Featured, Quick, or Value positions. Current availability and menu safety still decide what can appear.",
                 "journey2Pill0": "Pin item",
                 "journey2Pill1": "Review",
                 "journey2Pill2": "Keep current",
                 "journey2Card0Title": "Manual pinning",
-                "journey2Card0Desc": "Owners can decide what should appear first.",
+                "journey2Card0Desc": "Owners can select an item; current menu safety decides whether it can appear.",
                 "journey2Card1Title": "Availability check",
                 "journey2Card1Desc": "Unavailable or unsafe items should not be promoted.",
                 "journey2Card2Title": "Approved menu",
@@ -5644,7 +5667,7 @@
             "q10": "Can I import my existing menu link?",
             "a10": "Yes. After sign-in, you can paste a public menu link you own or have permission to use. MenuList prepares a draft for review, so the link becomes a starting point rather than another public version to maintain.",
             "q11": "Will imported menu content publish automatically?",
-            "a11": "No. Imported content stays in review until you approve it. If a menu link cannot be read clearly, you can upload a menu photo or file instead, or edit the menu manually.",
+            "a11": "No. Imported content stays in review until you approve it. If a public link cannot be read clearly, upload a clear menu or service-list photo or try another owned public link.",
             "q12": "Does AI Menu Manager change my menu automatically?",
             "a12": "No. AI Menu Manager prepares cards. Important work such as prices, bulk updates, publishing, and generated images needs owner approval before it goes live.",
             "q13": "Is AI Menu Manager a customer chatbot?",
@@ -5663,7 +5686,7 @@
             "primaryCta": "Start menu preview",
             "secondaryCta": "View pricing",
             "sectionTitle": "All common questions",
-            "sectionSubtitle": "The homepage keeps only the shortest conversion questions. This page keeps the full owner checklist in one place."
+            "sectionSubtitle": "Setup, publishing, pricing, safety, staff access, AI Menu Manager, and external-platform answers are kept together here."
         },
         "FinalCta": {
             "title": "Make one public list ",
@@ -5698,7 +5721,7 @@
             "starterControl0": "Owner-approved updates",
             "starterControl1": "Basic visit activity",
             "starterControl2": "Starter setup and review path",
-            "starterNotIncluded": "Advanced presentation, AI Menu Manager, language/image enhancements, and multi-location governance stay on higher plans.",
+            "starterNotIncluded": "Custom domains, expanded project capacity, advanced presentation, and multi-location governance stay on higher plans. Supported content enhancements use the capacity included with Starter.",
             "starterCta": "Start with one customer link",
             "proAudience": "Growing businesses that change their list often and want stronger presentation, message-based updates, and better customer-facing control.",
             "proSurface0": "Everything in Starter",
@@ -5727,11 +5750,12 @@
             "monthly": "Monthly",
             "yearly": "Yearly",
             "saveYearly": "SAVE 17%",
+            "currencyLabel": "Choose pricing currency",
             "billingToggleLabel": "Switch between monthly and yearly billing",
-            "locationNote": "Pricing shown based on your location",
+            "locationNote": "Select the currency and billing period you want to compare",
             "setupStateEyebrow": "Setup review is not a plan",
-            "setupStateTitle": "Start with 7-day setup, then keep the same customer link live.",
-            "setupStateBody": "Upload and review the starter public list before choosing the right plan. Publishing, the real customer link, and QR sharing require a paid plan.",
+            "setupStateTitle": "Start with seven days to publish and try the real customer link.",
+            "setupStateBody": "The starter link and QR can go live during setup. Choose a paid plan before the setup deadline to keep the same URL live after day seven.",
             "decisionEyebrow": "How to choose",
             "decisionTitle": "Choose by reach, not by feature count.",
             "decisionSubtitle": "Starter is for one official link. Pro is for stronger presentation and message-based updates. Premium is for location governance.",
@@ -5752,15 +5776,195 @@
             "setupTitle": "From current list to official customer link",
             "setupHighlight": "live link",
             "setupStep0Title": "Upload for setup review",
-            "setupStep0Desc": "Start from a photo, PDF, screenshot, or link.",
-            "setupStep1Title": "Use the starter link",
-            "setupStep1Desc": "Review the public list and share the real QR/link.",
+            "setupStep0Desc": "Start from a clear photo or an owned public list link.",
+            "setupStep1Title": "Publish the starter link",
+            "setupStep1Desc": "Review the list, then share the real customer link and QR during setup.",
             "setupStep2Title": "Keep it live",
             "setupStep2Desc": "Choose a plan to keep the same URL active and updated.",
             "showComparison": "View full comparison",
             "hideComparison": "Hide full comparison",
             "finalTitle": "Keep your official customer link live and updated",
-            "finalCta": "Choose a plan"
+            "finalCta": "Choose a plan",
+            "paymentErrorTitle": "Payment not completed",
+            "paymentErrorBody": "Payment could not be completed. If you were charged, contact support before trying again.",
+            "setupErrorTitle": "Complete these details",
+            "setupModalTitle": "Tell us about your business",
+            "setupModalBody": "Add two details to connect the selected plan to the right workspace.",
+            "setupModalNote": "Your timezone and business-day settings use safe defaults and can be changed later.",
+            "businessNameLabel": "Business name",
+            "businessNamePlaceholder": "For example, The Good Food Cafe",
+            "businessIndustryLabel": "Business type",
+            "businessIndustryPlaceholder": "Select a business type",
+            "businessNameRequired": "Enter your business name.",
+            "businessIndustryRequired": "Select your business type.",
+            "industryPos": "POS software",
+            "industryAgency": "Marketing agency",
+            "industrySaas": "SaaS company",
+            "industryOther": "Other",
+            "continue": "Continue",
+            "continueToSignIn": "Continue to sign in",
+            "haveAccount": "Already have an account?",
+            "signIn": "Sign in",
+            "successPaymentTitle": "Payment confirmed",
+            "successPaymentBody": "Your {plan} payment is confirmed. Open the dashboard to continue setup.",
+            "successPlanFallback": "selected plan",
+            "successDashboardCta": "Open dashboard",
+            "successStayCta": "Stay on pricing",
+            "creditAddedTitle": "Enhancement pack added",
+            "creditAddedBody": "Your additional content-generation capacity is ready.",
+            "creditPaymentErrorBody": "The enhancement pack could not be added. Contact support before trying again if you were charged.",
+            "creditPackName": "Content Enhancement Pack",
+            "creditPackDescription": "Additional generated images, descriptions, translations, and supported edits.",
+            "creditPackSignIn": "Sign in to add a pack",
+            "creditPackAdd": "Add enhancement pack",
+            "creditPackChoosePlan": "Choose a plan first",
+            "comparisonFeatures": "Features",
+            "comparisonCaption": "MenuList plan feature comparison",
+            "comparisonIncluded": "Included",
+            "comparisonNotIncluded": "Not included",
+            "comparisonCoreMetrics": "Core activity",
+            "comparisonCoreAndActions": "Core activity + action summaries",
+            "comparisonEmailSupport": "Email support",
+            "comparisonStandardEmailSupport": "Standard email support",
+            "comparisonPriorityEmailSupport": "Priority email support",
+            "featureCategory": {
+                "corePlatform": "Core platform",
+                "contentPreparation": "Content preparation",
+                "marketingGrowth": "Sharing and customer activity",
+                "onlinePresence": "Online presence",
+                "supportServices": "Support",
+                "platformEssentials": "Platform essentials",
+                "apiIntegrations": "API and integrations"
+            },
+            "featureComparison": {
+                "verification_dashboard": {
+                    "name": "Side-by-side source review",
+                    "description": "Review and edit prepared data beside the original source before publishing."
+                },
+                "creative_design_studio": {
+                    "name": "Design studio",
+                    "description": "Choose supported layouts, colors, fonts, and backgrounds for customer pages."
+                },
+                "projects": {
+                    "name": "Customer lists",
+                    "description": "Each list has its own items, design, customer link, and settings."
+                },
+                "ai_data_extraction": {
+                    "name": "Menu and list import",
+                    "description": "Prepare items, categories, prices, and available descriptions from a supported photo, image, PDF, or owned public source."
+                },
+                "ai_descriptions": {
+                    "name": "Prepared item descriptions",
+                    "description": "Prepare clear item descriptions for the owner to review before publishing."
+                },
+                "ai_multi_language": {
+                    "name": "Menu translations",
+                    "description": "Prepare supported customer-language versions for the owner to review before publishing."
+                },
+                "ai_image_generator": {
+                    "name": "Generated item images",
+                    "description": "Generate one or more item-image options from an owner prompt, then keep only approved results."
+                },
+                "ai_image_editor": {
+                    "name": "Photo editing",
+                    "description": "Prepare supported photo improvements, background removal, and preset edits for owner review."
+                },
+                "interactive_studio": {
+                    "name": "Composite image studio",
+                    "description": "Prepare composite product-image options, such as an item in a selected setting, for owner review."
+                },
+                "social_sharing": {
+                    "name": "Shareable customer link",
+                    "description": "Copy or share the approved customer link through the apps already available on your device."
+                },
+                "qr_code": {
+                    "name": "Branded QR code",
+                    "description": "Generate print-ready QR codes with supported business colors and logo."
+                },
+                "menu_kit": {
+                    "name": "Print-ready Menu Kit",
+                    "description": "Download supported branded print materials that use the approved QR code."
+                },
+                "official_business_page": {
+                    "name": "Official Business Page",
+                    "description": "A business page with the approved list, hours, location, current status, and links to existing booking or ordering services."
+                },
+                "business_attributes": {
+                    "name": "Business details",
+                    "description": "Add amenities, dietary options, service modes, and payment methods to the Official Business Page."
+                },
+                "analytics_dashboard": {
+                    "name": "Customer activity",
+                    "description": "See visits, popular items and categories, searches, and customer actions from the menu and Official Business Page."
+                },
+                "analytics_action_summaries": {
+                    "name": "Owner action summaries",
+                    "description": "Get a plain-language summary and a short action list from settled customer activity."
+                },
+                "seo_settings": {
+                    "name": "Search page settings",
+                    "description": "Set supported page titles and descriptions and use the generated sitemap for customer pages."
+                },
+                "google_pixel": {
+                    "name": "Google Analytics and Meta Pixel",
+                    "description": "Connect supported analytics IDs for additional measurement on customer pages."
+                },
+                "custom_domain": {
+                    "name": "Custom domain",
+                    "description": "Use a verified business domain for the customer list."
+                },
+                "remove_branding": {
+                    "name": "Remove MenuList branding",
+                    "description": "Remove MenuList branding from customer pages."
+                },
+                "support": {
+                    "name": "Support",
+                    "description": "Get help from the MenuList team through the channel included with the plan."
+                },
+                "webhooks": {
+                    "name": "Webhooks",
+                    "description": "Receive event notifications for supported account activity."
+                },
+                "file_exports": {
+                    "name": "Structured file exports",
+                    "description": "Download supported structured data for use in another system."
+                },
+                "visual_json_editor": {
+                    "name": "Structured data editor",
+                    "description": "Inspect and edit prepared structured data before using it in another application."
+                }
+            },
+            "enterpriseTitle": "Need a custom multi-location rollout?",
+            "enterpriseBody": "Talk to MenuList when standard Premium limits or rollout terms do not fit your locations.",
+            "enterpriseCta": "Contact us",
+            "faqTitle": "Pricing questions",
+            "faqSubtitle": "Clear answers about setup, plans, billing, and content enhancements.",
+            "faqCategoryLabel": "Pricing question categories",
+            "faqCategoryGettingStarted": "Getting started",
+            "faqCategoryPlans": "Plans and billing",
+            "faqCategoryEnhancements": "Content enhancements",
+            "faqSetupTimeQuestion": "How long does setup take?",
+            "faqSetupTimeAnswer": "You have seven days to upload, review, publish, and try the real starter customer link before a paid plan is needed to keep that URL live.",
+            "faqTechnicalKnowledgeQuestion": "Do I need technical knowledge?",
+            "faqTechnicalKnowledgeAnswer": "No coding or technical setup is required. Start with a clear photo or an owned public list link, then review what MenuList prepares.",
+      "faqAfterSubscribeQuestion": "What happens after I subscribe?",
+      "faqAfterSubscribeAnswer": "The same customer URL stays live. You continue updating the approved list, QR, public page, and supported customer places from the same workspace.",
+      "faqDayEightQuestion": "What happens after the seven-day setup period?",
+      "faqDayEightAnswer": "If a paid plan is active before the deadline, the same customer URL stays live. Without an active paid plan, the starter access stops after the setup deadline until a plan is chosen.",
+      "faqChoosePlanQuestion": "Which plan should I choose?",
+            "faqChoosePlanAnswer": "Starter is for one trusted customer link. Pro adds more projects, stronger presentation, AI Menu Manager, a custom domain, and more enhancement capacity. Premium is for multi-location governance.",
+            "faqUpgradeQuestion": "Can I upgrade later?",
+            "faqUpgradeAnswer": "Yes. You can change plans through Billing without rebuilding the customer link. The checkout shows any billing adjustment that applies.",
+            "faqIncludedQuestion": "What is included with every paid plan?",
+            "faqIncludedAnswer": "Every paid plan includes the public menu or service list, shareable customer link, QR, Official Business Page, owner-approved updates, and recurring capacity for supported content enhancements.",
+            "faqRefundQuestion": "What is the refund policy?",
+            "faqRefundAnswer": "Fees are generally final once a billing cycle begins or credits are added or used. Applicable law and confirmed duplicate or incorrect charges remain exceptions. Cancel before renewal to prevent the next charge.",
+            "faqCreditsQuestion": "How do content credits work?",
+            "faqCreditsAnswer": "Credits are used for supported generated images, descriptions, translations, and edits. Core public menu, QR, and customer-link access do not consume unlimited generation.",
+            "faqUnusedCreditsQuestion": "What happens to unused credits?",
+            "faqUnusedCreditsAnswer": "Plan-included monthly credits reset each billing cycle. Purchased enhancement-pack credits do not expire while the eligible subscription remains available.",
+            "faqCustomDomainQuestion": "Can I use my own domain?",
+            "faqCustomDomainAnswer": "Yes. Pro and Premium include custom-domain support. Domain setup and verification still need to be completed before customers use it."
         },
         "GetStarted": {
             "eyebrow": "Create your customer link",
@@ -5957,7 +6161,7 @@
             "group0F1Desc": "Prepare menu images from approved menu data where your plan and credits allow. No separate photoshoot is needed to get started.",
             "group0F2Title": "Descriptions written for you",
             "group0F2Desc": "Prepare customer-friendly descriptions from your menu data, then review them before they appear publicly.",
-            "group0F3Title": "One-click translations",
+            "group0F3Title": "Menu translations",
             "group0F3Desc": "Add customer languages from the same approved menu. Customers can choose the language available for their menu view.",
             "group1Label": "Publish & Place",
             "group1Heading": "Publish one customer link and place it everywhere.",
@@ -6056,9 +6260,9 @@
             "flowTitle": "One approved list. Every customer link.",
             "flowSubtitle": "Start from one menu, review once, then publish QR, links, screens, PDF, and the official page from the same approved list.",
             "flowPhoto": "Photo",
-            "flowPdf": "PDF",
+            "flowPdf": "Public PDF or image link",
             "flowLink": "Existing link",
-            "flowTypedText": "Typed text",
+            "flowTypedText": "Service-list link",
             "flowQr": "QR code",
             "flowWebPage": "Menu link",
             "flowScreens": "Screens",
@@ -6067,8 +6271,8 @@
             "flowOfficial": "Official page",
             "flowApp": "Saved shortcut",
             "step1Title": "Start with what you have.",
-            "step1Subtitle": "Take a photo of your paper menu, upload a PDF, paste an existing menu link, or type items directly. MenuList prepares it for owner review without manual formatting.",
-            "step1P0": "Works with photo, PDF, existing link, or typed input",
+            "step1Subtitle": "Take or upload a clear photo, or paste an owned public menu, service-list, image, or PDF link. MenuList prepares it for owner review without manual formatting.",
+            "step1P0": "The public setup path accepts clear photos and owned public list links",
             "step1P1": "Items, prices, and categories read for you. No manual entry.",
             "step1P2": "Can help with multi-page menus and clear handwritten menus",
             "step1P3": "Review everything before publishing. Nothing goes live without your sign-off.",
@@ -6083,7 +6287,7 @@
             "step2AiDesc": "Descriptions",
             "step2AiDescSub": "No separate copywriting needed",
             "step2AiTranslations": "Translations",
-            "step2AiTranslationsSub": "No translator needed",
+            "step2AiTranslationsSub": "Prepared for your review",
             "step3Title": "Publish once. Use the same list across MenuList.",
             "step3Subtitle": "When you publish, your QR menu, official page, screens, and shareable link can use the approved menu instead of separate files.",
             "step3P0": "QR menu, official page, screens, and shareable link can point to the same approved menu",
@@ -6206,14 +6410,14 @@
             "heroTitle": "Ask us about your ",
             "heroHighlight": "customer link.",
             "heroSubtitle": "Use this for setup questions, pricing clarity, multi-location planning, or anything that affects what customers see.",
-            "proof0": "Real product team",
+            "proof0": "MenuList product questions",
             "proof1": "Setup and pricing help",
             "proof2": "Multi-location questions welcome",
-            "leftTitle": "Talk to a real person who knows MenuList.",
-            "leftSubtitle": "No bots. No ticket numbers. Just a quick reply from the team that built it.",
-            "why0": "Get a personalised walkthrough of the platform for your business type.",
+            "leftTitle": "Ask a practical MenuList question.",
+            "leftSubtitle": "Record a setup or pricing question here. For a direct email conversation, use hello@menulist.ai.",
+            "why0": "Request a walkthrough for your business type.",
             "why1": "Ask any question about menus, customer links, pricing, or multi-location setup.",
-            "why2": "Tell us what your business needs. We read every message.",
+            "why2": "Add your business context so the question is easier to understand.",
             "quote": "We built MenuList because every business deserves one trusted place where its current menu starts. If you have a question, it matters to us.",
             "quoteAuthor": "Founder, MenuList",
             "preferEmail": "Prefer email?",
@@ -6239,10 +6443,15 @@
             "formAgreeEnd": ".",
             "formSubmit": "Send Message",
             "formSubmitting": "Sending...",
+            "formNameError": "Enter your full name.",
+            "formEmailError": "Enter a valid email address.",
+            "formMessageError": "Enter at least 10 characters.",
+            "formAgreeError": "Agree to the policies to continue.",
             "submitFailed": "Could not send right now. Please email hello@menulist.ai.",
             "securityCheckRequired": "Complete the security check and try again.",
-            "successTitle": "Message sent",
-            "successBody": "We've received your message and will get back to you soon.",
+            "securityCheckLoadFailed": "The security check did not load. Refresh the page and try again.",
+            "successTitle": "Message recorded",
+            "successBody": "Your message was recorded. For a direct email conversation, write to hello@menulist.ai.",
             "successAnother": "Send another message"
         },
         "TrustSecurity": {
@@ -9741,7 +9950,8 @@
                 "label": "Report context",
                 "defaultBusiness": "Business not provided",
                 "defaultContext": "Public tool report",
-                "generated": "Generated"
+                "generated": "Generated",
+                "selfReportNotice": "Browser-local self-report, not a digitally verified MenuList record. Confirm facts with the owner."
             },
             "setupJobs": {
                 "title": "Setup job list",

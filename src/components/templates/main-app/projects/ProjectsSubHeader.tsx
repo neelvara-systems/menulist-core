@@ -1,6 +1,10 @@
 import { DEVICE_TYPES_LIST } from "@constant/builder";
 import { Button, Flex, Space, theme, Tooltip } from "antd";
 import { LuArrowLeft, LuEye, LuMonitor, LuRectangleVertical, LuShare, LuTablet, LuUploadCloud } from "react-icons/lu";
+import {
+    MENULIST_ANSWERLATTICE_TARGETS,
+    getMenuListAnswerlatticeTargetProps,
+} from "@lib/answerlattice/referenceClients/menuListGuidedResolution";
 import { DeviceTypes } from "./b2cView/types";
 import { ProjectSelector } from "./ProjectDetails/ProjectSelector";
 import { ProjectMetadata } from "./types";
@@ -117,7 +121,11 @@ export default function ProjectsSubHeader({
                     <Button icon={<LuEye />} onClick={onPreview}>Preview</Button>
                 )}
                 {onShare && (
-                    <Button icon={<LuShare />} onClick={onShare}>
+                    <Button
+                        {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_SHARE)}
+                        icon={<LuShare />}
+                        onClick={onShare}
+                    >
                         Share
                     </Button>
                 )}
@@ -125,6 +133,7 @@ export default function ProjectsSubHeader({
                 {isUIEditorView && onPublish && (
                     <Tooltip title={!hasChanges ? "No changes to publish" : ""}>
                         <Button
+                            {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_PUBLISH)}
                             type="primary"
                             ghost
                             icon={<LuUploadCloud />}

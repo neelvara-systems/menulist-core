@@ -7,7 +7,6 @@ export interface PublicScreenState {
     contentVersion: number;
     enabled: boolean;
     lastContentChangeAt: unknown;
-    screenToken: string;
     storeId: string;
     updatedAt: unknown;
 }
@@ -35,7 +34,6 @@ export function toPublicScreenState(
         contentVersion,
         enabled: screen.enabled === true,
         lastContentChangeAt: screen.lastContentChangeAt || Timestamp.now(),
-        screenToken,
         storeId: normalizedStoreId,
         updatedAt: Timestamp.now(),
     };

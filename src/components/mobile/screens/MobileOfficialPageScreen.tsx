@@ -12,6 +12,7 @@ import { getBrandName } from '@lib/businessIdentity/names';
 import { generateBusinessCoverCandidate } from '@lib/image/projectImageGeneration';
 import { updateLocalizedText } from '@lib/localization/text';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
+import { collectObpMediaReferences } from '@lib/media/obpMediaReferences';
 import { prepareMediaImage, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
@@ -19,7 +20,9 @@ import { getMenuSpecialNoteSuggestions } from '@lib/menu/specialNoteSuggestions'
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
 import { buildQrCodeFilename } from '@lib/utils/qrCode';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { normalizeOwnerPublicPresenceLinks } from '@lib/obp/ownerPublicPresenceBoundary';
 import { buildVisualProfileCompletion } from '@lib/visualProfile/visualProfileCompletion';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { closestCenter, DndContext, type DragEndEvent, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -558,6 +561,8 @@ export default function MobileOfficialPageScreen({
     const replacePhotoInputRef = useRef<HTMLInputElement | null>(null);
     const lastEmbeddedSyncKeyRef = useRef('');
     const lastEmbeddedPhotoDeleteResetTokenRef = useRef(embeddedPhotoDeleteResetToken);
+    const photoDeleteQueueRef = useRef<string[]>([]);
+    const persistedPublicPresenceRef = useRef(storeDetails?.publicPresence);
     const officialPageUrl = useMemo(
         () => generateOBPUrl(storeDetails?.subdomain || '', storeDetails?.customDomain),
         [storeDetails?.customDomain, storeDetails?.subdomain]
@@ -694,13 +699,35 @@ export default function MobileOfficialPageScreen({
 
     const queuePhotoDelete = useCallback((photoUrl?: string) => {
         if (!photoUrl || photoUrl.startsWith('data:')) return;
-        setPhotoDeleteQueue((previous) => previous.includes(photoUrl) ? previous : [...previous, photoUrl]);
+        setPhotoDeleteQueue((previous) => {
+            const nextQueue = previous.includes(photoUrl) ? previous : [...previous, photoUrl];
+            photoDeleteQueueRef.current = nextQueue;
+            return nextQueue;
+        });
     }, []);
+
+    useEffect(() => {
+        photoDeleteQueueRef.current = photoDeleteQueue;
+    }, [photoDeleteQueue]);
+
+    useEffect(() => () => {
+        if (embedded || photoDeleteQueueRef.current.length === 0) return;
+        void deleteOBPPhotos(
+            photoDeleteQueueRef.current,
+            collectObpMediaReferences(persistedPublicPresenceRef.current),
+        );
+    }, [embedded]);
 
     const updatePresence = useCallback(async (nextPresence: typeof formData) => {
         if (!storeDetails?.storeId) return;
+        const publicPresenceDraft = buildPublicPresenceDraft(storeDetails, nextPresence, localizedDrafts);
+        const normalizedLinks = normalizeOwnerPublicPresenceLinks(publicPresenceDraft);
+        if (normalizedLinks.invalidKeys.length > 0) {
+            Toast.show({ content: 'Enter valid HTTPS public-page links before saving.', duration: 1800 });
+            return;
+        }
         setIsSaving(true);
-        const nextPublicPresence = buildPublicPresenceDraft(storeDetails, nextPresence, localizedDrafts);
+        const nextPublicPresence = normalizedLinks.presence;
         const payload = {
             businessCopyMeta: buildBusinessCopyManualOverrideMeta({
                 existingMeta: storeDetails?.businessCopyMeta,
@@ -717,14 +744,22 @@ export default function MobileOfficialPageScreen({
         }));
 
         try {
-            const writeResult = await updateStore(payload as any);
+            const writeResult = await updateStore({
+                ...getStoreDeepDifference(payload, storeDetails),
+                storeId: storeDetails.storeId,
+            });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,
                 'mobile_official_page_store_update_rejected',
             );
-            await deleteOBPPhotos(photoDeleteQueue);
-            setPhotoDeleteQueue([]);
+            const failedPhotoDeletes = await deleteOBPPhotos(
+                photoDeleteQueue,
+                collectObpMediaReferences(nextPublicPresence),
+            );
+            persistedPublicPresenceRef.current = nextPublicPresence;
+            photoDeleteQueueRef.current = failedPhotoDeletes;
+            setPhotoDeleteQueue(failedPhotoDeletes);
             setOriginalFormData(nextPresence);
             setOriginalLocalizedDrafts(localizedDrafts);
             Toast.show({ content: tMobile('saved'), duration: 1000 });
@@ -739,6 +774,7 @@ export default function MobileOfficialPageScreen({
             });
             setStoreDetails((previous: any) => ({
                 ...previous,
+                businessCopyMeta: storeDetails.businessCopyMeta,
                 publicPresence: storeDetails.publicPresence,
             }));
             Toast.show({ content: tMobile('failedToSave'), duration: 1500 });
@@ -775,6 +811,7 @@ export default function MobileOfficialPageScreen({
         setIsCoverUploading(true);
         try {
             const url = await uploadOBPCover(prepared.blob, { tId: session.tId, sId: session.sId }, prepared);
+            queuePhotoDelete(url);
             if (formData.businessCover && formData.businessCover !== url) {
                 queuePhotoDelete(formData.businessCover);
             }
@@ -911,6 +948,7 @@ export default function MobileOfficialPageScreen({
         setUploadingIndex(index);
         try {
             const url = await uploadOBPPhoto(prepared.blob, { tId: session.tId, sId: session.sId }, index, prepared);
+            queuePhotoDelete(url);
             const nextPhotos = [...formData.photos];
             if (nextPhotos[index] && nextPhotos[index] !== url) {
                 queuePhotoDelete(nextPhotos[index]);
@@ -1033,15 +1071,30 @@ export default function MobileOfficialPageScreen({
     const coverPreviewUrl = coverDraft?.previewDataUrl || formData.businessCover;
     const canAdjustActivePhoto = activePhotoIndex != null && Boolean(photoDrafts[activePhotoIndex]?.sourceDataUrl);
     const handleReset = useCallback(() => {
+        const queuedPhotoDeletes = [...photoDeleteQueueRef.current];
+        photoDeleteQueueRef.current = [];
         setFormData(originalFormData);
         setLocalizedDrafts(originalLocalizedDrafts);
         setCoverDraft(null);
         setPhotoDrafts({});
         setPhotoDeleteQueue([]);
+        if (!embedded && queuedPhotoDeletes.length > 0) {
+            void deleteOBPPhotos(
+                queuedPhotoDeletes,
+                collectObpMediaReferences(storeDetails?.publicPresence),
+            ).then((failedPhotoDeletes) => {
+                if (failedPhotoDeletes.length === 0) return;
+                setPhotoDeleteQueue((previous) => {
+                    const nextQueue = Array.from(new Set([...previous, ...failedPhotoDeletes]));
+                    photoDeleteQueueRef.current = nextQueue;
+                    return nextQueue;
+                });
+            });
+        }
         setIsCoverAdjustOpen(false);
         setAdjustingPhotoIndex(null);
         setActivePhotoIndex(null);
-    }, [originalFormData, originalLocalizedDrafts]);
+    }, [embedded, originalFormData, originalLocalizedDrafts, storeDetails?.publicPresence]);
 
     const withSource = useCallback((url: string, src: 'copy' | 'direct' | 'qr' | 'share') => (
         withAnalyticsSource(
@@ -1105,7 +1158,8 @@ export default function MobileOfficialPageScreen({
     const storeHydrationKey = embedded ? storeDetails?.storeId : storeDetails;
 
     useEffect(() => {
-        if (!storeDetails) return;
+        if (!storeDetails || (!embedded && isSaving)) return;
+        if (!embedded) persistedPublicPresenceRef.current = storeDetails.publicPresence;
         const nextFormData = getInitialPresenceForm(storeDetails);
         const nextLocalizedDrafts = buildLocalizedPresenceDrafts(storeDetails, getStoreManagedLanguages(storeDetails));
         if (embedded) {
@@ -1329,19 +1383,21 @@ export default function MobileOfficialPageScreen({
                                     <Text>{formData.businessCover ? 'Replace' : 'Upload'}</Text>
                                 </Flex>
                             </Button>
-                            <Button
-                                disabled={isCoverUploading}
-                                fill="outline"
-                                loading={isCoverGenerating}
-                                onClick={() => { void handleGenerateBusinessCover(); }}
-                                size="middle"
-                                style={{ flex: '1 1 130px' }}
-                            >
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuSparkles size={16} />
-                                    <Text>{formData.businessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</Text>
-                                </Flex>
-                            </Button>
+                            {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                                <Button
+                                    disabled={isCoverUploading}
+                                    fill="outline"
+                                    loading={isCoverGenerating}
+                                    onClick={() => { void handleGenerateBusinessCover(); }}
+                                    size="middle"
+                                    style={{ flex: '1 1 130px' }}
+                                >
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuSparkles size={16} />
+                                        <Text>{formData.businessCover ? t('regenerateBusinessCover') : t('generateBusinessCover')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
                             {coverDraft?.sourceDataUrl ? (
                                 <Button
                                     disabled={isCoverUploading || isCoverGenerating}

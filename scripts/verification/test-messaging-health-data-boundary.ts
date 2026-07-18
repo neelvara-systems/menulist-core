@@ -6,6 +6,7 @@ import {
   getMessagingSessionUploadByteSample,
   isMessagingHealthComputationDue,
   normalizeMessagingHealthSessionSample,
+  shouldCheckMessagingOnboardingHealth,
 } from '../../functions/src/messagingOnboarding/healthMonitor';
 
 const timestamp = (millis: number) => ({ toMillis: () => millis });
@@ -30,6 +31,11 @@ assert.equal(isMessagingHealthComputationDue({
   computeLeaseUntil: timestamp(now + 24 * 60 * 60 * 1000),
 }, now), true);
 assert.equal(isMessagingHealthComputationDue({}, Number.NaN), false);
+
+assert.equal(shouldCheckMessagingOnboardingHealth(Date.UTC(2026, 6, 16, 10, 0)), true);
+assert.equal(shouldCheckMessagingOnboardingHealth(Date.UTC(2026, 6, 16, 10, 3, 59)), true);
+assert.equal(shouldCheckMessagingOnboardingHealth(Date.UTC(2026, 6, 16, 10, 4)), false);
+assert.equal(shouldCheckMessagingOnboardingHealth(Number.NaN), false);
 
 assert.deepEqual(normalizeMessagingHealthSessionSample({
   processingRuns: 2,

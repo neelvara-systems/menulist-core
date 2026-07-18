@@ -15,6 +15,8 @@ import {
     resolveBusinessCategory,
 } from '@data/shared/businessTypes';
 import { normalizeOBPSocialUrl, normalizeOBPWebsiteUrl } from '@lib/obp/publicLinks';
+import { parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
+import { getActiveTempStatus } from '@lib/tempStatus/statusBoundary';
 import { normalizePhoneNumberForStorage, type PhoneNumberStorageInput } from '@lib/phone/phoneNumber';
 
 // ── Constants ──
@@ -240,21 +242,16 @@ export function buildOpeningHours(storeData: any) {
     if (!storeData?.workingHours) return undefined;
 
     const specs = Object.entries(storeData.workingHours)
-        .filter(
-            ([, hours]) =>
-                hours &&
-                typeof hours === 'string' &&
-                (hours as string).includes('-'),
-        )
-        .map(([day, hours]) => {
-            const [opens, closes] = (hours as string).split('-');
-            return {
-                '@type': 'OpeningHoursSpecification' as const,
-                dayOfWeek: DAY_MAP[day.toLowerCase()] || day,
-                opens: opens?.trim(),
-                closes: closes?.trim(),
-            };
-        });
+        .flatMap(([day, hours]) => (
+            DAY_MAP[day.toLowerCase()]
+                ? parseWorkingHoursRanges(hours).map((range) => ({
+                    '@type': 'OpeningHoursSpecification' as const,
+                    dayOfWeek: DAY_MAP[day.toLowerCase()],
+                    opens: range.startTime,
+                    closes: range.endTime,
+                }))
+                : []
+        ));
 
     return specs.length > 0 ? specs : undefined;
 }
@@ -471,11 +468,14 @@ export function buildFaqSchema(
     // Q: Working hours
     if (storeData?.workingHours) {
         const days = Object.entries(storeData.workingHours)
-            .filter(([, hours]) => hours && typeof hours === 'string' && (hours as string).includes('-'))
-            .map(([day, hours]) => {
+            .flatMap(([day, hours]) => {
+                if (!DAY_MAP[day.toLowerCase()]) return [];
+                const ranges = parseWorkingHoursRanges(hours);
+                if (!ranges.length) return [];
                 const fallbackDay = day.charAt(0).toUpperCase() + day.slice(1);
                 const dayLabel = translateSchemaText(t, `publicDays.${day}`, {}, fallbackDay);
-                return `${dayLabel}: ${hours}`;
+                const display = ranges.map((range) => `${range.startTime}-${range.endTime}`).join(', ');
+                return [`${dayLabel}: ${display}`];
             })
             .join(', ');
 
@@ -536,34 +536,42 @@ export function buildFaqSchema(
  * Reflects temporary closures/changes in schema.org structured data.
  * Returns undefined if no active tempStatus or not closure-related.
  */
-export function buildTempStatusSchema(tempStatus?: {
-    type: string;
-    message?: string;
-    expiresAt: string;
-    createdAt: string;
-}) {
-    if (!tempStatus) return undefined;
+export function buildTempStatusSchema(
+    tempStatus: unknown,
+    timeZone?: string,
+    now = new Date(),
+) {
+    const activeStatus = getActiveTempStatus(tempStatus, now.getTime());
+    // Only an explicit whole-business closure can claim closed opening hours.
+    // Kitchen-only and early/late notices remain visible banners but must not
+    // mark the entire LocalBusiness closed in structured data.
+    if (!activeStatus || activeStatus.type !== 'closed_today') return undefined;
 
-    // Check expiry
-    const now = new Date();
-    const expiresAt = new Date(tempStatus.expiresAt);
-    if (expiresAt.getTime() <= now.getTime()) return undefined;
-
-    // Only full-day closure statuses get schema representation. "closing_early"
-    // needs a real early close time, so omitting it is safer than publishing
-    // 00:00-00:00 for the entire day.
-    const closureTypes = ['closed_today', 'kitchen_closed'];
-    if (!closureTypes.includes(tempStatus.type)) return undefined;
-
-    const today = now.toISOString().split('T')[0];
+    let today: string;
+    try {
+        const parts = new Intl.DateTimeFormat('en-CA', {
+            day: '2-digit',
+            month: '2-digit',
+            timeZone: timeZone || 'UTC',
+            year: 'numeric',
+        }).formatToParts(now);
+        const get = (type: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === type)?.value;
+        const year = get('year');
+        const month = get('month');
+        const day = get('day');
+        if (!year || !month || !day) return undefined;
+        today = `${year}-${month}-${day}`;
+    } catch {
+        return undefined;
+    }
 
     return {
         '@type': 'OpeningHoursSpecification',
         validFrom: today,
-        validThrough: expiresAt.toISOString().split('T')[0],
+        validThrough: today,
         opens: '00:00',
         closes: '00:00',
-        description: tempStatus.message || 'Temporarily closed',
+        description: activeStatus.message,
     };
 }
 

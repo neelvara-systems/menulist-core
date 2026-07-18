@@ -1,5 +1,7 @@
 import { ItemForDropdown } from '@template/main-app/projects/types';
 import useDeviceType from '@hook/useDeviceType';
+import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
+import { IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS } from '@lib/ai/imageBatchProjectSelection';
 import { Button, Checkbox, Divider, Flex, Image, Input, message, Switch, theme, Typography } from 'antd';
 import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import React, { useMemo, useState } from 'react';
@@ -60,6 +62,16 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
 
     const sortedCategories = useMemo(() => Object.keys(groupedItemsByCategory).sort((a, b) => a.localeCompare(b)), [groupedItemsByCategory]);
 
+    const applySelectionLimit = (candidateIds: string[]): string[] => {
+        const uniqueIds = Array.from(new Set(candidateIds));
+        const nextIds = uniqueIds.slice(0, IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS);
+        setSelectedItemsForBatch(nextIds);
+        if (uniqueIds.length > IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS) {
+            message.warning(`Choose up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items per batch. The first ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} are selected.`);
+        }
+        return nextIds;
+    };
+
     const handleCategorySelectAllChange = (categoryName: string, select: boolean) => {
         const currentCategoryItemIds = groupedItemsByCategory[categoryName]?.map(item => item.id) || [];
         let newSelectedItems: string[];
@@ -77,13 +89,17 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
             // Filter out items that belong to the current category.
             newSelectedItems = selectedItemsForBatch.filter(id => !currentCategoryItemIds.includes(id));
         }
-        setSelectedItemsForBatch(newSelectedItems);
+        applySelectionLimit(newSelectedItems);
     };
 
     const handleIndividualItemChange = (itemId: string, isChecked: boolean) => {
         let newSelectedItems = [...selectedItemsForBatch];
         if (isChecked) {
             if (!newSelectedItems.includes(itemId)) {
+                if (newSelectedItems.length >= IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS) {
+                    message.warning(`Choose up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items per batch.`);
+                    return;
+                }
                 newSelectedItems.push(itemId);
             }
         } else {
@@ -95,7 +111,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
     const onSelectAllChange = (e: CheckboxChangeEvent) => {
         const visibleItemIds = filteredBatchItems.map(item => item.id);
         if (e.target.checked) {
-            setSelectedItemsForBatch(Array.from(new Set([...selectedItemsForBatch, ...visibleItemIds])));
+            applySelectionLimit([...selectedItemsForBatch, ...visibleItemIds]);
         } else {
             setSelectedItemsForBatch(selectedItemsForBatch.filter(id => !visibleItemIds.includes(id)));
         }
@@ -129,8 +145,8 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
                             icon={<LuSparkles />}
                             onClick={() => {
                                 const itemsWithoutImages = allItemsForBatch.filter(item => !item.images || item.images.length === 0);
-                                setSelectedItemsForBatch(itemsWithoutImages.map(item => item.id));
-                                message.success(`Selected ${itemsWithoutImages.length} items without images`);
+                                const selectedIds = applySelectionLimit(itemsWithoutImages.map(item => item.id));
+                                message.success(`Selected ${selectedIds.length} item${selectedIds.length === 1 ? '' : 's'} without images`);
                             }}
                             style={{ width: '100%' }}
                         >
@@ -269,7 +285,7 @@ const BatchSetupView: React.FC<BatchSetupViewProps> = ({
                     </Button>
                     {selectedItemsForBatch.length > 0 && (
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            ~{Math.ceil(selectedItemsForBatch.length * 0.5)} min • {selectedItemsForBatch.length} image{selectedItemsForBatch.length !== 1 ? 's' : ''} • {selectedItemsForBatch.length * 3} credits
+                            {selectedItemsForBatch.length}/{IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items • {selectedItemsForBatch.length} image{selectedItemsForBatch.length !== 1 ? 's' : ''} • from {selectedItemsForBatch.length * CONTENT_CREDIT_OPERATION_COSTS.GENERATED_MENU_IMAGE} credits
                         </Text>
                     )}
                 </Flex>

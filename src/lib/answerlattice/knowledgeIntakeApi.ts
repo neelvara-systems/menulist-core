@@ -54,8 +54,14 @@ const ANSWERLATTICE_KNOWLEDGE_INTAKE_CLIENT_ERROR_PATTERNS = [
     /^Use a valid review item target\.$/,
     /^Changelog entries are owner-managed\. Use (?:release notes as source context, not as an intake publish target|the Changelog screen to publish release notes)\.$/,
     /^Add at least one related entity before (?:accepting|publishing) a canonical answer proposal\.$/,
+    /^Add a supported answer before (?:accepting|publishing) a canonical answer proposal\.$/,
     /^Add at least one source with readable text before generating drafts\.$/,
     /^Knowledge intake analysis is already running\.$/,
+    /^Product-specific starter packs are not enabled\.$/,
+    /^Product-specific starter pack generation is already running\.$/,
+    /^This intake job can no longer generate a product-specific starter pack\.$/,
+    /^This intake job does not have room for another product-specific starter pack\.$/,
+    /^Add at least one source with readable text before generating a product-specific starter pack\.$/,
     /^This intake job can no longer generate review drafts\.$/,
     /^Knowledge intake (?:source|review item) limit was exceeded\.$/,
     /^Accept at least one review item before publishing\.$/,
@@ -104,7 +110,9 @@ export function getAnswerlatticeKnowledgeIntakeErrorStatus(error: unknown): numb
         || message.includes('uploaded file is empty')
         || message.includes('add at least one source')
         || message.includes('analysis is already running')
+        || message.includes('does not have room for another product-specific starter pack')
         || message.includes('can no longer generate review drafts')
+        || message.includes('can no longer generate a product-specific starter pack')
         || message.includes('limit was exceeded')
         || message.includes('accept at least one review item')
         || message.includes('publish up to')

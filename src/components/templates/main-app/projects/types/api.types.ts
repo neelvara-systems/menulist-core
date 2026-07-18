@@ -63,6 +63,13 @@ export interface DescriptionAPIParams {
     fileId: string;
     contentLength: "Standard" | "Detailed";
     tone?: "Professional" | "Friendly" | "Premium";
+    /**
+     * Total paid requests in the current owner action. Sent on the first
+     * request only so the server can reject an underfunded multi-batch refresh
+     * before any provider work. Every request still reserves and settles its
+     * own unit independently.
+     */
+    operationRequestCount?: number;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -82,7 +89,7 @@ export interface NewItemMetadataAPIParams {
     targetLang: LanguageType[];
     sourceLang: LanguageType;
     projectId: string;
-    businessType: string;
+    businessType?: string;
     fileId: string;
     contentLength: "Standard" | "Detailed";
     tone?: "Professional" | "Friendly" | "Premium";

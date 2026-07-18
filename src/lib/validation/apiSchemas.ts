@@ -8,6 +8,8 @@
 
 import { normalizeGuestFeedbackProjectId } from '@lib/feedback/guestFeedbackProjectIdBoundary';
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
+import { LANGUAGE_CONSTANTS } from '@constant/languages';
+import GlobalLanguagesList from '@data/languages';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { isValidMediaStoragePathSegment } from '@lib/media/mediaStorage';
 import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
@@ -29,8 +31,29 @@ const languageObjectSchema = z.object({
     direction: z.enum(['ltr', 'rtl']).optional(),
 });
 
+const TRANSLATION_LANGUAGE_NAME_BY_CODE = new Map(
+    GlobalLanguagesList.map((language) => [language.code, language.name]),
+);
+
 const translationLanguageObjectSchema = languageObjectSchema.extend({
     name: z.string().trim().min(1).max(100),
+}).superRefine((language, context) => {
+    const expectedName = TRANSLATION_LANGUAGE_NAME_BY_CODE.get(language.code);
+    if (!expectedName) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Unsupported language code',
+            path: ['code'],
+        });
+        return;
+    }
+    if (language.name !== expectedName) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Language name does not match the supported language code',
+            path: ['name'],
+        });
+    }
 });
 
 const contentLengthSchema = z.enum(['Standard', 'Detailed']);
@@ -119,7 +142,8 @@ export const DescriptionRequestSchema = z.object({
     projectId: z.string().refine(value => normalizeMultiOutletProjectId(value) !== null, 'Invalid project ID'),
     fileId: z.string().trim().min(1).max(100).refine(isValidFirestoreDocumentId, 'Invalid file ID'),
     contentLength: contentLengthSchema,
-    tone: toneSchema.optional().default('Professional')
+    tone: toneSchema.optional().default('Professional'),
+    operationRequestCount: z.number().int().min(2).max(1000).optional(),
     // keywords removed per ChatGPT doctrine review - reintroduces prompting behavior
 }).superRefine((request, context) => {
     const targetCodes = request.targetLang.map(language => language.code);
@@ -128,6 +152,16 @@ export const DescriptionRequestSchema = z.object({
             code: z.ZodIssueCode.custom,
             message: 'Target languages must be unique',
             path: ['targetLang'],
+        });
+    }
+    if (
+        request.operationRequestCount !== undefined
+        && request.action !== 'rewrite_description'
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Operation request count is only valid for description refresh',
+            path: ['operationRequestCount'],
         });
     }
 });
@@ -229,12 +263,35 @@ const TRANSLATION_INPUT_KEY_MAX_LENGTH = 240;
 const TRANSLATION_INPUT_VALUE_MAX_LENGTH = 2000;
 const TRANSLATION_INPUT_MAX_ITEMS = 1000;
 
+const TRANSLATION_BUSINESS_COPY_KEYS = new Set([
+    'descriptor',
+    'keywords',
+    'knownFor',
+    'metaDescription',
+    'metaTitle',
+    'pwaShortName',
+    'specialNote',
+    'tagline',
+]);
+const TRANSLATION_PROJECT_PUBLIC_KEYS = new Set([
+    'description',
+    'name',
+    'specialMenuDisplayName',
+    'specialNote',
+]);
+
+const isSupportedTranslationInputKey = (key: string) => (
+    TRANSLATION_BUSINESS_COPY_KEYS.has(key)
+    || TRANSLATION_PROJECT_PUBLIC_KEYS.has(key)
+    || ['_c', '_i', '_d', '_a'].some(suffix => key.endsWith(suffix))
+);
+
 const translationInputKeySchema = z.string()
     .min(3)
     .max(TRANSLATION_INPUT_KEY_MAX_LENGTH)
     .refine(
         key => !['__proto__', 'constructor', 'prototype'].includes(key)
-            && ['_c', '_i', '_d', '_a'].some(suffix => key.endsWith(suffix)),
+            && isSupportedTranslationInputKey(key),
         'Invalid translation input key',
     );
 
@@ -248,11 +305,13 @@ export const TranslationRequestSchema = z.object({
     ),
     targetLang: z.union([
         translationLanguageObjectSchema,
-        z.array(translationLanguageObjectSchema).min(1).max(20)
+        z.array(translationLanguageObjectSchema)
+            .min(1)
+            .max(LANGUAGE_CONSTANTS.MAX_LANGUAGES_PER_PROJECT - 1)
     ]),  // Single or batched language objects
     sourceLang: translationLanguageObjectSchema,  // Language object with code and name
     action: z.enum(['language_addition', 'image_translation', 'item_translation']),  // Match AI_ACTIONS_TYPES
-    projectId: z.string().refine(value => normalizeMultiOutletProjectId(value) !== null, 'Invalid project ID'),
+    projectId: z.string().refine(value => normalizeMultiOutletProjectId(value) !== null, 'Invalid project ID').optional(),
     fileId: z.string().trim().min(1).max(100).refine(isValidFirestoreDocumentId, 'Invalid file ID')
 }).superRefine((request, context) => {
     const targetLanguages = Array.isArray(request.targetLang) ? request.targetLang : [request.targetLang];
@@ -271,6 +330,16 @@ export const TranslationRequestSchema = z.object({
             path: ['targetLang'],
         });
     }
+    if (
+        !request.projectId
+        && Object.keys(request.inputJson).some(key => !TRANSLATION_BUSINESS_COPY_KEYS.has(key))
+    ) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Project ID is required for menu and project content translation',
+            path: ['projectId'],
+        });
+    }
 });
 
 export type TranslationRequest = z.infer<typeof TranslationRequestSchema>;
@@ -284,7 +353,14 @@ export const NewItemMetadataRequestSchema = z.object({
         id: z.string().trim().min(1).max(100),
         name: z.string().trim().min(1).max(500),
         category: z.string().trim().max(100).optional(),
-        description: z.string().trim().max(2000).optional(),
+        description: z.string()
+            .trim()
+            .max(2000)
+            .refine(
+                description => description.length === 0,
+                'New item metadata requires an empty source description',
+            )
+            .optional(),
         attributes: z.array(z.object({
             id: z.string().trim().min(1).max(100),
             name: z.string().trim().max(500).optional(),
@@ -358,6 +434,7 @@ export const CreateSubscriptionRequestSchema = z.object({
     currency: z.enum(['INR', 'USD']),
     userType: z.enum(['B2C', 'B2B']).optional(),
     quantity: z.number().int().min(1).max(31).optional(),
+    replacementForSubscriptionId: z.string().regex(/^sub_[a-zA-Z0-9]+$/).max(180).optional(),
 });
 
 export type CreateSubscriptionRequest = z.infer<typeof CreateSubscriptionRequestSchema>;
@@ -613,10 +690,15 @@ export const guestFeedbackSubmitSchema = z.object({
         .refine((value) => normalizeGuestFeedbackProjectId(value) === value, 'Invalid project ID'),
     rating: z.number().int().min(1).max(5),
     source: z.enum(['menu_footer', 'feedback_qr', 'direct_link']),
+    submissionId: z.string()
+        .min(16)
+        .max(100)
+        .regex(/^[A-Za-z0-9_-]+$/, 'Invalid submission ID')
+        .optional(),
 
     // Optional fields
     message: z.string().max(300).optional(),
-    customerName: z.string().max(60).optional(),
+    customerName: z.string().trim().min(2).max(60).optional(),
     customerPhone: z.string().max(20).regex(/^[0-9+\-\s()]*$/, 'Invalid phone number.').optional(),
     customerEmail: z.string().email().max(120).optional(),
     captchaToken: z.string().max(2048).optional(),

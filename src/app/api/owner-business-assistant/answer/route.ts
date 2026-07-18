@@ -61,11 +61,6 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
   }
 
-  if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS) {
-    const safeMode = await checkSafeMode();
-    if (safeMode) return safeMode;
-  }
-
   const rateLimit = await applyOwnerBusinessAssistantRateLimit({
     request,
     session,
@@ -107,6 +102,11 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     scope.tId,
   );
   if (permissionError) return permissionError;
+
+  if (FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH_AI_ANSWERS) {
+    const safeMode = await checkSafeMode();
+    if (safeMode) return safeMode;
+  }
 
   const answer = await resolveOwnerBusinessAssistantAnswer({
     tId: scope.tId,

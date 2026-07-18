@@ -1,48 +1,10 @@
 import { Alert, Card, Divider, Flex, Form, Input, Switch, theme, Typography } from 'antd';
+import { normalizeGuestFeedbackReviewUrl } from '@lib/feedback/guestFeedbackSubmitResponse';
 import { useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 import { LuCheckCircle, LuExternalLink, LuInfo } from 'react-icons/lu';
 
 const { Title, Text, Paragraph } = Typography;
-
-/**
- * Validates a Google Review URL format.
- * Accepted formats:
- * - https://search.google.com/local/writereview?placeid=...
- * - https://g.page/r/.../review
- * - https://www.google.com/maps/place/...
- * - https://maps.google.com/...
- * - https://maps.app.goo.gl/...
- */
-function validateGoogleReviewUrl(url: string): { valid: boolean; type?: string } {
-    if (!url.trim()) return { valid: true }; // Empty is OK (optional field)
-    try {
-        const parsed = new URL(url.trim());
-        const host = parsed.hostname.toLowerCase();
-        if (host.includes('google.com') && parsed.pathname.includes('/local/writereview')) {
-            return { valid: true, type: 'review_direct' };
-        }
-        if (host === 'g.page' && url.includes('/review')) {
-            return { valid: true, type: 'g_page' };
-        }
-        if (host.includes('google.com') && parsed.pathname.includes('/maps/place')) {
-            return { valid: true, type: 'maps_place' };
-        }
-        if (host.includes('google.com') && parsed.pathname.includes('/maps')) {
-            return { valid: true, type: 'maps_generic' };
-        }
-        if (host === 'maps.app.goo.gl') {
-            return { valid: true, type: 'maps_short' };
-        }
-        // Allow any Google-related URL as fallback
-        if (host.includes('google') || host.includes('goo.gl')) {
-            return { valid: true, type: 'google_other' };
-        }
-        return { valid: false };
-    } catch {
-        return { valid: false };
-    }
-}
 
 interface FeedbackSettingsTabProps {
     scrollRef?: React.RefObject<HTMLDivElement>;
@@ -93,9 +55,12 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
     const t = useTranslations('FeedbackSettings');
     const { token } = theme.useToken();
 
-    const urlValidation = useMemo(() => validateGoogleReviewUrl(reviewUrl), [reviewUrl]);
-    const showUrlError = reviewUrl.trim().length > 0 && !urlValidation.valid;
-    const showUrlSuccess = reviewUrl.trim().length > 0 && urlValidation.valid;
+    const normalizedReviewUrl = useMemo(
+        () => normalizeGuestFeedbackReviewUrl(reviewUrl),
+        [reviewUrl],
+    );
+    const showUrlError = reviewUrl.trim().length > 0 && !normalizedReviewUrl;
+    const showUrlSuccess = reviewUrl.trim().length > 0 && Boolean(normalizedReviewUrl);
     const fieldCardStyle = {
         background: token.colorBgContainer,
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -245,9 +210,9 @@ const FeedbackSettingsTab: React.FC<FeedbackSettingsTabProps> = ({
                             disabled={!feedbackEnabled}
                             prefix={showUrlSuccess ? <LuCheckCircle style={{ color: token.colorSuccess }} /> : undefined}
                             suffix={
-                                reviewUrl ? (
+                                normalizedReviewUrl ? (
                                     <a
-                                        href={reviewUrl}
+                                        href={normalizedReviewUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         style={{ color: 'inherit' }}

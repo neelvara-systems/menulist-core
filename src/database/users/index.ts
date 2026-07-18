@@ -6,6 +6,7 @@ import { getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginI
 import { normalizeStoreSwitchStoreId } from "@lib/multiOutlet/storeSwitchAccess";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
 import { objectNullCheck } from "@util/utils";
 import type { PlatformBlockDetails } from "@type/platform/blocking";
@@ -183,7 +184,7 @@ const uploadImage = async (data, type = '') => {
     const docId = data.id;
 
     if (imageToUpdate) {
-        if (imageToUpdate?.includes('base64')) {
+        if (isDataUrl(imageToUpdate)) {
             //upload logo image to firebase storage
             newUrl = await uploadBase64ToStorage({
                 fileId: docId,
@@ -207,10 +208,10 @@ const updateUser = async (data) => {
     }
 
     //upload additional documents files
-    const additionalFileToUpload = data.additionalDocuments?.filter(doc => doc.url.includes('base64')) || [];
+    const additionalFileToUpload = data.additionalDocuments?.filter(doc => isDataUrl(doc.url)) || [];
     if (additionalFileToUpload.length) {
         for (let i = 0; i < data.additionalDocuments.length; i++) {
-            if (data.additionalDocuments[i].url.includes('base64')) {
+            if (isDataUrl(data.additionalDocuments[i].url)) {
                 data.additionalDocuments[i].url = await uploadImage({ imageType: data.additionalDocuments[i].type, imageToUpdate: data.additionalDocuments[i].url }, 'additionalDocuments')
             }
         }

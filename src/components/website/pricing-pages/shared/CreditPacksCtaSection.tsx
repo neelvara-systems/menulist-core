@@ -46,7 +46,11 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
                 setIsLoading(false);
                 setShowConfetti(true);
                 setTimeout(() => setShowConfetti(false), 5000);
-                toast({ variant: 'default', title: 'Credits added', description: 'Content generation credits are ready to use.' });
+                toast({
+                    variant: 'default',
+                    title: t('Pricing.creditAddedTitle'),
+                    description: t('Pricing.creditAddedBody'),
+                });
                 refetchActiveSubscription?.();
             })
                 .catch((error: unknown) => {
@@ -54,14 +58,22 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
                     if (isPaymentCheckoutDismissedError(error)) {
                         return;
                     }
-                    toast({ variant: 'destructive', title: 'Error', description: 'An error occurred during the final setup. Please contact support.' });
+                    toast({
+                        variant: 'destructive',
+                        title: t('Pricing.paymentErrorTitle'),
+                        description: t('Pricing.creditPaymentErrorBody'),
+                    });
                     logPaymentFailure('payment_pricing_credit_pack_failed', error, buildCreditPaymentLogContext('credit_pack_click', {
                         ...getBoundedPaymentStringContext('packId', pack.packId),
                     }));
                 });
         } catch (error) {
             setIsLoading(false);
-            toast({ variant: 'destructive', title: 'Error', description: 'An error occurred during the final setup. Please contact support.' });
+            toast({
+                variant: 'destructive',
+                title: t('Pricing.paymentErrorTitle'),
+                description: t('Pricing.creditPaymentErrorBody'),
+            });
             logPaymentFailure('payment_pricing_credit_pack_failed', error, buildCreditPaymentLogContext('credit_pack_click', {
                 ...getBoundedPaymentStringContext('packId', pack.packId),
             }));
@@ -73,7 +85,6 @@ const CreditPacksCtaSection: React.FC<CreditPacksCtaSectionProps> = ({ currency,
             <div style={{ textAlign: 'center' }}>
                 <SectionHeading
                     title={t('Pricing.creditTitle')}
-                    highlightedText="your menu"
                     subtitle={t('Pricing.creditSubtitle')}
                     centered
                 />

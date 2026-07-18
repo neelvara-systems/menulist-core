@@ -87,20 +87,20 @@ If something needs your attention, you'll know before it goes live. Not after a 
 
 ### Benefit 3: Every Location, Same Menu
 
-**Title:** All your outlets. One verified menu.  
-**Body:** Master menu changes and outlet overrides are checked against the same verified project truth, so release QA can confirm each location receives the expected menu state.
+**Title:** Outlet changes stay scoped.
+**Body:** The editor checks the resolved outlet menu, and the linked save route rechecks location scope, policy, shape, and concurrency. Release QA still confirms each target location.
 **Visual suggestion:** [Map with 3-4 location pins, each showing the same menu card with identical prices]
 
 ### Benefit 4: Always Available, Never Blank
 
-**Title:** Your menu is always visible. Even if something goes wrong.  
-**Body:** If a normal cache fallback is available during a system issue, customers see the cached menu instead of a blank page. Screens and QR menus use fallback caching so the business can keep serving while the issue is handled.
+**Title:** Each surface keeps its own safe fallback.
+**Body:** Public menus and screens use their audited cache/offline paths when usable fallback data exists. MCE does not itself guarantee availability or replace target-specific QA.
 **Visual suggestion:** [Phone screen showing complete menu with subtle "Verified" checkmark]
 
 ### Benefit 5: Zero Cost, Zero Effort
 
 **Title:** No extra charges. No extra steps. Just correct menus.  
-**Body:** Menu verification is built into MenuList at no additional cost. It runs automatically every time you save. No add-ons, no premium tiers, no monitoring dashboards. It just works.  
+**Body:** Local validation is built into supported project paths at no additional MCE read or write. Linked outlet saves retain their separate protected route.
 **Visual suggestion:** [₹0 icon with checkmark — "Included in every plan"]
 
 ---
@@ -158,11 +158,11 @@ Your QR code, digital screen, PDF, POS, and website read from the same verified 
 
 ### Q: Does this work for all my surfaces?
 
-**A:** Yes, supported surfaces read from the same verified project data. Each surface still follows its own refresh, download, provider, or device timing.
+**A:** Supported surfaces read the same validated project data through their audited paths. Each surface still requires its own refresh, download, provider, or device evidence.
 
 ### Q: What if I have multiple locations?
 
-**A:** Master menu changes and outlet overrides are verified through the same project truth. Multi-location releases still need target QA when outlet inheritance or publishing changes.
+**A:** The editor validates resolved outlet data, and the linked save route enforces scope and outlet policy. Multi-location releases still need target QA when inheritance or publishing changes.
 
 ### Q: Is this included in my plan?
 

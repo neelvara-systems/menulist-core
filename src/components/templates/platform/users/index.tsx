@@ -9,8 +9,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedRuntimeStringContext, logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import {
     STAFF_CLIENT_REQUEST_POLICY,
-    isCreateStaffCompatibilityEmailExistsResponse,
-    isCreateStaffCompatibilitySuccessResponse,
+    isCreateStaffCompatibilityVerificationResponse,
     readCreateStaffCompatibilityResponse,
 } from '@lib/staffManagement/client';
 import { showErrorToast, showSuccessToast, showWarningToast } from '@reduxSlices/toast';
@@ -77,7 +76,7 @@ function PlatformUsers() {
             key: 'name',
             render: (_, record) => (
                 <Flex align='center' justify='flex-start' gap={10}>
-                    {record?.image ? <img src={record?.image} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
+                    {record?.image ? <img alt={`${record?.name || 'User'} profile`} src={record?.image} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
                     <Text>{record.name}</Text>
                 </Flex>
             ),
@@ -171,6 +170,7 @@ function PlatformUsers() {
                 body: JSON.stringify({
                     email: userModal.email,
                     name: userModal.name || userModal.email.split('@')[0],
+                    role: userModal.stores?.find(({ storeId }) => storeId === userModal.storeId)?.role || userModal.role || undefined,
                     tenantId: userModal.tenantId,
                     storeId: userModal.storeId,
                 }),
@@ -178,13 +178,18 @@ function PlatformUsers() {
             const data = await readCreateStaffCompatibilityResponse(res);
             const responseCode = data && 'code' in data ? data.code : undefined;
             const responseError = data && 'error' in data ? data.error : undefined;
-            const accepted = res.ok
-                ? isCreateStaffCompatibilitySuccessResponse(data)
-                : isCreateStaffCompatibilityEmailExistsResponse(data);
+            const accepted = res.ok && isCreateStaffCompatibilityVerificationResponse(
+                data,
+                userModal.id,
+                userModal.email,
+            );
 
             if (accepted) {
                 const updatedUser = { ...userModal, isVerified: true };
-                await updateUser(updatedUser);
+                setUsersList((current) => current.map((user) => user.id === updatedUser.id ? updatedUser : user));
+                setAllTenantUsers((current) => current.map((user) => user.id === updatedUser.id ? updatedUser : user));
+                setUserModal(null);
+                dispatch(showSuccessToast("User verified successfully"));
             } else {
                 logRuntimeDiagnostic('platform_user_verify_request_rejected', {
                     ...getBoundedRuntimeStringContext('tenantId', userModal.tenantId),
@@ -193,12 +198,14 @@ function PlatformUsers() {
                     hasResponseCode: Boolean(responseCode),
                     hasResponseError: Boolean(responseError),
                 });
+                dispatch(showErrorToast("Could not verify this user. Review the email and account state, then try again."));
             }
         } catch (err) {
             logRuntimeFailure('platform_user_verify_request_failed', err, {
                 ...getBoundedRuntimeStringContext('tenantId', userModal.tenantId),
                 ...getBoundedRuntimeStringContext('storeId', userModal.storeId),
             });
+            dispatch(showErrorToast("Could not verify this user. Please try again."));
         }
     }
 
@@ -318,7 +325,7 @@ function PlatformUsers() {
             >
                 <Flex vertical gap={20}>
                     <Flex align='center' justify='flex-start' gap={10}>
-                        {userModal?.profileImage ? <img src={userModal?.profileImage} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
+                        {userModal?.profileImage ? <img alt={`${userModal?.name || 'User'} profile`} src={userModal?.profileImage} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <LuUser />}
                         <Flex vertical gap={0}>
                             <Text>{userModal?.name}</Text>
                             <Text>{userModal?.email}</Text>

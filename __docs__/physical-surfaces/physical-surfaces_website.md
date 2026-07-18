@@ -1,33 +1,16 @@
-# Physical Surfaces — Website Content
+# Physical Surfaces — Website Boundary
 
-## Hero Section
-- **Headline:** Print-Ready Menus That Match Your Digital Menu
-- **Subheadline:** Generate professional PDFs, posters, and table tents from the current approved menu source. Download a fresh copy after menu changes.
-- **CTA Text:** See Examples
-- **CTA Link:** /features/print-menus
+**Status:** No standalone current campaign-surface claim
+**Last Updated:** July 16, 2026
 
-## Problem Statement
-Your digital menu and paper menu are managed separately. Prices change online but the printed version stays outdated. Customers see different prices depending on whether they scan the QR code or read the table tent.
+Do not market the legacy campaign recommendation cards as an active autonomous feature. Current public print claims belong to [Menu Card Export](../menu-card-export/menu-card-export_website.md), [Print Assets](../print-assets/README.md), [Printable Asset Templates](../printable-asset-templates/printable-asset-templates_website.md), Menu Kit, and Print Menu Surfaces.
 
-## Solution Statement
-MenuList generates print-ready menus from the same approved source as your digital menu. When you update a price, download a fresh PDF or print asset before reprinting.
+Allowed current boundary, subject to release evidence and reviewed artifacts:
 
-## Feature Benefits
+- Create controlled print files from the same approved source used by the live menu.
+- Download a fresh file after changes.
+- Review the artifact and scan the QR before printing.
 
-### 1. Same Data, Different Format
-Your print menu is generated from the exact same items, prices, and descriptions as your digital menu. One source of truth.
+**Versioned Output:** generated files can carry a current source reference. Printed copies represent the version generated at that time. They do not update automatically and must be replaced after changes.
 
-### 2. Professional Layouts
-Choose from menu PDF, poster, or table tent formats. All styled to match your brand.
-
-### 3. Versioned Output
-Download a fresh PDF anytime after making changes. Printed copies represent the version generated at that time.
-
-## SEO Meta
-- **Page Title:** Print-Ready Restaurant Menus from Digital Data | MenuList
-- **Meta Description:** Generate professional print menus, posters, and table tents from your digital menu source. Download fresh print assets after menu changes.
-- **Target Keywords:** print restaurant menu, menu PDF generator, table tent menu, restaurant poster
-
-## Approved Language
-### USE: "Print-ready", "same approved source", "versioned output", "professional layouts"
-### NEVER USE: "AI-powered print design", "Smart formatting", "Dynamic print generation"
+Do not claim automatic campaign cards, guaranteed print-shop results, perfect freshness of already printed paper, or unsupported official/verified status.

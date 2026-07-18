@@ -149,11 +149,6 @@ function coerceString(value: unknown, maxLength: number): string {
     .slice(0, maxLength);
 }
 
-function coerceNumber(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
-  return Math.max(0, Math.floor(value));
-}
-
 function coerceIsoTimestamp(value: unknown): string {
   const timestamp = coerceString(value, 80);
   if (!SHAREABLE_TOOL_REPORT_ISO_TIMESTAMP_PATTERN.test(timestamp)) return '';
@@ -180,8 +175,21 @@ function coerceResult(value: unknown): ShareableToolReportResult {
 function coerceInternalHref(value: unknown): string {
   const href = coerceString(value, 220);
 
-  if (href.startsWith('/') && !href.startsWith('//')) {
-    return href;
+  if (
+    href.startsWith('/')
+    && !href.startsWith('//')
+    && !href.includes('\\')
+    && !/%5c/i.test(href)
+  ) {
+    try {
+      const base = new URL('https://menulist.invalid');
+      const resolved = new URL(href, base);
+      if (resolved.origin === base.origin) {
+        return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+      }
+    } catch {
+      return '/create-menu';
+    }
   }
 
   return '/create-menu';
@@ -216,21 +224,33 @@ export function buildShareableToolReportSetupJobs(
   }];
 }
 
-function coerceShareableToolReportSetupJobs(value: unknown): ShareableToolReportSetupJob[] {
-  if (!Array.isArray(value)) return [];
+function getShareableToolReportSummary(checks: ShareableToolReportCheck[]): Omit<ShareableToolReportSummary, 'primaryNumber' | 'primaryLabel'> {
+  return checks.reduce(
+    (summary, check) => {
+      if (check.result === 'present' || check.result === 'not_applicable') summary.present += 1;
+      if (check.result === 'missing') summary.missing += 1;
+      if (check.result === 'unclear') summary.unclear += 1;
+      if (check.result === 'not_checked') summary.notChecked += 1;
+      return summary;
+    },
+    { present: 0, missing: 0, unclear: 0, notChecked: 0 },
+  );
+}
 
-  return value
-    .slice(0, SHAREABLE_TOOL_REPORT_MAX_SETUP_JOBS)
-    .map((job, index) => {
-      const row = job && typeof job === 'object' ? job as Record<string, unknown> : {};
-      const label = coerceString(row.label, 160);
-      return {
-        id: coerceString(row.id, 80) || `job_${index + 1}`,
-        label,
-        reason: coerceString(row.reason, 260),
-      };
-    })
-    .filter((job) => job.label.length > 0 && job.reason.length > 0);
+function hasExactSummaryNumber(value: unknown, expected: number): boolean {
+  return typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && value >= 0
+    && value === expected;
+}
+
+function normalizePrimaryNumber(value: unknown, checkCount: number): number | null {
+  return typeof value === 'number'
+    && Number.isSafeInteger(value)
+    && value >= 0
+    && value <= checkCount
+    ? value
+    : null;
 }
 
 function normalizeShareableToolReportPayload(value: unknown): ShareableToolReportPayload | null {
@@ -268,7 +288,18 @@ function normalizeShareableToolReportPayload(value: unknown): ShareableToolRepor
     cta: coerceString(rawNextAction.cta, 80),
     href: coerceInternalHref(rawNextAction.href),
   };
-  const setupJobList = coerceShareableToolReportSetupJobs(source.setupJobList);
+  const summary = getShareableToolReportSummary(checks);
+  const primaryNumber = normalizePrimaryNumber(rawSummary.primaryNumber, checks.length);
+
+  if (
+    !hasExactSummaryNumber(rawSummary.present, summary.present)
+    || !hasExactSummaryNumber(rawSummary.missing, summary.missing)
+    || !hasExactSummaryNumber(rawSummary.unclear, summary.unclear)
+    || !hasExactSummaryNumber(rawSummary.notChecked, summary.notChecked)
+    || primaryNumber === null
+  ) {
+    return null;
+  }
 
   const payload: ShareableToolReportPayload = {
     schemaVersion: SHAREABLE_TOOL_REPORT_SCHEMA_VERSION,
@@ -284,17 +315,12 @@ function normalizeShareableToolReportPayload(value: unknown): ShareableToolRepor
     checkedSourceText: coerceString(source.checkedSourceText, 360),
     notCheckedText: coerceString(source.notCheckedText, 420),
     summary: {
-      present: coerceNumber(rawSummary.present),
-      missing: coerceNumber(rawSummary.missing),
-      unclear: coerceNumber(rawSummary.unclear),
-      notChecked: coerceNumber(rawSummary.notChecked),
-      primaryNumber: coerceNumber(rawSummary.primaryNumber),
+      ...summary,
+      primaryNumber,
       primaryLabel: coerceString(rawSummary.primaryLabel, 120),
     },
     checks,
-    setupJobList: setupJobList.length > 0
-      ? setupJobList
-      : buildShareableToolReportSetupJobs(checks, nextAction),
+    setupJobList: buildShareableToolReportSetupJobs(checks, nextAction),
     nextAction,
     publicBoundary: rawBoundaries
       .slice(0, SHAREABLE_TOOL_REPORT_MAX_BOUNDARIES)
@@ -311,7 +337,9 @@ function normalizeShareableToolReportPayload(value: unknown): ShareableToolRepor
     || !payload.statusDescription
     || !payload.checkedSourceText
     || !payload.notCheckedText
+    || !payload.summary.primaryLabel
     || payload.checks.length === 0
+    || payload.publicBoundary.length === 0
     || !payload.nextAction.title
     || !payload.nextAction.description
     || !payload.nextAction.cta

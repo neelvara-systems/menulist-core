@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Spec
 
-> **Version:** 2.0 (post-ChatGPT feedback)
-> **Last Updated:** July 10, 2026
+> **Version:** 2.1 (code-truth audit)
+> **Last Updated:** July 16, 2026
 > **Audience:** CEO, PM, Business stakeholders
 
 ---
@@ -41,7 +41,7 @@
 ## 4. Target Users
 
 **ICP:** Non-tech SMB owner who just published their menu.
-**Moment:** Owner opens Use MenuList page and sees at a glance whether they've placed their menu everywhere important.
+**Moment:** Owner opens Use MenuList and sees recorded readiness plus the external placements they have confirmed.
 **Behavior:** Owner notices "⚠ Google Business — Not added" → copies link → adds to Google → comes back and marks "I added it."
 
 ---
@@ -53,7 +53,7 @@
 1. Owner opens `/use-menulist` page
 2. At the top (below Quick Actions), sees **"Menu Visibility"** card
 3. Desktop shows 8 bounded surface statuses; mobile shows 7 because Digital Screens is not part of the mobile Share loader
-4. MenuList-recorded surfaces (QR, Screens, Feedback) show source-derived readiness status
+4. MenuList-recorded surfaces show bounded source-derived readiness: valid explicit publish for Table QR, screen-token setup for Screens, and valid publish plus enabled feedback for Feedback QR
 5. Manual surfaces (Google, Apple, Bing, Instagram, WhatsApp) show ⚠ until confirmed
 
 ### 5.2 Confirm Manual Surface
@@ -82,9 +82,9 @@
 | **Bing Places** | Bing business listing website or menu-link placement. | Manual |
 | **Instagram Bio**    | Second most common discovery for food businesses. Bio link = menu access.          | Manual                     |
 | **WhatsApp Profile** | Many Indian SMBs use WhatsApp Business. Profile description should have menu link. | Manual                     |
-| **Table QR**         | Primary in-restaurant access point. Printed placement still needs owner review.    | Source-derived readiness   |
-| **Digital Screens**  | Visual menu display for counter/wall.                                              | Auto (screen token exists) |
-| **Feedback QR**      | Post-dining feedback collection surface.                                           | Auto (feedback enabled)    |
+| **Table QR**         | Primary in-restaurant access point. Printed placement still needs owner review.    | Valid explicit project publish |
+| **Digital Screens**  | Visual menu display for counter/wall.                                              | Screen token exists; this proves setup, not current playback |
+| **Feedback QR**      | Post-dining feedback collection surface.                                           | Valid publish and feedback not disabled |
 
 ---
 
@@ -114,7 +114,7 @@
 │ INSIDE YOUR STORE                                 │
 │                                                   │
 │ ✓ 📱 Table QR — QR ready to print          Auto  │
-│ ✓ 🖥 Digital Screens — Screen connected     Auto  │
+│ ✓ 🖥 Digital Screens — Screen set up        Auto  │
 │ ✓ 💬 Feedback QR — Feedback available       Auto  │
 └─────────────────────────────────────────────────┘
 ```
@@ -144,8 +144,7 @@
 
 ```
 │                                       All set │
-│ ✓ Your menu is easy to find everywhere        │
-│   customers look                              │
+│ ✓ All checklist surfaces are ready/confirmed  │
 ```
 
 ---
@@ -164,7 +163,7 @@ menuPresence?: {
 }
 ```
 
-Auto-detected surfaces (QR, Screens, Feedback) derive status from existing store/screen data — no new fields needed.
+Auto statuses derive from existing project summary, store, and screen state. Active-project existence alone is insufficient because a new project can be active before its first explicit publish. A valid `lastPublishedAt` is therefore required for Table QR and Feedback readiness.
 
 Surface IDs are **IMMUTABLE** — never rename. The approved boundary is five manual discovery placements plus three desktop product-readiness surfaces. The two-signal starter activation target is unchanged.
 
@@ -185,7 +184,7 @@ Surface IDs are **IMMUTABLE** — never rename. The approved boundary is five ma
 - No fixed timing claim; release-specific browser/device QA is required before quoting speed
 - Zero new Firebase collections
 - Zero new API routes (client-side DAL only)
-- Feature flag OFF by default
+- Existing feature flag remains enabled in the current runtime
 
 ---
 

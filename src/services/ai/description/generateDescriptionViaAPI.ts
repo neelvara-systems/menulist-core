@@ -15,7 +15,7 @@ type DescriptionGenerationApiResponse = {
     transaction?: unknown;
 };
 
-async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action, projectId, fileId, contentLength, tone = 'Professional' }: DescriptionAPIParams): Promise<DescriptionGenerationResult | null> {
+async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action, projectId, fileId, contentLength, tone = 'Professional', operationRequestCount }: DescriptionAPIParams): Promise<DescriptionGenerationResult | null> {
     try {
         const payload = {
             itemsList,
@@ -25,7 +25,8 @@ async function getDescriptionsViaAPI({ itemsList, targetLang, sourceLang, action
             projectId,
             fileId,
             contentLength,
-            tone
+            tone,
+            ...(operationRequestCount !== undefined ? { operationRequestCount } : {}),
         }
         const response = await fetch('/api/descriptions', {
             ...AI_SERVICE_ROUTE_REQUEST_OPTIONS,

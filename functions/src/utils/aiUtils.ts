@@ -8,10 +8,7 @@ import {
 import { genAIClient } from "../genAiClient";
 import {
     ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG,
-    ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG,
-    type AnswerlatticeEmbeddingVersion,
     buildAnswerlatticeEmbeddingRequest,
-    getAnswerlatticeEmbeddingConfig,
 } from '../sharedData/answerlatticeEmbedding';
 import { ProcessedKBMap } from "../types";
 import { buildSafeTempFilePath } from "./safeTempFile";
@@ -189,12 +186,11 @@ export const getKBFromSource = async (
 type AnswerlatticeEmbeddingArticle = { id: string, categoryTitle: string, sectionTitle?: string, title: string, content: any, sId?: number, source?: string, tId?: number };
 
 export const genrateEmbedding = async (article: AnswerlatticeEmbeddingArticle): Promise<number[]> => {
-    return await generateArticleEmbeddingUsingGenAi(article, ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version);
+    return await generateArticleEmbeddingUsingGenAi(article);
 }
 
 export const generateArticleEmbeddingUsingGenAi = async (
     article: AnswerlatticeEmbeddingArticle,
-    version: AnswerlatticeEmbeddingVersion = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
 ): Promise<number[]> => {
 
     const logger = functions.logger;
@@ -204,12 +200,11 @@ export const generateArticleEmbeddingUsingGenAi = async (
     if (!rawTextToEmbed || rawTextToEmbed.trim().length === 0) throw new Error('Article content is empty, cannot generate embedding.');
 
     try {
-        const embeddingConfig = getAnswerlatticeEmbeddingConfig(version);
+        const embeddingConfig = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG;
         const request = buildAnswerlatticeEmbeddingRequest({
             content: rawTextToEmbed,
             purpose: 'document',
             title: article.title,
-            version,
         });
         // 2. Call the Gemini embedding model.
         const response = await genAIClient.models.embedContent(request);
@@ -231,32 +226,6 @@ export const generateArticleEmbeddingUsingGenAi = async (
         });
         // Re-throw the error so the calling function can handle it (e.g., fail the job).
         throw new Error(ARTICLE_EMBEDDING_FAILED_MESSAGE);
-    }
-};
-
-export const generateEmbeddingMigrationVectors = async (
-    article: AnswerlatticeEmbeddingArticle,
-    options: { includeLegacy: boolean },
-): Promise<{ active: number[]; legacy?: number[] }> => {
-    const active = await generateArticleEmbeddingUsingGenAi(
-        article,
-        ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
-    );
-    if (!options.includeLegacy) return { active };
-
-    try {
-        const legacy = await generateArticleEmbeddingUsingGenAi(
-            article,
-            ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.version,
-        );
-        return { active, legacy };
-    } catch (error) {
-        functions.logger.warn('[Answerlattice KB] Legacy embedding dual-write failed', {
-            failureCode: 'ANSWERLATTICE_LEGACY_EMBEDDING_DUAL_WRITE_FAILED',
-            ...getArticleEmbeddingContext(article),
-            ...getAiUtilsErrorContext(error),
-        });
-        return { active };
     }
 };
 

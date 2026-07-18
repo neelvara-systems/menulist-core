@@ -1,35 +1,35 @@
-# Auth & Onboarding — Mobile Support
+# Auth and Onboarding Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ⚠️ DESKTOP-FIRST — Onboarding is one-time setup, works via mobile browser but not optimized
+**Status:** Responsive sign-in and website onboarding surface
+**Last updated:** July 16, 2026
 
----
+Auth and first-business setup happen before the authenticated owner shell, so they are intentionally responsive website/sign-in surfaces rather than `MobileShell` sub-screens. After sign-in and setup, owner routes continue through the normal mobile shell.
 
-## Feature Admission Test
+## Mobile contract
 
-| Gate | Result | Reasoning |
-|------|--------|-----------|
-| **Frequency** | ❌ FAIL | One-time flow (signup → payment → dashboard) |
-| **Speed** | ❌ FAIL | Multi-step: pricing → business details → OAuth → payment |
-| **Touch** | ⚠️ PARTIAL | Works in mobile browser but not touch-optimized |
-| **Value** | ❌ FAIL | Setup done once, typically at desk |
+- Google remains the first sign-in option.
+- One identity field supports email, phone, and Staff ID.
+- Phone-like input switches to the WhatsApp OTP panel and keeps a passcode fallback.
+- Phone input uses a country selector and `tel` keyboard; OTP uses the numeric keyboard and one-time-code autocomplete.
+- Claim setup offers Google, email/password, and WhatsApp/passcode without leaving the sign-in surface.
+- Pricing business details and Razorpay handoff work in the mobile browser.
+- A returning owner with a pending onboarding subscription sees **Payment pending** and a large **Complete payment** or **Open Billing** action.
+- External Razorpay links use a new browser context with `noopener,noreferrer`. Invalid stored checkout URLs are never opened; Pricing routes to Billing, while Billing keeps the safe support/no-payment-action state.
+- Owner copy stays generic and does not expose Firebase, provider, token, tenant, store, or limiter details.
 
-**Decision:** Desktop-first. The flow works in mobile browser (responsive pages), but no MobileShell-specific onboarding UI. Acceptable because it's a one-time flow.
+## PWA boundary
 
-## Current Launch Boundary
+- No separate mobile authentication state is introduced.
+- NextAuth and Firebase custom-claim sync remain shared with desktop.
+- Direct sign-in/pricing routes are outside `MobileShell`; dashboard, Billing, and later owner work use the existing shell behavior.
 
-Desktop-first does not mean mobile launch evidence is optional. Current release approval still requires browser/device QA for mobile pricing, onboarding modal, Google OAuth return, Razorpay checkout, payment verification, session refresh, and dashboard handoff, with evidence recorded in the active [production-readiness audit](../audits/menulist-production-readiness-audit.md) and [External Certification Runbook](../production-readiness/external-certification-runbook.md).
+## Required device checks
 
-This doc records the mobile-support decision only. It does not certify mobile browser OAuth, payment provider behavior, Firebase Auth sync, live Firestore writes, Vercel deploys, Firebase deploys, production build output, or production-host behavior.
+- narrow Android Chrome and iPhone Safari layouts;
+- Google return to the correct host and callback path;
+- WhatsApp OTP send, resend, paste/autofill, and passcode fallback;
+- claim-link opening from WhatsApp and each setup mode;
+- Razorpay open, dismissal, return to Pricing, pending recovery, and Billing recovery;
+- post-payment dashboard handoff and Firebase-backed owner data access.
 
----
-
-## How It Works on Mobile
-
-1. User visits `/pricing` on mobile browser → responsive pricing page
-2. Clicks "Get Started" → Onboarding modal (works in mobile browser)
-3. Google OAuth → works in mobile browser/PWA
-4. Razorpay payment → works in mobile browser
-5. Dashboard loads → MobileShell renders (if `ENABLE_MOBILE_UI`)
-
-The entire flow runs on standard responsive web pages, not inside MobileShell.
+These device/provider checks remain pending until run on the target environment.

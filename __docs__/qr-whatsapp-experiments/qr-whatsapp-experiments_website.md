@@ -1,7 +1,7 @@
 # QR WhatsApp Experiments Website Guidance
 
 **Status:** Internal
-**Last Updated:** June 25, 2026
+**Last Updated:** July 17, 2026
 
 ## Current Website Decision
 

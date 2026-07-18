@@ -1,11 +1,11 @@
 # Answerlattice — Entity System (Product Ontology Layer)
 
-> **Status:** ENHANCEMENT — Core infrastructure exists, 6 enhancements identified
+> **Status:** MAINTAINED — Core entity loop is implemented; post-save extraction is best effort and the hybrid evidence lane remains independently gated
 > **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-18
 > **Pillar:** 1 of 5 — Product Ontology (Foundation Layer)
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_ONTOLOGY` (existing, OFF by default)
-> **Source:** ChatGPT entity deep-dive (9,430 lines) + Cascade codebase audit + industry research
+> **Feature Flag:** `ENABLE_ANSWERLATTICE_ONTOLOGY` (existing, ON in current source)
+> **Source:** Current code, runtime contracts, tests, doctrine, and maintained feature documentation
 
 ---
 
@@ -34,48 +34,49 @@ The Entity System is **Pillar 1** of Answerlattice — the foundation layer that
 | useEntities Hook | ✅ COMPLETE | `src/hooks/answerlattice/useEntities.ts` |
 | Governance UI Components | ✅ COMPLETE | `src/components/templates/answerlattice/governance/` |
 | Entity Health Scores | ✅ COMPLETE | `src/components/templates/answerlattice/governance/EntityHealthScore.tsx` |
-| **Entity-Article Bridge (entityIds on KB articles)** | ❌ MISSING | `src/types/knowledgeBase.ts` — no entityIds field |
-| **Aliases on Entity Document** | ❌ MISSING | Only on search index, not on entity itself |
-| **Registry-Guided Extraction** | ❌ MISSING | Extraction runs without existing entity context |
-| **Auto-Extract on Article Save** | ❌ MISSING | Extraction is manual-only |
-| **Entity Merge** | ❌ MISSING | Can deprecate but not merge two entities |
-| **Entity-Enriched RAG Context** | ❌ MISSING | RAG fallback doesn't use entity descriptions |
+| **Entity-Article Bridge (entityIds on KB articles)** | ✅ COMPLETE | `src/types/knowledgeBase.ts`, Knowledge Intake publishing, compiled context |
+| **Aliases on Entity Document** | ✅ COMPLETE | `AnswerlatticeEntity.aliases`, entity DAL, search-index synchronization |
+| **Registry-Guided Extraction** | ✅ COMPLETE | Existing scoped entities are supplied to extraction and post-extraction matching |
+| **Post-Save Entity Extraction** | ✅ COMPLETE, BEST EFFORT | Article create and extraction-relevant updates attempt the protected extraction route when ontology is enabled |
+| **Entity Merge** | ✅ COMPLETE | Governed bounded merge rewrites canonical, article, relation, and search-index dependencies, merges aliases, and deprecates the merged entity |
+| **Entity-Enriched RAG Context** | ✅ COMPLETE | `src/lib/search/searchCore.ts` |
+| **Exact technical-token/entity article lane** | ✅ IMPLEMENTED, DEFAULT OFF | `src/lib/answerlattice/hybridEvidenceRetrieval.ts`, `src/lib/search/searchCore.ts` |
 
 ---
 
 ## Enhancements (This Document Set)
 
-6 targeted enhancements to complete the entity loop:
+Six tracked enhancements for the entity loop:
 
-| # | Enhancement | Impact | Complexity |
-|---|-------------|--------|------------|
-| E1 | Add `aliases[]` to AnswerlatticeEntity | Governance + query detection | Low |
-| E2 | Add `entityIds[]` to KB articles | **Core missing link** — connects entities to articles | Medium |
-| E3 | Registry-guided extraction | Reduces duplicates dramatically | Medium |
-| E4 | Auto-extract on article save | Keeps entity graph synchronized | Medium |
-| E5 | Entity merge capability | Long-term entity hygiene | Low |
-| E6 | Entity-enriched RAG context | Better fallback answers | Low |
+| # | Enhancement | Impact | Current state |
+|---|-------------|--------|---------------|
+| E1 | Add `aliases[]` to AnswerlatticeEntity | Governance + query detection | Complete |
+| E2 | Add `entityIds[]` to KB articles | Article-to-entity bridge | Complete |
+| E3 | Registry-guided extraction | Reduces duplicate entity proposals | Complete |
+| E4 | Post-save entity extraction | Attempts to keep article entity links synchronized | Complete; best-effort browser trigger |
+| E5 | Entity merge capability | Long-term entity hygiene | Complete |
+| E6 | Entity-enriched RAG context | Better scoped fallback evidence | Complete |
 
 ---
 
-## ChatGPT Discussion vs Answerlattice Reality
+## Boundary Review
 
-| ChatGPT Layer | Answerlattice Status | Decision |
+| Capability | Answerlattice Status | Decision |
 |---------------|----------------|----------|
 | Entity Registry | ✅ Already built | Keep as-is |
-| Entity Extraction | ✅ Already built | Enhance with E3 |
+| Entity Extraction | ✅ Registry-guided extraction built | Keep explicit and governed |
 | Entity Candidates + Promote | ✅ Already built (with authority rules) | Keep as-is |
 | Entity Search Index | ✅ Already built | Keep as-is |
 | Entity Relations | ✅ Already built (6 types) | Keep as-is |
-| Entity Aliases | ⚠️ Partial (only on search index) | Enhance with E1 |
-| Entity-Article Mapping | ❌ Missing on KB articles | Build with E2 |
+| Entity Aliases | ✅ Entity field and search-index sync built | Keep entity as source of truth |
+| Entity-Article Mapping | ✅ Implemented on KB articles | Keep bounded and governed |
 | Entity Coverage Index | ✅ AnswerlatticeCoverageKPI exists | Keep as-is |
 | Entity Lifecycle | ✅ active/deprecated/beta | Keep as-is |
 | Entity Query Detection | ✅ canonicalRetrieval Layer 1 | Keep as-is |
-| Entity Memory (query learning) | ❌ Not built | **DEFER** — no queries yet |
-| Entity Graph Intelligence | ✅ Relations exist | Keep as-is |
+| Entity Memory (query learning) | Not part of the governed truth model | **DEFER** — interactions remain signals until human review |
+| Entity Graph Intelligence | ✅ Relations and governed merge exist | Keep as-is |
 | Product Surface Awareness | ✅ AnswerlatticeContextPayload | Keep as-is |
-| Cross-Tenant Intelligence | ❌ Not built | **REJECT** — no tenants yet |
+| Cross-Tenant Intelligence | Outside the tenant-isolated product boundary | **REJECT** — do not pool customer knowledge across tenants |
 | Knowledge Trust Scoring | ✅ confidenceScore fields | Keep as-is |
 | Support Reasoning Engine | ❌ Not built | **REJECT** — overkill for v1 |
 | Knowledge Execution Control | ✅ Canonical retrieval does this | Keep as-is |
@@ -108,13 +109,17 @@ Answerlattice App Entity DAL ID Boundary: entity, relation, and entity search-in
 ```
 KB Article Save
      ↓
-AI Entity Extraction (registry-guided)  ← E3
+Best-Effort Trigger → Protected Extraction Route
+     ↓
+Assisted Entity Extraction (active registry rows only)
      ↓
 Entity Matching (alias + search index)
      ↓
 Candidate Entity (if new) → Owner Review → Promote
      ↓
-Article entityIds[] Updated  ← E2
+Confirmed successful extraction updates entityIds[] (maximum 10)
+     ↓
+Confirmed empty extraction clears stale links; provider/parsing failure preserves them
      ↓
 Entity Search Index Updated
      ↓
@@ -125,8 +130,10 @@ Alias Detection → Entity IDs
 Canonical Answer Lookup (scope.entityIds)
      ↓
 Found? → Return Canonical Answer
-Not Found? → RAG Fallback (entity-enriched)  ← E6
+Not Found? → RAG Fallback (entity-enriched)
 ```
+
+The post-save trigger runs only when ontology is enabled. It is non-blocking and best effort: article save remains authoritative if extraction fails, failed or incomplete extraction preserves current links, confirmed empty extraction can clear stale links, and new entity candidates still require review.
 
 ---
 

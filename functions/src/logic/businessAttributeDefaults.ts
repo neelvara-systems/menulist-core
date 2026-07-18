@@ -6,10 +6,11 @@ import {
     getDietaryTagToBusinessAttributeMapForCategory,
     normalizeBusinessAttributeInferenceKey,
 } from '../sharedData/businessAttributeInference';
+import { mergeMissingBusinessAttributeDefaults } from '../sharedData/businessAttributeDefaults';
 import { resolveBusinessCategory } from '../sharedData/businessTypes';
 import { revalidatePublicClientCacheForStore } from './publicCacheRevalidation';
 
-type BusinessAttributes = Record<string, boolean | undefined>;
+type BusinessAttributes = Record<string, unknown>;
 type BusinessAttributeSuggestionConfidence = 'high' | 'medium' | 'low';
 
 interface StoreLike {
@@ -149,17 +150,14 @@ function getBusinessAttributesWithMenuDefaults(
 ): BusinessAttributes | null {
     const inferredAttributes = inferBusinessAttributesForStore(menuData, store);
     const existingAttributes = store?.businessAttributes || {};
-    const nextAttributes: BusinessAttributes = { ...existingAttributes };
-    let changed = false;
+    const category = resolveBusinessCategory(store?.businessType, store?.businessCategory);
+    const result = mergeMissingBusinessAttributeDefaults(
+        existingAttributes,
+        inferredAttributes,
+        getAllowedBusinessAttributeKeysForCategory(category),
+    );
 
-    Object.entries(inferredAttributes).forEach(([key, value]) => {
-        if (value !== true) return;
-        if (typeof existingAttributes[key] === 'boolean') return;
-        nextAttributes[key] = true;
-        changed = true;
-    });
-
-    return changed ? nextAttributes : null;
+    return result.changed ? result.businessAttributes : null;
 }
 
 export async function applyMenuDerivedBusinessAttributeDefaultsForStore(params: {
@@ -172,14 +170,24 @@ export async function applyMenuDerivedBusinessAttributeDefaultsForStore(params: 
     if (!storeId) return false;
 
     const storeRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(storeId);
-    const storeSnap = await storeRef.get();
-    if (!storeSnap.exists) return false;
+    const transactionResult = await firestoreAdmin.runTransaction(async (transaction) => {
+        const storeSnap = await transaction.get(storeRef);
+        if (!storeSnap.exists) return { applied: false, appliedKeyCount: 0 };
 
-    const storeData = storeSnap.data() as StoreLike;
-    const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(params.menuData, storeData);
-    if (!nextBusinessAttributes) return false;
+        const storeData = storeSnap.data() as StoreLike;
+        const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(params.menuData, storeData);
+        if (!nextBusinessAttributes) return { applied: false, appliedKeyCount: 0 };
 
-    await storeRef.update({ businessAttributes: nextBusinessAttributes });
+        transaction.update(storeRef, { businessAttributes: nextBusinessAttributes });
+        return {
+            applied: true,
+            appliedKeyCount: Object.keys(nextBusinessAttributes).filter((key) => (
+                nextBusinessAttributes[key] === true && typeof storeData.businessAttributes?.[key] !== 'boolean'
+            )).length,
+        };
+    });
+    if (!transactionResult.applied) return false;
+
     await revalidatePublicClientCacheForStore(storeId, params.context, {
         touchDigitalScreen: params.touchDigitalScreen === true,
     });
@@ -187,9 +195,7 @@ export async function applyMenuDerivedBusinessAttributeDefaultsForStore(params: 
     functions.logger.info('[businessAttributeDefaults] Applied menu-derived business attribute defaults', {
         storeIdLength: storeId.length,
         contextLength: params.context.length,
-        appliedKeyCount: Object.keys(nextBusinessAttributes).filter((key) => (
-            nextBusinessAttributes[key] === true && storeData.businessAttributes?.[key] !== true
-        )).length,
+        appliedKeyCount: transactionResult.appliedKeyCount,
     });
 
     return true;

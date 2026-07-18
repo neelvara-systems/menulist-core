@@ -212,6 +212,10 @@ Only safe low-risk groups can be bulk approved. High-risk answers require explic
 
 No. Drafts need approval before becoming official support truth.
 
+**What should I check before accepting a draft?**
+
+Check the linked source excerpt, where the answer applies, and any missing-evidence warning. If the source does not support the proposed answer, add evidence or reject the draft. A repeated ticket or owner note is a signal, not automatically approved truth.
+
 ---
 
 ## Version History
@@ -222,3 +226,4 @@ No. Drafts need approval before becoming official support truth.
 | 2026-05-31 | 1.1.0 | Added product link intake guidance, owner page selection, and app URL crawl boundary. |
 | 2026-05-31 | 1.2.0 | Added owner-facing privacy filter expectation before AI draft generation. |
 | 2026-05-31 | 1.3.0 | Added plain-language runtime readiness note for search, widget, FAQs, canonical answers, and hosted-help publishing. |
+| 2026-07-17 | 1.4.0 | Added the linked-source evidence review rule for accept/reject decisions. |

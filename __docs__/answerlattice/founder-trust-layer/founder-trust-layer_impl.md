@@ -77,7 +77,7 @@ interface AnswerlatticeTrustMetrics {
   lastUpdated: Timestamp;
   date: string; // YYYY-MM-DD
 
-  // 4 Core Metrics
+  // Core metrics
   coverage: {
     rate: number; // 0-100 (percentage)
     hits: number; // Canonical answer served
@@ -87,11 +87,22 @@ interface AnswerlatticeTrustMetrics {
   };
 
   resolution: {
-    rate: number; // 0-100 (percentage)
-    resolved: number; // Queries without escalation
+    rate: number; // 0-100 (percentage without escalation)
+    resolved: number; // Queries without escalation; not explicit resolution proof
     escalated: number; // Queries with escalation signal
     total: number;
     previousRate: number; // Yesterday's rate (for trend)
+  };
+
+  confirmedResolution?: {
+    rate: number; // Explicit resolved / all explicit outcomes
+    confirmedResolved: number;
+    confirmedNotResolved: number;
+    explicitOutcomeTotal: number;
+    recontactEligible: number;
+    recontactedSameSession: number;
+    previousRate: number;
+    observationWindowHours: number;
   };
 
   drift: {

@@ -1,7 +1,7 @@
 # Internal Feedback System — Website Surface
 
 **Status:** IMPLEMENTED  
-**Last Updated:** July 2, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Website, product marketing, docs, launch QA
 
 ---
@@ -63,6 +63,7 @@ Do not claim:
 - MenuList replies to reviews automatically.
 - MenuList updates public platforms automatically from feedback.
 - Feedback changes the public menu without owner review.
+- MenuList aggregates every outlet's feedback into one HQ inbox.
 
 ---
 

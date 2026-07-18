@@ -1,4 +1,7 @@
 import type { Project } from '@template/main-app/projects/types';
+import { FEATURE_FLAGS } from '@config/features';
+import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import {
     BRAND_COLOR_PRESETS,
     MENU_LAYOUTS,
@@ -9,6 +12,7 @@ import {
 
 type PromptItem = {
     active?: boolean;
+    attributes?: Array<{ active?: boolean; price?: string }>;
     available?: boolean;
     categoryId?: string;
     hasDescription?: boolean;
@@ -161,6 +165,10 @@ function getPromptItems(project?: Project | null): PromptItem[] {
         (file.extractedData?.data?.items || [])
             .map((item) => ({
                 active: item.active !== false,
+                attributes: item.attributes?.map((attribute) => ({
+                    active: attribute.active !== false,
+                    price: attribute.price,
+                })),
                 available: item.available !== false,
                 categoryId: item.category,
                 hasDescription: Boolean(readLocalized(item.description, language, '')),
@@ -195,15 +203,15 @@ function getPromptCategories(project?: Project | null): PromptCategory[] {
 }
 
 function nextPriceLabel(price?: string) {
-    const numeric = Number(String(price || '').replace(/[^0-9.]/g, ''));
-    const nextPrice = Number.isFinite(numeric) && numeric > 0 ? numeric + 10 : 20;
+    const numeric = parseSingleMenuPrice(price);
+    const nextPrice = numeric !== null && numeric > 0 ? numeric + 10 : 20;
     return Number.isInteger(nextPrice) ? String(nextPrice) : nextPrice.toFixed(2);
 }
 
 export function getAiMenuManagerProjectPromptHints(project?: Project | null) {
     const items = getPromptItems(project);
     const activeItems = items.filter((item) => item.active !== false);
-    const priceItem = activeItems.find((item) => item.price) || activeItems[0];
+    const priceItem = activeItems.find((item) => parseSingleMenuPrice(item.price) !== null) || activeItems[0];
     const availabilityItem = activeItems.find((item) => item.name !== priceItem?.name) || priceItem || activeItems[0];
 
     return {
@@ -219,7 +227,7 @@ export function getAiMenuManagerAttentionSuggestions(project?: Project | null): 
     const hiddenCategory = categories.find((category) => category.active === false);
     const unavailableItem = activeItems.find((item) => item.available === false);
     const hiddenItem = items.find((item) => item.active === false);
-    const missingPriceItem = activeItems.find((item) => !Number(String(item.price || '').replace(/[^0-9.]/g, '')));
+    const missingPriceItem = activeItems.find((item) => !hasPublicItemDisplayPrice(item));
     const missingImageItem = activeItems.find((item) => !item.hasImage);
     const missingDescriptionItem = activeItems.find((item) => !item.hasDescription);
     const candidates: Array<AiMenuManagerPromptSuggestion | null | undefined> = [
@@ -243,7 +251,7 @@ export function getAiMenuManagerAttentionSuggestions(project?: Project | null): 
             label: `${missingPriceItem.name} ${nextPriceLabel(missingPriceItem.price)}`,
             helper: 'Missing price',
         },
-        missingImageItem && {
+        FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && missingImageItem && {
             kind: 'image',
             label: `Generate image for ${missingImageItem.name}`,
             helper: 'Missing item photo',
@@ -346,7 +354,7 @@ export function getAiMenuManagerProjectPromptGroups(project?: Project | null): A
         children: promoteChildren,
     } : null);
 
-    addSuggestion(groups, 'photos-content', 'Photos and content', missingImageItem && {
+    addSuggestion(groups, 'photos-content', 'Photos and content', FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && missingImageItem && {
         kind: 'image',
         label: `Generate image for ${missingImageItem.name}`,
         helper: 'Prepare an image task',

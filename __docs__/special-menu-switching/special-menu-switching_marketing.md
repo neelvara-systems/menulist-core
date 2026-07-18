@@ -9,7 +9,7 @@
 
 ## Elevator Pitch (30 seconds)
 
-"Your menu changes during festivals, events, and seasons. With MenuList, activate your Diwali menu, Sunday brunch, or seasonal specials — then let the system automatically switch back to your regular menu. No manual editing, no forgetting, no wrong menu showing to customers."
+"Your menu changes during festivals, events, and seasons. With MenuList, schedule a separate Diwali menu, one-time Sunday brunch, or seasonal special — then let the regular menu return automatically."
 
 ---
 
@@ -48,7 +48,7 @@ MenuList now lets you create a separate special menu for any occasion. Set when 
 
 ### For Bar/Pub Owners
 
-- "IPL night menu? Happy hour specials? Create them once, schedule them. They appear and disappear without you touching anything."
+- "IPL night menu or a one-time happy-hour window? Prepare a separate menu and schedule that date range."
 
 ### For Salon/Spa Owners
 
@@ -81,7 +81,7 @@ MenuList now lets you create a separate special menu for any occasion. Set when 
 ### Subheadline Options
 
 - "Create special menus for festivals, events, or seasons. Set the dates. MenuList handles everything else."
-- "Your regular menu stays untouched. Your special menu appears exactly when you want it to."
+- "Your regular menu stays untouched. Scheduled live surfaces normally switch within a few minutes of the time you choose."
 
 ### Feature Benefits (Outcomes, Not Features)
 
@@ -116,15 +116,10 @@ MenuList now lets you create a separate special menu for any occasion. Set when 
 
 ---
 
-## Competitive Positioning
+## Product-Boundary Positioning
 
-| Competitor                  | Their Approach              | Our Advantage                                                                |
-| --------------------------- | --------------------------- | ---------------------------------------------------------------------------- |
-| POS systems (TouchBistro)   | Menu scheduling tied to POS | MenuList works independently — no POS needed                                 |
-| Digital signage (LOOK DS)   | Screen-only menu switching  | MenuList covers public page, QR link, OBP, and configured screen paths       |
-| Generic menu tools (UpMenu) | Manual menu duplication     | MenuList does auto-revert + scheduling                                       |
-| None of the above           | —                           | MenuList is the only customer-facing truth layer with menu lifecycle control |
+Keep claims tied to current MenuList source evidence: public menu/QR link, OBP menu entry, and configured Digital Screen paths follow the active-menu resolver and refresh contract. Do not claim POS synchronization, downloaded-file replacement, recurring schedules, instant switching, or competitor limitations without separate current evidence.
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** July 16, 2026

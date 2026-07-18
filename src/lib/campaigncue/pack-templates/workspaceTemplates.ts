@@ -1,10 +1,17 @@
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, runTransaction } from "firebase/firestore";
 import { deleteObject, ref, uploadString } from "firebase/storage";
 import { CAMPAIGNCUE_COLLECTIONS } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY } from "@constant/campaigncue/packTemplates";
 import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
+import { createRuntimeId } from "@lib/runtime/randomId";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import {
+    isOwnedWorkspaceTemplateStoragePath,
+    removeWorkspaceTemplateFromIndex,
+    upsertWorkspaceTemplateIndex,
+} from "./workspaceTemplateIndexBoundary";
+import {
+    campaignCueWorkspacePackTemplateDeleteSchema,
     campaignCueWorkspacePackTemplateIndexSchema,
     campaignCueWorkspacePackTemplateSaveSchema,
 } from "@lib/validation/campaigncuePackTemplateSchemas";
@@ -13,6 +20,8 @@ import type {
     CampaignCueWorkspacePackTemplateIndex,
     CampaignCueWorkspacePackTemplateSaveInput,
 } from "@type/campaigncuePackTemplates";
+import { prepareCampaignCuePackTemplateEditorDocument } from "./editorDocumentBoundary";
+import { assertCampaignCueWorkspaceTemplateIndexScope } from "./templateScopeBoundary";
 
 type CampaignCueWorkspaceTemplateStorageCleanupContext = {
     cleanupTarget: "payload" | "editorDocument" | "preview";
@@ -56,10 +65,9 @@ const isMissingStorageObjectError = (error: unknown): boolean => (
 
 const getWorkspaceTemplateCleanupTarget = (
     path: string | undefined,
-    root: string,
 ): CampaignCueWorkspaceTemplateStorageCleanupContext["cleanupTarget"] => {
-    if (path === `${root}/pack-template.json`) return "payload";
-    if (path === `${root}/editor-document.json`) return "editorDocument";
+    if (path?.endsWith("/pack-template.json")) return "payload";
+    if (path?.endsWith("/editor-document.json")) return "editorDocument";
     return "preview";
 };
 
@@ -81,11 +89,40 @@ async function deleteWorkspaceTemplateStoragePath(
     }
 }
 
-async function getExistingWorkspaceTemplates(workspaceId: string): Promise<CampaignCuePackTemplateSummary[]> {
-    const indexDoc = await getDoc(getWorkspaceTemplateIndexRef(workspaceId));
-    if (!indexDoc.exists()) return [];
-    const index = campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex;
-    return index.data;
+const getWorkspaceTemplateStoragePaths = (summary?: CampaignCuePackTemplateSummary | null): string[] => (
+    summary
+        ? [summary.payloadPath, summary.editorDocumentPath, summary.previewPath].filter((path): path is string => Boolean(path))
+        : []
+);
+
+async function cleanupWorkspaceTemplateSummaries(
+    summaries: CampaignCuePackTemplateSummary[],
+    currentPaths: ReadonlySet<string>,
+    workspaceId: string,
+): Promise<void> {
+    const targets = new Map<string, { templateId: string }>();
+    for (const summary of summaries) {
+        for (const path of getWorkspaceTemplateStoragePaths(summary)) {
+            if (
+                !currentPaths.has(path)
+                && isOwnedWorkspaceTemplateStoragePath({
+                    path,
+                    storageRoot: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_STORAGE_ROOT,
+                    templateId: summary.templateId,
+                    workspaceId,
+                })
+            ) {
+                targets.set(path, { templateId: summary.templateId });
+            }
+        }
+    }
+    await Promise.all(Array.from(targets.entries()).map(([path, target]) => (
+        deleteWorkspaceTemplateStoragePath(path, {
+            cleanupTarget: getWorkspaceTemplateCleanupTarget(path),
+            templateId: target.templateId,
+            workspaceId,
+        })
+    )));
 }
 
 export async function saveCampaignCueWorkspacePackTemplate(
@@ -96,13 +133,19 @@ export async function saveCampaignCueWorkspacePackTemplate(
     if (!templateId) throw new Error("Template id is required");
 
     const now = Date.now();
-    const existingTemplates = await getExistingWorkspaceTemplates(input.workspaceId);
-    const existingRecord = existingTemplates.find((template) => template.templateId === templateId);
     const root = buildWorkspaceTemplateRoot(input.workspaceId, templateId);
-    const payloadPath = `${root}/pack-template.json`;
-    const editorDocumentPath = input.editorDocument ? `${root}/editor-document.json` : undefined;
+    const versionRoot = `${root}/versions/${safeSegment(createRuntimeId("save"))}`;
+    const payloadPath = `${versionRoot}/pack-template.json`;
+    const reusableEditorDocument = input.editorDocument
+        ? prepareCampaignCuePackTemplateEditorDocument({
+            document: input.editorDocument,
+            templateId,
+            workspaceId: input.workspaceId,
+        })
+        : undefined;
+    const editorDocumentPath = reusableEditorDocument ? `${versionRoot}/editor-document.json` : undefined;
     const previewContentType = parsePreviewContentType(input.previewDataUrl);
-    const previewPath = input.previewDataUrl && previewContentType ? `${root}/preview.${previewContentType.split("/")[1]}` : undefined;
+    const previewPath = input.previewDataUrl && previewContentType ? `${versionRoot}/preview.${previewContentType.split("/")[1]}` : undefined;
 
     const payloadJson = JSON.stringify({
         ...input.payload,
@@ -111,38 +154,109 @@ export async function saveCampaignCueWorkspacePackTemplate(
     if (sizeOf(payloadJson) > CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_PAYLOAD_BYTES) {
         throw new Error("Campaign pack template payload is too large");
     }
+    const editorJson = reusableEditorDocument ? JSON.stringify(reusableEditorDocument) : null;
+    if (editorJson && sizeOf(editorJson) > CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_EDITOR_DOCUMENT_BYTES) {
+        throw new Error("Campaign pack editor document is too large");
+    }
+
     const uploadedPaths: string[] = [];
+    let persistenceAttempted = false;
+    let obsoleteRecords: CampaignCuePackTemplateSummary[] = [];
     try {
+        uploadedPaths.push(payloadPath);
         await uploadString(ref(firebaseStorage, payloadPath), payloadJson, "raw", {
             cacheControl: "private, max-age=31536000, immutable",
             contentType: "application/json",
         });
-        uploadedPaths.push(payloadPath);
-
-        if (input.editorDocument && editorDocumentPath) {
-            const editorJson = JSON.stringify(input.editorDocument);
-            if (sizeOf(editorJson) > CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_EDITOR_DOCUMENT_BYTES) {
-                throw new Error("Campaign pack editor document is too large");
-            }
+        if (editorJson && editorDocumentPath) {
+            uploadedPaths.push(editorDocumentPath);
             await uploadString(ref(firebaseStorage, editorDocumentPath), editorJson, "raw", {
                 cacheControl: "private, max-age=31536000, immutable",
                 contentType: "application/json",
             });
-            uploadedPaths.push(editorDocumentPath);
         }
 
         if (input.previewDataUrl && previewPath && previewContentType) {
+            uploadedPaths.push(previewPath);
             await uploadString(ref(firebaseStorage, previewPath), input.previewDataUrl, "data_url", {
                 cacheControl: "private, max-age=31536000, immutable",
                 contentType: previewContentType,
             });
-            uploadedPaths.push(previewPath);
         }
 
-        const summary: CampaignCuePackTemplateSummary = {
+        const indexRef = getWorkspaceTemplateIndexRef(input.workspaceId);
+        persistenceAttempted = true;
+        const summary = await runTransaction(firebaseClient, async (transaction) => {
+            const indexDoc = await transaction.get(indexRef);
+            const currentIndex = indexDoc.exists()
+                ? campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex
+                : null;
+            if (currentIndex) assertCampaignCueWorkspaceTemplateIndexScope(currentIndex, input.workspaceId);
+            const existingTemplates = currentIndex?.data || [];
+            const existingRecord = existingTemplates.find((template) => template.templateId === templateId);
+            const nextSummary: CampaignCuePackTemplateSummary = {
+                ...input.summary,
+                businessCategory: input.businessCategory,
+                createdAt: existingRecord?.createdAt || input.summary.createdAt || now,
+                editorDocumentPath,
+                payloadPath,
+                previewPath,
+                qualityTier: "workspace_saved",
+                schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
+                status: "active",
+                templateId,
+                templateType: "workspace",
+                updatedAt: now,
+            };
+            const mutation = upsertWorkspaceTemplateIndex({
+                existingTemplates,
+                maxTemplates: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_WORKSPACE_TEMPLATES,
+                summary: nextSummary,
+            });
+            obsoleteRecords = mutation.obsoleteRecords;
+            const index: CampaignCueWorkspacePackTemplateIndex = {
+                data: mutation.data,
+                id: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_INDEX_DOC_ID,
+                schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
+                updatedAt: now,
+                workspaceId: input.workspaceId,
+            };
+            transaction.set(indexRef, index);
+            return nextSummary;
+        });
+        await cleanupWorkspaceTemplateSummaries(obsoleteRecords, new Set(uploadedPaths), input.workspaceId);
+        return summary;
+    } catch (error) {
+        if (persistenceAttempted) {
+            try {
+                const indexDoc = await getDoc(getWorkspaceTemplateIndexRef(input.workspaceId));
+                const currentIndex = indexDoc.exists()
+                    ? campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex
+                    : null;
+                if (currentIndex) assertCampaignCueWorkspaceTemplateIndexScope(currentIndex, input.workspaceId);
+                const committed = currentIndex?.data.find((template) => (
+                    template.templateId === templateId
+                    && template.payloadPath === payloadPath
+                    && template.editorDocumentPath === editorDocumentPath
+                    && template.previewPath === previewPath
+                ));
+                if (committed) {
+                    await cleanupWorkspaceTemplateSummaries(obsoleteRecords, new Set(uploadedPaths), input.workspaceId);
+                    return committed;
+                }
+            } catch (probeError) {
+                logRuntimeFailure("campaigncue_workspace_template_persistence_probe_failed", probeError, {
+                    ...getBoundedRuntimeStringContext("templateId", templateId),
+                    ...getBoundedRuntimeStringContext("workspaceId", input.workspaceId),
+                    cleanupDeferred: true,
+                });
+                throw error;
+            }
+        }
+        await cleanupWorkspaceTemplateSummaries([{
             ...input.summary,
             businessCategory: input.businessCategory,
-            createdAt: existingRecord?.createdAt || input.summary.createdAt || now,
+            createdAt: input.summary.createdAt || now,
             editorDocumentPath,
             payloadPath,
             previewPath,
@@ -152,33 +266,7 @@ export async function saveCampaignCueWorkspacePackTemplate(
             templateId,
             templateType: "workspace",
             updatedAt: now,
-        };
-        const data = [
-            summary,
-            ...existingTemplates.filter((template) => template.templateId !== templateId),
-        ].slice(0, CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.MAX_WORKSPACE_TEMPLATES);
-        const index: CampaignCueWorkspacePackTemplateIndex = {
-            data,
-            id: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_INDEX_DOC_ID,
-            schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
-            updatedAt: now,
-            workspaceId: input.workspaceId,
-        };
-        await setDoc(getWorkspaceTemplateIndexRef(input.workspaceId), index);
-        return summary;
-    } catch (error) {
-        const previousPaths = new Set([
-            existingRecord?.payloadPath,
-            existingRecord?.editorDocumentPath,
-            existingRecord?.previewPath,
-        ].filter(Boolean));
-        await Promise.all(uploadedPaths
-            .filter((path) => !previousPaths.has(path))
-            .map((path) => deleteWorkspaceTemplateStoragePath(path, {
-                cleanupTarget: getWorkspaceTemplateCleanupTarget(path, root),
-                templateId,
-                workspaceId: input.workspaceId,
-            })));
+        }], new Set(), input.workspaceId);
         throw error;
     }
 }
@@ -187,34 +275,51 @@ export async function deleteCampaignCueWorkspacePackTemplate(input: {
     templateId: string;
     workspaceId: string;
 }): Promise<void> {
-    const templateId = safeSegment(input.templateId);
-    const existingTemplates = await getExistingWorkspaceTemplates(input.workspaceId);
-    const removed = existingTemplates.find((template) => template.templateId === templateId);
-    const data = existingTemplates.filter((template) => template.templateId !== templateId);
-    const index: CampaignCueWorkspacePackTemplateIndex = {
-        data,
-        id: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_INDEX_DOC_ID,
-        schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
-        updatedAt: Date.now(),
-        workspaceId: input.workspaceId,
-    };
-    await setDoc(getWorkspaceTemplateIndexRef(input.workspaceId), index);
-
-    await Promise.all([
-        deleteWorkspaceTemplateStoragePath(removed?.payloadPath, {
-            cleanupTarget: "payload",
-            templateId,
-            workspaceId: input.workspaceId,
-        }),
-        deleteWorkspaceTemplateStoragePath(removed?.editorDocumentPath, {
-            cleanupTarget: "editorDocument",
-            templateId,
-            workspaceId: input.workspaceId,
-        }),
-        deleteWorkspaceTemplateStoragePath(removed?.previewPath, {
-            cleanupTarget: "preview",
-            templateId,
-            workspaceId: input.workspaceId,
-        }),
-    ]);
+    const parsed = campaignCueWorkspacePackTemplateDeleteSchema.parse(input);
+    const templateId = parsed.templateId;
+    const indexRef = getWorkspaceTemplateIndexRef(parsed.workspaceId);
+    let removedAttempt: CampaignCuePackTemplateSummary | undefined;
+    try {
+        const removed = await runTransaction(firebaseClient, async (transaction) => {
+            const indexDoc = await transaction.get(indexRef);
+            const currentIndex = indexDoc.exists()
+                ? campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex
+                : null;
+            if (currentIndex) assertCampaignCueWorkspaceTemplateIndexScope(currentIndex, parsed.workspaceId);
+            const existingTemplates = currentIndex?.data || [];
+            const mutation = removeWorkspaceTemplateFromIndex({ existingTemplates, templateId });
+            removedAttempt = mutation.removed;
+            if (!mutation.removed) return undefined;
+            const index: CampaignCueWorkspacePackTemplateIndex = {
+                data: mutation.data,
+                id: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.WORKSPACE_INDEX_DOC_ID,
+                schemaVersion: CAMPAIGNCUE_PACK_TEMPLATE_REGISTRY.SCHEMA_VERSION,
+                updatedAt: Date.now(),
+                workspaceId: parsed.workspaceId,
+            };
+            transaction.set(indexRef, index);
+            return mutation.removed;
+        });
+        await cleanupWorkspaceTemplateSummaries(removed ? [removed] : [], new Set(), parsed.workspaceId);
+    } catch (error) {
+        if (!removedAttempt) throw error;
+        try {
+            const indexDoc = await getDoc(indexRef);
+            const currentIndex = indexDoc.exists()
+                ? campaignCueWorkspacePackTemplateIndexSchema.parse(indexDoc.data()) as CampaignCueWorkspacePackTemplateIndex
+                : null;
+            if (currentIndex) assertCampaignCueWorkspaceTemplateIndexScope(currentIndex, parsed.workspaceId);
+            if (!currentIndex?.data.some((template) => template.templateId === templateId)) {
+                await cleanupWorkspaceTemplateSummaries([removedAttempt], new Set(), parsed.workspaceId);
+                return;
+            }
+        } catch (probeError) {
+            logRuntimeFailure("campaigncue_workspace_template_delete_probe_failed", probeError, {
+                ...getBoundedRuntimeStringContext("templateId", templateId),
+                ...getBoundedRuntimeStringContext("workspaceId", parsed.workspaceId),
+                cleanupDeferred: true,
+            });
+        }
+        throw error;
+    }
 }

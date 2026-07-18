@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import PublicTruthCheckPage from '@/components/website/publicTruthCheck/PublicTruthCheckPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Public Truth Check - MenuList | Check Your Customer Source';
 const description = 'Check whether a business has clear public facts for its menu or service list, hours, location, contact, action links, and current customer source.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/public-truth-check',
   },
-};
+});
 
 export default function Page() {
   if (!FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_TOOLS || !FEATURE_FLAGS.ENABLE_PUBLIC_TRUTH_CHECK) {

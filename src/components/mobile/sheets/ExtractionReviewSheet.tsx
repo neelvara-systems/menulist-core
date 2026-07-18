@@ -9,18 +9,26 @@ import type {
 } from '@lib/extraction/comparisonEngine.types';
 import {
     countApprovedChanges,
+    createReviewPreviewSession,
+    getReviewPreviewIdentity,
     hasAnyPreviewChanges,
+    resolveReviewPreviewSession,
     setAllPreviewApprovals,
     setSafePreviewApprovals,
+    updateReviewPreviewSession,
 } from '@lib/extraction/reviewPreview';
 import { clearMenuProcessingJobDismissal, markMenuProcessingJobAsDismissed } from '@lib/extraction/menuProcessingDismissal';
+import {
+    MENULIST_ANSWERLATTICE_TARGETS,
+    getMenuListAnswerlatticeTargetProps,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import {
     getMenuProcessingJobLogContext,
     getMenuProcessingProjectLogContext,
     logMenuProcessingFailure,
 } from '@lib/firebase/menuProcessingDiagnostics';
 import { useTranslations } from 'next-intl';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LuAlertTriangle, LuCheck, LuChevronDown, LuChevronRight, LuDollarSign, LuPlus, LuRefreshCw, LuX } from 'react-icons/lu';
 import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Popup, Tag, Text, Title, Toast } from '../antd';
@@ -138,7 +146,34 @@ export default function ExtractionReviewSheet({
     visible,
 }: ExtractionReviewSheetProps) {
     const t = useTranslations('MobileMenu');
-    const [preview, setPreview] = useState(comparisonResult.preview);
+    const reviewIdentity = getReviewPreviewIdentity(projectId, jobId);
+    const activeReviewIdentityRef = useRef(reviewIdentity);
+    activeReviewIdentityRef.current = reviewIdentity;
+    const isMountedRef = useRef(false);
+    useEffect(() => {
+        isMountedRef.current = true;
+        return () => {
+            isMountedRef.current = false;
+        };
+    }, []);
+    const [previewSession, setPreviewSession] = useState(() => (
+        createReviewPreviewSession(projectId, jobId, comparisonResult.preview)
+    ));
+    const preview = resolveReviewPreviewSession(
+        previewSession,
+        projectId,
+        jobId,
+        comparisonResult.preview,
+    ).preview;
+    const setPreview = useCallback((update: (current: typeof preview) => typeof preview) => {
+        setPreviewSession((current) => updateReviewPreviewSession(
+            current,
+            projectId,
+            jobId,
+            comparisonResult.preview,
+            update,
+        ));
+    }, [comparisonResult.preview, jobId, projectId]);
     const [isSaving, setIsSaving] = useState(false);
     const [isDiscarding, setIsDiscarding] = useState(false);
 
@@ -183,6 +218,7 @@ export default function ExtractionReviewSheet({
         }
 
         setIsSaving(true);
+        const submittedReviewIdentity = reviewIdentity;
         try {
             const updatedOutput: ComparisonEngineOutput = {
                 ...comparisonResult,
@@ -196,6 +232,10 @@ export default function ExtractionReviewSheet({
                 expectedChangeCount: totalChanges,
                 primaryLang,
             });
+
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
 
             if (!isAcknowledgedApplyChangesResult(result, {
                 appliedChangeCount: totalChanges,
@@ -212,7 +252,10 @@ export default function ExtractionReviewSheet({
                 icon: 'success',
             });
             onSaveComplete();
-        } catch (error: any) {
+        } catch (error: unknown) {
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             logMenuProcessingFailure('mobile_extraction_review_apply_failed', error, {
                 ...getMenuProcessingProjectLogContext(projectId),
                 ...getMenuProcessingJobLogContext(jobId),
@@ -222,11 +265,14 @@ export default function ExtractionReviewSheet({
                 duration: 2200,
             });
         } finally {
-            setIsSaving(false);
+            if (isMountedRef.current && activeReviewIdentityRef.current === submittedReviewIdentity) {
+                setIsSaving(false);
+            }
         }
-    }, [comparisonResult, jobId, onSaveComplete, preview, primaryLang, projectId, t, totalChanges]);
+    }, [comparisonResult, jobId, onSaveComplete, preview, primaryLang, projectId, reviewIdentity, t, totalChanges]);
 
     const handleDiscard = useCallback(async () => {
+        const submittedReviewIdentity = reviewIdentity;
         const confirmed = await Dialog.confirm({
             cancelText: t('cancel'),
             confirmText: t('discardAll'),
@@ -234,41 +280,58 @@ export default function ExtractionReviewSheet({
             title: t('discardChangesConfirmTitle'),
         });
 
-        if (!confirmed) return;
+        if (!confirmed || !isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) return;
 
         setIsDiscarding(true);
         try {
             markMenuProcessingJobAsDismissed(jobId);
             await discardExtractionChanges(jobId);
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             Toast.show({ content: t('changesDiscarded'), duration: 1600 });
             onDiscard();
         } catch (error) {
             clearMenuProcessingJobDismissal(jobId);
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             logMenuProcessingFailure('mobile_extraction_review_discard_failed', error, {
                 ...getMenuProcessingJobLogContext(jobId),
             });
             Toast.show({ content: t('discardChangesFailed'), duration: 2200 });
         } finally {
-            setIsDiscarding(false);
+            if (isMountedRef.current && activeReviewIdentityRef.current === submittedReviewIdentity) {
+                setIsDiscarding(false);
+            }
         }
-    }, [jobId, onDiscard, t]);
+    }, [jobId, onDiscard, reviewIdentity, t]);
 
     const handleCloseNoChanges = useCallback(async () => {
+        const submittedReviewIdentity = reviewIdentity;
         setIsDiscarding(true);
         try {
             markMenuProcessingJobAsDismissed(jobId);
             await discardExtractionChanges(jobId);
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             onDiscard();
         } catch (error) {
             clearMenuProcessingJobDismissal(jobId);
+            if (!isMountedRef.current || activeReviewIdentityRef.current !== submittedReviewIdentity) {
+                return;
+            }
             logMenuProcessingFailure('mobile_extraction_review_close_empty_failed', error, {
                 ...getMenuProcessingJobLogContext(jobId),
             });
             Toast.show({ content: t('discardChangesFailed'), duration: 2200 });
         } finally {
-            setIsDiscarding(false);
+            if (isMountedRef.current && activeReviewIdentityRef.current === submittedReviewIdentity) {
+                setIsDiscarding(false);
+            }
         }
-    }, [jobId, onDiscard, t]);
+    }, [jobId, onDiscard, reviewIdentity, t]);
 
     if (!visible) return null;
 
@@ -444,6 +507,7 @@ export default function ExtractionReviewSheet({
                                 {t('discardAll')}
                             </Button>
                             <Button
+                                {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_REVIEW_APPLY)}
                                 block
                                 color="primary"
                                 disabled={isDiscarding || totalChanges === 0}

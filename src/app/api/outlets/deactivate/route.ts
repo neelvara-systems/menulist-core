@@ -3,15 +3,17 @@ export const dynamic = 'force-dynamic';
  * POST /api/outlets/deactivate — Deactivate an outlet store
  * Sets store.active = false. Razorpay-managed subscriptions reduce quantity
  * immediately; manual/offline prepaid capacity stays available until expiry.
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §16
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §16
  */
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { getActiveSubscriptionForStore, updateSubscription } from "@database/subscriptions/server";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
     getRazorpayManagedSubscriptionId,
+    isRazorpayQuantityUpdateUnsupported,
     updateRazorpaySubscriptionQuantity,
 } from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
@@ -19,6 +21,7 @@ import { getBoundedMultiOutletStringContext, logMultiOutletFailure } from "@lib/
 import { getOutletSessionScope, normalizeOutletDocumentId } from "@lib/multiOutlet/outletSessionScope";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { checkRateLimit } from "@lib/rateLimit";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -36,7 +39,9 @@ import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 
 const schema = z.object({ outletStoreId: z.number().int().positive() });
 const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const OUTLET_DEACTIVATE_EFFECT_CHUNK_SIZE = 1;
 const INVALID_OUTLET_TARGET_CODE = "INVALID_OUTLET_TARGET";
+const OUTLET_DEACTIVATE_SCOPE_CHANGED_CODE = "OUTLET_DEACTIVATE_SCOPE_CHANGED";
 
 class InvalidOutletTargetError extends Error {
     readonly code = INVALID_OUTLET_TARGET_CODE;
@@ -53,6 +58,24 @@ const isInvalidOutletTargetError = (error: unknown): error is InvalidOutletTarge
         typeof error === "object"
         && error !== null
         && (error as { code?: unknown }).code === INVALID_OUTLET_TARGET_CODE
+    )
+);
+
+class OutletDeactivateScopeChangedError extends Error {
+    readonly code = OUTLET_DEACTIVATE_SCOPE_CHANGED_CODE;
+
+    constructor() {
+        super(OUTLET_DEACTIVATE_SCOPE_CHANGED_CODE);
+        this.name = "OutletDeactivateScopeChangedError";
+    }
+}
+
+const isOutletDeactivateScopeChangedError = (error: unknown): error is OutletDeactivateScopeChangedError => (
+    error instanceof OutletDeactivateScopeChangedError
+    || (
+        typeof error === "object"
+        && error !== null
+        && (error as { code?: unknown }).code === OUTLET_DEACTIVATE_SCOPE_CHANGED_CODE
     )
 );
 
@@ -102,7 +125,8 @@ export const POST = withAuth(async (request, session) => {
         const now = admin.firestore.Timestamp.now();
 
         // Caller must be master store
-        const callerSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`).get();
+        const callerStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
+        const callerSnap = await callerStoreRef.get();
         const callerStore = callerSnap.data();
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
@@ -114,7 +138,14 @@ export const POST = withAuth(async (request, session) => {
             Number(tenantId),
         );
         if (permissionError) return permissionError;
-        if (!callerSnap.exists || !callerStore?.isMaster) {
+        if (
+            !callerSnap.exists
+            || !callerStore?.isMaster
+            || Number(callerStore?.tenantId) !== Number(tenantId)
+            || callerStore?.active === false
+            || callerStore?.deleted === true
+            || isPlatformEntityBlocked(callerStore)
+        ) {
             return NextResponse.json({ error: "Only master can deactivate" }, { status: 403 });
         }
 
@@ -123,7 +154,16 @@ export const POST = withAuth(async (request, session) => {
         // with Admin privileges and cannot trust a stale tenant storesList
         // entry as its only tenant boundary.
         const tenantSnap = await db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`).get();
-        const storesList = tenantSnap.data()?.storesList || [];
+        const tenant = tenantSnap.data();
+        if (
+            !tenantSnap.exists
+            || tenant?.active === false
+            || tenant?.deleted === true
+            || isPlatformEntityBlocked(tenant)
+        ) {
+            return NextResponse.json({ error: "Account not available" }, { status: 403 });
+        }
+        const storesList = Array.isArray(tenant?.storesList) ? tenant.storesList : [];
         const target = storesList.find((s: any) => Number(s.storeId) === Number(outletStoreId));
         if (!target || target.isMaster) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
@@ -138,25 +178,50 @@ export const POST = withAuth(async (request, session) => {
         ) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
         }
-        if (targetStore?.active === false && target.active === false) {
-            return NextResponse.json({ success: true, outletStoreId, alreadyInactive: true, billingReduced: false });
-        }
-
         // Update store, summary, and tenant storesList atomically so location
         // visibility cannot drift if one write fails.
+        let alreadyInactive = false;
         let activeStoresAfterDeactivation = Math.max(1, storesList.filter((s: any) => (
             Number(s?.storeId) !== Number(outletStoreId) && s?.active !== false
         )).length);
         await db.runTransaction(async (tx) => {
-            const [freshTenantSnap, freshTargetSnap] = await Promise.all([
+            const [freshCallerSnap, freshTenantSnap, freshTargetSnap] = await Promise.all([
+                tx.get(callerStoreRef),
                 tx.get(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`)),
                 tx.get(targetStoreRef),
             ]);
+            const freshCaller = freshCallerSnap.data();
             const freshTarget = freshTargetSnap.data();
+            if (
+                !freshCallerSnap.exists
+                || Number(freshCaller?.tenantId) !== Number(tenantId)
+                || freshCaller?.isMaster !== true
+                || freshCaller?.active === false
+                || freshCaller?.deleted === true
+                || isPlatformEntityBlocked(freshCaller)
+                || !freshTenantSnap.exists
+                || freshTenantSnap.data()?.active === false
+                || freshTenantSnap.data()?.deleted === true
+                || isPlatformEntityBlocked(freshTenantSnap.data())
+            ) {
+                throw new OutletDeactivateScopeChangedError();
+            }
+            const freshPermissionError = requireAnyStorePermissionForStoreData(
+                request,
+                session,
+                freshCaller,
+                [PERMISSIONS.MANAGE_OUTLETS],
+                "Outlet deactivation",
+                Number(storeId),
+                Number(tenantId),
+            );
+            if (freshPermissionError) throw new OutletDeactivateScopeChangedError();
             if (
                 !freshTargetSnap.exists
                 || Number(freshTarget?.tenantId) !== Number(tenantId)
                 || freshTarget?.isMaster === true
+                || freshTarget?.deleted === true
+                || isPlatformEntityBlocked(freshTarget)
             ) {
                 throw new InvalidOutletTargetError();
             }
@@ -168,7 +233,25 @@ export const POST = withAuth(async (request, session) => {
                     .doc(getOutletSlugClaimDocumentId(tenantDocumentId, freshOutletSlug))
                 : null;
             const outletSlugClaimSnap = outletSlugClaimRef ? await tx.get(outletSlugClaimRef) : null;
-            const freshStoresList = freshTenantSnap.data()?.storesList || [];
+            const freshStoresList = Array.isArray(freshTenantSnap.data()?.storesList)
+                ? freshTenantSnap.data()?.storesList
+                : [];
+            const freshTargetSummary = freshStoresList.find((store: any) => (
+                Number(store?.storeId) === Number(outletStoreId)
+            ));
+            const freshCallerSummary = freshStoresList.find((store: any) => (
+                Number(store?.storeId) === Number(storeId)
+            ));
+            if (
+                !freshCallerSummary
+                || freshCallerSummary.isMaster !== true
+                || freshCallerSummary.active === false
+            ) {
+                throw new OutletDeactivateScopeChangedError();
+            }
+            if (!freshTargetSummary || freshTargetSummary.isMaster === true) {
+                throw new InvalidOutletTargetError();
+            }
             const updatedStoresList = freshStoresList.map((s: any) =>
                 Number(s.storeId) === Number(outletStoreId) ? { ...s, active: false } : s
             );
@@ -176,6 +259,9 @@ export const POST = withAuth(async (request, session) => {
                 1,
                 updatedStoresList.filter((s: any) => s?.active !== false).length,
             );
+
+            alreadyInactive = freshTarget?.active === false && freshTargetSummary.active === false;
+            if (alreadyInactive) return;
 
             tx.update(targetStoreRef, {
                 active: false,
@@ -208,6 +294,8 @@ export const POST = withAuth(async (request, session) => {
         // Manual/offline prepaid quantity is paid capacity, so deactivation
         // frees a replacement slot without refunding or reducing the license.
         let billingReduced = false;
+        let billingReductionPending = false;
+        let billingActionRequired: "CONTACT_SUPPORT" | null = null;
         if (FEATURE_FLAGS.ENABLE_BILLING_REMOVAL_IMMEDIATE && FEATURE_FLAGS.ENABLE_OUTLET_BILLING) {
             try {
                 const sub = await getActiveSubscriptionForStore(tenantId as number, storeId as number);
@@ -218,15 +306,22 @@ export const POST = withAuth(async (request, session) => {
                         await updateRazorpaySubscriptionQuantity(providerSubId, newQty);
                         await updateSubscription(sub.id, { quantity: newQty });
                         billingReduced = true;
+                    } else if (sub.billingMode !== "manual") {
+                        billingReductionPending = true;
+                        billingActionRequired = "CONTACT_SUPPORT";
                     }
                 }
             } catch (billingErr) {
-                // Log but don't fail deactivation — billing can be reconciled later
+                // Store truth remains committed. Surface the billing follow-up
+                // instead of silently implying that the provider was reduced.
+                billingReductionPending = true;
+                billingActionRequired = "CONTACT_SUPPORT";
                 logMultiOutletFailure(
                     "multi_outlet_billing_reduction_failed",
                     billingErr,
                     getOutletDeactivateLogContext(tenantDocumentId, storeDocumentId, outletStoreDocumentId, {
                         activeStoresAfterDeactivation,
+                        quantityUpdateUnsupported: isRazorpayQuantityUpdateUnsupported(billingErr),
                     }),
                 );
             }
@@ -237,23 +332,51 @@ export const POST = withAuth(async (request, session) => {
             action: 'DEACTIVATE_OUTLET',
             ...getOutletDeactivateLogContext(tenantDocumentId, storeDocumentId, outletStoreDocumentId, {
                 activeStoresAfterDeactivation,
+                alreadyInactive,
+                billingReductionPending,
                 billingReduced,
             }),
         }, 'medium');
-        revalidateTag(`menu-store-${outletStoreDocumentId}`);
-        revalidateTag(`store-${outletStoreDocumentId}`);
-        revalidateTag('client-stores');
-        revalidateTag('screen-data');
-        await touchDigitalScreenContentVersionForStoreServer(outletStoreDocumentId, 'outletDeactivate');
-        await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantDocumentId,
-            sId: outletStoreDocumentId,
-        });
+        const postCommit = alreadyInactive
+            ? { effectsPending: false, failedEffectCount: 0, firstError: undefined }
+            : await runStorePublicTruthPostCommitEffects({
+                chunkSize: OUTLET_DEACTIVATE_EFFECT_CHUNK_SIZE,
+                storeIds: [outletStoreDocumentId],
+                tenantId: tenantDocumentId,
+                deps: {
+                    invalidateAssistant: (effectStoreId, effectTenantId) => (
+                        invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: effectStoreId })
+                    ),
+                    revalidate: (tag) => revalidateTag(tag),
+                    touchScreen: (effectStoreId) => (
+                        touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'outletDeactivate')
+                    ),
+                },
+            });
+        if (postCommit.effectsPending) {
+            logMultiOutletFailure('multi_outlet_deactivate_post_commit_effect_failed', postCommit.firstError, {
+                ...getOutletDeactivateLogContext(tenantDocumentId, storeDocumentId, outletStoreDocumentId),
+                failedEffectCount: postCommit.failedEffectCount,
+            });
+        }
 
-        return NextResponse.json({ success: true, outletStoreId, deactivatedAt: now, billingReduced });
+        return NextResponse.json({
+            success: true,
+            outletStoreId,
+            alreadyInactive,
+            deactivatedAt: now,
+            billingReduced,
+            billingReductionPending,
+            billingActionRequired,
+            effectsPending: postCommit.effectsPending,
+            failedEffectCount: postCommit.failedEffectCount,
+        });
     } catch (error) {
         if (isInvalidOutletTargetError(error)) {
             return NextResponse.json({ error: "Invalid outlet" }, { status: 400 });
+        }
+        if (isOutletDeactivateScopeChangedError(error)) {
+            return NextResponse.json({ error: "Outlet setup changed. Refresh and try again." }, { status: 409 });
         }
         logMultiOutletFailure(
             "multi_outlet_deactivate_failed",

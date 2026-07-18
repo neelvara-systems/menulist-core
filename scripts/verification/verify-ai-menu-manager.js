@@ -306,12 +306,17 @@ assert(idempotency.includes('catch {') && idempotency.includes('return false;'),
 
 const clientDal = read('src/database/aiMenuManager/index.ts');
 const pendingOperationIntegrity = read('src/lib/ai-menu-manager/pendingOperationIntegrity.ts');
+const projectMutationVersion = read('src/lib/menu/projectMutationVersion.ts');
+const projectDal = read('src/database/projects/index.ts');
+const outletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
 const sessionIntegrity = read('src/lib/ai-menu-manager/sessionIntegrity.ts');
 const receiptBuilder = read('src/lib/ai-menu-manager/receiptBuilder.ts');
 assert(sessionIntegrity.includes('normalizeAiMenuManagerSessionSnapshot'), 'AMM compact sessions must have one runtime normalizer');
 assert(sessionIntegrity.includes('isDailySessionIdForScope({'), 'AMM compact-session normalizer must bind top-level identity to exact deterministic scope');
 assert(sessionIntegrity.includes('operationCounts.get(operation.operationId) === 1'), 'AMM compact-session normalizer must discard every copy of duplicate operation IDs');
 assert(sessionIntegrity.includes('MAX_COUNTER_VALUE = 1_000_000_000'), 'AMM compact-session counters must be finite bounded integers');
+assert(sessionIntegrity.includes('AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES = 700 * 1024'), 'AMM compact sessions must keep a conservative byte budget below the Firestore document limit');
+assert(sessionIntegrity.includes('prepareAiMenuManagerSessionWrite') && sessionIntegrity.includes('next.artifactRefs.pop()') && sessionIntegrity.includes('next.compactMessages.shift()'), 'AMM size preparation must trim expendable history before rejecting new pending work');
 assert(clientDal.includes('normalizeAiMenuManagerSessionSnapshot'), 'AMM client DAL must normalize untrusted compact-session snapshots before use');
 assert(!clientDal.includes('sessionSnap.data() as AiMenuManagerSessionDoc'), 'AMM client DAL must not cast Firestore compact sessions directly into trusted runtime truth');
 assert(receiptBuilder.includes("boundedText(params.title, 160") && receiptBuilder.includes("boundedText(params.message, 500"), 'AMM receipt persistence must bound owner-visible text centrally');
@@ -335,6 +340,8 @@ assert(clientDal.includes('hashStableValue({ idempotencyKey, sessionId, sourceFi
 assert(clientDal.includes('resolveAiMenuManagerCompoundCommand'), 'AMM client DAL must support validated compound owner commands');
 assert(clientDal.includes('commandGroupId') && clientDal.includes('Prepared ${newOperations.length} updates'), 'AMM compound commands must retain grouped owner-facing card context');
 assert(clientDal.includes('buildAiMenuManagerClientBatchExecution') && clientDal.includes('completeAiMenuManagerClientOperations'), 'AMM compound approvals must expose one-save and one-completion-write helpers');
+assert(clientDal.includes('assertAiMenuManagerPreparedOperationGroup(params.operations)'), 'AMM grouped approval must reject incomplete or mixed-scope groups before the project save');
+assert(pendingOperationIntegrity.includes('commandGroupSize !== operations.length') && pendingOperationIntegrity.includes('String(operation.sId) !== String(first.sId)'), 'AMM grouped project-save admission must require complete same-scope group metadata');
 assert(clientDal.includes('compoundCommands') && clientDal.includes('plannerAttempts') && clientDal.includes('plannerAccepted') && clientDal.includes('plannerFallbacks'), 'AMM route quality counters must reuse the compact session write');
 assert(clientDal.includes("'answered'"), 'AMM compact session must keep read-only answer cards without proposal docs');
 assert(sendCommandBlock.includes('const loadedDuplicates = getRecentDuplicateOperations({') && sendCommandBlock.includes('const currentDuplicates = getRecentDuplicateOperations({'), 'AMM loaded duplicate shortcut must re-confirm the card against current compact truth');
@@ -347,6 +354,9 @@ assert(clientDal.includes('session.sessionId !== sessionId') && clientDal.includ
 assert(clientDal.includes('isFirestorePermissionDenied'), 'AMM client DAL must detect compact-session permission failures');
 assert(clientDal.includes('sendAiMenuManagerServerBackedCommand'), 'AMM client DAL must fall back to the guarded server route when compact session writes are denied');
 assert(clientDal.includes('getAiMenuManagerServerInbox'), 'AMM client inbox must fall back to the guarded server inbox route when compact session reads are denied');
+assert(clientDal.includes('if (!session) {') && clientDal.includes('return buildClientInboxFromServer({ inbox, projectId: params.projectId, scope });'), 'AMM client inbox must use bounded server recovery when the current-day compact session does not exist');
+assert(clientDal.includes('const directOperations = normalizeOperations(session, params.projectId)') && clientDal.includes('operations: [...directOperations, ...serverOperations]'), 'AMM server inbox hydration must retain direct compact operations while adding server-backed proposal cards');
+assert(sendCommandBlock.includes('reusableSession?.hasPendingOperations') && sendCommandBlock.includes('reusableSession.sessionDate'), 'AMM commands must continue a recovered unresolved session until its pending work is cleared');
 assert(clientDal.includes("executionMode: 'existing_server_api'"), 'Server-backed fallback cards must be represented with the existing_server_api execution mode');
 assert(clientDal.includes('const body: AiMenuManagerCommandRequest') && !clientDal.includes('body: JSON.stringify({\n            ...request'), 'AMM server fallback command must send only API fields, not the loaded project JSON');
 assert(completionBlock.includes('sessionSnapshot'), 'AMM completion/cancel must accept the loaded compact session snapshot');
@@ -378,6 +388,12 @@ assert(clientDal.includes('appendCompactReceipt'), 'AMM completion must append t
 assert(clientDal.includes('buildAiMenuManagerClientExecutionDirective'), 'AMM client DAL must build execution directives from stored pending operations');
 assert(clientDal.includes('buildAiMenuManagerContextBaseHash(context)'), 'AMM client approvals must check stale selected-project context');
 assert(clientDal.includes('assertAiMenuManagerPatchAllowedForAction'), 'AMM client approvals must validate patch shape against registered action type');
+assert(projectMutationVersion.includes('projectMutationVersionMillis') && projectMutationVersion.includes('projectMutationVersionIso'), 'AMM project versions must normalize browser and Admin timestamp shapes through one boundary');
+assert(read('src/lib/ai-menu-manager/contextPacket.ts').includes('projectMutationVersionIso('), 'AMM context hashes must use one canonical project mutation version');
+assert(read('src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx').includes('expectedModifiedOn: batch.directives[0].baseProjectUpdatedAt') && read('src/components/templates/main-app/aiMenuManager/AiMenuManagerRoute.tsx').includes('expectedModifiedOn: directive.baseProjectUpdatedAt'), 'Desktop AMM grouped and single approvals must pass the prepared project version into the save transaction');
+assert(read('src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx').includes('expectedModifiedOn: batch.directives[0].baseProjectUpdatedAt') && read('src/components/mobile/ai-menu-manager/MobileAiMenuManagerScreen.tsx').includes('expectedModifiedOn: directive.baseProjectUpdatedAt'), 'Mobile AMM grouped and single approvals must pass the prepared project version into the save transaction');
+assert(projectDal.includes('expectedModifiedOn?: number | string') && projectDal.includes('projectDocumentMutationVersionMillis(freshProject'), 'The shared project transaction must enforce the optional AMM version precondition against fresh project truth');
+assert(projectDal.includes('expectedModifiedOnMillis') && outletSaveRoute.includes('standardData.expectedModifiedOnMillis'), 'Linked-outlet AMM saves must enforce the same project-version precondition inside the guarded server transaction');
 assert(clientDal.includes("operation.card.actionType === 'item_visibility_update'"), 'AMM follow-up handling must support safe item visibility card updates');
 assert(clientDal.includes("operation.card.actionType === 'category_visibility_update'"), 'AMM follow-up handling must support safe category visibility card updates');
 assert(clientDal.includes("operation.card.actionType === 'menu_special_note_update'"), 'AMM follow-up handling must support safe menu note card updates');
@@ -563,6 +579,57 @@ const resolverFixtureContext = {
     { id: 'cat-starters', name: 'Starters', aliases: ['starters'], active: true, fileUid: 'f1', hasImage: false, timeSlotsCount: 0, orderIndex: 2 },
   ],
 };
+const textPriceContext = {
+  ...resolverFixtureContext,
+  items: [
+    ...resolverFixtureContext.items,
+    { id: 'item-market', name: 'Market platter', aliases: ['market platter'], categoryId: 'cat-drinks', categoryName: 'Drinks', fileUid: 'f1', price: 'Market Price', available: true, active: true, hasImage: true, hasDescription: true, hasDisplayPrice: true, isBestSeller: false, duration: 10 },
+    { id: 'item-range', name: 'Range platter', aliases: ['range platter'], categoryId: 'cat-drinks', categoryName: 'Drinks', fileUid: 'f1', price: '199-249', available: true, active: true, hasImage: true, hasDescription: true, hasDisplayPrice: true, isBestSeller: false, duration: 10 },
+  ],
+};
+const textPriceBulkResult = resolveAiMenuManagerCommand({
+  text: 'increase all drinks by 10',
+  tId: 1,
+  sId: 2,
+  projectId: textPriceContext.projectId,
+  context: textPriceContext,
+  cardId: 'text-price-bulk',
+  createdAt: new Date().toISOString(),
+});
+assert(
+  textPriceBulkResult.resolved?.patch?.itemIds?.includes('item-tea')
+    && !textPriceBulkResult.resolved?.patch?.itemIds?.includes('item-market')
+    && !textPriceBulkResult.resolved?.patch?.itemIds?.includes('item-range'),
+  'AMM relative price arithmetic must preserve text/range prices and update only single numeric prices',
+);
+const textPriceRelativeResult = resolveAiMenuManagerCommand({
+  text: 'increase price by 10',
+  tId: 1,
+  sId: 2,
+  projectId: textPriceContext.projectId,
+  context: textPriceContext,
+  composerContext: { target: 'item', selectedEntityIds: ['item-market'] },
+  cardId: 'text-price-relative',
+  createdAt: new Date().toISOString(),
+});
+assert(
+  !textPriceRelativeResult.resolved?.patch,
+  'AMM relative price arithmetic must not replace a selected text price',
+);
+const textPriceExactResult = resolveAiMenuManagerCommand({
+  text: '250',
+  tId: 1,
+  sId: 2,
+  projectId: textPriceContext.projectId,
+  context: textPriceContext,
+  composerContext: { target: 'item', selectedEntityIds: ['item-market'] },
+  cardId: 'text-price-exact',
+  createdAt: new Date().toISOString(),
+});
+assert(
+  textPriceExactResult.resolved?.patch?.updates?.price === '250',
+  'AMM explicit fixed-price action may replace a selected text price after approval',
+);
 const compoundCommandParams = {
   tId: 1,
   sId: 2,
@@ -1125,6 +1192,7 @@ const schemas = read('src/lib/ai-menu-manager/schemas.ts');
 assert(schemas.includes('AI_MENU_MANAGER_ACTION_TYPES') && schemas.includes('knownActionTypes.has'), 'Proposal schemas must reject unknown action types');
 assert(schemas.includes('projectId: projectIdSchema'), 'AMM inbox requests must require selected project context through the project ID boundary');
 assert(schemas.includes('sessionId: sessionIdSchema.optional()'), 'AMM command/inbox schemas must validate deterministic session IDs');
+assert(schemas.includes('sessionDate: sessionDateSchema.optional()'), 'AMM command schema must accept only a validated session date when continuing recovered pending work');
 assert(schemas.includes('normalizeAiMenuManagerProjectId(value) === value'), 'AMM schemas must reject path-shaped selected project IDs');
 assert(schemas.includes('normalizeAiMenuManagerSessionId(value) === value'), 'AMM schemas must reject malformed session IDs');
 assert(schemas.includes('const sessionDateSchema') && schemas.includes('normalizeAiMenuManagerSessionDate(value) === value'), 'AMM inbox session dates must reuse the direct-ID calendar validator before Firestore reads');
@@ -1182,7 +1250,7 @@ assert(serverRepo.includes('assertAiMenuManagerSessionIdentity({'), 'AMM server 
 assert(serverRepo.includes('requireProposalRef(params.proposal.proposalId)'), 'AMM command persistence must fail closed before invalid proposal document refs');
 assert(serverRepo.includes('.map((entry) => normalizeAiMenuManagerProposalId(entry.proposalId))'), 'AMM inbox hydration must filter stored proposal summary IDs before proposal refs');
 assert(serverRepo.includes('Array.from(new Set((session.pendingCardSummaries || [])'), 'AMM inbox hydration must deduplicate stored proposal refs before billed reads');
-assert(serverRepo.includes('proposal.sessionId === params.sessionId'), 'AMM inbox hydration must reject proposal refs from another session');
+assert(serverRepo.includes('proposal.sessionId === session.sessionId'), 'AMM inbox hydration must reject proposal refs from another session, including after cross-day recovery');
 assert(serverRepo.includes('String(proposal.tId) === scope.tId') && serverRepo.includes('String(proposal.sId) === scope.sId'), 'AMM inbox hydration must reject proposal refs from another tenant/store');
 assert(serverRepo.includes('String(proposal.cardPayload?.scope?.projectId) === projectId'), 'AMM inbox hydration must verify card payload project scope before returning it');
 assert(serverRepo.includes('const sessionSnap = sessionRef ? await transaction.get(sessionRef) : null;'), 'AMM proposal mutation paths must skip invalid stored session refs');
@@ -1201,6 +1269,10 @@ assert(serverRepo.includes('proposal.executionDirective.executionId !== params.e
 assert(serverRepo.includes('return firestoreAdmin.runTransaction(async (transaction) => {'), 'Server-backed completion must return the authoritative transaction result');
 assert(serverRepo.includes("proposal.receipt && ['executed', 'failed', 'manual_task'].includes(proposal.status)"), 'Completion retries must return the persisted terminal receipt');
 assert(serverRepo.includes('String(session.projectId) !== String(params.projectId)'), 'Inbox reads must reject sessions from a different selected project');
+assert(serverRepo.includes(".where('hasPendingOperations', '==', true)") && serverRepo.includes(".orderBy('updatedAt', 'desc')") && serverRepo.includes('.limit(1)'), 'AMM inbox recovery must use one bounded latest-pending query');
+assert(serverRepo.includes("['9', 'failed-precondition', 'firestore/failed-precondition'].includes(code)") && serverRepo.includes('AI Menu Manager pending recovery index is not ready'), 'AMM inbox must preserve existing behavior while a newly deployed compound index is still building');
+assert(serverRepo.includes('sessionId: session.sessionId,') && serverRepo.includes('sessionDate: session.sessionDate,'), 'AMM recovered-session identity must be validated against the recovered session, not the requested current-day ID');
+assert(serverRepo.includes('prepareAiMenuManagerSessionWrite') && serverRepo.includes('buildAiMenuManagerPendingState'), 'AMM server writes must maintain pending lookup metadata and enforce the compact-session byte budget');
 assert(aiMenuManagerImplDoc.includes('AMM server DAL ID boundary'), 'AMM implementation doc must document the server DAL ID boundary');
 assert(aiMenuManagerImplDoc.includes('AMM scope document-ID boundary'), 'AMM implementation doc must document the tenant/store scope document-ID boundary');
 assert(aiMenuManagerFirebaseDoc.includes('AMM server DAL ID boundary'), 'AMM Firebase doc must document the server DAL ID boundary');
@@ -1560,14 +1632,23 @@ assert(commandResolver.includes('Choose item to feature'), 'Promote-item command
 assert(commandResolver.includes('suggestedReplies'), 'Clarification cards must carry suggested replies for next-card resolution');
 
 const firestoreRules = read('firestore.rules');
+const firestoreIndexes = read('firestore.indexes.json');
 const aiMenuManagerRulesTest = read('scripts/verification/test-ai-menu-manager-rules.ts');
+const aiMenuManagerEmulatorTest = read('scripts/verification/test-ai-menu-manager-emulator.ts');
+const aiMenuManagerSessionIntegrityTest = read('scripts/verification/test-ai-menu-manager-session-integrity.ts');
 const proposalIntegrity = read('src/lib/ai-menu-manager/proposalIntegrity.ts');
 const proposalIntegrityTest = read('scripts/verification/test-ai-menu-manager-proposal-integrity.ts');
 const projectIntegrity = read('src/lib/ai-menu-manager/projectIntegrity.ts');
 const projectIntegrityTest = read('scripts/verification/test-ai-menu-manager-project-integrity.ts');
 const aiMenuManagerServer = read('src/database/aiMenuManager/server.ts');
+assert(firestoreIndexes.includes('"collectionGroup": "aiMenuManagerSessions"') && firestoreIndexes.includes('"collectionGroup": "aiMenuManagerProposals"'), 'AMM compact sessions and server-backed proposals must have explicit Firestore TTL configuration');
+assert(firestoreIndexes.includes('"fieldPath": "hasPendingOperations"') && firestoreIndexes.includes('"fieldPath": "updatedAt"'), 'AMM latest-pending recovery must declare its bounded compound index');
+assert((aiMenuManagerServer.match(/\.\.\.\(session\.counters \|\| \{\}\)/g) || []).length >= 2 && aiMenuManagerServer.includes('...(existingSession?.counters || {})'), 'AMM server fallback mutations must preserve compact route-quality counters');
 assert(firestoreRules.includes('match /aiMenuManagerSessions/{sessionId}'), 'Firestore rules must explicitly guard AMM compact session docs');
 assert(firestoreRules.includes('pendingOperations.size() <= 25'), 'Firestore rules must cap AMM pending operations');
+assert(firestoreRules.includes('isValidAiMenuManagerPendingState') && firestoreRules.includes('hasPendingOperations') && firestoreRules.includes('pendingCount'), 'Firestore rules must validate AMM pending lookup metadata');
+assert(aiMenuManagerEmulatorTest.includes('a new day must recover the latest scoped unresolved session') && aiMenuManagerEmulatorTest.includes('cross-day recovery must preserve normal proposal integrity filtering'), 'AMM Admin emulator must cover next-day session and proposal recovery');
+assert(aiMenuManagerSessionIntegrityTest.includes('size compaction must never remove pending work') && aiMenuManagerSessionIntegrityTest.includes('Finish or cancel an existing Menu Manager card'), 'AMM compact-session tests must cover safe history trimming and oversized pending rejection');
 assert(firestoreRules.includes('compactMessages.size() <= 20'), 'Firestore rules must cap AMM compact messages');
 assert(firestoreRules.includes('isAiMenuManagerSessionScopeUnchanged') && firestoreRules.includes('canWriteAiMenuManagerSession(resource.data.tId, resource.data.sId)'), 'Firestore rules must verify existing AMM session scope before update');
 assert(firestoreRules.includes('isDeterministicAiMenuManagerSessionId(request.resource.data, sessionId)'), 'Firestore rules must reject non-deterministic new AMM compact session document IDs');

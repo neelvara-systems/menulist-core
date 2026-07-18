@@ -2,6 +2,8 @@
 
 **Parent Guide:** [authentication-complete-guide.md](./authentication-complete-guide.md)
 
+> **Historical reference:** This guide includes the retired 30-day session description and older flow samples. Current NextAuth sessions are seven days. Use [Auth and Onboarding](../auth-onboarding/README.md), the [Auth hub](./README.md), and current source for implemented behavior.
+
 ---
 
 ## Part 4: Complete Login Flows

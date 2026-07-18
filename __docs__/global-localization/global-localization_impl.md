@@ -1,0 +1,101 @@
+# Global Localization Implementation
+
+**Status:** Implemented
+**Last updated:** July 18, 2026
+
+## End-to-end Flow
+
+1. `src/i18n/request.ts:160` reads the locale cookie. If absent, it negotiates `Accept-Language` against the supported registry.
+2. `normalizeLocalePreference()` and `normalizeTimeZone()` sanitize request inputs before next-intl receives them (`src/lib/localization/config.ts:56`).
+3. `en-US` messages are deep-merged underneath the selected locale so missing keys retain a readable fallback (`src/i18n/request.ts:186`).
+4. `src/providers/localisationProvider.tsx` provides the validated timezone and selected date/time formats.
+5. `IntlClientWrapper` updates the document language and direction (`src/providers/IntlClientWrapper.tsx:17`).
+6. Ant Design combines automatic locale direction with the retained manual RTL override (`src/lib/antd/antdClient.tsx:91`).
+7. React surfaces use next-intl or `formatNumber()` / `formatDateTime()`; direct browser-default formatting is disallowed on the audited owner dashboard, transaction, and MobileShell paths.
+
+## Owner UI Message Boundary
+
+The canonical owner boundary is derived from the top-level `en-US.json` message tree. `Website` is excluded because public website localization has a separate release contract; `CampaignCue` is excluded because it is an adjacent product. The remaining 49 namespaces currently contain 3,119 owner strings. Every registered locale file must contain the same keys.
+
+`scripts/verification/verify-owner-dashboard-locales.js` checks:
+
+- exact parity between `APP_LANGUAGES` and locale files;
+- every owner key exists and is non-empty, with obsolete locale-only owner keys rejected;
+- ICU syntax and variable parity for the full owner boundary;
+- mounted `useTranslations()` namespace roots stay inside the canonical owner boundary;
+- source/fallback copy parity for the duplicated open-hours dashboard labels; and
+- canonical settings title/summary use at the desktop sidebar and mobile settings entry;
+- localized MobileShell navigation, loading, and subscription-gate copy;
+- rejection of the known mixed-script artifacts found in the prior Odia provider output; and
+- the checked-in source hash and per-locale owner-subtree hashes in `owner-locale-semantic-coverage.json`;
+- bounded translated/source length ratios; and
+- exact English residue only for protected invariants or reviewed same-spelling cognates.
+
+`scripts/localization/sync-owner-locale-keys.js` is deterministic and offline. It preserves existing translations, reuses a translation only when the same English source has exactly one existing locale translation, writes explicit `en-US` fallback for unresolved owner keys, and removes obsolete keys inside canonical owner namespaces. It does not alter the separately governed `Website` or `CampaignCue` trees, invent translation text, or call a provider.
+
+`scripts/localization/owner-locale-semantic.js` prepares and atomically applies semantic snapshots. It protects ICU structures, URLs, emails, product names, and technical terms; preserves all existing non-source values; and translates only exact-source residue. `scripts/localization/translate-owner-locale-units.py` uses pinned AI4Bharat IndicTrans2 and Google MADLAD-400 model revisions in an isolated maintainer environment. Provider-native placeholders retain sentence context; if a model drops one, only the surrounding English segments are translated before exact reconstruction.
+
+The quality workflow rejects altered tokens and ICU signatures, overlong or under-translated output, and exact non-invariant English residue. A targeted beam-search pass plus 19 key-specific and source-specific reviewed corrections resolved the bounded remainder. `owner-locale-semantic-coverage.json` records provider provenance, counts, quality policy, and hashes. Native-speaker review can still improve fluency and tone, but it is not masking missing code-side coverage.
+
+## Maintainer Regeneration
+
+The model environment is intentionally outside the application dependency tree:
+
+```bash
+python3 -m venv /tmp/menulist-owner-locale
+/tmp/menulist-owner-locale/bin/pip install -r scripts/localization/requirements-owner-locale-semantic.txt
+
+HF_HOME=/tmp/menulist-owner-models /tmp/menulist-owner-locale/bin/python -c \
+  "from huggingface_hub import snapshot_download; snapshot_download('naklitechie/indictrans2-en-indic-dist-200M', revision='a814dab1ae6e4ee4c7d785b7e1dcb0ac8e36bcd6'); snapshot_download('santhosh/madlad400-3b-ct2', revision='c32ad0cf118807ea6258d14be137547155842723')"
+
+node scripts/localization/owner-locale-semantic.js --prepare=/tmp/owner-semantic-tasks.json
+HF_HOME=/tmp/menulist-owner-models /tmp/menulist-owner-locale/bin/python \
+  scripts/localization/translate-owner-locale-units.py \
+  --input /tmp/owner-semantic-tasks.json \
+  --output /tmp/owner-semantic-results.json \
+  --provider indictrans2 --batch-size 64
+HF_HOME=/tmp/menulist-owner-models /tmp/menulist-owner-locale/bin/python \
+  scripts/localization/translate-owner-locale-units.py \
+  --input /tmp/owner-semantic-tasks.json \
+  --output /tmp/owner-semantic-results.json \
+  --provider madlad400 --batch-size 256
+
+node scripts/localization/owner-locale-semantic.js --apply=/tmp/owner-semantic-results.json
+node scripts/localization/owner-locale-semantic.js --apply=/tmp/owner-semantic-results.json --write
+```
+
+After the first semantic apply, prepare the bounded quality set, translate it with `--beam-size 4`, dry-apply it, then add `--write`. Regeneration must finish with an empty quality payload and `npm run verify:global-localization-boundary`.
+
+## Preference Writes
+
+Server actions validate every value at runtime before writing a one-year, same-site preference cookie (`src/lib/localization/index.ts:19`). Invalid values throw bounded stable error codes and do not replace the current preference.
+
+The cookies are deliberately not `HttpOnly` because client preference previews read them. They contain no authentication, tenant, business, or personal data.
+
+## Date and Time
+
+`toDate()` accepts Firestore timestamps, serialized timestamps, dates, strings, and numeric epoch values. Epoch zero is valid. `formatDateTime()` uses next-intl when a formatter exists and a locale/timezone-aware native fallback otherwise (`src/utils/dateTime/index.tsx:128`).
+
+Native date and datetime inputs are validated as real calendar values before conversion to UTC (`src/utils/dateTime/index.tsx:275`). Clock values must be exact `HH:mm` and stay within 00:00-23:59.
+
+## Number and Currency
+
+`formatNumber()` is the hook-free localized number boundary (`src/utils/formatters.ts:83`). `useFormatCurrency()` and `formatCurrency()` retain the smallest-unit input contract. Platform-only INR helpers remain explicit and are not used as a global currency default.
+
+## Direction
+
+Automatic RTL applies to the supported Arabic, Persian, Hebrew, Kashmiri, Sindhi, and Urdu language families. Manual RTL remains an additive accessibility/testing override, not the locale source of truth.
+
+## Failure Behavior
+
+- Bad cookie: default value, no crash.
+- Missing locale message: `en-US` fallback, then key name as last resort.
+- Future missing key at runtime: `en-US` safety fallback; the checked-in source gate fails until locale data and semantic evidence are refreshed.
+- Failed provider/model quality check: no write; retain the last verified locale value.
+- Invalid date: `N/A` or empty native-input value.
+- Invalid timezone: `UTC` or the caller's already validated fallback.
+- Missing currency: owning surface must supply its existing contract; the localization layer does not guess store currency.
+
+## Long-term Decision
+
+Keep this boundary pure and cookie-backed. A Firestore preference document, server timezone lookup, or second formatting library would add reads and drift without improving the current owner experience.

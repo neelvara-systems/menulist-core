@@ -1,10 +1,13 @@
 'use client'
 
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
+import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
+import { parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useCallback, useContext, useState } from 'react';
+import { useCallback, useContext, useEffect, useState } from 'react';
 import { Button, Card, Dialog, DotLoading, Flex, Input, NavBar, Switch, Text, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 import {
@@ -33,26 +36,25 @@ type DaySchedule = {
 };
 
 const parseDayValue = (value: string | undefined): DaySchedule => {
-    if (!value || value.toLowerCase() === 'closed') {
+    const range = parseWorkingHoursRanges(value)[0];
+    if (!range) {
         return { close: '22:00', isClosed: true, open: '09:00' };
     }
-    const parts = value.split('-');
     return {
-        close: parts[1]?.trim() || '22:00',
+        close: range.endTime,
         isClosed: false,
-        open: parts[0]?.trim() || '09:00',
+        open: range.startTime,
     };
 };
 
 const serializeDay = (schedule: DaySchedule) => schedule.isClosed ? '' : `${schedule.open}-${schedule.close}`;
 
-const toMinutes = (value: string): number | null => {
-    const [hoursText, minutesText] = value.split(':');
-    const hours = Number(hoursText);
-    const minutes = Number(minutesText);
-    if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-    return (hours * 60) + minutes;
+const buildSchedule = (workingHours?: Record<string, string>): Record<string, DaySchedule> => {
+    const result: Record<string, DaySchedule> = {};
+    DAYS.forEach(({ key }) => {
+        result[key] = parseDayValue(workingHours?.[key]);
+    });
+    return result;
 };
 
 export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHoursEditScreenProps) {
@@ -60,20 +62,14 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
     const { token } = theme.useToken();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [isSaving, setIsSaving] = useState(false);
-    const [schedule, setSchedule] = useState<Record<string, DaySchedule>>(() => {
-        const result: Record<string, DaySchedule> = {};
-        DAYS.forEach(({ key }) => {
-            result[key] = parseDayValue(storeDetails?.workingHours?.[key]);
-        });
-        return result;
-    });
-    const [originalSchedule, setOriginalSchedule] = useState<Record<string, DaySchedule>>(() => {
-        const result: Record<string, DaySchedule> = {};
-        DAYS.forEach(({ key }) => {
-            result[key] = parseDayValue(storeDetails?.workingHours?.[key]);
-        });
-        return result;
-    });
+    const [schedule, setSchedule] = useState<Record<string, DaySchedule>>(() => buildSchedule(storeDetails?.workingHours));
+    const [originalSchedule, setOriginalSchedule] = useState<Record<string, DaySchedule>>(() => buildSchedule(storeDetails?.workingHours));
+
+    useEffect(() => {
+        const next = buildSchedule(storeDetails?.workingHours);
+        setSchedule(next);
+        setOriginalSchedule(next);
+    }, [storeDetails?.storeId, storeDetails?.workingHours]);
 
     const allDaysTemplate = DAYS.reduce<DaySchedule | null>((found, { key }) => {
         if (found) return found;
@@ -85,21 +81,33 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         if (!storeDetails?.storeId) return;
 
         setIsSaving(true);
-        const workingHours: Record<string, string> = {};
-        DAYS.forEach(({ key }) => { workingHours[key] = serializeDay(schedule[key]); });
+        const workingHours: Record<string, string> = { ...(storeDetails.workingHours || {}) };
+        DAYS.forEach(({ key }) => {
+            const serialized = serializeDay(schedule[key]);
+            if (serialized === serializeDay(originalSchedule[key])) return;
+            if (serialized) workingHours[key] = serialized;
+            else delete workingHours[key];
+        });
         const hoursLastUpdatedAt = new Date().toISOString();
 
         setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours }));
-        Toast.show({ content: t('hoursSaved'), duration: 1000 });
 
         try {
-            const writeResult = await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours } as any);
+            const writeResult = await updateStore({
+                hoursLastUpdatedAt,
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                workingHours: getStoreDeepDifference(workingHours, storeDetails.workingHours || {}, {
+                    detectRemovedRootKeys: true,
+                }),
+            });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,
                 'mobile_working_hours_store_update_rejected',
             );
             setOriginalSchedule(schedule);
+            Toast.show({ content: t('hoursSaved'), duration: 1000 });
         } catch (error) {
             logMobileOwnerFailure('mobile_working_hours_save_failed', error, {
                 ...getMobileOwnerStoreLogContext(storeDetails.storeId, storeDetails.tenantId),
@@ -116,7 +124,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
         } finally {
             setIsSaving(false);
         }
-    }, [schedule, setStoreDetails, storeDetails, t]);
+    }, [originalSchedule, schedule, setStoreDetails, storeDetails, t]);
 
     const handleSave = useCallback(() => {
         if (!storeDetails?.storeId) return;
@@ -125,9 +133,7 @@ export default function MobileWorkingHoursEditScreen({ onBack }: MobileWorkingHo
             const daySchedule = schedule[key];
             if (daySchedule.isClosed) continue;
 
-            const openMinutes = toMinutes(daySchedule.open);
-            const closeMinutes = toMinutes(daySchedule.close);
-            if (openMinutes === null || closeMinutes === null || openMinutes === closeMinutes) {
+            if (!isValidClockRange(daySchedule.open, daySchedule.close)) {
                 Toast.show({ content: 'Open and close times must be valid and different.', duration: 1800 });
                 return;
             }

@@ -18,6 +18,7 @@ import {
     OVERVIEW_GUARDRAILS,
     OverviewData,
 } from '@template/main-app/projects/types';
+import { formatNumber } from '@util/formatters';
 import { Card, Col, Empty, Progress, Row, Tag, Typography, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
@@ -114,7 +115,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
                             </div>
                             <div className={styles.weekValue}>
                                 <Text strong={week.isCurrentWeek}>
-                                    {week.metrics.menuVisits.toLocaleString()}
+                                    {formatNumber(week.metrics.menuVisits)}
                                 </Text>
                                 {week.isCurrentWeek && (
                                     <Tag style={{ ...primaryTagStyle, marginLeft: 4, fontSize: 10 }}>
@@ -160,7 +161,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
                             <div className={styles.quickStat}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>{t('periods.thisWeek')}</Text>
                                 <Title level={4} style={{ margin: 0 }}>
-                                    {wtd.metrics.menuVisits.toLocaleString()}
+                                    {formatNumber(wtd.metrics.menuVisits)}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: 11 }}>{t('units.scans')}</Text>
                             </div>
@@ -169,7 +170,7 @@ const OverviewView: React.FC<OverviewViewProps> = ({ data, qualitySignalsSlot, p
                             <div className={styles.quickStat}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>{t('periods.thisMonth')}</Text>
                                 <Title level={4} style={{ margin: 0 }}>
-                                    {mtd?.metrics.menuVisits.toLocaleString() || '—'}
+                                    {mtd ? formatNumber(mtd.metrics.menuVisits) : '—'}
                                 </Title>
                                 <Text type="secondary" style={{ fontSize: 11 }}>{t('units.scans')}</Text>
                             </div>

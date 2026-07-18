@@ -5,6 +5,7 @@ import IconPicker from '@atoms/IconPicker';
 import { FEATURE_FLAGS } from '@config/features';
 import GlobalLanguagesList from '@data/languages';
 import { getSuggestedCategoryIcons, normalizeCategoryIconValue } from '@lib/categoryIcons';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { LuLanguages } from 'react-icons/lu';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
@@ -89,7 +90,7 @@ export default function MobileCategoryEditSheet({
 }: MobileCategoryEditSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
-    const primaryLanguage = selectedLanguages[0] || 'en';
+    const primaryLanguage = getCanonicalProjectSourceLanguage(selectedLanguages);
     const [names, setNames] = useState<Record<string, string>>({});
     const [icon, setIcon] = useState<string>('');
     const [active, setActive] = useState(true);
@@ -122,8 +123,10 @@ export default function MobileCategoryEditSheet({
     const hasPrimaryName = Boolean(names[primaryLanguage]?.trim());
     const hasMissingTranslations = useMemo(() => {
         if (!hasMultipleLanguages || !hasPrimaryName) return false;
-        return selectedLanguages.slice(1).some((language) => !names[language]?.trim());
-    }, [hasMultipleLanguages, hasPrimaryName, names, selectedLanguages]);
+        return selectedLanguages
+            .filter((language) => language !== primaryLanguage)
+            .some((language) => !names[language]?.trim());
+    }, [hasMultipleLanguages, hasPrimaryName, names, primaryLanguage, selectedLanguages]);
     const translationActionState = useMemo(() => {
         if (!onGenerateContent || !hasMultipleLanguages) return null;
         if (!hasPrimaryName) {

@@ -1,7 +1,7 @@
 # Public Truth Check - Website Content
 
 **Status:** Implemented - public self-report route
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Public website writers
 
 ---

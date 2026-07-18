@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
  *
  * Called by the client-side debounce after menu edits.
  * Builds full menu snapshot, signs it, and POSTs to webhook URL.
- * Handles retry logic and delivery logging.
+ * Performs one bounded attempt and records the delivery result.
  *
  * @see __docs__/pos-webhook-sync/pos-webhook-sync_impl.md §1
  */
@@ -14,7 +14,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
-import { requireAnyStorePermission, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import {
     getNextPosSyncMenuVersion,
     POS_SYNC_CONNECTION_ISSUE_FAILURE_THRESHOLD,
@@ -23,6 +23,11 @@ import {
 import { buildMenuSnapshot } from "@lib/posSync/payloadFormatter";
 import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";
 import { isPosSyncPinnedRequestTimeout, postPosSyncWebhook } from "@lib/posSync/pinnedWebhookRequest";
+import {
+    getPosSyncSecretRef,
+    normalizePosSyncSecretVersion,
+    resolvePosSyncSecretInTransaction,
+} from "@lib/posSync/serverSecretStore";
 import { validatePosSyncWebhookNetworkTarget } from "@lib/posSync/serverWebhookTarget";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
@@ -71,42 +76,10 @@ function buildPosSyncSecurityContext(
     };
 }
 
-async function getScopedProjectData(
-    db: FirebaseFirestore.Firestore,
-    tenantDocumentId: string,
-    storeDocumentId: string,
-    projectId: string,
-): Promise<Project | null> {
-    const projectDoc = await db
-        .collection(DB_COLLECTIONS.PROJECTS)
-        .doc(tenantDocumentId)
-        .collection(storeDocumentId)
-        .doc(projectId)
-        .get();
-
-    if (!projectDoc.exists) return null;
-
-    const projectData = projectDoc.data() as Project | undefined;
-    if (!projectData || projectData.deleted === true) return null;
-
-    return {
-        ...projectData,
-        projectId: projectDoc.id,
-    };
-}
-
 export const POST = withAuth(async (request, session) => {
     if (!FEATURE_FLAGS.ENABLE_POS_SYNC) {
         return NextResponse.json({ error: "Feature disabled" }, { status: 403 });
     }
-
-    const permissionError = await requireAnyStorePermission(
-        request,
-        session,
-        [PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU],
-        "POS delivery",
-    );
-    if (permissionError) return permissionError;
 
     const bodyResult = await readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES, {
         invalidJsonMessage: "Invalid input",
@@ -131,9 +104,23 @@ export const POST = withAuth(async (request, session) => {
     }
 
     const storeRateLimitHash = hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`);
-    const rlResult = await checkRateLimit({ key: `pos-deliver:${storeRateLimitHash}`, limit: 20, window: 60 });
+    const rlResult = await checkRateLimit({
+        key: `pos-deliver:${storeRateLimitHash}`,
+        limit: 20,
+        window: 60,
+        failClosedOnProviderError: true,
+    });
     if (!rlResult.allowed) {
-        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        const providerUnavailable = rlResult.reason === 'provider_unavailable';
+        return NextResponse.json(
+            { error: providerUnavailable ? 'Service temporarily unavailable' : 'Too many requests' },
+            {
+                status: providerUnavailable ? 503 : 429,
+                headers: {
+                    'Retry-After': String(Math.max(Math.ceil((rlResult.resetAt - Date.now()) / 1000), 1)),
+                },
+            },
+        );
     }
 
     try {
@@ -158,9 +145,10 @@ export const POST = withAuth(async (request, session) => {
         if (targetPermissionError) return targetPermissionError;
 
         const posSync = store?.posSync;
-        if (!posSync?.enabled || !posSync?.webhookUrl || !posSync?.webhookSecret) {
+        if (!posSync?.enabled || !posSync?.webhookUrl) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
+        const initialSecretVersion = normalizePosSyncSecretVersion(posSync.secretVersion);
 
         const markConnectionIssueIfCurrent = async () => {
             await db.runTransaction(async (transaction) => {
@@ -181,7 +169,7 @@ export const POST = withAuth(async (request, session) => {
                     freshPermissionError
                     || !currentPosSync?.enabled
                     || String(currentPosSync.webhookUrl || '') !== String(posSync.webhookUrl)
-                    || String(currentPosSync.webhookSecret || '') !== String(posSync.webhookSecret)
+                    || normalizePosSyncSecretVersion(currentPosSync.secretVersion) !== initialSecretVersion
                 ) return;
 
                 transaction.update(storeRef, {
@@ -215,15 +203,22 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
 
-        const projectData = await getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId);
-        if (!projectData) {
-            return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-        }
-
         // Re-read permission and connection state while claiming the version. A
         // URL/secret/enable change after the initial read invalidates this attempt.
+        // The project is read in the same transaction so a higher menu version
+        // cannot be assigned to an older concurrently-read snapshot.
+        const projectRef = db
+            .collection(DB_COLLECTIONS.PROJECTS)
+            .doc(tenantDocumentId)
+            .collection(storeDocumentId)
+            .doc(projectId);
+        const secretRef = getPosSyncSecretRef(db, tenantDocumentId, storeDocumentId);
         const deliveryClaim = await db.runTransaction(async (transaction) => {
-            const freshDoc = await transaction.get(storeRef);
+            const [freshDoc, projectDoc, secretDoc] = await Promise.all([
+                transaction.get(storeRef),
+                transaction.get(projectRef),
+                transaction.get(secretRef),
+            ]);
             if (!freshDoc.exists) return null;
             const freshStore = freshDoc.data();
             const freshPermissionError = requireAnyStorePermissionForStoreData(
@@ -241,11 +236,22 @@ export const POST = withAuth(async (request, session) => {
             const currentWebhookValidation = validatePosSyncWebhookUrl(String(currentPosSync?.webhookUrl || ''));
             if (
                 !currentPosSync?.enabled
-                || !currentPosSync?.webhookSecret
-                || currentPosSync.webhookSecret !== posSync.webhookSecret
                 || !currentWebhookValidation.valid
                 || currentWebhookValidation.normalizedUrl !== webhookValidation.normalizedUrl
             ) return null;
+
+            const projectData = projectDoc.data() as Project | undefined;
+            if (!projectDoc.exists || !projectData || projectData.deleted === true) return null;
+            const secret = resolvePosSyncSecretInTransaction({
+                transaction,
+                storeRef,
+                storeData: freshStore || {},
+                secretRef,
+                secretSnapshot: secretDoc,
+                storeId,
+                tenantId,
+            });
+            if (!secret) return null;
 
             const next = getNextPosSyncMenuVersion(currentPosSync.menuVersion);
             if (next === null) return null;
@@ -253,7 +259,12 @@ export const POST = withAuth(async (request, session) => {
             return {
                 currency: freshStore?.currencyCode || freshStore?.currency || 'INR',
                 menuVersion: next,
-                webhookSecret: String(currentPosSync.webhookSecret),
+                projectData: {
+                    ...projectData,
+                    projectId: projectDoc.id,
+                } as Project,
+                secretVersion: secret.version,
+                webhookSecret: secret.secret,
                 webhookUrl: String(currentPosSync.webhookUrl),
             };
         });
@@ -263,7 +274,7 @@ export const POST = withAuth(async (request, session) => {
         const newVersion = deliveryClaim.menuVersion;
 
         const payload = buildMenuSnapshot(
-            projectData,
+            deliveryClaim.projectData,
             storeId,
             tenantId,
             newVersion,
@@ -358,7 +369,7 @@ export const POST = withAuth(async (request, session) => {
             if (
                 !currentPosSync?.enabled
                 || String(currentPosSync.webhookUrl || '') !== deliveryClaim.webhookUrl
-                || String(currentPosSync.webhookSecret || '') !== deliveryClaim.webhookSecret
+                || normalizePosSyncSecretVersion(currentPosSync.secretVersion) !== deliveryClaim.secretVersion
             ) return;
 
             const outcome = resolvePosSyncDeliveryOutcome({

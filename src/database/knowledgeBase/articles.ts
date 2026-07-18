@@ -5,7 +5,7 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { ANSWERLATTICE_CACHE_SOURCES } from "@lib/answerlattice/cacheVersionManifest";
 import { isAnswerlatticeArticleBulkStatus, normalizeAnswerlatticeArticleMutationIds, resolveSingleAnswerlatticeArticleScope } from '@lib/answerlattice/articleMutationBoundary';
-import { bumpAnswerlatticeCacheVersion } from "@lib/answerlattice/cacheVersionClient";
+import { appendAnswerlatticeCacheInvalidation } from "@lib/answerlattice/cacheVersionClient";
 import { getAnswerlatticeScopeLogContext, getBoundedAnswerlatticeStringContext, logAnswerlatticeFailure } from "@lib/answerlattice/diagnostics";
 import { normalizeAnswerlatticeKbArticleId } from '@lib/answerlattice/kbArticleIdBoundary';
 import { ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT } from '@lib/answerlattice/faqContent';
@@ -16,7 +16,6 @@ import { answerlatticeFirebaseClient } from "@lib/firebase/answerlatticeFirebase
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { ANSWERLATTICE_FAQ_STATUS } from '@type/answerlattice';
 import { ARTICLE_STATUS, KnowledgeBaseArticleType } from "@type/knowledgeBase";
-import { addDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.KB_ARTICLES;
 const KB_ARTICLE_LIST_LIMIT = 500;
@@ -85,17 +84,6 @@ const normalizeKnowledgeBaseArticleSessionScope = (session: Awaited<ReturnType<t
         tId: record?.tId ?? record?.tenantId ?? record?.user?.tenantId,
         sId: record?.sId ?? record?.storeId ?? record?.user?.storeId,
     });
-};
-
-const resolveArticleScope = async (data?: Partial<KnowledgeBaseArticleType> | null) => {
-    const dataScope = normalizeKnowledgeBaseArticleScope(data as Record<string, unknown> | null);
-    if (dataScope) return dataScope;
-
-    const { session } = await resolveKnowledgeBaseArticleSession('resolve_article_scope');
-    const sessionScope = normalizeKnowledgeBaseArticleSessionScope(session);
-    if (sessionScope) return sessionScope;
-
-    return null;
 };
 
 const resolveReadableArticleScope = async (): Promise<ReadableArticleScope> => {
@@ -251,25 +239,6 @@ const resolveArticleCreateScope = async (data: Partial<KnowledgeBaseArticleType>
     return { tId: scope.tId, sId: scope.sId };
 };
 
-const bumpKnowledgeBaseVersion = async (
-    data: Partial<KnowledgeBaseArticleType> | null,
-    reason: string,
-    sourceId?: string,
-) => {
-    const scope = await resolveArticleScope(data);
-    if (!scope) {
-        throw new Error('Cannot update Answerlattice KB cache version without tenant and store scope.');
-    }
-
-    await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
-        reason,
-        sourceId,
-        sourceType: 'kb_article',
-    });
-
-    return scope;
-};
-
 /**
  * @deprecated Use getArticlesByCategoryId() or getArticlesBySectionId() instead.
  * Kept for backward compatibility. Non-platform callers are still scoped to
@@ -308,10 +277,19 @@ export const addArticle = async (data: Omit<KnowledgeBaseArticleType, 'id'>) => 
                 tId: targetScope.tId,
                 sId: targetScope.sId,
             }, { isNew: true });
-            await bumpKnowledgeBaseVersion(submitData as Partial<KnowledgeBaseArticleType>, 'article_create');
-            const docRef = await addDoc(await getCollectionRef(), submitData);
+            const docRef = doc(await getCollectionRef());
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                appendAnswerlatticeCacheInvalidation(
+                    transaction,
+                    ANSWERLATTICE_CACHE_SOURCES.KB,
+                    targetScope.tId,
+                    targetScope.sId,
+                    { reason: 'article_create', sourceId: docRef.id, sourceType: 'kb_article' },
+                );
+                transaction.set(docRef, submitData);
+            });
             const savedArticle = { ...submitData, id: docRef.id };
-            await revalidateAnswerlatticePublicClientCache(await resolveArticleScope(savedArticle as Partial<KnowledgeBaseArticleType>), ['kb', 'context'], 'addArticle');
+            await revalidateAnswerlatticePublicClientCache(targetScope, ['kb', 'context'], 'addArticle');
 
             // E4: Fire-and-forget entity extraction after article creation
             _triggerEntityExtraction(savedArticle as KnowledgeBaseArticleType);
@@ -360,7 +338,6 @@ export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => 
                 tId: targetScope.tId,
                 sId: targetScope.sId,
             }, { isNew: false }) : null;
-            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_update', articleId);
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const currentSnapshot = await transaction.get(articleRef);
                 if (!currentSnapshot.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
@@ -400,11 +377,27 @@ export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => 
                             throw new Error(`Linked FAQ ${linkedFaqIds[index]} is outside this article workspace.`);
                         }
                     });
+                    appendAnswerlatticeCacheInvalidation(
+                        transaction,
+                        ANSWERLATTICE_CACHE_SOURCES.KB,
+                        targetScope.tId,
+                        targetScope.sId,
+                        { reason: 'article_update', sourceId: articleId, sourceType: 'kb_article' },
+                    );
                     faqDocs.forEach((faqDoc, index) => {
                         if (faqDoc.exists() && faqDoc.data().active === true) {
                             transaction.set(faqRefs[index], faqReviewData, { merge: true });
                         }
                     });
+                }
+                if (!faqReviewData || !faqSnapshot) {
+                    appendAnswerlatticeCacheInvalidation(
+                        transaction,
+                        ANSWERLATTICE_CACHE_SOURCES.KB,
+                        targetScope.tId,
+                        targetScope.sId,
+                        { reason: 'article_update', sourceId: articleId, sourceType: 'kb_article' },
+                    );
                 }
                 transaction.set(articleRef, composedData, { merge: true });
             });
@@ -414,13 +407,16 @@ export const updateArticle = async (data: Partial<KnowledgeBaseArticleType>) => 
                 'updateArticle',
             );
 
-            // E4: Fire-and-forget entity extraction when article content changes
-            if (data.content && data.title) {
+            // E4: Re-evaluate entity links when extraction-relevant article truth changes.
+            const shouldTriggerEntityExtraction = data.content !== undefined
+                || data.title !== undefined
+                || data.categoryTitle !== undefined;
+            if (shouldTriggerEntityExtraction) {
                 _triggerEntityExtraction({
                     id: articleId,
-                    title: data.title,
-                    content: data.content,
-                    categoryTitle: data.categoryTitle,
+                    title: data.title ?? initialArticle.title,
+                    content: data.content ?? initialArticle.content,
+                    categoryTitle: data.categoryTitle ?? initialArticle.categoryTitle,
                     pId: ANSWERLATTICE_PRODUCT_ID,
                     tId: targetScope.tId,
                     sId: targetScope.sId,
@@ -495,7 +491,6 @@ export const deleteArticle = async (id: string) => {
                 sId: targetScope.sId,
                 modifiedOn: Timestamp.now(),
             }, { isNew: false });
-            await bumpKnowledgeBaseVersion(articleData, 'article_delete', articleId);
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const currentSnapshot = await transaction.get(docRef);
                 if (!currentSnapshot.exists()) throw new Error(`Knowledge base article ${articleId} was not found.`);
@@ -534,6 +529,13 @@ export const deleteArticle = async (id: string) => {
                         throw new Error(`Linked FAQ ${linkedFaqIds[index]} is outside this article workspace.`);
                     }
                 });
+                appendAnswerlatticeCacheInvalidation(
+                    transaction,
+                    ANSWERLATTICE_CACHE_SOURCES.KB,
+                    targetScope.tId,
+                    targetScope.sId,
+                    { reason: 'article_delete', sourceId: articleId, sourceType: 'kb_article' },
+                );
                 faqDocs.forEach((faqDoc, index) => {
                     if (faqDoc.exists()) transaction.set(faqRefs[index], faqArchiveData, { merge: true });
                 });
@@ -618,7 +620,6 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
                 tId: finalTargetScope.tId,
                 sId: finalTargetScope.sId,
             }, { isNew: false });
-            await bumpKnowledgeBaseVersion(composedData as Partial<KnowledgeBaseArticleType>, 'article_bulk_status');
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const snapshots = await Promise.all(articleRefs.map(articleRef => transaction.get(articleRef)));
                 snapshots.forEach((snapshot, index) => {
@@ -630,6 +631,13 @@ export const bulkUpdateArticleStatus = async (ids: string[], status: string) => 
                         throw new Error('Knowledge base article workspace changed before bulk update.');
                     }
                 });
+                appendAnswerlatticeCacheInvalidation(
+                    transaction,
+                    ANSWERLATTICE_CACHE_SOURCES.KB,
+                    finalTargetScope.tId,
+                    finalTargetScope.sId,
+                    { reason: 'article_bulk_status', sourceType: 'kb_article' },
+                );
                 articleRefs.forEach(articleRef => transaction.update(articleRef, composedData));
             });
             await revalidateAnswerlatticePublicClientCache(finalTargetScope, ['kb', 'context'], 'bulkUpdateArticleStatus');
@@ -782,9 +790,6 @@ function _triggerEntityExtraction(article: KnowledgeBaseArticleType): void {
             },
             body: JSON.stringify({
                 id: article.id,
-                title: article.title,
-                content: article.content,
-                categoryTitle: article.categoryTitle,
             }),
         });
         await acknowledgeArticleEntityExtractionResponse(response, article);

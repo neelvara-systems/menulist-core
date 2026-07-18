@@ -5,7 +5,6 @@ import { APP_NAME } from '@constant/common';
 import { NAVIGARIONS_ROUTINGS } from '@constant/navigations';
 import { useAppSelector } from '@hook/useAppSelector';
 import StoreSwitcher from '@molecules/StoreSwitcher';
-import NotificationsModal from '@organisms/headerComponent/notificationsModal';
 import { getShowDateInHeaderState, getShowUserDetailsInHeaderState, getSidebarLayoutState } from '@reduxSlices/clientThemeConfig';
 import DashboardHeaderShell from '@/components/shared/dashboardShell/DashboardHeaderShell';
 import { getFormatedDate, getFormatedTime, getUTCDate } from '@util/dateTime';
@@ -16,14 +15,10 @@ import { useFormatter } from 'next-intl';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Suspense, useState } from 'react';
-import { LuBell, LuLoader, LuUser } from 'react-icons/lu';
+import { LuLoader, LuUser } from 'react-icons/lu';
 import AppBreadcrumb from './appBreadcrumb/appBreadcrumb';
 import styles from './headerComponent.module.scss';
 import ProfileActionsModal from './profileActionsModal';
-
-const BadgeRenderer = ({ dotted, count, overflowCount, children }) => {
-    return <Badge size="small" dot={dotted} count={count} overflowCount={overflowCount} style={{ top: "3px", right: "8px", background: "red" }}> {children}</Badge>
-}
 
 const HeaderComponent = () => {
 
@@ -38,16 +33,6 @@ const HeaderComponent = () => {
         ? `Staff ID: ${userData?.staffLoginId || userData?.loginUsername || ''}`
         : userData?.displayEmail || userData?.phone || userData?.phoneUsername || userData?.email;
 
-    const [notifications, setNotifications] = useState([
-        { type: "Order", description: "New Order Placed", isReaded: false, status: "success" },
-        { type: "Order", description: "New Order Placed Failed", isReaded: false, status: "fail" }
-    ])
-
-    const [unreadMessages, setUnreadMessages] = useState([
-        { type: "Order", description: "New Order Placed", isReaded: false, status: "success" },
-        { type: "Order", description: "New Order Placed Failed", isReaded: false, status: "fail" }
-    ])
-
     return (
         <DashboardHeaderShell
             left={!isVerticalSidebar ? <Flex>
@@ -59,17 +44,6 @@ const HeaderComponent = () => {
             right={
                 <>
                 <StoreSwitcher />
-                <div className={styles.actionsWrap}>
-
-                    {/* Notofications */}
-                    <BadgeRenderer dotted={true} count={notifications.length} overflowCount={9} >
-                        <NotificationsModal notifications={notifications}>
-                            <Button type="text" icon={<LuBell />} />
-                        </NotificationsModal>
-                    </BadgeRenderer>
-
-                </div>
-
                 {showDateInHeader && <div className={`${styles.actionsWrap} ${styles.dateWrap}`}>
                     <TextElement styles={{ margin: "7px 0 0 0", fontSize: "12px", lineHeight: "12px" }} text={getFormatedDate(formatter, getUTCDate().newDate)} type='primary' size={"medium"} />
                     <TextElement styles={{ margin: "unset", fontSize: "10px" }} text={getFormatedTime(formatter, getUTCDate().newDate)} />

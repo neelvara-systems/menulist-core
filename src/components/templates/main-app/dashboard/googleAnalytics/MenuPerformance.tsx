@@ -3,6 +3,7 @@
 import { useOfferingLabels } from '@hook/useOfferingLabels';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
 import { fetchMenuItemStats } from '@services/analytics';
+import { formatNumber } from '@util/formatters';
 import { Card, Space, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { LuDollarSign, LuEye, LuShoppingCart } from 'react-icons/lu';
@@ -89,7 +90,7 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
             key: 'views',
             sorter: (a: MenuItem, b: MenuItem) => a.views - b.views,
             render: (views: number) => (
-                <Text>{views.toLocaleString()}</Text>
+                <Text>{formatNumber(views)}</Text>
             )
         },
         {
@@ -105,7 +106,7 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
             key: 'orders',
             sorter: (a: MenuItem, b: MenuItem) => a.orders - b.orders,
             render: (orders: number) => (
-                <Text>{orders.toLocaleString()}</Text>
+                <Text>{formatNumber(orders)}</Text>
             )
         },
         {
@@ -121,7 +122,7 @@ const MenuPerformance: React.FC<MenuPerformanceProps> = ({ propertyId, dateRange
             key: 'revenue',
             sorter: (a: MenuItem, b: MenuItem) => a.revenue - b.revenue,
             render: (revenue: number) => (
-                <Text>${revenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                <Text>{formatNumber(revenue, { currency: 'USD', maximumFractionDigits: 2, minimumFractionDigits: 2, style: 'currency' })}</Text>
             )
         }
     ];

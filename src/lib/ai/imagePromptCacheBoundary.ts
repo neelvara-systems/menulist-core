@@ -3,8 +3,30 @@ import { getMediaFileExtension } from '@lib/media/mediaStorage';
 import { normalizeMediaUploadMimeType } from '@lib/media/mediaUploadBoundary';
 import { validateMagicBytes } from '@lib/security/magicBytesValidator';
 
-export const IMAGE_PROMPT_CACHE_KEY_VERSION = 1;
+export const IMAGE_PROMPT_CACHE_KEY_VERSION = 2;
 export const IMAGE_PROMPT_CACHE_STORAGE_PREFIX = `system/aiImagePromptCache/v${IMAGE_PROMPT_CACHE_KEY_VERSION}`;
+const IMAGE_PROMPT_CACHE_SOURCE_VERSION_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+export function buildImagePromptCacheSourcePath(
+    cacheKey: string,
+    sourceVersion: string,
+    extension: string,
+): string | null {
+    if (!/^[a-f0-9]{64}$/.test(cacheKey)) return null;
+    if (!IMAGE_PROMPT_CACHE_SOURCE_VERSION_PATTERN.test(sourceVersion)) return null;
+    if (!/^[a-z0-9]+$/.test(extension)) return null;
+    return `${IMAGE_PROMPT_CACHE_STORAGE_PREFIX}/${cacheKey}/${sourceVersion}.${extension}`;
+}
+
+export function isImagePromptCacheSourcePathForKey(sourcePath: unknown, cacheKey: string): sourcePath is string {
+    if (typeof sourcePath !== 'string' || !/^[a-f0-9]{64}$/.test(cacheKey)) return false;
+    const expectedPrefix = `${IMAGE_PROMPT_CACHE_STORAGE_PREFIX}/${cacheKey}/`;
+    if (!sourcePath.startsWith(expectedPrefix)) return false;
+    const [sourceVersion, extension, ...extra] = sourcePath.slice(expectedPrefix.length).split('.');
+    return extra.length === 0
+        && IMAGE_PROMPT_CACHE_SOURCE_VERSION_PATTERN.test(sourceVersion)
+        && /^[a-z0-9]+$/.test(extension || '');
+}
 
 export interface ReusableImagePromptCacheSource {
     extension: string;
@@ -25,8 +47,7 @@ export function getReusableImagePromptCacheSource(
 
     const extension = getMediaFileExtension(mimeType);
     const sourcePath = typeof cacheDoc.sourcePath === 'string' ? cacheDoc.sourcePath : '';
-    const expectedSourcePath = `${IMAGE_PROMPT_CACHE_STORAGE_PREFIX}/${cacheKey}.${extension}`;
-    if (sourcePath !== expectedSourcePath) return null;
+    if (!isImagePromptCacheSourcePathForKey(sourcePath, cacheKey) || !sourcePath.endsWith(`.${extension}`)) return null;
     if (cacheDoc.keyVersion !== IMAGE_PROMPT_CACHE_KEY_VERSION) return null;
 
     const outputSizeBytes = cacheDoc.outputSizeBytes;

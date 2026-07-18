@@ -72,6 +72,10 @@ assert.throws(() => normalizeTimeSlotPresets([
     { id: "one", label: "Lunch", startTime: "11:00", endTime: "15:00" },
     { id: "two", label: " lunch ", startTime: "12:00", endTime: "16:00" },
 ]), /time_slot_preset_duplicate/);
+assert.doesNotThrow(() => normalizeTimeSlotPresets([
+    { id: "breakfast", label: "Breakfast", startTime: "08:00", endTime: "12:00" },
+    { id: "brunch", label: "Brunch", startTime: "10:00", endTime: "14:00" },
+]));
 
 const project = {
     projectId: "1-project-10",

@@ -3,7 +3,8 @@
 **Document Type:** Technical Implementation Blueprint  
 **Audience:** Developers, Technical Leads  
 **Version:** 1.0  
-**Status:** 🔒 SPEC LOCKED — Implementation blocked until GBP API access granted  
+**Status:** DORMANT, INCOMPLETE SOURCE FRAGMENTS — do not activate
+**Last Source Audit:** July 16, 2026
 **Date:** February 2, 2026
 
 ---
@@ -20,6 +21,19 @@
 8. [Firebase Cost Analysis](#8-firebase-cost-analysis)
 9. [Testing Guide](#9-testing-guide)
 10. [Progress Tracking](#10-progress-tracking)
+
+---
+
+## Current Runtime Override
+
+The diagrams and planned files below are historical design input. Current source contains only:
+
+- disabled `GET /api/reviews/states` and `POST /api/reviews/suggest` routes;
+- unmounted `ReputationGuard` and `ReviewReplyTool` components;
+- `Review`/`ReviewState` types, a flat `reviewsState/{reviewId}` rules/index contract, and pure classification rules;
+- no ingestion or classification writer, no scheduler, no review DAL/inbox, no Google reply route, and no mobile review screen.
+
+Both feature flags remain false. GBP access alone cannot make this runtime complete. `npm run verify:reviews-reputation-boundary` and `npm run test:reviews:rules` prove only the dormant source boundary, not a working review product.
 
 ---
 

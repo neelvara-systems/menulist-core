@@ -146,50 +146,116 @@ export function getStarterActivationDeadlineMs(nowMs = Date.now()) {
 function timestampLikeToMillis(value: unknown): number | null {
     if (!value) return null;
 
-    if (value instanceof Date) {
-        return value.getTime();
-    }
+    try {
+        let millis: number | null = null;
+        if (value instanceof Date) {
+            millis = value.getTime();
+        } else if (typeof value === 'number') {
+            millis = value;
+        } else if (typeof value === 'string') {
+            millis = Date.parse(value);
+        } else if (typeof value === 'object') {
+            const record = value as {
+                toMillis?: () => number;
+                toDate?: () => Date;
+                seconds?: number;
+                _seconds?: number;
+            };
 
-    if (typeof value === 'number') {
-        return value;
-    }
-
-    if (typeof value === 'string') {
-        const parsed = Date.parse(value);
-        return Number.isNaN(parsed) ? null : parsed;
-    }
-
-    if (typeof value === 'object') {
-        const record = value as {
-            toMillis?: () => number;
-            toDate?: () => Date;
-            seconds?: number;
-            _seconds?: number;
-        };
-
-        if (typeof record.toMillis === 'function') {
-            return record.toMillis();
+            if (typeof record.toMillis === 'function') {
+                millis = record.toMillis();
+            } else if (typeof record.toDate === 'function') {
+                millis = record.toDate().getTime();
+            } else if (typeof record.seconds === 'number') {
+                millis = record.seconds * 1000;
+            } else if (typeof record._seconds === 'number') {
+                millis = record._seconds * 1000;
+            }
         }
 
-        if (typeof record.toDate === 'function') {
-            return record.toDate().getTime();
-        }
-
-        if (typeof record.seconds === 'number') {
-            return record.seconds * 1000;
-        }
-
-        if (typeof record._seconds === 'number') {
-            return record._seconds * 1000;
-        }
+        if (millis === null || !Number.isFinite(millis) || millis <= 0) return null;
+        const normalized = new Date(millis).getTime();
+        return Number.isFinite(normalized) ? normalized : null;
+    } catch {
+        return null;
     }
-
-    return null;
 }
 
-function timestampLikeToIso(value: unknown): string | undefined {
+export function normalizeStarterActivationTimestamp(value: unknown): string | null {
     const millis = timestampLikeToMillis(value);
-    return millis ? new Date(millis).toISOString() : undefined;
+    if (millis === null) return null;
+    try {
+        return new Date(millis).toISOString();
+    } catch {
+        return null;
+    }
+}
+
+export function applyStarterActivationSignalToStoreDetails(
+    storeDetails: StoreDataType | null,
+    signal: StarterActivationSignal,
+    recordedAt: unknown,
+    expectedStoreId?: string | number,
+): StoreDataType | null {
+    const normalizedRecordedAt = normalizeStarterActivationTimestamp(recordedAt);
+    if (
+        !storeDetails
+        || !isStarterActivationSignal(signal)
+        || !normalizedRecordedAt
+        || (expectedStoreId !== undefined && String(storeDetails.storeId) !== String(expectedStoreId))
+    ) return storeDetails;
+
+    return {
+        ...storeDetails,
+        starterActivationSignals: {
+            ...(storeDetails.starterActivationSignals || {}),
+            actions: {
+                ...(storeDetails.starterActivationSignals?.actions || {}),
+                [signal]: normalizedRecordedAt,
+            },
+            lastSignalAt: normalizedRecordedAt,
+        },
+    };
+}
+
+export function applyStarterPresenceUpdateToStoreDetails(
+    storeDetails: StoreDataType | null,
+    surface: keyof typeof STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    confirmed: boolean,
+    recordedAt: unknown,
+    starterSignal?: StarterActivationSignal,
+    expectedStoreId?: string | number,
+): StoreDataType | null {
+    const normalizedRecordedAt = normalizeStarterActivationTimestamp(recordedAt);
+    if (
+        !storeDetails
+        || !normalizedRecordedAt
+        || !(surface in STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE)
+        || (expectedStoreId !== undefined && String(storeDetails.storeId) !== String(expectedStoreId))
+    ) {
+        return storeDetails;
+    }
+
+    const nextPresence = { ...(storeDetails.menuPresence || {}) };
+    const nextActions = { ...(storeDetails.starterActivationSignals?.actions || {}) };
+    const canonicalSignal = STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface];
+    if (confirmed) {
+        nextPresence[surface] = normalizedRecordedAt;
+        if (starterSignal === canonicalSignal) nextActions[canonicalSignal] = normalizedRecordedAt;
+    } else {
+        delete nextPresence[surface];
+        delete nextActions[canonicalSignal];
+    }
+
+    return {
+        ...storeDetails,
+        menuPresence: nextPresence,
+        starterActivationSignals: {
+            ...(storeDetails.starterActivationSignals || {}),
+            actions: nextActions,
+            ...(confirmed && starterSignal ? { lastSignalAt: normalizedRecordedAt } : {}),
+        },
+    };
 }
 
 function normalizePath(pathname: string) {
@@ -339,15 +405,17 @@ export function buildStarterActivationSummary(
     const actions = storeDetails?.starterActivationSignals?.actions || {};
 
     Object.entries(actions).forEach(([signal, recordedAt]) => {
-        if (isStarterActivationSignal(signal)) {
-            signalTimestamps.set(signal, timestampLikeToIso(recordedAt) || String(recordedAt || ''));
+        const normalizedRecordedAt = normalizeStarterActivationTimestamp(recordedAt);
+        if (isStarterActivationSignal(signal) && normalizedRecordedAt) {
+            signalTimestamps.set(signal, normalizedRecordedAt);
         }
     });
 
     Object.entries(STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE).forEach(([surface, signal]) => {
         const presenceRecordedAt = storeDetails?.menuPresence?.[surface as keyof NonNullable<StoreDataType['menuPresence']>];
-        if (presenceRecordedAt) {
-            signalTimestamps.set(signal, timestampLikeToIso(presenceRecordedAt) || String(presenceRecordedAt));
+        const normalizedRecordedAt = normalizeStarterActivationTimestamp(presenceRecordedAt);
+        if (normalizedRecordedAt) {
+            signalTimestamps.set(signal, normalizedRecordedAt);
         }
     });
 

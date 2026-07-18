@@ -28,6 +28,11 @@ Owner-facing line:
 - Upload and preparation: Media Image System
 - Public rendering: Official Business Page
 
+The completion result records whether its evidence is `full` or
+`business-only`. A caller without project summaries may confirm that the
+business photos are ready, but it must not claim the entire visual profile is
+complete.
+
 ## Feature Flag
 
 `FEATURE_FLAGS.ENABLE_VISUAL_PROFILE_COMPLETION`

@@ -4,6 +4,18 @@ import * as nodemailer from 'nodemailer';
 import type { OwnerNotificationChannelResult } from '../types';
 
 let cachedTransporter: nodemailer.Transporter | null = null;
+const OWNER_NOTIFICATION_SMTP_CONNECTION_TIMEOUT_MS = 10_000;
+const OWNER_NOTIFICATION_SMTP_GREETING_TIMEOUT_MS = 10_000;
+const OWNER_NOTIFICATION_SMTP_SOCKET_TIMEOUT_MS = 15_000;
+const MAX_OWNER_NOTIFICATION_EMAIL_PROVIDER_MESSAGE_ID_LENGTH = 200;
+
+function normalizeProviderMessageId(value: unknown): string | undefined {
+    if (typeof value !== 'string') return undefined;
+    const normalized = value.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+    return normalized
+        ? normalized.slice(0, MAX_OWNER_NOTIFICATION_EMAIL_PROVIDER_MESSAGE_ID_LENGTH)
+        : undefined;
+}
 
 function getTransporter(): nodemailer.Transporter | null {
     if (cachedTransporter) return cachedTransporter;
@@ -17,6 +29,9 @@ function getTransporter(): nodemailer.Transporter | null {
         port: smtpConfig.port,
         secure: smtpConfig.secure,
         auth: { user: smtpConfig.user, pass: smtpConfig.pass },
+        connectionTimeout: OWNER_NOTIFICATION_SMTP_CONNECTION_TIMEOUT_MS,
+        greetingTimeout: OWNER_NOTIFICATION_SMTP_GREETING_TIMEOUT_MS,
+        socketTimeout: OWNER_NOTIFICATION_SMTP_SOCKET_TIMEOUT_MS,
     });
 
     return cachedTransporter;
@@ -44,7 +59,7 @@ export async function sendOwnerNotificationEmail(params: {
             html: params.html,
         });
 
-        return { ok: true, providerMessageId: info.messageId };
+        return { ok: true, providerMessageId: normalizeProviderMessageId(info.messageId) };
     } catch {
         return {
             ok: false,

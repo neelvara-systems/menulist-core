@@ -1,5 +1,7 @@
 'use client';
 
+import { FEATURE_FLAGS } from '@config/features';
+import { PERMISSIONS } from '@constant/permissions';
 import {
     applyAiMenuManagerProjectPatch,
     projectContainsAiMenuManagerPatch,
@@ -52,6 +54,7 @@ import type {
 } from '@type/aiMenuManager';
 import { removeObjRef } from '@util/utils';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { App, Button, Card, Dropdown, Empty, Input, Modal, Space, Spin, Tag, Typography, theme } from 'antd';
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -110,8 +113,10 @@ const promptIconByKind: Record<AiMenuManagerPromptKind, typeof LuIndianRupee> = 
 export default function AiMenuManagerRoute() {
     const { message } = App.useApp();
     const { token } = theme.useToken();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const storeId = storeDetails?.storeId;
+    const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
+        && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
     const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -161,9 +166,11 @@ export default function AiMenuManagerRoute() {
     ), [storeDetails]);
     const storePublicContext = useMemo(() => ({
         customDomain: (storeDetails as any)?.customDomain,
-        screenToken: (storeDetails as any)?.screen?.screenToken || (storeDetails as any)?.screenToken,
+        screenToken: canAccessDigitalScreens
+            ? (storeDetails as any)?.screen?.screenToken || (storeDetails as any)?.screenToken
+            : undefined,
         subdomain: (storeDetails as any)?.subdomain,
-    }), [storeDetails]);
+    }), [canAccessDigitalScreens, storeDetails]);
     const promptGroups = useMemo(() => getAiMenuManagerProjectPromptGroups(selectedProject), [selectedProject]);
     const attentionSuggestions = useMemo(() => getAiMenuManagerAttentionSuggestions(selectedProject), [selectedProject]);
     const starterSuggestions = useMemo(() => getAiMenuManagerStarterSuggestions(promptGroups), [promptGroups]);
@@ -589,7 +596,11 @@ export default function AiMenuManagerRoute() {
                     storeName,
                     businessType,
                 });
-                const saved = await updateProjectWithoutLoader(batch.patchedProject);
+                const saved = await updateProjectWithoutLoader(batch.patchedProject, {
+                    ...(batch.directives[0].baseProjectUpdatedAt
+                        ? { expectedModifiedOn: batch.directives[0].baseProjectUpdatedAt }
+                        : {}),
+                });
                 assertProjectUpdateSucceeded(
                     saved,
                     batch.patchedProject.projectId,
@@ -781,7 +792,11 @@ export default function AiMenuManagerRoute() {
             let patchedProject: Project | null = null;
             try {
                 patchedProject = applyAiMenuManagerProjectPatch(selectedProject, directive);
-                savedProject = await updateProjectWithoutLoader(patchedProject);
+                savedProject = await updateProjectWithoutLoader(patchedProject, {
+                    ...(directive.baseProjectUpdatedAt
+                        ? { expectedModifiedOn: directive.baseProjectUpdatedAt }
+                        : {}),
+                });
                 assertProjectUpdateSucceeded(
                     savedProject,
                     patchedProject.projectId,

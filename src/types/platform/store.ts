@@ -18,6 +18,15 @@ export type TimeSlotPreset = {
     color?: string; // Optional badge color for UI
 };
 
+export type StoreTemporaryStatus = {
+    type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
+    message?: string;
+    expiresAt: string;
+    createdAt: string;
+    createdBy?: string | null;
+    sourceProjectId?: string;
+};
+
 export type StorePublicApiCredentialProductId = 'ML' | 'AL';
 export type StorePublicApiCredentialPurpose =
     | 'menulist_public_api'
@@ -451,7 +460,9 @@ export type StoreDataType = {
     posSync?: {
         enabled: boolean;
         webhookUrl: string;
-        webhookSecret: string;
+        /** @deprecated Legacy migration source only. New secrets are server-owned. */
+        webhookSecret?: string;
+        secretVersion?: number;
         status: 'healthy' | 'retrying' | 'connection_issue' | 'disabled';
         lastSentAt: Timestamp | null;
         lastStatus: 'success' | 'failed' | 'never_sent';
@@ -515,18 +526,12 @@ export type StoreDataType = {
      * Auto-expires based on expiresAt. Owner sets via dashboard or mobile.
      *
      * When set: Yellow/orange banner appears above content on public pages.
-     * When expired/cleared: Field is removed from store document.
+     * When expired: public projections hide it even if persisted cleanup has not run.
+     * When cleared: the owner mutation deletes the field from the store document.
      *
      * Feature flag: ENABLE_TEMP_STATUS
      */
-    tempStatus?: {
-        type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
-        message?: string;        // Custom message (max 100 chars)
-        expiresAt: string;       // ISO 8601 string
-        createdAt: string;       // ISO 8601 string
-        createdBy?: string;      // userId who set the status
-        sourceProjectId?: string; // special-menu owner used for safe lifecycle cleanup
-    };
+    tempStatus?: StoreTemporaryStatus;
 
     // ─────────────────────────────────────────────────────────────
     // PLATFORM PULL API (Feature: Public Read-Only APIs)
@@ -684,8 +689,9 @@ export type StoreDataType = {
 
     // ─────────────────────────────────────────────────────────────
     // BUSINESS HEALTH SIGNALS (Customer-Facing Infrastructure Pillars 4-6)
-    // Aggregate-only, privacy-safe business health indicators.
-    // Written weekly by Cloud Function. Read from already-loaded store doc (zero extra cost).
+    // Reserved dormant compatibility shape; there is no active writer or reader.
+    // Any later aggregate-only health signal must pass the documented counter,
+    // privacy, scheduler, persistence, freshness, and owner-surface gates.
     //
     // Feature flags: ENABLE_TRUST_HEALTH_SIGNAL, ENABLE_LOYALTY_HEALTH_SIGNAL, ENABLE_RISK_DECLINE_DETECTION
     // @see __docs__/trust-health-signal/trust-health-signal_impl.md

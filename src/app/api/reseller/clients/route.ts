@@ -3,6 +3,7 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import { NextResponse } from "next/server";
 import { withAuth } from "../../../../middleware/auth";
 import { applyResellerReadRateLimit } from "../readRateLimit";
@@ -28,61 +29,57 @@ export const GET = withAuth(async (request, session) => {
         const resellerId = session.user.id;
         const db = admin.firestore();
 
-        const transactionsCollection = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS);
-        const transactionsQuery = isPlatform
-            ? transactionsCollection.orderBy("createdOn", "desc").limit(200)
-            : transactionsCollection.where("resellerId", "==", resellerId).limit(100);
-
-        const snapshot = await transactionsQuery.get();
-        const rawTransactions: any[] = snapshot.docs.map((doc) => {
-            const data = doc.data();
+        const resultLimit = isPlatform ? 200 : 100;
+        const subscriptionsCollection = db.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
+        const subscriptionsQuery = isPlatform
+            ? subscriptionsCollection
+                .where('onboardingSource', '==', 'RESELLER_ONBOARDING')
+                .orderBy('createdOn', 'desc')
+                .limit(resultLimit + 1)
+            : subscriptionsCollection
+                .where('resellerId', '==', resellerId)
+                .orderBy('createdOn', 'desc')
+                .limit(resultLimit + 1);
+        const snapshot = await subscriptionsQuery.get();
+        const isPartial = snapshot.size > resultLimit;
+        const transactions = snapshot.docs.slice(0, resultLimit).map((doc) => {
+            const subscription = doc.data() || {};
+            const quantity = Math.max(1, Number(subscription.quantity || 1));
+            const isManual = subscription.billingMode === 'manual';
+            const subscriptionStatus = String(subscription.status || '');
+            const amount = Math.max(0, Number(subscription.amount || 0));
             return {
-                ...data,
+                action: 'ONBOARD',
+                amountExpected: isManual ? amount : amount * quantity,
+                billingInterval: subscription.planType === 'YEAR' ? 'YEAR' : 'MONTH',
+                commitmentMonths: subscription.commitmentPeriodMonths || null,
+                createdOn: subscription.createdOn?.toDate?.()?.toISOString?.() || subscription.createdOn || null,
+                currency: 'INR',
                 id: doc.id,
-                createdOn: data.createdOn?.toDate?.()?.toISOString?.() || data.createdOn || null,
-                modifiedOn: data.modifiedOn?.toDate?.()?.toISOString?.() || data.modifiedOn || null,
-                validUntil: data.validUntil?.toDate?.()?.toISOString?.() || data.validUntil || null,
+                locationCount: quantity,
+                modifiedOn: subscription.modifiedOn?.toDate?.()?.toISOString?.() || subscription.modifiedOn || null,
+                paymentMode: isManual ? 'offline' : 'online',
+                pricingTier: subscription.resellerPricingTier || '',
+                resellerEmail: '',
+                resellerId: subscription.resellerId || '',
+                resellerProfileId: subscription.resellerProfileId || null,
+                status: subscriptionStatus === 'pending' ? 'pending_payment' : subscriptionStatus,
+                storeId: Number(subscription.storeId),
+                storeName: subscription.name || '',
+                subscriptionAmount: amount,
+                subscriptionBillingMode: subscription.billingMode,
+                subscriptionId: doc.id,
+                subscriptionQuantity: quantity,
+                subscriptionShortUrl: normalizeRazorpaySubscriptionCheckoutUrl(subscription.shortUrl),
+                subscriptionStatus,
+                tenantId: Number(subscription.tenantId),
+                validUntil: subscription.validUntil?.toDate?.()?.toISOString?.()
+                    || subscription.cycleEndDate?.toDate?.()?.toISOString?.()
+                    || null,
             };
         });
 
-        // Current subscription state is needed for manual location capacity.
-        // This dashboard is low-volume and capped, so one bounded read per
-        // visible client keeps the reseller UI accurate without duplicating
-        // subscription truth onto every transaction.
-        const subscriptionIds = Array.from(new Set(
-            rawTransactions
-                .map((transaction) => String(transaction.subscriptionId || ''))
-                .filter(Boolean),
-        )).slice(0, isPlatform ? 200 : 100);
-        const subscriptionDocs = subscriptionIds.length
-            ? await db.getAll(...subscriptionIds.map((id) => db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(id)))
-            : [];
-        const subscriptionsById = new Map(subscriptionDocs
-            .filter((doc) => doc.exists)
-            .map((doc) => [doc.id, doc.data() || {}]));
-
-        const transactions = rawTransactions.map((transaction) => {
-            const subscription = subscriptionsById.get(String(transaction.subscriptionId || ''));
-            const subscriptionStatus = subscription?.status;
-            return {
-                ...transaction,
-                amountExpected: Number(transaction.amountExpected || 0),
-                status: subscriptionStatus === 'pending'
-                    ? 'pending_payment'
-                    : (subscriptionStatus || transaction.status),
-                subscriptionAmount: subscription?.amount,
-                subscriptionBillingMode: subscription?.billingMode,
-                subscriptionQuantity: subscription?.quantity || transaction.subscriptionQuantity || transaction.locationCount || 1,
-                subscriptionShortUrl: subscription?.shortUrl || transaction.shortUrl || null,
-                subscriptionStatus,
-                validUntil: subscription?.validUntil?.toDate?.()?.toISOString?.()
-                    || subscription?.cycleEndDate?.toDate?.()?.toISOString?.()
-                    || transaction.validUntil
-                    || null,
-            };
-        }).sort((a, b) => new Date(b.createdOn || 0).getTime() - new Date(a.createdOn || 0).getTime());
-
-        return NextResponse.json({ transactions });
+        return NextResponse.json({ isPartial, transactions });
 
     } catch (error) {
         logResellerApiFailure('reseller_clients_route_failed', error, {

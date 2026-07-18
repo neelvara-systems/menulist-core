@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 import {
+    clearOwnerReferralCookie,
     readOwnerReferralCookie,
     setOwnerReferralCookie,
 } from '@lib/ownerReferral/ownerReferralAttributionServer';
@@ -20,9 +21,10 @@ import { getClientIp, hashPublicRateLimitValue } from 'src/middleware/publicApi'
 import { z } from 'zod';
 
 const OWNER_REFERRAL_CAPTURE_MAX_BODY_BYTES = 2 * 1024;
-const OwnerReferralCaptureSchema = z.object({
-    token: z.string().min(32).max(1024),
-}).strict();
+const OwnerReferralCaptureSchema = z.discriminatedUnion('action', [
+    z.object({ action: z.literal('capture'), token: z.string().min(32).max(1024) }).strict(),
+    z.object({ action: z.literal('decline') }).strict(),
+]);
 
 const unavailable = (status = 400) => NextResponse.json(
     { success: false, error: 'This invitation is unavailable.' },
@@ -59,7 +61,6 @@ const isSameOriginBrowserRequest = (request: NextRequest): boolean => {
 };
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-    if (!isOwnerReferralAcquisitionEnabled()) return unavailable(404);
     if (!isSameOriginBrowserRequest(request)) return unavailable(403);
 
     const config = getRateLimitForFeature('OWNER_REFERRAL_CAPTURE');
@@ -68,7 +69,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         ...config,
         failClosedOnProviderError: process.env.NODE_ENV === 'production',
     });
-    if (!rateLimit.allowed) return unavailable(429);
+    if (!rateLimit.allowed) {
+        const retryAfter = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
+        return NextResponse.json(
+            { success: false, error: 'This invitation is unavailable.' },
+            {
+                status: 429,
+                headers: {
+                    'Cache-Control': 'private, no-store',
+                    'Retry-After': String(retryAfter),
+                    'X-RateLimit-Reset': String(rateLimit.resetAt),
+                },
+            },
+        );
+    }
 
     const bodyResult = await readBoundedJsonBody(request, OWNER_REFERRAL_CAPTURE_MAX_BODY_BYTES, {
         invalidJsonMessage: 'Invalid invitation.',
@@ -76,6 +90,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (bodyResult.ok === false) return bodyResult.response;
     const parsed = OwnerReferralCaptureSchema.safeParse(bodyResult.data);
     if (!parsed.success) return unavailable();
+
+    if (parsed.data.action === 'decline') {
+        const response = NextResponse.json(
+            { success: true, continueTo: '/create-menu' },
+            { headers: { 'Cache-Control': 'private, no-store' } },
+        );
+        clearOwnerReferralCookie(response);
+        return response;
+    }
+    if (!isOwnerReferralAcquisitionEnabled()) return unavailable(404);
 
     try {
         const existing = readOwnerReferralCookie(request);

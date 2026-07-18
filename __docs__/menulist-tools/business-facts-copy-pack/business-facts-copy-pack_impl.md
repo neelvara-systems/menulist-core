@@ -1,7 +1,7 @@
 # Business Facts Copy Pack - Implementation
 
 **Status:** Implemented V0 public browser-local tool
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Local Source Gate:** `npm run verify:business-facts-copy-pack`
 
 ---
@@ -73,6 +73,8 @@ Boundary flags are all false:
 ## Source Policy
 
 V0 must not add Google, Instagram, Facebook, WhatsApp, Maps, directory, website, or search crawling. Entered URLs are references only and receive local format checks.
+
+`hasContactHint(...)` uses `phoneValidation.ts` for raw/formatted phone and `tel:` values, or the shared public HTTPS parser for a strict `wa.me/{digits}` link. It no longer accepts contact words or arbitrary letter-and-digit strings as customer contact evidence.
 
 The only allowed network write is the optional consented `/api/public/contact` handoff.
 

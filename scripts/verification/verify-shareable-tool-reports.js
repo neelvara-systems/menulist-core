@@ -29,6 +29,7 @@ const ROUTE_PATH = 'src/app/(website)/tools/reports/page.tsx';
 const COMPONENT_PATH = 'src/components/website/toolReports/ToolReportPage.tsx';
 const SHARED_PATH = 'src/lib/public-truth-tools/shareableToolReport.ts';
 const CONTACT_ROUTE_PATH = 'src/app/api/public/contact/route.ts';
+const CONTACT_BOUNDARY_PATH = 'src/lib/publicContact/contactBoundary.ts';
 const SOCIAL_COMPONENT_PATH = 'src/components/website/socialBioLinkCheck/SocialBioLinkCheckPage.tsx';
 const PRINT_SHARE_COMPONENT_PATH = 'src/components/website/printShareTools/PrintShareToolPage.tsx';
 const PRINT_SHARE_CONFIG_PATH = 'src/lib/public-asset-tools/printShareToolConfig.ts';
@@ -70,6 +71,7 @@ for (const file of [
   COMPONENT_PATH,
   SHARED_PATH,
   CONTACT_ROUTE_PATH,
+  CONTACT_BOUNDARY_PATH,
   ...SOURCE_TOOL_COMPONENTS.map(([sourceToolPath]) => sourceToolPath),
   PRINT_SHARE_COMPONENT_PATH,
   PRINT_SHARE_CONFIG_PATH,
@@ -93,6 +95,7 @@ const route = read(ROUTE_PATH);
 const component = read(COMPONENT_PATH);
 const shared = read(SHARED_PATH);
 const contactRoute = read(CONTACT_ROUTE_PATH);
+const contactBoundary = read(CONTACT_BOUNDARY_PATH);
 const socialComponent = read(SOCIAL_COMPONENT_PATH);
 const printShareComponent = read(PRINT_SHARE_COMPONENT_PATH);
 const printShareConfig = read(PRINT_SHARE_CONFIG_PATH);
@@ -159,7 +162,15 @@ assertIncludes(shared, 'buildShareableToolReportSetupJobs', 'Shareable Tool Repo
 assertIncludes(shared, 'setupJobList: buildShareableToolReportSetupJobs(checks, nextAction)', 'Shareable Tool Reports shared setup job mapping');
 assertIncludes(shared, 'buildShareablePublicTruthToolReportPayload', 'Shareable Tool Reports shared source-tool builder');
 assertIncludes(shared, 'coerceInternalHref', 'Shareable Tool Reports internal href guard');
+assertIncludes(shared, "!href.includes('\\\\')", 'Shareable Tool Reports backslash href guard');
+assertIncludes(shared, "resolved.origin === base.origin", 'Shareable Tool Reports same-origin href guard');
 assertIncludes(shared, "return '/create-menu'", 'Shareable Tool Reports unsafe href fallback');
+assertIncludes(shared, 'getShareableToolReportSummary', 'Shareable Tool Reports normalized summary counter');
+assertIncludes(shared, 'hasExactSummaryNumber', 'Shareable Tool Reports count/check consistency guard');
+assertIncludes(shared, 'normalizePrimaryNumber', 'Shareable Tool Reports bounded primary number guard');
+assertIncludes(shared, 'setupJobList: buildShareableToolReportSetupJobs(checks, nextAction)', 'Shareable Tool Reports decoder-derived setup jobs');
+assertIncludes(shared, 'payload.publicBoundary.length === 0', 'Shareable Tool Reports required public boundary guard');
+assertIncludes(shared, '!payload.summary.primaryLabel', 'Shareable Tool Reports required primary label guard');
 assertIncludes(shared, 'encodeShareableToolReportPayload', 'Shareable Tool Reports encoder');
 assertIncludes(shared, 'decodeShareableToolReportPayload', 'Shareable Tool Reports decoder');
 assertIncludes(shared, 'createShareableToolReportUrl', 'Shareable Tool Reports URL builder');
@@ -196,6 +207,7 @@ assertIncludes(component, "t('setupJobs.title')", 'Shareable Tool Reports setup 
 assertIncludes(component, 'Setup job list', 'Shareable Tool Reports setup job report text');
 assertIncludes(component, 'report.checkedSourceText', 'Shareable Tool Reports checked text renderer');
 assertIncludes(component, 'report.notCheckedText', 'Shareable Tool Reports not-checked text renderer');
+assertIncludes(component, "t('sourcePreview.selfReportNotice')", 'Shareable Tool Reports unsigned self-report notice');
 assertIncludes(component, 'report.publicBoundary', 'Shareable Tool Reports boundary renderer');
 assertIncludes(component, 'href={report.nextAction.href}', 'Shareable Tool Reports next action renderer');
 assertIncludes(component, 'copyRuntimeTextToClipboard(window.location.href)', 'Shareable Tool Reports link copy action');
@@ -246,6 +258,9 @@ assertIncludes(contactRoute, 'sourceContext,', 'MenuList public contact nested s
 assertIncludes(contactRoute, 'firestoreAdmin.collection(DB_COLLECTIONS.LANDING_PAGE_ENQUIRIES).add(enquiryPayload)', 'MenuList public contact existing enquiry write');
 assertNotIncludes(contactRoute, 'DB_COLLECTIONS.SHAREABLE_TOOL_REPORTS', 'MenuList public contact must not create report storage');
 assertNotIncludes(contactRoute, 'toolReports', 'MenuList public contact must not reference report collection');
+assertIncludes(contactBoundary, "sourcePath.includes('\\\\')", 'MenuList public contact source path backslash guard');
+assertIncludes(contactBoundary, '/%5c/i.test(sourcePath)', 'MenuList public contact encoded-backslash guard');
+assertIncludes(contactBoundary, "parsed.origin !== 'https://menulist.invalid'", 'MenuList public contact source path origin guard');
 
 for (const content of [route, component, shared]) {
   assertNotIncludes(content, 'firebase/firestore', 'Shareable Tool Reports report storage boundary');

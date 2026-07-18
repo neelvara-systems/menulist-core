@@ -8,6 +8,7 @@ import { getLocale } from 'next-intl/server';
 import WebsiteThemeShortcut from '@/components/website/shared/WebsiteThemeShortcut';
 import WebsiteDocumentTheme from '@/components/website/shared/WebsiteDocumentTheme';
 import WebsiteProductPathProvider from '@/components/website/shared/WebsiteProductPathProvider';
+import SkipToContentLink from '@/components/shared/accessibility/SkipToContentLink';
 import WebsiteAuthProvider from "./WebsiteAuthProvider";
 import {
     MENULIST_SITE_DESCRIPTION,
@@ -78,7 +79,6 @@ export const metadata: Metadata = {
 export const viewport = {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1
 };
 
 // Website layout props type
@@ -96,6 +96,7 @@ export default async function WebsiteLayout({ children }: WebsiteLayoutProps) {
             <WebsiteAuthProvider>
                 <ThemeProvider>
                     <WebsiteProductPathProvider basePath={basePath}>
+                        <SkipToContentLink />
                         <WebsiteDocumentTheme />
                         <WebsiteThemeShortcut />
                         <WebsiteAnalyticsConsent />

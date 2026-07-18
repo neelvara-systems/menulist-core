@@ -1,6 +1,6 @@
 # Decision Intelligence — Website Content
 
-**Status:** Current public website placement updated June 9, 2026
+**Status:** Current public website placement verified July 16, 2026
 **Public route:** `/features/featured-choices`
 **Public label:** Featured Choices
 
@@ -25,7 +25,7 @@ Use:
 - `Value choice`
 - `helps customers choose`
 - `from the current approved menu`
-- `owner can choose what appears`
+- `owner can choose an eligible item`
 - `settled menu signals` where enough activity exists
 
 Avoid:
@@ -68,7 +68,7 @@ Where enough menu activity exists, MenuList can use settled public-menu signals 
 
 ### 3. Owner Control
 
-Owners can choose which item appears in each choice when they want to guide attention directly.
+Owners can choose an item for each choice when they want to guide attention directly. Current availability and menu safety still decide whether it can appear.
 
 ### 4. Accuracy Boundary
 
@@ -89,7 +89,7 @@ The feature should respect availability and menu state. It should not promote un
 
 ### Q: Can I control what appears?
 
-**A:** Yes. Owners can choose the item shown in each choice when direct control is needed.
+**A:** Owners can choose an item for each choice. It appears while it is eligible; otherwise another eligible automatic choice may appear or the choice stays hidden.
 
 ### Q: Does MenuList promise more orders?
 

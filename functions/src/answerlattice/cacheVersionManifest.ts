@@ -1,6 +1,6 @@
 import { FieldValue, Firestore, Timestamp } from "firebase-admin/firestore";
 import { ANSWERLATTICE_CACHE_VERSIONS_COLLECTION } from "../types/constants";
-import { markCompiledContextSourceChanged } from "./compiledContextVersions";
+import { appendCompiledContextSourceChange } from "./compiledContextVersions";
 
 export const ANSWERLATTICE_CACHE_SOURCES = {
     KB: "kb",
@@ -27,8 +27,11 @@ export const getAnswerlatticeCacheVersionBumpData = (
     sId: number,
     metadata?: CacheVersionBumpMetadata,
 ) => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
+    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
+        throw new Error("Cannot update Answerlattice cache version without valid tenant and store scope.");
+    }
+    const tenantId = tId;
+    const storeId = sId;
     const data: Record<string, unknown> = {
         pId: 'AL',
         tId: tenantId,
@@ -51,19 +54,23 @@ export const bumpAnswerlatticeCacheVersion = async (
     sId: number,
     metadata?: CacheVersionBumpMetadata,
 ) => {
-    const tenantId = Number(tId);
-    const storeId = Number(sId);
-    if (!Number.isFinite(tenantId) || tenantId <= 0 || !Number.isFinite(storeId) || storeId <= 0) {
+    if (!Number.isSafeInteger(tId) || tId <= 0 || !Number.isSafeInteger(sId) || sId <= 0) {
         throw new Error("Cannot update Answerlattice cache version without valid tenant and store scope.");
     }
+    const tenantId = tId;
+    const storeId = sId;
 
-    await db
-        .collection(ANSWERLATTICE_CACHE_VERSIONS_COLLECTION)
-        .doc(getAnswerlatticeCacheVersionDocId(source, tenantId, storeId))
-        .set(getAnswerlatticeCacheVersionBumpData(source, tenantId, storeId, metadata), { merge: true });
-    await markCompiledContextSourceChanged(db, source, tenantId, storeId, {
+    const batch = db.batch();
+    batch.set(
+        db.collection(ANSWERLATTICE_CACHE_VERSIONS_COLLECTION)
+            .doc(getAnswerlatticeCacheVersionDocId(source, tenantId, storeId)),
+        getAnswerlatticeCacheVersionBumpData(source, tenantId, storeId, metadata),
+        { merge: true },
+    );
+    appendCompiledContextSourceChange(batch, db, source, tenantId, storeId, {
         reason: metadata?.reason || `${source}_cache_version_bumped`,
         sourceId: metadata?.sourceId,
         sourceType: metadata?.sourceType,
     });
+    await batch.commit();
 };

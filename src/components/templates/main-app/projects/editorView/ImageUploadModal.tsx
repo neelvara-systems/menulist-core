@@ -3,7 +3,7 @@ import { APP_THEME_COLOR } from '@constant/common';
 import { FEATURE_FLAGS } from '@config/features';
 import { addImageBatchProcessingJob, assertImageBatchJobCreateSucceeded } from '@database/imageBatchProcessing';
 import { normalizeImageBatchGenerationConfig } from '@lib/ai/imageBatchClientBoundary';
-import type { ImageBatchProjectSelection } from '@lib/ai/imageBatchProjectSelection';
+import { IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS, type ImageBatchProjectSelection } from '@lib/ai/imageBatchProjectSelection';
 import { applyProjectImagePreferencesToGenerationConfig, extractImagePreferencePatch, mergeProjectAIPreferences } from '@lib/ai/projectAIPreferences';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
@@ -31,7 +31,6 @@ import AiImageGenerator from './AiImageGenerator';
 import BatchSetupView from './AiImageGenerator/batchImageGeneration';
 import BatchImageGenerationResultView from './AiImageGenerator/batchImageGeneration/BatchImageGenerationResultView';
 import BatchImageGenerationView from './AiImageGenerator/batchImageGeneration/BatchImageGenerationView';
-import EditImageModal from './AiImageGenerator/EditImageModal';
 import UploadedImagesList from './uploadedImagesList';
 import {
     getBoundedMenuEditorStringContext,
@@ -133,7 +132,6 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
     const [activeTab, setActiveTab] = useState<string>('upload');
     const [selectedImages, setSelectedImages] = useState<UserUploadedFileType[]>([]);
     const [generationConfig, setGenerationConfig] = useState<ImageGenerationConfigType>(DefaultGenerationConfig);
-    const [imageEditModal, setImageEditModal] = useState<{ active: boolean, imageData: UserUploadedFileType | null }>({ active: false, imageData: null });
     const [selectedItemsForBatch, setSelectedItemsForBatch] = useState<string[]>([]); // Store IDs of selected items
     const [isUploadingSingleItem, setIsUploadingSingleItem] = useState(false);
     const { activeProject, activeBatchImageJob, setActiveBatchImageJob } = useContext<ProjectsDataProviderType>(ProjectsDataContext);
@@ -183,7 +181,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         configWithPrefs.aspectRatio = getSafeMediaAspectRatio('menuItem', configWithPrefs.aspectRatio);
         setGenerationConfig(configWithPrefs);
         setBatchGenerationConfig(configWithPrefs);
-        setActiveTab(preferredInitialTab);
+        setActiveTab(FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? preferredInitialTab : 'upload');
         setSelectedImages([]);
         setSelectedItemsForBatch([]);
     }, [preferredInitialTab, projectData, storeDetails?.businessType, storeDetails?.tenantId, storeDetails?.storeId]);
@@ -257,11 +255,15 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             } else {
                 if (itemToUpdate) {
                     setModalView('singleItemSetup');
-                } else if (initialBatchItemIdSet.size > 0) {
+                } else if (FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION && initialBatchItemIdSet.size > 0) {
                     setModalView('batchAIConfig');
                     const nextSelectedItems = items
                         .filter((item) => initialBatchItemIdSet.has(item.id))
-                        .map((item) => item.id);
+                        .map((item) => item.id)
+                        .slice(0, IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS);
+                    if (initialBatchItemIdSet.size > IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS) {
+                        message.info(`You can generate photos for up to ${IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS} items at a time.`);
+                    }
                     setSelectedItemsForBatch((previous) => (
                         previous.length === nextSelectedItems.length &&
                         previous.every((id, index) => id === nextSelectedItems[index])
@@ -366,6 +368,10 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         config: GenerateImageViaApiPayloadGenerationConfiType,
         source: 'new' | 'retry',
     ): Promise<void> => {
+        if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) {
+            message.info('Image generation is currently unavailable.');
+            return;
+        }
         if (batchStartInFlightRef.current) {
             message.info('Image generation is already starting.');
             return;
@@ -378,7 +384,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
             const projectId = activeProject?.projectId;
             if (!projectId) throw new Error('image_upload_batch_project_missing');
             const uniqueItemIds = Array.from(new Set(requestedItemIds));
-            if (!uniqueItemIds.length || uniqueItemIds.length > 50) {
+            if (!uniqueItemIds.length || uniqueItemIds.length > IMAGE_BATCH_PROJECT_SELECTION_MAX_ITEMS) {
                 throw new Error('image_upload_batch_item_count_invalid');
             }
             const canonicalConfig = normalizeImageBatchGenerationConfig(config);
@@ -632,24 +638,28 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 <Flex vertical gap={4} align='start' justify='flex-start' >
                     <Typography.Text strong>For Single Item</Typography.Text>
                     <Typography.Text type="secondary" style={{ fontSize: 10, textAlign: 'left' }}>
-                        Upload from your device or generate a photo for one specific menu item.
+                        {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION
+                            ? 'Upload from your device or generate a photo for one specific menu item.'
+                            : 'Upload a photo from your device for one specific menu item.'}
                     </Typography.Text>
                 </Flex>
             </Button>
-            <Button
-                size="large"
-                block
-                onClick={handleBatchFlow}
-                icon={<LuSparkles color={APP_THEME_COLOR} size={24} />}
-                style={{ height: 'auto', padding: '15px 20px', whiteSpace: 'normal' }}
-            >
-                <Flex vertical gap={4} align='start' justify='flex-start'>
-                    <Typography.Text strong>For Multiple Items</Typography.Text>
-                    <Typography.Text type="secondary" style={{ fontSize: 10, textAlign: 'left' }}>
-                        Select multiple items and generate photos for all of them at once.
-                    </Typography.Text>
-                </Flex>
-            </Button>
+            {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                <Button
+                    size="large"
+                    block
+                    onClick={handleBatchFlow}
+                    icon={<LuSparkles color={APP_THEME_COLOR} size={24} />}
+                    style={{ height: 'auto', padding: '15px 20px', whiteSpace: 'normal' }}
+                >
+                    <Flex vertical gap={4} align='start' justify='flex-start'>
+                        <Typography.Text strong>For Multiple Items</Typography.Text>
+                        <Typography.Text type="secondary" style={{ fontSize: 10, textAlign: 'left' }}>
+                            Select multiple items and generate photos for all of them at once.
+                        </Typography.Text>
+                    </Flex>
+                </Button>
+            ) : null}
         </Flex>
     );
 
@@ -705,7 +715,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                                 label: 'Upload from Device',
                                 children: imageUploadView('device')
                             },
-                            {
+                            ...(FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? [{
                                 icon: <LuSparkles color={APP_THEME_COLOR} />,
                                 key: 'generate',
                                 label: 'Generate Photo',
@@ -717,7 +727,7 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                                     onPreferencesUsed={persistProjectImagePreferences}
                                     onUploadGeneratedImage={onUploadGeneratedImage}
                                 />
-                            },
+                            }] : []),
                         ]}
                     />
                 </Flex>
@@ -941,13 +951,6 @@ const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
                 </Modal>
             )}
 
-            <EditImageModal
-                selectedItem={selectedItem}
-                open={imageEditModal.active}
-                onClose={() => setImageEditModal({ active: false, imageData: null })}
-                imageData={imageEditModal.imageData}
-                onUploadGeneratedImage={onUploadGeneratedImage}
-            />
         </>
     );
 };

@@ -11,6 +11,7 @@ type HoursStatusTimeZoneFallbackSource =
 
 type HoursStatusInvalidTimeRangeSource =
     | "hours_engine_current_status"
+    | "hours_engine_next_change"
     | "hours_engine_next_open"
     | "obp_hours_status_current_status";
 

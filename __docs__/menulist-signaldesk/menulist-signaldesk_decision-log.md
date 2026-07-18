@@ -666,6 +666,21 @@ After reviewing the exact social-channel market plan, the founder instructed Cod
 
 No business was contacted. The intended QA runtime still needs Firebase permission because the scoped rules/index deploy is blocked by HTTP 403. A real permissioned business or partner introduction, sender identity, physical-address policy, and first owner-approved activation proof also remain external inputs.
 
+## July 15, 2026 - Bengaluru Evidence-Only Board Completed
+
+After the current market, product, and operational intelligence review, the founder instructed Codex to do the needful. The safe executable scope was limited to completing the approved internal research preparation because contact permission, QA Firebase access, sender readiness, owner activation, spend, publication, and provider-send authority remain absent.
+
+Decisions:
+
+1. Complete all 25 candidate slots from first-party business websites or menu destinations only.
+2. Record eight internal `Pass`, seven `Unsure`, nine `Fail`, and one policy `Hold`; none creates contact authority.
+3. Prepare 12 documentation-level evidence packets with route `none`, zero budget, source expiry, rejected facts, and no contact or personalization use.
+4. Keep third-party ordering/listing results out of evidence; one candidate remains held because no approved first-party source was established.
+5. Preserve the separate permissioned-manual-introduction policy before any owner action.
+6. Keep provider send, cold WhatsApp/social messaging, paid providers, partner spend, content publication, Firebase deployment, and MenuList truth writes blocked.
+
+No business was contacted, no contact details were stored, no paid API was called, no provider action ran, no cloud resource changed, and no MenuList runtime file was modified.
+
 ## July 11, 2026 - Founder-Controlled AI Volume Mode Implemented
 
 ### Context
@@ -715,3 +730,31 @@ No real Gemini call, target contact, message export/send, content publish, provi
 8. Treat complaint, privacy, and legal replies as suppression plus circuit-breaker events.
 9. Keep five primary Ant Design destinations while preserving protected deep tools.
 10. Keep all implementation SignalDesk-local; do not modify MenuList runtime or enable provider send.
+
+## July 15, 2026 - Current-Menu Evidence And Exact Action Packets
+
+### Decisions
+
+1. Keep the existing activation-opportunity queue, five-decision Today cap, and owner-qualified seven-day activation clock; do not duplicate them.
+2. Add a conservative `current-menu-presence-v1` diagnostic to new evidence packets using only approved target and source fields.
+3. Preserve unknown truth explicitly: owner control and mobile accessibility remain `unverified` until direct evidence exists.
+4. Carry the evidence diagnosis, rejected facts, source-policy state and expiry, allowed route, sender, CTA, exact message, expected outcome, unsupported-claim result, and risk into the approval packet.
+5. Bind those fields with an action fingerprint. A changed draft or control state invalidates the packet and requires refresh.
+6. Hold evidence-only or non-contactable targets at approval even when internal drafting is permitted.
+7. Keep the implementation SignalDesk-local. No MenuList runtime, Firebase rules, provider-send flag, public route, or external provider was changed.
+
+## July 15, 2026 - Final Local Authority And E2E Closure
+
+### Decisions
+
+1. Do not seed a noncanonical `pending` sender-domain document. Preserve and filter an exact legacy sentinel, while all executable sender authority must use a real canonical domain and strict product-local fingerprint.
+2. Bind draft, approval, export, assisted handoff, provider-send, and sequencer replay to transaction-current target, source-policy, CTA, sender, suppression, and prior-contact authority. Exact retries may replay durable truth; changed requests fail closed.
+3. Admit direct paid AI work through one deterministic actor/request claim. Concurrent exact retries join that claim and wait for bounded completion; ambiguous admission may recover only when the exact durable claim exists.
+4. Treat proof revocation, content holds, rejections, and publication review as terminal or explicit-review states. Published truth stays `distributed`; authority loss opens one durable incident and restoration resolves it exactly once without erasing publication evidence.
+5. Refresh only an unreviewed daily mission when a complaint, privacy request, or legal request arrives. The critical reply becomes the first action, while approved/completed mission history remains immutable.
+6. Keep the collection-wide secret scan strict for bearer credentials. Only exact deterministic reconciliation/lifecycle identifier field names are classified as non-secret coordination values; raw tokens, access tokens, API keys, webhook secrets, SMTP credentials, and provider payloads remain blocked.
+7. Accept no static-verifier pass as sufficient proof. The authenticated full Firestore-emulator workflow, Firestore/Storage rules semantics, warmed route/API smoke, TypeScript, emulator parse, and diff hygiene must all pass together.
+
+### Boundaries
+
+No provider send, external sequencer send, paid API call, real target contact, content publication, partner spend, Firebase deploy, Vercel deploy, public SignalDesk route, or MenuList store/menu/project/billing/public-output write occurred. Current clearance remains local controlled internal use only; real-world outreach still requires the separately recorded founder, source-rights, sender, legal, and provider decisions.

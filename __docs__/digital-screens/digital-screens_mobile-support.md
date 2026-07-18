@@ -1,6 +1,6 @@
 # Digital Screens — Mobile Support
 
-**Last Updated:** July 2, 2026 (v4 — dedicated Digital Screens boundary source gate)
+**Last Updated:** July 16, 2026 (v5 — feature/permission/config/lifecycle parity and token-free listener boundary)
 **Decision:** ✅ MOBILE SUPPORTED — Owner can set up and manage TV screens from phone
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated mobile support and desktop/mobile parity evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:digital-screens-boundary`, browser TV smoke for Menu Board and Highlights modes, authenticated desktop/mobile owner settings QA, physical-device TV/tablet/browser QA, target Firebase deploy evidence where rules, indexes, Storage, or Functions change, target Vercel deploy evidence where app routes or display clients change, and production-host smoke for the target tenant and screen URL.
@@ -33,15 +33,22 @@
 | Edit/delete custom slides         | `MobileDigitalScreensScreen`        | ✅     |
 | Safe custom slide captions        | `MobileDigitalScreensScreen` + DAL  | ✅     |
 | Initialize screen token           | `MobileDigitalScreensScreen` (auto) | ✅     |
+| Feature kill switch               | More, Share, settings screen, public page, seen endpoint | ✅     |
+| Digital Screens permission        | More, Share, Output Center/settings parity | ✅     |
+| Expired slide capacity recovery   | Shared DAL filters/prunes before cap enforcement | ✅     |
 
 ## DAL Parity
 
 - Uses same `getScreenState`, `initializeScreenState`, `updateScreenSettings`, pinned-slide DAL functions, and `assertDigitalScreenMutationSucceeded()` acknowledgement guard as desktop before local state or success copy changes
 - Uses same `uploadScreenSlide`, `updatePinnedSlideCaption`, and `removePinnedSlide` DAL functions; `uploadScreenSlide()` now rejects outer `apiCallComposer()` fallback values with `assertDigitalScreenSlideUploadSucceeded()` before desktop or mobile upload success copy can show
-- Canonical screen state and the public listener mirror commit atomically through the shared DAL; concurrent three-slide limits and failed-upload variant cleanup are identical on desktop and mobile
+- Canonical screen state and the public listener mirror commit atomically through the shared DAL; concurrent three-slide limits and immutable create-or-reuse media behavior are identical on desktop and mobile
 - Same `buildScreenUrl` utility
 - Same `FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED` gate
+- Same `canManageDigitalScreens` permission boundary; Mobile More, Share, the Digital Screens screen itself, and mobile Menu Manager do not load or reveal bearer screen links without it, and access removal invalidates an in-flight settings load
+- Same `DIGITAL_SCREENS_MAX_UPLOADS` and `DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS` values; mobile no longer carries independent `3` / `14` constants
 - Shows the same owner trust signal from `screenLastSeenAt`
+- Records the same `screenOverride` owner-control signal as desktop while still requiring the mutation acknowledgement before changing local UI state
+- `getScreenState()` returns active custom slides only, and the next shared mutation prunes expired Firestore references so old slides cannot permanently consume mobile upload capacity
 - Menu Board and Highlights copied feedback waits for Clipboard API success or acknowledged textarea fallback success; failed mobile copy diagnostics include clipboard/fallback support booleans only
 - Custom slide names are normalized before save/display and remain dashboard labels, not TV overlay copy
 - `npm run verify:digital-screens-boundary` locks the mobile Digital Screens acknowledgement guard, acknowledged browser-local copy contract, bounded diagnostics, copy/open handoff, and shared DAL parity as part of the dedicated local source gate.

@@ -1,61 +1,48 @@
-# Public Menu Entry — Controlled Free Preview Pipeline
+# Public Menu Entry
 
-**Version:** 1.0
-**Status:** Source-implemented funnel — not current launch or deploy certification
-**Feature Flag:** `ENABLE_PUBLIC_MENU_ENTRY`
-**Last Updated:** July 10, 2026
+**Status:** Local source complete; external release evidence pending
+**Feature flags:** `ENABLE_PUBLIC_MENU_ENTRY`; link intake also requires `ENABLE_MENU_LINK_IMPORT`
+**Last reviewed:** July 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Public Menu Entry evidence only. The `/create-menu` page is public, but source submission, acquisition, extraction, preview polling, claim, and publish require a signed-in owner. Current release approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:public-business-truth`, `npm run verify:auth-security-failure-matrix`, signed-in desktop/mobile browser QA, physical-device camera/link/preview/claim QA, Gemini extraction provider smoke, Razorpay sandbox evidence where conversion is in scope, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
 
----
+**Local result:** Local source complete. Preview polling runs every 5 seconds for at most 36 status reads before owner-visible retry. An expired claimed draft receipt is removed while its promoted source file is preserved. Approved app release, the scoped Firebase QA Function deployment, and hosted evidence remain pending.
 
-## What Is This?
+## Current purpose
 
-A public-facing page at `/create-menu` that lets any business owner start the setup flow, sign in, upload a current menu image or paste a permission-confirmed public menu link, and see a structured owner-review preview. The public marketing promise is **free first setup preview, review before publishing**, not an anonymous free AI utility.
+`/create-menu` is a public website entry point for a business owner to sign in, submit one current menu photo or permission-confirmed public link, review the structured result, and create or add an owner-controlled menu. It is not an anonymous extraction endpoint.
 
-**Core loop:** Open `/create-menu` → sign in → upload/paste source → extraction → owner-bound preview → official source setup
+## End-to-end flow
 
-## Why This Matters
+1. The visitor opens the public page. Upload or link submission redirects an unauthenticated visitor to sign in.
+2. The signed-in client submits a JPEG, PNG, WebP, or permission-confirmed public link.
+3. The protected route applies feature flags, a fail-closed 30-per-5-minute admission limit, account-scope integrity, current extraction permission for existing stores, SAFE_MODE, bounded parsing, source validation, active-draft reuse, and the 5-new-sources-per-24-hours quota.
+4. The route creates one owner-bound 24-hour draft and deterministic extraction job atomically. Link acquisition keeps its existing SSRF, redirect, MIME, size, and confidence boundaries.
+5. The preview checks status every 5 seconds, up to 36 times, and fetches the full extracted DTO once completion is reported. Invalid price truth fails closed instead of reaching claim.
+6. Claim validates ownership, TTL, source envelope, prices, phone, account scope, and current publish permission for an existing store. New accounts receive the existing starter tenant/store setup.
+7. One transaction creates the canonical project, summary projection, new account records when needed, and the complete idempotency receipt. Project identity, unique non-reserved slug, public price truth, and optional Menu Correctness metadata are committed together.
+8. Public menu, OBP, client-store, screen, and assistant caches are refreshed after commit. A refresh failure does not roll back committed truth.
+9. The success page retries the session refresh with a bounded timeout before dashboard handoff.
+10. Daily maintenance removes expired draft documents. Unclaimed source files are deleted first; a failed deletion preserves the draft for retry. A claimed draft document is deleted but the source now referenced by the project is retained.
 
-MenuList's long-term asset is **canonical public business pages**. This feature removes payment friction while preventing broad AI-processing cost leakage through authentication, user-keyed rate limits, active draft reuse, source dedupe, SAFE_MODE, file validation, and TTL cleanup. The owner sees the prepared source before choosing how far to continue.
+## Owner and account boundaries
 
-## Architecture Summary
+- A complete existing tenant/store session is treated as an existing account; a partial session fails with recovery guidance.
+- Existing accounts need current `USE_MENU_EXTRACTION` admission before source work and current `PUBLISH_MENU` admission inside claim.
+- New accounts do not have a store permission document yet; claim creates the existing starter account path.
+- City is required only for a new account/subdomain. Existing accounts reuse store identity and are not asked for city.
+- A valid optional phone is normalized before public presence is written.
+- Extraction and claim do not charge Razorpay. Subscription conversion remains the separate existing Billing flow.
 
-- **Zero new backend infrastructure** — reuses existing AI extraction pipeline, menu rendering, and auth flow
-- **One new public page** — `src/app/(website)/create-menu/page.tsx`
-- **One API route** — `/api/public/create-menu` (POST and GET are authenticated, owner-bound, rate-limited, and reusable for photo/link source + extraction status)
-- **Temporary storage** — extracted data stored in `publicMenuDrafts` collection with 24h TTL
-- **Conversion flow** — preview draft is converted after authenticated claim; existing accounts are rechecked for store/tenant eligibility before public truth writes
+## Maintained documents
 
-## Documents
+- [Specification](./public-menu-entry_spec.md)
+- [Implementation](./public-menu-entry_impl.md)
+- [Firebase and scale](./public-menu-entry_firebase.md)
+- [Mobile support](./public-menu-entry_mobile-support.md)
+- [Website copy](./public-menu-entry_website.md)
+- [Help article](./public-menu-entry_helpdoc.md)
+- [Marketing boundary](./public-menu-entry_marketing.md)
+- [Verification](./public-menu-entry_verification.md)
 
-| File | Audience | Purpose |
-|------|----------|---------|
-| `public-menu-entry_spec.md` | CEO/PM | Business requirements, user flows |
-| `public-menu-entry_impl.md` | Developers | Technical blueprint, file paths, schemas |
-| `public-menu-entry_firebase.md` | DevOps/Cost | Every Firestore read/write, cost estimates |
-| `public-menu-entry_marketing.md` | Sales/Marketing | Pitch, positioning, go-to-market |
-| `public-menu-entry_website.md` | Content | Landing page copy, SEO meta |
-| `public-menu-entry_helpdoc.md` | Support | Customer help article |
-| `public-menu-entry_mobile-support.md` | Engineering | Mobile admission test |
-| `public-menu-entry_verification.md` | Engineering/Ops | Historical source/local/QA evidence and remaining external certification gates |
-
-## Key Decisions
-
-1. **Sign in before source processing** — value shown before payment, while expensive extraction stays attached to an owner identity
-2. **24-hour TTL on drafts** — unclaimed drafts auto-deleted (cost control)
-3. **Rate limiting by owner** — 5 new extractions per user per day across photo and link inputs, with active draft reuse and source dedupe
-4. **Reuses existing extraction pipeline** — same shared extraction/client patterns as the current implementation
-5. **Preview uses existing menu renderer** — same B2C view components
-6. **Feature-flagged** — `ENABLE_PUBLIC_MENU_ENTRY` controls the public flow; `ENABLE_MENU_LINK_IMPORT` additionally gates the public link input
-7. **Mobile-first design** — SMB owners will use this from phone
-8. **Nested storesSummary writes** — starter claim/payment mirrors store plan fields into the scheduler-readable `stores.{storeId}` map, not only flat dot-notation keys
-9. **Existing-account claims fail closed** — claim writes only proceed when the session store exists, belongs to the session tenant, and the store/tenant are not inactive, deleted, or platform-blocked
-
-## Related Features
-
-- `__docs__/marketing/menulist-growth-and-funnel-strategy.md` — controlled free-preview and distribution strategy
-- `__docs__/messaging-onboarding/` — WhatsApp onboarding (complementary channel)
-- `__docs__/official-business-page/` — OBP created on publish
-- Menu extraction pipeline: `src/lib/firebase/menuProcessing.ts`
-- Menu rendering: `src/app/_client/[[...slug]]/page.tsx`
+Previous narratives are preserved in [`_archive/pre-2026-07-16/`](./_archive/pre-2026-07-16/).

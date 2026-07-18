@@ -2,6 +2,7 @@
 
 import { assertProjectPresetCascadeSucceeded, removePresetFromAllCategories, updatePresetInAllCategories } from '@database/projects';
 import { assertTimeSlotPresetUpdateSucceeded, generatePresetId, updateTimeSlotPresets } from '@database/stores';
+import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { TimeSlotPreset } from '@type/platform/store';
 import { formatClockTime } from '@util/dateTime';
@@ -23,36 +24,10 @@ interface MobileTimeSlotsScreenProps {
     onBack: () => void;
 }
 
-function parseTimeToMinutes(value: string): number | null {
-    const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
-    if (!match) return null;
-    return (Number(match[1]) * 60) + Number(match[2]);
-}
-
-function normalizeTimeRange(startMinutes: number, endMinutes: number): Array<{ start: number; end: number }> {
-    if (startMinutes === endMinutes) return [];
-    if (startMinutes < endMinutes) {
-        return [{ start: startMinutes, end: endMinutes }];
-    }
-    return [
-        { start: startMinutes, end: 1440 },
-        { start: 0, end: endMinutes },
-    ];
-}
-
-function rangesOverlap(
-    left: Array<{ start: number; end: number }>,
-    right: Array<{ start: number; end: number }>,
-): boolean {
-    return left.some((leftRange) => (
-        right.some((rightRange) => leftRange.start < rightRange.end && rightRange.start < leftRange.end)
-    ));
-}
-
 export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenProps) {
     const t = useTranslations('MobileTimeSlots');
     const { token } = theme.useToken();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
     const [presets, setPresets] = useState<TimeSlotPreset[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -68,7 +43,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
             setPresets(storeDetails.timeSlotPresets || []);
             setIsLoading(false);
         }
-    }, [storeDetails]);
+    }, [storeDetails?.storeId, storeDetails?.timeSlotPresets]);
 
     const openAdd = () => {
         setEditingPreset(null);
@@ -110,29 +85,10 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
         const isDuplicate = presets.some((preset) => preset.label.toLowerCase() === label.toLowerCase() && preset.id !== editingPreset?.id);
         if (isDuplicate) return Toast.show({ content: t('duplicateName'), duration: 1500 });
 
-        const startMin = parseTimeToMinutes(formStart);
-        const endMin = parseTimeToMinutes(formEnd);
-        if (startMin === null || endMin === null) {
-            return Toast.show({ content: 'Enter a valid start and end time.', duration: 1500 });
-        }
-
-        if (startMin === endMin) {
-            return Toast.show({ content: 'Start and end time cannot be the same.', duration: 1500 });
-        }
-
-        const candidateRanges = normalizeTimeRange(startMin, endMin);
-        const overlappingPreset = presets.find((preset) => {
-            if (preset.id === editingPreset?.id) return false;
-            const presetStart = parseTimeToMinutes(preset.startTime);
-            const presetEnd = parseTimeToMinutes(preset.endTime);
-            if (presetStart === null || presetEnd === null || presetStart === presetEnd) return false;
-            return rangesOverlap(candidateRanges, normalizeTimeRange(presetStart, presetEnd));
-        });
-
-        if (overlappingPreset) {
+        if (!isValidClockRange(formStart, formEnd)) {
             return Toast.show({
-                content: `Time slot overlaps with ${overlappingPreset.label}.`,
-                duration: 1800,
+                content: 'Enter valid, different start and end times.',
+                duration: 1500,
             });
         }
 
@@ -157,6 +113,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                 }
             }
             setPresets(updated);
+            setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: updated }));
             setIsFormOpen(false);
             Toast.show({ content: editingPreset ? t('updated') : t('created'), icon: 'success', duration: 1500 });
         } catch (error) {
@@ -229,8 +186,8 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                         </Flex>
                                     </Flex>
                                     <Flex gap={4}>
-                                        <Button fill="none" onClick={() => openEdit(preset)} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuPencil color={token.colorTextSecondary} size={16} /></Button>
-                                        <Button fill="none" onClick={() => {
+                                        <Button aria-label={t('editTimeSlot')} fill="none" onClick={() => openEdit(preset)} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}><LuPencil color={token.colorTextSecondary} size={16} /></Button>
+                                        <Button aria-label={t('delete')} fill="none" onClick={() => {
                                             void Dialog.confirm({
                                                 cancelText: t('cancel'),
                                                 confirmText: t('delete'),
@@ -246,6 +203,7 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                                                             'mobile_time_slot_preset_cascade_delete_rejected',
                                                         );
                                                         setPresets(updated);
+                                                        setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: updated }));
                                                         Toast.show({ content: t('deleted'), icon: 'success', duration: 1500 });
                                                     } catch (error) {
                                                         logMobileOwnerFailure('mobile_time_slot_preset_delete_failed', error, {
@@ -312,7 +270,14 @@ export default function MobileTimeSlotsScreen({ onBack }: MobileTimeSlotsScreenP
                         <Card title={t('color')}>
                             <Flex gap={8} wrap>
                                 {PRESET_COLORS.map((color) => (
-                                    <Button key={color} fill="none" onClick={() => setFormColor(color)} style={{ minHeight: 44, minWidth: 44, padding: 2 }}>
+                                    <Button
+                                        aria-label={`${t('color')} ${color}`}
+                                        aria-pressed={formColor === color}
+                                        fill="none"
+                                        key={color}
+                                        onClick={() => setFormColor(color)}
+                                        style={{ minHeight: 44, minWidth: 44, padding: 2 }}
+                                    >
                                         <div
                                             style={{
                                                 alignItems: 'center',

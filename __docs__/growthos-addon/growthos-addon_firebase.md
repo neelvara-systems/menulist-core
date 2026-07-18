@@ -256,3 +256,18 @@ Cost impact: this changes route security-log metadata only. It adds no Firestore
 ## 15. Project And Kit ID Boundary
 
 GrowthOS project/kit/scope ID admission is cost-neutral: refresh/generate request schemas and `readGrowthOSProjectDataServer()` validate and normalize `projectId` through the shared Firestore document-ID guard before scoped or legacy project reads. Export request schema and `readGrowthOSKitServer()` validate and normalize `kitId` before kit reads. Server helpers also validate session-derived tenant/store scope IDs before store reads, summary reads/writes, scoped project reads, kit reads/writes, export status writes, or entitlement subscription reads. This adds no Firestore reads/writes/deletes for valid requests, Storage operations, provider calls, cache invalidations, rules, indexes, Cloud Function logic, Firebase deploy requirement, or Vercel deploy action. Explicit pre-onboarding `null`, zero, exponent-like, whitespace, decimal, leading-zero, unsafe, or otherwise malformed scope IDs now stop before Firestore refs; in particular, they no longer cause the entitlement helper to read `stores/0` or query subscriptions under tenant/store zero.
+
+## 16. Atomic Generated-Kit Projection
+
+Kit generation writes the new kit document and the one-read latest-kit summary
+in one Firestore batch. The valid path remains two writes; there is no added
+read, transaction retry, coordination document, index, listener, scheduler, or
+provider call.
+
+Tenant, store, and latest-kit identity must match between both payloads before
+the batch is created, so an internal caller cannot atomically persist
+cross-scope or cross-kit projection data.
+
+The UUID-backed kit ID avoids same-millisecond document collisions without a
+Firestore sequence. This is both safer under concurrency and cheaper than a
+distributed counter.

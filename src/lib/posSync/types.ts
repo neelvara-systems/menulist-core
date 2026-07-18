@@ -17,7 +17,9 @@ export type PosSyncLastStatus = 'success' | 'failed' | 'never_sent';
 export interface PosSyncConfig {
     enabled: boolean;
     webhookUrl: string;
-    webhookSecret: string;
+    /** @deprecated Legacy migration source only. New secrets are server-owned. */
+    webhookSecret?: string;
+    secretVersion?: number;
     status: PosSyncStatus;
     lastSentAt: Timestamp | null;
     lastStatus: PosSyncLastStatus;
@@ -27,29 +29,6 @@ export interface PosSyncConfig {
     consecutiveFailures?: number;
     instructionsSentCount: number;
     instructionsSentDate: string;
-}
-
-// ─────────────────────────────────────────────────────────────
-// Delivery Queue Document (posDeliveryQueue collection)
-// ─────────────────────────────────────────────────────────────
-
-export type DeliveryJobStatus = 'pending' | 'processing' | 'completed' | 'failed';
-
-export interface PosDeliveryJob {
-    storeId: number;
-    tId: number;
-    projectId: string;
-    menuVersion: number;
-    status: DeliveryJobStatus;
-    attempt: number;
-    maxAttempts: number;
-    payload: string;
-    createdOn: Timestamp;
-    processedAt: Timestamp | null;
-    nextRetryAt: Timestamp | null;
-    lastError: string | null;
-    webhookUrl: string;
-    webhookSecret: string;
 }
 
 // ─────────────────────────────────────────────────────────────

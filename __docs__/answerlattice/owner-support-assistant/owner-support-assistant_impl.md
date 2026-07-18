@@ -14,9 +14,9 @@ Current source truth:
 | --- | --- |
 | App flag | `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT: true`. |
 | Route/navigation | `/answerlattice/support-assistant`, management-only, `MANAGE_SUPPORT`, feature-gated. |
-| Brief API | Authenticated, rate-limited before permission reads, five compact summary reads, private/no-store. |
+| Brief API | Authenticated, rate-limited before permission reads, six compact summary reads, private/no-store. |
 | Query API | Authenticated, exact session scope, 20 requests/minute per hashed user/workspace key before permission reads, 4 KiB body cap, Zod validation, private/no-store. |
-| Answer engine | Deterministic ten-intent classifier over the same five summary documents: attention, answer risk, friction, readiness, intake, release, install, reply, cost, and unsupported. No AI provider or bounded-detail path. |
+| Answer engine | Deterministic ten-intent classifier over the same six summary documents: attention, answer risk, friction, readiness, intake, release, install, reply, cost, and unsupported. No AI provider or bounded-detail path. |
 | Daily Founder Brief | Optional `dailyBrief` payload ranks the smallest useful support actions for today from the same five summaries. |
 | Persistence | None. No transcript, feedback, operation, action, analytics, or assistant summary write. |
 | Owner actions | Route links only. No action preview/execute, ticket reply/status change, draft, card, note, or publish path. |

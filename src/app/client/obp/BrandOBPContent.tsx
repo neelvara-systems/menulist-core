@@ -94,6 +94,7 @@ const getCollectionOutletsForTenant = unstable_cache(
             .collection(DB_COLLECTIONS.STORES)
             .where("tenantId", "==", tenantId)
             .where("active", "==", true)
+            .limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)
             .get();
 
         if (snapshot.empty) return [];

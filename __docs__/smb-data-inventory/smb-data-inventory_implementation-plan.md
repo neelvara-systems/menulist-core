@@ -31,6 +31,7 @@ Implemented in this pass:
 | Priority | Status | Code decision |
 | --- | --- | --- |
 | P0 analytics write policy | Implemented | Added shared `filterAnalyticsUpdateData` policy and enforced it in browser queue, direct writer, public API, and Admin writer. `sessionId` is no longer written to analytics Firestore docs. |
+| P0 analytics index fanout | Source implemented; deploy pending | Exempted five high-cardinality analytics map parents that no runtime query filters or orders by. Stored owner-visible analytics and operation counts remain unchanged; the index configuration must still be deployed. |
 | P0 MOL summary mode | Implemented | Added `MENU_OBSERVATION_MODE`, defaulted to `summary`, and changed project update detection to one `MENU_REVISION_SUMMARY` write by default. Detailed per-item writes remain available only in detailed mode. |
 | P0 `menuChangeLog` path divergence | Implemented | Multi-outlet MOL events now use shared scoped nested DAL writes under `menuChangeLog/{tId}/{sId}`. |
 | P1 AI operation compaction | Implemented | App-side and extraction-function AI operation logs default to accounting-only. Detailed app-side provider response storage keeps usage metadata plus response presence/length only, with `detailExpiresAt`; raw provider response text is not retained. |
@@ -134,9 +135,9 @@ Job/log compaction gaps are real:
 - Image batch jobs keep generated item results for UI selection, but current code caps `statusHistory`.
 - Existing scheduler cleanup now covers public drafts, owner-business-assistant docs, AI operation detail compaction, menu snapshot cleanup, and owner-notification retention.
 
-Index-exemption opportunity is real:
+Index-exemption opportunity is partially implemented:
 
-- `firestore.indexes.json` currently has many composite indexes but only a few field overrides, and none for high-cardinality analytics maps/job blobs: `firestore.indexes.json:1747-1794`.
+- `firestore.indexes.json` now exempts `hourlyClicksByItem`, `itemNames`, `searchTerms`, `viewsByContent`, and `zeroResultSearchTerms` from automatic single-field indexing because runtime queries do not filter or order by them. This removes avoidable index fanout after deployment without changing stored owner-visible data. Other job/blob candidates still require their own query audit.
 
 ## 5. Implementation architecture
 
@@ -522,6 +523,7 @@ Why P4:
 - [ ] Basic mode: no `itemNames` on every event.
 - [ ] Basic mode: no `hourlyClicksByItem`.
 - [x] Add server-side disallowed-field filtering in `/api/public/analytics/track`.
+- [x] Exempt the five verified non-query high-cardinality analytics map parents from single-field indexing.
 - [ ] Update dashboard aggregation name resolution.
 - [ ] Add tests for mode-specific update payloads.
 

@@ -37,6 +37,14 @@ function assertThrows(callback, message) {
   assert(threw, message);
 }
 
+function assertBefore(source, earlierToken, laterToken, message) {
+  const earlierIndex = source.indexOf(earlierToken);
+  const laterIndex = source.indexOf(laterToken);
+  assert(earlierIndex >= 0, `${message}: missing earlier token`);
+  assert(laterIndex >= 0, `${message}: missing later token`);
+  assert(earlierIndex < laterIndex, message);
+}
+
 function verifyClassificationRuntime() {
   const { classifyReview } = require(path.join(ROOT, 'functions/src/reviews/classificationRules.ts'));
 
@@ -73,6 +81,7 @@ function verifySourceBoundary() {
   const reviewTypes = read('src/types/reviews.ts');
   const databaseConstants = read('src/constants/database.ts');
   const firestoreRules = read('firestore.rules');
+  const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
   const implementationDoc = read('__docs__/reviews-reputation/reviews-reputation_impl.md');
   const reviewsReadme = read('__docs__/reviews-reputation/README.md');
   const reviewsWebsite = read('__docs__/reviews-reputation/reviews-reputation_website.md');
@@ -93,6 +102,42 @@ function verifySourceBoundary() {
   assert(!rules.includes('lowerComment.includes(keyword.toLowerCase())'), 'classification must not use substring keyword matching');
   assert(statesRoute.includes('FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION'), 'review state route must stay parent-flag gated');
   assert(suggestRoute.includes('!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST'), 'reply suggestion must require both flags');
+  assertBefore(
+    statesRoute,
+    'if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION)',
+    'await checkRateLimit({',
+    'disabled review-state requests must stop before rate-limit work',
+  );
+  assertBefore(
+    statesRoute,
+    'if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION)',
+    'const db = admin.firestore();',
+    'disabled review-state requests must stop before Firestore work',
+  );
+  assertBefore(
+    suggestRoute,
+    'if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST)',
+    "await import('@lib/ops/safeMode')",
+    'disabled reply suggestions must stop before SAFE_MODE work',
+  );
+  assertBefore(
+    suggestRoute,
+    'if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST)',
+    'await checkRateLimit({',
+    'disabled reply suggestions must stop before rate-limit work',
+  );
+  assertBefore(
+    suggestRoute,
+    'if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST)',
+    'await checkAICapacity(',
+    'disabled reply suggestions must stop before AI-capacity work',
+  );
+  assertBefore(
+    suggestRoute,
+    'if (!FEATURE_FLAGS.ENABLE_REVIEWS_REPUTATION || !FEATURE_FLAGS.ENABLE_AI_REPLY_ASSIST)',
+    'await model.generateContent({',
+    'disabled reply suggestions must stop before provider work',
+  );
   assert(suggestRoute.includes("logRuntimeFailure('review_reply_generation_failed'"), 'provider fallback must emit bounded failure diagnostics');
   assert(suggestRoute.includes('usedFallback: true'), 'provider fallback diagnostics must identify fallback use');
   assert(firestoreRules.includes('match /reviewsState/{docId}'), 'review state rules must use the flat collection');
@@ -101,6 +146,17 @@ function verifySourceBoundary() {
   assert(statesRoute.includes('.where("sId", "==", storeId)'), 'review state route must scope the flat collection by store');
   assert(reviewTypes.includes('Collection: reviewsState/{reviewId}; tenant/store ownership lives in tId/sId fields'), 'review state type must document the flat persisted contract');
   assert(databaseConstants.includes('Path: reviewsState/{reviewId}; tId/sId fields own'), 'database constant must document the flat persisted contract');
+  const reviewsStateIndexSignatures = firestoreIndexes.indexes
+    .filter((index) => index.collectionGroup === 'reviewsState')
+    .map((index) => index.fields.map((field) => field.fieldPath).join(','))
+    .sort();
+  assert(
+    JSON.stringify(reviewsStateIndexSignatures) === JSON.stringify([
+      'tId,sId,blockActive,autoExpiresAt',
+      'tId,sId,escalationActive,autoExpiresAt',
+    ]),
+    'reviewsState must retain only the two composites required by the dormant bounded state queries',
+  );
   assert(!implementationDoc.includes('reviewsState/{tId}/{sId}/{reviewId}'), 'maintained implementation docs must not describe a nested state collection');
   assert(featureFlags.includes('ENABLE_REVIEWS_REPUTATION: false'), 'reviews master flag must remain disabled');
   assert(featureFlags.includes('ENABLE_AI_REPLY_ASSIST: false'), 'reply-assist flag must remain disabled');
@@ -113,7 +169,8 @@ function verifySourceBoundary() {
   assert(protectionMarketing.includes('HOLD — NOT CURRENT SALES ENABLEMENT'), 'reputation marketing copy must remain on hold');
   assert(protectionMobile.includes('No mobile reputation screen or detail sheet exists.'), 'mobile docs must record missing review surfaces');
   assert(protectionMobile.includes('Do not add or document `antd-mobile`'), 'mobile docs must reject the unavailable UI dependency');
-  assert(reviewsReadme.includes('product disabled until GBP API access granted'), 'reviews overview must retain disabled product status');
+  assert(reviewsReadme.includes('DORMANT, INCOMPLETE SCAFFOLDING'), 'reviews overview must retain incomplete dormant product status');
+  assert(reviewsReadme.includes('provider access alone is insufficient'), 'reviews overview must reject provider-only activation');
   assert(reviewsWebsite.includes('NOT APPROVED FOR PUBLICATION'), 'reviews website copy must remain publication-blocked');
   assert(reviewsHelp.includes('NOT AN ACTIVE CUSTOMER HELP ARTICLE'), 'reviews help copy must remain publication-blocked');
   assert(reviewsMarketing.includes('HISTORICAL HOLD'), 'reviews marketing copy must remain on hold');
@@ -121,6 +178,9 @@ function verifySourceBoundary() {
   assert(!fs.existsSync(path.join(ROOT, 'functions/src/reviews/reviewsIngestion.ts')), 'GBP review ingestion must not be claimed as an existing function');
   assert(!fs.existsSync(path.join(ROOT, 'functions/src/reviews/reviewsClassifier.ts')), 'review-state writer must not be claimed as an existing function');
   assert(!fs.existsSync(path.join(ROOT, 'src/app/api/reviews/reply/route.ts')), 'Google reply posting must not be claimed as an existing route');
+  assert(!featureFlags.includes('Cloud Function ingests reviews nightly'), 'feature flags must not claim absent review ingestion');
+  assert(!featureFlags.includes('Infrastructure is built and ready'), 'feature flags must not claim the dormant fragments are activation-ready');
+  assert(featureFlags.includes('There is no GBP review ingestion, persistence, dashboard mount, reply'), 'feature flags must record the missing review runtime');
 
   const activeSource = listRuntimeSourceFiles('src')
     .filter((relativePath) => !relativePath.endsWith('reviews/ReputationGuard.tsx') && !relativePath.endsWith('reviews/ReviewReplyTool.tsx'))

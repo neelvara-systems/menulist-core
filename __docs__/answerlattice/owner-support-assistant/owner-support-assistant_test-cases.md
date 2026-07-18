@@ -30,6 +30,8 @@
 | Flag disabled, route | Direct route shows unavailable or redirects without assistant reads. |
 | Flag disabled, API | Query endpoint returns disabled response before Firestore reads. |
 | Flag enabled | Route, nav, and API become available to permitted Answerlattice users. |
+| Action flag disabled | No Prepare review card action is shown; governed route links remain available. |
+| Action flag enabled | Only eligible launch/release actions can open the existing Support Board form with bounded prefill values; opening the form performs no write. |
 
 ---
 
@@ -68,10 +70,10 @@
 
 | Case | Expected result |
 | --- | --- |
-| Cold initial load | Exactly five compact summary reads, no list scan, listener, provider call, or write. |
+| Cold initial load | Exactly six compact summary reads, no list scan, listener, provider call, or write. |
 | Warm summary query | Reuses the 60-second in-process packet and performs zero Firestore reads. |
 | Unsupported query | Uses the same summary packet only and performs no detail fetch or provider call. |
-| Any query | Creates no transcript, feedback, assistant summary, AI operation, action, or analytics record. |
+| Any query | Creates no transcript, feedback, assistant summary, AI operation, action, or analytics record. A flagged form prefill still performs no write. |
 | Concurrent workspaces | Cache key includes exact tenant and store scope; one workspace cannot reuse another packet. |
 | Cache growth | Process cache remains capped at 300 workspace packets. |
 

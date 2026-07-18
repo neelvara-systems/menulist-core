@@ -14,6 +14,7 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import useCustomerAppDashboard from '@hook/useCustomerAppDashboard';
+import { formatNumber } from '@util/formatters';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuDownload, LuEye, LuRocket, LuSmartphone, LuStar } from 'react-icons/lu';
@@ -136,21 +137,21 @@ export default function MobileCustomerAppMetrics() {
                         <LuDownload color={token.colorSuccess} size={14} />
                         <Text type="secondary">{t('customerApp.installed')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{installedCustomers.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(installedCustomers)}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuEye color={token.colorInfo} size={14} />
                         <Text type="secondary">{t('customerApp.appOpens30d')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{appOpens30d.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(appOpens30d)}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuRocket color={token.colorWarning} size={14} />
                         <Text type="secondary">{t('customerApp.installs30d')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{installs30d.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(installs30d)}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
@@ -172,13 +173,13 @@ export default function MobileCustomerAppMetrics() {
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Text type="secondary">{t('customerApp.totalShortcutUses')}</Text>
-                    <Title level={3} style={{ margin: 0 }}>{totalShortcutUses.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(totalShortcutUses)}</Title>
                 </Card>
             </Flex>
 
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 12 }}>
                 {iosManualInstalls > 0
-                    ? t('customerApp.mobileIosInferredWithCount', { count: iosManualInstalls.toLocaleString() })
+                    ? t('customerApp.mobileIosInferredWithCount', { count: formatNumber(iosManualInstalls) })
                     : t('customerApp.mobileIosInferredNoCount')}
             </Text>
 

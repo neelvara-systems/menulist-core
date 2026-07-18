@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 import {
     isProjectSlugClaimed,
+    isRecentlyDeletedProjectSlugReservation,
     resolveAvailableProjectSlug,
 } from "../../src/lib/menu/projectSlugOwnership";
 
@@ -37,5 +38,40 @@ assert.equal(
     }, "lunch-menu", "stable-id"),
     "lunch-menu-stable-id-2",
 );
+
+const cutoffMillis = Date.UTC(2026, 3, 1);
+const recentDeletion = { toMillis: () => cutoffMillis + 1 };
+const oldDeletion = { toMillis: () => cutoffMillis - 1 };
+
+assert.equal(isRecentlyDeletedProjectSlugReservation({
+    deleted: true,
+    deletedAt: recentDeletion,
+    slug: "Lunch",
+}, "lunch", cutoffMillis), true);
+assert.equal(isRecentlyDeletedProjectSlugReservation({
+    deleted: true,
+    deletedAt: recentDeletion,
+    previousSlugs: ["Breakfast", "OLD-LUNCH"],
+}, "old-lunch", cutoffMillis), true);
+assert.equal(isRecentlyDeletedProjectSlugReservation({
+    deleted: false,
+    deletedAt: recentDeletion,
+    slug: "lunch",
+}, "lunch", cutoffMillis), false);
+assert.equal(isRecentlyDeletedProjectSlugReservation({
+    deleted: true,
+    deletedAt: oldDeletion,
+    slug: "lunch",
+}, "lunch", cutoffMillis), false);
+assert.equal(isRecentlyDeletedProjectSlugReservation({
+    deleted: true,
+    deletedAt: { toMillis: () => Number.NaN },
+    slug: "lunch",
+}, "lunch", cutoffMillis), false);
+assert.equal(isRecentlyDeletedProjectSlugReservation({
+    deleted: true,
+    deletedAt: new Date(cutoffMillis + 1),
+    slug: "dinner",
+}, "lunch", cutoffMillis), false);
 
 console.log("Project slug ownership tests passed.");

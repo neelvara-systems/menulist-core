@@ -25,10 +25,15 @@ import {
 import { normalizeAiMenuManagerScopeDocumentId } from '@lib/ai-menu-manager/routeIds';
 import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
 import {
+    assertAiMenuManagerPreparedOperationGroup,
     resolveCurrentAiMenuManagerOperation,
     resolveCurrentAiMenuManagerOperationGroup,
 } from '@lib/ai-menu-manager/pendingOperationIntegrity';
-import { normalizeAiMenuManagerSessionSnapshot } from '@lib/ai-menu-manager/sessionIntegrity';
+import {
+    buildAiMenuManagerPendingState,
+    normalizeAiMenuManagerSessionSnapshot,
+    prepareAiMenuManagerSessionWrite,
+} from '@lib/ai-menu-manager/sessionIntegrity';
 import { applyAiMenuManagerProjectPatch } from '@lib/ai-menu-manager/actions/projectPatches';
 import { listAiMenuManagerExecutableActions } from '@lib/ai-menu-manager/actionRegistry';
 import {
@@ -555,6 +560,7 @@ async function sendAiMenuManagerServerCommand(
         idempotencyKey: request.idempotencyKey || createAiMenuManagerIdempotencyKey('amm_cmd'),
     };
     if (request.sessionId) body.sessionId = request.sessionId;
+    if (request.sessionDate) body.sessionDate = request.sessionDate;
     if (request.text !== undefined) body.text = request.text;
     if (request.uploadRefs?.length) body.uploadRefs = request.uploadRefs;
     if (request.composerContext) body.composerContext = request.composerContext;
@@ -633,6 +639,28 @@ function buildServerBackedOperations(params: {
     }));
 }
 
+function buildClientInboxFromServer(params: {
+    inbox: AiMenuManagerInboxResponse & { sessionId: string };
+    projectId: string;
+    scope: ClientScope;
+}): AiMenuManagerClientInboxResponse {
+    const session = normalizeAiMenuManagerSessionSnapshot(params.inbox.session);
+    const directOperations = normalizeOperations(session, params.projectId);
+    const directOperationIds = new Set(directOperations.map((operation) => operation.operationId));
+    const serverOperations = buildServerBackedOperations({
+        cards: params.inbox.cards,
+        projectId: params.projectId,
+        scope: params.scope,
+        sessionId: params.inbox.sessionId,
+    }).filter((operation) => !directOperationIds.has(operation.operationId));
+    return {
+        ...params.inbox,
+        session,
+        operations: [...directOperations, ...serverOperations],
+        receipts: session?.recentReceiptSummaries || params.inbox.receipts || [],
+    };
+}
+
 async function sendAiMenuManagerServerBackedCommand(
     request: AiMenuManagerClientCommandRequest,
     scope: ClientScope,
@@ -663,7 +691,18 @@ export async function sendAiMenuManagerCommand(
     if (!text) throw new Error('Tell Menu Manager what changed');
 
     const scope = await resolveClientScope(request.storeId);
-    const sessionDate = todaySessionDate();
+    const reusableSession = request.sessionId && request.sessionSnapshot?.sessionDate
+        ? getMatchingSessionSnapshot({
+            sessionId: request.sessionId,
+            sessionDate: request.sessionSnapshot.sessionDate,
+            scope,
+            projectId: request.projectId,
+            snapshot: request.sessionSnapshot,
+        })
+        : null;
+    const sessionDate = reusableSession?.hasPendingOperations
+        ? reusableSession.sessionDate
+        : todaySessionDate();
     const sessionId = buildSessionId({
         sessionId: request.sessionId,
         sessionDate,
@@ -736,6 +775,7 @@ export async function sendAiMenuManagerCommand(
                 return sendAiMenuManagerServerBackedCommand({
                     ...request,
                     idempotencyKey,
+                    sessionDate,
                 }, scope);
             }
             throw error;
@@ -995,48 +1035,51 @@ export async function sendAiMenuManagerCommand(
                 ...retainedOperations,
             ].slice(0, MAX_PENDING_OPERATIONS);
             const recentReceiptSummaries = (currentSession?.recentReceiptSummaries || []).slice(0, MAX_RECEIPTS);
-            const nextSession: AiMenuManagerSessionDoc = sanitizeAiMenuManagerFirestoreValue({
-                sessionId,
-                tId: scope.tId,
-                sId: scope.sId,
-                projectId: request.projectId,
-                sessionDate,
-                storageMode: FEATURE_FLAGS.AI_MENU_MANAGER_SESSION_STORAGE_MODE,
-                status: 'active',
-                compactMessages: compactMessages({
-                    existing: currentSession?.compactMessages,
-                    ownerText: text,
-                    managerText: newOperations.length > 1
-                        ? `Prepared ${newOperations.length} updates. Review them, then approve together.`
-                        : ['answer', 'clarification', 'unsupported'].includes(newOperations[0].card.kind)
-                            ? newOperations[0].card.message
-                            : newOperations[0].card.title,
-                    messageId: commandGroupId || newOperations[0].operationId,
+            const nextSession: AiMenuManagerSessionDoc = prepareAiMenuManagerSessionWrite(
+                sanitizeAiMenuManagerFirestoreValue({
+                    sessionId,
+                    tId: scope.tId,
+                    sId: scope.sId,
+                    projectId: request.projectId,
+                    sessionDate,
+                    storageMode: FEATURE_FLAGS.AI_MENU_MANAGER_SESSION_STORAGE_MODE,
+                    status: 'active',
+                    compactMessages: compactMessages({
+                        existing: currentSession?.compactMessages,
+                        ownerText: text,
+                        managerText: newOperations.length > 1
+                            ? `Prepared ${newOperations.length} updates. Review them, then approve together.`
+                            : ['answer', 'clarification', 'unsupported'].includes(newOperations[0].card.kind)
+                                ? newOperations[0].card.message
+                                : newOperations[0].card.title,
+                        messageId: commandGroupId || newOperations[0].operationId,
+                    }),
+                    pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
+                    pendingOperations,
+                    recentReceiptSummaries,
+                    counters: {
+                        ...(currentSession?.counters || {}),
+                        commands: (currentSession?.counters?.commands || 0) + 1,
+                        proposalsCreated: (currentSession?.counters?.proposalsCreated || 0)
+                            + newOperations.filter((operation) => operation.card.kind === 'proposal').length,
+                        approvals: currentSession?.counters?.approvals || 0,
+                        executions: currentSession?.counters?.executions || 0,
+                        compoundCommands: (currentSession?.counters?.compoundCommands || 0) + (compoundParts ? 1 : 0),
+                        deterministicRoutes: (currentSession?.counters?.deterministicRoutes || 0) + (usedDeterministicRoute ? 1 : 0),
+                        plannerAttempts: (currentSession?.counters?.plannerAttempts || 0) + (plannerAttempted ? 1 : 0),
+                        plannerAccepted: (currentSession?.counters?.plannerAccepted || 0) + (plannerAccepted ? 1 : 0),
+                        plannerFallbacks: (currentSession?.counters?.plannerFallbacks || 0)
+                            + (plannerAttempted && !plannerAccepted ? 1 : 0),
+                        clarifications: (currentSession?.counters?.clarifications || 0)
+                            + newOperations.filter((operation) => operation.card.kind === 'clarification').length,
+                    },
+                    artifactRefs: (currentSession?.artifactRefs || []).slice(0, 20),
+                    createdAt: currentSession?.createdAt || createdAt,
+                    updatedAt: createdAt,
+                    expiresAt: Timestamp.fromDate(ttlDate(SESSION_TTL_DAYS)),
                 }),
-                pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
-                pendingOperations,
-                recentReceiptSummaries,
-                counters: {
-                    ...(currentSession?.counters || {}),
-                    commands: (currentSession?.counters?.commands || 0) + 1,
-                    proposalsCreated: (currentSession?.counters?.proposalsCreated || 0)
-                        + newOperations.filter((operation) => operation.card.kind === 'proposal').length,
-                    approvals: currentSession?.counters?.approvals || 0,
-                    executions: currentSession?.counters?.executions || 0,
-                    compoundCommands: (currentSession?.counters?.compoundCommands || 0) + (compoundParts ? 1 : 0),
-                    deterministicRoutes: (currentSession?.counters?.deterministicRoutes || 0) + (usedDeterministicRoute ? 1 : 0),
-                    plannerAttempts: (currentSession?.counters?.plannerAttempts || 0) + (plannerAttempted ? 1 : 0),
-                    plannerAccepted: (currentSession?.counters?.plannerAccepted || 0) + (plannerAccepted ? 1 : 0),
-                    plannerFallbacks: (currentSession?.counters?.plannerFallbacks || 0)
-                        + (plannerAttempted && !plannerAccepted ? 1 : 0),
-                    clarifications: (currentSession?.counters?.clarifications || 0)
-                        + newOperations.filter((operation) => operation.card.kind === 'clarification').length,
-                },
-                artifactRefs: (currentSession?.artifactRefs || []).slice(0, 20),
-                createdAt: currentSession?.createdAt || createdAt,
-                updatedAt: createdAt,
-                expiresAt: Timestamp.fromDate(ttlDate(SESSION_TTL_DAYS)),
-            });
+                currentSession,
+            );
             const sessionPayload: Partial<AiMenuManagerSessionDoc> = sanitizeAiMenuManagerFirestoreValue({
                 ...nextSession,
                 updatedAt: serverTimestamp(),
@@ -1054,6 +1097,7 @@ export async function sendAiMenuManagerCommand(
             return sendAiMenuManagerServerBackedCommand({
                 ...request,
                 idempotencyKey,
+                sessionDate,
             }, scope);
         }
         throw error;
@@ -1099,23 +1143,24 @@ export async function getAiMenuManagerClientInbox(params: {
                 sessionId,
                 storeId: params.storeId,
             });
-            return {
-                ...inbox,
-                operations: buildServerBackedOperations({
-                    cards: inbox.cards,
-                    projectId: params.projectId,
-                    scope,
-                    sessionId: inbox.sessionId,
-                }),
-            };
+            return buildClientInboxFromServer({ inbox, projectId: params.projectId, scope });
         }
         throw error;
     }
     const session = normalizeAiMenuManagerSessionSnapshot(sessionSnap.exists() ? sessionSnap.data() : null);
 
+    if (!session) {
+        const inbox = await getAiMenuManagerServerInbox({
+            projectId: params.projectId,
+            sessionDate: params.sessionDate,
+            sessionId,
+            storeId: params.storeId,
+        });
+        return buildClientInboxFromServer({ inbox, projectId: params.projectId, scope });
+    }
+
     if (
-        !session
-        || session.sessionId !== sessionId
+        session.sessionId !== sessionId
         || normalizeId(session.tId) !== normalizeId(scope.tId)
         || normalizeId(session.sId) !== normalizeId(scope.sId)
         || normalizeId(session.projectId) !== normalizeId(params.projectId)
@@ -1201,17 +1246,7 @@ export function buildAiMenuManagerClientBatchExecution(params: {
         throw new Error('At least two prepared updates are needed');
     }
 
-    const commandGroupId = params.operations[0].commandGroupId;
-    if (
-        !commandGroupId
-        || params.operations.some((operation) => (
-            operation.commandGroupId !== commandGroupId
-            || operation.sessionId !== params.operations[0].sessionId
-            || normalizeId(operation.projectId) !== normalizeId(params.operations[0].projectId)
-        ))
-    ) {
-        throw new Error('Prepared updates no longer belong to the same request');
-    }
+    assertAiMenuManagerPreparedOperationGroup(params.operations);
 
     const patches = params.operations.map((operation) => operation.patch).filter(Boolean);
     if (
@@ -1297,7 +1332,7 @@ export async function completeAiMenuManagerClientOperations(params: {
             executions: (session.counters?.executions || 0)
                 + (params.result === 'executed' ? canonicalOperations.length : 0),
         };
-        const nextSession = {
+        const nextSession = prepareAiMenuManagerSessionWrite({
             ...session,
             compactMessages: compactMessagesWithReceipts,
             pendingOperations,
@@ -1305,13 +1340,14 @@ export async function completeAiMenuManagerClientOperations(params: {
             recentReceiptSummaries,
             counters,
             updatedAt: nowIso(),
-        } as AiMenuManagerSessionDoc;
+        } as AiMenuManagerSessionDoc, session);
 
         transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
-            compactMessages: compactMessagesWithReceipts,
+            compactMessages: nextSession.compactMessages,
             pendingOperations,
             pendingCardSummaries: nextSession.pendingCardSummaries,
-            recentReceiptSummaries,
+            recentReceiptSummaries: nextSession.recentReceiptSummaries,
+            ...buildAiMenuManagerPendingState(nextSession),
             counters,
             updatedAt: serverTimestamp(),
         }), { merge: true });
@@ -1386,7 +1422,7 @@ export async function completeAiMenuManagerClientOperation(params: {
             approvals: (session.counters?.approvals || 0) + (params.result === 'manual_task' ? 0 : 1),
             executions: (session.counters?.executions || 0) + (params.result === 'executed' ? 1 : 0),
         };
-        const nextSession = {
+        const nextSession = prepareAiMenuManagerSessionWrite({
             ...session,
             compactMessages: appendCompactReceipt(session.compactMessages, receipt),
             pendingOperations,
@@ -1394,13 +1430,14 @@ export async function completeAiMenuManagerClientOperation(params: {
             recentReceiptSummaries,
             counters,
             updatedAt: nowIso(),
-        } as AiMenuManagerSessionDoc;
+        } as AiMenuManagerSessionDoc, session);
 
         transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
             compactMessages: nextSession.compactMessages,
             pendingOperations,
             pendingCardSummaries: nextSession.pendingCardSummaries,
-            recentReceiptSummaries,
+            recentReceiptSummaries: nextSession.recentReceiptSummaries,
+            ...buildAiMenuManagerPendingState(nextSession),
             counters,
             updatedAt: serverTimestamp(),
         }), { merge: true });
@@ -1425,16 +1462,17 @@ export async function cancelAiMenuManagerClientOperation(params: {
         );
         const pendingOperations = normalizeOperations(session, params.operation.projectId)
             .filter((entry) => entry.operationId !== params.operation.operationId);
-        const nextSession = {
+        const nextSession = prepareAiMenuManagerSessionWrite({
             ...session,
             pendingOperations,
             pendingCardSummaries: pendingOperations.map(buildPendingSummary).slice(0, MAX_PENDING_SUMMARIES),
             updatedAt: nowIso(),
-        } as AiMenuManagerSessionDoc;
+        } as AiMenuManagerSessionDoc, session);
 
         transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
             pendingOperations,
             pendingCardSummaries: nextSession.pendingCardSummaries,
+            ...buildAiMenuManagerPendingState(nextSession),
             updatedAt: serverTimestamp(),
         }), { merge: true });
 

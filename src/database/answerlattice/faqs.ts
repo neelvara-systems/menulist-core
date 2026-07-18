@@ -16,7 +16,7 @@ import {
 } from '@firebase/firestore';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { bumpAnswerlatticeCacheVersion } from '@lib/answerlattice/cacheVersionClient';
+import { appendAnswerlatticeCacheInvalidation } from '@lib/answerlattice/cacheVersionClient';
 import { ANSWERLATTICE_CACHE_SOURCES } from '@lib/answerlattice/cacheVersionManifest';
 import {
     ANSWERLATTICE_FAQ_ARTICLE_LINK_LIMIT,
@@ -151,18 +151,6 @@ const buildFaqQuery = (
     );
 };
 
-const bumpFaqVersion = async (
-    scope: { tId: number; sId: number },
-    reason: string,
-    sourceId?: string,
-) => {
-    await bumpAnswerlatticeCacheVersion(ANSWERLATTICE_CACHE_SOURCES.KB, scope.tId, scope.sId, {
-        reason,
-        sourceId,
-        sourceType: 'answerlattice_faq',
-    });
-};
-
 export const getFaqsForSession = async (
     statuses?: AnswerlatticeFaqStatus[],
     maxResults = ANSWERLATTICE_FAQ_MANAGEMENT_LIMIT,
@@ -286,6 +274,17 @@ export const saveFaq = async (input: unknown) => {
                         reviewRequestedOn: null,
                     } : {}),
                 };
+                appendAnswerlatticeCacheInvalidation(
+                    transaction,
+                    ANSWERLATTICE_CACHE_SOURCES.KB,
+                    scope.tId,
+                    scope.sId,
+                    {
+                        reason: isNew ? 'faq_create' : 'faq_update',
+                        sourceId: faqRef.id,
+                        sourceType: 'answerlattice_faq',
+                    },
+                );
                 transaction.set(faqRef, composedData, { merge: true });
 
                 const shouldRemovePrevious = Boolean(
@@ -306,7 +305,6 @@ export const saveFaq = async (input: unknown) => {
                 }
                 return { composedData, isNew };
             });
-            await bumpFaqVersion(scope, transactionResult.isNew ? 'faq_create' : 'faq_update', faqRef.id);
             await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'saveFaq');
             return {
                 ...transactionResult.composedData,
@@ -359,6 +357,13 @@ export const archiveFaq = async (faqId: string) => {
                         throw new Error('Linked article is outside this Answerlattice workspace.');
                     }
                 }
+                appendAnswerlatticeCacheInvalidation(
+                    transaction,
+                    ANSWERLATTICE_CACHE_SOURCES.KB,
+                    scope.tId,
+                    scope.sId,
+                    { reason: 'faq_archive', sourceId: normalizedFaqId, sourceType: 'answerlattice_faq' },
+                );
                 transaction.set(faqRef, composedData, { merge: true });
                 if (linkedArticleRef && linkedArticleSnap?.exists()) {
                     transaction.update(linkedArticleRef, {
@@ -367,7 +372,6 @@ export const archiveFaq = async (faqId: string) => {
                     });
                 }
             });
-            await bumpFaqVersion(scope, 'faq_archive', normalizedFaqId);
             await revalidateAnswerlatticePublicClientCache(scope, ['faqs', 'kb', 'context'], 'archiveFaq');
             return {
                 id: normalizedFaqId,

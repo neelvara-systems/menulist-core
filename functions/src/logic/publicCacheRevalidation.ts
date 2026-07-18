@@ -14,6 +14,12 @@ type PublicCacheRevalidationOptions = {
     touchDigitalScreen?: boolean;
 };
 
+export type PublicCacheRevalidationResult = {
+    cacheRevalidated: boolean;
+    screenTouchAttempted: boolean;
+    screenTouchSucceeded: boolean;
+};
+
 function boundedDiagnosticValue(value: unknown): string | number | null {
     if (typeof value === 'number' && Number.isFinite(value)) return value;
     if (typeof value === 'string') {
@@ -48,7 +54,7 @@ function getPublicCacheTargetContext(result: { addressCount?: number; error?: st
     };
 }
 
-async function touchDigitalScreenContentVersionForStore(normalizedStoreId: string, context: string): Promise<void> {
+async function touchDigitalScreenContentVersionForStore(normalizedStoreId: string, context: string): Promise<boolean> {
     try {
         const screenRef = firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -76,17 +82,18 @@ async function touchDigitalScreenContentVersionForStore(normalizedStoreId: strin
                 contentVersion: nextContentVersion,
                 enabled: screen.enabled === true,
                 lastContentChangeAt: now,
-                screenToken: screen.screenToken,
                 storeId: String(normalizedStoreId),
                 updatedAt: now,
             }, { merge: false });
         });
+        return true;
     } catch (error: unknown) {
         functions.logger.warn('[publicCacheRevalidation] Digital screen version touch failed', {
             failureCode: PUBLIC_CACHE_SCREEN_TOUCH_FAILED_CODE,
             ...getPublicCacheRequestContext(normalizedStoreId, context),
             ...getPublicCacheErrorContext(error),
         });
+        return false;
     }
 }
 
@@ -94,12 +101,19 @@ export async function revalidatePublicClientCacheForStore(
     storeId: string | number,
     context: string,
     options: PublicCacheRevalidationOptions = {},
-): Promise<void> {
+): Promise<PublicCacheRevalidationResult> {
     const normalizedStoreId = String(storeId || '').trim();
-    if (!normalizedStoreId) return;
+    if (!normalizedStoreId) {
+        return {
+            cacheRevalidated: false,
+            screenTouchAttempted: false,
+            screenTouchSucceeded: false,
+        };
+    }
 
     const appBaseUrl = process.env.NEXT_PUBLIC_APP_URL;
     const revalidationSecret = process.env.REVALIDATION_SECRET;
+    let cacheRevalidated = false;
 
     if (!appBaseUrl || !revalidationSecret) {
         functions.logger.warn('[publicCacheRevalidation] Skipping public cache revalidation; app URL or secret is not configured', {
@@ -108,49 +122,57 @@ export async function revalidatePublicClientCacheForStore(
             hasAppBaseUrl: Boolean(appBaseUrl),
             hasRevalidationSecret: Boolean(revalidationSecret),
         });
-        return;
-    }
-
-    try {
-        const revalidateUrl = new URL('/api/revalidate/menu', appBaseUrl).toString();
-        const targetValidation = await validateNetworkTargetUrl(revalidateUrl, {
-            allowLocalhostInEmulator: true,
-            allowedProtocols: process.env.FUNCTIONS_EMULATOR === 'true' ? ['http:', 'https:'] : ['https:'],
-        });
-
-        if (!targetValidation.valid || !targetValidation.normalizedUrl) {
-            functions.logger.warn('[publicCacheRevalidation] Public cache revalidation target rejected', {
-                failureCode: PUBLIC_CACHE_REVALIDATION_TARGET_REJECTED_CODE,
-                ...getPublicCacheRequestContext(normalizedStoreId, context),
-                ...getPublicCacheTargetContext(targetValidation),
-            });
-        } else {
-            const response = await fetch(targetValidation.normalizedUrl, {
-                method: 'POST',
-                headers: {
-                    'content-type': 'application/json',
-                    'x-revalidate-secret': revalidationSecret,
-                },
-                body: JSON.stringify({ storeId: normalizedStoreId }),
+    } else {
+        try {
+            const revalidateUrl = new URL('/api/revalidate/menu', appBaseUrl).toString();
+            const targetValidation = await validateNetworkTargetUrl(revalidateUrl, {
+                allowLocalhostInEmulator: true,
+                allowedProtocols: process.env.FUNCTIONS_EMULATOR === 'true' ? ['http:', 'https:'] : ['https:'],
             });
 
-            if (!response.ok) {
-                functions.logger.warn('[publicCacheRevalidation] Public cache revalidation failed', {
-                    failureCode: PUBLIC_CACHE_REVALIDATION_REQUEST_FAILED_CODE,
+            if (!targetValidation.valid || !targetValidation.normalizedUrl) {
+                functions.logger.warn('[publicCacheRevalidation] Public cache revalidation target rejected', {
+                    failureCode: PUBLIC_CACHE_REVALIDATION_TARGET_REJECTED_CODE,
                     ...getPublicCacheRequestContext(normalizedStoreId, context),
-                    status: response.status,
+                    ...getPublicCacheTargetContext(targetValidation),
                 });
+            } else {
+                const response = await fetch(targetValidation.normalizedUrl, {
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-revalidate-secret': revalidationSecret,
+                    },
+                    body: JSON.stringify({ storeId: normalizedStoreId }),
+                });
+
+                if (!response.ok) {
+                    functions.logger.warn('[publicCacheRevalidation] Public cache revalidation failed', {
+                        failureCode: PUBLIC_CACHE_REVALIDATION_REQUEST_FAILED_CODE,
+                        ...getPublicCacheRequestContext(normalizedStoreId, context),
+                        status: response.status,
+                    });
+                } else {
+                    cacheRevalidated = true;
+                }
             }
+        } catch (error: unknown) {
+            functions.logger.warn('[publicCacheRevalidation] Public cache revalidation errored', {
+                failureCode: PUBLIC_CACHE_REVALIDATION_REQUEST_ERRORED_CODE,
+                ...getPublicCacheRequestContext(normalizedStoreId, context),
+                ...getPublicCacheErrorContext(error),
+            });
         }
-    } catch (error: unknown) {
-        functions.logger.warn('[publicCacheRevalidation] Public cache revalidation errored', {
-            failureCode: PUBLIC_CACHE_REVALIDATION_REQUEST_ERRORED_CODE,
-            ...getPublicCacheRequestContext(normalizedStoreId, context),
-            ...getPublicCacheErrorContext(error),
-        });
     }
 
+    let screenTouchSucceeded = false;
     if (options.touchDigitalScreen === true) {
-        await touchDigitalScreenContentVersionForStore(normalizedStoreId, context);
+        screenTouchSucceeded = await touchDigitalScreenContentVersionForStore(normalizedStoreId, context);
     }
+
+    return {
+        cacheRevalidated,
+        screenTouchAttempted: options.touchDigitalScreen === true,
+        screenTouchSucceeded,
+    };
 }

@@ -5,6 +5,11 @@ import {
     normalizeAnswerlatticeInternalNote,
     parseAnswerlatticeChatSessionDocument,
 } from '../../src/lib/answerlattice/chatSessionContracts';
+import {
+    collectAnswerlatticeChatImageUrls,
+    filterUnreferencedAnswerlatticeChatImageUrls,
+    isAnswerlatticeChatImageStoragePath,
+} from '../../src/lib/answerlattice/chatMediaReferences';
 import { Timestamp } from 'firebase/firestore';
 
 const message = (id: string, role: 'user' | 'assistant' = 'user') => ({
@@ -78,10 +83,48 @@ assert.throws(() => normalizeAnswerlatticeChatMessagesForStorage([{
     ...message('message-with-time'),
     createdOn: '2026-07-11T00:00:00.000Z',
 }]), /message_timestamp_invalid/);
+assert.throws(() => normalizeAnswerlatticeChatMessagesForStorage([{
+    ...message('invalid-image-size'),
+    image: { url: 'https://example.com/image.png', size: Number.NaN },
+}]), /chat_image_invalid/);
+assert.deepEqual(normalizeAnswerlatticeChatMessagesForStorage([{
+    ...message('bounded-image'),
+    image: { url: 'https://example.com/image.png', type: 'image/png' },
+}])[0].image, {
+    url: 'https://example.com/image.png',
+    source: 'https://example.com/image.png',
+    type: 'image/png',
+});
 
 assert.deepEqual(normalizeAnswerlatticeInternalNote({ type: 'doc', content: [] }), { type: 'doc', content: [] });
 assert.equal(normalizeAnswerlatticeInternalNote('Legacy plain-text note'), 'Legacy plain-text note');
 assert.throws(() => normalizeAnswerlatticeInternalNote('   '), /internal_note_invalid/);
 assert.throws(() => normalizeAnswerlatticeInternalNote('x'.repeat(33 * 1024)), /internal_note_invalid/);
+
+const sharedImageUrl = 'https://firebasestorage.googleapis.com/v0/b/example/o/shared.png';
+const removedImageUrl = 'https://firebasestorage.googleapis.com/v0/b/example/o/removed.png';
+assert.deepEqual(collectAnswerlatticeChatImageUrls({
+    messages: [
+        { image: { url: sharedImageUrl, source: sharedImageUrl } },
+        { image: { url: removedImageUrl, source: 'data:image/png;base64,AA==' } },
+        { image: { url: '  ' } },
+    ],
+}), [sharedImageUrl, removedImageUrl]);
+assert.deepEqual(filterUnreferencedAnswerlatticeChatImageUrls(
+    [removedImageUrl, sharedImageUrl, removedImageUrl, 'data:image/png;base64,AA=='],
+    { messages: [{ image: { source: sharedImageUrl } }] },
+), [removedImageUrl], 'branch cleanup must preserve URLs retained by another message');
+assert.equal(isAnswerlatticeChatImageStoragePath(
+    'chatSessions/chatimages/71/701/upload.png',
+    { tId: 71, sId: 701 },
+), true);
+assert.equal(isAnswerlatticeChatImageStoragePath(
+    'chatSessions/chatimages/71/702/upload.png',
+    { tId: 71, sId: 701 },
+), false);
+assert.equal(isAnswerlatticeChatImageStoragePath(
+    'supportTickets/documents/71/701/upload.png',
+    { tId: 71, sId: 701 },
+), false);
 
 process.stdout.write('Answerlattice chat-session runtime contracts passed.\n');

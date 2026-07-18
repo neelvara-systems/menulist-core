@@ -481,7 +481,9 @@ export function normalizePersistedImageBatchJob(
         projectId: projectScope.projectId,
         ...(projectJobKey ? { projectJobKey } : {}),
         requestedItemIds,
-        ...(value.selectedImagesPersisted === true ? { selectedImagesPersisted: true } : {}),
+        ...(typeof value.selectedImagesPersisted === 'boolean'
+            ? { selectedImagesPersisted: value.selectedImagesPersisted }
+            : {}),
         status: value.status,
         statusHistory,
         totalImages: Number(value.totalImages),

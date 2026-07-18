@@ -1,6 +1,7 @@
 # B2C View (Theme Builder) — Help Documentation
 
 **Status:** Source-backed help copy; not current launch certification
+**Last Updated:** July 16, 2026
 
 ## Quick Summary
 
@@ -39,6 +40,12 @@ MenuList checks contrast for public menu colors so customer text stays readable.
 
 Some layouts may not appear for every mood. MenuList only shows compatible choices.
 
+- Clean: List or Grid
+- Warm: List, Card, or Grid
+- Premium: List or Card
+- Bold: Card or Grid
+- Fast: List
+
 ### How to use category tabs
 
 1. Open the display settings.
@@ -53,6 +60,12 @@ Category tabs control customer navigation. They are separate from the selected l
 2. Upload the logo or background image.
 3. Check the customer menu preview.
 4. Save or publish.
+
+Before publish, the owner preview may temporarily use the prepared local image. The public menu uses the uploaded secure image URL and avoids a fixed/parallax background on mobile.
+
+### How option prices appear
+
+When price display is on, customers see a base price or active option range in the menu list. Each active priced option is also shown before the customer opens the item. Inactive or blank-price options are omitted. Turning menu prices off hides price-driven presentation consistently.
 
 ---
 
@@ -69,6 +82,10 @@ The selected mood may not support that layout. Pick one of the layouts MenuList 
 ### Preview looks different from the actual customer menu
 
 The preview is close, but the customer menu is the final source. Scan your QR code on your phone after publishing and check the customer view.
+
+### A large menu link or search result does not open
+
+Publish the latest project and retry the current public link. Current menus keep all active items addressable for search, category navigation, and direct item links; if the issue remains, record the exact link and browser for support.
 
 ---
 

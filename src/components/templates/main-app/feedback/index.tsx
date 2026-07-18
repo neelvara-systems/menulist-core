@@ -120,11 +120,12 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
 
             // Update local state
             setFeedbackItems(prev =>
-                prev.map(item =>
-                    item.id === feedbackId
-                        ? { ...item, status, needsAttention: updated.needsAttention, modifiedOn: updated.modifiedOn }
-                        : item
-                )
+                prev.flatMap(item => {
+                    if (item.id !== feedbackId) return [item];
+                    if (filter === 'needs_attention' && status === 'resolved') return [];
+                    if (filter === 'resolved' && status === 'new') return [];
+                    return [{ ...item, status, needsAttention: updated.needsAttention, modifiedOn: updated.modifiedOn }];
+                })
             );
 
             // Update needs attention count
@@ -147,10 +148,6 @@ export const FeedbackInbox: React.FC<FeedbackInboxProps> = ({
                 ...getBoundedFeedbackInboxStringContext('projectId', projectId),
                 ...getBoundedFeedbackInboxStringContext('status', status),
                 visibleFeedbackCount: feedbackItems.length,
-            });
-            notification.error({
-                message: 'Error',
-                description: 'Failed to update feedback',
             });
             throw error;
         }

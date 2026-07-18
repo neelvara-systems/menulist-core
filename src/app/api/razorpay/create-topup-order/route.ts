@@ -2,6 +2,13 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
+    claimBillingCheckoutLease,
+    completeBillingCheckoutLease,
+    markBillingCheckoutProviderCreated,
+    releaseBillingCheckoutLease,
+    renewExpiredBillingCheckoutLease,
+} from '@lib/billing/billingCheckoutLease';
+import {
     getActiveProductSubscriptionForStore,
     getBillingFirestoreAdminForProduct,
     resolveBillingScopeFromSession,
@@ -29,12 +36,54 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 const LOG_FILE = "razorpay-topup.log";
 const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
 
+function getTopupCheckoutReceipt(attemptId: string): string {
+    return `mlt_${attemptId.replace(/-/g, '')}`;
+}
+
+function isMatchingCheckoutOrder(candidate: any, expected: {
+    amount: number;
+    attemptId: string;
+    billingStoreId: string | number;
+    currency: string;
+    packId: string;
+    productId: string;
+    receipt: string;
+    storeId: string | number;
+    tenantId: string | number;
+}): boolean {
+    const notes = candidate?.notes || {};
+    return typeof candidate?.id === 'string'
+        && candidate.status === 'created'
+        && candidate.receipt === expected.receipt
+        && Number(candidate.amount) === expected.amount
+        && String(candidate.currency || '').toUpperCase() === expected.currency.toUpperCase()
+        && String(notes.checkoutAttemptId || '') === expected.attemptId
+        && String(notes.billingStoreId || '') === String(expected.billingStoreId)
+        && String(notes.productId || notes.pId || '') === expected.productId
+        && String(notes.tenantId || notes.tId || '') === String(expected.tenantId)
+        && String(notes.storeId || notes.sId || '') === String(expected.storeId)
+        && String(notes.packId || '') === expected.packId;
+}
+
+async function recoverCheckoutOrder(expected: Parameters<typeof isMatchingCheckoutOrder>[1]): Promise<any | null> {
+    const response = await razorpayClient.orders.all({
+        count: 100,
+        receipt: expected.receipt,
+    });
+    return response.items.find((candidate) => isMatchingCheckoutOrder(candidate, expected)) || null;
+}
+
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const { id: userId } = session.user;
     let logTenantId: string | number | undefined = session.user?.tenantId;
     let logStoreId: string | number | undefined = session.user?.storeId;
+    let checkoutLeaseIdentity: Parameters<typeof claimBillingCheckoutLease>[0] | null = null;
+    let checkoutAttemptId: string | null = null;
+    let providerOrderCreateAttempted = false;
+    let providerOrderCreated = false;
+    let topupPersisted = false;
 
     try {
         // 2. 🔒 INPUT VALIDATION: Prevent injection attacks (OWASP A03)
@@ -160,6 +209,13 @@ export const POST = withAuth(async (request, session) => {
                 { status: 404 }
             );
         }
+        const billingStoreId = Number(activeSubscription.storeId ?? activeSubscription.sId);
+        if (!Number.isSafeInteger(billingStoreId) || billingStoreId <= 0) {
+            return NextResponse.json(
+                { error: 'The active billing subscription requires support.' },
+                { status: 409 },
+            );
+        }
 
         const { packId, currency } = validation.data;
         const priceKey = `price${currency.toUpperCase()}`;
@@ -175,11 +231,74 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: `Pricing for currency ${currency} not available for this pack.` }, { status: 400 });
         }
 
+        checkoutLeaseIdentity = {
+            actorId: userId,
+            kind: 'topup',
+            productId,
+            tenantId,
+            storeId,
+            requestFacts: {
+                currency,
+                packId,
+                price,
+                productId,
+                billingStoreId,
+                storeId: String(storeId),
+                tenantId: String(tenantId),
+            },
+        };
+        const checkoutClaim = await claimBillingCheckoutLease(checkoutLeaseIdentity);
+        if (checkoutClaim.outcome === 'in_progress' || checkoutClaim.outcome === 'conflict') {
+            return NextResponse.json(
+                { error: 'A billing checkout is already being prepared. Please wait and try again.' },
+                { status: 409 },
+            );
+        }
+        checkoutAttemptId = checkoutClaim.attemptId;
+        let receipt = getTopupCheckoutReceipt(checkoutAttemptId);
+        const orderExpectation = () => ({
+            amount: price,
+            attemptId: checkoutAttemptId as string,
+            billingStoreId,
+            currency,
+            packId,
+            productId,
+            receipt,
+            storeId,
+            tenantId,
+        });
+
+        let recoveredOrder: any | null = null;
+        if (checkoutClaim.outcome === 'provider_created') {
+            const candidate = await razorpayClient.orders.fetch(checkoutClaim.providerEntityId);
+            if (!isMatchingCheckoutOrder(candidate, orderExpectation())) {
+                throw new Error('billing_checkout_provider_order_mismatch');
+            }
+            recoveredOrder = candidate;
+        } else if (checkoutClaim.outcome === 'recover_attempt') {
+            recoveredOrder = await recoverCheckoutOrder(orderExpectation());
+            if (!recoveredOrder) {
+                const renewed = await renewExpiredBillingCheckoutLease(
+                    checkoutLeaseIdentity,
+                    checkoutClaim.attemptId,
+                );
+                if (!renewed.acquired || !renewed.attemptId) {
+                    return NextResponse.json(
+                        { error: 'A billing checkout is already being prepared. Please wait and try again.' },
+                        { status: 409 },
+                    );
+                }
+                checkoutAttemptId = renewed.attemptId;
+                receipt = getTopupCheckoutReceipt(checkoutAttemptId);
+            }
+        }
+
         // 4. Orchestration Logic
-        // Step A: Create Razorpay Order
-        const razorpayOrder = await razorpayClient.orders.create({
+        // Step A: Create or recover the Razorpay Order.
+        const orderPayload = {
             amount: price,
             currency,
+            receipt,
             notes: {
                 productId,
                 pId: productId,
@@ -194,8 +313,29 @@ export const POST = withAuth(async (request, session) => {
                 packName: selectedPack.name,
                 price: price,
                 currency,
+                checkoutAttemptId,
+                billingStoreId,
             },
-        });
+        };
+        let razorpayOrder: any;
+        if (recoveredOrder) {
+            razorpayOrder = recoveredOrder;
+        } else {
+            providerOrderCreateAttempted = true;
+            try {
+                razorpayOrder = await razorpayClient.orders.create(orderPayload);
+            } catch (providerCreateError) {
+                const recovered = await recoverCheckoutOrder(orderExpectation());
+                if (!recovered) throw providerCreateError;
+                razorpayOrder = recovered;
+            }
+        }
+        providerOrderCreated = true;
+        if (!checkoutAttemptId || !(await markBillingCheckoutProviderCreated({
+            attemptId: checkoutAttemptId,
+            identity: checkoutLeaseIdentity,
+            providerEntityId: razorpayOrder.id,
+        }))) throw new Error('billing_checkout_provider_order_claim_lost');
 
         const topupDocumentId = normalizeBillingTopupDocumentId(razorpayOrder.id);
         if (!topupDocumentId) {
@@ -220,13 +360,37 @@ export const POST = withAuth(async (request, session) => {
             packId,
             type: isAnswerlatticeBillingProduct(productId) ? 'answerlattice_credit_pack' : 'ai_enhancement_pack',
             packName: selectedPack.name,
+            billingStoreId,
             createdOn: admin.firestore.FieldValue.serverTimestamp(),
             updatedOn: admin.firestore.FieldValue.serverTimestamp(),
         }, { merge: true });
+        topupPersisted = true;
+
+        await completeBillingCheckoutLease({
+            attemptId: checkoutAttemptId,
+            identity: checkoutLeaseIdentity,
+        }).catch((completionError) => {
+            logger.warn('Top-up checkout replay checkpoint failed', {
+                ...getRazorpayFailureLogData('razorpay_topup_checkout_completion_failed', completionError),
+            });
+            return false;
+        });
 
         return NextResponse.json({ order: razorpayOrder });
 
     } catch (error) {
+        if (
+            checkoutLeaseIdentity
+            && checkoutAttemptId
+            && !providerOrderCreated
+            && !providerOrderCreateAttempted
+            && !topupPersisted
+        ) {
+            await releaseBillingCheckoutLease({
+                attemptId: checkoutAttemptId,
+                identity: checkoutLeaseIdentity,
+            }).catch(() => false);
+        }
         const failureData = getRazorpayFailureLogData('razorpay_create_topup_order_failed', error, {
             operation: 'create-topup-order',
             ...getBoundedRazorpayStringContext('userId', userId),

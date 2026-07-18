@@ -8,17 +8,23 @@ Existing Firestore write paths remain. Storage writes for media-system images no
 
 | Flow | Storage write | Firestore write |
 | --- | --- | --- |
-| Menu item image | 4 Blob uploads to `media/menuItem/{tId}/{sId}/...` for thumb/small/medium/large | Existing project save |
-| Project image | 2 Blob uploads to `media/projectImage/{tId}/{sId}/...` for card/hero | Existing project summary/project metadata write |
-| Menu background | 2 Blob uploads to `media/menuBackground/{tId}/{sId}/...` for mobile/desktop on publish | Existing project publish write |
-| Business logo | 2 Blob uploads to `media/businessLogo/{tId}/{sId}/...` for thumb/full when logo changes | Existing store update write |
-| Official Business Page business cover | 2 Blob uploads to `media/businessCover/{tId}/{sId}/...` for card/hero when the cover is uploaded, generated, or adjusted | Existing store `publicPresence.businessCover` update |
-| Official Business Page gallery image | 2 Blob uploads to `media/galleryImage/{tId}/{sId}/...` for thumb/full when photo is uploaded or adjusted | Existing store `publicPresence.photos` update |
-| Digital screen slide | 2 Blob uploads to `media/digitalScreenSlide/{tId}/{sId}/...` for desktop/full when owner saves the pending slide | Existing `platformSummary/campaigns_{storeId}.screen.pinnedSlides` update |
+| Menu item image | 1 Blob upload to the selected `media/menuItem/{tId}/{sId}/...` variant (normally `large`) | Existing project save |
+| Project image | 1 Blob upload to the selected `media/projectImage/{tId}/{sId}/...` variant (normally `hero`) | Existing project summary/project metadata write |
+| Menu background | 1 Blob upload to the selected `media/menuBackground/{tId}/{sId}/...` variant (normally `desktop`) on publish | Existing project publish write |
+| Business logo | 1 Blob upload to the selected `media/businessLogo/{tId}/{sId}/...` variant (normally `full`) when logo changes | Existing store update write |
+| Official Business Page business cover | 1 Blob upload to the selected `media/businessCover/{tId}/{sId}/...` variant (normally `hero`) when the cover is uploaded, generated, or adjusted | Existing store `publicPresence.businessCover` update |
+| Official Business Page gallery image | 1 Blob upload to the selected `media/galleryImage/{tId}/{sId}/...` variant (normally `full`) when a photo is uploaded or adjusted | Existing store `publicPresence.photos` update |
+| Digital screen slide | 1 Blob upload to the selected `media/digitalScreenSlide/{tId}/{sId}/...` variant (`full`) when the owner saves the pending slide | Existing `platformSummary/campaigns_{storeId}.screen.pinnedSlides` update |
 
 ## Reads
 
 No new Firestore reads are added by the media preparation layer.
+
+Duplicate content-addressed Storage creates are denied by Storage rules and then reuse the existing public object URL. This adds no Firestore read or document. The duplicate path may require the Storage SDK's existing-object URL lookup after the rejected overwrite; the normal first upload remains one Storage write per prepared variant.
+
+Admin SDK batch generation and prompt-cache destination copies use the equivalent create-only generation precondition. A deterministic retry performs one rejected create plus one metadata read, verifies size, cache policy, content type, and checksummed object identity, and returns the existing download token. It does not overwrite bytes or update object metadata.
+
+Auto-generated project-image persistence reuses the existing `updateProjectMetadata()` summary transaction and its existing summary-document read. When transaction-current `projectImage` truth is already non-empty, the transaction omits the generated image field and returns the current owner image. This adds no Firestore read, write, collection, index, rule, or Function beyond the existing metadata operation. A generated immutable Storage object may already have been created before the concurrent owner image is observed; it is not destructively compensated because content-addressed objects can be shared by a concurrent or retried operation without an exclusive reference ledger.
 
 ## External Provider Diagnostics
 
@@ -30,6 +36,8 @@ This diagnostic/request hardening adds no Firestore reads/writes, Storage operat
 
 Official Business Page cover/gallery replacements and removals queue the previously saved Storage URL and delete the old Storage object after the related store save succeeds. Failed deletes are logged through bounded Storage diagnostics and do not roll back the saved store update.
 
+Batch generation does not delete public `media/menuItem/...` objects from browser review or scheduled job retention. A job/current-project check cannot prove absence from duplicated projects or outlet projections. The existing scheduler remains bounded and prunes job payloads/rows only; physical media cleanup is deferred until global exclusive-reference proof exists.
+
 ## Cost Control
 
 The shared preparation layer reduces Storage and public bandwidth by resizing and compressing before save:
@@ -38,7 +46,7 @@ The shared preparation layer reduces Storage and public bandwidth by resizing an
 - backgrounds target 800KB or lower
 - logos target 350KB or lower with gentler quality
 
-The prepared object includes named variants, Blob outputs, checksum, dominant color, and focal point metadata. Profile-aware saves upload all named variants, while existing single-URL Firestore fields are preserved to avoid a schema migration in this implementation. The primary variant URL is persisted by current DAL paths.
+The prepared object includes named variants, Blob outputs, checksum, dominant color, and focal point metadata. Existing single-URL Firestore fields are preserved to avoid a schema migration, and profile-aware saves upload only the selected persisted variant. Other prepared variants remain local until a real persisted URL-map consumer exists. This removes 1-3 Storage writes per owner image without adding a Firestore read, write, document, rule, or index.
 
 Local `dataUrl` values are preview/form-state only. Profile-aware saves convert to Blob before Firebase upload and do not call `uploadString(data_url)`.
 
@@ -60,6 +68,11 @@ Current status:
 
 - Project, item, menu background, OBP business cover, OBP gallery, business logo, and digital screen uploads use immutable `media/{profile}/{tId}/{sId}/{entityId}/{mediaId}_{variant}.{extension}` paths.
 - Firebase Storage rules allow writes to `media/{profile}/{tId}/{sId}/...` only for the authenticated owner store and only for known media profiles.
+- Prepared-media rules admit static JPEG/PNG/WebP only and reject animated GIF bypass uploads.
+- Those rules allow object creation and owner deletion but deny overwrite when `resource` already exists. The client helper treats an existing immutable object as reusable instead of uploading duplicate bytes.
+- Admin SDK media writers use generation-match create-only writes and reuse the existing object token after an identity-matched conflict.
+- Failed downstream persistence and partial multi-variant attempts do not compensate by deleting content-addressed objects; a concurrent/retried successful save may already reference the same path. No Firestore reference ledger is added.
+- Batch job retention is metadata-only because job plus one-project truth is not global deletion proof.
 - Future media asset documents should use the same canonical path helper.
 
 ## Future Media Asset Documents

@@ -2,7 +2,7 @@
 
 **Feature:** File Upload & PDF Processing  
 **Status:** Firebase cost evidence; not current launch certification
-**Last Updated:** July 1, 2026
+**Last Updated:** July 13, 2026
 **Priority:** HIGH — Entry point for every new menu. Every user triggers this.
 
 > **Launch Boundary:** This file records Firebase cost evidence for upload flows, not current production-launch approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-extraction-pipeline`, browser/mobile upload QA, Storage quota/rules evidence, provider/extraction smoke, target deploy evidence, and production-host smoke.
@@ -12,7 +12,7 @@
 ## Summary
 
 - **Collections Used:** `projects/{tId}/{sId}` (projectsData), `platformSummary` (projectsSummary)
-- **Storage Buckets:** Active uploads use `projects/files/{tId}/{sId}/{fileId}`. Legacy files may still exist under `MenuListAi/project/files/{timestamp}-{uid}`.
+- **Storage Buckets:** Active uploads use `projects/files/{tId}/{sId}/{stable-file-prefix}-{attemptId}`. Legacy files may still exist under `MenuListAi/project/files/{timestamp}-{uid}`, but that namespace is read-only.
 - **Cloud Functions:** None (client-side processing)
 - **Estimated Monthly Cost:** **Low** — Storage-dominated
 
@@ -30,7 +30,7 @@
 
 | Operation | Collection | Trigger | Frequency | Docs Written | Fields | Notes |
 |-----------|-----------|---------|-----------|-------------|--------|-------|
-| Save uploaded file URLs | `projects/{tId}/{sId}/{projectId}` | After upload to Storage | Per upload batch | 1 | files[] array merge | `updateProject()` with file URLs. Uses `requestBodyComposer` for timestamps. File: `src/database/projects/index.ts:382` |
+| Save uploaded file URLs | `projects/{tId}/{sId}/{projectId}` | After upload to Storage | Per upload batch | 1 | files[] array merge | `updateProject()` first transactionally re-reads the exact scoped project, then persists a partial merge so deleted, cross-scope, or newly linked state cannot be overwritten. |
 | Summary write | — | Normal file/content upload | Per upload | 0 | — | Uploading files changes the full project only; summary metadata is updated separately only when an owner-facing metadata field changes. |
 
 ### Deletes
@@ -45,8 +45,9 @@
 
 | Operation | Path Pattern | Trigger | Size | Notes |
 |-----------|-------------|---------|------|-------|
-| Upload menu images | `projects/files/{tId}/{sId}/{fileId}` | User upload | 1-5MB per file | JPEG 80% quality. PDF pages converted client-side at 1.5x scale before upload. |
+| Upload menu images/documents | `projects/files/{tId}/{sId}/{stable-file-prefix}-{attemptId}` | User publish/upload | Up to 10MB image or 50MB PDF | Every persistence attempt uses a new immutable path. Project admission accepts JPEG/PNG/WebP/PDF only and verifies MIME agreement, decoded size, base64 and signature before upload. |
 | Upload PDF-converted pages | Same pattern | After client-side conversion | 0.5-2MB per page | Each PDF page → JPEG image, then uploaded individually. |
+| Upload image-only project media | `projects/{assets|itemImages|project-images|custom|generated|edited}/{tId}/{sId}/{fileId}` | Project media flow | Images up to 10MB | Storage rules reject PDFs and non-image payloads from image-only project namespaces. |
 
 ---
 
@@ -61,10 +62,10 @@
 ## Security Rules Impact
 
 - Storage upload: active writes require auth, tenant/store path shape, and `belongsToStore(tId, sId)` on `projects/files/{tId}/{sId}/{fileId}`
-- File type validation: client-side (JPG, PNG, WebP, PDF only)
-- Size limit: enforced client-side (max 10MB per file)
+- File type validation: client UX, DAL, and Storage rules admit JPG, PNG, WebP, or PDF in `projects/files`; image-only project namespaces reject PDFs and SVG remains blocked.
+- Size limit: DAL and Storage rules both enforce 10MB for images and 50MB for PDFs in `projects/files`; image-only namespaces remain capped at 10MB.
 - Tenant isolation: files stored under project path which includes `{tId}/{sId}`
-- Legacy compatibility: older `MenuListAi/project/files/*` objects remain readable/writable by existing authenticated-rule paths until a coordinated app deploy and Storage rules cutover can disable legacy writes.
+- Legacy compatibility: older `MenuListAi/project/files/*` objects remain readable, but active rules keep legacy paths read-only. New writes use tenant/store-scoped paths.
 
 ---
 
@@ -75,6 +76,7 @@
 - **JPEG compression**: 80% quality reduces storage size by ~40%
 - **Scale factor 1.5x**: Balances quality for OCR vs file size
 - **Duplicate detection**: Prevents re-uploading same files
+- **Immutable attempt paths**: A failed retry cannot overwrite or delete the object still referenced by the persisted project.
 
 ### Potential Optimizations
 - **WebP format**: 25-30% smaller than JPEG at same quality
@@ -82,7 +84,7 @@
 
 ### Warnings: Expensive Patterns
 - **Large PDFs**: 20-page PDF = 20 images × 2MB = 40MB storage per project
-- **No cleanup on re-upload**: Old files remain in Storage even when replaced
+- **Reference-aware cleanup remains required**: Replaced and ambiguous linked-attempt files may remain in Storage. Immediate deletion is unsafe because duplicated projects can share old URLs and an ambiguous server response may already have committed the new URL.
 
 ---
 
@@ -90,8 +92,8 @@
 
 | Resource | Operations/month | Unit Cost | Monthly Cost |
 |----------|-----------------|-----------|-------------|
-| Firestore Reads | 1,000 | $0.06/100K | $0.00 |
-| Firestore Writes | 2,000 | $0.18/100K | $0.00 |
+| Firestore Reads | 2,000 | $0.06/100K | $0.00 |
+| Firestore Writes | 1,000 | $0.18/100K | $0.00 |
 | Storage (new files) | 5GB (avg 5MB × 1000) | $0.026/GB | $0.13 |
 | Storage (cumulative) | Growing monthly | $0.026/GB | Grows |
 | **Total (new)** | | | **~$0.13/month** |
@@ -104,7 +106,7 @@
 
 | Function | File | Operation Type |
 |----------|------|---------------|
-| `updateProject` | `src/database/projects/index.ts:382` | Write (setDoc merge) |
+| `updateProject` | `src/database/projects/index.ts` | Current-project transaction read plus partial merge write |
 | `updateProjectMetadata` | `src/database/projects/index.ts` | Transactional summary metadata merge when metadata actually changes |
 | `uploadProjectFile` | `src/database/projects/index.ts:274` | Storage upload |
 
@@ -112,4 +114,4 @@
 
 | Route | Method | Firebase Ops | Rate Limited? | Notes |
 |-------|--------|-------------|---------------|-------|
-| N/A (client-side upload) | — | 0R + 1W + Storage | No (standard upload) | Direct Firebase SDK upload from client |
+| N/A (client-side upload) | — | 1R + 1W + Storage after the project is open | No (standard upload) | Direct Firebase SDK Storage upload followed by transaction-current project persistence. The initial screen project read is separate. |

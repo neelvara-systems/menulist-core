@@ -6,7 +6,11 @@ import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import { checkAICapacity } from "@lib/ai/capacityCheck";
-import { normalizeNewItemMetadataOutput } from "@lib/ai/newItemMetadataOutput";
+import {
+    createNewItemMetadataProviderAliases,
+    normalizeNewItemMetadataOutput,
+    restoreNewItemMetadataProviderAttributeIds,
+} from "@lib/ai/newItemMetadataOutput";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
 import { genAIClient } from "@lib/google/genAi";
 import { logger } from "@lib/monitoring/logger";
@@ -283,7 +287,11 @@ export const POST = withAuth(async (request, session) => {
 
         const validated = validation.data;
         const { item, targetLang, sourceLang, projectId, fileId, contentLength, businessType, tone } = validated;
-        const promptItem = toPromptItem(item);
+        const normalizedItem = toPromptItem(item);
+        const {
+            originalAttributeIdsByAlias,
+            providerItem: promptItem,
+        } = createNewItemMetadataProviderAliases(normalizedItem);
         const promptTargetLang = targetLang.map(toPromptLanguage);
         const promptSourceLang = toPromptLanguage(sourceLang);
         const targetLangCodes = promptTargetLang.map((language) => language.code || 'unspecified');
@@ -375,10 +383,24 @@ export const POST = withAuth(async (request, session) => {
             topP,
             topK: 40,
             // maxOutputTokens: 8192,
-            safetySettings: [{
-                category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-                threshold: HarmBlockThreshold.BLOCK_NONE
-            }]
+            safetySettings: [
+                {
+                    category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+                {
+                    category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+                    threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+                },
+            ]
         };
 
         let response;
@@ -505,9 +527,13 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Metadata generation failed' }, { status: 500 });
         }
 
-        const generatedData = normalizeNewItemMetadataOutput(parsedGeneratedData, {
+        const restoredGeneratedData = restoreNewItemMetadataProviderAttributeIds(
+            parsedGeneratedData,
+            originalAttributeIdsByAlias,
+        );
+        const generatedData = normalizeNewItemMetadataOutput(restoredGeneratedData, {
             businessType,
-            item: promptItem,
+            item: normalizedItem,
             sourceLanguageCode: promptSourceLang.code,
             targetLanguageCodes: targetLangCodes,
         });

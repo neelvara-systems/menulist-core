@@ -4,7 +4,6 @@ import { LuCheck, LuDatabase, LuLock, LuShield, LuUserCheck, LuUsers } from 'rea
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
-import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const dataCollected = [
@@ -114,10 +113,10 @@ const securityMeasures = [
 ];
 
 const privacyRights = [
-    { label: 'Right to access', value: 'Request a copy of your personal data' },
+    { label: 'Right to access', value: 'Request a reviewed copy of applicable personal data' },
     { label: 'Right to correction', value: 'Update inaccurate or incomplete data' },
     { label: 'Right to deletion', value: 'Request deletion of your personal data' },
-    { label: 'Right to portability', value: 'Request portable data where applicable' },
+    { label: 'Right to portability', value: 'Request portable data where legally applicable' },
     { label: 'Right to object', value: 'Object to certain data processing' },
     { label: 'Right to withdraw consent', value: 'Withdraw consent for data processing' },
 ];
@@ -133,7 +132,7 @@ const retentionFacts = [
 ];
 
 export default function PrivacyPolicyPage() {
-    const lastUpdated = 'July 10, 2026';
+    const lastUpdated = 'July 17, 2026';
 
     return (
         <div className="ws-page">
@@ -412,9 +411,10 @@ export default function PrivacyPolicyPage() {
                     ))}
                 </div>
                 <AnimateOnScroll>
-                    <p style={{ textAlign: 'center', marginTop: 'var(--ws-space-8)', fontSize: '0.9375rem', color: 'var(--ws-text-secondary)' }}>
-                        To exercise your rights, contact us at{' '}
+                    <p style={{ textAlign: 'center', marginTop: 'var(--ws-space-8)', fontSize: '0.9375rem', color: 'var(--ws-text-secondary)', maxWidth: '760px', marginLeft: 'auto', marginRight: 'auto' }}>
+                        To exercise a right, contact{' '}
                         <a href="mailto:support@menulist.ai" style={{ color: 'var(--ws-brand-secondary)', textDecoration: 'none', fontWeight: 500 }}>support@menulist.ai</a>
+                        {' '}from the account email where possible and state the business, account, and request type. We verify identity and business authority before disclosing, correcting, exporting, or deleting data. Account closure may require subscription, billing, dispute, security, shared-business access, and legal-retention checks.
                     </p>
                 </AnimateOnScroll>
             </SectionWrapper>
@@ -425,10 +425,15 @@ export default function PrivacyPolicyPage() {
                     <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
                         <WebsiteHeadline as="h2" text="Questions about your data?" />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)' }}>
-                            We keep public privacy claims tied to the product behavior we can verify.
+                            Send an access, correction, portability, or deletion request to our support team.
                         </p>
                         <div style={{ marginTop: 'var(--ws-space-8)' }}>
-                            <WebsiteButton href="/create-menu">Create customer link →</WebsiteButton>
+                            <a
+                                className="ws-btn ws-btn--primary"
+                                href="mailto:support@menulist.ai?subject=MenuList%20privacy%20request"
+                            >
+                                Email privacy request
+                            </a>
                         </div>
                     </div>
                 </AnimateOnScroll>

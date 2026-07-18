@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 /**
  * POST /api/auth/switch-store — Switch active store context
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §8.4
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §8.4
  */
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";

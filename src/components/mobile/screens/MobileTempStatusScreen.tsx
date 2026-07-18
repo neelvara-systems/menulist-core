@@ -28,6 +28,7 @@ import {
 } from '../utils/mobileOwnerDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
 import { type TempStatusAction, readTempStatusResponse } from '@lib/tempStatus/clientResponse';
+import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 
 interface MobileTempStatusScreenProps {
     onBack: () => void;
@@ -76,8 +77,9 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
     const formatter = useFormatter();
     const { storeDetails, setStoreDetails } = useContext(PlatformGlobalDataContext);
 
-    const currentStatus = storeDetails?.tempStatus;
-    const isActive = currentStatus && new Date(currentStatus.expiresAt).getTime() > Date.now();
+    const storedStatus = storeDetails?.tempStatus;
+    const currentStatus = useActiveTempStatus(storedStatus);
+    const isActive = Boolean(currentStatus);
 
     const [statusType, setStatusType] = useState<string>('closed_today');
     const [customMessage, setCustomMessage] = useState('');
@@ -118,9 +120,8 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             expiresAt,
             createdAt: new Date().toISOString(),
         };
-        const prevStatus = storeDetails?.tempStatus;
+        const prevStatus = storedStatus;
         setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
-        Toast.show({ content: t('statusSet'), icon: 'success', duration: 1500 });
 
         try {
             const res = await fetch('/api/store/temp-status', {
@@ -135,10 +136,15 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
                 }),
             });
 
-            await readTempStatusResponse(res, 'set', {
+            const result = await readTempStatusResponse(res, 'set', {
                 ...buildMobileTempStatusLogContext(storeDetails, 'set_temp_status', statusType),
                 ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
                 hasPreviousStatus: Boolean(prevStatus),
+            });
+            Toast.show({
+                content: result.effectsPending ? 'Saved. Customer pages may take a moment to refresh.' : t('statusSet'),
+                icon: result.effectsPending ? undefined : 'success',
+                duration: result.effectsPending ? 2200 : 1500,
             });
         } catch (error) {
             logMobileOwnerFailure(
@@ -155,10 +161,10 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
         } finally {
             setIsLoading(false);
         }
-    }, [exactExpiryAt, customMessage, formatter, setStoreDetails, statusType, storeDetails, t]);
+    }, [exactExpiryAt, customMessage, formatter, setStoreDetails, statusType, storedStatus, storeDetails, t]);
 
     const handleClear = useCallback(async () => {
-        const prevStatus = storeDetails?.tempStatus;
+        const prevStatus = storedStatus;
         const confirmed = await Dialog.confirm({
             title: 'Clear customer status?',
             content: prevStatus?.message
@@ -175,8 +181,6 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
             const { tempStatus, ...rest } = prev || {};
             return rest;
         });
-        Toast.show({ content: t('statusCleared'), icon: 'success', duration: 1500 });
-
         try {
             const res = await fetch('/api/store/temp-status', {
                 ...AUTH_BROWSER_REQUEST_POLICY,
@@ -185,9 +189,14 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
                 body: JSON.stringify({ action: 'clear' }),
             });
 
-            await readTempStatusResponse(res, 'clear', {
+            const result = await readTempStatusResponse(res, 'clear', {
                 ...buildMobileTempStatusLogContext(storeDetails, 'clear_temp_status', prevStatus?.type),
                 hasPreviousStatus: Boolean(prevStatus),
+            });
+            Toast.show({
+                content: result.effectsPending ? 'Cleared. Customer pages may take a moment to refresh.' : t('statusCleared'),
+                icon: result.effectsPending ? undefined : 'success',
+                duration: result.effectsPending ? 2200 : 1500,
             });
         } catch (error) {
             logMobileOwnerFailure(
@@ -203,7 +212,7 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
         } finally {
             setIsLoading(false);
         }
-    }, [setStoreDetails, storeDetails, t]);
+    }, [setStoreDetails, storedStatus, storeDetails, t]);
 
     if (!storeDetails) {
         return (
@@ -237,7 +246,7 @@ export default function MobileTempStatusScreen({ onBack }: MobileTempStatusScree
                         expiryLabel={t('expiresAfter')}
                         expiresLabel={t('expires')}
                         expiryOptions={MOBILE_TEMP_STATUS_EXPIRY_OPTIONS}
-                        isActive={Boolean(isActive)}
+                        isActive={isActive}
                         isLoading={isLoading}
                         onClear={() => void handleClear()}
                         onExactExpiryAtChange={(value) => {

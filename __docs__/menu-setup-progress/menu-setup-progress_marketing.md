@@ -1,26 +1,21 @@
-# Menu Setup Progress — Marketing Notes
+# Menu Setup Progress - Marketing Boundary
 
-## Positioning
+**Status:** Local source complete; internal supporting capability
 
-Menu Setup Progress helps owners see when their menu is ready to publish and where to place the official link next.
+## Approved message
 
-## Internal Claim
+MenuList shows the owner the next useful setup step for the selected menu: add the source, check visible items and prices, publish, then place the official link.
 
-MenuList guides owners from menu source to live customer link without turning setup into a technical dashboard.
+## Allowed claims
 
-## Public-Safe Copy
+- One current checklist on desktop and mobile.
+- Optional content improvements do not block publishing.
+- Setup hides when applicable work is complete.
+- Sharing actions are MenuList-recorded; third-party placements are owner-confirmed.
 
-- "See what is ready before your menu goes live."
-- "Keep menu setup focused on the next useful step."
-- "Optional improvements stay separate from required publishing steps."
+## Do not claim
 
-## Avoid
-
-- "AI-powered setup"
-- "Business profile score"
-- "Smart onboarding"
-- "Complete your profile"
-
----
-
-**Created:** July 7, 2026
+- Automatic third-party placement or verification.
+- Customer usage, scans, or sales from a copied/downloaded link.
+- Perfect extraction or automatic publication.
+- A separate concierge product, workflow engine, or background monitoring service.

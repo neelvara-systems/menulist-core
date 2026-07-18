@@ -425,6 +425,12 @@ If `ANSWERLATTICE_FIREBASE_PRIVATE_KEY` is malformed in local `.env`, the app ig
 
 `ANSWERLATTICE_GOOGLE_APPLICATION_CREDENTIALS` should point to an ignored local service account JSON file only when needed. Do not commit service account JSON files.
 
+## Backup and Recovery
+
+The executable Firestore managed-backup and isolated-restore procedure is maintained in [Answerlattice Backup and Recovery Runbook](./answerlattice-backup-recovery-runbook.md).
+
+Source tooling does not prove deployed recovery readiness. Production certification still requires a verified cloud schedule, a ready backup, a timed restore into a new `answerlattice-recovery-*` database, tenant-isolation and canonical-lineage validation, TTL policy readback, and separate Storage/Auth recovery evidence.
+
 ## July 11, 2026 Forensic Audit Deployment Attempt
 
 After the Firebase forensic audit passed root TypeScript, lint, the production build, the Answerlattice Functions build, runtime-truth contracts, the full dedicated/shared Firebase emulator aggregate, Storage rules, index/TTL parity, documentation links, dependency freeze, and diff integrity, the required QA deployments were attempted once:
@@ -448,6 +454,18 @@ firebase deploy --only firestore:rules,firestore:indexes,storage \
 The shared-mode deployment also stopped before upload while checking `firebasestorage.googleapis.com` because Service Usage returned HTTP 403: project not found or permission denied.
 
 No QA rules, indexes, Storage rules, or Functions were changed by these failed attempts. Do not retry until the active account has project visibility plus Service Usage, Firestore Rules, Firestore index, Storage, Cloud Functions, Cloud Build, Artifact Registry, and service-account deployment permissions for the relevant QA project.
+
+## July 16, 2026 First Trusted Answers Deployment Attempt
+
+The First Trusted Answers source, explicit widget outcomes, confirmed-resolution aggregation, and newest-first history index passed local TypeScript, Functions build, focused contracts, and the full Answerlattice runtime/emulator verifier. A QA Functions deployment was then attempted with Node 20:
+
+```bash
+firebase deploy --only functions:answerlattice \
+  --project answerlattice-qa \
+  --config ../firebase-answerlattice.json
+```
+
+The predeploy Functions build passed. Cloud Resource Manager then returned HTTP 403 for `answerlattice-qa`, so no Functions or indexes were uploaded. The same project-access blocker from the July 11 audit remains active. When access is restored, deploy Firestore indexes before or with the Functions code because the nightly history query now depends on the mirrored `pId + tId + sId + createdOn DESC` index.
 
 ## Production Setup Checklist
 

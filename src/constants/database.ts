@@ -19,6 +19,8 @@ export const DB_COLLECTIONS = {
     FOUNDER_REVENUE_MOVEMENTS: "founderRevenueMovements",
     FOUNDER_ONBOARDING_TRANSITIONS: "founderOnboardingTransitions",
     RAZORPAY_WEBHOOK_EVENTS: "razorpayWebhookEvents",
+    BILLING_CHECKOUT_LEASES: "billingCheckoutLeases",
+    BILLING_PROVIDER_PLANS: "billingProviderPlans",
     TOPUPS: "topups",
     ANALYTICS: "analytics",
     INSIGHTS: "insights",
@@ -131,8 +133,8 @@ export const DB_COLLECTIONS = {
 
     // POS Webhook Sync (Menu Snapshot Broadcast)
     // @see __docs__/pos-webhook-sync/pos-webhook-sync_impl.md
-    POS_DELIVERY_QUEUE: "posDeliveryQueue",
     POS_DELIVERY_LOGS: "posDeliveryLogs",
+    POS_SYNC_SECRETS: "posSyncSecrets",
 
     // Messaging Onboarding (Zero-Friction SMB Acquisition Engine)
     // @see __docs__/messaging-onboarding/

@@ -73,6 +73,10 @@
 9. Missing reuse source fails before writes.
 10. Reuse adds zero incremental reads beyond the existing campaign-create read set.
 11. Stale, expired, or unknown-freshness generated pack is never labeled `pack_ready`.
+12. Reusing one idempotency key with a different actor, campaign, action, schedule, result, note, or payload fails closed; exact completed retries replay.
+13. Canonical request hashes remain stable across object-key ordering but change when any meaningful request value changes.
+14. Concurrent ordinary actions re-read current campaign state in a Firestore transaction so action counters and result memory are cumulative rather than last-writer-wins.
+15. Public-use actions perform their current campaign/workspace/source checks and blocked event/idempotency completion in the same transaction.
 
 ## Approval Cases
 

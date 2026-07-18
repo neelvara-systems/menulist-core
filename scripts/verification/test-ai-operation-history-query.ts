@@ -3,7 +3,14 @@ import {
     isAiOperationHistoryCursorAdmissible,
     resolveAiOperationActionScanBoundary,
 } from '../../src/lib/ai/operationHistoryQuery';
+import {
+    formatAiOperationHistoryLanguage,
+    getAiOperationHistoryJsonObject,
+    getAiOperationHistoryJsonObjectArray,
+    normalizeAiOperationHistoryPage,
+} from '../../src/lib/ai/operationHistoryClientContract';
 import { projectAiOperationHistoryFields } from '../../src/lib/ai/operationHistoryProjection';
+import { getAiOperationOwnerSummary } from '../../src/lib/ai/operationPresentation';
 
 const resolve = (overrides: Partial<Parameters<typeof resolveAiOperationActionScanBoundary>[0]> = {}) => (
     resolveAiOperationActionScanBoundary({
@@ -26,6 +33,103 @@ const admitCursor = (
     dateRange: {},
     ...overrides,
 });
+
+const validClientRow = {
+    action: 'image_processing',
+    clientResponse: { data: { categories: [], items: [] } },
+    createdOn: '2026-07-13T12:00:00.000Z',
+    id: 'operation_1',
+    languageSummary: { sourceLang: 'en', targetLangCount: 1 },
+    totalTokenCount: 12,
+    transactionId: 'provider_transaction_1',
+    unitsConsumed: 0,
+};
+
+assert.deepEqual(getAiOperationHistoryJsonObject({ count: 2 }), { count: 2 });
+assert.equal(formatAiOperationHistoryLanguage({ code: 'fr' }), 'French (fr)');
+assert.equal(formatAiOperationHistoryLanguage('en'), 'English (en)');
+assert.equal(getAiOperationHistoryJsonObject(null), null);
+assert.equal(getAiOperationHistoryJsonObject('not-an-object'), null);
+assert.equal(getAiOperationOwnerSummary({
+    action: 'language_addition',
+    clientResponse: {
+        fallbackKeyCount: 2,
+        hasPartialCoverage: true,
+        translatedKeyCount: 3,
+    },
+}), 'Translation returned 2 incomplete rows. Review the content and retry.');
+assert.equal(getAiOperationOwnerSummary({
+    action: 'language_addition',
+    clientResponse: { translationsCount: 2 },
+    targetLanguages: [{ code: 'fr' }],
+}), 'Translated 2 rows to French (fr).');
+assert.deepEqual(
+    getAiOperationHistoryJsonObjectArray([{ id: 'one' }, null, 'invalid', { id: 'two' }]),
+    [{ id: 'one' }, { id: 'two' }],
+);
+
+{
+    const page = normalizeAiOperationHistoryPage({
+        data: [{ ...validClientRow, rawProviderResponse: { secret: true } }],
+        hasMore: true,
+        lastVisibleDoc: { id: 'operation_1' },
+        requiresManualContinuation: false,
+    }, { requireManualContinuationField: true });
+    assert.deepEqual(page, {
+        data: [validClientRow],
+        hasMore: true,
+        lastVisibleDoc: { id: 'operation_1' },
+        requiresManualContinuation: false,
+    }, 'the browser contract must normalize known fields and omit unexpected response fields');
+
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [null],
+        hasMore: false,
+        lastVisibleDoc: null,
+        requiresManualContinuation: false,
+    }, { requireManualContinuationField: true }), null, 'a malformed successful row must reject the page');
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [{ ...validClientRow, totalTokenCount: '12' }],
+        hasMore: false,
+        lastVisibleDoc: null,
+        requiresManualContinuation: false,
+    }, { requireManualContinuationField: true }), null, 'numeric row fields must not use coercion');
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [{ ...validClientRow, contentLength: { toString: () => 'Small' } }],
+        hasMore: false,
+        lastVisibleDoc: null,
+        requiresManualContinuation: false,
+    }, { requireManualContinuationField: true }), null, 'content length must be an actual admitted enum string');
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [validClientRow],
+        hasMore: true,
+        lastVisibleDoc: {},
+        requiresManualContinuation: false,
+    }, { requireManualContinuationField: true }), null, 'a continuation page must carry a valid cursor ID');
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [validClientRow],
+        hasMore: true,
+        lastVisibleDoc: { id: 'operation_1', tenantId: 2 },
+        requiresManualContinuation: false,
+    }, { requireManualContinuationField: true }), null, 'the browser cursor envelope must not admit unrecognized identity fields');
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [validClientRow],
+        hasMore: true,
+        lastVisibleDoc: null,
+        requiresManualContinuation: false,
+    }, { requireManualContinuationField: true }), null, 'hasMore cannot be true without a cursor');
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [validClientRow],
+        hasMore: true,
+        lastVisibleDoc: { id: 'operation_1' },
+        requiresManualContinuation: true,
+    }, { requireManualContinuationField: true }), null, 'manual continuation is valid only for an empty capped page');
+    assert.equal(normalizeAiOperationHistoryPage({
+        data: [validClientRow],
+        hasMore: false,
+        lastVisibleDoc: null,
+    }, { requireManualContinuationField: false })?.data.length, 1, 'Answerlattice pages retain the shared row contract without the MenuList continuation field');
+}
 
 {
     assert.equal(admitCursor({ cursorExists: false, cursorRequested: false }), true, 'an omitted cursor needs no persisted boundary');

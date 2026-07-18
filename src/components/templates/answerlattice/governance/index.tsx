@@ -30,7 +30,7 @@ import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import EntityCandidateReview from '@/components/templates/answerlattice/EntityCandidateReview';
 import MutationProposalReview from '@/components/templates/answerlattice/MutationProposalReview';
 import { AnswerlatticeBrandingConfig } from '@type/answerlattice';
-import { Empty, Grid, Tabs } from 'antd';
+import { Button, Dropdown, Empty, Grid, Tabs } from 'antd';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { ComponentType, ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -38,6 +38,7 @@ import {
     LuBarChart3,
     LuBookOpen,
     LuBoxes,
+    LuChevronDown,
     LuFlame,
     LuGitPullRequest,
     LuHeart,
@@ -46,6 +47,7 @@ import {
     LuPaintbrush,
     LuShieldAlert,
     LuShieldCheck,
+    LuSettings2,
     LuZap,
 } from 'react-icons/lu';
 
@@ -74,6 +76,17 @@ const ANSWERLATTICE_GOVERNANCE_TRANSLATION_REQUEST_POLICY: Pick<RequestInit, 'ca
     credentials: 'same-origin',
     redirect: 'manual',
 };
+
+const ANSWERLATTICE_ADVANCED_GOVERNANCE_TABS = new Set<string>([
+    ANSWERLATTICE_GOVERNANCE_TABS.ANALYTICS,
+    ANSWERLATTICE_GOVERNANCE_TABS.HEALTH,
+    ANSWERLATTICE_GOVERNANCE_TABS.HISTORY,
+    ANSWERLATTICE_GOVERNANCE_TABS.CANDIDATES,
+    ANSWERLATTICE_GOVERNANCE_TABS.BRANDING,
+    ANSWERLATTICE_GOVERNANCE_TABS.FRICTION,
+    ANSWERLATTICE_GOVERNANCE_TABS.LANGUAGES,
+    ANSWERLATTICE_GOVERNANCE_TABS.TRIGGERS,
+]);
 
 type GovernanceTranslationResponse = {
     articleId: string;
@@ -336,6 +349,16 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
         );
     }, [currentHostname, router]);
 
+    const advancedTabItems = useMemo(() => (
+        tabItems.filter(item => ANSWERLATTICE_ADVANCED_GOVERNANCE_TABS.has(item.key))
+    ), [tabItems]);
+    const visibleTabItems = useMemo(() => (
+        tabItems.filter(item => (
+            !ANSWERLATTICE_ADVANCED_GOVERNANCE_TABS.has(item.key)
+            || item.key === activeTab
+        ))
+    ), [activeTab, tabItems]);
+
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GOVERNANCE_UI) {
         return <Empty description="Answerlattice Governance UI is not enabled" />;
     }
@@ -344,10 +367,30 @@ export default function GovernanceHub({ tId = 0, sId = 0, initialTab }: Governan
         <Tabs
             activeKey={activeTab}
             onChange={handleTabChange}
-            items={tabItems}
+            items={visibleTabItems}
             type={isMobile ? 'line' : 'card'}
             size="small"
             tabBarGutter={isMobile ? 8 : 16}
+            tabBarExtraContent={advancedTabItems.length ? {
+                right: (
+                    <Dropdown
+                        menu={{
+                            items: advancedTabItems.map(item => ({
+                                key: item.key,
+                                label: item.label,
+                            })),
+                            onClick: ({ key }) => handleTabChange(String(key)),
+                            selectable: true,
+                            selectedKeys: ANSWERLATTICE_ADVANCED_GOVERNANCE_TABS.has(activeTab) ? [activeTab] : [],
+                        }}
+                        trigger={['click']}
+                    >
+                        <Button icon={<LuSettings2 />} style={{ minHeight: 44 }}>
+                            {isMobile ? 'Advanced' : 'Advanced tools'} <LuChevronDown />
+                        </Button>
+                    </Dropdown>
+                ),
+            } : undefined}
             style={{ maxWidth: '100%' }}
         />
     );

@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -9,7 +10,7 @@ import { Metadata } from 'next';
 const title = 'Menu Content Prep - MenuList | Descriptions, Images, and Languages';
 const description = 'Prepare customer-friendly descriptions, menu images, and customer languages from the same approved menu before publishing.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description,
     url: '/features/menu-content-prep',
   },
-};
+});
 
 export default function Page() {
   return (

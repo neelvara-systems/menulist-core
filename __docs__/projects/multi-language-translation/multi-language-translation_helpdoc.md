@@ -1,60 +1,101 @@
-# Multi-Language Translation — Help Documentation
+# Multi-Language Translation — Owner Help
 
-## Quick Summary
-Add languages to your menu so customers can view it in their preferred language. Translations are generated automatically for menu content such as items, descriptions, and categories, and localized public labels like project names and official-page display fields can also render in the selected language when they are available.
+**Last updated:** July 15, 2026
 
----
+## What it does
 
-## How-To Guides
+MenuList can prepare translated drafts for menu names, descriptions, categories, options, and supported public details. Review the wording before publishing.
 
-### How to add a new language to your menu
-1. Go to **Projects** → select your project → **Editor**
-2. Look for the **Languages** section or settings
-3. Click **Add Language**
-4. Select the language you want (e.g., Hindi, Arabic, Tamil)
-5. Click **Translate** to translate all existing items
-6. Wait for processing (usually 30-60 seconds)
-7. Click **Save**
+English is always the translation source. You can still choose another default customer language; that setting only changes which language opens first.
 
-### How to check translations
-1. In the **Editor**, switch between languages using the language tabs
-2. Review item names and descriptions in each language
-3. Review customer-facing labels such as project names or official business page display text if your setup uses them
-4. Edit any translation manually if needed
-5. Click **Save** after making changes
+## Add a language on desktop
 
-### How customers see language options
-1. When customers scan your QR code, they see a language picker
-2. They tap their preferred language
-3. The menu, project labels, and supported public business text display in that language when translations exist
-4. Their choice is remembered for future visits
+1. Open the menu project in the Editor.
+2. Open **Languages**.
+3. Choose a language and confirm.
+4. Keep the screen open while the files and project details are processed.
+5. Review the new language in the editor.
 
----
+The project is saved when the flow finishes. If you cancel after some files finish, MenuList saves the completed translations and tells you the result is partial.
+
+## Add a language on mobile
+
+1. Open **Menu** in the owner app.
+2. Open the menu actions and choose **Manage languages**.
+3. Choose the target language.
+4. Keep the sheet open until MenuList confirms it was saved.
+5. Review the translated menu and public project details.
+
+## Change the default customer language
+
+In mobile **Manage languages**, choose **Default** beside an active language. English remains the protected translation source even when another language is the default.
+
+## Refresh one item or category
+
+1. Open the item or category.
+2. Open the target language.
+3. Choose **Refresh translation** or **Generate missing translations**.
+4. Review the draft.
+5. Press **Save**.
+
+The refresh is not durable until you save the item/category. English cannot be refreshed as a target.
+
+## Repair missing translations
+
+- Desktop: open the Menu Command Center and choose menu repair.
+- Mobile: use **Manage languages** for one/all languages, or use the bulk repair action.
+
+Repair rebuilds missing eligible text from English. It does not change inherited menu content at a linked outlet.
+
+## Linked locations
+
+Inherited items and categories stay connected to the main menu. Translate them at the main location. A linked location can translate only its local-only items and categories.
+
+## What customers see
+
+Customers can choose from languages published with the menu. If a field is missing in their selected language, MenuList uses safe fallback text, with English as the first content fallback. RTL languages use their configured text direction.
+
+## Credits
+
+Translation is charged per request, not once per selected language:
+
+- One item/category target: 1 enhancement.
+- One menu-file, repair, project-public, or business-copy translation request: 3 enhancements.
+- A language added to several files can create several 3-enhancement operations.
+
+The Transactions screen shows each operation separately.
 
 ## Troubleshooting
 
-### Some items are not translated
-**Why:** Items added after the last translation batch aren't automatically translated.
-**Fix:** Run translation again — it will translate only the new/untranslated items.
+### A language cannot be added
 
-### Translation doesn't sound natural
-**Fix:** Edit the translation manually in the Editor. Your corrections are saved permanently.
+- The project may already have six languages.
+- Your role may not have translation access.
+- A linked location can activate only permitted languages.
+- More enhancements may be required.
 
-### "Rate limit exceeded" error
-**Fix:** Wait 1 minute and try again.
+### Some text was not translated
 
----
+- The English source may be empty.
+- The text may already have a target value.
+- The operation may have stopped after saving completed files.
+- The provider may have returned incomplete rows; MenuList does not save those rows as translated text, and Transactions will mark the operation for review.
+- The item/category may be inherited from the main location.
 
-## Tips
-- 💡 Translate after your menu content is finalized — reduces re-translation
-- 💡 Review translations in the Editor, especially for specialty dishes
-- 💡 Add descriptions before translating — more context = better translations
-- 💡 The language picker shows on your live menu automatically
+Use repair for missing content, or edit and save the target field manually.
 
-## Related Features
-- **[Description Generation]** — Generate descriptions before translating for better results
-- **[Data Editor]** — Edit translations manually
-- **[Client Menu]** — Where customers see the language picker
+### A dish name stayed the same
 
-## Need More Help?
-- **Email:** support@menulist.ai
+Dish names, brands, symbols, URLs, and technical terms may intentionally remain unchanged. Review and edit only when the customer-facing wording needs correction.
+
+### Translation failed
+
+Keep your completed work, check Transactions, then retry the affected file/item/language. If the message asks for more enhancements, open Billing before retrying.
+
+### The live menu still shows older text
+
+Confirm that the item/category draft was saved and that the menu was published through the normal project flow. Then reload the customer link in the selected language.
+
+## Support
+
+Email `support@menulist.ai` with the project name, target language, approximate time, and the owner-facing error. Do not send passwords or payment details.

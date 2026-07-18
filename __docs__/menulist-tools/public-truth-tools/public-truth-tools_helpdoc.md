@@ -1,7 +1,7 @@
 # Public Truth Tools - Help Documentation
 
-**Status:** Planning documentation only
-**Last Updated:** July 4, 2026
+**Status:** Active owner help for implemented tools and Business Health modules
+**Last Updated:** July 16, 2026
 **Audience:** Existing MenuList owners
 
 ---
@@ -16,17 +16,16 @@ Each tool gives a short status and a next step.
 
 ## Where This Appears
 
-Public Truth Tools may appear in:
+Public Truth Tools currently appear in:
 
 - Business Health
 - Official Business Page setup
 - Share and QR flows
 - WhatsApp/action-link setup
 - Public Discovery
-- Multi-location screens
 - MenuList public website tools
 
-Not every account will see every tool.
+The paid Public Truth Monitor adds entitlement-gated manual saved history in desktop and mobile Business Health. Scheduled and multi-location monitoring are not active.
 
 ---
 
@@ -65,6 +64,8 @@ Shows whether key public photos are missing.
 3. Select the available fix action.
 4. Update the missing detail.
 5. Save or publish from the normal MenuList flow.
+
+Public report links are browser-local self-reports. They are not digitally signed MenuList records; confirm entered facts with the owner before changing business truth.
 
 > Screenshot needed: Public source status card with one fix action.
 

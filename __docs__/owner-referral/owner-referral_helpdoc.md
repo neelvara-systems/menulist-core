@@ -2,7 +2,7 @@
 
 **Feature:** Owner Referral
 **Status:** Help source aligned to implemented disabled runtime; publication pending release approval
-**Last updated:** July 11, 2026
+**Last updated:** July 16, 2026
 
 ---
 
@@ -66,7 +66,7 @@ The referral must be attached before the referred business's first successful su
 
 Before capture, MenuList explains that the referring business can see the new business display name and a general referral status. Contact, plan, payment, and account-activity details remain private.
 
-The normal non-referral setup path remains available.
+The normal non-referral setup path remains available. Selecting `Continue without referral` clears any previously saved invitation before normal setup and does not attach the displayed invitation.
 
 ---
 

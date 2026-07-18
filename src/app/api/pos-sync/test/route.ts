@@ -12,10 +12,15 @@ import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
 import { admin } from "@lib/firebase/firebaseAdmin";
-import { requireAnyStorePermission, requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
+import { requireAnyStorePermissionForStoreData } from "@lib/permissions/server";
 import { buildTestPayload } from "@lib/posSync/payloadFormatter";
 import { normalizePosSyncNumericDocumentId } from "@lib/posSync/posSyncDocumentId";
 import { isPosSyncPinnedRequestTimeout, postPosSyncWebhook } from "@lib/posSync/pinnedWebhookRequest";
+import {
+    getPosSyncSecretRef,
+    normalizePosSyncSecretVersion,
+    resolvePosSyncSecretInTransaction,
+} from "@lib/posSync/serverSecretStore";
 import { validatePosSyncWebhookNetworkTarget } from "@lib/posSync/serverWebhookTarget";
 import { generateDeliveryId, signPayload } from "@lib/posSync/signature";
 import { validatePosSyncWebhookUrl } from "@lib/posSync/webhookUrl";
@@ -60,9 +65,6 @@ export const POST = withAuth(async (request, session) => {
         return NextResponse.json({ error: "Feature disabled" }, { status: 403 });
     }
 
-    const permissionError = await requireAnyStorePermission(request, session, [PERMISSIONS.MANAGE_INTEGRATIONS], "POS sync");
-    if (permissionError) return permissionError;
-
     const bodyResult = await readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES, {
         invalidJsonMessage: "Invalid input",
     });
@@ -86,9 +88,23 @@ export const POST = withAuth(async (request, session) => {
     }
 
     const storeRateLimitHash = hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`);
-    const rlResult = await checkRateLimit({ key: `pos-test:${storeRateLimitHash}`, limit: 10, window: 60 });
+    const rlResult = await checkRateLimit({
+        key: `pos-test:${storeRateLimitHash}`,
+        limit: 10,
+        window: 60,
+        failClosedOnProviderError: true,
+    });
     if (!rlResult.allowed) {
-        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+        const providerUnavailable = rlResult.reason === 'provider_unavailable';
+        return NextResponse.json(
+            { error: providerUnavailable ? 'Service temporarily unavailable' : 'Too many requests' },
+            {
+                status: providerUnavailable ? 503 : 429,
+                headers: {
+                    'Retry-After': String(Math.max(Math.ceil((rlResult.resetAt - Date.now()) / 1000), 1)),
+                },
+            },
+        );
     }
 
     try {
@@ -112,9 +128,10 @@ export const POST = withAuth(async (request, session) => {
         if (targetPermissionError) return targetPermissionError;
 
         const posSync = store?.posSync;
-        if (!posSync?.enabled || !posSync?.webhookUrl || !posSync?.webhookSecret) {
+        if (!posSync?.enabled || !posSync?.webhookUrl) {
             return NextResponse.json({ error: "Invalid request" }, { status: 400 });
         }
+        let connectionSecretVersion = normalizePosSyncSecretVersion(posSync.secretVersion);
 
         const updateConnectionStatusIfCurrent = async (success: boolean) => {
             await db.runTransaction(async (transaction) => {
@@ -135,7 +152,7 @@ export const POST = withAuth(async (request, session) => {
                     freshPermissionError
                     || !currentPosSync?.enabled
                     || String(currentPosSync.webhookUrl || '') !== String(posSync.webhookUrl)
-                    || String(currentPosSync.webhookSecret || '') !== String(posSync.webhookSecret)
+                    || normalizePosSyncSecretVersion(currentPosSync.secretVersion) !== connectionSecretVersion
                 ) return;
 
                 transaction.update(storeRef, success ? {
@@ -184,38 +201,58 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        const freshStoreDoc = await storeRef.get();
-        if (!freshStoreDoc.exists) {
-            return NextResponse.json({ error: "Invalid request" }, { status: 400 });
-        }
-        const freshStore = freshStoreDoc.data();
-        const freshPermissionError = requireAnyStorePermissionForStoreData(
-            request,
-            session,
-            freshStore,
-            [PERMISSIONS.MANAGE_INTEGRATIONS],
-            "POS sync",
-            storeId,
-            tenantId,
-        );
-        if (freshPermissionError) return freshPermissionError;
-        const freshPosSync = freshStore?.posSync;
-        const freshWebhookValidation = validatePosSyncWebhookUrl(String(freshPosSync?.webhookUrl || ''));
-        if (
-            !freshPosSync?.enabled
-            || !freshPosSync?.webhookSecret
-            || freshPosSync.webhookSecret !== posSync.webhookSecret
-            || !freshWebhookValidation.valid
-            || freshWebhookValidation.normalizedUrl !== webhookValidation.normalizedUrl
-        ) {
+        const secretRef = getPosSyncSecretRef(db, tenantDocumentId, storeDocumentId);
+        const connectionClaim = await db.runTransaction(async (transaction) => {
+            const [freshStoreDoc, secretDoc] = await Promise.all([
+                transaction.get(storeRef),
+                transaction.get(secretRef),
+            ]);
+            if (!freshStoreDoc.exists) return null;
+            const freshStore = freshStoreDoc.data();
+            const freshPermissionError = requireAnyStorePermissionForStoreData(
+                request,
+                session,
+                freshStore,
+                [PERMISSIONS.MANAGE_INTEGRATIONS],
+                "POS sync",
+                storeId,
+                tenantId,
+            );
+            if (freshPermissionError) return null;
+            const freshPosSync = freshStore?.posSync;
+            const freshWebhookValidation = validatePosSyncWebhookUrl(String(freshPosSync?.webhookUrl || ''));
+            if (
+                !freshPosSync?.enabled
+                || !freshWebhookValidation.valid
+                || freshWebhookValidation.normalizedUrl !== webhookValidation.normalizedUrl
+            ) return null;
+
+            const secret = resolvePosSyncSecretInTransaction({
+                transaction,
+                storeRef,
+                storeData: freshStore || {},
+                secretRef,
+                secretSnapshot: secretDoc,
+                storeId,
+                tenantId,
+            });
+            if (!secret) return null;
+            return {
+                currency: freshStore?.currencyCode || freshStore?.currency || 'INR',
+                secret: secret.secret,
+                secretVersion: secret.version,
+            };
+        });
+        if (!connectionClaim) {
             return NextResponse.json({ error: "Connection changed" }, { status: 409 });
         }
+        connectionSecretVersion = connectionClaim.secretVersion;
 
-        const testPayload = buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || 'INR');
+        const testPayload = buildTestPayload(storeId, tenantId, connectionClaim.currency);
         const rawBody = JSON.stringify(testPayload);
         const timestamp = Math.floor(Date.now() / 1000);
         const deliveryId = generateDeliveryId();
-        const signature = signPayload(rawBody, freshPosSync.webhookSecret, timestamp);
+        const signature = signPayload(rawBody, connectionClaim.secret, timestamp);
 
         const startTime = Date.now();
 

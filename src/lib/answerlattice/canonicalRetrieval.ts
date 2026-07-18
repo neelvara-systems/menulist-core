@@ -99,6 +99,12 @@ export interface RetrievalContext {
     activeAnswerCache?: Map<string, AnswerlatticeCanonicalAnswer[]>;
 }
 
+export const getAnswerlatticeCanonicalAnswerCacheKey = (
+    tId: number,
+    sId: number,
+    entityId: string,
+) => `${Number(tId)}:${Number(sId)}:${entityId}`;
+
 export type CanonicalScopeDimension = 'plan' | 'role' | 'state';
 
 export interface CanonicalScopeMatch {
@@ -724,7 +730,7 @@ export async function attemptCanonicalRetrieval(
         const answerResults: AnswerlatticeCanonicalAnswer[][] = [];
         const uncachedEntityIds: string[] = [];
         topEntityIds.forEach((entityId) => {
-            const cacheKey = `${Number(context.tId)}:${Number(context.sId)}:${entityId}`;
+            const cacheKey = getAnswerlatticeCanonicalAnswerCacheKey(context.tId, context.sId, entityId);
             const cached = context.activeAnswerCache?.get(cacheKey);
             if (cached) {
                 answerResults.push(cached);
@@ -741,7 +747,7 @@ export async function attemptCanonicalRetrieval(
             uncachedEntityIds.forEach((entityId) => {
                 const answersForEntity = fetchedAnswers.filter(answer => answer.scope?.entityIds?.includes(entityId));
                 context.activeAnswerCache?.set(
-                    `${Number(context.tId)}:${Number(context.sId)}:${entityId}`,
+                    getAnswerlatticeCanonicalAnswerCacheKey(context.tId, context.sId, entityId),
                     answersForEntity,
                 );
                 answerResults.push(answersForEntity);

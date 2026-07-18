@@ -1,8 +1,8 @@
 /**
  * Menu Correctness Engine (MCE) — Correctness State Resolver (CSR)
  *
- * Client-side validation engine that checks menu data against deterministic
- * correctness rules on every save. Zero Firebase cost.
+ * Local validation engine that checks menu data against deterministic
+ * correctness rules on supported mutation/gate paths. Zero Firebase cost.
  *
  * Organized under 5 Correctness Laws:
  * 1. Price Integrity (4 rules)
@@ -26,6 +26,8 @@ import type {
     ValidationRule,
     ValidationRuleResult,
 } from "./types";
+import { parseSingleMenuPrice } from "@lib/pricing/formatMenuPrice";
+import { validatePrice } from "@lib/validation/pricing.schema";
 
 // ─────────────────────────────────────────────────────────────
 // HELPER: Extract items and categories from project data
@@ -33,7 +35,7 @@ import type {
 
 interface ExtractedItem {
     id: string;
-    name: Record<string, string> | undefined;
+    name: Record<string, string> | string | undefined;
     price: string | number | undefined;
     category: string | undefined;
     active: boolean;
@@ -104,7 +106,41 @@ function getActiveFiles(projectData: Record<string, any>): any[] {
 }
 
 function getPrimaryLanguage(projectData: Record<string, any>): string {
-    return projectData?.languages?.[0] || "en";
+    const declaredLanguages = Array.isArray(projectData?.languages)
+        ? projectData.languages.filter((value: unknown): value is string => (
+            typeof value === "string" && Boolean(value.trim())
+        ))
+        : [];
+    if (declaredLanguages.length > 0) return declaredLanguages[0];
+
+    const files = Array.isArray(projectData?.files) ? projectData.files : [];
+    for (const file of files) {
+        const languages = file?.extractedData?.data?.languages;
+        if (!Array.isArray(languages)) continue;
+        const primary = languages.find((language: any) => language?.isPrimary && language?.code);
+        const fallback = languages.find((language: any) => language?.code);
+        if (primary?.code || fallback?.code) return String(primary?.code || fallback.code);
+    }
+
+    for (const item of extractItems(projectData)) {
+        if (!item.name || typeof item.name === "string") continue;
+        const firstLanguage = Object.keys(item.name).find((language) => item.name?.[language]?.trim());
+        if (firstLanguage) return firstLanguage;
+    }
+
+    return "en";
+}
+
+function getItemNameInLanguage(item: ExtractedItem, language: string, primaryLanguage: string): string {
+    if (typeof item.name === "string") {
+        return language === primaryLanguage ? item.name.trim() : "";
+    }
+    return item.name?.[language]?.trim() || "";
+}
+
+function hasSupportedPriceFormat(price: string | number): boolean {
+    if (typeof price === "number") return Number.isFinite(price);
+    return validatePrice(price).success;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -114,7 +150,7 @@ function getPrimaryLanguage(projectData: Record<string, any>): string {
 const VALID_PRICE_FORMAT: ValidationRule = {
     id: "VALID_PRICE_FORMAT",
     law: "PRICE_INTEGRITY",
-    description: "Price is a valid number or string-parseable number",
+    description: "Price matches the supported stored display format",
     severity: "high",
     blocksVerification: true,
     validate: (input: CSRInput): ValidationRuleResult => {
@@ -125,8 +161,7 @@ const VALID_PRICE_FORMAT: ValidationRule = {
             if (!item.active) continue;
             if (item.price === undefined || item.price === null || item.price === "") continue;
 
-            const numPrice = typeof item.price === "string" ? parseFloat(item.price) : item.price;
-            if (typeof numPrice !== "number" || isNaN(numPrice)) {
+            if (!hasSupportedPriceFormat(item.price)) {
                 affected.push(item.id);
             }
         }
@@ -156,8 +191,8 @@ const NO_NEGATIVE_PRICE: ValidationRule = {
             if (!item.active) continue;
             if (item.price === undefined || item.price === null || item.price === "") continue;
 
-            const numPrice = typeof item.price === "string" ? parseFloat(item.price) : item.price;
-            if (typeof numPrice === "number" && !isNaN(numPrice) && numPrice < 0) {
+            const numPrice = parseSingleMenuPrice(item.price);
+            if (numPrice !== null && numPrice < 0) {
                 affected.push(item.id);
             }
         }
@@ -188,8 +223,8 @@ const NO_ZERO_PRICE_ACTIVE: ValidationRule = {
             // Skip items that have no price field at all (some items are unpriced)
             if (item.price === undefined || item.price === null || item.price === "") continue;
 
-            const numPrice = typeof item.price === "string" ? parseFloat(item.price) : item.price;
-            if (typeof numPrice === "number" && numPrice === 0) {
+            const numPrice = parseSingleMenuPrice(item.price);
+            if (numPrice === 0) {
                 affected.push(item.id);
             }
         }
@@ -222,8 +257,8 @@ const SUSPICIOUS_PRICE_CHANGE: ValidationRule = {
 
         for (const item of oldItems) {
             if (!item.active || item.price === undefined || item.price === null || item.price === "") continue;
-            const numPrice = typeof item.price === "string" ? parseFloat(item.price) : item.price;
-            if (typeof numPrice === "number" && !isNaN(numPrice) && numPrice > 0) {
+            const numPrice = parseSingleMenuPrice(item.price);
+            if (numPrice !== null && numPrice > 0) {
                 oldPriceMap.set(item.id, numPrice);
             }
         }
@@ -233,8 +268,8 @@ const SUSPICIOUS_PRICE_CHANGE: ValidationRule = {
 
         for (const item of currentItems) {
             if (!item.active || item.price === undefined || item.price === null || item.price === "") continue;
-            const newPrice = typeof item.price === "string" ? parseFloat(item.price) : item.price;
-            if (typeof newPrice !== "number" || isNaN(newPrice) || newPrice <= 0) continue;
+            const newPrice = parseSingleMenuPrice(item.price);
+            if (newPrice === null || newPrice <= 0) continue;
 
             const oldPrice = oldPriceMap.get(item.id);
             if (oldPrice === undefined) continue;
@@ -394,8 +429,7 @@ const REQUIRED_NAME: ValidationRule = {
 
         for (const item of items) {
             if (!item.active) continue;
-            const name = item.name?.[primaryLang];
-            if (!name || (typeof name === "string" && name.trim() === "")) {
+            if (!getItemNameInLanguage(item, primaryLang, primaryLang)) {
                 affected.push(item.id);
             }
         }
@@ -524,14 +558,14 @@ const LANGUAGE_COMPLETE: ValidationRule = {
         if (!Array.isArray(languages) || languages.length <= 1) {
             return { passed: true, affectedItems: [], message: "" };
         }
+        const primaryLanguage = getPrimaryLanguage(input.projectData);
 
         const affected: string[] = [];
 
         for (const item of items) {
             if (!item.active) continue;
             for (const lang of languages) {
-                const name = item.name?.[lang];
-                if (!name || (typeof name === "string" && name.trim() === "")) {
+                if (!getItemNameInLanguage(item, lang, primaryLanguage)) {
                     if (!affected.includes(item.id)) {
                         affected.push(item.id);
                     }
@@ -713,7 +747,7 @@ const ALL_RULES: ValidationRule[] = [
 /**
  * Evaluate correctness of project data against all validation rules.
  *
- * Runs entirely client-side. Zero Firebase calls.
+ * Runs entirely in-process. Zero Firebase calls.
  * Deterministic — given identical input, always produces identical output.
  *
  * @param input - CSR input containing project data and context

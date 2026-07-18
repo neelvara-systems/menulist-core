@@ -1,7 +1,7 @@
 # Public Truth Check - Product Specification
 
-**Status:** V0 and V1 implemented; V2 planned
-**Last Updated:** July 4, 2026
+**Status:** V0 and V1 implemented; bounded V2 manual saved history implemented
+**Last Updated:** July 16, 2026
 **Audience:** CEO, PM, product owner
 
 ---
@@ -186,6 +186,8 @@ Public form should ask only for useful fields:
 | Menu/service source upload | Not in V0 | Future setup or manual-review flow only |
 | Menu/service text | Optional | Safe fallback when URL fetch is not allowed |
 | Contact method | Optional | Lead follow-up only |
+
+The URL is not concatenated into the pasted source text for fact inference. A valid URL proves only that a public HTTPS reference was entered; its hostname, path, query, and fragment cannot prove prices, hours, location, contact, or customer actions.
 
 V0 does not store uploaded files. The public free route supports pasted source text, URL references, and owner-marked visible facts only. Any persisted upload belongs to an approved setup or manual-review flow with its own consent, retention, Firebase cost, and cleanup rules.
 

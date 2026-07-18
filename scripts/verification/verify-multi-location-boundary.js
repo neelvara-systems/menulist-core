@@ -55,20 +55,12 @@ function verifyOutletActionRoute(content, label, maxBodyToken, limiterToken) {
     'PERMISSIONS.MANAGE_OUTLETS',
     'logMultiOutletFailure(',
     'getBoundedMultiOutletStringContext',
+    'runStorePublicTruthPostCommitEffects({',
     'revalidateTag(',
     'touchDigitalScreenContentVersionForStoreServer',
     'invalidateOwnerBusinessAssistantPacketCache',
   ].forEach((token) => assertIncludes(content, token, label));
-  assertIncludesOneOf(
-    content,
-    ['revalidateTag("client-stores")', "revalidateTag('client-stores')"],
-    `${label} client stores cache invalidation`,
-  );
-  assertIncludesOneOf(
-    content,
-    ['revalidateTag("screen-data")', "revalidateTag('screen-data')"],
-    `${label} screen data cache invalidation`,
-  );
+  assertIncludes(content, 'revalidate: (tag) => revalidateTag(tag)', `${label} shared cache invalidation handoff`);
 
   assertOrder(
     content,
@@ -164,6 +156,7 @@ function verifyCreateRoute(createRoute) {
   [
     'FEATURE_FLAGS.ENABLE_OUTLET_CREATION',
     'FEATURE_FLAGS.ENABLE_OUTLET_BILLING',
+    'MAX_OUTLET_CREATION_MASTER_PROJECTS = 200',
     "sub.status !== 'active'",
     'getRazorpayManagedSubscriptionId(sub)',
     'isRazorpayQuantityUpdateUnsupported(billingError)',
@@ -193,11 +186,35 @@ function verifyCreateRoute(createRoute) {
     'OUTLET_LOCATION_PAYMENT_REQUIRED',
     'readOutletSlugReservationInTransaction({',
     'writeCurrentOutletSlugClaim(tx, outletSlugReservation, now);',
-    'const [summary, legacySummary, storesSummary, userSnap, freshTenantSnap] = await Promise.all([',
+    'freshMasterProjectsSnap,',
+    'freshMasterProjectsSummarySnap,',
     'tx.get(tenantRef)',
+    'tx.get(masterStoreRef)',
+    'tx.get(masterProjectsQuery)',
+    'tx.get(masterProjectsSummaryRef)',
     'normalizeUserStoreAccessDocumentId(session.uId || session.user?.id)',
     'db.collection(DB_COLLECTIONS.USERS).doc(sessionUserDocumentId)',
-    "if (!freshTenantSnap.exists) throw new Error('outlet_create_tenant_missing');",
+    'initialTenant?.active === false',
+    'initialTenant?.deleted === true',
+    'tenantData?.active === false',
+    'tenantData?.deleted === true',
+    'if (!freshTenantSnap.exists || !userSnap.exists || !freshMasterSnap.exists)',
+    'freshTenantData.active === false',
+    'freshTenantData.deleted === true',
+    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'if (freshPermissionError) throw new OutletCreateScopeChangedError();',
+    'freshActiveStoreCount + 1 > newQty',
+    'const masterProjectDocs = freshMasterProjectsSnap.docs.filter(',
+    "project.projectType !== 'localOnly'",
+    'masterProjectDocs.length > MAX_OUTLET_CREATION_MASTER_PROJECTS',
+    'if (!userAccessUpdate) throw new OutletCreateScopeChangedError();',
+    'isOutletCreateScopeChangedError(error)',
+    'chunkSize: OUTLET_CREATE_EFFECT_CHUNK_SIZE',
+    'const newStoreDocumentId = String(result.newStoreId);',
+    'storeIds: [newStoreDocumentId, ...(masterPromoted ? [storeDocumentId] : [])]',
+    'multi_outlet_create_post_commit_effect_failed',
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
   ].forEach((token) => assertIncludes(createRoute, token, 'Outlet create route boundary'));
 
   [
@@ -211,7 +228,7 @@ function verifyCreateRoute(createRoute) {
     [
       'await updateRazorpaySubscriptionQuantity(providerSubId, newQty);',
       'await updateSubscription(subId, { quantity: newQty });',
-      'const masterProjectsSnap = await db',
+      'const masterProjectsQuery = db.collection(',
       'const result = await db.runTransaction(async (tx) => {',
     ],
     'Outlet create provider/internal write order',
@@ -220,9 +237,10 @@ function verifyCreateRoute(createRoute) {
   assertOrder(
     createRoute,
     [
-      'const masterProjectsSnap = await db',
-      '.where(\'deleted\', \'!=\', true)',
+      'const masterProjectsQuery = db.collection(',
       'const result = await db.runTransaction(async (tx) => {',
+      'tx.get(masterProjectsQuery)',
+      'const masterProjectDocs = freshMasterProjectsSnap.docs.filter(',
       'readOutletSlugReservationInTransaction({',
       'tx.set(newStoreRef,',
       'writeCurrentOutletSlugClaim(tx, outletSlugReservation, now);',
@@ -247,17 +265,25 @@ function verifyUserStoreAccessBoundary(content) {
   assertNotIncludes(content, 'db.doc(`${DB_COLLECTIONS.USERS}/${userId}`)', 'Multi-outlet raw user document path');
 }
 
-function verifyOnboardingCompensationScopeBoundary(content) {
+function verifyOnboardingCompensationScopeBoundary(content, mappingBoundary) {
   [
-    'const normalizePersistedOnboardingScopeId = (value: unknown): number | null =>',
-    'Number.isSafeInteger(numericId) && String(numericId) === raw',
+    'from "./compensatedStoreMappings";',
     'removeCompensatedStoreFromMappings',
     'removeCompensatedStoreId',
     'normalizePersistedOnboardingScopeId(userData.storeId) === storeId',
     'normalizePersistedOnboardingScopeId(userData.tenantId) === tenantId',
   ].forEach((token) => assertIncludes(content, token, 'Onboarding compensation scope boundary'));
+  [
+    'export const normalizePersistedOnboardingScopeId = (value: unknown): number | null =>',
+    'Number.isSafeInteger(numericId) && String(numericId) === raw',
+    'export const removeCompensatedStoreFromMappings',
+    'export const removeCompensatedStoreId',
+  ].forEach((token) => assertIncludes(mappingBoundary, token, 'Onboarding compensation mapping boundary'));
   ['Number((store as any)?.storeId)', 'Number(userData.storeId)', 'Number(userData.tenantId)']
-    .forEach((token) => assertNotIncludes(content, token, 'Onboarding compensation coercive scope'));
+    .forEach((token) => {
+      assertNotIncludes(content, token, 'Onboarding compensation coercive scope');
+      assertNotIncludes(mappingBoundary, token, 'Onboarding compensation coercive mapping scope');
+    });
 }
 
 function verifyDeactivateRoute(deactivateRoute) {
@@ -270,15 +296,32 @@ function verifyDeactivateRoute(deactivateRoute) {
     'const targetStoreSnap = await targetStoreRef.get();',
     'Number(targetStore?.tenantId) !== Number(tenantId)',
     'targetStore?.isMaster === true',
-    'targetStore?.active === false && target.active === false',
+    'tx.get(callerStoreRef)',
     'tx.get(targetStoreRef)',
+    'tenant?.active === false',
+    'tenant?.deleted === true',
+    'freshTenantSnap.data()?.active === false',
+    'freshTenantSnap.data()?.deleted === true',
+    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    'if (freshPermissionError) throw new OutletDeactivateScopeChangedError();',
+    'alreadyInactive = freshTarget?.active === false && freshTargetSummary.active === false',
     'freshTarget?.isMaster === true',
     'tx.update(targetStoreRef, {',
     'active: false',
     'tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`),',
     'tx.update(db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`), { storesList: updatedStoresList });',
     'FEATURE_FLAGS.ENABLE_BILLING_REMOVAL_IMMEDIATE && FEATURE_FLAGS.ENABLE_OUTLET_BILLING',
+    'billingReductionPending = true',
+    'isRazorpayQuantityUpdateUnsupported(billingErr)',
+    'billingActionRequired = "CONTACT_SUPPORT"',
+    'billingActionRequired',
+    'isOutletDeactivateScopeChangedError(error)',
     "logger.security('Outlet Deactivated'",
+    'chunkSize: OUTLET_DEACTIVATE_EFFECT_CHUNK_SIZE',
+    'storeIds: [outletStoreDocumentId]',
+    'multi_outlet_deactivate_post_commit_effect_failed',
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
   ].forEach((token) => assertIncludes(deactivateRoute, token, 'Outlet deactivate route boundary'));
 }
 
@@ -292,7 +335,15 @@ function verifyRenameRoute(renameRoute) {
     'if (!proposed || !isValidOutletSlugClaimCandidate(proposed))',
     'isReservedOutletSlug(proposed)',
     'outlet.active === false',
-    'const [tenantDoc, freshOutletSnap] = await Promise.all([',
+    'const [freshMasterSnap, tenantDoc, freshOutletSnap] = await Promise.all([',
+    'tx.get(masterStoreRef)',
+    'const freshPermissionError = requireAnyStorePermissionForStoreData(',
+    "if (freshPermissionError) throw new OutletRenameConflictError('SCOPE_CHANGED');",
+    'isPlatformEntityBlocked(freshMaster)',
+    'tenantDoc.data()?.active === false',
+    'tenantDoc.data()?.deleted === true',
+    'isPlatformEntityBlocked(tenantDoc.data())',
+    'isPlatformEntityBlocked(freshOutlet)',
     'readOutletSlugReservationInTransaction({',
     'writeCurrentOutletSlugClaim(tx, newReservation, now);',
     'writeRedirectOutletSlugClaim(tx, oldReservation, now)',
@@ -300,6 +351,11 @@ function verifyRenameRoute(renameRoute) {
     'tx.update(outletRef, updatePayload);',
     'tx.set(summaryRef, summaryPayload, { merge: true });',
     'tx.update(tenantRef, { storesList: updatedStoresList });',
+    'chunkSize: OUTLET_RENAME_EFFECT_CHUNK_SIZE',
+    'storeIds: [outletStoreIdStr]',
+    'outlet_rename_post_commit_effect_failed',
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
   ].forEach((token) => assertIncludes(renameRoute, token, 'Outlet rename route boundary'));
 
   [
@@ -367,6 +423,9 @@ function verifyPolicyRoute(policyRoute) {
     'normalizeStoreSummaryNumericDocumentId(freshStore.tenantId ?? freshStore.tId) !== tenantDocumentId',
     'freshStore.active === false',
     'isPlatformEntityBlocked(freshStore)',
+    'freshTenantSnap.data()?.active === false',
+    'freshTenantSnap.data()?.deleted === true',
+    'isPlatformEntityBlocked(freshTenantSnap.data())',
     'freshStore.isMaster !== true && !masterPromoted',
     'const mergedPolicy = {',
     '...(freshStore.outletPolicy || DEFAULT_OUTLET_POLICY)',
@@ -374,22 +433,18 @@ function verifyPolicyRoute(policyRoute) {
     'tx.set(storeRef,',
     'tx.update(tenantRef,',
     'tx.set(db.doc(`${DB_COLLECTIONS.PLATFORM_SUMMARY}/storesSummary`),',
-    'touchDigitalScreenContentVersionForStoreServer(storeDocumentId, "outletPolicy")',
-    'invalidateOwnerBusinessAssistantPacketCache({',
+    'runStorePublicTruthPostCommitEffects({',
+    'chunkSize: OUTLET_POLICY_EFFECT_CHUNK_SIZE',
+    'storeIds: [storeDocumentId]',
+    'touchDigitalScreenContentVersionForStoreServer(storeId, "outletPolicy")',
+    'outlet_policy_post_commit_effect_failed',
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
     'outlet_policy_update_route_failed',
     'isOutletPolicyScopeChangedError(error)',
   ].forEach((token) => assertIncludes(policyRoute, token, 'Outlet policy route boundary'));
   assertNotIncludes(policyRoute, 'tenantRef.get()', 'Outlet policy must not derive tenant storesList outside its transaction');
-  assertIncludesOneOf(
-    policyRoute,
-    ['revalidateTag("client-stores")', "revalidateTag('client-stores')"],
-    'Outlet policy route boundary client stores cache invalidation',
-  );
-  assertIncludesOneOf(
-    policyRoute,
-    ['revalidateTag("screen-data")', "revalidateTag('screen-data')"],
-    'Outlet policy route boundary screen data cache invalidation',
-  );
+  assertIncludes(policyRoute, 'revalidate: (tag) => revalidateTag(tag)', 'Outlet policy route delegates cache invalidation to shared post-commit isolation');
 
   assertOrder(
     policyRoute,
@@ -419,6 +474,7 @@ function verifyLinkedOutletSaveRoute(route) {
     'validateAPIInput(schema, body)',
     'normalizeMultiOutletProjectId(project.projectId)',
     'normalizeMultiOutletProjectId(project.masterProjectId)',
+    'normalizeMultiOutletNumericDocumentId(session.tId ?? session.user?.tenantId)',
     'normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId)',
     'linked_outlet_save_invalid_session_store_scope',
     'const currentStoreId = currentStoreScope.numericId;',
@@ -428,59 +484,93 @@ function verifyLinkedOutletSaveRoute(route) {
     'outlet-save:${userRateLimitHash}:${projectRateLimitHash}',
     'requireAnyStorePermissionForStoreData(',
     'PERMISSIONS.MANAGE_MENU',
-    'Number(outletStore?.tenantId) !== tenantId || outletStore?.active === false',
-    'Number(masterStore?.tenantId) !== tenantId || masterStore?.active === false',
+    'Number(outletStore?.tenantId) !== tenantId',
+    'outletStore?.deleted === true',
+    'outletStore?.isMaster === true',
+    'Number(masterStore?.tenantId) !== tenantId',
+    'masterStore?.deleted === true',
+    'masterStore?.isMaster !== true',
+    'isPlatformEntityBlocked(callerStore)',
+    'isPlatformEntityBlocked(outletStore)',
+    'isPlatformEntityBlocked(masterStore)',
+    'isPlatformEntityBlocked(tenant)',
+    'const callerIsInTenant = tenantStores.some',
+    'const masterIsInTenant = tenantStores.some',
+    '!callerIsInTenant || !targetIsInTenant || !masterIsInTenant',
     'store?.active !== false',
     'currentStoreId !== outletStoreId && callerStore?.isMaster !== true',
-    'existingProject?.masterProjectId !== standardProject.masterProjectId',
+    'outletProjectRef.sId === masterProjectRef.sId',
+    'existingProject.masterProjectId !== standardProject.masterProjectId',
     'OUTLET_PROJECT_WRITE_FIELDS',
     'DANGEROUS_KEYS',
     'LOCAL_CATEGORY_PREFIX',
     'LOCAL_ITEM_PREFIX',
-    'getOutletPolicyViolation(standardProject, existingProject, outletPolicy)',
+    'getOutletPolicyViolation(effectiveStandardProject, existingProject, outletPolicy)',
     'hasAddedIds(nextLocalIds.categoryIds, previousLocalIds.categoryIds)',
     'hasAddedIds(nextLocalIds.itemIds, previousLocalIds.itemIds)',
-    'standardProject.active === false && outletPolicy.allowProjectDeactivate === false',
+    'effectiveStandardProject.active === false && outletPolicy.allowProjectDeactivate === false',
     'active: z.boolean().optional()',
     'outletStatus: z.enum(["active", "inactive"]).optional()',
     'sanitizeForFirestore({',
-    'pickOutletProjectWriteFields(standardProject)',
-    'const writeBatch = db.batch();',
-    'writeBatch.set(existingProjectSnap.ref, safeProject, { merge: true });',
-    'hasOwnDefinedProjectField(standardProject, "active")',
-    'buildSummaryProjectFieldPayload(standardProject.projectId, "active", standardProject.active)',
+    'pickOutletProjectWriteFields(effectiveStandardProject)',
+    'savedProject = await db.runTransaction(async (transaction) => {',
+    'transaction.get(persistedOutletProjectRef)',
+    'transaction.get(masterProjectDocumentRef)',
+    'requireCurrentLinkedProject({',
+    'requireCurrentMasterProject({',
+    'projectData.active === false',
+    'projectData.projectType === "localOnly"',
+    'nextProjectMenuVersion(existingProject.menuVersion)',
+    'nextProjectLocalVersion(previousOutletLocalState.localVersion)',
+    'transaction.set(latestOutletSnap.ref, safeProject, { merge: true });',
+    'hasOwnDefinedProjectField(effectiveStandardProject, "active")',
+    'buildSummaryProjectFieldPayload(effectiveStandardProject.projectId, "active", effectiveStandardProject.active)',
     'const expectedBucket = storageAdmin.bucket().name',
     'normalizeImageBatchProjectSelections(',
     'appendImageBatchSelectionsToOutletProject',
     'outletPolicy.imageOverride !== true',
-    'await writeBatch.commit();',
-    'revalidateTag(`menu-store-${outletStoreId}`)',
-    'revalidateTag(`store-${outletStoreId}`)',
-    'revalidateTag("client-stores")',
-    'revalidateTag("screen-data")',
-    'touchDigitalScreenContentVersionForStoreServer(outletStoreId, "linkedOutletSave")',
+    'await runLinkedOutletPostCommitEffects({',
+    'runStorePublicTruthPostCommitEffects({',
+    'storeIds: [String(outletStoreId)]',
+    'revalidate: (tag) => revalidateTag(tag)',
+    'touchDigitalScreenContentVersionForStoreServer(storeId, reason)',
     'invalidateOwnerBusinessAssistantPacketCache({',
+    'failedEffectCount: result.failedEffectCount',
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
     'linked_outlet_save_validation_failed',
     'linked_outlet_save_route_failed',
   ].forEach((token) => assertIncludes(route, token, 'Linked outlet save route boundary'));
 
+  const standardSaveSection = route.slice(route.indexOf('const standardData ='));
   assertOrder(
-    route,
+    standardSaveSection,
     [
-      'readBoundedJsonBody(request, OUTLET_SAVE_MAX_BODY_BYTES',
-      'validateAPIInput(schema, body)',
-      'const currentStoreScope = normalizeMultiOutletNumericDocumentId(session.sId ?? session.user?.storeId);',
-      'verifyTenantAccess(session, tenantId, currentStoreId, request)',
-      'checkRateLimit({',
-      'Promise.all([',
-      'requireAnyStorePermissionForStoreData(',
-      'getOutletPolicyViolation(standardProject, existingProject, outletPolicy)',
-      'writeBatch.set(existingProjectSnap.ref, safeProject, { merge: true });',
-      'await writeBatch.commit();',
-      'touchDigitalScreenContentVersionForStoreServer(outletStoreId, "linkedOutletSave")',
+      'savedProject = await db.runTransaction(async (transaction) => {',
+      'transaction.get(callerStoreDocumentRef)',
+      'transaction.get(persistedOutletProjectRef)',
+      'requireLinkedOutletAuthority({',
+      'getOutletPolicyViolation(effectiveStandardProject, existingProject, outletPolicy)',
+      'transaction.set(latestOutletSnap.ref, safeProject, { merge: true });',
+      'reason: "linkedOutletSave",',
     ],
     'Linked outlet save route validation/write order',
   );
+  assertNotIncludes(route, 'const writeBatch = db.batch();', 'Linked outlet save must not make stale pre-transaction policy decisions');
+  assertNotIncludes(route, 'existingProjectSnap', 'Linked outlet save must not trust a pre-transaction project snapshot');
+}
+
+function verifyServerOutletPolicyBoundary(policy) {
+  [
+    'normalizeMultiOutletProjectId(projectId)',
+    'projectSnap.data()?.deleted === true',
+    'normalizeMultiOutletProjectId(masterProjectId)',
+    'masterProjectScope.sId === storeScope.numericId',
+    'masterStoreSnap.data()?.isMaster !== true',
+    'masterStoreSnap.data()?.active === false',
+    'masterStoreSnap.data()?.deleted === true',
+    'isPlatformEntityBlocked(masterStoreSnap.data())',
+  ].forEach((token) => assertIncludes(policy, token, 'Server linked-outlet AI policy boundary'));
 }
 
 function verifyClientBoundaries(files) {
@@ -510,6 +600,8 @@ function verifyClientBoundaries(files) {
     'isOutletRenameResponse',
     'isOutletDeactivateResponse',
     'isOutletPaymentRequiredResponse',
+    'billingReductionPending?: boolean',
+    "billingActionRequired?: 'CONTACT_SUPPORT' | null",
   ].forEach((token) => assertIncludes(actionGuards, token, 'Multi-location action response guard'));
 
   [
@@ -531,7 +623,13 @@ function verifyClientBoundaries(files) {
     '...MULTI_OUTLET_ACTION_REQUEST_POLICY',
     'fetch("/api/outlets/policy"',
     'outlet_policy_response_invalid',
+    '[`overrides.items.${itemId}`]: deleteField()',
+    '[`overrides.categories.${categoryId}`]: deleteField()',
   ].forEach((token) => assertIncludes(multiOutletDal, token, 'Multi-outlet DAL policy acknowledgement'));
+  [
+    'const { [itemId]: removed, ...remainingItems } = currentOverrides.items;',
+    'const { [categoryId]: removed, ...remainingCategories } =',
+  ].forEach((token) => assertNotIncludes(multiOutletDal, token, 'Multi-outlet override removal stale map rewrite'));
 
   [
     'const toFirestoreSafeOutletContext = (',
@@ -566,6 +664,8 @@ function verifyClientBoundaries(files) {
     'readDesktopLocationActionResponse(res,',
     'isOutletDeactivateResponse(data)',
     'desktop_location_deactivate_response_invalid',
+    'if (Number(targetStoreId) === currentStoreId) return;',
+    'data.billingReductionPending',
     '<AddOutletModal',
     '<OutletRenameModal',
     '<OutletPolicyEditor',
@@ -610,6 +710,10 @@ function verifyClientBoundaries(files) {
     'isOutletCreateResponse(data)',
     'updateOutletPolicy(policyStoreId, changedPolicy)',
     'mobile_location_deactivate_response_invalid',
+    'const activeStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);',
+    'if (Number(storeId) === activeStoreId) return;',
+    'Number(store.storeId) === activeStoreId',
+    'data.billingReductionPending',
     'mobile_location_rename_response_invalid',
     'mobile_location_create_response_invalid',
     'onOpenBilling',
@@ -642,6 +746,30 @@ function verifyClientBoundaries(files) {
     assertNotIncludes(outletRenameModal, token, `Desktop Outlet Rename raw response boundary ${token}`);
     assertNotIncludes(mobileLocations, token, `Mobile Locations raw response boundary ${token}`);
   });
+}
+
+function verifyPublicLinkedOutletBoundary(publicMenu, resolver) {
+  [
+    'const projectScope = normalizePublicMenuProjectDocumentScope(projectId);',
+    'projectScope?.tenantDocumentId === String(tenantId)',
+    'projectScope.storeDocumentId === String(storeId)',
+    "| 'linked_master_scope_invalid'",
+    'const outletProjectScope = normalizePublicMenuProjectDocumentScope(outletProjectId);',
+    'const masterProjectScope = normalizePublicMenuProjectDocumentScope(projectData.masterProjectId);',
+    'outletProjectScope.tenantDocumentId !== masterProjectScope.tenantDocumentId',
+    'outletProjectScope.storeDocumentId === masterProjectScope.storeDocumentId',
+    "logPublicMenuResolutionFailure('linked_master_scope_invalid'",
+    'masterProjectData.active === false',
+    'masterProjectData.deleted === true',
+  ].forEach((token) => assertIncludes(publicMenu, token, 'Public linked-outlet menu scope boundary'));
+
+  [
+    'const storeProjectScope = normalizeMultiOutletProjectId(storeProject.projectId);',
+    'masterProjectScope.tenantDocumentId !== storeProjectScope.tenantDocumentId',
+    'masterProjectScope.storeDocumentId === storeProjectScope.storeDocumentId',
+    'masterProject.active === false',
+    'masterProject.deleted === true',
+  ].forEach((token) => assertIncludes(resolver, token, 'Linked-outlet resolver scope boundary'));
 }
 
 function verifyBrandSubdomainMasterBoundary(files) {
@@ -1068,6 +1196,8 @@ function verifyMultiLocationBoundary() {
   const platformSummaryDal = read('src/database/platformSummary/index.ts');
   const tenantsDal = read('src/database/tenants/index.tsx');
   const tenantNameRoute = read('src/app/api/tenants/name/route.ts');
+  const tenantNamePostCommit = read('src/lib/multiTenant/tenantNamePostCommit.ts');
+  const storePublicTruthPostCommit = read('src/lib/cache/storePublicTruthPostCommit.ts');
   const storesDal = read('src/database/stores/index.tsx');
   const tenantStoreTransaction = read('src/lib/onboarding/createTenantStore.ts');
   const legacyMessagingPublish = read('functions/src/messagingOnboarding/publishPipeline.ts');
@@ -1076,10 +1206,11 @@ function verifyMultiLocationBoundary() {
   const businessSettings = read('src/components/templates/main-app/businessSettings/index.tsx');
   const platformEntityBlocks = read('src/app/api/platform/entity-blocks/route.ts');
   const operationsFunctions = read('functions/src/triggers/operations.ts');
+  const subscriptionReconciliation = read('functions/src/billing/reconcileSubscriptions.ts');
   const publicRoutingSummaryVerifier = read('scripts/verification/verify-public-routing-summary-backfill.mjs');
+  const retiredMenuListChatAggregation = read('functions/src/aggregateDailyChatStats.ts');
   const functionStoreSummaryConsumers = [
     'functions/src/aggregateCustomerAnalytics.ts',
-    'functions/src/aggregateDailyChatStats.ts',
     'functions/src/analytics/extractionLearning.ts',
     'functions/src/analytics/menuDriftMetrics.ts',
     'functions/src/analytics/obpAnalyticsAggregation.ts',
@@ -1096,6 +1227,8 @@ function verifyMultiLocationBoundary() {
   const brandPropagationRoute = read('src/app/api/outlets/brand-propagation/route.ts');
   const brandPropagationDal = read('src/database/multiOutlet/brandPropagation.ts');
   const brandPropagationBoundary = read('src/lib/multiOutlet/brandPropagationBoundary.ts');
+  const projectPropagation = read('src/database/multiOutlet/propagation.ts');
+  const projectPropagationBoundary = read('src/lib/multiOutlet/projectPropagationBoundary.ts');
   const brandSubdomainBoundary = {
     auditDoc: read('__docs__/audits/menulist-production-readiness-audit.md'),
     desktopDomainSettings: read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx'),
@@ -1114,8 +1247,10 @@ function verifyMultiLocationBoundary() {
     resolver: read('src/lib/multiOutlet/resolveProject.ts'),
     actionGuards: read('src/lib/multiOutlet/outletActionResponseGuards.ts'),
     linkedOutletSaveResponse: read('src/lib/multiOutlet/linkedOutletSaveResponse.ts'),
+    serverOutletPolicy: read('src/lib/multiOutlet/serverOutletPolicy.ts'),
     serverStoreAccess: read('src/lib/multiOutlet/serverStoreAccess.ts'),
     onboardingCompensation: read('src/lib/onboarding/compensateFailedOnboarding.ts'),
+    onboardingCompensationMapping: read('src/lib/onboarding/compensatedStoreMappings.ts'),
     multiOutletDal: read('src/database/multiOutlet/index.ts'),
     masterUpdateDiff: read('src/lib/multiOutlet/masterUpdateDiff.ts'),
     awarenessHook: read('src/hooks/useMasterUpdateAwareness.ts'),
@@ -1126,7 +1261,51 @@ function verifyMultiLocationBoundary() {
     mobileLocations: read('src/components/mobile/screens/MobileLocationsScreen.tsx'),
     mobileShell: read('src/components/mobile/MobileShell.tsx'),
     mobileMore: read('src/components/mobile/screens/MobileMoreScreen.tsx'),
+    publicMenu: read('src/app/client/[[...slug]]/page.tsx'),
   };
+
+  [
+    'function getProviderSubscriptionQuantity(value: unknown): number | null',
+    "hasQuantityUpdate: updateKeys.includes('quantity')",
+    'const providerQuantity = getProviderSubscriptionQuantity(rzpSub.quantity);',
+    'const localQuantity = getProviderSubscriptionQuantity(current.quantity) || 1;',
+    'updates.quantity = providerQuantity;',
+    "field: 'quantity'",
+  ].forEach((token) => assertIncludes(subscriptionReconciliation, token, 'Subscription quantity reconciliation safety net'));
+  assertOrder(
+    subscriptionReconciliation,
+    [
+      'const currentSnapshot = await transaction.get(docSnap.ref);',
+      'const providerQuantity = getProviderSubscriptionQuantity(rzpSub.quantity);',
+      'updates.quantity = providerQuantity;',
+      'transaction.update(docSnap.ref, updates);',
+    ],
+    'Subscription quantity transaction-current repair order',
+  );
+
+  [
+    'MAX_PROJECT_PROPAGATION_STORES = 200',
+    'sourceStore.isMaster !== true',
+    'entries.has(storeScope.documentId)',
+    'buildDeterministicOutletProjectId',
+  ].forEach((token) => assertIncludes(projectPropagationBoundary, token, 'Project propagation source/identity boundary'));
+  [
+    'const plan = normalizeProjectPropagationPlan(',
+    'sourceStoreSnap.exists() ? sourceStoreSnap.data() : null',
+    'masterProject.masterProjectId',
+    'masterProject.projectType === "localOnly"',
+    'masterProject.projectId !== masterProjectId',
+    'multi_outlet_project_propagation_source_project_invalid',
+    'outletProjectId = await runTransaction(firebaseClient',
+    'transaction.get(summaryRef)',
+    'project_propagation_target_scope_changed',
+    'transaction.set(outletProjectRef',
+    'transaction.set(summaryRef',
+  ].forEach((token) => assertIncludes(projectPropagation, token, 'Atomic master-only project propagation boundary'));
+  [
+    'Date.now().toString(36)',
+    'await setDoc(outletProjectRef',
+  ].forEach((token) => assertNotIncludes(projectPropagation, token, 'Project propagation partial/non-idempotent write boundary'));
 
   [
     'export const POST = withAuth(async (request, session) => {',
@@ -1144,8 +1323,13 @@ function verifyMultiLocationBoundary() {
     ".where('tenantId', '==', tenantScope.numericId)",
     '.limit(MAX_BRAND_PROPAGATION_OUTLETS + 2)',
     'outletSnapshot.size > MAX_BRAND_PROPAGATION_OUTLETS + 1',
-    'storeDoc.data()?.active !== false',
-    'storeDoc.data()?.deleted !== true',
+    'transaction.get(tenantRef)',
+    'isPlatformEntityBlocked(freshTenant)',
+    'const masterSummary = storesList.find',
+    'const canonicalOutletIds = storesList',
+    'const queriedStores = new Map(outletSnapshot.docs.map',
+    'storeData?.active === false',
+    'storeData?.deleted === true',
     'normalizeMasterStorePropagationFields(Object.keys(validation.data.values))',
     'buildBrandPropagationValues(validation.data.values, fields)',
     'buildStoreSummaryBrandPropagationValues(propagatedValues)',
@@ -1157,10 +1341,14 @@ function verifyMultiLocationBoundary() {
     'transaction.set(outlet.ref, { ...propagatedValues, modifiedOn: now }, { merge: true });',
     ".doc('storesSummary')",
     'targetOutletIds: targetOutlets.map((outlet) => outlet.id)',
-    'revalidateTag(`menu-store-${outletId}`)',
-    'revalidateTag(`store-${outletId}`)',
-    "touchDigitalScreenContentVersionForStoreServer(outletId, 'brandPropagation')",
-    'invalidateOwnerBusinessAssistantPacketCache({',
+    'runStorePublicTruthPostCommitEffects({',
+    'chunkSize: BRAND_PROPAGATION_EFFECT_CHUNK_SIZE',
+    'includeScreenDataTag: refreshScreens',
+    'storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds]',
+    "touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')",
+    "logMultiOutletFailure('multi_outlet_brand_propagation_post_commit_effect_failed'",
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
     "logMultiOutletFailure('multi_outlet_brand_propagation_failed'",
   ].forEach((token) => assertIncludes(brandPropagationRoute, token, 'Server-owned brand propagation boundary'));
   assertOrder(
@@ -1306,6 +1494,16 @@ function verifyMultiLocationBoundary() {
       "summaryDoc.data()?.stores || {}",
     ].forEach((token) => assertNotIncludes(content, token, 'Functions raw store-summary admission'));
   });
+  assertIncludes(
+    retiredMenuListChatAggregation,
+    "throw new HttpsError('failed-precondition', LEGACY_CHAT_ANALYTICS_MIGRATED);",
+    'Retired MenuList chat aggregation must fail closed after Answerlattice isolation',
+  );
+  assertNotIncludes(
+    retiredMenuListChatAggregation,
+    'parsePlatformStoreSummary(',
+    'Retired MenuList chat aggregation must not read MenuList store summary truth',
+  );
   [
     'parsePlatformStoreSummary(summarySnap.exists ? summarySnap.data() : undefined)',
     'store.tId === tenantScope.documentId',
@@ -1412,10 +1610,13 @@ function verifyMultiLocationBoundary() {
     'transaction.update(tenantRef, {',
     'transaction.set(store.ref, { tenantName: validation.data.name, modifiedOn: now }, { merge: true });',
     ".doc('storesSummary')",
-    'revalidateTag(`menu-store-${storeId}`)',
+    'runTenantNamePostCommitEffects({',
+    'chunkSize: TENANT_NAME_EFFECT_CHUNK_SIZE',
     "touchDigitalScreenContentVersionForStoreServer(storeId, 'tenantName')",
-    'invalidateOwnerBusinessAssistantPacketCache({ tId: tenantDocumentId, sId: storeId })',
-    'offset += TENANT_NAME_EFFECT_CHUNK_SIZE',
+    'invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })',
+    "logSecurityFailure('tenant_name_post_commit_effect_failed'",
+    'effectsPending: postCommit.effectsPending',
+    'failedEffectCount: postCommit.failedEffectCount',
     'committed = true;',
     'status: committed ? 500 : 409',
   ].forEach((token) => assertIncludes(tenantNameRoute, token, 'Tenant name atomic propagation route'));
@@ -1425,6 +1626,17 @@ function verifyMultiLocationBoundary() {
     'validateAPIInput(schema, bodyResult.data)',
     'const result = await db.runTransaction(async (transaction) => {',
   ], 'Tenant name limiter, body, validation and transaction order');
+  [
+    'runStorePublicTruthPostCommitEffects(params)',
+  ].forEach((token) => assertIncludes(tenantNamePostCommit, token, 'Tenant name shared post-commit effect boundary'));
+  [
+    'Promise.allSettled(storeIds.flatMap((storeId) => [',
+    'offset += chunkSize',
+    "params.deps.revalidate('client-stores')",
+    "params.deps.revalidate('screen-data')",
+    'effectsPending: failedEffectCount > 0',
+  ].forEach((token) => assertIncludes(storePublicTruthPostCommit, token, 'Shared store public-truth post-commit effect isolation'));
+  assert(packageJson.scripts['test:tenant-name-post-commit'], 'package.json must expose tenant-name post-commit regression');
   [
     "fetch('/api/tenants/name'",
     'AUTH_BROWSER_REQUEST_POLICY',
@@ -1500,13 +1712,15 @@ function verifyMultiLocationBoundary() {
   verifyProjectIdBoundary(files.projectIdBoundary, files.resolver, linkedOutletSaveRoute);
   verifyCreateRoute(createRoute);
   verifyUserStoreAccessBoundary(files.serverStoreAccess);
-  verifyOnboardingCompensationScopeBoundary(files.onboardingCompensation);
+  verifyOnboardingCompensationScopeBoundary(files.onboardingCompensation, files.onboardingCompensationMapping);
   verifyDeactivateRoute(deactivateRoute);
   verifyRenameRoute(renameRoute);
   verifyOutletSlugClaimBoundary(outletSlugClaimBoundary, createRoute, renameRoute, deactivateRoute, storesSummaryRulesTest);
   verifyPolicyRoute(policyRoute);
   verifyLinkedOutletSaveRoute(linkedOutletSaveRoute);
+  verifyServerOutletPolicyBoundary(files.serverOutletPolicy);
   verifyClientBoundaries(files);
+  verifyPublicLinkedOutletBoundary(files.publicMenu, files.resolver);
   verifyBrandSubdomainMasterBoundary(brandSubdomainBoundary);
   verifyDocs(packageJson, docs);
 }

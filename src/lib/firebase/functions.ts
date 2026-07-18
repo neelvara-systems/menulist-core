@@ -142,12 +142,12 @@ export const verifyMenuPublish = async (payload: {
     storeId: string;
     tenantId: string;
     publicMenuUrl: string;
-}): Promise<any> => {
+}): Promise<unknown> => {
     try {
         const { FEATURE_FLAGS } = await import('@config/features');
         if (!FEATURE_FLAGS.ENABLE_MENU_HEALTH_MONITOR) return null;
 
-        const verifyFn = httpsCallable(functions, 'verifyMenuPublish');
+        const verifyFn = httpsCallable<typeof payload, unknown>(functions, 'verifyMenuPublish');
         const result = await verifyFn(payload);
         return result.data;
     } catch (error) {

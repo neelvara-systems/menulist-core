@@ -179,6 +179,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
         && prepaidCapacity <= activeStoresList.length,
     );
     const hasBillingAccess = !FEATURE_FLAGS.ENABLE_OUTLET_BILLING || (activeSubscription?.status === 'active' && hasManualCapacity && !needsCheckoutBeforeOutlet);
+    const activeStoreId = Number(activeStoreContext || storeDetails?.storeId || 0);
 
     const handleSwitchStore = async (storeId: number) => {
         const target = storesList.find((store: any) => Number(store.storeId) === Number(storeId));
@@ -187,8 +188,9 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             return;
         }
         try {
-            if (Number(storeId) === Number(storeDetails?.storeId)) {
-                const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
+            if (Number(storeId) === activeStoreId) return;
+            const masterStoreId = Number(masterStoreSummary?.storeId || storeDetails?.storeId || 0);
+            if (Number(storeId) === masterStoreId) {
                 if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
                 setActiveStoreContext(null);
                 return;
@@ -205,7 +207,7 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
             Toast.show({ content: t('switchedStore'), duration: 1500 });
         } catch (error) {
             logMultiOutletFailure('mobile_location_store_switch_failed', error, buildMobileLocationLogContext('switch_store', {
-                returningToMaster: Number(storeId) === Number(storeDetails?.storeId),
+                returningToMaster: Number(storeId) === Number(masterStoreSummary?.storeId || storeDetails?.storeId),
                 ...getBoundedMultiOutletStringContext('targetStoreId', storeId),
             }));
             Toast.show({ content: t('failedToSwitch'), duration: 2000 });
@@ -266,7 +268,14 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                 if (masterStoreId) await refreshFirebaseAuthClaims(masterStoreId);
                 setActiveStoreContext(null);
             }
-            Toast.show({ content: t('outletDeactivated'), duration: 1500 });
+            Toast.show({
+                content: data.billingReductionPending
+                    ? data.billingActionRequired === 'CONTACT_SUPPORT'
+                        ? t('outletDeactivatedBillingSupport')
+                        : t('outletDeactivatedBillingPending')
+                    : t('outletDeactivated'),
+                duration: data.billingReductionPending ? 3000 : 1500,
+            });
         } catch (error) {
             logMultiOutletFailure('mobile_location_deactivate_failed', error, buildMobileLocationLogContext('deactivate_outlet', {
                 ...getBoundedMultiOutletStringContext('outletStoreId', outletStoreId),
@@ -568,14 +577,14 @@ export default function MobileLocationsScreen({ onBack, onOpenBilling }: MobileL
                                     store.isMaster ? (
                                         <Flex align="center" gap={6}>
                                             <Tag color="warning">HQ</Tag>
-                                            {Number(store.storeId) === Number(storeDetails?.storeId) ? <Tag color="processing">Current</Tag> : null}
+                                            {Number(store.storeId) === activeStoreId ? <Tag color="processing">Current</Tag> : null}
                                         </Flex>
                                     ) : store.active === false ? (
                                         <Tag>{t('inactive')}</Tag>
                                     ) : (
                                         <Flex align="center" gap={6} justify="end" wrap="wrap">
-                                            <Tag>View</Tag>
-                                            {Number(store.storeId) === Number(storeDetails?.storeId) ? <Tag color="processing">Current</Tag> : null}
+                                            {Number(store.storeId) === activeStoreId ? null : <Tag>View</Tag>}
+                                            {Number(store.storeId) === activeStoreId ? <Tag color="processing">Current</Tag> : null}
                                             <Button
                                                 fill="outline"
                                                 onClick={(event) => {

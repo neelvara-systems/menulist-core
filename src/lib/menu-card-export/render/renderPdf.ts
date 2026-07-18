@@ -164,11 +164,20 @@ async function imageUrlToPngDataUrl(url?: string): Promise<string | null> {
     }
 
     return new Promise((resolve) => {
+        let settled = false;
+        let image: HTMLImageElement;
+        const timeout = window.setTimeout(() => {
+            image.src = '';
+            finish(null);
+        }, 5000);
         const finish = (dataUrl: string | null) => {
-            logoDataUrlCache.set(url, dataUrl);
+            if (settled) return;
+            settled = true;
+            window.clearTimeout(timeout);
+            if (dataUrl) logoDataUrlCache.set(url, dataUrl);
             resolve(dataUrl);
         };
-        const image = new Image();
+        image = new Image();
         image.crossOrigin = 'anonymous';
         image.onload = () => {
             try {

@@ -2,7 +2,7 @@
 
 **Status:** Draft owner help article
 **Public naming note:** Public website and launch copy use "AI Menu Manager". In-app help may use "Menu Manager" when referring to the owner navigation label.
-**Last Updated:** June 27, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -11,6 +11,8 @@
 Menu Manager lets you tell MenuList what changed in your menu. MenuList prepares the update, shows a card, and applies supported changes after approval when approval is needed.
 
 You can also ask about the selected menu, such as what needs fixing or which items have no photos. Menu Manager answers from that selected menu only and does not change anything from an answer card.
+
+If you leave a prepared card unfinished overnight, Menu Manager keeps that card available the next day for the same menu. Review, approve, edit, or cancel it as usual; MenuList does not apply it automatically.
 
 ---
 
@@ -40,7 +42,7 @@ Screenshot: Menu Manager screen with menu selector and message box.
 1. Type the change, for example: `Tea is 20 now`.
 2. Check the card.
 3. Confirm the item and new price.
-4. Select **Apply**.
+4. Select **Approve**.
 
 Screenshot: Price update card.
 
@@ -48,7 +50,7 @@ Screenshot: Price update card.
 
 1. Type the item status, for example: `Cold coffee over`.
 2. Check the item and customer-facing state.
-3. Select **Apply**.
+3. Select **Approve**.
 
 Screenshot: Sold-out card with before/after availability.
 
@@ -56,13 +58,13 @@ Screenshot: Sold-out card with before/after availability.
 
 1. Type the item is back, for example: `Cold coffee is back`.
 2. Check the card.
-3. Select **Apply**.
+3. Select **Approve**.
 
 ### Change Menu Style
 
 1. Type the style you want, for example: `Make my menu look premium`.
 2. Check the preview card.
-3. Select **Apply this** or **Try another style**.
+3. Select **Approve**, or select **Edit** to prepare a different style.
 
 Screenshot: Menu style preview card.
 
@@ -99,7 +101,6 @@ Examples:
 - price changes
 - deleting or archiving items
 - supported MenuList publishing
-- external platform handoff tasks
 - applying to all outlets
 - rollback, only when undo is supported for that action
 - creating rules, only when the rule adapter is available
@@ -112,13 +113,11 @@ The card shows what will change before you approve.
 
 After a change applies, Menu Manager shows a receipt.
 
-A receipt can show:
+A receipt shows:
 
 - what changed
 - where it was applied
-- who approved it
-- whether undo is available for that action
-- next related action, if useful
+- whether the prepared work applied or failed
 
 ---
 
@@ -130,11 +129,11 @@ Select **Edit** or **Choose another item** on the card. Do not apply the card if
 
 ### A card says approval is needed
 
-Check the before/after details. Select **Apply** only if the card is correct.
+Check the before/after details. Select **Approve** only if the card is correct.
 
 ### Image generation did not create a useful image
 
-Select **Regenerate** or **Reject**. You can also upload a real item photo.
+Select **Edit** to prepare another request or **Cancel** the card. You can also upload a real item photo through the existing image flow.
 
 ### Upload review is asking questions
 
@@ -142,7 +141,7 @@ MenuList asks only when it cannot safely decide. Answer the card question or can
 
 ### A publish task says manual action is needed
 
-Open the task card. It will show what to update outside MenuList.
+Direct external updates are shown as unsupported. Menu Manager leaves MenuList truth unchanged and does not claim that the external destination was updated.
 
 ### Menu Manager says a question is out of scope
 

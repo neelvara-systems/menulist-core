@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
 **Status:** 📝 Specification Complete
-**Last Updated:** July 11, 2026
+**Last Updated:** July 14, 2026
 **Audience:** CEO, PM, Clients, Non-developers
 
 ---
@@ -114,7 +114,7 @@ The current contract is:
 
 #### Cognitive Load Test
 
-Owner never needs to calculate anything. No "credits left", "cost per image", "token usage", or "plan math". Mental model: **use → blocked → buy → continue.** This is native SMB behavior — like iPhone storage or printer ink.
+Owner never needs to calculate monthly allowance, provider tokens, margin, or plan math. The owner can see the purchased Pack balance and the exact credits required by an eligible operation before acting. Mental model: **see the action cost → use → add a pack when needed → continue.**
 
 #### Emotional Test
 
@@ -125,7 +125,7 @@ Bad systems create: meter-running feeling, fear of clicking AI, fear of extra co
 - Included usage is generous (covers 80th percentile)
 - Block happens late (overdraft buffer)
 - Single pack purchase (no tier decisions)
-- No visible meter or countdown pressure
+- No monthly included-capacity meter or countdown pressure
 
 User never feels "AI is costing me money constantly." They only feel "sometimes I need extra pack."
 
@@ -139,7 +139,7 @@ The system architecture is correct. It will only fail if execution violates thes
 
 | Failure Mode                      | Why It Breaks ICP                               |
 | --------------------------------- | ----------------------------------------------- |
-| Show numbers (credits, usage)     | SMBs don't do math — creates anxiety            |
+| Show monthly allowance/usage internals | Creates monitoring pressure and exposes private plan mechanics |
 | Use word "limit"                  | Implies scarcity — shifts blame to user         |
 | Block too early                   | First-time block feels like being cheated       |
 | Pack price too high for India     | Pack > ₹4k–₹5k causes hesitation for small SMBs |
@@ -163,9 +163,9 @@ The system architecture is correct. It will only fail if execution violates thes
 
 | Rule                                                 | Why                                                    |
 | ---------------------------------------------------- | ------------------------------------------------------ |
-| Never show credits, tokens, or units to customers    | Law 6: No Cognitive Load                               |
-| Never show usage meters or remaining balance         | Language Governance: "Invites Monitoring" is forbidden |
-| Never explain how the system decides what costs what | Law 3: No Explanations                                 |
+| Show Pack credits and eligible operation costs consistently | Gives the owner a concrete purchase and action contract |
+| Never show monthly included-capacity meters          | Avoids monitoring pressure and keeps plan mechanics private |
+| Never expose provider tokens, costs, margin, or overdraft | Internal economics are not owner-facing                |
 | System blocks silently when capacity is exhausted    | Law 2: Silence Is a Feature                            |
 | Support never explains internal mechanics            | Law 9: Humans Do Not Patch Trust                       |
 | One pack, one price at launch                        | Law 6: Removes decisions, doesn't add better ones      |
@@ -483,21 +483,21 @@ export const OVERDRAFT_BUFFER_PERCENT = 20; // Allow 20% overdraft at launch
 
 1. Owner triggers AI enhancement
 2. System checks capacity server-side
-3. Capacity insufficient → **Do NOT show error**
+3. Capacity insufficient → return the calm fixed capacity response
 4. Show calm CTA: "Get more AI enhancements for your menu"
 5. Owner clicks → Redirect to pack purchase (Razorpay checkout)
 6. After purchase → Capacity updated → Operation proceeds
-7. No explanation of why it was blocked. No "you ran out of credits."
+7. No provider/internal explanation and no monthly-allowance breakdown
 
 ### UX Copy Rules
 
 | Scenario           | Approved Language                                          | Forbidden Language                             |
 | ------------------ | ---------------------------------------------------------- | ---------------------------------------------- |
-| Capacity available | (no messaging — just works)                                | "You have X credits remaining"                 |
-| Capacity exhausted | "Get more AI enhancements for your menu"                   | "You've used all your credits"                 |
-| Pack purchased     | "AI enhancements are ready"                                | "50 credits added to your account"             |
-| Pack active        | (no messaging — just works)                                | "Current balance: 47 credits"                  |
-| Support inquiry    | "Your enhancement pack includes AI features for your menu" | "Each image costs 5 credits from your balance" |
+| Capacity available | Show the eligible operation's exact Pack-credit requirement where a preview is useful | Provider token/cost explanation |
+| Capacity exhausted | "Get more AI enhancements for your menu"                   | Monthly allowance or overdraft breakdown        |
+| Pack purchased     | "AI enhancements are ready" plus refreshed Pack balance    | Provider economics or margin                     |
+| Pack active        | Show exact purchased Pack balance without a monthly meter    | Monthly allowance/used-this-cycle countdown      |
+| Support inquiry    | Explain the public Pack amount and current operation rates    | Provider tokens, cost, margin, or internal tax valuation |
 
 ---
 
@@ -615,10 +615,10 @@ Support can name purchased or rewarded credits and explain them through current 
 │                                                   │
 │  1. Authenticate (withAuth)                       │
 │  2. Check capacity (units remaining > cost)       │
-│  3. Execute AI operation (Gemini API call)        │
-│  4. Log usage event (append-only)                 │
-│  5. Decrement capacity counter (atomic)           │
-│  6. Return result to client                       │
+│  3. Reserve exact units + hidden operation shell  │
+│  4. Execute AI operation (Gemini API call)        │
+│  5. Settle shell, or refund exact reservation     │
+│  6. Return billing-store-scoped balance           │
 └───────────────────────┬─────────────────────────┘
                         │
 ┌───────────────────────▼─────────────────────────┐
@@ -668,7 +668,7 @@ Client shows calm CTA (not error)
 | Server-side AI operation finalization                         | ✅ Built | `npm run verify:ai-accounting` |
 | `unitsConsumed` field on billable transaction objects          | ✅ Built | `npm run verify:ai-accounting` |
 | Explicit `AI_UNIT_COSTS` + `GEMINI_COST_USD` entries           | ✅ Built | `npm run verify:ai-accounting` |
-| Subscription-level capacity enforcement                       | ✅ Built | `checkAICapacity()` + `consumeAICapacity()` |
+| Subscription-level capacity enforcement                       | ✅ Built | `checkAICapacity()` + `reserveAiCapacity()` + settle/refund |
 | Browser writes to `menulistAiOperations` disabled             | ✅ Built and deployed | Firestore rules + `npm run verify:ai-accounting` |
 | Razorpay AI Enhancement Pack top-up flow                      | ✅ Built | `create-topup-order` + `verify-topup` |
 | `ENABLE_AI_ENHANCEMENTS` kill switch in `features.ts`         | ✅ Built | Feature flag registry |

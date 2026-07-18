@@ -178,3 +178,9 @@ The platform monitor must not show operation usage or recent operation records.
 - thread route params and answer request thread IDs use the shared `oba_` runtime ID boundary before `ownerBusinessAssistantThreads` reads/writes
 - answer hook response parsing is capped, logs `owner_business_assistant_answer_response_parse_failed`, rejects invalid response shape through the owner-safe error sentinel, and does not use `response.json().catch(() => null)`
 - platform monitor route and browser response failures use bounded runtime diagnostics
+
+## July 16, 2026 Admission And Mobile Parity
+
+The active desktop permission boundary remains `OwnerPermissionGuard` plus the `/dashboard` and `/business-health` `VIEW_ANALYTICS` route requirement. Handheld rendering bypasses the page child and mounts `MobileShell`, so the shell independently gates dashboard hashes, direct Business Health route mapping, and `handleOpenBusinessHealth()` before those screens mount.
+
+The answer route ordering is: feature flag, rate limit, 32KB body admission, schema and suggested-question normalization, free-text flag, selected-store scope, `VIEW_ANALYTICS`, optional SAFE_MODE, deterministic resolver, then optional bounded thread/event writes. AI-operation rate limiting fails closed with a fixed 503 when its provider is unavailable. The current `aiAnswerClient` still returns the deterministic grounded fallback and makes no provider call.

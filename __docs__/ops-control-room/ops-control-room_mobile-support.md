@@ -1,40 +1,29 @@
-# Ops Control Room — Mobile Support Assessment
+# Internal Ops Monitoring — Mobile Support
 
-**Created:** February 20, 2026
-**Last Updated:** July 13, 2026
+**Status:** Implemented as a platform-only MobileShell layer
+**Last updated:** July 16, 2026
 
----
+This is not an SMB-owner mobile feature. It appears only in the internal Platform section and inherits the normal MobileShell providers/navigation.
 
-## Feature Admission Test
+## Current mobile contract
 
-| Gate | Question | Answer | Result |
-|------|----------|--------|--------|
-| Frequency | Daily or multiple times/day? | Once morning, once evening at most | ❌ FAIL |
-| Speed | Completes in <5 seconds? | Read-only dashboard, yes | ✅ PASS |
-| Touch | Works with thumb-only? | Numeric blocks only, no complex interaction | ✅ PASS |
-| Value | Needed away from desk? | Telegram alerts cover urgent awareness | ❌ FAIL |
+- Ops Control Room, Scheduler Monitor and Extraction Monitor use dedicated touch-sized mobile screens.
+- Founder, Cost Posture, Business Health, Messaging Onboarding, Owner Notifications, Platform Notifications and Answerlattice Intake use the shared platform internal wrapper where configured.
+- Entity Blocks has its existing platform-only mobile entry.
+- The signed `platformRole === 'PLATFORM'` check controls visibility, while each direct browser snapshot calls the fresh `/api/platform/current-access` boundary before cross-tenant Firestore reads.
+- `usePlatformStoreSummaryOptions()` uses the same current access check before store options are loaded.
 
-**Original Result:** DESKTOP PRIMARY — 2 of 4 gates failed for a full dashboard workflow.
+## Failure and mutation parity
 
-The current mobile platform screen exposes the same emergency SAFE_MODE and alert-mute calls as desktop through shared response guards. Those APIs apply fail-closed per-operator limits and exact current persisted platform-user verification; a stale mobile session cannot keep emergency-control authority after downgrade, disablement, blocking, deletion, identity mismatch, or revocation. Repeating the current SAFE_MODE state is a no-write success.
+- Failed current-access or data reads render unavailable/previous-snapshot warnings; missing data is not shown as zero health.
+- SAFE_MODE confirmation describes guarded AI generation/upload scope, not a global platform lock.
+- SAFE_MODE and alert-mute actions use the shared 16KB acknowledgement readers.
+- Force republish keeps the shared response guard and selected tenant/store scope.
+- Scheduler recovery uses the shared validated callable response and normalized run-log ID.
+- Mobile extraction remains summary-only; desktop owns deep raw inspection and retry.
 
-The Ops Control Room remains a desktop-first platform admin tool. Urgent system awareness is still delivered through alerts, and deeper investigation happens at a desk.
+Source gate: `npm run verify:ops-control-room-boundary` locks the mobile platform-only screen, SAFE_MODE confirmation, alert-mute action, force-republish confirmation pattern, current snapshot admission, failure warning and MobileShell route mapping.
 
-## Current Mobile Contract
+Source gate: `npm run verify:scheduler-monitor-boundary` locks the mobile scheduler monitor, store-scoped manual recovery, bounded response/detail rendering, shared store-summary selector and MobileShell route mapping.
 
-Mobile support now exists only as a platform-only emergency surface for the same operator, not as an owner workflow. The mobile screen inherits the same `platformRole === 'PLATFORM'` gate, shared ops DAL reads, SAFE_MODE confirmation, alert-mute action, and force-republish confirmation pattern.
-
-The force-republish confirmation explicitly covers all active menu projects for the selected store. Its response is accepted only with a bounded 1-100 `projectCount`, representative project ID, success flag, and verification state, and the toast reports the confirmed project count.
-
-June 30, 2026 hardening keeps the mobile mutation calls aligned with desktop:
-
-- SAFE_MODE and alert-mute browser requests use no-store cache, same-origin credentials, and manual redirect handling.
-- SAFE_MODE and alert-mute acknowledgements pass through the shared 16KB bounded Ops Control Room response readers before success copy is shown.
-- Rejected, redirected, malformed, oversized, or invalid acknowledgements show fixed mobile copy and log bounded `mobile_ops_safe_mode_toggle_failed` / `mobile_ops_mute_alerts_failed` diagnostics only.
-- Source gate: `npm run verify:ops-control-room-boundary` locks the mobile platform-only screen, SAFE_MODE confirmation, alert-mute action, force-republish confirmation pattern, shared response readers, and MobileShell route mapping.
-- This adds no owner-facing mobile navigation, Firestore reads/writes, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action.
-
-Scheduler Monitor mobile support is platform-only and mirrors the desktop monitor's emergency recovery boundary. It keeps the same `platformRole === 'PLATFORM'` gate, reads the shared scheduler DAL snapshot on manual refresh, renders scheduler detail/error payloads as bounded summaries only, and calls store-scoped manual recovery with the selected `storesSummary` store rather than a project ID.
-
-- Source gate: `npm run verify:scheduler-monitor-boundary` locks the mobile scheduler monitor, store-scoped manual recovery, bounded detail rendering, shared store-summary selector, and MobileShell route mapping.
-- This adds no owner-facing mobile navigation, Firestore writes, Cloud Function logic, rules, indexes, Firebase deploy requirement, or Vercel deploy action.
+Local gates do not certify a real revoked-session transition, physical device, offline/reconnect behavior, target Firebase rules, deployed callable, provider delivery or production host. Those remain pending.

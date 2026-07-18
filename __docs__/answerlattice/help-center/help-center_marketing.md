@@ -1,107 +1,37 @@
-# Help Center — Marketing & Sales Collateral
+# MenuList Help Center — Approved Positioning
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-01
-> **Audience:** Sales, Marketing, Partnerships
-> **Source:** Codebase forensic audit
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-16
+> **Audience:** Product, Sales, Marketing, Support
+> **Source:** Current codebase and active release gates
 
----
+## Plain-Language Description
 
-## 1. One-Line Pitch
+MenuList owners can open one Help Center inside the dashboard to browse published guidance, read FAQs and release notes, ask a source-backed support question, submit a trackable request, reply to that request and share product feedback.
 
-**"Built-in support infrastructure that resolves questions before they become tickets."**
+Answerlattice supplies the scoped support knowledge and ticket infrastructure. That product name does not need to appear in ordinary owner copy.
 
----
+## Safe Claims
 
-## 2. Elevator Pitch (30 seconds)
+- Help is available inside the signed-in MenuList dashboard.
+- Published guidance and cited source articles can be browsed from the same surface.
+- Owners can submit and track support requests with up to four supported attachments of 10 MB each.
+- Ticket history and replies update through a bounded store-scoped listener.
+- Search failure leaves documentation, tickets, feedback, contact email and release notes as separate fallback paths.
 
-MenuList's Help Center is a source-backed support system embedded directly inside the dashboard. Owners get instant answers from a RAG chatbot trained on your knowledge base, file structured tickets when they need human help, browse organized documentation, and track every interaction — all without leaving the product. Platform administrators get real-time chat monitoring, automated quality scoring, SLA tracking, and AI-generated weekly performance reports. Zero external tools. Zero integration headaches.
+## Claims Requiring Release Evidence
 
----
+Do not claim any of these from source code alone:
 
-## 3. Key Differentiators
+- a response-time or resolution-time guarantee;
+- that every question receives an answer;
+- that generated output cannot be wrong;
+- that email notifications, AI providers or all systems are always available;
+- that a current app/rules version is deployed;
+- a measured cache-hit, deflection, accuracy or SLA percentage without current production evidence.
 
-| Traditional Helpdesk | MenuList Help Center |
-|---------------------|---------------------|
-| External tool (Zendesk, Intercom) | Built into the product |
-| Separate login/context | Same auth, same session |
-| Manual article writing | AI generates articles from raw files |
-| Keyword search | Semantic vector search (understands meaning) |
-| Canned responses | AI generates contextual answers with source citations |
-| Manual quality monitoring | Automated quality scoring per conversation |
-| Weekly reports built manually | AI generates weekly narratives automatically |
-| SLA tracking requires setup | SLA built in with auto-calculation |
-| Separate analytics platform | Dashboard with ROI calculator built in |
+Avoid public copy such as "AI-powered", "instant answers", "no hallucination", "all systems operational" or "zero external tools". Owner copy should describe the useful action, not internal RAG, vectors, model names, product-account bridges or Firebase architecture.
 
----
+## Product Boundary
 
-## 4. Feature Highlights for Sales
-
-### For SMB Owners (End Users)
-- **Instant AI Answers** — Ask anything, get an answer in seconds with source article citations
-- **Visual Questions** — Upload a screenshot, AI understands and finds relevant docs
-- **Follow-up Conversations** — Switch to Assistant mode for contextual multi-turn conversations
-- **One-Click Tickets** — Submit support tickets with auto-captured browser logs for faster resolution
-- **Track Everything** — See ticket status, SLA progress, and conversation history
-- **Stay Updated** — Browse What's New changelog with release notes
-
-### For Platform Administrators
-- **AI Content Pipeline** — Upload PDFs/docs/videos → AI generates structured KB articles → review and publish
-- **Quality Dashboard** — Filter conversations by AI confidence score (Good/Low/Very Low)
-- **SLA Automation** — Priority-based SLA with auto-calculated breach/risk status
-- **Real-Time Tickets** — Live updates via Firestore listeners, no refresh needed
-- **Weekly AI Digest** — Gemini generates performance narrative with highlights and recommendations
-- **ROI Calculator** — Quantify hours saved, cost saved, automation rate
-- **Knowledge Gap Detection** — AI identifies topics where KB needs improvement
-- **Team Notes** — Rich text internal notes on conversations for team collaboration
-
----
-
-## 5. Technical Selling Points
-
-- **RAG Architecture** — Retrieval-Augmented Generation with Gemini 2.5 Flash, not simple keyword matching
-- **768-Dimension Embeddings** — Version-locked Gemini embeddings for semantic retrieval
-- **40-60% Cache Hit Rate** — Embedding and response caching for instant repeat queries
-- **99.95% Read Reduction** — Aggregated analytics vs raw session scanning
-- **Multi-Tenant Isolated** — Every data point scoped by tenant and store
-- **Paginated Everything** — Cost-controlled queries with cursor-based pagination
-- **Transaction-Safe Changelog** — Atomic page operations with auto-rollover at 900KB
-
----
-
-## 6. Metrics That Matter
-
-| Metric | What It Proves |
-|--------|---------------|
-| **Cache hit rate** | System gets faster as more questions are asked |
-| **Satisfaction rate** | % of positive AI answer feedback |
-| **Knowledge gap count** | Declining = KB is improving |
-| **Regeneration rate** | Low = AI answers are good first time |
-| **SLA compliance** | % of tickets resolved within SLA |
-| **Automation rate** | % of questions resolved without human ticket |
-
----
-
-## 7. Pricing Context
-
-This is a **platform feature**, not a separately priced module. It's included in all MenuList subscriptions as core infrastructure. The AI operations (Gemini API calls) are covered by the platform's AI credit system.
-
-For future standalone SaaS (see `help-center_decoupling-analysis.md`), pricing could be:
-- Per-seat (support agents)
-- Per-conversation (AI interactions)
-- Per-KB-article (content volume)
-- Tiered by features (basic KB + tickets vs full AI + analytics)
-
----
-
-## 8. Competitive Landscape
-
-| Competitor | Weakness vs MenuList Help Center |
-|-----------|--------------------------------|
-| **Zendesk** | External tool, expensive, complex setup |
-| **Intercom** | Expensive per-seat, heavy JS bundle |
-| **Freshdesk** | External tool, limited AI capabilities |
-| **Crisp** | Limited RAG, no embedded KB generation |
-| **HelpScout** | No AI answer generation, manual-only KB |
-
-**MenuList advantage:** Fully embedded, same auth, AI-native from day one, no integration overhead.
+This surface is not a helpdesk replacement, documentation CMS or autonomous support agent. Ticket operations remain a fallback and signal source; governed knowledge remains authoritative under Answerlattice doctrine.

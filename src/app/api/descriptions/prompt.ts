@@ -65,10 +65,10 @@ const descriptionPrompt = (contentLength: "Standard" | "Detailed" = "Standard", 
     ...inputJson,
     itemsList: (inputJson.itemsList || []).map((item: any) => ({
       id: sanitizeDescriptionInput(item.id || '', 50),
-      name: sanitizeDescriptionInput(item.name || '', 100),
-      category: sanitizeDescriptionInput(item.category || '', 100),
-      attributes: sanitizeDescriptionInput(item.attributes || '', 200),
-      description: sanitizeDescriptionInput(item.description || '', 500)
+      name: sanitizeDescriptionInput(item.name || '', 500),
+      category: sanitizeDescriptionInput(item.category || '', 200),
+      attributes: sanitizeDescriptionInput(item.attributes || '', 500),
+      description: sanitizeDescriptionInput(item.description || '', 2000)
     })),
     sourceLang: inputJson.sourceLang ? {
       code: sanitizeDescriptionInput(inputJson.sourceLang.code || '', 10),

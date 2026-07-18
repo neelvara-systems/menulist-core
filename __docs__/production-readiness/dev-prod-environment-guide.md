@@ -38,10 +38,10 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 4   | Separate domains                                 | **ALREADY EXISTS** | Vercel handles this: `main` → prod domain, `dev` → preview URLs                                                                |
 | 5   | No shared anything between dev/prod              | **PARTIAL**        | Feature flags are code-level (not env-level), so target-specific changes require explicit review and certification evidence rather than env overrides |
 | 6   | `.env.local` for dev, `.env.production` for prod | **WRONG**          | Next.js uses `.env.local` (all envs) + Vercel env vars per environment. No `.env.production` file needed                       |
-| 7   | Use `NEXT_PUBLIC_ENV=dev\|prod` variable         | **UNNECESSARY**    | `process.env.NODE_ENV` already handles this. Vercel sets `VERCEL_ENV` for preview vs production                                |
+| 7   | Use a public deployment-stage marker             | **UPDATED**        | Vercel's server `VERCEL_ENV` is authoritative; `NEXT_PUBLIC_VERCEL_ENV` and the retained `NEXT_PUBLIC_ENV` compatibility marker must agree with it |
 | 8   | MCE validation on publish                        | **ALREADY EXISTS** | `src/lib/mce/` — 17-rule engine, publish-gate in Editor.tsx. Flag: `ENABLE_MCE: true`                                          |
 | 9   | MOL logging                                      | **ALREADY EXISTS** | `src/database/menuChangeLog/` — append-only event ledger. Flag: `ENABLE_MENU_OBSERVATION: true`                                |
-| 10  | Feature flags for instant disable                | **ALREADY EXISTS** | 80+ flags in `src/config/features.ts` covering every feature                                                                   |
+| 10  | Feature controls as instant remote kill switches | **PARTIAL**        | App flags are source-controlled build/runtime constants and require a release; selected Functions flags accept strict server env overrides |
 | 11  | Cost discipline / rate limiting                  | **ALREADY EXISTS** | Upstash rate limiting, SAFE_MODE circuit breaker, AI enhancement pack credits                                                  |
 | 12  | Write governance layer / mutation pipeline       | **ALREADY EXISTS** | All writes go through DAL (`src/database/`) with `apiCallComposer` + `requestBodyComposer`. No direct Firestore writes from UI |
 | 13  | Expensive-work circuit breaker                   | **ALREADY EXISTS** | SAFE_MODE reads `ops_config/system` and blocks only routes/workers with an explicit check; the app helper fails open on config-read failure and public menus remain available |
@@ -75,7 +75,9 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 1. `/core/mutations/` folder — DAL already handles this
 2. `.env.production` file — Vercel env vars are the correct pattern
-3. `NEXT_PUBLIC_ENV` variable — `NODE_ENV` + `VERCEL_ENV` already exist
+3. A separate ad-hoc environment alias — use the maintained
+   `VERCEL_ENV`/`NEXT_PUBLIC_VERCEL_ENV`/`NEXT_PUBLIC_ENV` agreement contract
+   instead
 4. Relaxed dev security rules — same strictness everywhere prevents bugs shipping to prod
 5. `executeWithCostGuard()` wrapper — existing credit system + SAFE_MODE already covers this
 6. `assertIdentity()` central validator — `withAuth()` + `verifyTenantAccess()` already do this
@@ -93,7 +95,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | **Auth & Isolation** | `withAuth()` + tId/sId enforcement                   | ✅ COMPLETE            |
 | **Rate Limiting**    | Upstash Redis (`src/lib/rateLimit.ts`)               | ✅ COMPLETE            |
 | **Expensive-work circuit breaker** | SAFE_MODE (`src/lib/ops/safeMode.ts`) | ✅ SOURCE-COMPLETE (live target verification pending) |
-| **Feature Flags**    | 80+ flags in `src/config/features.ts`                | ✅ COMPLETE            |
+| **Feature Flags**    | source-controlled build/runtime constants in `src/config/features.ts` | ✅ SOURCE-COMPLETE |
 | **Menu Validation**  | MCE 17-rule engine                                   | ✅ COMPLETE            |
 | **Event Logging**    | MOL append-only ledger                               | ✅ COMPLETE            |
 | **Menu Snapshots**   | Immutable on publish                                 | ✅ COMPLETE            |
@@ -132,7 +134,7 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 | 8   | **Google Analytics**    | `@google-analytics/data` v5.1.0              | Server-side analytics reads             | `GA_CLIENT_EMAIL`, `GA_PRIVATE_KEY`, `GA_PROJECT_ID`                                               | N/A                                      | Same (OK for dev)              | Same                        |
 | 9   | **SMTP (Nodemailer)**   | Root app: `nodemailer` v7.0.13; MenuList Functions: v8.0.1; Answerlattice Functions: v8.0.2 | Lifecycle emails, notifications         | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`                                                 | Same secrets                             | Optional (skip in dev)         | Gmail SMTP or custom        |
 | 10  | **Telegram Bot**        | Raw HTTP fetch                               | Ops alerts                              | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`                                                           | Same secrets                             | Optional (skip in dev)         | Required                    |
-| 11  | **Google Cloud Tasks**  | `@google-cloud/tasks` v6.1.0                 | Batch image generation queue            | `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_QUEUE_ID`                             | N/A                                      | Skip in dev                    | Required                    |
+| 11  | **Google Cloud Tasks**  | `@google-cloud/tasks` v6.1.0                 | Batch image generation queue            | `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_URL`, `BATCH_IMAGE_GENERATION_WORKER_SECRET` | N/A                                      | Skip in dev                    | Required                    |
 | 12  | **Vercel**              | Hosting platform                             | Deployment                              | `VERCEL`, `VERCEL_ENV` (auto-set)                                                                  | N/A                                      | Auto (`dev` branch)            | Auto (`main` branch)        |
 | 13  | **WhatsApp Cloud API**  | Raw HTTP in CF                               | Messaging onboarding                    | N/A                                                                                                | `WHATSAPP_*` (4 secrets)                 | Not needed (flag OFF)          | When enabled                |
 
@@ -161,11 +163,16 @@ MenuList can embed Answerlattice as an external client on owner routes only when
 
 ## Feature Flags: Target-Environment Review
 
-Feature flags live in `src/config/features.ts`. This guide does not authorize blanket env-specific overrides or a "turn everything on" launch ritual.
+App feature flags live as source-controlled build/runtime constants in
+`src/config/features.ts`. They are not remote configuration and require a
+release to change. This guide does not authorize blanket env-specific overrides or a "turn everything on" launch ritual.
 
 ### Current Contract
 
 - Keep `src/config/features.ts` as the source of truth unless a separate architecture decision introduces env-specific overrides.
+- MenuList Functions may use the existing strict `FEATURE_NAME_ENABLED`
+  override form. Only `true`, `1`, `yes`, `on`, `false`, `0`, `no`, and `off`
+  are accepted; invalid configured text fails closed.
 - Review only the flags tied to the target gate being certified.
 - Provider-backed flags require target secrets/account setup, source gates, QA evidence where applicable, and explicit production approval before production use.
 - If a flag is already `true` in source, treat it as code-enabled; still verify the underlying provider/runtime evidence before launch.
@@ -234,8 +241,11 @@ GA_PRIVATE_KEY=
 GA_PROJECT_ID=
 
 # Batch Processing
+FIREBASE_PROJECT_ID=
+FIREBASE_PROJECT_LOCATION=
 BATCH_IMAGE_GENERATION_WORKER_URL=
 BATCH_IMAGE_GENERATION_QUEUE_ID=
+BATCH_IMAGE_GENERATION_WORKER_SECRET=
 ```
 
 ### Optional (Feature-Flagged, Skip If Flag OFF)
@@ -372,7 +382,7 @@ This guide is a companion environment checklist. It does not approve production 
 
 - [ ] `npx tsc --noEmit` — zero errors
 - [ ] No `console.log` in production code (compiler removes them)
-- [ ] Feature flags verified (no accidental dev-only flags in main branch)
+- [ ] Source flags and strict Functions overrides verified for this release
 - [ ] No test data or test endpoints active
 - [ ] Razorpay webhook signature validation tested
 

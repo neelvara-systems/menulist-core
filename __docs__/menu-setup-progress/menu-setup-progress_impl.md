@@ -1,100 +1,29 @@
-# Menu Setup Progress — Implementation Plan
+# Menu Setup Progress - Implementation
 
-## 1. Architecture
+**Status:** Local source complete
+**Last reviewed:** July 16, 2026
 
-Menu Setup Progress is a pure read + compute feature.
+## Authority
 
-```
-storeDetails + project + quality signals + starter activation
-  -> buildMenuSetupProgress()
-  -> desktop card + mobile card
-```
+`src/lib/menuSetupProgress/buildMenuSetupProgress.ts` is the single computation. Inputs are current selected project, optional precomputed quality signals, and current store details. Output contains phase, required/optional steps, exact next action, compact copy, percentage, and `shouldShow`.
 
-## 2. Shared Helper
+## Defensive derivation
 
-File:
+- `project.files` and extracted item lists must be arrays; malformed values become empty.
+- Source requires trimmed `project.projectId`; `onboardingSource` is not project proof.
+- Active item count excludes `active === false`.
+- Publish uses `normalizeStarterActivationTimestamp()` rather than truthiness.
+- Activation summary counts only allowlisted signals with valid timestamps.
+- Public-link/photo optional checks accept non-empty strings and valid photo arrays rather than arbitrary truthy objects.
 
-`src/lib/menuSetupProgress/buildMenuSetupProgress.ts`
+## Rendering
 
-Responsibilities:
+- `OwnerDashboard` uses one SWR selected-project load and passes the same result to Menu Setup Progress and Menu Quality.
+- `MobileMenuScreen` and `MobileShareScreen` use selected project data from `MobileProjectsProvider`.
+- `MobileMoreScreen` waits for project-provider loading, computes the same summary, checks destination permission, and calls Menu/Share/Official Page shell callbacks.
 
-- Count active items from existing project files.
-- Compute critical Menu Check blockers using existing `computeQualitySignals()`.
-- Read publish readiness from project `lastPublishedAt`.
-- Read placement readiness from existing `buildStarterActivationSummary()`.
-- Read optional translation readiness from existing Menu Check language signals.
-- Read optional OBP polish from `socialMedia` and `publicPresence`.
-- Return a stable `MenuSetupProgressSummary`.
+## Activation acknowledgement
 
-## 3. Desktop
+Sharing writes return a typed acknowledgement with store, signal, and `recordedAt`. Desktop Use MenuList and Mobile Share update the loaded store context only after the acknowledgement and only if the store still matches. Presence confirm/remove does the same. This updates the progress/banner immediately without another Firestore read.
 
-File:
-
-`src/components/templates/main-app/dashboard/MenuSetupProgress.tsx`
-
-Mount:
-
-`src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx`
-
-Dashboard loads the selected project once and passes the same project data to Menu Setup Progress and Menu Check. This prevents two dashboard project reads for adjacent setup/status cards.
-
-## 4. Mobile
-
-File:
-
-`src/components/mobile/components/MenuSetupProgress.tsx`
-
-Mounts:
-
-- `MobileMenuScreen`: before Menu Check, using already-loaded selected project data.
-- `MobileShareScreen`: after project selector/link cards begin, using selected project data already available from `MobileProjectsProvider`.
-- `MobileMoreScreen`: conditional shortcut in the existing Modules section while setup is incomplete. It does not create a new group or screen.
-
-Mobile actions are simple callbacks into existing shell screens:
-
-- Open menu/project work: existing Menu tab/screen
-- Open placement/sharing work: existing Share screen
-- Open optional public-page work: existing More > Official Page screen
-
-## 5. Routing
-
-No new route is created.
-
-Desktop action routes:
-
-- Source/menu/check/publish: `/projects`
-- Placement: `/use-menulist`
-- OBP public links/photos: `/business-settings?section=business-profile&focus=official-page-actions` or `official-page-photos`
-
-Mobile action callbacks stay inside the existing MobileShell screen system.
-The More shortcut uses `MobileProjectsProvider` selected-project data and `MobileShell` callbacks; it must not add a standalone route or direct desktop-route bypass.
-
-## 6. Feature Flag
-
-Add:
-
-`ENABLE_MENU_SETUP_PROGRESS`
-
-Location:
-
-`src/config/features.ts`
-
-## 7. Verification
-
-Add:
-
-`npm run verify:menu-setup-progress-boundary`
-
-The verifier checks:
-
-- feature flag exists
-- docs exist
-- pure helper exists
-- desktop/mobile components exist
-- More shortcut uses shell navigation and provider data
-- dashboard shares project data with Menu Check
-- no API route, Firestore collection, or Cloud Function is introduced for this feature
-
----
-
-**Created:** July 7, 2026
+No new route or backend artifact exists under `api/menu-setup-progress` or `functions/src/menuSetupProgress`.

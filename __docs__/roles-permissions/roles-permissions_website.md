@@ -1,6 +1,6 @@
 # Roles & Permissions — Website Content
 
-**Last Updated:** May 19, 2026
+**Last Updated:** July 16, 2026
 
 ## Current Main Website Placement
 
@@ -28,7 +28,7 @@ When everyone has admin access, mistakes happen. A staff member accidentally cha
 
 ## Solution Statement
 
-MenuList gives every team member a role that matches their job. Three defaults (Owner, Manager, Staff) cover most teams. Need more control? Create custom roles with exactly the permissions you want across billing, menu, sharing, feedback, screens, public presence, integrations, and more. Non-technical staff can also use Staff ID and passcode login when email is not practical.
+MenuList gives every team member a role that matches their job. Three defaults (Owner, Manager, Staff) cover common small-business teams. Need more control? Create custom roles with specific permissions across billing, menu, sharing, feedback, screens, public presence, integrations, and more. Non-technical staff can also use Staff ID and passcode login when email is not practical. Managers can handle ordinary staff without being able to change an Owner account.
 
 ## Feature Benefits
 
@@ -52,10 +52,14 @@ Combine staff roles with outlet policies to control both what people can do and 
 
 Owners can reset a staff passcode or sign out a staff session when someone leaves the business. Old access is revoked without asking staff to handle a technical email flow.
 
+### 6. Owner Access Stays Protected
+
+Managers can handle day-to-day staff access, while Owner accounts remain read-only unless the person making the change can also assign roles.
+
 ## SEO Meta
 
 - **Page Title:** Staff Roles & Permissions for Restaurants | MenuList
-- **Meta Description:** Control who can access what in your restaurant dashboard. 3 default roles, custom roles, 29 permission toggles. Simple role-based access for teams of any size.
+- **Meta Description:** Control who can access what in your restaurant dashboard with 3 default roles, custom roles, and 29 clear permission toggles.
 - **Target Keywords:** restaurant staff permissions, role-based access, restaurant user roles, team access control, custom staff roles
 
 ## Approved Language
@@ -63,3 +67,5 @@ Owners can reset a staff passcode or sign out a staff session when someone leave
 ### USE: "Role-based access", "right access for right people", "protect what matters", "custom roles"
 
 ### NEVER USE: "AI-powered access control", "Smart permissions", "Intelligent role detection"
+
+Also do not claim enterprise IAM, unlimited team scale, HR/workforce management, certification, or automatic identity recovery. Current runtime is store-scoped SMB staff access with bounded owner/admin actions and explicit hosted-release evidence requirements.

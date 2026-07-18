@@ -31,13 +31,14 @@ The source includes `MobileExtractionMonitorScreen` inside `MobileShell`. It giv
 
 - Entry: `MobileShell` -> More -> Platform -> Extraction Monitor.
 - Route mapping: `/ops/extraction` and `/platform/extraction-monitor` resolve to the shell sub-screen.
-- Admission: `ENABLE_EXTRACTION_MONITORING_DASHBOARD` must be enabled and `platformRole === 'PLATFORM'`.
+- Admission: `ENABLE_EXTRACTION_MONITORING_DASHBOARD` must be enabled, the signed role must be exact `PLATFORM`, and the snapshot must pass the fresh current persisted platform-access API before Firestore reads.
+- Read failure shows unavailable/previous-snapshot copy; zero metrics are never synthesized from a failed request.
 - Reads: `getExtractionDashboardSnapshot({ status, pageSize: 20 })` on initial load, status-filter change, or manual refresh.
 - Visible data: health, cost today, quality, and recent-job summaries.
 - Mutations: none. Mobile has no Job Inspector, raw-data copy, or retry action.
 - Refresh: no automatic interval. The operator explicitly refreshes when current evidence is needed.
 
-The same Firestore rules independently restrict cross-tenant `menuImageProcessingJobs` reads and all `MENULIST_AI_OPERATIONS` reads to platform admins. Ordinary authenticated users retain own-job reads only.
+The same Firestore rules independently restrict cross-tenant and cross-store `menuImageProcessingJobs` reads and all `MENULIST_AI_OPERATIONS` reads to platform admins. Ordinary authenticated users require both exact job ownership and current job tenant/store membership; a historical `uId` cannot read an old scope after switching location.
 
 ## Required Device Evidence
 

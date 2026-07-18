@@ -41,7 +41,7 @@ Campaign Rhythm only labels a generated pack `pack_ready` when its saved freshne
 
 The Results UI stores the selected campaign ID. Campaign Rhythm, pack rows, and editor actions open that exact campaign in Results, and the write button remains disabled until the owner selects a bounded result signal.
 
-The editor and workspace export buttons all call the protected campaign action before starting a browser download. Shared busy guards prevent rapid repeated clicks from creating duplicate approval, schedule, export, use, or result writes.
+The editor and workspace export buttons all call the protected campaign action before starting a browser download. Shared busy guards prevent rapid repeated clicks from creating duplicate approval, schedule, export, use, or result writes. The server still treats the browser as untrusted: every retry key is bound to actor plus canonical request content, and ordinary campaign updates use a final Firestore transaction so different valid keys cannot lose concurrent counters or result memory.
 
 ## Existing Routes Reused
 
@@ -49,6 +49,7 @@ The editor and workspace export buttons all call the protected campaign action b
 - `POST /api/campaigncue/campaigns` recomputes decisions server-side and persists freshness, commercial gate, and experiment metadata in `campaign.pack`.
 - The same create route accepts an optional `reuseCampaignId` and rebuilds that pack's recipe from current truth.
 - `POST /api/campaigncue/campaigns/{campaignId}/actions` rechecks truth for public-use actions, writes result receipts, and stores staff task metadata on the existing schedule document.
+- Non-approval actions atomically re-read the current campaign, derive updates from that snapshot, and write campaign, event, summary, optional schedule, and idempotency completion together. Public-use actions additionally re-read current workspace truth and the compact source snapshot when required.
 - The action route resolves approval requests and decisions without a new API surface.
 
 No new API route was required.
@@ -77,7 +78,7 @@ No new API route was required.
 
 ## Security
 
-Existing routes remain protected by `withAuth`, CampaignCue tenant scope, rate limits, bounded JSON parsing, Zod validation, idempotency, sanitized Firestore writes, and bounded owner-safe errors.
+Existing routes remain protected by `withAuth`, CampaignCue tenant scope, rate limits, bounded JSON parsing, Zod validation, actor/request-bound idempotency, sanitized Firestore writes, and bounded owner-safe errors.
 
 Owner-managed destinations accept only `http` or `https`, and target-language entries must be valid locale identifiers. Source validation rejects obvious customer contact payloads in audience/return-customer notes, and the decision gate requires a non-identifying audience description. Result receipts do not accept customer contact lists or arbitrary external evidence URLs. Review and return-customer pack copy keeps delivery in the owner's existing consented workflow.
 

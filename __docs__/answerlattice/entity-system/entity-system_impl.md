@@ -1,9 +1,9 @@
 # Entity System — Implementation Blueprint
 
 > **Version:** 2.0.2
-> **Last Updated:** 2026-07-05
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers
-> **Status:** ENHANCEMENT — 6 targeted changes to existing infrastructure
+> **Status:** MAINTAINED — Entity loop implemented; best-effort extraction and rollout gates documented
 
 ---
 
@@ -174,39 +174,32 @@ export interface IngestionJobArticle {
 
 Existing KB article DAL already handles arbitrary fields via Firestore merge writes. The `entityIds` field will be writable through existing update paths.
 
-### 3.3 Article Editor Integration
+### 3.3 Article Save Integration
 
-**File:** Entity suggestion panel in KB article editor (new component)
-
-When author saves article, the entity suggestion panel shows detected entities:
-
-```
-Detected Entities:
-✓ Webhooks (existing)
-✓ Retry Policy (existing)
-✓ Rate Limits (existing)
-○ Delivery Logs (new — will create candidate)
-
-[Confirm] [Edit]
-```
+`src/database/knowledgeBase/articles.ts` starts the protected extraction request after a successful create or eligible content update. Known active entities may update `entityIds`; new concepts appear in the existing entity-candidate review queue. There is no separate article-editor suggestion panel in the maintained runtime.
 
 ### 3.4 Query Pattern
 
-With `entityIds` on articles, RAG fallback can now use entity-centric article retrieval:
+The default-off bounded hybrid evidence lane uses `entityIds` only after canonical and approved FAQ miss, only for a query with an exact technical literal, and only when deterministic entity resolution produced valid entity IDs:
 
 ```typescript
-// Firestore query
-where("entityIds", "array-contains", detectedEntityId);
+where("pId", "==", "AL");
+where("tId", "==", tId);
+where("sId", "==", sId);
+where("status", "==", "published");
+where("active", "==", true);
+where("entityIds", "array-contains-any", detectedEntityIds.slice(0, 10));
+limit(12);
 ```
 
-This replaces or supplements pure vector search with deterministic entity-based filtering.
+Returned articles are admitted only when their title, tags, or body contains an exact technical literal from the query. The eligible lane is fused with similarity-qualified vector results; it does not replace vector search, canonical priority, source governance, or human approval.
 
 ### 3.5 Migration
 
 Existing articles have no `entityIds` field. Migration approach:
 
 - **Lazy migration:** Run extraction when article is next edited
-- **Batch migration:** Optional admin action to extract entities for all published articles
+- **Controlled backfill:** Requires a separately verified bounded operator workflow; no article-wide batch action is claimed here.
 - No urgency — articles without entityIds continue to work via existing vector search
 
 ---
@@ -316,91 +309,34 @@ function matchToExisting(
 
 ## 5. Enhancement E4 — Auto-Extract on Article Save
 
-### 5.1 Integration Point
+**Current status:** Implemented. `addArticle()` and content, title, or category updates call `_triggerEntityExtraction()`, which posts only the article ID to `/api/answerlattice/articles/extract-entities` when ontology is enabled. The protected route re-reads the stored article as the authoritative extraction input.
 
-**File:** KB article save handler (wherever articles are saved to Firestore)
+### 5.1 Current Integration Boundary
 
-After the article document is written, fire an async extraction job:
+- The browser trigger runs only after the article write succeeds and never blocks that write.
+- The route re-reads the stored article, validates exact product/tenant/workspace scope, loads at most 500 scoped rows, keeps only active Answerlattice entities, performs registry-guided extraction, records AI usage, writes governed new candidates, and replaces the article link set with at most 10 normalized matched `entityIds` after a confirmed extraction.
+- A confirmed empty match clears stale links. Provider, parsing, or incomplete-batch failure preserves existing links and returns failure. Unchanged links avoid an article write and cache invalidation.
+- The trigger is best effort. Browser interruption or network failure may leave an article unmapped, so coverage review and explicit retry remain necessary.
+- New candidate entities still require human review; the extraction path does not auto-approve product truth.
 
-```typescript
-// After article save succeeds
-if (FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ONTOLOGY) {
-  // Fire-and-forget — never block article save
-  extractEntitiesForArticle(article, tId, sId, callGemini).catch((err) => {
-    console.error("Entity extraction failed (non-blocking):", err);
-  });
-}
-```
+### 5.2 Existing Helper
 
-### 5.2 New Function
-
-**File:** `src/lib/answerlattice/entityExtraction.ts` (add to existing file)
+**File:** `src/lib/answerlattice/entityExtraction.ts`
 
 ```typescript
 export async function extractEntitiesForArticle(
   article: { id: string; title: string; content: any; categoryTitle?: string },
   tId: number,
   sId: number,
-): Promise<{ entityIds: string[]; newCandidates: number }> {
-  // 1. Load existing entities for context
-  const { getEntities } = await import("@database/answerlattice/entities");
-  const existing = await getEntities(tId, sId);
-
-  // 2. Convert TipTap JSON to plain text for extraction
-  const textContent = extractPlainText(article.content);
-
-  // 3. Run registry-guided extraction
-  const { callGeminiChat } = await import("@lib/vectorEmbeddings");
-  const result = await extractEntitiesFromArticles(
-    [
-      {
-        title: article.title,
-        content: textContent,
-        category: article.categoryTitle,
-      },
-    ],
-    tId,
-    sId,
-    async (system, user) => callGeminiChat(user, [], null, undefined, system),
-    existing?.map((e) => ({ name: e.name, slug: e.slug, aliases: e.aliases })),
-  );
-
-  // 4. Match extracted entities to existing registry
-  const entityIds: string[] = [];
-  let newCandidates = 0;
-
-  for (const candidate of result.candidates) {
-    const match = matchToExisting(candidate, existing || []);
-    if (match.matched && match.entityId) {
-      entityIds.push(match.entityId);
-    } else {
-      newCandidates++;
-      // Candidate already created by extractEntitiesFromArticles
-    }
-  }
-
-  // 5. Update article with entityIds
-  // (use existing KB article update DAL)
-
-  return { entityIds, newCandidates };
-}
+  callGemini: (systemPrompt: string, userPrompt: string) => Promise<string | null>,
+): Promise<{ entityIds: string[]; newCandidateCount: number } | null>
 ```
 
-### 5.3 Debounce
+The standalone helper is not used by the live route. Its in-memory five-minute cooldown is not a durable cross-instance lease and must not be treated as the post-save trigger's retry or idempotency contract.
 
-Use a simple per-article debounce to prevent rapid re-extraction:
+### 5.3 Operational Gate
 
-```typescript
-const EXTRACTION_COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
-const extractionTimestamps = new Map<string, number>();
-
-function shouldExtract(articleId: string): boolean {
-  const last = extractionTimestamps.get(articleId) || 0;
-  if (Date.now() - last < EXTRACTION_COOLDOWN_MS) return false;
-  extractionTimestamps.set(articleId, Date.now());
-  return true;
-}
-```
+Measure unmapped published articles, extraction failures, candidate review volume, AI usage, and entity-linked answer outcomes. Do not claim every save is synchronized durably until a server-owned retry boundary exists.
 
 ---
 
@@ -415,11 +351,11 @@ The DAL sends `{ action: 'merge_entities', requestId, survivorId, mergedId }` to
 The Admin Firestore transaction:
 
 1. Validates same-type active entities inside the authenticated workspace.
-2. Loads bounded canonical references, survivor active answers, inbound/outbound relations, and entity-search rows.
-3. Rewrites entity references and rejects a merge that would create overlapping active answer scopes/version windows.
+2. Loads bounded canonical references, KB article references, survivor active answers, inbound/outbound relations, and entity-search rows.
+3. Rewrites canonical and article entity references and rejects a merge that would create overlapping active answer scopes/version windows.
 4. Rewrites or removes relations, merges aliases, updates/removes search-index rows, and deprecates the merged entity.
 5. Writes before/after canonical audit snapshots plus one idempotent `entity_merged` audit.
-6. Increments affected canonical/entity/relation source versions and marks compiled context stale.
+6. Increments affected canonical/KB/entity/relation source versions and marks compiled context stale.
 
 Reference and write caps stop the operation before Firestore transaction limits; larger migrations require a controlled server migration.
 
@@ -427,7 +363,7 @@ Reference and write caps stop the operation before Firestore transaction limits;
 
 **File:** `src/hooks/answerlattice/useEntities.ts`
 
-The hook calls the server-backed DAL and reports transferred answer/relation counts:
+The hook calls the server-backed DAL and reports transferred answer/article/relation counts:
 
 ```typescript
 const merge = useCallback(
@@ -436,6 +372,7 @@ const merge = useCallback(
       const result = await mergeEntities(survivorId, mergedId, tId, sId);
       if (result?.success) {
         const transferred = Number(result.transferredAnswers || 0)
+          + Number(result.transferredArticles || 0)
           + Number(result.transferredRelations || 0);
         message.success(
           `Entities merged. ${transferred} reference(s) transferred.`,
@@ -456,7 +393,7 @@ const merge = useCallback(
 
 ### 7.1 Integration Point
 
-**File:** `src/app/api/helpCenter/search-kb/route.ts`
+**File:** `src/lib/search/searchCore.ts`
 
 After canonical retrieval fails and before RAG runs, inject entity context:
 
@@ -478,7 +415,7 @@ if (!canonicalResult.found && canonicalResult.matchedEntityIds.length > 0) {
 
 ### 7.2 Helper Functions
 
-**File:** `src/lib/answerlattice/canonicalRetrieval.ts` (add to existing file)
+**File:** `src/lib/answerlattice/canonicalRetrieval.ts`
 
 ```typescript
 export async function getEntityDescriptions(
@@ -486,11 +423,10 @@ export async function getEntityDescriptions(
   tId: number,
   sId: number,
 ): Promise<{ name: string; description: string }[]> {
-  const { getEntityById } = await import("@database/answerlattice/entities");
   const descriptions: { name: string; description: string }[] = [];
 
   for (const entityId of entityIds.slice(0, 5)) {
-    const entity = await getEntityById(entityId);
+    const entity = await getEntityByIdServer(entityId, tId, sId);
     if (entity && entity.status === "active" && entity.description) {
       descriptions.push({
         name: entity.name,
@@ -515,43 +451,31 @@ export function buildEntityContextBlock(
 
 ---
 
-## 8. Build Order
+## 8. Current Implementation State
 
-| Phase | Enhancement                     | Depends On         | Estimated Effort |
-| ----- | ------------------------------- | ------------------ | ---------------- |
-| 1     | E1 — Aliases on entity          | None               | ~1 hour          |
-| 2     | E2 — entityIds on articles      | E1                 | ~2 hours         |
-| 3     | E3 — Registry-guided extraction | E1, E2             | ~3 hours         |
-| 4     | E4 — Auto-extract on save       | E2, E3             | ~2 hours         |
-| 5     | E5 — Entity merge               | E1                 | ~2 hours         |
-| 6     | E6 — Entity-enriched RAG        | None (independent) | ~1 hour          |
-
-**Total estimated:** ~11 hours
-
-Build order: E1 → E2 → E3 → E4 → E5 → E6
-
-E6 can be done in parallel with any other enhancement since it's independent.
+| Enhancement | Current status | Next action |
+| ----------- | -------------- | ----------- |
+| E1 — Aliases on entity | Complete | Maintain entity as alias source of truth |
+| E2 — entityIds on articles | Complete | Evaluate coverage with real support questions |
+| E3 — Registry-guided extraction | Complete | Keep tenant scope and candidate review |
+| E4 — Post-save extraction | Complete, best effort | Instrument failures and unmapped-article coverage |
+| E5 — Entity merge | Complete | Keep server-owned governance and audit |
+| E6 — Entity-enriched RAG | Complete | Measure answer-quality impact |
 
 ---
 
-## 9. Files Modified Summary
+## 9. Runtime File Map
 
-| File                                        | Enhancement | Change Type                                                                  |
-| ------------------------------------------- | ----------- | ---------------------------------------------------------------------------- |
-| `src/types/answerlattice/index.ts`               | E1          | Add `aliases?: string[]` to AnswerlatticeEntity                                   |
-| `src/types/knowledgeBase.ts`                | E2          | Add `entityIds?: string[]` to KnowledgeBaseArticleType + IngestionJobArticle |
-| `src/hooks/answerlattice/useEntities.ts`         | E1, E5      | Add updateAliases, merge functions                                           |
-| `src/lib/answerlattice/entityExtraction.ts`      | E3, E4      | Registry-guided prompt, extractEntitiesForArticle, matchToExistingEntity     |
-| `src/database/answerlattice/entities.ts`         | E5          | Add mergeEntities function                                                   |
-| `src/lib/answerlattice/canonicalRetrieval.ts`    | E6          | Add getEntityDescriptions, buildEntityContextBlock                           |
-| `src/app/api/helpCenter/search-kb/route.ts` | E6          | Inject entity context before RAG                                             |
-| `src/database/knowledgeBase/articles.ts`    | E4          | `_triggerEntityExtraction()` wired into `addArticle()` + `updateArticle()`   |
-
-### New Files: NONE
-
-All enhancements modify existing files only. No new files needed.
-
----
+| File | Responsibility |
+| ---- | -------------- |
+| `src/types/answerlattice/index.ts` | Entity aliases and governance types |
+| `src/types/knowledgeBase.ts` | Article `entityIds` contract |
+| `src/lib/answerlattice/entityExtraction.ts` | Registry-guided extraction and standalone single-article helper |
+| `src/app/api/answerlattice/articles/extract-entities/route.ts` | Protected scoped post-save extraction workflow |
+| `src/database/knowledgeBase/articles.ts` | Best-effort post-save trigger |
+| `src/database/answerlattice/entities.ts` | Alias synchronization and entity merge DAL |
+| `src/lib/answerlattice/governanceServer.ts` | Server-owned governed merge transaction |
+| `src/lib/search/searchCore.ts` | Entity-enriched fallback and default-off exact technical evidence lane |
 
 ## 10. Type Check Verification
 
@@ -584,13 +508,13 @@ All type changes are additive (`?` optional fields). No breaking changes to exis
 
 **Decision:** Pass existing entities as AI context during extraction.
 **Rejected:** Blind extraction (current behavior) + post-hoc matching only.
-**Reason:** AI produces significantly fewer duplicates when it knows what entities already exist. Post-hoc matching catches remaining cases.
+**Reason:** Registry context is intended to reduce duplicate proposals; deterministic post-processing remains authoritative. Measure the actual reuse and rejection rates before making a reduction claim.
 
 ### ADR-4: Async Extraction vs Blocking
 
-**Decision:** Entity extraction on article save is async (fire-and-forget).
-**Rejected:** Blocking extraction that must complete before save returns.
-**Reason:** Article save must be fast. Extraction involves AI calls (1-5 seconds). Users should not wait. Extraction failure should never prevent article save.
+**Current decision:** Trigger the protected extraction route after successful article create or eligible content update without blocking the article write.
+**Constraint:** Treat the browser trigger as best effort, record bounded failures, and preserve human review for new entities.
+**Reason:** Article save remains fast while the route owns scope validation, AI accounting, candidate governance, and article-link persistence.
 
 ### ADR-5: Entity Merge vs Hard Delete
 

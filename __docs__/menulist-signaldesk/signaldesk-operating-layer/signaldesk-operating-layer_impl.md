@@ -1,7 +1,8 @@
 # SignalDesk Operating Layer - Implementation
 
-**Status:** Implementation-ready
+**Status:** Implemented
 **Created:** June 24, 2026
+**Last Updated:** July 16, 2026
 
 ## Runtime Files
 
@@ -56,13 +57,30 @@ create-research-agent-run
 - `create-daily-growth-mission` reads existing summaries and writes one daily mission.
 - Daily mission actions are capped at five.
 - `review-growth-mission` updates mission status and owner decision note.
-- `create-experiment-card` records a controlled pod/source/CTA/proof test.
-- `review-experiment-card` records repeat, narrow, stop, hold, or complete decisions.
+- `create-experiment-card` records a controlled pod/source/CTA/proof test plus its versioned readback plan.
+- `review-experiment-card` requires a fresh 2-1000 character result summary and records repeat, narrow, stop, hold, or complete decisions; the API does not accept `pending` as a review.
 - `upsert-offer-cta` records approved owner asks and blocked claims.
 - `upsert-reply-playbook` records approved reply playbooks.
 - `create-source-quality-snapshot` computes quality from source runs, targets, outcomes, demand, and vendor data.
 - `create-research-agent-run` converts a plain-English prompt into a governed provider run, target import, research table rows, source-transparent enrichment columns, pass/fail/unsure decisions, and a market-pod update.
 - Dashboard and Mission views read the compact research run/table summaries so the founder can review a prepared lead batch without opening raw provider details.
+
+## Experiment Readback Contract
+
+`src/types/signaldesk/index.ts` is the public DTO source of truth. Every new card writes `signaldesk-experiment-readback-v1` with:
+
+```txt
+readbackPlan
+  baselineWindow.startAt / endAt
+  candidateWindow.startAt / endAt
+  primaryMetric
+  confounders[]
+  nextReadbackAt
+```
+
+`src/app/api/signaldesk/actions/route.ts` rejects invalid timestamps, overlapping windows, reversed windows, duplicate or oversized confounders, and readback times before the candidate period ends. `src/lib/signaldesk/workflowServer.ts` repeats these invariants for direct server callers, canonicalizes timestamps and confounder order, includes the plan in deterministic retry comparison, and projects legacy cards as `readbackPlan: null`.
+
+The existing `ownerDecision` remains authoritative. Every decision requires `target.review`, desktop edit mode, and a fresh bounded `resultSummary` that records the observed evidence. The readback plan does not introduce a second decision state.
 
 ## UI
 
@@ -81,6 +99,7 @@ The Mission screen should show:
 - Today's Lead Batch for deeper workflow access.
 - Daily Growth Mission panel.
 - Experiment card form and list.
+- Baseline/candidate windows, primary metric, confounders, next-readback input, and selected-card readback summary.
 - Offer/CTA form and list.
 - Reply playbook form and list.
 - Source-quality snapshot list.
@@ -100,3 +119,8 @@ It must not:
 - bypass suppression;
 - write MenuList customer truth.
 - convert source-only data into contact permission.
+- auto-promote, auto-roll back, or manufacture an experiment result.
+
+## Research Decision
+
+The readback structure adapts the evidence discipline from the external [closed-loop analytics skill](https://github.com/ericosiu/ai-marketing-skills/blob/main/closed-loop-analytics-upgrade/SKILL.md). SignalDesk keeps only the provider-neutral comparison contract; it does not adopt the external package, telemetry, dependencies, autonomous promotion logic, or outbound tooling.

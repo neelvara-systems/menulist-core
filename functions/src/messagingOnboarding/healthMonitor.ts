@@ -25,6 +25,7 @@ const MESSAGING_HEALTH_SNAPSHOT_WRITE_FAILED = "MESSAGING_HEALTH_SNAPSHOT_WRITE_
 const HEALTH_CONTROL_DOC = "messaging_onboarding_control";
 const HEALTH_DOC_PREFIX = "messaging_onboarding";
 const HEALTH_COMPUTE_LEASE_MS = 15 * 60 * 1000;
+const HEALTH_CONTROL_CHECK_WINDOW_MINUTES = 4;
 
 function getMessagingHealthErrorName(error: unknown): string {
   if (error instanceof Error) return (error.name || "Error").slice(0, 80);
@@ -98,6 +99,11 @@ export function isMessagingHealthComputationDue(
     && computeLeaseUntil > nowMillis
     && computeLeaseUntil <= nowMillis + HEALTH_COMPUTE_LEASE_MS;
   return !recentlyCompleted && !activeLease;
+}
+
+export function shouldCheckMessagingOnboardingHealth(nowMillis: number): boolean {
+  if (!Number.isFinite(nowMillis) || nowMillis < 0) return false;
+  return new Date(nowMillis).getUTCMinutes() < HEALTH_CONTROL_CHECK_WINDOW_MINUTES;
 }
 
 export function normalizeMessagingHealthSessionSample(

@@ -80,7 +80,6 @@ export function buildCampaignCueCueLayerProjection(params: {
         id: `cccl_editor_${params.designId}`,
         metadata: {
             brand: {
-                logoUrl: params.businessBrain.brandKit.logoUrl,
                 name: params.businessBrain.name,
                 primaryColor: brandColor,
                 voice: params.businessBrain.brandKit.voice,

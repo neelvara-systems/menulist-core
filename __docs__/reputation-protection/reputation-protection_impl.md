@@ -103,7 +103,7 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 | ------------------- | ------------ | ---------------------------------- |
 | GBP API Access      | BLOCKED      | Ingestion CF needs this to run     |
 | Gemini API          | ✅ Available | Already used for menu intelligence |
-| GBP OAuth           | ✅ Built     | `ENABLE_GBP_SYNC: false`           |
+| GBP OAuth/Sync      | Separate disabled flow | Must be audited before any reuse |
 | withAuth middleware | ✅ Built     | For API route protection           |
 | Zod validation      | ✅ Available | For request validation             |
 
@@ -149,4 +149,4 @@ Detailed in `__docs__/reviews-reputation/reviews-reputation_impl.md`. Additional
 
 ---
 
-**Last Updated:** July 11, 2026
+**Last Updated:** July 16, 2026

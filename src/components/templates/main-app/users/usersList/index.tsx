@@ -3,6 +3,7 @@
 import TextElement from "@antdComponent/textElement";
 import { fetchStaffUsers, forceSignOutStaffUser, removeStaffFromStore, requestStaffPasswordReset } from "@lib/staffManagement/client";
 import { getBoundedStaffStringContext, logStaffClientFailure } from "@lib/staffManagement/diagnostics";
+import { canManageStaffTarget } from "@lib/staffManagement/scopeBoundary";
 import type { StaffStoreOption } from "@lib/staffManagement/types";
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from "@providers/platformProviders/platformGlobalDataProvider";
 import { showErrorToast, showSuccessToast } from "@reduxSlices/toast";
@@ -20,6 +21,12 @@ const { Search } = Input;
 type StaffClientLogContext = Record<string, boolean | number | string | undefined>;
 
 const getSafeUsersList = (usersList: unknown) => Array.isArray(usersList) ? usersList : [];
+const getStaffTargetFailureCopy = (error: unknown, fallback: string) => (
+    error && typeof error === 'object' && 'code' in error
+        && (error as { code?: unknown }).code === 'OWNER_MANAGEMENT_FORBIDDEN'
+        ? 'Only an Owner can change an Owner account'
+        : fallback
+);
 
 const userMatchesSearch = (user: any, query: string) => {
     const searchableText = [
@@ -65,6 +72,11 @@ function UsersListPage() {
     const { storeDetails, userPermissions, usersList, setUsersList } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const canManageUsers = userPermissions?.canManageUsers === true;
     const canAssignRoles = userPermissions?.canAssignRoles === true;
+    const canManageTarget = (user: unknown) => canManageStaffTarget({
+        canAssignRoles,
+        canManageUsers,
+        target: user,
+    });
     const buildDesktopUsersLogContext = (flow: string, user?: any, metadata: StaffClientLogContext = {}): StaffClientLogContext => ({
         surface: 'desktop_users',
         flow,
@@ -173,7 +185,7 @@ function UsersListPage() {
     }
 
     const onDeleteUser = async (user) => {
-        if (!user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        if (!canManageTarget(user) || !user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
         try {
             const response = await removeStaffFromStore({
                 storeId: storeDetails.storeId,
@@ -191,12 +203,12 @@ function UsersListPage() {
             }
         } catch (err) {
             logStaffClientFailure('desktop_staff_remove_failed', err, getDesktopStaffLogContext(storeDetails, user));
-            dispatch(showErrorToast("Could not remove staff member"));
+            dispatch(showErrorToast(getStaffTargetFailureCopy(err, "Could not remove staff member")));
         }
     }
 
     const onResetPassword = async (user) => {
-        if (!user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        if (!canManageTarget(user) || !user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
         try {
             const data = await requestStaffPasswordReset({
                 storeId: storeDetails.storeId,
@@ -218,12 +230,12 @@ function UsersListPage() {
             }
         } catch (err) {
             logStaffClientFailure('desktop_staff_password_reset_failed', err, getDesktopStaffLogContext(storeDetails, user));
-            dispatch(showErrorToast("Could not reset staff access"));
+            dispatch(showErrorToast(getStaffTargetFailureCopy(err, "Could not reset staff access")));
         }
     }
 
     const onForceSignOut = async (user) => {
-        if (!user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
+        if (!canManageTarget(user) || !user?.id || !storeDetails?.tenantId || !storeDetails?.storeId) return;
         try {
             const data = await forceSignOutStaffUser({
                 storeId: storeDetails.storeId,
@@ -240,7 +252,7 @@ function UsersListPage() {
             dispatch(showSuccessToast("Staff member signed out"));
         } catch (err) {
             logStaffClientFailure('desktop_staff_force_signout_failed', err, getDesktopStaffLogContext(storeDetails, user));
-            dispatch(showErrorToast("Could not sign out staff member"));
+            dispatch(showErrorToast(getStaffTargetFailureCopy(err, "Could not sign out staff member")));
         }
     }
 
@@ -281,6 +293,7 @@ function UsersListPage() {
                     </Flex>
                     <Spin spinning={isLoadingUsers}>
                         <UsersListTable
+                            canManageTarget={canManageTarget}
                             canManageUsers={canManageUsers}
                             onClickUserDetails={(data) => setUserDetailsModal({ active: true, data })}
                             onDeleteUser={onDeleteUser}
@@ -295,9 +308,11 @@ function UsersListPage() {
             </Card>
 
             <UserDetailsModal
+                canEdit={canManageTarget(userDetailsModal.data)}
                 modalData={userDetailsModal}
                 onCloseModal={onCloseDetailsModal}
                 onClickEdit={(user) => {
+                    if (!canManageTarget(user)) return;
                     setUserDetailsModal({ active: false, data: null });
                     setUserFormModal({ active: true, data: user });
                 }}

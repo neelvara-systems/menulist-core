@@ -44,6 +44,7 @@ const FILES = [
   'scripts/verification/test-current-platform-user.ts',
   'scripts/verification/test-current-platform-user-emulator.ts',
   'scripts/verification/verify-report-leads-boundary.js',
+  'firestore.indexes.json',
 ];
 
 for (const file of FILES) {
@@ -70,6 +71,7 @@ const testCasesDoc = read('__docs__/menulist-tools/shareable-tool-reports/sharea
 const validationDoc = read('__docs__/menulist-tools/shareable-tool-reports/shareable-tool-reports_validation.md');
 const productionAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
 const changelog = read('__docs__/changelog.md');
+const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
 
 assertIncludes(features, 'ENABLE_PUBLIC_TRUTH_REPORT_LEAD_OPS_DASHBOARD: true', 'Report Leads feature flag');
 assertIncludes(packageJson, '"verify:report-leads-boundary": "node scripts/verification/verify-report-leads-boundary.js"', 'Report Leads package verifier');
@@ -106,7 +108,9 @@ assertNotIncludes(
   'hashPublicRateLimitValue(operatorId)',
   'REPORT_LEAD_OPS_RATE_LIMIT_KEY',
   "key: `${REPORT_LEAD_OPS_RATE_LIMIT_KEY}:${operatorRateLimitHash}`",
+  "failClosedOnProviderError: process.env.NODE_ENV === 'production'",
   'collection(DB_COLLECTIONS.LANDING_PAGE_ENQUIRIES)',
+  ".where('sourceKind', '==', 'shareable_tool_report')",
   ".orderBy('createdOn', 'desc')",
   '.limit(scanLimit)',
   "data.sourceKind === 'shareable_tool_report'",
@@ -123,8 +127,19 @@ assertNotIncludes(
   "headers: { 'Cache-Control': 'no-store' }",
   "logOpsFailure('report_lead_ops_route_failed'",
   'Manual refresh only. No realtime listener.',
-  'filters report leads in memory to avoid new indexes',
+  'an indexed bounded query for shareable-tool-report enquiries only',
+  'scanMayBeIncomplete: snapshot.size >= scanLimit',
 ].forEach((token) => assertIncludes(route, token, 'Report Leads ops API route'));
+
+const reportLeadIndexes = firestoreIndexes.indexes.filter((index) => (
+  index.collectionGroup === 'landingPageEnquiries'
+  && index.queryScope === 'COLLECTION'
+  && JSON.stringify(index.fields) === JSON.stringify([
+    { fieldPath: 'sourceKind', order: 'ASCENDING' },
+    { fieldPath: 'createdOn', order: 'DESCENDING' },
+  ])
+));
+assert(reportLeadIndexes.length === 1, 'Report Leads must have one exact sourceKind + createdOn composite index');
 
 assertNotIncludes(
   route,
@@ -196,6 +211,9 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'renderSetupJobTags(record)',
   'Setup job list',
   'No setup jobs were submitted with this report.',
+  'Recent report-lead limit reached',
+  'Older matching report leads may exist.',
+  'report-lead enquiry reads.',
 ].forEach((token) => assertIncludes(monitor, token, 'Report Leads ops monitor'));
 
 [
@@ -212,6 +230,7 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'setupJobList: ReportLeadSetupJob[]',
   "accessModel: 'platform_role'",
   'realtimeListeners: false',
+  'scanMayBeIncomplete: boolean',
   'writes: 0',
   'authReads: 1',
 ].forEach((token) => assertIncludes(types, token, 'Report Leads ops types'));
@@ -221,6 +240,7 @@ assertIncludes(opsControlRoom, 'href="/ops/report-leads"', 'Ops Control Room Rep
   'readJsonResponseWithLimit<unknown>',
   "value.feature.accessModel === 'platform_role'",
   'value.feature.realtimeListeners === false',
+  "typeof value.feature.scanMayBeIncomplete === 'boolean'",
   'isReportLeadRow',
   'isReportLeadSetupJob',
   'value.setupJobList.every(isReportLeadSetupJob)',
@@ -262,6 +282,7 @@ assertIncludes(
 [
   'Report Lead Ops',
   'bounded recent `landingPageEnquiries` query',
+  '`scanMayBeIncomplete`',
   '0 writes',
   'canonical ISO `reportGeneratedAt` or `null`',
   'bounded `setupJobList`',
@@ -285,6 +306,8 @@ assertIncludes(testCasesDoc, 'STR-015', 'Shareable Tool Reports Report Leads tes
 assertIncludes(testCasesDoc, 'canonical ISO `reportGeneratedAt` or `null`', 'Shareable Tool Reports Report Leads timestamp test coverage');
 assertIncludes(testCasesDoc, 'shows setup job lists', 'Shareable Tool Reports Report Leads setup job test coverage');
 assertIncludes(testCasesDoc, 'STR-018', 'Shareable Tool Reports current platform-user authorization test coverage');
+assertIncludes(testCasesDoc, 'STR-023', 'Shareable Tool Reports bounded scan disclosure test coverage');
+assertIncludes(testCasesDoc, 'STR-024', 'Shareable Tool Reports production limiter failure test coverage');
 assertIncludes(validationDoc, 'npm run verify:report-leads-boundary', 'Shareable Tool Reports Report Leads validation gate');
 assertIncludes(validationDoc, 'follow-up source metadata stores canonical ISO `reportGeneratedAt` or `null`', 'Shareable Tool Reports Report Leads timestamp validation gate');
 assertIncludes(validationDoc, 'setup job list is derived from visible report gaps', 'Shareable Tool Reports Report Leads setup job validation gate');

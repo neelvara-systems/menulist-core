@@ -28,7 +28,8 @@ import {
     TOKENS_PER_CREDIT
 } from "../constants/ai";
 import { FUNCTION_RETENTION_CONFIG } from "../constants/features";
-import { firestoreAdmin } from "../firebaseAdmin";
+import { DB_COLLECTIONS } from "../constants/database";
+import { admin, firestoreAdmin } from "../firebaseAdmin";
 import { genAIClient } from "../genAiClient";
 import { executeWithCircuitBreaker, geminiCircuitBreaker } from "../lib/circuitBreaker";
 import { logger } from "../lib/logger";
@@ -679,10 +680,60 @@ function compactAiOperationForStorage(transactionObject: TransactionObject): Rec
     });
 }
 
+function normalizeOwnerOperationScope(value: unknown): string | null {
+    const normalized = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+    const numeric = Number(normalized);
+    return Number.isSafeInteger(numeric) && numeric > 0 && String(numeric) === normalized
+        ? normalized
+        : null;
+}
+
+function buildOwnerExtractionActivity(transactionObject: TransactionObject): Record<string, unknown> | null {
+    const tenantId = normalizeOwnerOperationScope(transactionObject.tId ?? transactionObject.tenantId);
+    const storeId = normalizeOwnerOperationScope(transactionObject.sId ?? transactionObject.storeId);
+    const userId = typeof transactionObject.uId === 'string' ? transactionObject.uId.trim() : '';
+    const isOwnerProjectExtraction =
+        transactionObject.destinationType === MENU_EXTRACTION_DESTINATION_TYPES.PROJECT
+        && (
+            transactionObject.jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD
+            || transactionObject.jobSource === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT
+        );
+    if (
+        !tenantId
+        || !storeId
+        || !userId
+        || userId !== transactionObject.uId
+        || !isOwnerProjectExtraction
+    ) return null;
+
+    return removeUndefined({
+        action: transactionObject.action,
+        billingMode: 'free',
+        clientResponse: summarizeClientResponseForOperation(transactionObject.clientResponse),
+        createdOn: admin.firestore.FieldValue.serverTimestamp(),
+        fileId: transactionObject.fileId,
+        files: summarizeFilesForOperation(transactionObject.files),
+        jobId: transactionObject.jobId,
+        modifiedOn: admin.firestore.FieldValue.serverTimestamp(),
+        processingTime: transactionObject.processingTime,
+        projectId: transactionObject.projectId,
+        sId: Number(storeId),
+        source: 'firebase-function-menu-extraction',
+        status: transactionObject.status,
+        tId: Number(tenantId),
+        targetLanguages: transactionObject.targetLanguages,
+        uId: userId,
+        unitsConsumed: 0,
+    });
+}
+
 /**
  * Add AI operation to Firestore (matches addAiOperation from @database/aiOperations)
  */
-async function addAiOperation(transactionObject: TransactionObject): Promise<string> {
+async function addAiOperation(
+    transactionObject: TransactionObject,
+    options: { mirrorOwnerActivity?: boolean } = {},
+): Promise<string> {
     const logger = functions.logger;
     try {
         // Clean undefined values before saving to Firestore
@@ -691,7 +742,25 @@ async function addAiOperation(transactionObject: TransactionObject): Promise<str
             createdAt: new Date(),
         });
 
-        const docRef = await firestoreAdmin.collection(AI_OPERATIONS_COLLECTION).add(cleanedTransaction);
+        const docRef = firestoreAdmin.collection(AI_OPERATIONS_COLLECTION).doc();
+        const batch = firestoreAdmin.batch();
+        batch.set(docRef, cleanedTransaction);
+
+        if (options.mirrorOwnerActivity) {
+            const ownerActivity = buildOwnerExtractionActivity(transactionObject);
+            if (ownerActivity) {
+                const tenantId = String(ownerActivity.tId);
+                const storeId = String(ownerActivity.sId);
+                const ownerActivityRef = firestoreAdmin
+                    .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)
+                    .doc(tenantId)
+                    .collection(storeId)
+                    .doc(docRef.id);
+                batch.set(ownerActivityRef, ownerActivity);
+            }
+        }
+
+        await batch.commit();
         logger.info('[addAiOperation] Transaction recorded', getExtractionRequestLogContext({ transactionId: docRef.id }));
         return docRef.id;
     } catch (error) {
@@ -1522,7 +1591,7 @@ export async function processMenuImagesLogic(
         // Step 7: Add operation to database
         let transactionRecorded = true;
         try {
-            transactionObject.transactionId = await addAiOperation(transactionObject);
+            transactionObject.transactionId = await addAiOperation(transactionObject, { mirrorOwnerActivity: true });
             logger.info('[processMenuImages] Transaction recorded', {
                 ...getExtractionRequestLogContext({
                     requestId,

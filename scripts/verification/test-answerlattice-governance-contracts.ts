@@ -1,9 +1,12 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
     AnswerlatticeGovernanceActionResultSchema,
     AnswerlatticeGovernanceActionSchema,
     AnswerlatticeStoredMutationProposalSchema,
 } from '../../src/lib/answerlattice/governanceContracts';
+import { replaceAnswerlatticeResolvedEntityReference } from '../../src/lib/answerlattice/governanceIdBoundary';
 
 const requestId = 'request_12345678';
 const validMerge = AnswerlatticeGovernanceActionSchema.safeParse({
@@ -94,5 +97,89 @@ assert.equal(
     false,
     'governance responses must reject undeclared internal fields',
 );
+
+assert.deepEqual(
+    replaceAnswerlatticeResolvedEntityReference(
+        ['entity_merged', 'entity_survivor', 'entity_other'],
+        'entity_merged',
+        'entity_survivor',
+        10,
+    ),
+    ['entity_survivor', 'entity_other'],
+    'entity merge must replace article references and deduplicate the surviving entity',
+);
+assert.equal(
+    replaceAnswerlatticeResolvedEntityReference(
+        ['entity_merged', 'invalid/path'],
+        'entity_merged',
+        'entity_survivor',
+        10,
+    ),
+    null,
+    'malformed stored article entity references must fail closed',
+);
+assert.equal(
+    replaceAnswerlatticeResolvedEntityReference(
+        ['entity_merged', 'entity_1', 'entity_2', 'entity_3', 'entity_4', 'entity_5', 'entity_6', 'entity_7', 'entity_8', 'entity_9', 'entity_10'],
+        'entity_merged',
+        'entity_survivor',
+        10,
+    ),
+    null,
+    'over-limit stored article entity references must fail closed instead of truncating silently',
+);
+assert.equal(
+    replaceAnswerlatticeResolvedEntityReference(
+        ['entity_merged', 'entity_merged'],
+        'entity_merged',
+        'entity_survivor',
+        10,
+    ),
+    null,
+    'duplicate stored article entity references must fail closed',
+);
+
+const mergeResult = AnswerlatticeGovernanceActionResultSchema.safeParse({
+    success: true,
+    action: 'merge_entities',
+    transferredAnswers: 2,
+    transferredArticles: 3,
+    transferredRelations: 1,
+});
+assert.equal(mergeResult.success, true, 'entity merge results must report transferred article references');
+
+const root = path.resolve(__dirname, '../..');
+const governanceServerSource = fs.readFileSync(
+    path.join(root, 'src/lib/answerlattice/governanceServer.ts'),
+    'utf8',
+);
+assert.equal(
+    governanceServerSource.includes(".where('entityIds', 'array-contains', mergedId)"),
+    true,
+    'entity merge must query articles linked to the merged entity',
+);
+assert.equal(
+    governanceServerSource.includes('kb: changedArticles.length > 0'),
+    true,
+    'entity merge must invalidate KB-backed retrieval when article links change',
+);
+
+for (const indexPath of ['firestore.indexes.json', 'firestore-answerlattice.indexes.json']) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(root, indexPath), 'utf8')) as {
+        indexes?: Array<{
+            collectionGroup?: string;
+            fields?: Array<{ arrayConfig?: string; fieldPath?: string; order?: string }>;
+        }>;
+    };
+    const mergeIndex = (manifest.indexes || []).find(index => (
+        index.collectionGroup === 'kb_articles'
+        && (index.fields || []).length === 4
+        && (index.fields || []).some(field => field.fieldPath === 'entityIds' && field.arrayConfig === 'CONTAINS')
+        && ['pId', 'tId', 'sId'].every(
+            fieldPath => (index.fields || []).some(field => field.fieldPath === fieldPath && field.order === 'ASCENDING'),
+        )
+    ));
+    assert(mergeIndex, `${indexPath} must include the scoped entity-merge article index.`);
+}
 
 process.stdout.write('Answerlattice governance contract tests passed.\n');

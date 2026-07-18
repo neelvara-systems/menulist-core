@@ -1,109 +1,80 @@
-# Ops Control Room (/ops)
+# Internal Ops Control Room And Platform Monitoring
 
-**Status:** ✅ IMPLEMENTED — Superadmin access at /ops  
-**Feature Flag:** N/A (route-level access control, superadmin only)  
-**Priority:** 🟠 P1 — Build before scale (50+ stores)  
-**Created:** February 20, 2026  
-**Source:** ChatGPT launch infra review → Cascade critical review
-**Last Updated:** July 13, 2026
+**Status:** Item 29 locally source complete; deployment/browser evidence pending
+**Last updated:** July 16, 2026
+**Audience:** MenuList platform operators and maintainers
+**Public/owner surface:** None
 
----
+This feature is the internal operating layer for MenuList. It combines the lean Control Room with linked scheduler, extraction, messaging, notification, Founder, cost, Business Health, Answerlattice-intake and entity-block surfaces. It is not a single claim of whole-platform health and it does not replace Firebase, provider or production-host evidence.
 
-## Quick Navigation
+## Runtime map
 
-| Document                                                                   | Audience   | Purpose                              |
-| -------------------------------------------------------------------------- | ---------- | ------------------------------------ |
-| [ops-control-room_spec.md](./ops-control-room_spec.md)                     | CEO/PM     | What it shows, why it matters        |
-| [ops-control-room_impl.md](./ops-control-room_impl.md)                     | Developers | Technical blueprint, route, sections |
-| [ops-control-room_mobile-support.md](./ops-control-room_mobile-support.md) | Mobile     | Platform-only emergency mobile support |
+| Area | Desktop route | MobileShell | Authority/data boundary |
+| --- | --- | --- | --- |
+| Control Room | `/ops`, `/platform/ops-control-room` | `opsControlRoom` | Fresh persisted platform check, then bounded browser reads |
+| Scheduler | `/ops/scheduler`, `/platform/scheduler-monitor` | `schedulerMonitor` | Fresh check, capped run/settlement reads, current-authority callable |
+| Extraction | `/ops/extraction`, `/platform/extraction-monitor` | `extractionMonitor` | Flag + fresh check + capped job/cost reads; retry is server-authorized |
+| Messaging onboarding | `/ops/messaging-onboarding` | internal wrapper | Server Admin reads after fail-closed limit and fresh check |
+| Platform notifications | `/ops/platform-notifications` | internal wrapper | Bounded recent window; acknowledge/manual handoff is server-authorized |
+| Owner notifications | `/ops/owner-notifications` | internal wrapper | Product-scoped recent window and bounded recovery actions |
+| Founder Monitor | `/platform/founder-monitor` | internal wrapper | Precomputed summaries and capped movement ledger |
+| Cost Posture | `/platform/cost-posture` | internal wrapper | Bounded known-cost sources; Cloud Billing export remains required |
+| Business Health monitor | `/platform/owner-business-assistant` | internal wrapper | Bounded server monitor API |
+| Answerlattice intake | `/platform/answerlattice-intake` | internal wrapper | Separate Answerlattice Admin client, bounded selected-workspace reads |
+| Entity Blocks | `/platform/entity-blocks` | `entityBlocks` | Fail-closed mutation limit, current authority, transactional scope checks |
 
----
+## Current authorization contract
 
-## One-Liner
+Signed `platformRole === 'PLATFORM'` is necessary but not sufficient.
 
-Lean numeric internal dashboard at `/ops` that gives the founder system-wide visibility in <10 seconds — system health, adoption pulse, store integrity, and emergency controls.
+- `/ops` and `/platform` layouts call `requirePlatformAdminRouteAccess()`, which now re-reads the exact current `users/{uId}` record.
+- Browser Firestore monitors call `/api/platform/current-access` immediately before bounded cross-tenant reads. This also protects MobileShell sub-screens mounted under `/dashboard`.
+- Server monitor and mutation APIs use a fail-closed HMAC-keyed limiter where expensive/private work follows, then re-read `getCurrentPlatformUser()`.
+- Current identity, email, active/verified state, platform role, blocking/deletion/auth-disable state, auth issuance and revocation must all pass.
+- Firebase rules remain the independent browser-data boundary. Current access checks do not weaken rules or replace token revocation.
 
-## Architecture Overview (60-second summary)
+## Truthful failure behavior
 
+Control Room, Scheduler and Extraction snapshots reject when a source cannot be read. Desktop and mobile show an unavailable/stale warning; they do not convert a permission/index/network failure into SAFE_MODE OFF, zero failures, no alerts or a healthy pipeline.
+
+Stored Control Room alert text is projected as presence/length summaries. Scheduler run and settlement rows are normalized, bounded and control-character-cleaned before rendering. Recovery callable responses require a valid status/count/run-log envelope; `partial` is warning copy and `failed` is error copy.
+
+## SAFE_MODE scope
+
+SAFE_MODE stops guarded app AI routes and shared Functions Gemini generation/upload paths. Provider-file cleanup stays available. Public menus, publishing, unrelated Firestore work and non-AI maintenance continue. A config-read failure remains fail-open by design and is logged; SAFE_MODE is not a global maintenance lock.
+
+## Cost and retention
+
+- No realtime listener is used by these monitors.
+- Core browser snapshots are fetch-on-open/manual refresh and capped.
+- Notification windows and details are capped; counts describe the same bounded window.
+- Founder and Cost Posture use precomputed/known sources rather than scanning every tenant/store subcollection.
+- Scheduler run logs retain their existing 90-day boundary.
+- `systemAlerts` now has one daily, leased 90-day cleanup task inside `menulistMaintenanceScheduler`, capped at 100 deletes per run. No new scheduler, collection or index was added.
+
+## Verification
+
+```bash
+npm run verify:ops-control-room-boundary
+npm run verify:ops-current-authorization-boundary
+npm run verify:scheduler-monitor-boundary
+npm run verify:messaging-onboarding-monitor-boundary
+npm run verify:platform-cost-posture-boundary
+npm run verify:platform-founder-monitor-boundary
+npm run verify:platform-entity-blocks-boundary
+npm run test:internal-ops-runtime-boundaries
+npx tsc --noEmit --pretty false
+npm --prefix functions run build
 ```
-Route: /ops (superadmin only, not in sidebar)
-Layout: Single page, numeric blocks only
 
-┌─ Section 1: System State ──────────────────────────┐
-│ Menu Health: ✅ OK | Publish Success: 100% | Errors: 0 │
-│ SAFE_MODE: OFF | Last Alert: none                   │
-└─────────────────────────────────────────────────────┘
-┌─ Section 2: Adoption Pulse (24h) ──────────────────┐
-│ New Stores: 2 | Published: 5 | Active: 34          │
-│ Feedback: 12 | AI Generations: 8 | Menu Views: 1.2K│
-└─────────────────────────────────────────────────────┘
-┌─ Section 3: Store Integrity ───────────────────────┐
-│ Missing project: 0 | Unpublished >48h: 3           │
-│ No publish 60d: 1 | MCE failing: 0                 │
-└─────────────────────────────────────────────────────┘
-┌─ Section 4: Recent Alerts ─────────────────────────┐
-│ [list of last 10 alerts from systemAlerts]          │
-└─────────────────────────────────────────────────────┘
-┌─ Section 5: Emergency Controls ────────────────────┐
-│ [Enable SAFE_MODE] [Disable SAFE_MODE]             │
-│ [Mute Alerts 20min]                                │
-└─────────────────────────────────────────────────────┘
-```
+The scoped QA deployment for `functions:menulistMaintenanceScheduler` passed predeploy lint/build on July 16, 2026, then stopped before upload at Cloud Resource Manager HTTP 403: `The caller does not have permission`. The exact retry is owner/IAM-pending. Vercel/app release, authenticated platform desktop/MobileShell smoke, live Upstash/provider/Telegram/Email/WhatsApp evidence and production-host evidence remain pending.
 
-**Design:** Lean v1. No charts. Numbers only. Manual refresh. Fetch-on-open.
+## Maintained docs
 
-## Scheduler Monitor
-
-`/ops/scheduler` is the related internal monitor for the unified nightly scheduler. It shows:
-
-- Run-log health from `schedulerRunLogs`
-- Per-task breakdown including OBP + menu analytics settlement
-- Store-local settlement state from `platformSummary/nightlyState_*`
-- Failed/stale settlement counts for catch-up monitoring
-- Manual store-level nightly recovery via `triggerStoreNightlyScheduler`
-
-The manual recovery button uses the selected store from `platformSummary/storesSummary`. It does not expose project IDs in the UI; the callable reruns the store-level nightly path for every active project under that store, including analytics settlement, Decision Blocks, and Menu Intelligence.
-
-Manual recovery creates a deterministic `schedulerRunLogs/manual_store_{tId}_{sId}_{timestamp}` document before work starts. Failed runs keep `phase`, `manualScope`, `runLogId`, task counts, and structured `errors[]` entries with `code`, `operation`, optional `settlementDate`, and safe details so the broken step can be fixed before retrying. MenuList scheduler run logs carry `expiresAt` and are retained for the configured operational window rather than permanent history.
-
-Source gate: `npm run verify:scheduler-monitor-boundary` locks the read-only scheduler DAL, bounded desktop/mobile scheduler detail rendering, MobileShell mapping, and the store-level manual recovery boundary. It does not run Firestore reads/writes, callable invocations, browser smoke, Firebase deploy, or Vercel deploy.
-
-Scheduler and alert failure diagnostics use bounded `ops_*` codes through `src/lib/ops/opsDiagnostics.ts`. Functions-side ops triggers use stable `OPERATIONS_*` codes for publish verification, force republish, budget alerts, and stores-summary backfill failures. The operator UI may show a run-log ID for manual recovery failures, but it does not show raw provider/callable exception messages.
-
-High-risk `/api/ops` controls and notification monitors do not rely on the signed platform-role claim alone. After a fail-closed HMAC-keyed limiter, they re-read the exact current platform user before private data, provider, or mutation work. Notification metrics describe a bounded recent window, and SAFE_MODE repeats are idempotent.
-
-`forceRepublish` is a platform recovery mutation, not a claim-only shortcut. The Function transactionally admits canonical user/tenant/store authority and touches every active canonical project in the selected store, capped at 100 documents. It then revalidates the same authority and public hostname with the resulting store-health write. A stale platform token, removed platform role, inactive entity, mismatched store tenant, or cross-scope project cannot be touched.
-
-## Cost Posture Monitor
-
-`/platform/cost-posture` is the related internal monitor for known cost posture. It links existing cost-adjacent platform screens together and keeps the original cost-tracking rejection intact:
-
-- No `ops_daily_cost` collection.
-- No `ops_baselines` collection.
-- No Firestore-driven billing forecast scheduler.
-- Known AI/provider signals come from existing bounded logs.
-- Whole-bill Firebase forecasting remains blocked until Cloud Billing export to BigQuery is configured.
-
-## Key Decision: What ChatGPT Got Wrong
-
-ChatGPT proposed 7 sections including cost tracking (ops_daily_cost) and baseline comparisons. **Rejected** because:
-
-- Firebase doesn't expose read/write counts via API
-- Cost visibility comes from Firebase Console + GCP budget alerts
-- Baseline comparisons require additional Firestore collections (cost overhead)
-- Lean v1 with numeric blocks is correct for solo founder with <200 stores
-
-## Feature Flag
-
-No feature flag needed. Access control via route-level superadmin check.
-
----
-
-**Version History:**
-
-| Version | Date              | Changes                                   |
-| ------- | ----------------- | ----------------------------------------- |
-| 1.3     | July 13, 2026     | Added current persisted platform authorization, fail-closed ops limits, bounded recent notification counts, atomic manual handoff, and idempotent SAFE_MODE transitions |
-| 1.2     | June 16, 2026     | Added link to Platform Cost Posture as the accepted bounded cost visibility surface |
-| 1.1     | May 1, 2026       | Added scheduler settlement monitoring boundary |
-| 1.0     | February 20, 2026 | Initial documentation from ChatGPT review |
+- [Specification](./ops-control-room_spec.md)
+- [Implementation](./ops-control-room_impl.md)
+- [Firebase and cost](./ops-control-room_firebase.md)
+- [Mobile support](./ops-control-room_mobile-support.md)
+- [Operator help](./ops-control-room_helpdoc.md)
+- [Internal positioning](./ops-control-room_marketing.md)
+- [Website boundary](./ops-control-room_website.md)

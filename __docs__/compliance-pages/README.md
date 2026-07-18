@@ -2,9 +2,9 @@
 
 **Status:** Runtime implemented source evidence; not current launch or legal certification
 **Feature Flag:** `ENABLE_COMPLIANCE_PAGES`
-**Version:** 1.3
-**Date:** July 10, 2026
-**Last Hardened:** July 10, 2026
+**Version:** 1.4
+**Date:** July 16, 2026
+**Last Hardened:** July 16, 2026
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
 > **Launch boundary:** Not current launch certification or deploy approval. This README is source-gated Compliance Pages route, renderer, owner-editor, and document-contract evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
@@ -13,7 +13,7 @@
 
 ## Purpose
 
-Static privacy policy, terms, and refund policy pages served on custom domains (`abc.com/privacy`, `abc.com/terms`, `abc.com/refund`) to satisfy platform verification requirements (Meta, Google, Razorpay) without turning OBP into a website builder.
+Plain-text privacy policy, terms, and refund policy pages served on both MenuList subdomains and verified custom domains (`abc.com/privacy`, `abc.com/terms`, `abc.com/refund`) without turning OBP into a website builder. These pages are technical compliance surfaces, not legal certification; the owner/legal review gate remains mandatory.
 
 **Identity:** Domain Activation Infrastructure — NOT a feature, NOT a CMS.
 
@@ -42,7 +42,7 @@ Static privacy policy, terms, and refund policy pages served on custom domains (
 | `src/lib/compliance/sanitizer.ts`                      | Content sanitization for custom overrides              |
 | `src/lib/auth/browserRequestPolicy.ts`                 | Shared authenticated browser request boundary          |
 | `src/app/api/compliance/route.ts`                      | GET/POST compliance data (withAuth + Zod)              |
-| `src/database/compliance/server.ts`                    | Server-only override read/write/reset DAL               |
+| `src/database/compliance/server.ts`                    | Server-only override DAL and tagged 60-second public cache |
 | `scripts/verification/test-compliance-pages-rules.ts`  | Public-read and server-only-write rules regression      |
 | `src/config/features.ts`                               | `ENABLE_COMPLIANCE_PAGES` flag                         |
 | `src/app/client/[[...slug]]/page.tsx`                  | Route intercept for `/privacy`, `/terms`, and `/refund` |
@@ -71,6 +71,8 @@ Subdomain Request → brand.menulist.ai/privacy → same pages
 Generation: Pure template substitution (zero AI, zero cost)
 Storage: compliancePages collection (1 doc per store)
 Override: Plain text only, sanitized, max 15K chars
+Public override read: tagged 60-second cache; save/reset invalidates compliance-store-{sId}
+Template date: stable store modification timestamp, then fixed template effective-date fallback
 Owner editor API calls: shared authenticated browser request policy, bounded response parsing
 Local gate: npm run verify:compliance-pages-boundary
 ```

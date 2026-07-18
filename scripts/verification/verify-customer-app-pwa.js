@@ -329,7 +329,8 @@ function verifyClientMenuOfflineDocsMatchServiceWorkerPolicy() {
   assertIncludes(sw, 'FROZEN: Offline page only. NEVER cached menu fallback.', 'Customer service worker frozen offline policy');
   assertIncludes(sw, 'Menu HTML, menu data, Firestore responses, item images', 'Customer service worker no menu cache policy');
   assertIncludes(sw, 'When offline, the customer sees the branded /offline page.', 'Customer service worker branded offline fallback policy');
-  assertIncludes(offlinePage, 'Reconnect to see the latest live menu.', 'Offline page latest-menu reconnect copy');
+  assertIncludes(offlinePage, 'Reconnect to see the latest information.', 'Shared offline page reconnect copy');
+  assertNotIncludes(offlinePage, 'latest live menu', 'Shared offline page customer-only reconnect copy');
 
   assertIncludes(readme, 'Offline fallback', 'Client Menu README offline fallback label');
   assertIncludes(readme, 'Customer service worker shows `/offline`; no stale menu cache', 'Client Menu README offline fallback copy');
@@ -511,10 +512,22 @@ function verifyCustomerAppTechnicalDocBoundaries() {
 function verifyNextPwaScoping() {
   const nextConfig = read('next.config.js');
   const executableConfig = stripJsComments(nextConfig);
+  const ownerWorker = read('worker/index.js');
   assertIncludes(nextConfig, 'register: false', 'next-pwa config');
+  assertIncludes(nextConfig, 'reloadOnOnline: false', 'owner PWA reconnect behavior');
+  assertIncludes(nextConfig, 'cacheStartUrl: false', 'owner PWA public-root cache boundary');
+  assertIncludes(nextConfig, 'buildExcludes: [/\\.map$/]', 'owner PWA source-map precache boundary');
   assertNotIncludes(executableConfig, "urlPattern: /^\\/_client", 'next-pwa runtimeCaching');
   assertNotIncludes(executableConfig, 'firestore.googleapis.com', 'next-pwa runtimeCaching');
+  assertNotIncludes(executableConfig, 'firebasestorage.googleapis.com', 'next-pwa runtimeCaching');
   assertNotIncludes(executableConfig, '/api/public', 'next-pwa runtimeCaching');
+  assertNotIncludes(executableConfig, "cacheName: 'static-assets'", 'owner PWA broad extension cache');
+  assertNotIncludes(executableConfig, "cacheName: 'owner-dashboard-pages'", 'owner PWA private dashboard cache');
+  assertNotIncludes(executableConfig, "cacheName: 'auth-pages'", 'owner PWA auth-page cache');
+  assertNotIncludes(executableConfig, "cacheName: 'screen-pages'", 'owner PWA screen-page cache');
+  for (const cacheName of ['start-url', 'owner-dashboard-pages', 'auth-pages', 'screen-pages', 'firebase-images', 'static-assets']) {
+    assertIncludes(ownerWorker, `'${cacheName}'`, `owner PWA retired ${cacheName} cleanup`);
+  }
 }
 
 function verifyOwnerAuthManifest() {
@@ -539,8 +552,10 @@ function verifyOwnerAuthManifest() {
   assertIncludes(authLayout, "manifest: '/manifest.json'", 'owner auth layout metadata');
   assertIncludes(mainLayout, 'manifest: "/manifest.json"', 'owner dashboard layout metadata');
   assert(ownerManifest.start_url === '/today', 'owner manifest start_url must be /today');
+  assert(ownerManifest.name === 'MenuList', 'owner manifest name must use the MenuList identity');
   assertIncludes(mobileShell, "'/dashboard': MOBILE_ROUTE_DEFAULT", 'owner mobile launch mapping');
   assert(ownerManifest.display === 'standalone', 'owner manifest display must be standalone');
+  assert(ownerManifest.orientation === undefined, 'owner manifest must allow device rotation');
   assert(Array.isArray(ownerManifest.icons), 'owner manifest icons must be an array');
   const expectedOwnerShortcuts = [
     ['Today', '/today'],
@@ -613,6 +628,7 @@ function verifyCustomerAppAssets() {
   const mobileSettings = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
   const desktopSettings = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
   const pwaDal = read('src/database/pwa/index.ts');
+  const pwaIconStorageBoundary = read('src/lib/pwa/pwaIconStorageBoundary.ts');
   const publicStoreLookup = read('src/lib/firestore/clientStoreLookup.ts');
   const customerAppImpl = read('__docs__/customer-app/customer-app_impl.md');
   const customerAppFirebase = read('__docs__/customer-app/customer-app_firebase.md');
@@ -727,11 +743,41 @@ function verifyCustomerAppAssets() {
   assertIncludes(pwaDal, "throw new Error('pwa_settings_update_rejected');", 'PWA settings rejected acknowledgement code');
   assertIncludes(pwaDal, 'assertPWAIconOverrideUpdateSucceeded', 'PWA icon acknowledgement guard');
   assertIncludes(pwaDal, "throw new Error('pwa_icon_override_update_rejected');", 'PWA icon rejected acknowledgement code');
+  assertIncludes(pwaDal, "const fileId = `${createRuntimeId('pwa_icon')}.png`;", 'PWA icon upload attempt-unique object identity');
+  assertIncludes(pwaDal, 'cleanupPWAIconOverrideUrls', 'PWA icon shared post-commit cleanup boundary');
+  assertIncludes(pwaDal, 'isOwnedPWAIconUrl(url, scope)', 'PWA icon cleanup same-bucket tenant ownership filter');
+  assertIncludes(pwaDal, 'replacePWAIconOverride', 'PWA icon atomic lifecycle facade');
+  assertIncludes(pwaDal, "await cleanupPWAIconOverrideUrls([uploadedUrl], 'replace', scope);", 'PWA icon failed-write upload compensation');
+  assertIncludes(pwaDal, 'readCommittedPWAIconOverride(', 'PWA icon ambiguous write read-back boundary');
+  assertIncludes(pwaDal, 'getDocFromServer(getDocRef(scope.storeId))', 'PWA icon read-back must not trust locally pending Firestore state');
+  assertIncludes(pwaDal, 'pwa_icon_override_write_outcome_ambiguous', 'PWA icon ambiguous write diagnostic');
+  assertIncludes(pwaDal, 'cleanupSupersededPWAIconUrl', 'PWA icon current-reference cleanup guard');
+  assertIncludes(pwaDal, 'pwa_icon_superseded_cleanup_guard_failed', 'PWA icon guarded cleanup diagnostic');
+  const pwaIconReplacementSection = pwaDal.slice(pwaDal.indexOf('export const replacePWAIconOverride'));
+  assertOrder(
+    pwaIconReplacementSection,
+    [
+      'catch (error) {',
+      'await readCurrentPWAIconStore(scope)',
+      'if (committedOverride) {',
+      "await cleanupPWAIconOverrideUrls([uploadedUrl], 'replace', scope);",
+    ],
+    'PWA icon ambiguous commit read-back before new-object compensation',
+  );
+  assertIncludes(pwaDal, 'removePWAIconOverride', 'PWA icon post-commit removal lifecycle');
+  assertIncludes(pwaIconStorageBoundary, 'isPWAIconStoragePath', 'PWA icon exact Storage path boundary');
+  assertIncludes(pwaIconStorageBoundary, 'assertPreparedPWAIconFile', 'PWA icon prepared PNG admission boundary');
+  assertIncludes(pwaDal, 'summarizeStorageCleanupResults(results)', 'PWA icon cleanup explicit Storage acknowledgement accounting');
+  assertIncludes(pwaDal, 'pwa_icon_storage_cleanup_failed', 'PWA icon bounded cleanup diagnostics');
   assertIncludes(desktopSettings, 'assertPWASettingsUpdateSucceeded(settingsResult);', 'desktop customer app settings acknowledgement guard');
-  assertIncludes(desktopSettings, 'assertPWAIconOverrideUpdateSucceeded(iconResult);', 'desktop customer app icon acknowledgement guard');
+  assertIncludes(desktopSettings, 'await replacePWAIconOverride({', 'desktop customer app uses shared replacement lifecycle');
+  assertIncludes(desktopSettings, 'await removePWAIconOverride({', 'desktop customer app uses shared removal lifecycle');
+  assertNotIncludes(desktopSettings, "import { deleteFileByUrl } from '@database/storage/deleteFromStorage';", 'desktop customer app direct Storage deletion bypass');
   assertIncludes(desktopSettings, "customer_app_business_copy_meta_update_rejected", 'desktop customer app metadata acknowledgement guard');
   assertIncludes(mobileSettings, 'assertPWASettingsUpdateSucceeded(settingsResult);', 'mobile customer app settings acknowledgement guard');
-  assertIncludes(mobileSettings, 'assertPWAIconOverrideUpdateSucceeded(iconResult);', 'mobile customer app icon acknowledgement guard');
+  assertIncludes(mobileSettings, 'await replacePWAIconOverride({', 'mobile customer app uses shared replacement lifecycle');
+  assertIncludes(mobileSettings, 'await removePWAIconOverride({', 'mobile customer app uses shared removal lifecycle');
+  assertNotIncludes(mobileSettings, "import { deleteFileByUrl } from '@database/storage/deleteFromStorage';", 'mobile customer app direct Storage deletion bypass');
   assertIncludes(mobileSettings, "customer_app_business_copy_meta_update_rejected", 'mobile customer app metadata acknowledgement guard');
   assertIncludes(customerAppImpl, 'Dynamic asset store ID fallback boundary', 'Customer App implementation dynamic asset fallback boundary');
   assertIncludes(customerAppFirebase, 'Dynamic asset store-ID fallback is cost-neutral', 'Customer App Firebase dynamic asset fallback boundary');
@@ -1186,8 +1232,9 @@ function verifyDigitalScreenDiagnostics() {
   assertIncludes(storesDal, 'DIGITAL_SCREEN_STORE_OUTPUT_FIELDS', 'store output screen refresh field guard');
   assertIncludes(storesDal, 'await touchDigitalScreenContentVersion(data.storeId, "updateStore");', 'store output screen refresh');
   assertIncludes(brandPropagationBoundary, 'hasDigitalScreenBrandPropagationFields', 'multi-outlet screen refresh field guard');
-  assertIncludes(brandPropagationRoute, 'for (const outletId of propagationResult.targetOutletIds)', 'multi-outlet screen refresh uses committed target outlets');
-  assertIncludes(brandPropagationRoute, "await touchDigitalScreenContentVersionForStoreServer(outletId, 'brandPropagation');", 'multi-outlet screen refresh');
+  assertIncludes(brandPropagationRoute, 'storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds]', 'multi-outlet screen refresh uses committed target outlets');
+  assertIncludes(brandPropagationRoute, 'includeScreenDataTag: refreshScreens', 'multi-outlet screen refresh keeps field-sensitive global invalidation');
+  assertIncludes(brandPropagationRoute, "touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')", 'multi-outlet screen refresh');
   assertIncludes(screenDiagnostics, 'logScreenSettingsFailure', 'screen settings secure logging');
   assertIncludes(screenDiagnostics, 'logScreenDisplayFailure', 'screen display secure logging');
   assertIncludes(screenDiagnostics, 'getBoundedScreenStringContext', 'screen settings bounded string context');

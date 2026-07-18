@@ -27,6 +27,7 @@ export interface AiSearchHistory {
     modifiedOn?: any; // Should be a server timestamp
     // Feedback fields
     isGood?: boolean;
+    resolutionOutcome?: 'resolved' | 'not_resolved';
     reasonsToImprove?: Array<{ value: string; label: string; }>;
     comments?: string;
     submittedAt?: any; // Timestamp when feedback was submitted

@@ -1,11 +1,10 @@
 {
-  "name": "MenuList AI",
+  "name": "MenuList",
   "short_name": "MenuList",
   "description": "Manage your restaurant menu, hours, feedback, and more — all from your phone.",
   "theme_color": "#0054D0",
   "background_color": "#ffffff",
   "display": "standalone",
-  "orientation": "portrait",
   "scope": "/",
   "start_url": "/today",
   "dir": "auto",

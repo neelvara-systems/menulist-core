@@ -43,7 +43,7 @@ The production work is focused, not architectural:
 | P0.5 query embedding cleanup | Implemented | 30-day expiry, stale-read delete, scheduler cleanup |
 | P0.6 bundle cleanup | Implemented | Scheduler deletes old versioned public/private context bundle Storage objects |
 | P0.7 TTL overrides | Implemented | `firestore-answerlattice.indexes.json` adds TTL overrides for new `expiresAt` fields |
-| P1 attachment lifecycle | Implemented for hard delete | Chat image cleanup and ticket document/message attachment cleanup |
+| P1 attachment lifecycle | Partial: safe ticket cleanup; chat cleanup deferred | Ticket document/message attachment cleanup is implemented. Chat images remain retained until scope-wide non-reference can be proved. |
 | P1 Knowledge Intake counter compaction | Implemented | Review-item edits update parent job counters transactionally instead of scanning source/review collections |
 | P1 Knowledge Intake compaction | Deferred intentionally | Current published-job workflow still returns source/review details and no archive state exists |
 | P2 summary-first enforcement | Enforced by design | No new summary collections added; scheduler totals reuse existing run log/read-model pattern |
@@ -201,7 +201,7 @@ Do not compact audit logs, published KB articles, canonical proposals, or billin
 
 Support records are workflow truth, so do not blindly delete active history. The implemented safe piece is attachment parity on hard delete:
 
-- chat session hard delete reads the persisted session and removes chat image URLs before deleting Firestore;
+- chat session hard delete reads and deletes persisted session truth transactionally, then removes only its captured owned image URLs as best-effort cleanup;
 - support ticket hard delete reads the persisted ticket and removes top-level documents plus message attachments before deleting Firestore.
 
 Archive/compaction for old closed tickets and old chat sessions remains deferred until there is a product-defined support retention window and unresolved-case linking check.

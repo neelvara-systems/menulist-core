@@ -1,6 +1,7 @@
-import { Alert, Button, Card, Divider, Flex, Modal, Space, TimePicker, Typography } from 'antd';
+import { Alert, Button, Card, Divider, Flex, Modal, Space, TimePicker, Typography, message } from 'antd';
 import { FormInstance } from 'antd/lib';
 import { getClockTimeInputFormat } from '@util/dateTime';
+import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import dayjs from 'dayjs';
 import { useTranslations } from 'next-intl';
 const { Title, Text } = Typography;
@@ -22,6 +23,15 @@ const WorkingHoursTab: React.FC<WorkingHoursTabProps> = ({ scrollRef, workingHou
     const t = useTranslations('BusinessSettings');
     const timePickerFormat = getClockTimeInputFormat();
     const persistWorkingHours = (nextHours: WorkingHourSlot[]) => {
+        const invalid = nextHours.some((slot) => (
+            slot.start
+            && slot.end
+            && !isValidClockRange(slot.start.format('HH:mm'), slot.end.format('HH:mm'))
+        ));
+        if (invalid) {
+            message.error('Opening and closing times must be different.');
+            return;
+        }
         setWorkingHours(nextHours);
 
         const formattedHours = nextHours.reduce((acc, curr) => {

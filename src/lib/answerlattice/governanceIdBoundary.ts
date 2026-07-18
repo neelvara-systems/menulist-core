@@ -42,6 +42,25 @@ export function normalizeAnswerlatticeResolvedEntityIds(values: unknown, maxItem
     )).slice(0, maxItems);
 }
 
+export function replaceAnswerlatticeResolvedEntityReference(
+    values: unknown,
+    mergedId: unknown,
+    survivorId: unknown,
+    maxItems: number,
+): string[] | null {
+    if (!Array.isArray(values) || !Number.isInteger(maxItems) || maxItems < 1) return null;
+    const normalizedMergedId = normalizeAnswerlatticeResolvedEntityId(mergedId);
+    const normalizedSurvivorId = normalizeAnswerlatticeResolvedEntityId(survivorId);
+    if (!normalizedMergedId || !normalizedSurvivorId || normalizedMergedId === normalizedSurvivorId) return null;
+
+    const normalizedValues = normalizeAnswerlatticeResolvedEntityIds(values, maxItems);
+    if (normalizedValues.length !== values.length || !normalizedValues.includes(normalizedMergedId)) return null;
+
+    return Array.from(new Set(
+        normalizedValues.map(entityId => entityId === normalizedMergedId ? normalizedSurvivorId : entityId),
+    ));
+}
+
 export function normalizeAnswerlatticeCanonicalAnswerId(value: unknown): string | null {
     return normalizeAnswerlatticeGovernanceDocumentId(value);
 }

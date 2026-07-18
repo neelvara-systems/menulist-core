@@ -12,7 +12,6 @@ import {
 } from '../constants/ai';
 import { firestoreAdmin, storageAdmin } from '../firebaseAdmin';
 import { answerlatticeGenAIClient } from '../genAiClient';
-import { ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG } from '../sharedData/answerlatticeEmbedding';
 import {
     ARTICLE_RECONCILIATION_STATUS,
     ARTICLE_STATUS,
@@ -27,7 +26,7 @@ import {
     ProcessedArticleToSave,
     ProcessedKBMap,
 } from '../types';
-import { generateEmbeddingMigrationVectors } from '../utils/aiUtils';
+import { genrateEmbedding } from '../utils/aiUtils';
 import { tiptapToText } from '../utils/tiptapUtils';
 import { getAnswerlatticeEmbeddingInput } from './embeddingSourceBoundary';
 
@@ -546,7 +545,7 @@ export async function startGenerationLogic(jobIdInput: string, runIdInput?: stri
                 const articleRef = firestoreAdmin.collection(KB_ARTICLES_COLLECTION).doc();
                 const content = ref.article.content;
                 const title = cleanText(ref.article.title, 240);
-                const vectors = await generateEmbeddingMigrationVectors({
+                const embedding = await genrateEmbedding({
                     id: articleRef.id,
                     categoryTitle: ref.categoryTitle,
                     sectionTitle: ref.sectionTitle,
@@ -554,7 +553,7 @@ export async function startGenerationLogic(jobIdInput: string, runIdInput?: stri
                     content,
                     ...scope!,
                     source: 'answerlattice_kb_generation',
-                }, { includeLegacy: true });
+                });
                 const similarArticles = findTitleSimilarArticles(title, existingArticles);
                 const embeddingInput = getAnswerlatticeEmbeddingInput({
                     categoryTitle: ref.categoryTitle,
@@ -585,18 +584,10 @@ export async function startGenerationLogic(jobIdInput: string, runIdInput?: stri
                     index: 0,
                     url: `/${ref.categoryId}/${ref.sectionId ? `${ref.sectionId}/` : ''}${articleRef.id}`,
                     content,
-                    [ANSWERLATTICE_EMBEDDING_VECTOR_FIELD]: FieldValue.vector(vectors.active),
-                    ...(vectors.legacy ? {
-                        embedding: FieldValue.vector(vectors.legacy),
-                        embeddingV1CacheVersion: ANSWERLATTICE_LEGACY_EMBEDDING_CONFIG.cacheVersion,
-                        embeddingV1SourceHash: embeddingInput.sourceHash,
-                    } : {}),
+                    [ANSWERLATTICE_EMBEDDING_VECTOR_FIELD]: FieldValue.vector(embedding),
                     embeddingStatus: 'embedded',
                     embeddingCacheVersion: ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
                     embeddingSourceHash: embeddingInput.sourceHash,
-                    embeddingV2CacheVersion: ANSWERLATTICE_EMBEDDING_CACHE_VERSION,
-                    embeddingV2SourceHash: embeddingInput.sourceHash,
-                    embeddingVersion: 'v2',
                     tags: [],
                     generatedFaqs: Array.isArray(ref.article.generatedFaqs) ? ref.article.generatedFaqs as any : [],
                     createdOn: now,

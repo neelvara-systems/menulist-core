@@ -1,8 +1,8 @@
 # URL Routing Architecture — Business Specification
 
 > **Audience:** CEO, PM, Product Team
-> **Last Updated:** May 30, 2026
-> **Version:** 2.1
+> **Last Updated:** July 16, 2026
+> **Version:** 2.2
 > **Status:** 🔒 LOCKED — Slug, canonical, product-domain, and path-segment guardrails implemented
 > **Local Source Gate:** `npm run verify:url-routing-boundary`
 
@@ -63,10 +63,12 @@
 - Subdomain settings UI in Business Settings (`SubdomainTab.tsx`)
 - Subdomain availability checker API (`GET /api/subdomain/check`)
 - Custom domain management via Vercel API (`POST/GET/DELETE /api/domain`)
+- Server-owned, rate-limited advisory availability via `GET /api/domain?candidate=`; POST remains authoritative
 - Transactional, request-unique custom-domain claims that serialize concurrent add/replace/remove work
 - Canonical store and tenant lifecycle/identity admission before owner domain reads or writes
 - Duplicate legacy hostname and claim-owner mismatch handling that fails closed without choosing a winner
 - Custom domain settings UI (`CustomDomainTab.tsx`)
+- Desktop/mobile explicit verification downgrades and pending cleanup/refresh copy
 - Subdomain → custom domain 301 redirect (SEO consolidation)
 - Lowercase + trailing slash URL normalization (middleware 301)
 - Brand OBP for multi-store chains (`BrandOBPContent.tsx`)

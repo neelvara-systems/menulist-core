@@ -12,7 +12,7 @@
 ## Mobile Rules
 
 - Mobile uses the same media profiles as desktop.
-- Mobile keeps antd-mobile surfaces and existing sheet patterns.
+- Mobile keeps the current Tailwind-driven `MobileShell` surfaces and existing sheet patterns; this feature adds no mobile UI dependency.
 - Mobile does not add a complex Canva-style editor.
 - Mobile preparation auto-prepares first, then exposes Adjust for project image, menu background, business logo, Official Business Page business cover, Official Business Page gallery photos, and Digital Screens custom slides.
 - Mobile item images do not get a manual adjust step; the shared item-image preparation remains fast and automatic.

@@ -1,6 +1,6 @@
 'use client'
 
-import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState } from '@database/ops';
+import { getOpsControlRoomSnapshot } from '@database/ops';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import {
     OPS_CONTROL_ROOM_REQUEST_POLICY,
@@ -16,6 +16,7 @@ import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { LuActivity, LuAlertTriangle, LuRefreshCw, LuShieldAlert, LuZap } from 'react-icons/lu';
+import { Alert } from 'antd';
 import { Button, Card, Dialog, DotLoading, Flex, List, Select, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -46,10 +47,12 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
     const [adoption, setAdoption] = useState<AdoptionPulse | null>(null);
     const [integrity, setIntegrity] = useState<IntegritySignals | null>(null);
     const [alerts, setAlerts] = useState<OpsAlert[]>([]);
+    const [loadError, setLoadError] = useState(false);
     const [safeModeLoading, setSafeModeLoading] = useState(false);
     const [muteLoading, setMuteLoading] = useState(false);
     const [republishLoading, setRepublishLoading] = useState(false);
     const {
+        error: storesError,
         loading: storesLoading,
         selectedStore,
         selectedStoreId,
@@ -60,18 +63,15 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
     const loadData = useCallback(async () => {
         if (!isPlatform) return;
         setLoading(true);
+        setLoadError(false);
         try {
-            const [sys, adopt, integ, alertList] = await Promise.all([
-                getSystemState(),
-                getAdoptionPulse(),
-                getIntegritySignals(),
-                getRecentAlerts(10),
-            ]);
-            setSystemState(sys);
-            setAdoption(adopt);
-            setIntegrity(integ);
-            setAlerts(alertList);
+            const snapshot = await getOpsControlRoomSnapshot();
+            setSystemState(snapshot.systemState);
+            setAdoption(snapshot.adoption);
+            setIntegrity(snapshot.integrity);
+            setAlerts(snapshot.alerts);
         } catch {
+            setLoadError(true);
             Toast.show({ content: 'Could not load ops data', duration: 1800 });
         } finally {
             setLoading(false);
@@ -91,8 +91,8 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
         void Dialog.confirm({
             confirmText: action === 'activate' ? 'Enable SAFE_MODE' : 'Disable SAFE_MODE',
             content: action === 'activate'
-                ? 'This blocks AI generation and bulk operations. Public menus remain unaffected.'
-                : 'This restores AI generation and bulk operations.',
+                ? 'This stops guarded AI generation and provider-upload paths. Public menus and publishing remain available.'
+                : 'This restores guarded AI generation and provider-upload paths.',
             onConfirm: async () => {
                 setSafeModeLoading(true);
                 try {
@@ -238,6 +238,14 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                     </Card>
                 ) : (
                     <>
+                        {loadError ? (
+                            <Alert
+                                message="Ops state unavailable"
+                                description="Values may be missing or from the previous successful refresh."
+                                showIcon
+                                type="error"
+                            />
+                        ) : null}
                         <Card size="small" title={<Text strong>System State</Text>}>
                             <Flex gap={12} vertical>
                                 <Flex align="center" justify="space-between">
@@ -245,15 +253,15 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                                         <LuZap size={16} />
                                         <Text>SAFE_MODE</Text>
                                     </Flex>
-                                    <Tag color={systemState?.safeModeActive ? 'error' : 'success'}>
-                                        {systemState?.safeModeActive ? 'ACTIVE' : 'OFF'}
-                                    </Tag>
+                                    {!systemState
+                                        ? <Tag>UNKNOWN</Tag>
+                                        : <Tag color={systemState.safeModeActive ? 'error' : 'success'}>{systemState.safeModeActive ? 'ACTIVE' : 'OFF'}</Tag>}
                                 </Flex>
                                 <Flex align="center" justify="space-between">
                                     <Text type="secondary">Alerts</Text>
-                                    <Tag color={systemState?.alertsMuted ? 'warning' : 'primary'}>
-                                        {systemState?.alertsMuted ? 'Muted' : 'Active'}
-                                    </Tag>
+                                    {!systemState
+                                        ? <Tag>UNKNOWN</Tag>
+                                        : <Tag color={systemState.alertsMuted ? 'warning' : 'primary'}>{systemState.alertsMuted ? 'Muted' : 'Active'}</Tag>}
                                 </Flex>
                                 <Flex gap={4} vertical>
                                     <Text type="secondary">Last alert</Text>
@@ -270,18 +278,18 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
 
                         <Card size="small" title={<Text strong>Adoption Pulse</Text>}>
                             <Flex gap={12} wrap>
-                                <Metric label="New Stores 24h" value={adoption?.newStores24h ?? 0} />
-                                <Metric label="Active 7d" value={adoption?.activeStores7d ?? 0} />
-                                <Metric label="Published Today" value={adoption?.publishedToday ?? 0} />
-                                <Metric label="Feedback Today" value={adoption?.feedbackToday ?? 0} />
+                                <Metric label="New Stores 24h" value={adoption?.newStores24h ?? '-'} />
+                                <Metric label="Active 7d" value={adoption?.activeStores7d ?? '-'} />
+                                <Metric label="Published Today" value={adoption?.publishedToday ?? '-'} />
+                                <Metric label="Feedback Today" value={adoption?.feedbackToday ?? '-'} />
                             </Flex>
                         </Card>
 
                         <Card size="small" title={<Text strong>Store Integrity</Text>}>
                             <Flex gap={12} wrap>
-                                <Metric label="No Publish 60d" value={integrity?.noPublish60d ?? 0} />
-                                <Metric label="No Project" value={integrity?.noProject ?? 0} />
-                                <Metric label="Unpublished 48h" value={integrity?.unpublished48h ?? 0} />
+                                <Metric label="No Publish 60d" value={integrity?.noPublish60d ?? '-'} />
+                                <Metric label="No Project" value={integrity?.noProject ?? '-'} />
+                                <Metric label="Unpublished 48h" value={integrity?.unpublished48h ?? '-'} />
                             </Flex>
                         </Card>
 
@@ -299,7 +307,7 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                                     ))}
                                 </List>
                             ) : (
-                                <Text type="secondary">No alerts</Text>
+                                <Text type="secondary">{loadError ? 'Alert state unavailable' : 'No alerts in the bounded recent window'}</Text>
                             )}
                         </Card>
 
@@ -321,6 +329,7 @@ export default function MobileOpsControlRoomScreen({ onBack }: MobileOpsControlR
                                         value={selectedStoreId}
                                         onChange={setSelectedStoreId}
                                     />
+                                    {storesError ? <Text type="danger">Store options are unavailable. Refresh before recovery.</Text> : null}
                                     {selectedStore ? (
                                         <Text type="secondary">Tenant {selectedStore.tId} · Store {selectedStore.sId}</Text>
                                     ) : null}

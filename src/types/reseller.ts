@@ -16,13 +16,17 @@ export type ResellerTransactionStatus = 'pending_payment' | 'active' | 'expired'
 
 /**
  * Immutable transaction record for every reseller action.
- * Collection: resellerTransactions/{autoId}
+ * Collection: resellerTransactions/{transactionId}. New manual renewal and
+ * location-capacity mutations use the client operation UUID as transactionId;
+ * older/onboarding rows may retain generated IDs.
  * 
- * Documents are NEVER updated (except status field).
- * New transactions are appended for renewals.
+ * Financial/action inputs are immutable. Payment convergence may update only
+ * status, confirmation metadata, modifiedOn, and profileRevenueRecognized.
+ * New renewal/location actions always append a new operation document.
  */
 export interface ResellerTransaction {
     id: string;
+    operationId?: string;
     resellerId: string;
     resellerProfileId?: string | null;
     resellerEmail: string;
@@ -40,6 +44,7 @@ export interface ResellerTransaction {
     amountExpected: number;           // In paise (INR smallest unit)
     currency: 'INR';
     paymentMode: ResellerPaymentMode;
+    profileRevenueRecognized?: boolean; // Explicit marker for exactly-once profile revenue convergence.
 
     // Status
     status: ResellerTransactionStatus;

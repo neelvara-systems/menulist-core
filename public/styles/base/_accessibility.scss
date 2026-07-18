@@ -1,0 +1,48 @@
+.skip-to-content-link {
+    background: #ffffff;
+    border: 2px solid #111827;
+    border-radius: 6px;
+    color: #111827;
+    inset-inline-start: 12px;
+    padding: 10px 14px;
+    position: fixed;
+    text-decoration: none;
+    top: 12px;
+    transform: translateY(calc(-100% - 24px));
+    transition: transform 120ms ease;
+    z-index: 10000;
+
+    &:focus-visible {
+        transform: translateY(0);
+    }
+}
+
+:where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    [role="button"],
+    [role="link"],
+    [tabindex]:not([tabindex="-1"])
+):focus-visible {
+    outline: 3px solid #2563eb !important;
+    outline-offset: 2px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html:focus-within {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-delay: 0s !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -202,6 +202,7 @@ async function run(): Promise<void> {
         retryable: false,
     });
     assert.equal(partialFailure.shouldRetry, false);
+    assert.equal(partialFailure.retainsStagedResult, false);
     const partialData = (await partialJobRef.get()).data();
     assert.equal(partialData?.status, BATCH_IMAGE_GENERATION_JOB_STATUS.PROCESSING);
     assert.equal(
@@ -255,6 +256,7 @@ async function run(): Promise<void> {
         reason: 'Append failed after accounting.',
     });
     assert.equal(preserved.shouldRetry, true, 'charged work must remain retryable at the ordinary attempt ceiling');
+    assert.equal(preserved.retainsStagedResult, true, 'a staged retry must retain its authoritative Storage paths');
     assert.equal(
         (await jobRef.get()).data()?.itemExecutions?.[executionKey]?.requiresFinalization,
         true,

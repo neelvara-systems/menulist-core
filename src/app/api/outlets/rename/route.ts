@@ -17,8 +17,8 @@ export const dynamic = 'force-dynamic';
  *       · any other store's previousOutletSlugs (avoids stealing chains)
  *       · the reserved outlet-slug list
  *
- * NOTE: the Owner Dashboard UI for triggering rename is a separate product
- * task. This endpoint is ready for that UI and for direct API use.
+ * Desktop and mobile Locations both call this route and update their local
+ * tenant store summaries only after a bounded success acknowledgement.
  */
 
 import { FEATURE_FLAGS } from '@config/features';
@@ -26,6 +26,8 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
 import { isReservedOutletSlug } from '@constant/reservedSlugs';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
+import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
 import {
     getBoundedMultiOutletStringContext,
     logMultiOutletFailure,
@@ -63,6 +65,7 @@ const schema = z.object({
     { message: 'Either newOutletName or newOutletSlug is required.' },
 );
 const OUTLET_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const OUTLET_RENAME_EFFECT_CHUNK_SIZE = 1;
 const OUTLET_RENAME_CONFLICT_CODE = 'OUTLET_RENAME_CONFLICT';
 
 class OutletRenameConflictError extends Error {
@@ -135,7 +138,8 @@ export const POST = withAuth(async (request, session) => {
         const db = admin.firestore();
 
         // Caller must be the master store of this tenant.
-        const masterSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`).get();
+        const masterStoreRef = db.doc(`${DB_COLLECTIONS.STORES}/${storeDocumentId}`);
+        const masterSnap = await masterStoreRef.get();
         const masterStore = masterSnap.data();
         const permissionError = requireAnyStorePermissionForStoreData(
             request,
@@ -147,7 +151,14 @@ export const POST = withAuth(async (request, session) => {
             Number(tenantId),
         );
         if (permissionError) return permissionError;
-        if (!masterSnap.exists || masterStore?.isMaster !== true) {
+        if (
+            !masterSnap.exists
+            || masterStore?.isMaster !== true
+            || Number(masterStore?.tenantId) !== Number(tenantId)
+            || masterStore?.active === false
+            || masterStore?.deleted === true
+            || isPlatformEntityBlocked(masterStore)
+        ) {
             return NextResponse.json({ error: 'Only master store can rename outlets' }, { status: 403 });
         }
 
@@ -165,6 +176,9 @@ export const POST = withAuth(async (request, session) => {
         }
         if (outlet.active === false) {
             return NextResponse.json({ error: 'Cannot rename an inactive outlet' }, { status: 400 });
+        }
+        if (outlet.deleted === true || isPlatformEntityBlocked(outlet)) {
+            return NextResponse.json({ error: 'Outlet not available' }, { status: 403 });
         }
 
         // Derive the proposed slug. Explicit slug overrides the name-derived
@@ -186,20 +200,56 @@ export const POST = withAuth(async (request, session) => {
         const now = admin.firestore.Timestamp.now();
         const tenantRef = db.doc(`${DB_COLLECTIONS.TENANTS}/${tenantDocumentId}`);
         const renameResult = await db.runTransaction(async (tx) => {
-            const [tenantDoc, freshOutletSnap] = await Promise.all([
+            const [freshMasterSnap, tenantDoc, freshOutletSnap] = await Promise.all([
+                tx.get(masterStoreRef),
                 tx.get(tenantRef),
                 tx.get(outletRef),
             ]);
+            const freshMaster = freshMasterSnap.exists ? freshMasterSnap.data() || {} : {};
             const freshOutlet = freshOutletSnap.exists ? freshOutletSnap.data() || {} : {};
+            const storesList = Array.isArray(tenantDoc.data()?.storesList) ? tenantDoc.data()?.storesList : [];
+            const freshMasterSummary = storesList.find((store: any) => (
+                Number(store?.storeId) === Number(storeId)
+            ));
+            const freshOutletSummary = storesList.find((store: any) => (
+                Number(store?.storeId) === Number(outletStoreId)
+            ));
             if (
-                !tenantDoc.exists
+                !freshMasterSnap.exists
+                || !tenantDoc.exists
                 || !freshOutletSnap.exists
+                || Number(freshMaster.tenantId) !== Number(tenantId)
+                || freshMaster.isMaster !== true
+                || freshMaster.active === false
+                || freshMaster.deleted === true
+                || isPlatformEntityBlocked(freshMaster)
+                || tenantDoc.data()?.active === false
+                || tenantDoc.data()?.deleted === true
+                || isPlatformEntityBlocked(tenantDoc.data())
+                || !freshMasterSummary
+                || freshMasterSummary.isMaster !== true
+                || freshMasterSummary.active === false
+                || !freshOutletSummary
+                || freshOutletSummary.isMaster === true
+                || freshOutletSummary.active === false
                 || Number(freshOutlet.tenantId) !== Number(tenantId)
                 || freshOutlet.isMaster === true
                 || freshOutlet.active === false
+                || freshOutlet.deleted === true
+                || isPlatformEntityBlocked(freshOutlet)
             ) {
                 throw new OutletRenameConflictError('SCOPE_CHANGED');
             }
+            const freshPermissionError = requireAnyStorePermissionForStoreData(
+                request,
+                session,
+                freshMaster,
+                [PERMISSIONS.MANAGE_OUTLETS],
+                'Outlet rename',
+                Number(storeId),
+                Number(tenantId),
+            );
+            if (freshPermissionError) throw new OutletRenameConflictError('SCOPE_CHANGED');
             const freshCurrentSlug = typeof freshOutlet.outletSlug === 'string'
                 ? freshOutlet.outletSlug.toLowerCase()
                 : '';
@@ -235,7 +285,6 @@ export const POST = withAuth(async (request, session) => {
                 modifiedOn: now,
                 ...(newOutletName ? { name: newOutletName } : {}),
             };
-            const storesList = Array.isArray(tenantDoc.data()?.storesList) ? tenantDoc.data()?.storesList : [];
             const updatedStoresList = storesList.map((store: any) => (
                 Number(store.storeId) === Number(outletStoreId)
                     ? {
@@ -267,17 +316,28 @@ export const POST = withAuth(async (request, session) => {
             tx.update(tenantRef, { storesList: updatedStoresList });
             return { cappedChain, previousSlug: freshCurrentSlug };
         });
-        revalidateTag(`menu-store-${outletStoreIdStr}`);
-        revalidateTag(`store-${outletStoreIdStr}`);
-        revalidateTag('client-stores');
-        revalidateTag('screen-data');
-        await touchDigitalScreenContentVersionForStoreServer(outletStoreIdStr, 'outletRename');
-        await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantDocumentId,
-            sId: outletStoreIdStr,
+        const postCommit = await runStorePublicTruthPostCommitEffects({
+            chunkSize: OUTLET_RENAME_EFFECT_CHUNK_SIZE,
+            storeIds: [outletStoreIdStr],
+            tenantId: tenantDocumentId,
+            deps: {
+                invalidateAssistant: (storeId, tenantId) => (
+                    invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })
+                ),
+                revalidate: (tag) => revalidateTag(tag),
+                touchScreen: (storeId) => touchDigitalScreenContentVersionForStoreServer(storeId, 'outletRename'),
+            },
         });
+        if (postCommit.effectsPending) {
+            logMultiOutletFailure('outlet_rename_post_commit_effect_failed', postCommit.firstError, {
+                ...failureContext,
+                failedEffectCount: postCommit.failedEffectCount,
+            });
+        }
 
         return NextResponse.json({
+            effectsPending: postCommit.effectsPending,
+            failedEffectCount: postCommit.failedEffectCount,
             success: true,
             outletStoreId: outletStoreIdStr,
             outletSlug: proposed,

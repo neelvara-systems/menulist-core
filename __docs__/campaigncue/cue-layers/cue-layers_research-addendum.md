@@ -35,6 +35,9 @@ CueLayers should optimize for four outcomes:
 | [Cloud Run jobs docs](https://docs.cloud.google.com/run/docs/create-jobs) | Heavy processing should use job-style workers with retries/timeouts instead of normal Next.js request handlers. |
 | [Firebase Storage security rules](https://firebase.google.com/docs/storage/security) | Upload and processing paths must enforce auth, content type, and size constraints. |
 | [Fabric custom properties docs](https://fabricjs.com/docs/using-custom-properties/) | Any CueLayers metadata carried through Fabric must be typed and explicitly serialized. |
+| [Moda homepage](https://moda.app/) and [Moda product docs](https://docs.moda.app/help/index) | Moda demonstrates a useful structured-canvas workflow: prompt or reference input, persistent brand context, conversational revision, direct element editing, remix, version history, and multiple exports. Its fully-editable claim applies to designs generated as structured canvases, not guaranteed reconstruction of arbitrary flat pixels. |
+| [Moda first-design and Claude workflow](https://docs.moda.app/mcp/create-designs) | References can include files, screenshots, PDFs, websites, and existing canvases; follow-up requests modify the same canvas. CampaignCue should use that interaction pattern only through source-backed Campaign Packs and validated Design Cue patches. |
+| [Moda FAQ](https://docs.moda.app/help/faq) | Moda documents real limits: AI operations consume credits, complex exports are best-effort, and full editing is desktop-oriented. CueLayers should keep explicit cost routing, saved-state export gates, and mobile review rather than dense mobile editing. |
 
 ## Product Decision
 
@@ -45,6 +48,43 @@ Reuse existing campaign images with business-safe accuracy, visible confidence, 
 ```
 
 This is better for SMB owners because they usually need to change a date, price, location, CTA, service name, or offer. They do not need every confetti piece to become a perfect vector path.
+
+## Moda Comparison - July 2026
+
+Moda is adjacent to CueLayers, but it is not the same product category. Moda creates a structured vector canvas from a prompt, reference, document, website, brand kit, or existing Moda canvas. Because the structure exists at generation time, it can credibly expose live text, shapes, images, and layout controls. CueLayers starts from flattened pixels, where the original structure no longer exists.
+
+The relevant product split is:
+
+| Moda pattern | CampaignCue decision |
+| --- | --- |
+| Generate into a real editable canvas from the start. | Adopt for CampaignCue-generated designs: create native editor text and structured elements at generation time instead of flattening first and reconstructing later. |
+| Persistent brand memory from a URL or uploaded references. | Use the existing Business Brain and Brand Playbook snapshots as approved business/brand truth. Do not let a website crawl overwrite owner-approved facts. |
+| Conversational follow-up edits modify the same canvas. | Continue through Design Cue: deterministic command or validated model candidate, patch preview, owner approval, then document history. The model never owns durable editor truth. |
+| Remix an existing canvas or template. | Offer owner-language actions such as **Update this old campaign**, **Reuse for this branch**, or **Refresh the date and offer** through saved Campaign Packs, templates, and CueLayers source packages. |
+| Upload references, PDFs, screenshots, and existing files. | Keep one source-package abstraction, but admit each format only after a format-specific parser, rights check, size cap, cost estimate, and deterministic fixture suite exist. |
+| Editable output and many export formats. | Keep `CreativeEditorDocumentSnapshot` as durable truth and export only from a saved revision. Add formats only when the renderer preserves facts and layout within an explicit fidelity gate. |
+| AI action credits and multiple model tiers. | Route known edits programmatically at zero provider cost; select the cheapest eligible model only for ambiguous or generative work; show cost before dispatch and enforce workspace budgets. |
+| Real-time collaboration, public sharing, REST API, MCP, and direct Google Slides export. | Do not copy into CueLayers v1. These are team/design-platform capabilities, not the highest-value SMB campaign problem, and they add authorization, privacy, support, and cost surface. |
+
+### What The Active Website May Show
+
+The active v1 website may demonstrate:
+
+1. Uploading PNG, JPEG, or WebP.
+2. The original image preserved as one locked flat-safe layer.
+3. Owner-added verified text, shapes, QR details, and drawing layers.
+4. Saved revision and export/download from CampaignCue.
+
+It must not show automatic text, offer, photo, vector, or background layer candidates as active. Those demonstrations become valid only after OCR, segmentation, scene resolution, text safety, visual-diff validation, and provider workers are implemented and enabled.
+
+### Best Website Lesson
+
+Moda makes editability tangible in the first viewport and then proves breadth through real outputs, customer evidence, remixable examples, and a short repeated CTA. CampaignCue should borrow the proof discipline, not the generic-design positioning:
+
+- Show one real before-and-after old-poster workflow instead of an abstract layer diagram.
+- Keep the protected fact visible beside the edit, such as an unchanged price or phone number.
+- Show the resulting Campaign Pack outputs and manual download handoff, not a generic gallery of design formats.
+- Use verified owner evidence only; keep sample data explicitly labeled until real usage exists.
 
 ## Accuracy Model
 

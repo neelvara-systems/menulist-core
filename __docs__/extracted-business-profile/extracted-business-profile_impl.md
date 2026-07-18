@@ -53,7 +53,7 @@ Desktop and mobile upload confirmations show detected business details and owner
 
 Business settings expose separate Brand name and Location name fields. Saving Brand name calls `updateTenant()`, which updates tenant identity, mirrors `tenantName` on all tenant stores, merges `tenantName` into `platformSummary/storesSummary`, and revalidates public client cache for affected stores. Saving Location name stays on the current store update path.
 
-First extraction applies missing project visual defaults inside `saveFilesToProject()` in the existing project transaction. Re-extraction applies missing project visual defaults after owner approval on both desktop and mobile.
+First extraction applies missing project visual defaults inside `saveFilesToProject()` in the existing project transaction. Re-extraction uses one shared minimal patch after owner approval on desktop and mobile; standalone and linked-outlet transactions recheck the exact current accent/background fields, so concurrent owner choices win and unrelated project design/preferences are never replayed from a stale review snapshot.
 
 ## Public Create Menu
 
@@ -88,6 +88,8 @@ Existing-account claims do not overwrite the existing store.
 - project brand accent and image background can come from the menu
 - new stores can receive menu-derived business attributes from high-confidence suggestions and deterministic item dietary tags
 
+Existing-owner desktop/mobile upload, standalone re-extraction review, and first-extraction Functions paths apply those attributes as defaults only. Every browser producer routes through `applyStoreBusinessAttributeDefaults()` and both runtime layers use the byte-mirrored `businessAttributeDefaults.ts` merge contract inside a transaction-current `stores/{storeId}` read/write. Existing explicit `true` or `false` values and unrelated attributes win; only an allowed missing key can be filled. Re-extraction performs its existing derivation read plus the authoritative transaction read, then invalidates public cache only when that transaction adds a default. Browser UI callers replace local context with the acknowledged merged map rather than their stale pre-transaction proposal.
+
 ## Subdomain Derivation
 
 Subdomain is derived, not extracted. `src/lib/onboarding/createTenantStore.ts` normalizes approved business names into DNS-safe candidates, enforces the 63-character label limit, checks reserved names, checks active-store collisions before transaction, and writes the final value into tenant/store public URL fields plus `storesSummary`.
@@ -99,5 +101,6 @@ Existing-owner uploads never call this path for subdomain changes. Subdomain edi
 - The feature does not create new owner toggles.
 - The feature does not add new AI calls.
 - The feature does not overwrite existing owner-set project visual defaults.
+- The feature does not overwrite transaction-current owner-set business attributes.
 - The feature does not overwrite existing-account store identity from public claims.
 - The feature does not treat subdomain as AI truth.

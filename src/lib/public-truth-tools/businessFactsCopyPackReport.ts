@@ -1,4 +1,11 @@
-import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  isPublicHttpsUrl as isValidHttpUrl,
+  parsePublicHttpsUrl,
+} from './publicUrlValidation';
+import {
+  isLikelyPhoneNumber,
+  isValidTelDestination,
+} from './phoneValidation';
 import type {
   BusinessFactsCopyBlock,
   BusinessFactsCopyPackAction,
@@ -54,8 +61,17 @@ function hasUsefulText(value: string, minimum = 3): boolean {
 
 function hasContactHint(value: string): boolean {
   const cleaned = trimToSingleLine(value);
-  const digits = cleaned.replace(/\D/g, '');
-  return digits.length >= 7 || /(?:wa\.me|whatsapp|tel:|phone|call)/i.test(cleaned);
+  if (isLikelyPhoneNumber(cleaned) || isValidTelDestination(cleaned)) return true;
+
+  const looksLikeWhatsAppUrl = /^https:\/\//i.test(cleaned)
+    || /^(?:www\.)?wa\.me\//i.test(cleaned);
+  if (!looksLikeWhatsAppUrl) return false;
+
+  const url = parsePublicHttpsUrl(cleaned, 'business_facts_copy_pack_contact');
+  if (!url || url.hostname.toLowerCase().replace(/^www\./, '') !== 'wa.me') return false;
+
+  const pathParts = url.pathname.split('/').filter(Boolean);
+  return pathParts.length === 1 && /^\d{8,15}$/.test(pathParts[0]) && !pathParts[0].startsWith('0');
 }
 
 function getBusinessFactsCopyPackEvidenceText(evidence: BusinessFactsCopyPackEvidence): string {

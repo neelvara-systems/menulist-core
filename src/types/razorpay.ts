@@ -33,7 +33,7 @@ export interface PaymentMetadata {
 
 /**
  * Represents a subscription document in Firestore.
- * Path: /tenants/{tenantId}/stores/{storeId}/subscriptions/{sub_id}
+ * Path: /subscriptions/{sub_id}
  *
  * @immutable BILLING IMMUTABILITY RULE:
  * This document must ONLY be modified through:
@@ -167,7 +167,7 @@ export type FirestoreBillingHistoryDoc = Array<{
 }>
 /**
  * Represents a one-time top-up document in Firestore.
- * Path: /tenants/{tenantId}/stores/{storeId}/topups/{order_id}
+ * Path: /topups/{order_id}
  */
 export interface FirestoreTopupDoc {
   id?: string;

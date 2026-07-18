@@ -1,44 +1,42 @@
-# AI QnA Chatbot — Website Content
+# AI QnA Chatbot — Website Content Boundary
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Public website visitors
-
----
-
-## SEO Meta
-
-```
-Title: AI-Powered Help Assistant | MenuList
-Description: Get instant answers from your knowledge base. Semantic search, source citations, image queries, and conversation mode — built into your dashboard.
-Keywords: AI chatbot, knowledge base search, RAG, semantic search, help assistant
-OG Title: Answers That Cite Their Sources
-OG Description: Ask a question, get an answer drawn from real documentation. Not guesswork.
-```
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
+> **Audience:** Public website content maintainers
+> **Status:** Claim guidance; not a website implementation
 
 ---
+
+## Suggested Metadata
+
+```text
+Title: Source-Backed SaaS Support Answers | Answerlattice
+Description: Serve approved answers first, use published support knowledge when needed, and fall back safely when the evidence is not enough.
+```
 
 ## Feature Block
 
 ### Headline
-**Answers, not search results.**
 
-### Subheadline
-Ask a question. Get a clear answer drawn from your knowledge base — with the source article cited. Upload a screenshot if words aren't enough.
+**Support answers grounded in the product truth you control.**
+
+### Supporting Copy
+
+Answerlattice checks approved answers and FAQs before generating from published workspace knowledge. When the evidence is not sufficient, it can ask for clarification or use the configured support fallback instead of guessing.
 
 ### How It Works
 
-**Step 1 — Ask anything**
-Type your question in the search bar. The AI understands what you mean, not just what you typed.
+1. **Ask in context.** The help center or widget sends the question with only the allowed product context.
+2. **Check governed truth.** Approved canonical answers and FAQs are evaluated before knowledge-base generation.
+3. **Show evidence when used.** Generated knowledge-base answers resolve their cited article IDs to valid workspace sources.
+4. **Handle uncertainty.** Unsupported generated answers are blocked and unknown questions remain visible for support follow-up.
 
-**Step 2 — Get a cited answer**
-The AI finds the most relevant articles and generates a clear answer. Every answer shows which article it came from — click to read the full source.
+## Public Trust Statements
 
-**Step 3 — Go deeper**
-See 3 suggested follow-up questions. Switch to conversation mode for multi-turn troubleshooting. Your chat history is saved for next time.
+- Approved answers first.
+- Active published workspace sources only.
+- Valid source references required for generated non-refusal answers.
+- Screenshots treated as untrusted context.
+- Human review remains required for changes to approved product truth.
 
-### Trust Indicators
-- Every answer cites its source article
-- Similarity confidence scores on every reference
-- Graceful failures — AI tells you when it doesn't have an answer instead of guessing
-- Repeated questions return instant cached responses
+Do not claim that every answer includes an article citation, that similarity means correctness, or that Answerlattice guarantees resolution.

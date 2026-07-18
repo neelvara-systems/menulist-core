@@ -1,9 +1,9 @@
 # Razorpay Payment Flow — Complete Reference
 
-> **⚠️ SUPERSEDED:** This document has been merged into [razorpay_impl.md](./razorpay_impl.md) which is now the single source of truth for all Razorpay documentation. This file is kept for historical reference only.
+> **⚠️ SUPERSEDED HISTORICAL SNAPSHOT:** This document has been merged into [razorpay_impl.md](./razorpay_impl.md). Do not use the capability tables, security notes, backlog, or architecture decisions below as current truth; use `README.md`, `razorpay_impl.md`, `active-subscription-flow.md`, `user-journey-tracking.md`, and `razorpay_verification.md`. The body remains a February 2026 migration snapshot.
 
-**Last Updated:** Feb 2026
-**Status:** Razorpay is the ONLY payment provider (Stripe removed)
+**Snapshot Date:** February 2026
+**Superseded Status Rechecked:** July 14, 2026
 
 ---
 

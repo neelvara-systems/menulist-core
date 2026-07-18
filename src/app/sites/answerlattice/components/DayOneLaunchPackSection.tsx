@@ -39,7 +39,7 @@ const PACK_ITEMS: LaunchPackItem[] = [
         label: 'Knowledge intake',
         title: 'Teach AnswerLattice from links, docs, files, and media',
         description:
-            'Start with selected product pages, supported files, screenshots, short recordings, release notes, setup notes, support macros, and repeated replies, then review drafts before publishing.',
+            'Start with selected product pages, supported files, screenshots, short recordings, release notes, setup notes, support macros, and repeated replies. Generate a source-backed first-ten set, then review every answer draft before publishing.',
         href: '/product/knowledge-intake',
         cta: 'See intake',
     },

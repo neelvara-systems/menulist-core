@@ -7,6 +7,8 @@
 
 > Canonical governance note (May 17, 2026): The current website implementation is the only source-code version. This playbook can inform distribution psychology, but homepage copy, screenshots, claims, and CTAs must follow the current codebase-first official-source strategy. Do not use this document to reintroduce hype, automatic external-sync claims, or generic "AI SaaS" language.
 
+> Legal, billing, and alias truth note (July 16, 2026): Campaign links may use the canonical `menulist.ai` routes or the supported `menulist.digital/ml` alias, but internal navigation and reviewed resource-language selection must stay on the same product base path. Do not market all-feature access, fixed post-cancellation deletion, universal external publishing, absolute generated-output ownership, provider certification, or access beyond the paid cycle. The current runtime retains cancelled/paused plan entitlement only through `cycleEndDate`; legal wording still requires owner/legal approval before release.
+
 > Search/AI discovery note (May 18, 2026): It is strategically valid to surface MenuList's SEO/AEO and machine-readable discovery infrastructure on the homepage because owners increasingly care about AI search visibility. The allowed marketing angle is "clear official source for search engines and AI systems to read." The forbidden angle is any promise of ranking, citation, automatic Google refresh, or AI-hype positioning.
 
 > POS Sync note (May 18, 2026): POS Sync should be marketed on the main website as proof that MenuList can support serious operations, not as a standalone POS-integration category. The allowed wording is "approved menu changes can be sent as a signed full-menu snapshot to a connected store POS webhook." Avoid "works with any POS", "real-time sync", "seamless integration", and POS connector-suite claims until validated by customer/vendor proof.
@@ -274,13 +276,13 @@ The internet doesn't.
 
 So we built MenuList.
 
-Upload a menu photo, PDF, or link.
-Get a digital menu, QR menu, and official business page.
-In minutes.
+Start with a clear photo or an owned public menu, service-list, image, or PDF link.
+Review the prepared customer version.
+Publish the approved customer link and QR during setup.
 
 [Demo video]
 
-One menu. Everywhere customers look.
+One approved customer list. One link customers can trust.
 
 Try it free: menulist.ai
 ```

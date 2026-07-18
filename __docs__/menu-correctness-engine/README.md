@@ -6,9 +6,9 @@
 
 ## What This Is
 
-The Menu Correctness Engine is a validation layer that runs on every menu save, checking whether project data is complete, valid, and safe before supported customer-facing publishing flows continue. MCE validates — it does not duplicate, route, or store separate copies of data.
+The Menu Correctness Engine is a deterministic validation layer for the standalone project update and publish transactions plus the editor Publish-Gate. It checks whether project data is complete and structurally valid without duplicating or routing customer data.
 
-Supported surfaces read from the same Firestore project document through their existing refresh, download, device, or provider paths. MCE adds the missing piece: **deterministic validation at save-time** and verification metadata (`_mce` field) stamped on the existing document.
+Supported surfaces read from the same Firestore project document through their existing refresh, download, device, or provider paths. Linked outlets resolve their scoped outlet document with the linked master. MCE adds deterministic validation and, on standalone update/publish paths, `_mce` metadata in the existing write.
 
 | Surface                | How MCE Protects It                               |
 | ---------------------- | ------------------------------------------------- |
@@ -65,7 +65,7 @@ Owner Edits Menu (Dashboard Editor)
   (all read from same project document — unchanged)
 ```
 
-**No separate snapshot collection. No routing layer. No background Cloud Functions in v1.**
+**MCE adds no collection, routing layer, or Cloud Function.** Canonical publish history separately uses the existing short-term `menuSnapshots` collection.
 
 ---
 
@@ -87,13 +87,13 @@ Owner Edits Menu (Dashboard Editor)
 | ------------ | ------- | ------------------------------ |
 | `ENABLE_MCE` | `true` | Enable Menu Correctness Engine |
 
-The current runtime has MCE enabled in `src/config/features.ts`. All audited `updateProject()` saves pass through CSR validation and `_mce` metadata is stamped on the project document as part of the same write. If the flag is disabled in a future rollback, the existing direct-write flow continues without stamping `_mce`.
+The current runtime has MCE enabled in `src/config/features.ts`. Standalone `updateProject()` and `publishProject()` transactions stamp `_mce` as part of their existing write. The linked-outlet route uses its authenticated schema/policy transaction and does not persist `_mce`; its resolved editor view still passes the Publish-Gate. If the flag is disabled, project persistence continues without MCE stamping or the extra editor gate.
 
 ---
 
 ## Key Concepts
 
-- **Correctness State Resolver (CSR):** Client-side validation engine that checks menu data against deterministic rules on every save. Zero Firebase cost.
+- **Correctness State Resolver (CSR):** Pure validation engine used by standalone save/publish and the editor gate. Zero Firebase operations.
 - **`_mce` Verification Metadata:** Field added to existing project document (`verified`, `verifiedAt`, `warnings`). Part of the same `setDoc` call — zero extra writes.
 - **Centralized Sanitization:** `sanitizeForClient()` extracted from `_client/[[...slug]]/page.tsx` into shared `src/lib/mce/utils.ts` for all surface data paths.
 
@@ -105,7 +105,7 @@ Every save must pass all 5 laws before project data is marked as verified.
 
 | Law | Name                       | Core Rule                                                              |
 | --- | -------------------------- | ---------------------------------------------------------------------- |
-| 1   | **Price Integrity**        | One correct, valid price per item per outlet. No conflicts, no empties |
+| 1   | **Price Integrity**        | Supported display formats; numeric-only checks apply to single values |
 | 2   | **Availability Integrity** | Disabled items are removed from saved project data; supported surfaces refresh through their own paths |
 | 3   | **Hours Data Consistency** | Hours data consistent in the saved source that supported surfaces read |
 | 4   | **Data Completeness**      | All fields present and valid. No empty names, no broken references     |
@@ -118,11 +118,11 @@ Every save must pass all 5 laws before project data is marked as verified.
 MCE follows 6 authority rules (see `_spec.md` §5 for details):
 
 1. Controls validation, not editor — owner can edit freely
-2. Validate on every save — silent, fast (< 100ms client-side)
+2. Validate supported standalone mutations and editor transitions — silent and local
 3. Never block the save — raw data write always succeeds
 4. Silent authority, zero notifications
-5. Per-outlet independence — each outlet validates independently
-6. Multi-outlet protection — `resolveProjectForRender()` output validated
+5. Per-outlet independence — linked writes stay scoped to one outlet
+6. Multi-outlet protection — the resolved editor output is validated before continuing; the server route enforces outlet policy/schema
 
 ---
 
@@ -150,7 +150,7 @@ During stress testing, we evaluated 10 hardening requirements. **8 of 10 are alr
 | Feature                  | Relationship                                     |
 | ------------------------ | ------------------------------------------------ |
 | Pricing Integrity System | PIS price validation rules become CSR rules      |
-| Multi-Outlet Consistency | MCE validates `resolveProjectForRender()` output |
+| Multi-Outlet Consistency | Editor gate validates resolved output; server save enforces outlet policy/schema |
 | POS Webhook Sync         | POS reads same validated project data            |
 | Digital Screens          | Screens read same validated project data         |
 
@@ -162,4 +162,4 @@ During stress testing, we evaluated 10 hardening requirements. **8 of 10 are alr
 
 ---
 
-_Last Updated: June 11, 2026_
+_Last Updated: July 16, 2026_

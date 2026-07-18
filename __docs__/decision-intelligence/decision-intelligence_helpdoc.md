@@ -1,63 +1,51 @@
-# Decision Intelligence — Help Documentation
+# Featured Choices — Owner Help
 
-## Quick Summary
-Decision Blocks are recommendation sections that can appear at the top of your customer menu: Most Popular, Quick Pick, and Best Value. They help customers decide faster and can run automatically, with optional owner pins when you want direct control.
+**Last verified:** July 16, 2026
 
----
+## What Featured Choices does
 
-## Getting Started
+Featured Choices can show a small Featured section above your full customer menu. Depending on your business type, it can include a Featured choice, Quick choice, and Value choice.
 
-### Prerequisites
-- An active menu with customer traffic (the system needs scan data to generate recommendations)
-- Decision Blocks appear automatically when enough menu activity exists
-- You can pin an item to a block from Smart Recommendations if you want direct control
+Your full menu and its normal order stay unchanged.
 
-### What You'll See
-Once your menu has enough activity, three sections appear at the top of your customer menu:
-1. **Most Popular** — Items other customers are clicking on
-2. **Quick Pick** — Items ready quickly
-3. **Best Value** — Best quality-to-price items
+## No action needed
 
----
+When enough settled menu activity exists, MenuList can choose eligible items automatically. New or low-activity menus may not show the section yet. This is normal.
 
-## How-To Guides
+## Choose an item yourself
 
-### How to pin an item to a recommendation block
-1. Open your menu editor
-2. Open **Smart Recommendations**
-3. Find the block you want to customize (Popular, Quick Pick, Best Value)
-4. Choose an item under **Pin specific item**
-5. Select the item you want to feature
-6. Save — the pinned item will always appear in that block
+1. Open the menu editor.
+2. Open **Featured section**.
+3. Turn a supported choice on or off.
+4. Select an item, or leave it empty for automatic choice.
+5. Save the menu.
 
-### How to check if Decision Blocks are active
-1. Scan your QR code on your phone
-2. Look for the recommendation sections at the top of your menu
-3. If they don't appear, your menu may not have enough activity yet
+Desktop and mobile use the same settings.
 
----
+## When a selected item cannot be shown
 
-## Troubleshooting
+A selected item is used whenever it is eligible. Hidden, unavailable, out-of-time, repeated, or missing items are skipped. MenuList may show another eligible automatic choice; if none qualifies, that choice stays hidden.
 
-### Decision Blocks not showing on my menu
-**Why:** The system needs customer scan data to generate recommendations. New menus without traffic won't show blocks.
-**Fix:** Wait until you have regular customer scans. Blocks typically appear after a few days of activity.
+Selected placement is not guaranteed while an item cannot safely appear.
 
-### Recommendations don't seem relevant
-**Why:** Recommendations are based on customer behavior data. Early data may be limited.
-**Fix:** Give it time — recommendations improve as more customers use your menu.
+## Why the section may be hidden
 
----
+- The menu does not yet have enough settled activity.
+- Fewer than two automatic choices remain eligible.
+- The generated choices are stale or unavailable.
+- Prices are hidden, so Value choice is unavailable.
+- Too few items have explicit durations for Quick choice.
+- Items are unavailable or outside their category time slots.
+- The choice or feature is turned off.
 
-## Tips
-- 💡 Decision Blocks update automatically after your store's daily analytics settle
-- 💡 Pin your best-selling items if you want guaranteed placement
-- 💡 You can leave setup alone unless you want to pin a specific item
-- 💡 Items marked as sold out are automatically excluded from recommendations
+Showing less is intentional when MenuList cannot show a current, supported choice.
 
-## Related Features
-- **[Client Menu]** — Where customers see the Decision Blocks
-- **[Analytics]** — Track how customers interact with recommendations
+## What this feature does not know
 
-## Need More Help?
-- **Email:** support@menulist.ai
+Featured Choices does not know completed orders, payments, POS sales, inventory counts, ratings, or reviews. It does not promise more orders or a specific customer outcome.
+
+## Support
+
+Email: support@menulist.ai
+
+Historical owner-help source: `_archive/pre-2026-07-16/decision-intelligence_helpdoc.md`.

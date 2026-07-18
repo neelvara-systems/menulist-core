@@ -9,9 +9,24 @@ Answerlattice gives workspace owners a small set of controls for checking suppor
 3. Select the page, plan, or role when the answer depends on context.
 4. Choose what should happen: approved answer, FAQ/owner answer, provider fallback, escalation, or no answer.
 5. Select the expected approved answer when required, or define required/forbidden answer text.
-6. Save and run the test.
+6. Choose an evidence requirement. Use a specific-reference check for FAQ or knowledge fallback answers that must cite known articles. Approved canonical answers can be checked by their answer ID.
+7. Mark only business-critical questions as **Critical**. A failed critical test marks release proof blocked; ordinary failures require review.
+8. Save and run the test.
 
 Use **Canonical only** for a fast deterministic check. Use **Full runtime** only when you need to verify fallback behavior; support-credit rules apply.
+
+`Ready`, `Review`, and `Blocked` describe the retained proof result. They do not deploy code, publish content, or change a release automatically.
+
+## Check A Proposed Answer
+
+1. Open **Governance > Signal Queue**.
+2. Open a generated answer draft, or find a complete answer-change proposal.
+3. Choose **Check impact**.
+4. Review the current and proposed outcomes for linked active Answer Tests.
+5. Treat `Regression` or a projected `Blocked` result as review evidence, not an automated decision.
+6. Edit, reject, or publish through the normal governance action.
+
+The check uses no fallback model and saves no test run. If no active tests are linked to the answer or its product entities, Answerlattice says proof is missing. Add a representative Answer Test instead of treating the absence of failures as approval.
 
 ## Check A Release
 

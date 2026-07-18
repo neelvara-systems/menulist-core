@@ -17,6 +17,7 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { getRazorpayManagedSubscriptionId } from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -109,7 +110,7 @@ export const POST = withAuth(async (request, session) => {
         subscriptionForLog = internalSub;
 
         // 🔒 CRITICAL: Verify subscription belongs to user's tenant/store
-        if (internalSub.tenantId !== Number(tenantId) || internalSub.storeId !== Number(storeId)) {
+        if (Number(internalSub.tenantId) !== Number(tenantId) || Number(internalSub.storeId) !== Number(storeId)) {
             logger.security('Unauthorized Subscription Resume Attempt', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/resume-subscription',
@@ -132,6 +133,14 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Subscription cannot be resumed in its current state." }, { status: 409 });
         }
 
+        const providerSubscriptionId = getRazorpayManagedSubscriptionId(internalSub);
+        if (!providerSubscriptionId) {
+            return NextResponse.json(
+                { error: "Prepaid subscriptions are managed by your reseller or support." },
+                { status: 409 },
+            );
+        }
+
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_RESUME_SUBSCRIPTION_FLOW',
@@ -139,7 +148,7 @@ export const POST = withAuth(async (request, session) => {
         });
 
         // Call Razorpay Resume API — resume_at: "now" is the only request param per Razorpay docs
-        await razorpayClient.subscriptions.resume(internalSub.providerSubscriptionId, {
+        await razorpayClient.subscriptions.resume(providerSubscriptionId, {
             resume_at: 'now'
         });
 

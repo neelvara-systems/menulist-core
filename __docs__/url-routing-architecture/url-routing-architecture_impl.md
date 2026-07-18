@@ -94,11 +94,13 @@ outletSlug?: string;  // NEW: URL path segment for outlet routing
 | ------------------------------------------------------------------- | --------------------------------------------------------- |
 | `src/constants/reservedSlugs.ts`                                    | Reserved slug/subdomain namespace constants + validators  |
 | `src/app/api/subdomain/check/route.ts`                              | Subdomain availability checker API (GET)                  |
-| `src/app/api/domain/route.ts`                                       | MenuList store custom-domain management via Vercel API (POST/GET/DELETE) |
+| `src/app/api/domain/route.ts`                                       | Server-owned custom-domain availability plus Vercel add/status/remove |
 | `src/lib/routing/customDomainClaim.ts`                              | Deterministic custom-domain claim, request reservation, release lease, and legacy collision boundary |
 | `src/lib/publicTruth/entityEligibility.ts`                          | Shared inactive/deleted/platform-block eligibility used by canonical public and owner-domain checks |
 | `src/lib/auth/browserRequestPolicy.ts`                              | Shared authenticated browser request policy for owner domain setup calls |
+| `src/database/stores/index.tsx`                                    | Owner custom-domain advisory client delegates to `/api/domain?candidate=`; no browser cross-store query |
 | `src/lib/domains/vercelDomains.ts`                                  | Shared Vercel domain add/check/remove helper used by MenuList and Answerlattice hosted help |
+| `src/lib/domains/vercelDnsRecords.ts`                               | Pure provider-response mapper for apex A, project-specific CNAME, and verification challenge rows |
 | `src/components/.../businessSettings/tabs/SubdomainTab.tsx`         | Subdomain settings UI tab                                 |
 | `src/components/.../businessSettings/tabs/CustomDomainTab.tsx`      | Custom domain UI with DNS verification flow               |
 | `src/components/mobile/screens/MobileDomainSettingsScreen.tsx`      | Active combined mobile domain/subdomain UI with normalized, copyable DNS verification rows, bounded subdomain-check response parsing, and acknowledged subdomain store saves |
@@ -244,11 +246,14 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx  # Optional
 | API routes auth-protected      | ✅     | `/api/domain` + `/api/subdomain/check` use `withAuth` |
 | Domain session IDs guarded     | ✅     | `/api/domain` validates session tenant/store IDs with the shared Firestore document-ID guard before permission checks, limiter keys, store refs, Vercel-flow diagnostics, and public cache invalidation |
 | Domain mutation body bounded   | ✅     | `/api/domain` rejects bodies above 4KB before validation or Vercel provider calls |
-| Domain management limiter      | ✅     | `/api/domain` hashes owner/store key material before storing the domain-management rate-limit key |
+| Domain management limiter      | ✅     | `/api/domain` hashes owner/store key material before storing the domain-management rate-limit key; provider outage returns retryable `503` before Vercel or Firestore work, while quota exhaustion remains `429` |
+| Custom-domain advisory check   | ✅     | `/api/domain?candidate=` uses `DATA_READ`, canonical scope/permission, reserved product roots, deterministic claim, and bounded legacy collision reads; POST repeats authority |
 | Subdomain check limiter        | ✅     | `/api/subdomain/check` hashes owner/tenant/store key material before storing the availability-check rate-limit key |
 | Desktop subdomain check parse  | ✅     | Desktop Domain Settings caps `/api/subdomain/check` response parsing at 8KB and requires a boolean `available` field before applying availability state |
 | Desktop custom-domain ack      | ✅     | Desktop Domain Settings and Custom Domain add/status/remove parse `/api/domain` responses through bounded 32KB readers and require the expected acknowledged response before local domain state changes. Remove requires `success: true` plus `removed: true`. |
 | Mobile domain remove state     | ✅     | Mobile Domain Settings only clears local domain state after a successful `/api/domain` delete response with `{ success: true, removed: true }` |
+| Verification downgrade parity  | ✅     | Desktop/mobile prefer an explicit server boolean over stale local `domainVerified`; provider `false` clears the verified badge and state |
+| Derived-effect owner copy      | ✅     | Add/remove pending cleanup or refresh flags show bounded background follow-up copy without reverting committed local state |
 | Browser request boundary       | ✅     | Desktop and mobile Domain Settings call `/api/domain` and `/api/subdomain/check` with same-origin credentials, no-store cache policy, and manual redirect handling before response parsing |
 | Reserved slug validation       | ✅     | Blocked at project creation/rename/onboarding         |
 | No user-provided slugs exposed | ✅     | Auto-generated from name via `slugify()`              |
@@ -261,6 +266,7 @@ VERCEL_TEAM_ID=team_xxxxxxxxxxxx  # Optional
 | Duplicate legacy hostname      | ✅     | Duplicate/mismatched valid mappings return `409` without clearing one row or selecting a public winner |
 | Verification TOCTOU            | ✅     | Exact domain, tenant/store lifecycle, permission, and claim are rechecked transactionally after provider status |
 | DNS setup display              | ✅     | Desktop and mobile Domain Settings render Vercel verification/configured records as copyable rows, not raw provider JSON |
+| DNS record source truth        | ✅     | Shared helper selects Vercel preferred `recommendedIPv4` for apex or project-specific `recommendedCNAME` for subdomains; missing guidance produces no invented fallback |
 | Domain browser handoffs        | ✅     | Desktop and mobile copy/open/DNS-copy failures log bounded URL/DNS metadata only |
 | Mobile rejected domain reads   | ✅     | Mobile Domain Settings keeps current status/availability state on rejected `/api/domain` and `/api/subdomain/check` reads; malformed subdomain-check responses log bounded parse/shape diagnostics before fixed failure copy |
 | Mobile subdomain save ack      | ✅     | Mobile Domain Settings requires `updateStore()` acknowledgement before local public URL state or saved copy changes |

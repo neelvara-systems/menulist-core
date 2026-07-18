@@ -2,24 +2,51 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import type { GuestFeedback } from '@type/guestFeedback';
+import { createHash } from 'crypto';
 import { getBoundedGuestFeedbackStringContext, logGuestFeedbackFailure } from './guestFeedbackDiagnostics';
 
 type SubmitGuestFeedbackAdminInput = Pick<
     GuestFeedback,
     'customerEmail' | 'customerName' | 'customerPhone' | 'message' | 'projectId' | 'rating' | 'sId' | 'source' | 'tId'
->;
+> & { submissionId: string };
+
+type SubmitGuestFeedbackAdminResult = {
+    created: boolean;
+    feedback: GuestFeedback & { id: string };
+};
 
 export type FeedbackEventType = 'FEEDBACK_SUBMITTED' | 'FEEDBACK_RESOLVED';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+const hashGuestFeedbackValue = (value: string): string => (
+    createHash('sha256').update(value).digest('hex')
+);
+
+const isAlreadyExistsError = (error: unknown): boolean => {
+    if (!error || typeof error !== 'object' || !('code' in error)) return false;
+    const code = String((error as { code?: unknown }).code);
+    return code === '6' || code === 'already-exists' || code === 'ALREADY_EXISTS';
+};
+
 export async function submitGuestFeedbackAdmin(
     data: SubmitGuestFeedbackAdminInput,
-): Promise<GuestFeedback> {
+): Promise<SubmitGuestFeedbackAdminResult> {
     const now = admin.firestore.Timestamp.now();
     const expiresOn = admin.firestore.Timestamp.fromMillis(
         now.toMillis() + (90 * 24 * 60 * 60 * 1000),
     );
 
+    const requestFingerprintHash = hashGuestFeedbackValue(JSON.stringify({
+        customerEmail: data.customerEmail || '',
+        customerName: data.customerName || '',
+        customerPhone: data.customerPhone || '',
+        message: data.message || '',
+        projectId: data.projectId,
+        rating: data.rating,
+        sId: data.sId,
+        source: data.source,
+        tId: data.tId,
+    }));
     const feedbackData = {
         tId: data.tId,
         sId: data.sId,
@@ -35,16 +62,51 @@ export async function submitGuestFeedbackAdmin(
         createdOn: now,
         createdBy: 'guest' as const,
         expiresOn,
+        requestFingerprintHash,
     };
 
-    const docRef = await firestoreAdmin
+    const feedbackId = `guest_feedback_${hashGuestFeedbackValue([
+        data.tId,
+        data.sId,
+        data.projectId,
+        data.submissionId,
+    ].join(':')).slice(0, 40)}`;
+    const docRef = firestoreAdmin
         .collection(DB_COLLECTIONS.GUEST_FEEDBACK)
-        .add(feedbackData);
+        .doc(feedbackId);
 
-    return {
-        id: docRef.id,
-        ...feedbackData,
-    };
+    try {
+        await docRef.create(feedbackData);
+        return {
+            created: true,
+            feedback: {
+                id: docRef.id,
+                ...feedbackData,
+            },
+        };
+    } catch (error) {
+        if (!isAlreadyExistsError(error)) throw error;
+
+        const existingSnapshot = await docRef.get();
+        const existing = existingSnapshot.data();
+        if (
+            !existingSnapshot.exists
+            || existing?.tId !== data.tId
+            || existing?.sId !== data.sId
+            || existing?.projectId !== data.projectId
+            || existing?.requestFingerprintHash !== requestFingerprintHash
+        ) {
+            throw new Error('Guest feedback submission replay conflict');
+        }
+
+        return {
+            created: false,
+            feedback: {
+                id: docRef.id,
+                ...existing,
+            } as GuestFeedback & { id: string },
+        };
+    }
 }
 
 export async function logFeedbackMOLEventAdmin(
@@ -53,11 +115,12 @@ export async function logFeedbackMOLEventAdmin(
     sId: number,
     projectId: string,
     rating: number,
+    feedbackId?: string,
 ): Promise<void> {
     try {
         const now = admin.firestore.Timestamp.now();
         const retentionDays = Number(FEATURE_FLAGS.FEEDBACK_EVENT_RETENTION_DAYS || 180);
-        await firestoreAdmin.collection(DB_COLLECTIONS.FEEDBACK_EVENTS).add({
+        const eventData = {
             type: 'feedback_event',
             eventType,
             tId,
@@ -66,7 +129,18 @@ export async function logFeedbackMOLEventAdmin(
             rating,
             timestamp: now,
             expiresAt: admin.firestore.Timestamp.fromMillis(now.toMillis() + retentionDays * DAY_MS),
-        });
+        };
+        const collectionRef = firestoreAdmin.collection(DB_COLLECTIONS.FEEDBACK_EVENTS);
+        if (eventType === 'FEEDBACK_SUBMITTED' && feedbackId) {
+            const eventRef = collectionRef.doc(`feedback_submitted_${feedbackId}`);
+            try {
+                await eventRef.create(eventData);
+            } catch (error) {
+                if (!isAlreadyExistsError(error)) throw error;
+            }
+        } else {
+            await collectionRef.add(eventData);
+        }
     } catch (error) {
         // Non-blocking operational signal. Feedback submission must not fail.
         logGuestFeedbackFailure('guest_feedback_admin_mol_event_log_failed', error, {

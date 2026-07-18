@@ -23,6 +23,10 @@ const SMTP_NOT_CONFIGURED_ERROR = 'SMTP_NOT_CONFIGURED';
 const SMTP_SEND_FAILED_ERROR = 'SMTP_SEND_FAILED';
 const SMTP_MIN_PORT = 1;
 const SMTP_MAX_PORT = 65535;
+const SMTP_CONNECTION_TIMEOUT_MS = 10_000;
+const SMTP_GREETING_TIMEOUT_MS = 10_000;
+const SMTP_SOCKET_TIMEOUT_MS = 15_000;
+const MAX_SMTP_PROVIDER_MESSAGE_ID_LENGTH = 200;
 const logger = functions.logger;
 
 // Cached transporter (reused across invocations in same CF instance)
@@ -55,6 +59,12 @@ function parseSmtpPort(rawPort: string | undefined): number | null {
     : null;
 }
 
+function normalizeProviderMessageId(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const normalized = value.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+  return normalized ? normalized.slice(0, MAX_SMTP_PROVIDER_MESSAGE_ID_LENGTH) : undefined;
+}
+
 function getTransporter(): nodemailer.Transporter | null {
   if (cachedTransporter) return cachedTransporter;
 
@@ -80,6 +90,9 @@ function getTransporter(): nodemailer.Transporter | null {
     port,
     secure: port === 465, // true for 465, false for 587
     auth: { user, pass },
+    connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+    greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
+    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
   });
 
   return cachedTransporter;
@@ -110,7 +123,7 @@ export async function sendEmailViaSMTP(params: {
 
     return {
       success: true,
-      providerMessageId: info.messageId,
+      providerMessageId: normalizeProviderMessageId(info.messageId),
     };
   } catch (error) {
     logger.error('[Mailer] Send failed', {

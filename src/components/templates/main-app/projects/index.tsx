@@ -3,10 +3,9 @@
 import LoadingMessage from '@antdComponent/loadingMessage';
 import { FEATURE_FLAGS } from '@config/features';
 import { REFRESH_INTERVALS } from '@constant/metrics';
-import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
+import { applyStoreBusinessAttributeDefaults, assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import GlobalLanguagesList from '@data/languages';
-import { getSuggestionValue } from '@data/shared/extractedBusinessProfile';
-import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, uploadFile } from '@database/projects';
+import { addProject, assertProjectDeleteSucceeded, assertProjectUpdateSucceeded, deleteProject, duplicateProject, getMetadataProjectsList, getProjectData, getProjectDataWithoutLoader, setProjectActive, updateProject, updateProjectMetadata, updateProjectWithoutLoader, updateSpecialMenuProject, uploadFile } from '@database/projects';
 import { canHaveLinkedOutlets } from '@database/multiOutlet';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
@@ -23,11 +22,19 @@ import {
     getMenuProcessingProjectLogContext,
     logMenuProcessingFailure,
 } from '@lib/firebase/menuProcessingDiagnostics';
+import { shouldCleanupUploadedFilesAfterJobStartError } from '@lib/menu-extraction/jobStartFailure';
 import { MENU_IMAGE_CONFIG, optimizeImage } from '@lib/image/optimizeImage';
+import { isDataUrl } from '@lib/media/mediaStorage';
 import { applyLocalizedProjectDraftMap, getLocalizedProjectValue, getProjectManagedLanguages, getProjectPreferredLanguage, hasMissingProjectPublicDraftContent } from '@lib/localization/projectContent';
-import { normalizeProjectLanguages } from '@lib/localization/languagePolicy';
+import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { createMenuLinkImportJob } from '@lib/menu-link-import/client';
+import {
+    MENULIST_ANSWERLATTICE_EVENTS,
+    MENULIST_ANSWERLATTICE_TARGETS,
+    emitMenuListAnswerlatticeWorkflowEvent,
+    getMenuListAnswerlatticeTargetProps,
+} from '@lib/answerlattice/referenceClients/menuListGuidedResolution';
 import { runMenuIntakeIdentityPreflight } from '@lib/menu-intake-identity/client';
 import { buildExtractedProfileHighlights, buildOwnerDetectedUploadDetails, buildOwnerUploadConcernDetails, type OwnerDetectedDetail } from '@lib/menu-intake-identity/ownerPresentation';
 import { buildBusinessIdentitySuggestions, buildBusinessIdentityUpdatePayload, type BusinessIdentitySuggestion, type BusinessIdentitySuggestionField } from '@lib/menu-intake-identity/suggestionAcceptance';
@@ -54,6 +61,7 @@ import useMasterJobStatus from '@hook/useMasterJobStatus';
 import { runComparisonEngine } from '@lib/extraction/comparisonEngine';
 import type { ComparisonEngineOutput, ComparisonMode } from '@lib/extraction/comparisonEngine.types';
 import { buildComparisonProjectInput, getLinkedMasterComparisonInput } from '@lib/extraction/projectInput';
+import { buildExtractedProfileProjectPatch, mergeProjectWithExtractedProfileDefaults } from '@lib/extraction/projectVisualDefaults';
 import { generateProjectImageCandidate, generateAndSaveProjectImageIfMissing, getProjectImageDataFromComparisonPreview } from '@lib/image/projectImageGeneration';
 import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { DEFAULT_OUTLET_POLICY, type OutletPolicy } from '@type/multiOutlet.types';
@@ -149,59 +157,6 @@ const normalizeProjectsData = (data: any) => ({
     projects: normalizeProjectsList(data?.projects),
     lastDoc: data?.lastDoc ?? null,
 });
-
-function mergeProjectWithExtractedProfileDefaults(projectData: any, profile: any): any {
-    if (!profile) return projectData;
-    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
-    if (!imageBackgroundColor) return projectData;
-
-    return {
-        ...(projectData || {}),
-        aiPreferences: {
-            ...(projectData?.aiPreferences || {}),
-            image: {
-                ...(projectData?.aiPreferences?.image || {}),
-                backgroundColor: projectData?.aiPreferences?.image?.backgroundColor || imageBackgroundColor,
-            },
-        },
-    };
-}
-
-function buildExtractedProfileProjectPatch(projectData: any, profile: any): Partial<Project> | null {
-    if (!projectData?.projectId || !profile) return null;
-
-    const patch: any = { projectId: projectData.projectId };
-    if (projectData.masterProjectId) {
-        patch.masterProjectId = projectData.masterProjectId;
-    }
-    const brandAccentColor = getSuggestionValue(profile?.visualBrand?.brandAccentColor, 'medium');
-    const imageBackgroundColor = getSuggestionValue(profile?.visualBrand?.imageBackgroundColor, 'medium');
-
-    if (brandAccentColor && !projectData?.config?.design?.brand?.accentColor) {
-        patch.config = {
-            ...(projectData?.config || {}),
-            design: {
-                ...(projectData?.config?.design || {}),
-                brand: {
-                    ...(projectData?.config?.design?.brand || {}),
-                    accentColor: brandAccentColor,
-                },
-            },
-        };
-    }
-
-    if (imageBackgroundColor && !projectData?.aiPreferences?.image?.backgroundColor) {
-        patch.aiPreferences = {
-            ...(projectData?.aiPreferences || {}),
-            image: {
-                ...(projectData?.aiPreferences?.image || {}),
-                backgroundColor: imageBackgroundColor,
-            },
-        };
-    }
-
-    return patch.config || patch.aiPreferences ? patch : null;
-}
 
 function BusinessIdentitySuggestionList({
     details,
@@ -342,6 +297,9 @@ function ProjectsPage() {
     const [activeBatchImageJob, setActiveBatchImageJob] = useState<BatchImageGenerationJobType | null>(null);
     const [pdfFiles, setPdfFiles] = useState<{ images: ConvertedImageType[]; action: string } | null>({ images: [], action: "" });
     const { tenantDetails, storeDetails, setStoreDetails, activeSubscription, activeSubscriptionLoading, userPermissions, isMasterUser } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
+    const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;
+    const canManageStore = userPermissions?.canManageStore === true;
+    const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
     const storeContextName = useMemo(() => getStoreContextName(storeDetails as any, 'Business'), [storeDetails]);
     const outletPolicy = useMemo<OutletPolicy | null>(() => {
         if (isMasterUser || storeDetails?.isMaster !== false) return null;
@@ -434,7 +392,7 @@ function ProjectsPage() {
         prepared?: PreparedMediaImage | null,
     ) => {
         if (!projectImage) return null;
-        if (!projectImage.includes('base64')) return projectImage;
+        if (!isDataUrl(projectImage)) return projectImage;
 
         const mimeMatch = projectImage.match(/^data:(.*?);base64,/);
         const uploadedUrl = await uploadFile({
@@ -564,7 +522,7 @@ function ProjectsPage() {
         }
     );
     const hasPendingLocalUploadFiles = Boolean(activeProject?.files?.some((file) => (
-        !file.extractedData && typeof file.url === 'string' && file.url.includes('base64')
+        !file.extractedData && isDataUrl(file.url)
     )));
 
     useEffect(() => {
@@ -836,8 +794,7 @@ function ProjectsPage() {
         if (!nextBusinessAttributes) return;
 
         try {
-            const writeResult = await updateStore({
-                id: storeDetails.storeId,
+            const writeResult = await applyStoreBusinessAttributeDefaults({
                 storeId: storeDetails.storeId,
                 tenantId: storeDetails.tenantId,
                 businessAttributes: nextBusinessAttributes,
@@ -848,7 +805,7 @@ function ProjectsPage() {
                 'menu_upload_business_attributes_store_update_rejected',
             );
             setStoreDetails((previous: any) => previous
-                ? { ...previous, businessAttributes: nextBusinessAttributes }
+                ? { ...previous, businessAttributes: writeResult.businessAttributes }
                 : previous);
         } catch (error) {
             logMenuProcessingFailure('menu_upload_business_attributes_apply_failed', error, {
@@ -869,16 +826,15 @@ function ProjectsPage() {
         if (!patch) return;
 
         try {
-            const savedProject = await updateProjectWithoutLoader(patch);
+            const savedProject = await updateProjectWithoutLoader(patch, {
+                preserveExistingVisualDefaults: true,
+            });
             assertProjectUpdateSucceeded(
                 savedProject,
                 projectId,
                 'menu_upload_extracted_profile_defaults_project_update_rejected',
             );
-            mutateProject((current: any) => current ? {
-                ...current,
-                ...patch,
-            } : current, false);
+            mutateProject(savedProject, false);
         } catch (error) {
             logMenuProcessingFailure('menu_upload_extracted_profile_defaults_apply_failed', error, {
                 ...getMenuProcessingProjectLogContext(projectId),
@@ -888,6 +844,8 @@ function ProjectsPage() {
 
     // Handle job completion - refetch project data since server saved results
     useEffect(() => {
+        let comparisonEffectCancelled = false;
+
         if (!activeProcessingJobId) {
             return;
         }
@@ -931,13 +889,21 @@ function ProjectsPage() {
             setComparisonResult(null);
             // Show success modal instead of navigating directly
             setShowSuccessModal(true);
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_COMPLETED);
         }
 
         if (jobIsPreviewReady && !showReviewScreen && activeJob?.result) {
             void (async () => {
-                // Capture extraction stats for the success modal (after review save)
                 const previewResult = activeJob.result;
-                if (previewResult) {
+                // Re-extraction: raw data ready for client-side comparison
+                try {
+                    const storeProject = buildComparisonProjectInput(activeProject);
+                    const masterProject = masterProjectId
+                        ? await getLinkedMasterComparisonInput(activeProject)
+                        : undefined;
+                    if (comparisonEffectCancelled) return;
+
+                    // Capture extraction stats only while this job/project effect is current.
                     const extractedProfile = previewResult.extractedBusinessProfile || previewResult.combinedData?.extractedBusinessProfile;
                     setExtractionStats({
                         qualityScore: previewResult.qualityScore,
@@ -946,18 +912,11 @@ function ProjectsPage() {
                         itemsCount: previewResult.combinedData?.items?.length || 0,
                         profileHighlights: buildExtractedProfileHighlights(extractedProfile),
                     });
-                }
-                // Re-extraction: raw data ready for client-side comparison
-                try {
-                    const storeProject = buildComparisonProjectInput(activeProject);
-                    const masterProject = masterProjectId
-                        ? await getLinkedMasterComparisonInput(activeProject)
-                        : undefined;
 
                     // Get extracted data from job result
                     const extractedItems = activeJob.result.combinedData?.items || [];
                     const extractedCategories = activeJob.result.combinedData?.categories || [];
-                    const primaryLang = activeProject?.languages?.[0] || 'en';
+                    const primaryLang = getCanonicalProjectSourceLanguage(activeProject?.languages);
 
                     // Determine comparison mode based on project type
                     const comparisonMode: ComparisonMode = masterProjectId
@@ -978,7 +937,9 @@ function ProjectsPage() {
 
                     setComparisonResult(comparison);
                     setShowReviewScreen(true);
+                    emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_REVIEW_READY);
                 } catch (error) {
+                    if (comparisonEffectCancelled) return;
                     logMenuProcessingFailure('menu_upload_comparison_engine_failed', error, {
                         ...getMenuProcessingJobLogContext(activeProcessingJobId),
                         ...getMenuProcessingProjectLogContext(activeJobProjectId || selectedProject?.projectId || activeProject?.projectId),
@@ -1000,6 +961,7 @@ function ProjectsPage() {
             // Show failure modal
             setFailureMessage('Processing could not be completed. Please try again.');
             setShowFailureModal(true);
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_FAILED);
         }
 
         if (jobIsCancelled) {
@@ -1009,6 +971,10 @@ function ProjectsPage() {
             setComparisonResult(null);
             message.info('Processing was cancelled');
         }
+
+        return () => {
+            comparisonEffectCancelled = true;
+        };
     }, [activeProcessingJobId, isActiveProcessingJob, activeJobMatchesActiveProject, activeJobProjectId, jobIsCompleted, jobIsPreviewReady, jobIsFailed, jobIsCancelled, jobError, maybeAutoGenerateProjectImage, mutateProject, showReviewScreen, activeJob, activeProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -1037,6 +1003,7 @@ function ProjectsPage() {
         setFileProcessingId(null);
         mutateProject(); // Refetch to get updated data
         setShowSuccessModal(true);
+        emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_COMPLETED);
     }, [activeJob?.result, activeProject, applyExtractedProfileProjectDefaults, comparisonResult, maybeAutoGenerateProjectImage, mutateProject, selectedProject, applyMenuDerivedBusinessAttributeDefaults]);
 
     const handleReviewDiscard = useCallback(() => {
@@ -1121,6 +1088,7 @@ function ProjectsPage() {
             const proposedSlug = slugify(sanitizedName);
             const existingProjects = normalizeProjectsList(projectsData?.projects);
             const editingProjectId = editingProject?.projectId;
+            const isEditingSpecialMenu = (editingProject as any)?.isSpecialMenu === true;
             const otherDefault = existingProjects.find(
                 (p: any) => p?.isDefault === true && p?.projectId !== editingProjectId,
             );
@@ -1133,9 +1101,9 @@ function ProjectsPage() {
                 )
                 : '';
             const thisIsDefault = editingProject?.isDefault === true;
-            const nextIsDefault = values.isDefault === true;
+            const nextIsDefault = !isEditingSpecialMenu && values.isDefault === true;
             let promoteThisAsDefault = false;
-            if (proposedSlug === 'menu' && otherDefault && !nextIsDefault && !thisIsDefault) {
+            if (!isEditingSpecialMenu && proposedSlug === 'menu' && otherDefault && !nextIsDefault && !thisIsDefault) {
                 const decision = await new Promise<'promote' | 'keep'>((resolve) => {
                     Modal.confirm({
                         title: tDivergence('title'),
@@ -1217,20 +1185,49 @@ function ProjectsPage() {
                     return;
                 }
 
-                const updatePayload: { name?: any; description?: any; isDefault?: boolean; projectImage?: string | null } = {
-                    name: localizedName,
-                    description: localizedDescription,
-                    projectImage: savedProjectImage,
-                };
+                const updatePayload: { name?: any; description?: any; isDefault?: boolean; projectImage?: string | null } = isEditingSpecialMenu
+                    ? { projectImage: savedProjectImage }
+                    : {
+                        name: localizedName,
+                        description: localizedDescription,
+                        projectImage: savedProjectImage,
+                    };
                 const nextActive = values.active !== false;
                 const nextDefaultLanguage = projectFormSelectedLanguage;
-                const activeChanged = (editingProject as any).active !== nextActive;
-                const shouldBeDefault = promoteThisAsDefault || nextIsDefault;
-                updatePayload.isDefault = shouldBeDefault;
+                const activeChanged = !isEditingSpecialMenu && (editingProject as any).active !== nextActive;
+                const shouldBeDefault = !isEditingSpecialMenu && (promoteThisAsDefault || nextIsDefault);
+                if (!isEditingSpecialMenu) updatePayload.isDefault = shouldBeDefault;
+                if (isEditingSpecialMenu) {
+                    const startsAt = projectFormSourceData?._specialMenu?.startsAt
+                        || (editingProject as any).specialMenuStartsAt;
+                    const endsAt = projectFormSourceData?._specialMenu?.endsAt
+                        || (editingProject as any).specialMenuEndsAt;
+                    if (typeof startsAt !== 'string' || typeof endsAt !== 'string') {
+                        throw new Error('special_menu_schedule_missing');
+                    }
+                    const specialMenuResult = await updateSpecialMenuProject({
+                        projectId: editingProject.projectId!,
+                        description: sanitizedDescription,
+                        displayName: sanitizedName,
+                        localizedDescription: localizedDescription || undefined,
+                        localizedDisplayName: localizedName,
+                        startsAt,
+                        endsAt,
+                    });
+                    assertProjectUpdateSucceeded(
+                        specialMenuResult,
+                        editingProject.projectId!,
+                        'projects_page_special_menu_update_rejected',
+                    );
+                }
                 const updatedProject = {
                     ...editingProject,
                     ...updatePayload,
-                    active: nextActive,
+                    ...(isEditingSpecialMenu ? {
+                        name: localizedName,
+                        description: localizedDescription,
+                    } : {}),
+                    active: isEditingSpecialMenu ? (editingProject as any).active !== false : nextActive,
                     defaultLanguage: nextDefaultLanguage,
                 };
                 const metadataResult = await updateProjectMetadata(editingProject.projectId!, updatePayload, {
@@ -1620,6 +1617,7 @@ function ProjectsPage() {
     };
 
     const handleTranslateProjectPublicContent = async () => {
+        if (!canTranslatePublicContent) return;
         if (!editingProject?.projectId) return;
 
         const currentNameDrafts = projectNameDrafts;
@@ -1870,6 +1868,7 @@ function ProjectsPage() {
     const maybeAcceptBusinessIdentitySuggestions = useCallback(async (
         result: Awaited<ReturnType<typeof runMenuIntakeIdentityPreflight>> | null,
     ) => {
+        if (!canManageStore) return;
         const suggestions = buildBusinessIdentitySuggestions(result, storeDetails);
         if (!suggestions.length || !storeDetails?.storeId) return;
         const detectedDetails = buildOwnerDetectedUploadDetails(result);
@@ -1929,7 +1928,7 @@ function ProjectsPage() {
                 },
             });
         });
-    }, [setStoreDetails, storeDetails]);
+    }, [canManageStore, setStoreDetails, storeDetails]);
 
     const confirmMenuIntakeDecision = useCallback(async (
         projectId: string,
@@ -2066,6 +2065,11 @@ function ProjectsPage() {
         filesToProcess: ProjectFileType[],
         projectDataCopy: Project
     ): Promise<{ jobId: string; uploadedUrls: Map<string, string>; projectId: string } | null> => {
+        if (!canUseMenuExtraction) {
+            message.error('Menu extraction is not enabled for this location.');
+            return null;
+        }
+
         const cleanupUploadedMenuFiles = async (
             files: MenuFileToProcess[],
             cleanupReason: string,
@@ -2074,14 +2078,16 @@ function ProjectsPage() {
             if (files.length === 0) return;
 
             const cleanupResults = await Promise.allSettled(files.map(file => deleteFileByUrl(file.url)));
-            const failedCleanups = cleanupResults.filter((result) => result.status === 'rejected') as PromiseRejectedResult[];
+            const failedCleanupCount = cleanupResults.filter((result) => (
+                result.status === 'rejected' || result.value.success !== true
+            )).length;
 
-            if (failedCleanups.length > 0) {
-                logMenuProcessingFailure('menu_upload_uploaded_file_cleanup_failed', failedCleanups[0]?.reason, {
+            if (failedCleanupCount > 0) {
+                logMenuProcessingFailure('menu_upload_uploaded_file_cleanup_failed', new Error('storage_cleanup_failed'), {
                     ...getMenuProcessingProjectLogContext(projectId),
                     ...getBoundedMenuProcessingStringContext('cleanupReason', cleanupReason),
                     attemptedCleanupCount: files.length,
-                    failedCleanupCount: failedCleanups.length,
+                    failedCleanupCount,
                 });
             }
         };
@@ -2155,23 +2161,35 @@ function ProjectsPage() {
             return { jobId: existingJobId, uploadedUrls, projectId: targetProjectId };
         }
 
-        const { jobId } = await withTimeout(
-            createProcessingJob({
-                files: filesForJob,
-                targetLanguages,
-                projectId: targetProjectId,
-                businessCategory: storeDetails?.businessCategory,
-                businessType: storeDetails?.businessType,
-                identityOverrideConfirmed: intakeDecision.identityOverrideConfirmed,
-            }),
-            PROCESSING_TIMEOUT * filesToProcess.length,
-        );
+        let jobId: string;
+        try {
+            ({ jobId } = await withTimeout(
+                createProcessingJob({
+                    files: filesForJob,
+                    targetLanguages,
+                    projectId: targetProjectId,
+                    businessCategory: storeDetails?.businessCategory,
+                    businessType: storeDetails?.businessType,
+                    identityOverrideConfirmed: intakeDecision.identityOverrideConfirmed,
+                }),
+                PROCESSING_TIMEOUT * filesToProcess.length,
+            ));
+        } catch (error) {
+            if (shouldCleanupUploadedFilesAfterJobStartError(error)) {
+                await cleanupUploadedMenuFiles(filesForJob, 'job_start_rejected', targetProjectId);
+            }
+            throw error;
+        }
 
         return { jobId, uploadedUrls, projectId: targetProjectId };
     };
 
     const handleMenuLinkImport = useCallback(async () => {
         if (!FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT) return;
+        if (!canUseMenuExtraction) {
+            message.error('Menu extraction is not enabled for this location.');
+            return;
+        }
         if (!selectedProject?.projectId) {
             message.info('Create a menu before importing from a link.');
             return;
@@ -2202,6 +2220,7 @@ function ProjectsPage() {
             });
 
             setActiveProcessingJobId(result.jobId);
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_STARTED);
             setMenuLinkUrl('');
             setMenuLinkPermissionConfirmed(false);
             setMenuLinkImportModalOpen(false);
@@ -2216,7 +2235,7 @@ function ProjectsPage() {
         } finally {
             setMenuLinkImporting(false);
         }
-    }, [activeProcessingJobId, hasPendingLocalUploadFiles, menuLinkPermissionConfirmed, menuLinkUrl, selectedProject?.projectId, setActiveProcessingJobId]);
+    }, [activeProcessingJobId, canUseMenuExtraction, hasPendingLocalUploadFiles, menuLinkPermissionConfirmed, menuLinkUrl, selectedProject?.projectId, setActiveProcessingJobId]);
 
     /**
      * Handle "Continue" button click
@@ -2230,6 +2249,10 @@ function ProjectsPage() {
      */
     const handleUploadAndContinue = async (activeProject: Project | null) => {
         if (!activeProject || !selectedProject) return;
+        if (!canUseMenuExtraction) {
+            message.error('Menu extraction is not enabled for this location.');
+            return;
+        }
 
         const projectDataCopy: Project = removeObjRef(activeProject);
 
@@ -2245,7 +2268,7 @@ function ProjectsPage() {
 
         try {
             // Get files that need processing (base64 = not yet uploaded)
-            const filesToProcess = projectDataCopy.files?.filter(f => f.url?.includes('base64')) || [];
+            const filesToProcess = projectDataCopy.files?.filter(f => isDataUrl(f.url)) || [];
 
             if (filesToProcess.length === 0) {
                 // No new files to upload, but some files may not have extractedData
@@ -2279,6 +2302,7 @@ function ProjectsPage() {
 
             // Set active job ID - the useEffect will handle completion
             setActiveProcessingJobId(jobId);
+            emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_IMPORT_STARTED);
 
             // NOTE: Don't clear fileProcessingId here - it will be cleared when job completes
 
@@ -2365,6 +2389,11 @@ function ProjectsPage() {
      * - Total upload size limit (200MB per session)
      */
     const validateSelectedFile = async (file: any, fileList: any[] = []) => {
+        if (!canUseMenuExtraction) {
+            message.error('Menu extraction is not enabled for this location.');
+            return Upload.LIST_IGNORE;
+        }
+
         // Get all files in current upload session
         const allFiles = fileList.map(f => f.originFileObj || f).filter(Boolean);
 
@@ -2498,7 +2527,7 @@ function ProjectsPage() {
 
                     if (pdf.numPages > WARN_PDF_PAGES) {
                         message.warning({
-                            content: `"${file.name}" has ${pdf.numPages} pages. This will take a few minutes to process and may use significant AI credits.`,
+                            content: `"${file.name}" has ${pdf.numPages} pages. This will take a few minutes to process.`,
                             duration: 8,
                         });
                     }
@@ -2568,7 +2597,7 @@ function ProjectsPage() {
         id: "default-action-upload",
         name: 'file',
         multiple: true,
-        disabled: fileProcessingId !== null,
+        disabled: !canUseMenuExtraction || fileProcessingId !== null,
         style: { background: token.colorBgContainer, borderRadius: 15 },
         fileList: activeProject?.files?.map((file) => ({
             uid: file.uid,  // Use src/url as id or generate random
@@ -2610,6 +2639,7 @@ function ProjectsPage() {
 
     const menuLinkImportPanel = FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT ? (
         <Flex
+            {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_CHOOSE_SOURCE)}
             gap={10}
             vertical
             style={{
@@ -2633,7 +2663,7 @@ function ProjectsPage() {
                 </Typography.Text>
             ) : null}
             <Input
-                disabled={menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                disabled={!canUseMenuExtraction || menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
                 onChange={(event) => setMenuLinkUrl(event.target.value)}
                 onPressEnter={handleMenuLinkImport}
                 placeholder="https://example.com/menu"
@@ -2641,14 +2671,15 @@ function ProjectsPage() {
             />
             <Checkbox
                 checked={menuLinkPermissionConfirmed}
-                disabled={menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                disabled={!canUseMenuExtraction || menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
                 onChange={(event) => setMenuLinkPermissionConfirmed(event.target.checked)}
             >
                 I confirm this is my business menu or I have permission to import it.
             </Checkbox>
             <Flex justify="flex-end">
                 <Button
-                    disabled={!selectedProject?.projectId || !menuLinkUrl.trim() || !menuLinkPermissionConfirmed || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                    {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}
+                    disabled={!canUseMenuExtraction || !selectedProject?.projectId || !menuLinkUrl.trim() || !menuLinkPermissionConfirmed || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
                     icon={<LuGlobe2 size={18} />}
                     loading={menuLinkImporting}
                     onClick={handleMenuLinkImport}
@@ -2711,7 +2742,10 @@ function ProjectsPage() {
                             activeDeviceType={activeDeviceType}
                             setActiveDeviceType={setActiveDeviceType}
                             onPreview={selectedProject?.projectId ? handlePreview : undefined}
-                            onShare={selectedProject?.projectId ? () => setIsShareModalOpen(true) : undefined}
+                            onShare={selectedProject?.projectId ? () => {
+                                setIsShareModalOpen(true);
+                                emitMenuListAnswerlatticeWorkflowEvent(MENULIST_ANSWERLATTICE_EVENTS.MENU_SHARE_OPENED);
+                            } : undefined}
                             onPublish={handlePublish}
                             hasChanges={uiEditorHasChanges}
                         />
@@ -2721,9 +2755,11 @@ function ProjectsPage() {
                     {currentView === 1 && selectedProject?.projectId && activeProject?.files?.length > 0 && (
                         <div style={{ width: '100%', maxWidth: 900, margin: '0 auto 8px' }}>
                             <SpecialMenuCard
-                                baseProjectId={selectedProject.projectId}
-                                baseProjectLanguages={activeProject?.languages || []}
-                                baseProjectName={getLocalizedText(selectedProject.name, undefined, getPrimaryLocalizedLanguage(selectedProject.name, 'en'), 'Untitled')}
+                                baseProjectId={(selectedProject as any).isSpecialMenu === true ? undefined : selectedProject.projectId}
+                                baseProjectLanguages={(selectedProject as any).isSpecialMenu === true ? undefined : activeProject?.languages || []}
+                                baseProjectName={(selectedProject as any).isSpecialMenu === true
+                                    ? undefined
+                                    : getLocalizedText(selectedProject.name, undefined, getPrimaryLocalizedLanguage(selectedProject.name, 'en'), 'Untitled')}
                             />
                         </div>
                     )}
@@ -2736,7 +2772,11 @@ function ProjectsPage() {
                                 {/* When NO files: Show big prominent upload area */}
                                 {!activeProject?.files?.length && (
                                     <Flex gap={14} style={{ width: '100%' }} vertical>
-                                        <Dragger {...uploadProps} style={{ minWidth: 700, width: "100%" }}>
+                                        <Dragger
+                                            {...uploadProps}
+                                            {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_CHOOSE_SOURCE)}
+                                            style={{ minWidth: 700, width: "100%" }}
+                                        >
                                             <Flex vertical gap={16} align='center' justify='center' style={{ width: '100%', padding: '40px 20px' }}>
                                                 <Typography.Title level={3} style={{ textAlign: 'center', marginBottom: 8, fontWeight: 600 }}>{labels.uploadLabel}</Typography.Title>
                                                 <Typography.Text type="secondary" style={{ textAlign: 'center', fontSize: '16px', maxWidth: 500 }}>
@@ -2828,6 +2868,7 @@ function ProjectsPage() {
                                         }}
                                     >
                                         <Button
+                                            {...getMenuListAnswerlatticeTargetProps(MENULIST_ANSWERLATTICE_TARGETS.MENU_IMPORT_START)}
                                             onClick={() => handleUploadAndContinue(activeProject)}
                                             type="primary"
                                             icon={activeProject?.files?.some(file => !file.extractedData) ? <LuUpload size={20} /> : <LuArrowRight size={20} />}
@@ -3088,7 +3129,7 @@ function ProjectsPage() {
                                                 {FEATURE_FLAGS.ENABLE_MENU_LINK_IMPORT ? (
                                                     <Tooltip title="Import from existing menu link">
                                                         <Button
-                                                            disabled={menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
+                                                            disabled={!canUseMenuExtraction || menuLinkImporting || Boolean(activeProcessingJobId) || hasPendingLocalUploadFiles}
                                                             icon={<LuGlobe2 />}
                                                             onClick={() => setMenuLinkImportModalOpen(true)}
                                                         >
@@ -3167,9 +3208,9 @@ function ProjectsPage() {
                         ...previous,
                         [projectFormSelectedLanguage]: value,
                     }))}
-                    onGenerateProjectImage={handleGenerateProjectImageForForm}
+                    onGenerateProjectImage={FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? handleGenerateProjectImageForForm : undefined}
                     onProjectImagePrepared={setProjectImagePreparedForSave}
-                    onTranslatePublicContent={hasMissingProjectPublicDrafts ? () => void handleTranslateProjectPublicContent() : undefined}
+                    onTranslatePublicContent={hasMissingProjectPublicDrafts && canTranslatePublicContent ? () => void handleTranslateProjectPublicContent() : undefined}
                     onSubmit={() => form.validateFields().then(handleProjectEdit)}
                     onReset={() => {
                         setConfirmActionType('reset');
@@ -3255,7 +3296,7 @@ function ProjectsPage() {
                         // PDF Export data
                         items={activeProject?.files?.flatMap(f => f.extractedData?.data?.items || []) || []}
                         categories={activeProject?.files?.flatMap(f => f.extractedData?.data?.categories || []) || []}
-                        language={activeProject?.languages?.[0] || 'en'}
+                        language={getProjectPreferredLanguage(activeProject, storeDetails)}
                         languages={activeProject?.languages || []}
                         currency={storeDetails?.currencySymbol || ''}
                         currencyCode={storeDetails?.currencyCode || (storeDetails as any)?.currency}
@@ -3286,7 +3327,7 @@ function ProjectsPage() {
                         projectId={activeJobProjectId}
                         jobId={activeProcessingJobId}
                         comparisonResult={comparisonResult}
-                        primaryLang={activeProject?.languages?.[0] || 'en'}
+                        primaryLang={getCanonicalProjectSourceLanguage(activeProject?.languages)}
                         onSaveComplete={handleReviewSaveComplete}
                         onDiscard={handleReviewDiscard}
                     />

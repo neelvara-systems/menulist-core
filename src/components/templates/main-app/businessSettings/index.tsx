@@ -1,21 +1,30 @@
 "use client";
 
 import { FEATURE_FLAGS } from "@config/features";
+import { PERMISSIONS } from "@constant/permissions";
 import { ECOMSAI_PLATFORM_STORE_ID } from "@constant/user";
 import { getScreenState } from "@database/campaigns";
 import { addStore, assertStoreUpdateSucceeded, updateStore } from "@database/stores";
 import { deleteOBPPhotos } from "@database/stores/uploadOBPPhoto";
+import { collectObpMediaReferences } from "@lib/media/obpMediaReferences";
 import { assertTenantUpdateSucceeded, updateTenant } from "@database/tenants";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { _debounce } from "@hook/useDebounce";
 import { getResolvedAnalyticsPreferences } from "@lib/analytics/preferences";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
+import { parseWorkingHoursRanges, WORKING_HOURS_DAY_KEYS } from "@lib/hours/hoursEngine";
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { getStoreContextName } from "@lib/businessIdentity/names";
+import { normalizeGeoCoordinateDraft } from "@lib/businessIdentity/geoCoordinates";
 import { getLocalizedText, getPrimaryLocalizedLanguage, getLocalizedStringList, updateLocalizedText } from "@lib/localization/text";
 import { generateOBPUrl } from "@lib/obp/generateOBPUrl";
-import { normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
+import { normalizeBusinessAttributes, normalizeCustomBusinessAttributes } from "@lib/obp/businessAttributes";
+import { normalizeOwnerPublicPresenceLinks } from "@lib/obp/ownerPublicPresenceBoundary";
 import { normalizePhoneNumberForStorage } from "@lib/phone/phoneNumber";
+import {
+    hasFeedbackPresenceReadiness,
+    hasPublishedStoreMenu,
+} from "@lib/menuPresence/presenceReadiness";
 import { buildScreenUrl } from "@lib/screen/utils";
 import localizeBusinessCopyResult, { mergeLocalizedField, mergeLocalizedKeywordField } from "@services/ai/businessCopy/localizeBusinessCopyResult";
 import { buildBusinessCopyGeneratedMeta, buildBusinessCopyManualOverrideMeta, buildBusinessCopyRepairMeta, getBusinessCopyFieldKeysFromUpdate } from "@services/ai/businessCopy/metadata";
@@ -23,10 +32,15 @@ import syncMissingBusinessCopyTranslations from "@services/ai/businessCopy/syncM
 import { computeBusinessCopyCoverage } from "@services/ai/businessCopy/translationCoverage";
 import { applyLocalizedDraftMap, applyLocalizedKeywordDraftMap, getLocalizedStoreKeywords, getLocalizedStoreValue, getStoreManagedLanguages, getStorePreferredLanguage, getStoreSourceLanguage } from "@lib/localization/storeContent";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
+import { getStoreDeepDifference, mergeStoreNestedUpdateWithCurrent } from "@lib/store/storeNestedUpdateProjection";
+import { normalizeGuestFeedbackReviewUrl } from "@lib/feedback/guestFeedbackSubmitResponse";
+import { hasAnyPermission } from "@lib/permissions/permissionRequirements";
+import { PlatformGlobalDataContext } from "@providers/platformProviders/platformGlobalDataProvider";
 import MediaImageAdjustModal from "@/components/shared/media/MediaImageAdjustModal";
 import MediaImageCard from "@/components/shared/media/MediaImageCard";
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from "@lib/media/prepareMediaImage";
 import { getMediaProfileAcceptAttribute } from "@lib/media/imageProfiles";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import {
     APP_DATE_FORMAT_COOKIES_KEY,
     APP_TIME_FORMAT_COOKIES_KEY,
@@ -36,7 +50,6 @@ import {
 } from "@lib/localization/config";
 import { UserUploadedFileType } from "@type/common";
 import { getUTCDate } from "@util/dateTime";
-import { getObjectDifferance } from "@util/deepMerge";
 import { Button, Card, Flex, Form, Menu, Space, Tag, Typography, message } from "antd";
 import { getCookie } from "cookies-next";
 import dayjs from "dayjs";
@@ -44,7 +57,7 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { motion } from "framer-motion";
 import { useFormatter, useTimeZone, useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { createRef, useEffect, useMemo, useRef, useState } from "react";
+import { createRef, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
     LuBarChart,
     LuBuilding2,
@@ -97,6 +110,17 @@ interface WorkingHourSlot {
     end: dayjs.Dayjs | null;
 }
 
+function buildWorkingHourSlots(workingHours?: Record<string, string>): WorkingHourSlot[] {
+    return WORKING_HOURS_DAY_KEYS.map((day) => {
+        const range = parseWorkingHoursRanges(workingHours?.[day])[0];
+        return {
+            day,
+            end: range ? dayjs(`2025-04-02 ${range.endTime}`, 'YYYY-MM-DD HH:mm', true) : null,
+            start: range ? dayjs(`2025-04-02 ${range.startTime}`, 'YYYY-MM-DD HH:mm', true) : null,
+        };
+    });
+}
+
 const BUSINESS_SETTINGS_FOCUS_SECTION: Record<string, string> = {
     'customer-link': 'search-discovery',
     'contact': 'business-profile',
@@ -116,9 +140,21 @@ type AdjustableUploadedFile = UserUploadedFileType & {
     sourceName?: string;
 };
 
-async function deleteQueuedOBPPhotos(photoUrls: unknown) {
-    if (!Array.isArray(photoUrls) || photoUrls.length === 0) return;
-    await deleteOBPPhotos(photoUrls);
+async function deleteQueuedOBPPhotos(photoUrls: unknown, retainedPublicPresence?: unknown): Promise<string[]> {
+    if (!Array.isArray(photoUrls) || photoUrls.length === 0) return [];
+    return deleteOBPPhotos(photoUrls, collectObpMediaReferences(retainedPublicPresence));
+}
+
+function reconcileOBPPhotoDeleteQueue(
+    currentQueue: string[],
+    attemptedUrls: string[],
+    failedUrls: string[],
+): string[] {
+    const attempted = new Set(attemptedUrls);
+    return Array.from(new Set([
+        ...currentQueue.filter((photoUrl) => !attempted.has(photoUrl)),
+        ...failedUrls,
+    ]));
 }
 
 function applyPosSyncStoreUpdates(storeDetails: any, updates: Record<string, any>) {
@@ -175,7 +211,9 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
     const businessCategory = resolveStoreBusinessCategory(storeDetails?.businessType, storeDetails?.businessCategory);
     return {
         ...storeDetails,
+        addressLine: storeDetails?.addressLine || storeDetails?.address || '',
         businessCategory,
+        businessAttributes: normalizeBusinessAttributes(storeDetails?.businessAttributes),
         analytics: {
             ...normalizeAnalyticsSettings(storeDetails?.analytics),
             trackCustomerApp: analyticsPreferences.trackCustomerApp,
@@ -217,6 +255,7 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
         keywords: getLocalizedStoreKeywords(storeDetails?.keywords, contentLanguage, []),
         metaDescription: getLocalizedStoreValue(storeDetails?.metaDescription, contentLanguage, ''),
         metaTitle: getLocalizedStoreValue(storeDetails?.metaTitle, contentLanguage, ''),
+        postalCode: storeDetails?.postalCode || storeDetails?.pincode || '',
         latitude: storeDetails?.latitude ?? storeDetails?.geo?.latitude,
         longitude: storeDetails?.longitude ?? storeDetails?.geo?.longitude,
         publicPresence: {
@@ -240,7 +279,13 @@ function getBusinessSettingsInitialValues(storeDetails: any) {
     };
 }
 
-function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: any }) {
+function BusinessSettingsPresenceMonitorCard({
+    canAccessDigitalScreens,
+    storeDetails,
+}: {
+    canAccessDigitalScreens: boolean;
+    storeDetails: any;
+}) {
     const [data, setData] = useState<UseMenuListData | null>(null);
 
     useEffect(() => {
@@ -253,22 +298,25 @@ function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: a
             }
 
             const obpLink = generateOBPUrl(storeDetails.subdomain || '', storeDetails.customDomain);
+            const hasPublishedMenu = hasPublishedStoreMenu(storeDetails);
             let screenToken: string | null = null;
 
-            try {
-                const screenState = await getScreenState();
-                screenToken = screenState?.screenToken || null;
-            } catch (error) {
-                logBusinessSettingsFailure('business_settings_presence_screen_links_load_failed', error, {
-                    ...getBoundedBusinessSettingsStringContext('storeId', storeDetails.storeId),
-                    ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails.tenantId),
-                    ...getBoundedBusinessSettingsStringContext('subdomain', storeDetails.subdomain),
-                    ...getBoundedBusinessSettingsStringContext('customDomain', storeDetails.customDomain),
-                    ...getBoundedBusinessSettingsStringContext('obpLink', obpLink),
-                    hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
-                    hasMenuPresence: Boolean(storeDetails.menuPresence),
-                });
-                screenToken = null;
+            if (canAccessDigitalScreens) {
+                try {
+                    const screenState = await getScreenState();
+                    screenToken = screenState?.screenToken || null;
+                } catch (error) {
+                    logBusinessSettingsFailure('business_settings_presence_screen_links_load_failed', error, {
+                        ...getBoundedBusinessSettingsStringContext('storeId', storeDetails.storeId),
+                        ...getBoundedBusinessSettingsStringContext('tenantId', storeDetails.tenantId),
+                        ...getBoundedBusinessSettingsStringContext('subdomain', storeDetails.subdomain),
+                        ...getBoundedBusinessSettingsStringContext('customDomain', storeDetails.customDomain),
+                        ...getBoundedBusinessSettingsStringContext('obpLink', obpLink),
+                        hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+                        hasMenuPresence: Boolean(storeDetails.menuPresence),
+                    });
+                    screenToken = null;
+                }
             }
 
             if (!isMounted) return;
@@ -279,9 +327,12 @@ function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: a
                 customDomain: storeDetails.customDomain || null,
                 feedbackLink: '',
                 feedbackQrLink: '',
-                hasFeedbackEnabled: storeDetails.feedbackEnabled !== false,
+                hasFeedbackEnabled: hasFeedbackPresenceReadiness({
+                    feedbackEnabled: storeDetails.feedbackEnabled,
+                    hasPublishedMenu,
+                }),
                 hasPosSync: false,
-                hasPublishedMenu: Boolean(obpLink),
+                hasPublishedMenu,
                 hasScreen: Boolean(screenToken),
                 highlightsLink: screenToken ? `${buildScreenUrl(screenToken, obpLink)}?mode=highlights` : null,
                 installAppLink: null,
@@ -306,7 +357,20 @@ function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: a
         return () => {
             isMounted = false;
         };
-    }, [storeDetails]);
+    }, [
+        canAccessDigitalScreens,
+        storeDetails?.businessType,
+        storeDetails?.customDomain,
+        storeDetails?.feedbackEnabled,
+        storeDetails?.lastPublishedAt,
+        storeDetails?.logo,
+        storeDetails?.name,
+        storeDetails?.storeId,
+        storeDetails?.storeName,
+        storeDetails?.subdomain,
+        storeDetails?.tenantId,
+        storeDetails?.tenantName,
+    ]);
 
     if (!FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR || !storeDetails || !data) {
         return null;
@@ -321,6 +385,9 @@ function BusinessSettingsPresenceMonitorCard({ storeDetails }: { storeDetails: a
 }
 
 function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
+    const { userPermissions } = useContext(PlatformGlobalDataContext);
+    const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
+        && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const t = useTranslations('BusinessSettings');
     const searchParams = useSearchParams();
     const format = useFormatter();
@@ -339,20 +406,20 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
     const [isLogoAdjustOpen, setIsLogoAdjustOpen] = useState(false);
     const [activeSection, setActiveSection] = useState(0);
     const obpPhotoDeleteQueueRef = useRef<string[]>([]);
+    const persistedPublicPresenceRef = useRef(storeDetails?.publicPresence);
     const [socialMedia, setSocialMedia] = useState<Record<string, string>>({});
     const [timeSlotPresets, setTimeSlotPresets] = useState(
         storeDetails?.timeSlotPresets || [],
     );
+    const [workingHoursDirty, setWorkingHoursDirty] = useState(false);
+    const [workingHoursDirtyDays, setWorkingHoursDirtyDays] = useState<string[]>([]);
+    const updatePosSyncStoreState = useCallback((updates: Record<string, any>) => {
+        setStoreDetails((previous: any) => applyPosSyncStoreUpdates(previous || {}, updates));
+    }, [setStoreDetails]);
 
-    const [workingHours, setWorkingHours] = useState<WorkingHourSlot[]>([
-        { day: "sun", start: null, end: null },
-        { day: "mon", start: null, end: null },
-        { day: "tue", start: null, end: null },
-        { day: "wed", start: null, end: null },
-        { day: "thu", start: null, end: null },
-        { day: "fri", start: null, end: null },
-        { day: "sat", start: null, end: null },
-    ]);
+    const [workingHours, setWorkingHours] = useState<WorkingHourSlot[]>(() => (
+        buildWorkingHourSlots(storeDetails?.workingHours)
+    ));
 
     const handleLogoSelect = async (file: File) => {
         try {
@@ -388,6 +455,18 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         if (obpPhotoDeleteQueueRef.current.includes(photoUrl)) return;
         obpPhotoDeleteQueueRef.current = [...obpPhotoDeleteQueueRef.current, photoUrl];
     };
+
+    useEffect(() => {
+        persistedPublicPresenceRef.current = storeDetails?.publicPresence;
+    }, [storeDetails?.publicPresence]);
+
+    useEffect(() => () => {
+        if (obpPhotoDeleteQueueRef.current.length === 0) return;
+        void deleteQueuedOBPPhotos(
+            obpPhotoDeleteQueueRef.current,
+            persistedPublicPresenceRef.current,
+        );
+    }, []);
 
     // Feedback settings state
     const [feedbackEnabled, setFeedbackEnabled] = useState<boolean>(
@@ -468,7 +547,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                             };
                             const updates = {
                                 storeId: storeDetails?.storeId,
-                                publicPresence: nextPublicPresence,
+                                publicPresence: {
+                                    googleLinkUpdated: true,
+                                    googleLinkUpdatedAt,
+                                },
                             };
                             try {
                                 const writeResult = await updateStore(updates);
@@ -605,7 +687,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     storeId: storeDetails.storeId,
                                     tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
                                 };
-                                const writeResult = await updateStore(nextStoreUpdate);
+                                const writeResult = await updateStore({
+                                    ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
+                                    storeId: storeDetails.storeId,
+                                });
                                 assertStoreUpdateSucceeded(
                                     writeResult,
                                     storeDetails.storeId,
@@ -627,6 +712,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     },
                                     tagline: nextStoreUpdate.tagline,
                                 });
+                                return { translationIncomplete: localized.translationIncomplete === true };
                             }}
                             onGenerateMissingTranslations={async (projectId) => {
                                 if (!storeDetails?.storeId) return false;
@@ -685,7 +771,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                     storeId: storeDetails.storeId,
                                     tagline: mergeLocalizedField(storeDetails?.tagline, localized.tagline),
                                 };
-                                const writeResult = await updateStore(nextStoreUpdate);
+                                const writeResult = await updateStore({
+                                    ...getStoreDeepDifference(nextStoreUpdate, storeDetails),
+                                    storeId: storeDetails.storeId,
+                                });
                                 assertStoreUpdateSucceeded(
                                     writeResult,
                                     storeDetails.storeId,
@@ -716,7 +805,10 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     <SeoTab storeDetails={storeDetails} />
                     {FEATURE_FLAGS.ENABLE_MENU_PRESENCE_MONITOR ? (
                         <div ref={publicTruthFocusRefs.current.presenceMonitor}>
-                            <BusinessSettingsPresenceMonitorCard storeDetails={storeDetails} />
+                            <BusinessSettingsPresenceMonitorCard
+                                canAccessDigitalScreens={canAccessDigitalScreens}
+                                storeDetails={storeDetails}
+                            />
                         </div>
                     ) : null}
                     <IntegrationsTab
@@ -726,7 +818,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 </Flex>
             ),
         },
-        ...(FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? [{
+        ...(canAccessDigitalScreens ? [{
             key: "digital-screens",
             label: t('digitalScreens'),
             icon: <LuTv />,
@@ -743,7 +835,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             tab: (
                 <LocaleSettingsTab
                     onOpenSearchDiscovery={() => scrollToSection(1)}
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 3 : 2]}
+                    scrollRef={scrollRefs.current[canAccessDigitalScreens ? 3 : 2]}
                     storeDetails={storeDetails}
                 />
             ),
@@ -753,10 +845,28 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             label: t('workingHours'),
             icon: <LuClock />,
             tab: (
-                <Flex vertical gap={16} ref={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 4 : 3]}>
+                <Flex vertical gap={16} ref={scrollRefs.current[canAccessDigitalScreens ? 4 : 3]}>
                     <WorkingHoursTab
                         workingHours={workingHours}
-                        setWorkingHours={setWorkingHours}
+                        setWorkingHours={(hours) => {
+                            const changedDays = hours
+                                .filter((nextSlot) => {
+                                    const currentSlot = workingHours.find((entry) => entry.day === nextSlot.day);
+                                    const currentValue = currentSlot?.start && currentSlot.end
+                                        ? `${currentSlot.start.format('HH:mm')}-${currentSlot.end.format('HH:mm')}`
+                                        : '';
+                                    const nextValue = nextSlot.start && nextSlot.end
+                                        ? `${nextSlot.start.format('HH:mm')}-${nextSlot.end.format('HH:mm')}`
+                                        : '';
+                                    return currentValue !== nextValue;
+                                })
+                                .map((slot) => slot.day);
+                            setWorkingHours(hours);
+                            if (changedDays.length) {
+                                setWorkingHoursDirty(true);
+                                setWorkingHoursDirtyDays((previous) => Array.from(new Set([...previous, ...changedDays])));
+                            }
+                        }}
                         form={form}
                     />
                     {FEATURE_FLAGS.ENABLE_TEMP_STATUS ? (
@@ -776,11 +886,14 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuTimer />,
             tab: (
                 <TimeSlotPresetsTab
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 5 : 4]}
+                    scrollRef={scrollRefs.current[canAccessDigitalScreens ? 5 : 4]}
                     tenantId={storeDetails?.tenantId}
                     storeId={storeDetails?.storeId}
                     presets={timeSlotPresets}
-                    onPresetsChange={setTimeSlotPresets}
+                    onPresetsChange={(presets) => {
+                        setTimeSlotPresets(presets);
+                        setStoreDetails((previous: any) => ({ ...previous, timeSlotPresets: presets }));
+                    }}
                 />
             ),
         },
@@ -788,7 +901,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             key: "analytics",
             label: t('analytics'),
             icon: <LuBarChart />,
-            tab: <AnalyticsTab scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 6 : 5]} form={form} />,
+            tab: <AnalyticsTab scrollRef={scrollRefs.current[canAccessDigitalScreens ? 6 : 5]} form={form} />,
         },
         {
             key: "feedback",
@@ -796,7 +909,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuMessageSquare />,
             tab: (
                 <FeedbackSettingsTab
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 7 : 6]}
+                    scrollRef={scrollRefs.current[canAccessDigitalScreens ? 7 : 6]}
                     feedbackEnabled={feedbackEnabled}
                     setFeedbackEnabled={setFeedbackEnabled}
                     feedbackDefaults={feedbackDefaults}
@@ -812,8 +925,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             icon: <LuShield />,
             tab: (
                 <PosSyncTab
-                    scrollRef={scrollRefs.current[FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED ? 8 : 7]}
+                    scrollRef={scrollRefs.current[canAccessDigitalScreens ? 8 : 7]}
                     storeDetails={storeDetails}
+                    onStoreStateUpdate={updatePosSyncStoreState}
                     onStoreUpdate={async (updates) => {
                         const storeUpdate = { storeId: storeDetails.storeId, ...updates };
                         const writeResult = await updateStore(storeUpdate);
@@ -896,24 +1010,6 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         if (storeDetails?.socialMedia) {
             setSocialMedia(sanitizeSocialMediaMap(storeDetails?.socialMedia));
         }
-        if (storeDetails?.workingHours) {
-            const hours = Object.entries(storeDetails?.workingHours).map(
-                ([day, timeRange]) => {
-                    if (timeRange) {
-                        const [start, end] = (timeRange as string).split("-");
-                        return {
-                            day,
-                            start: dayjs(`2025-04-02 ${start}`, "YYYY-MM-DD HH:mm"),
-                            end: dayjs(`2025-04-02 ${end}`, "YYYY-MM-DD HH:mm"),
-                        };
-                    }
-                    return { day, start: null, end: null };
-                },
-            );
-            setWorkingHours(hours);
-            form.setFieldsValue({ workingHours: hours });
-        }
-
         //date format
         if (!storeDetails?.dateFormat) {
             //get cookie value
@@ -957,24 +1053,47 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         }
     }, [storeDetails, form]);
 
-    const getFormatedWorkingHours = (workingHours: any) => {
-        const updatedHours = workingHours.reduce(
-            (acc, curr) => {
-                // Only add the day if it has both start and end times
-                if (curr.start && curr.end) {
-                    acc[curr.day] =
-                        `${curr.start.format("HH:mm")}-${curr.end.format("HH:mm")}`;
-                }
-                return acc;
-            },
-            {} as Record<string, string>,
-        );
+    useEffect(() => {
+        const hours = buildWorkingHourSlots(storeDetails?.workingHours);
+        setWorkingHours(hours);
+        setWorkingHoursDirty(false);
+        setWorkingHoursDirtyDays([]);
+        form.setFieldValue('workingHours', storeDetails?.workingHours || null);
+    }, [form, storeDetails?.storeId, storeDetails?.workingHours]);
+
+    useEffect(() => {
+        setTimeSlotPresets(storeDetails?.timeSlotPresets || []);
+    }, [storeDetails?.storeId, storeDetails?.timeSlotPresets]);
+
+    const getFormatedWorkingHours = (hours: WorkingHourSlot[]) => {
+        const updatedHours = { ...(storeDetails?.workingHours || {}) } as Record<string, string>;
+        workingHoursDirtyDays.forEach((day) => {
+            const slot = hours.find((entry) => entry.day === day);
+            if (slot?.start && slot.end) {
+                updatedHours[day] = `${slot.start.format('HH:mm')}-${slot.end.format('HH:mm')}`;
+            } else {
+                delete updatedHours[day];
+            }
+        });
 
         // If no working hours are set, return null
         return Object.keys(updatedHours).length === 0 ? null : updatedHours;
     };
 
     const addUpdateDetails = async (changesToUpload: any) => {
+        const trimmedReviewUrl = reviewUrl.trim();
+        const storedReviewUrl = typeof storeDetails?.reviewUrl === 'string'
+            ? storeDetails.reviewUrl.trim()
+            : '';
+        const reviewUrlChanged = trimmedReviewUrl !== storedReviewUrl;
+        const normalizedReviewUrl = trimmedReviewUrl
+            ? normalizeGuestFeedbackReviewUrl(trimmedReviewUrl, 'business_settings_review_url')
+            : null;
+        if (reviewUrlChanged && trimmedReviewUrl && !normalizedReviewUrl) {
+            message.error('Enter a valid HTTPS Google review link before saving.');
+            return;
+        }
+
         const obpPhotoDeleteQueue = [...obpPhotoDeleteQueueRef.current];
         delete changesToUpload.__obpPhotoDeleteQueue;
 
@@ -985,7 +1104,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
             changesToUpload.name = changesToUpload.name.trim();
         }
 
-        if (selectedFile.url?.includes('base64')) {
+        if (isDataUrl(selectedFile.url)) {
             changesToUpload.imageToUpdate = selectedFile.url;
             changesToUpload.imageType = selectedFile.type;
             changesToUpload.preparedMedia = selectedFile.preparedMedia;
@@ -1005,7 +1124,11 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         }
 
         changesToUpload.socialMedia = sanitizeSocialMediaMap(socialMedia);
-        changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
+        if (workingHoursDirty) {
+            changesToUpload.workingHours = getFormatedWorkingHours(workingHours);
+        } else {
+            delete changesToUpload.workingHours;
+        }
         if (changesToUpload.analytics) {
             changesToUpload.analytics = normalizeAnalyticsSettings(changesToUpload.analytics);
         }
@@ -1014,14 +1137,13 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         delete changesToUpload.latitude;
         delete changesToUpload.longitude;
         if (latitudeInput !== undefined || longitudeInput !== undefined) {
-            const latitudeValue = String(latitudeInput ?? '').trim();
-            const longitudeValue = String(longitudeInput ?? '').trim();
-            const latitude = latitudeValue ? Number(latitudeValue) : undefined;
-            const longitude = longitudeValue ? Number(longitudeValue) : undefined;
-            if (latitude !== undefined && longitude !== undefined && Number.isFinite(latitude) && Number.isFinite(longitude)) {
-                changesToUpload.geo = { latitude, longitude };
-            } else if (!latitudeValue && !longitudeValue && storeDetails?.geo) {
-                changesToUpload.geo = null;
+            const normalizedGeo = normalizeGeoCoordinateDraft(latitudeInput, longitudeInput);
+            if (!normalizedGeo.ok) {
+                message.error('Enter both latitude and longitude using valid map coordinates.');
+                return;
+            }
+            if (normalizedGeo.geo || storeDetails?.geo) {
+                changesToUpload.geo = normalizedGeo.geo;
             }
         }
         const contentLanguage = resolveStoreContentLanguage(storeDetails);
@@ -1068,6 +1190,12 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                         'en',
                     ),
             };
+            const normalizedLinks = normalizeOwnerPublicPresenceLinks(changesToUpload.publicPresence);
+            if (normalizedLinks.invalidKeys.length > 0) {
+                message.error('Enter valid HTTPS public-page links before saving.');
+                return;
+            }
+            changesToUpload.publicPresence = normalizedLinks.presence;
         }
 
         if (
@@ -1150,9 +1278,9 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
         // Feedback settings (managed as React state, not Form fields)
         changesToUpload.feedbackEnabled = feedbackEnabled;
         changesToUpload.feedbackDefaults = feedbackDefaults;
-        if (reviewUrl.trim()) {
-            changesToUpload.reviewUrl = reviewUrl.trim();
-        } else if (storeDetails?.reviewUrl) {
+        if (reviewUrlChanged && normalizedReviewUrl) {
+            changesToUpload.reviewUrl = normalizedReviewUrl;
+        } else if (reviewUrlChanged && storedReviewUrl) {
             // If cleared, explicitly set to empty string so diff detects the removal
             changesToUpload.reviewUrl = '';
         }
@@ -1167,7 +1295,7 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     fieldKeys: businessCopyFieldKeys,
                 });
             }
-            const updatedChanges: any = getObjectDifferance(
+            const updatedChanges: any = getStoreDeepDifference(
                 changesToUpload,
                 storeDetails,
             );
@@ -1187,9 +1315,22 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                     storeDetails.storeId,
                     'desktop_business_settings_store_update_rejected',
                 );
-                await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
-                obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
-                    (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+                if ('workingHours' in updatedChanges) {
+                    setWorkingHoursDirty(false);
+                    setWorkingHoursDirtyDays([]);
+                }
+                const nextStoreDetails = mergeStoreNestedUpdateWithCurrent(
+                    mergeStoreNestedUpdateWithCurrent(storeDetails, changesToUpload),
+                    savedDetails,
+                );
+                const failedPhotoDeletes = await deleteQueuedOBPPhotos(
+                    obpPhotoDeleteQueue,
+                    nextStoreDetails.publicPresence,
+                );
+                obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
+                    obpPhotoDeleteQueueRef.current,
+                    obpPhotoDeleteQueue,
+                    failedPhotoDeletes,
                 );
                 if (savedDetails?.logo) {
                     setSelectedFile({
@@ -1224,29 +1365,22 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                 'desktop_business_settings_tenant_update_rejected',
                             );
                         }
-                        setStoreDetails({
-                            ...storeDetails,
-                            ...updatedChanges,
-                            ...savedDetails,
-                        });
+                        setStoreDetails(nextStoreDetails as any);
                     } else {
-                        setStoreDetails({
-                            ...storeDetails,
-                            ...updatedChanges,
-                            ...savedDetails,
-                        });
+                        setStoreDetails(nextStoreDetails as any);
                     }
                 } else {
-                    setStoreDetails({
-                        ...storeDetails,
-                        ...updatedChanges,
-                        ...savedDetails,
-                    });
+                    setStoreDetails(nextStoreDetails as any);
                 }
             } else {
-                void deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
-                obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
-                    (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+                const failedPhotoDeletes = await deleteQueuedOBPPhotos(
+                    obpPhotoDeleteQueue,
+                    changesToUpload.publicPresence ?? storeDetails?.publicPresence,
+                );
+                obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
+                    obpPhotoDeleteQueueRef.current,
+                    obpPhotoDeleteQueue,
+                    failedPhotoDeletes,
                 );
             }
         } else {
@@ -1276,9 +1410,14 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                 'desktop_business_settings_store_create_rejected',
             );
             changesToUpload.storeId = savedStoreId;
-            await deleteQueuedOBPPhotos(obpPhotoDeleteQueue);
-            obpPhotoDeleteQueueRef.current = obpPhotoDeleteQueueRef.current.filter(
-                (photoUrl) => !obpPhotoDeleteQueue.includes(photoUrl),
+            const failedPhotoDeletes = await deleteQueuedOBPPhotos(
+                obpPhotoDeleteQueue,
+                savedDetails?.publicPresence ?? changesToUpload.publicPresence,
+            );
+            obpPhotoDeleteQueueRef.current = reconcileOBPPhotoDeleteQueue(
+                obpPhotoDeleteQueueRef.current,
+                obpPhotoDeleteQueue,
+                failedPhotoDeletes,
             );
             setStoreDetails({ ...changesToUpload, ...savedDetails });
         }
@@ -1392,7 +1531,17 @@ function BusinessSettings({ storeDetails, setStoreDetails, tenantDetails }) {
                                         <Button
                                             size="large"
                                             onClick={() => {
+                                                const queuedPhotoDeletes = [...obpPhotoDeleteQueueRef.current];
                                                 obpPhotoDeleteQueueRef.current = [];
+                                                void deleteQueuedOBPPhotos(
+                                                    queuedPhotoDeletes,
+                                                    storeDetails?.publicPresence,
+                                                ).then((failedPhotoDeletes) => {
+                                                    obpPhotoDeleteQueueRef.current = Array.from(new Set([
+                                                        ...obpPhotoDeleteQueueRef.current,
+                                                        ...failedPhotoDeletes,
+                                                    ]));
+                                                });
                                                 form.setFieldsValue({
                                                     ...getBusinessSettingsInitialValues(storeDetails),
                                                     currencyCode: storeDetails?.currencyCode,

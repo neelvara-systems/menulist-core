@@ -11,7 +11,7 @@
 
 The Help Center is MenuList's **integrated support infrastructure** — a multi-layered system that provides:
 
-- **AI-Powered QnA Bot** — RAG chatbot on uploaded knowledge base docs (Gemini 2.5 Flash)
+- **Governed support-answer runtime** — approved answers and FAQs first, then source-backed workspace knowledge with safe fallback
 - **Knowledge Base (KB)** — Hierarchical article system with categories, sections, and articles
 - **KB Article Generation Pipeline** — Upload raw files → AI generates articles → review → publish → embed
 - **Ticket System** — Full lifecycle support tickets with SLA tracking, messaging, status audit trail
@@ -19,7 +19,7 @@ The Help Center is MenuList's **integrated support infrastructure** — a multi-
 - **Feedback System** — Multi-step owner feedback (general, feature usage, feature requests)
 - **Chat Monitoring Dashboard** — Admin conversations list, filters, quality scoring, ROI calculator, weekly AI digest
 - **Content Feedback** — Article and changelog feedback with comment threading
-- **Embedding Cache** — Query embedding caching for 40-60% performance improvement
+- **Embedding Cache** — Scoped query embedding reuse that avoids repeated provider calls on fresh cache hits
 - **Search History Cache** — Full response caching for repeated queries
 - **AI Intelligence Layer** — Cloud Functions for feedback intelligence, KB quality, weekly narratives
 
@@ -177,15 +177,16 @@ The mobile More tab does not route-hop to `/answerlattice/*`; it renders `src/co
 - `/sites/answerlattice/sitemap.xml`, `/sites/answerlattice/robots.txt` → Answerlattice product-domain SEO metadata routes
 - `/widget/[apiKey]` → embeddable end-user help widget
 
-The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, guided workflow rendering, safe page context from `AnswerlatticeWidget.page()/setContext()`, and fire-and-forget feedback. Widget keys are managed as bounded named keys on `stores/{sId}.answerlatticeWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, raw keys are shown only once at creation time, and widget search/feedback JSON bodies are byte-capped after API key, rate-limit, product, purpose, scope, and origin admission. The iframe client also bounds and shape-validates widget search responses before rendering assistant messages. The public site avoids exposing tenant/store ids and routes completed onboarding to `/answerlattice/activation`.
+The public widget is mobile-first and uses `100dvh`, 44px launcher/input actions, MIME-safe image preview, canonical answer badges, structured procedure rendering, safe page context from `AnswerlatticeWidget.page()/setContext()`, and fire-and-forget feedback. Workspace-opted-in Guided Resolution can highlight exact `data-answerlattice-target` controls and wait for allowlisted `emitWorkflowEvent()` events for approved canonical procedures; it never clicks controls, executes client actions, captures the DOM, or changes product data. Widget keys are managed as bounded named keys on `stores/{sId}.answerlatticeWidgetApi`; malformed keys short-circuit before Firestore lookup, runtime validation uses key hashes, raw keys are shown only once at creation time, and widget search/feedback/guidance JSON bodies are byte-capped after API key, rate-limit, product, purpose, scope, and origin admission. The iframe client also bounds and shape-validates widget search responses before rendering assistant messages. The public site avoids exposing tenant/store ids and routes completed onboarding to `/answerlattice/activation`.
 
 Widget iframe frame headers are relaxed only on Answerlattice product hosts resolved by middleware or on local development hosts outside Vercel. `/widget/*` on MenuList and other product hosts must not inherit the Answerlattice embeddable frame policy by path alone.
 
 ### API Routes
 
-- `POST /api/helpCenter/search-kb` — Non-streaming RAG search
-- `POST /api/helpCenter/search-kb-stream` — Streaming RAG search (SSE)
+- `POST /api/helpCenter/search-kb` — Authenticated JSON wrapper for the shared canonical-first search runtime
 - `POST /api/helpCenter/article-embedding` — Generate & store article embeddings
+- `GET /api/widget/config`, `POST /api/widget/search`, `POST /api/widget/feedback` — Public widget runtime with key, scope, origin/runtime-token, rate-limit, and bounded-payload admission
+- `POST /api/widget/guidance-outcome` — Workspace-opted-in terminal Guided Resolution outcome; requires canonical widget search-history proof and emits at most one deduplicated existing signal
 - `GET /api/answerlattice/activation/summary` — Cost-optimized client readiness summary from compact store/platformSummary docs
 - `POST /api/answerlattice/onboard` — Self-service Answerlattice workspace provisioning
 - `GET/PUT /api/answerlattice/workspace-profile` — Product URL, support email, billing model, scheduler timezone/support-day end time, and initial surface profile
@@ -266,14 +267,15 @@ No `/api/answerlattice/support-assistant/actions/*`, feedback, or owner-analytic
 
 | Flag                                | Location                                       | Default | Purpose                                          |
 | ----------------------------------- | ---------------------------------------------- | ------- | ------------------------------------------------ |
-| `ENABLE_STREAMING_RESPONSES`        | `src/config/features.ts`                       | `false` | Toggle streaming vs non-streaming RAG            |
-| `ENABLE_RATE_LIMITING`              | `src/config/features.ts`                       | `true`  | Upstash rate limiting                            |
 | `ENABLE_ANSWERLATTICE_ONTOLOGY`          | `src/config/features.ts`                       | `true`  | Entity extraction + ontology bootstrap           |
 | `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS` | `src/config/features.ts`                       | `true`  | Canonical-first retrieval + coverage KPI         |
+| `ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL` | `src/config/features.ts`              | `false` | Bounded exact technical-token/entity evidence lane after canonical and FAQ miss |
 | `ENABLE_ANSWERLATTICE_DRIFT_DETECTION`   | `src/config/features.ts`                       | `true`  | 4-class drift engine                             |
 | `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`   | `src/config/features.ts`                       | `true`  | Signal mutation + proposal review                |
 | `ENABLE_ANSWERLATTICE_PUBLIC_API`        | `src/config/features.ts`                       | `false` | Public answers, entities, and signal ingestion API (Pillar 5; implemented and rollout-gated) |
 | `ENABLE_ANSWERLATTICE_WIDGET`            | `src/config/features.ts`                       | `true`  | Embeddable help widget + onboarding gate         |
+| `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`  | `src/config/features.ts`                       | `true`  | Structured approved canonical procedures         |
+| `ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION` | `src/config/features.ts`                       | `true`  | Controlled semantic target/event runtime; workspace opt-in defaults off |
 | `ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER` | `src/config/features.ts`              | `true`  | Client launch/readiness home                     |
 | `ENABLE_ANSWERLATTICE_NOTIFICATIONS`     | `src/config/features.ts`                       | `true`  | Email notifications for ticket events and Activation test-send |
 | `ENABLE_ANSWERLATTICE_GOVERNANCE_UI`     | `src/config/features.ts`                       | `true`  | Governance hub (answer editor, drift, analytics) |
@@ -289,7 +291,8 @@ No `/api/answerlattice/support-assistant/actions/*`, feedback, or owner-analytic
 | `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING` | `src/config/features.ts` / `functions-answerlattice/src/constants/features.ts` | `true` | Capped initial entity/draft bootstrap after KB publish |
 | `ENABLE_ANSWERLATTICE_TRUST_METRICS`     | `src/config/features.ts` / `functions-answerlattice/src/constants/features.ts` | `true` | Compact trust metrics summary                    |
 | `ENABLE_ANSWERLATTICE_NIGHTLY`           | `functions-answerlattice/src/constants/features.ts` | `true`  | Server-side nightly batch (3:00 AM UTC)          |
-| `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` | `src/config/features.ts` | `true` | Private read-only summary assistant; no AI call or mutation path |
+| `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` | `src/config/features.ts` | `true` | Private summary-only assistant; no AI call or autonomous mutation path |
+| `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS` | `src/config/features.ts` | `false` | Owner-confirmed Support Board form prefill for selected launch/release review items; opening the form performs no write |
 
 ---
 
@@ -332,7 +335,7 @@ No `/api/answerlattice/support-assistant/actions/*`, feedback, or owner-analytic
 | `answerlattice_productSurfaces`       | Route/page/workflow context definitions | Tenant+Store scoped                 |
 | `platformSummary/contextContent_{tId}_{sId}` | Compact related-content surface summary | Tenant+Store scoped summary |
 
-Owner Support Assistant adds no assistant-owned Firestore collection, action queue, or dedicated owner analytics collection. The live read-only route reuses the existing coverage, trust, Support Board, friction, and Knowledge Intake compact summaries through one bounded `getAll()` call. Proposed action audit/AI operation paths and the compact `ownerSupportAssistantSummary` / `ownerSupportAnalyticsSummary` read models remain deferred and are not written by the current runtime.
+Owner Support Assistant adds no assistant-owned Firestore collection, action queue, or dedicated owner analytics collection. The live summary-only route reuses the existing coverage, trust, Support Board, friction, and Knowledge Intake compact summaries through one bounded `getAll()` call. An independent flag, disabled by default, can let selected launch/release actions prefill the existing Support Board create form; opening that form performs no write, and the owner must use the existing Create action to persist a card. Direct ticket/reply/governance adapters, action audit records, AI operation paths, and the compact `ownerSupportAssistantSummary` / `ownerSupportAnalyticsSummary` read models remain deferred and are not written by the current runtime.
 
 **Rules, auth, and indexes:** Answerlattice tenant-scoped rules are mirrored in `firestore.rules` for explicit shared-mode/emulator recovery and `firestore-answerlattice.rules` for the active Answerlattice Firebase targets (`answerlattice-qa` locally/in Preview, `answerlattice` in Production). `/api/auth/set-claims` returns a separate Answerlattice custom token when `ANSWERLATTICE_FIREBASE_MODE=separate` and the request is Answerlattice-scoped with `productId: 'AL'`; normal MenuList auth sync must not mint Answerlattice tokens. The client signs into the Answerlattice Firebase app with Answerlattice-scoped `platformRole`, `tenantId`, `storeId`, and Answerlattice permission claims resolved from the default user document's `productAccounts.AL` bridge, the Answerlattice `users` document, and `stores/{sId}.answerlatticeRoles`. Platform/support fallback claims must still use the `productAccounts.AL` tenant/store scope, not the default MenuList store. If separate Answerlattice Firebase Auth cannot mint the custom token, the route returns a controlled service-unavailable response rather than silently falling back to MenuList Firebase credentials. Answerlattice query and vector indexes are mirrored in `firestore.indexes.json` and `firestore-answerlattice.indexes.json`, including the `kb_articles` vector search path filtered by `status + tId + sId + embedding`.
 
@@ -361,7 +364,7 @@ User Query → [Zod Validation] → [Rate Limit Check] → [SAFE_MODE Check]
     ↓ (Miss)
 [Embedding Cache: queryEmbeddings] → [Hit?] → Use cached vector
     ↓ (Miss)
-[Gemini gemini-embedding-001] → Generate query vector → Cache it
+[Gemini gemini-embedding-2] → Generate the canonical 768-dimension query vector → Cache it
     ↓
 [Firestore Vector Search] → status + tId + sId filtered findNearest(embedding, COSINE, limit=12)
     ↓
@@ -404,9 +407,10 @@ Each subsystem has its own complete documentation suite (8 docs per feature):
 | 9   | **[Knowledge Intake Command Center](./knowledge-intake-command-center/README.md)** | `knowledge-intake-command-center/` | 10 docs | Planned source registry, selected-page website discovery, paid intake gates, product map, review queue, runtime publishing matrix, and cost contract |
 | 10  | **[Repeated Reply Import](./repeated-reply-import/README.md)** | `repeated-reply-import/` | 8 docs | Repeated founder replies become FAQ and canonical proposal drafts through Knowledge Intake |
 | 11  | **[Owner Support Assistant](./owner-support-assistant/README.md)** | `owner-support-assistant/` | 15 docs | Docs-frozen summary-first owner/staff support review assistant with dashboard support analytics, supported cases/actions catalogue, owner-confirmed action adapters, and no assistant-owned transcript/event/action collection |
-| 12  | **[Founder Daily Brief](./founder-daily-brief/README.md)** | `founder-daily-brief/` | 9 docs | Read-only daily action plan computed from the existing Support Assistant five-summary packet |
+| 12  | **[Founder Daily Brief](./founder-daily-brief/README.md)** | `founder-daily-brief/` | 9 docs | Summary-only daily action plan plus a disabled-by-default, owner-confirmed Support Board prefill handoff |
+| 13  | **[First Trusted Answers](./first-trusted-answers/README.md)** | `first-trusted-answers/` | 11 docs | First-ten question setup, governed tests, explicit resolution evidence, proof controls, and distribution runbook |
 
-**Total:** 12 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, the live read-only Owner Support Assistant runtime, and Founder Daily Brief.
+**Total:** 13 deep-dive feature folders, including FAQ Management, Knowledge Intake Command Center, Repeated Reply Import, Owner Support Assistant, Founder Daily Brief, and First Trusted Answers.
 
 Each sub-feature folder contains:
 
@@ -425,6 +429,7 @@ Each sub-feature folder contains:
 
 | Date       | Version | Change                                                                                                                                                                                 |
 | ---------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-07-18 | 3.4.16  | Added default-off bounded hybrid evidence retrieval, fail-closed entity-link synchronization, and entity-merge article dependency rewrites; rollout remains gated on representative Answer Tests and remote index deployment/readback. |
 | 2026-07-11 | 3.4.15  | Added the maintained Aidbase competitor-response validation matrix and aligned strict canonical scope, cache freshness, resumable paid setup, public demo/trust, and KB publish lifecycle documentation to current source. |
 | 2026-07-11 | 3.4.14  | Added Founder Daily Brief as a read-only Support Assistant extension computed from existing coverage, trust, Support Board, friction, and Knowledge Intake summaries. |
 | 2026-06-28 | 3.4.13  | Hardened public API/widget runtime diagnostics with fixed failure codes and bounded tenant/store metadata while preserving existing auth, admission, cache, and response contracts. |

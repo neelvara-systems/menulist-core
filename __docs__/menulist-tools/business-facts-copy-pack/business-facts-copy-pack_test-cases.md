@@ -1,7 +1,7 @@
 # Business Facts Copy Pack - Test Cases
 
 **Status:** Implemented V0 public browser-local tool
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -21,6 +21,8 @@
 | BFCP-010 | Owner downloads report | Text file download runs without persistence |
 | BFCP-011 | Owner submits follow-up without consent | Form blocks submission |
 | BFCP-012 | Tool claims it fetched links, inspected profiles, updated platforms, stored reports, checked rankings, or called AI/search providers | Verification fails |
+| BFCP-013 | Contact field contains only `call`, `WhatsApp`, or enough digits mixed with letters | Contact row remains missing; copy output may still render placeholders but report is not ready |
+| BFCP-014 | Contact is a valid formatted phone, valid `tel:`, or strict public `wa.me/{digits}` link | Contact row is present from local shape only; no provider is opened |
 
 ## Source Gate
 

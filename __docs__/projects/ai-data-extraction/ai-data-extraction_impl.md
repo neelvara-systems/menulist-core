@@ -109,11 +109,16 @@ functions/src/
 
 Category icons are not requested from Gemini during OCR extraction. The extraction prompt remains limited to visible menu facts. After extraction hardening and before first-save or re-extraction preview, `processMenuImagesJob.ts` calls the shared deterministic resolver from `categoryIconSuggestions.ts`.
 
+Authenticated owner uploads from desktop and mobile use the shared `getProcessedFile.ts` job creator with `forceReview: true`. This keeps the first upload and later uploads on the existing `preview_ready` comparison/apply path without changing public-create or messaging extraction-only destinations. The worker's general auto-save capability remains available to explicitly eligible non-owner flows.
+
 The resolver:
 
 - Uses the store `businessType` carried on the job document.
 - Matches category names first, then item names inside that category as supporting context.
 - Writes an icon only for clear matches; unclear categories remain empty and are handled by the editor/Menu Quality flow.
+- Matches normalized words/phrases rather than arbitrary substrings. Simple
+  plural forms remain supported, while names such as `Steaks` cannot match
+  `tea` and `Party` cannot match `art`.
 - Runs in-memory and piggybacks on existing project/job writes.
 
 ---
@@ -143,7 +148,7 @@ interface MenuProcessingJob {
     code: string; // ISO 639-1 (e.g., "en", "hi")
     name: string;
   }>;
-  action: string; // "IMAGE_PROCESSING"
+  action: "image_processing";
 
   // Status
   status:

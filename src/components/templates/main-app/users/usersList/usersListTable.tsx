@@ -4,7 +4,7 @@ import { Fragment, memo, useContext } from "react";
 import { LuEye, LuKeyRound, LuLogOut, LuPen, LuTrash2, LuUser } from "react-icons/lu";
 const { Text } = Typography;
 
-function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onForceSignOut, onResetPassword, staffStores = [], usersList }) {
+function UsersListTable({ canManageTarget, canManageUsers, onClickUserDetails, onDeleteUser, onEditUser, onForceSignOut, onResetPassword, staffStores = [], usersList }) {
 
     const { storeDetails, tenantDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext)
     const safeUsersList = Array.isArray(usersList) ? usersList : [];
@@ -79,9 +79,11 @@ function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEd
         {
             title: 'Action',
             key: 'action',
-            render: (_, record) => (
-                <Space>
-                    <Button disabled={!canManageUsers} onClick={(event) => {
+            render: (_, record) => {
+                const targetCanBeManaged = canManageUsers && canManageTarget(record);
+                return (
+                    <Space>
+                    <Button disabled={!targetCanBeManaged} onClick={(event) => {
                         event.stopPropagation();
                         onEditUser(record);
                     }} shape="circle" icon={<LuPen />} />
@@ -99,7 +101,7 @@ function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEd
                         title="Create a new temporary passcode for this staff member?"
                     >
                         <Button
-                            disabled={!canManageUsers}
+                            disabled={!targetCanBeManaged}
                             onClick={(event) => event.stopPropagation()}
                             shape="circle"
                             icon={<LuKeyRound />}
@@ -116,7 +118,7 @@ function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEd
                     >
                         <Tooltip title="Sign out staff">
                             <Button
-                                disabled={!canManageUsers || record?.active === false}
+                                disabled={!targetCanBeManaged || record?.active === false}
                                 onClick={(event) => event.stopPropagation()}
                                 shape="circle"
                                 icon={<LuLogOut />}
@@ -135,14 +137,15 @@ function UsersListTable({ canManageUsers, onClickUserDetails, onDeleteUser, onEd
                     >
                         <Button
                             danger
-                            disabled={!canManageUsers}
+                            disabled={!targetCanBeManaged}
                             onClick={(event) => event.stopPropagation()}
                             shape="circle"
                             icon={<LuTrash2 />}
                         />
                     </Popconfirm>
-                </Space>
-            ),
+                    </Space>
+                );
+            },
         }
     ];
 

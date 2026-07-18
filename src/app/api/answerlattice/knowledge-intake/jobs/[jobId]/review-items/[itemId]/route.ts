@@ -15,6 +15,7 @@ import {
     requireAnswerlatticeKnowledgeIntakeContext,
 } from '@lib/answerlattice/knowledgeIntakeApi';
 import { readOptionalBoundedJsonBody } from '@lib/security/boundedRequestBody';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
@@ -39,6 +40,8 @@ const ReviewItemPatchSchema = z.object({
     body: z.string().max(12_000).optional(),
     question: z.string().trim().max(240).optional(),
     answer: z.string().max(2000).optional(),
+    answerType: z.enum(['explanation', 'navigation', 'procedure']).optional(),
+    procedure: AnswerlatticeProcedureSchema.nullable().optional(),
     routePath: z.string().trim().max(240).nullable().optional(),
     versionLabel: z.string().trim().max(40).nullable().optional(),
     tags: z.array(z.string().trim().max(80)).max(20).optional(),

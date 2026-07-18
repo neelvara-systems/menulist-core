@@ -226,7 +226,7 @@ const DecisionBlocksSettingsModal = ({
                                 type="warning"
                                 showIcon
                                 message="Chosen item is currently unavailable"
-                                description={`"${pinnedStatus.itemName}" is ${pinnedStatus.reason}. The next best available item will be shown to customers instead.`}
+                                description={`"${pinnedStatus.itemName}" is ${pinnedStatus.reason}. MenuList may show another available choice; if none qualifies, this choice stays hidden.`}
                                 style={{ borderRadius: 8, marginTop: 8 }}
                             />
                         )}
@@ -318,7 +318,7 @@ const DecisionBlocksSettingsModal = ({
                                     <Flex vertical gap={8}>
                                         <Text type="secondary">This changes only the Featured section. It does not change the normal menu order.</Text>
                                         <Text type="secondary">Leave a choice empty when you want MenuList to choose automatically.</Text>
-                                        <Text type="secondary">Best seller, prep time, price, and customer activity help automatic choices. Your selected item wins when it can be shown.</Text>
+                                        <Text type="secondary">Automatic choices stay within items that can be shown. Your selected item is used whenever it is available.</Text>
                                         <Text type="secondary">Hidden, unavailable, out-of-time, or repeated items may be skipped on the public menu.</Text>
                                     </Flex>
                                 ),

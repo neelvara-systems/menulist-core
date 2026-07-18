@@ -1,11 +1,11 @@
 # QR WhatsApp Experiments Implementation Plan
 
-**Status:** Docs-ready
-**Last Updated:** June 25, 2026
+**Status:** PLANNING ONLY — NO RUNTIME
+**Last Updated:** July 17, 2026
 
 ## Current State
 
-No runtime implementation exists yet. This document records the approved architecture boundary so implementation does not get folded into Print Assets, Menu Kit, or ordinary QR output.
+No runtime implementation exists. The disabled flag has no consumer. This document records a proposal boundary so later implementation does not get folded into Print Assets, Menu Kit, or ordinary QR output; module, route, and document names below are not current contracts.
 
 ## Architecture
 

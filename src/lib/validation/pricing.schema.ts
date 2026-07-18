@@ -6,7 +6,7 @@
  * Part of Pricing Integrity System (Feature #1).
  *
  * Rules:
- * - Max 20 characters
+ * - Max 40 characters
  * - No emojis
  * - No HTML/script tags
  * - Supports: numeric ("299"), text ("Market Price"), range ("199-249")
@@ -14,26 +14,50 @@
 
 import { z } from "zod";
 
+export const MENU_PRICE_TEXT_MAX_LENGTH = 40;
+const MENU_PRICE_FORBIDDEN_CHARACTER_PATTERN = /[<>{}\[\]\\`|^~\u0000-\u001F\u007F\u200B-\u200F\u202A-\u202E\u2060-\u206F\uFEFF]/;
+const MENU_PRICE_DECORATION_PATTERN = /[₹$€£¥\s.,/+():\-–—]/g;
+
+const containsEmoji = (value: string): boolean => Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) || 0;
+    return (codePoint >= 0x1F000 && codePoint <= 0x1FAFF)
+        || (codePoint >= 0x2600 && codePoint <= 0x27BF)
+        || codePoint === 0x20E3
+        || codePoint === 0xFE0F;
+});
+
+const hasNegativeNumericEndpoint = (value: string): boolean => {
+    const numericCandidate = value.replace(/[₹$€£¥,\s]/g, '');
+    return /(^|[-/–—])-\d/.test(numericCandidate);
+};
+
 /**
  * Price string validation schema
  *
  * Validates:
- * - Max 20 characters
- * - Allowed characters: alphanumeric, spaces, hyphens, dots, slashes, currency symbols
+ * - Max 40 characters
+ * - Unicode labels plus common price punctuation/currency, without markup/control/emoji characters
  * - No HTML tags or script injections
  * - Trims whitespace
  */
 export const priceStringSchema = z
     .string()
-    .max(20, "Price must be 20 characters or less")
-    .regex(/^[a-zA-Z0-9\s\-\.\/₹\$€£¥]+$/, "Price contains invalid characters")
     .transform((s) => s.trim())
-    .refine((s) => !/<|>|&|script/i.test(s), "Price cannot contain HTML");
+    .pipe(z.string()
+        .min(1, "Price is required")
+        .max(MENU_PRICE_TEXT_MAX_LENGTH, `Price must be ${MENU_PRICE_TEXT_MAX_LENGTH} characters or less`)
+        .refine((s) => !MENU_PRICE_FORBIDDEN_CHARACTER_PATTERN.test(s), "Price contains invalid characters")
+        .refine((s) => !containsEmoji(s), "Price contains invalid characters")
+        .refine((s) => s.replace(MENU_PRICE_DECORATION_PATTERN, '').length > 0, "Price must contain a number or label")
+        .refine((s) => !hasNegativeNumericEndpoint(s), "Price cannot be negative"));
 
 /**
  * Optional price schema (for items that may not have a base price)
  */
-export const optionalPriceSchema = priceStringSchema.optional().nullable();
+export const optionalPriceSchema = z.preprocess(
+    (value) => typeof value === 'string' ? value.trim() : value,
+    z.union([priceStringSchema, z.literal(''), z.null(), z.undefined()]),
+);
 
 /**
  * Item price update schema
@@ -98,6 +122,24 @@ export function validatePrice(price: string): {
         success: false,
         error: result.error.issues[0]?.message || "Invalid price format",
     };
+}
+
+export function normalizeOptionalMenuPrice(price: unknown): {
+    success: boolean;
+    data?: string;
+    error?: string;
+} {
+    if (price === undefined || price === null) return { success: true, data: '' };
+    if (typeof price === 'number') {
+        return Number.isFinite(price) && price >= 0
+            ? { success: true, data: String(price) }
+            : { success: false, error: 'Price must be 0 or more' };
+    }
+    if (typeof price !== 'string') return { success: false, error: 'Invalid price format' };
+
+    const normalized = price.trim();
+    if (!normalized) return { success: true, data: '' };
+    return validatePrice(normalized);
 }
 
 /**

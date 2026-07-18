@@ -58,9 +58,56 @@ const myCodexDocsTraceAssetExcludes = [
     './__docs__/**/*.zip',
 ];
 
-// Disable memory-heavy webpack plugins on Vercel preview builds
-// Production deploys (VERCEL_ENV=production) get full PWA
-const isVercelPreview = process.env.VERCEL === '1' && process.env.VERCEL_ENV !== 'production';
+const normalizeDeploymentStage = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return null;
+    if (normalized === 'production') return 'production';
+    if (normalized === 'preview') return 'preview';
+    if (normalized === 'development' || normalized === 'local') return 'local';
+    return undefined;
+};
+
+const resolveNextDeploymentStage = () => {
+    const rawServerVercelStage = process.env.VERCEL_ENV;
+    const rawPublicVercelStage = process.env.NEXT_PUBLIC_VERCEL_ENV;
+    const rawPublicStage = process.env.NEXT_PUBLIC_ENV;
+    const serverVercelStage = normalizeDeploymentStage(rawServerVercelStage);
+    const publicVercelStage = normalizeDeploymentStage(rawPublicVercelStage);
+    const publicStage = normalizeDeploymentStage(rawPublicStage);
+
+    if (rawServerVercelStage && serverVercelStage === undefined) {
+        throw new Error('INVALID_SERVER_VERCEL_STAGE');
+    }
+    if (rawPublicVercelStage && publicVercelStage === undefined) {
+        throw new Error('INVALID_PUBLIC_VERCEL_STAGE');
+    }
+    if (rawPublicStage && publicStage === undefined) {
+        throw new Error('INVALID_PUBLIC_DEPLOYMENT_STAGE');
+    }
+    if (process.env.VERCEL === '1' && !serverVercelStage) {
+        throw new Error('MISSING_SERVER_VERCEL_STAGE');
+    }
+    if (publicVercelStage && publicStage && publicVercelStage !== publicStage) {
+        throw new Error('PUBLIC_DEPLOYMENT_STAGE_CONFLICT');
+    }
+    if (
+        serverVercelStage
+        && (
+            (publicVercelStage && publicVercelStage !== serverVercelStage)
+            || (publicStage && publicStage !== serverVercelStage)
+        )
+    ) {
+        throw new Error('SERVER_PUBLIC_DEPLOYMENT_STAGE_CONFLICT');
+    }
+
+    return serverVercelStage || publicVercelStage || publicStage || 'local';
+};
+
+const nextDeploymentStage = resolveNextDeploymentStage();
+const isVercelDeployment = process.env.VERCEL === '1' || Boolean(process.env.VERCEL_ENV);
+// Disable memory-heavy webpack plugins on Vercel preview builds.
+// VERCEL_ENV is authoritative; a public marker cannot promote preview to production.
+const isVercelPreview = isVercelDeployment && nextDeploymentStage === 'preview';
 const buildCreatedAt = process.env.NEXT_PUBLIC_BUILD_CREATED_AT || new Date().toISOString();
 const skipNextBuildChecks = process.env.NEXT_SKIP_NEXT_BUILD_CHECKS === '1';
 
@@ -354,7 +401,10 @@ const nextConfig = {
     distDir: process.env.NEXT_DIST_DIR || '.next',
     env: {
         NEXT_PUBLIC_BUILD_ID: process.env.NEXT_PUBLIC_BUILD_ID || process.env.VERCEL_GIT_COMMIT_SHA || 'local',
-        NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV || process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',
+        NEXT_PUBLIC_ENV: nextDeploymentStage,
+        NEXT_PUBLIC_VERCEL_ENV: isVercelDeployment || process.env.NEXT_PUBLIC_VERCEL_ENV
+            ? nextDeploymentStage
+            : '',
         NEXT_PUBLIC_DEPLOYMENT_URL: process.env.NEXT_PUBLIC_DEPLOYMENT_URL || process.env.VERCEL_URL || '',
         NEXT_PUBLIC_BUILD_CREATED_AT: buildCreatedAt,
         NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE: process.env.NEXT_PUBLIC_ENABLE_DEPLOYMENT_BUILD_BADGE || 'true',
@@ -514,8 +564,8 @@ const nextConfig = {
 // MenuList runs multiple isolated PWAs from one Next.js build:
 //
 //   1. Owner Dashboard PWA   → app.menulist.ai, menulist.ai
-//      Uses next-pwa generated `sw.js` with runtime caching for
-//      dashboard pages, auth, fonts, static assets, images.
+//      Uses next-pwa generated `sw.js` for the offline fallback and
+//      bounded build/icon assets. Authenticated HTML is never cached.
 //
 //   2. Customer App PWA      → {subdomain}.menulist.ai, custom domains
 //      Uses hand-rolled `sw-customer.js` — install reliability only.
@@ -542,68 +592,49 @@ const withPWA = require("next-pwa")({
     // in ServiceWorkerRegister.tsx (sw.js for owner, sw-customer.js for customers).
     register: false,
     skipWaiting: true,
+    // Never reload an owner workflow automatically when connectivity returns.
+    reloadOnOnline: false,
+    // The platform root is a public website route, not the owner app shell.
+    cacheStartUrl: false,
+    // Source maps and unrelated product/public-site assets do not improve the
+    // owner offline fallback and make every worker install unnecessarily large.
+    buildExcludes: [/\.map$/],
+    publicExcludes: [
+        '!**/*.map',
+        '!**/*.{mp4,webm,mov}',
+        '!assets/**/*',
+        '!images/**/*',
+        '!locales/**/*',
+        '!styles/**/*',
+        '!widget/**/*',
+        '!answerlattice*',
+        '!campaigncue*',
+        '!mycodex*',
+        '!neelvara*',
+        '!llms*.txt',
+        '!robots.txt',
+        '!sitemap.xml',
+        '!screen-sw.js',
+        '!sw-customer.js',
+        '!platform.webmanifest',
+    ],
     maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
     // Offline fallback page served by sw.js when a navigation fails.
     // sw-customer.js ships its own equivalent for customer tenants.
     fallbacks: {
         document: '/offline',
     },
-    // Owner-dashboard-only runtime caching.
-    // Customer-facing URL patterns (/_client/*, Firestore API, /api/public/*)
-    // are intentionally NOT cached here — they are served only on customer
-    // tenant origins where sw-customer.js (no caching) is registered.
-    // This is defense-in-depth: even if sw.js were ever to register on a
-    // customer origin, no menu content would be cached.
+    // Public-font runtime caching only. Authenticated owner HTML, sign-in HTML,
+    // screen HTML, APIs, Firestore and customer-facing routes are intentionally
+    // absent. Firebase Storage and broad extension rules are also absent so a
+    // shared browser cannot retain cross-account media through this worker.
     runtimeCaching: [
-        {
-            urlPattern: /^\/(dashboard|billing|business-settings|projects|feedback|qr-code)\/?$/i,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'owner-dashboard-pages',
-                expiration: { maxEntries: 16, maxAgeSeconds: 12 * 60 * 60 },
-                networkTimeoutSeconds: 8,
-            },
-        },
-        {
-            urlPattern: /^\/signin\/?$/i,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'auth-pages',
-                expiration: { maxEntries: 4, maxAgeSeconds: 24 * 60 * 60 },
-                networkTimeoutSeconds: 8,
-            },
-        },
-        {
-            urlPattern: /^\/screen\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-                cacheName: 'screen-pages',
-                expiration: { maxEntries: 10, maxAgeSeconds: 7 * 24 * 60 * 60 },
-                networkTimeoutSeconds: 10,
-            },
-        },
-        {
-            urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
-            handler: 'CacheFirst',
-            options: {
-                cacheName: 'firebase-images',
-                expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
-            },
-        },
         {
             urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
             handler: 'CacheFirst',
             options: {
                 cacheName: 'google-fonts',
                 expiration: { maxEntries: 20, maxAgeSeconds: 365 * 24 * 60 * 60 },
-            },
-        },
-        {
-            urlPattern: /\.(?:js|css|woff2?|png|jpg|jpeg|gif|svg|ico)$/i,
-            handler: 'StaleWhileRevalidate',
-            options: {
-                cacheName: 'static-assets',
-                expiration: { maxEntries: 100, maxAgeSeconds: 30 * 24 * 60 * 60 },
             },
         },
     ],

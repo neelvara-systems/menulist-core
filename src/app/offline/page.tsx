@@ -2,8 +2,8 @@
  * Offline Fallback Page
  *
  * Served by the service worker (registered via next-pwa) when a navigation
- * request fails due to no network connectivity. Primarily targets installed
- * PWA customers whose menu app launches while offline — without this page,
+ * request fails due to no network connectivity. It serves installed owner and
+ * customer PWAs without exposing cached private or stale business content.
  * they'd see the browser's generic "No internet" error.
  *
  * Behavior:
@@ -94,10 +94,10 @@ export default function OfflinePage() {
                 </p>
                 <OfflineClient />
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 16 }}>
-                    Reconnect to see the latest live menu.
+                    Reconnect to see the latest information.
                 </p>
                 <p style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, marginBottom: 0 }}>
-                    If this screen appears inside the installed app, the menu will load again as soon as the connection returns.
+                    If this screen appears inside the installed app, try again after the connection returns.
                 </p>
             </div>
         </div>

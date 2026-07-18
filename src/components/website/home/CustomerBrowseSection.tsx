@@ -78,8 +78,6 @@ export default function CustomerBrowseSection() {
               alt={t('CustomerBrowse.previewLabel')}
               width={900}
               height={1400}
-              loading="eager"
-              unoptimized
               sizes="(min-width: 1024px) 360px, 86vw"
               className="ws-draft-product-image"
             />

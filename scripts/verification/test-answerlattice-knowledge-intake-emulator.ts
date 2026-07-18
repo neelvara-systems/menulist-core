@@ -5,13 +5,75 @@ import {
     analyzeKnowledgeIntakeJob,
     getKnowledgeIntakeBundle,
     publishKnowledgeIntakeJob,
+    updateKnowledgeIntakeReviewItem,
 } from '../../src/lib/answerlattice/knowledgeIntake';
+import { generateAnswerlatticeProductStarterPack } from '../../src/lib/answerlattice/firstTrustedAnswerPackServer';
+import { getBillingPeriodKey } from '../../src/lib/billing/billingPeriod';
 import { answerlatticeFirestoreAdmin as db } from '../../src/lib/firebase/answerlatticeFirebaseAdmin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 const scope = { tId: 1, sId: 101 };
 const jobId = 'ABCDEFGHIJKLMNOPQRST';
 const actor = { id: 'owner-1', email: 'owner@example.com', name: 'Owner' };
+
+const buildPackCandidates = (sourceId: string, entityId: string) => ({
+    candidates: Array.from({ length: 10 }, (_, index) => ({
+        title: `Billing launch question ${index + 1}`,
+        question: `How does the billing workflow handle launch case ${index + 1}?`,
+        proposedAnswer: index === 9
+            ? 'This model-generated text must be discarded because the candidate is explicitly marked no answer.'
+            : `Use the documented billing workflow for launch case ${index + 1} and verify the current account state before continuing.`,
+        sourceIds: [sourceId],
+        entityIds: [entityId],
+        missingEvidence: index === 9 ? ['The selected sources do not contain an approved answer.'] : [],
+        reason: index === 9
+            ? 'This launch question exposes a source gap that must stay unresolved.'
+            : 'This question is supported by the selected billing launch source.',
+        expectedSource: index === 9 ? 'no_answer' as const : 'canonical' as const,
+        riskLevel: index === 0 ? 'critical' as const : 'standard' as const,
+        requiresEscalation: false,
+        applicability: {
+            path: '/billing',
+            feature: 'billing',
+            workflow: `launch_case_${index + 1}`,
+        },
+    })),
+});
+
+async function seedPackBilling(): Promise<string> {
+    const subscriptionId = 'al-subscription-intake-pack';
+    const cycleStartDate = Timestamp.now();
+    const billingPeriod = getBillingPeriodKey(cycleStartDate);
+    assert.ok(billingPeriod);
+    await Promise.all([
+        db.collection(DB_COLLECTIONS.STORES).doc(String(scope.sId)).set({
+            id: scope.sId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            answerlatticeSubscription: {
+                id: subscriptionId,
+                monthlyCredits: 5,
+                topUpCredits: 0,
+            },
+        }),
+        db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({
+            id: subscriptionId,
+            pId: PRODUCT_IDS.ANSWERLATTICE,
+            productId: PRODUCT_IDS.ANSWERLATTICE,
+            ...scope,
+            tenantId: scope.tId,
+            storeId: scope.sId,
+            status: 'active',
+            cycleStartDate,
+            cycleEndDate: Timestamp.fromMillis(Date.now() + 86_400_000),
+            monthlyCreditsAllowance: 5,
+            monthlyCredits: 5,
+            topUpCredits: 0,
+            creditsLastResetMonth: billingPeriod,
+        }),
+    ]);
+    return subscriptionId;
+}
 
 async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
@@ -106,6 +168,214 @@ async function run(): Promise<void> {
         /Accept at least one review item|can no longer publish/,
         'a terminal published job must not start a second publish run',
     );
+
+    const packJobId = 'PACKABCDEFGHIJKLMNOP';
+    const packSourceId = `kis_${'d'.repeat(28)}`;
+    const packEntityId = 'entity_billing_launch';
+    const subscriptionId = await seedPackBilling();
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(packJobId).set({
+        id: packJobId,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        ...scope,
+        title: 'Product launch sources',
+        description: 'Billing setup and launch support.',
+        status: 'collecting',
+        sourceCount: 1,
+        readySourceCount: 1,
+        reviewItemCount: 0,
+        acceptedItemCount: 0,
+        publishedItemCount: 0,
+        rejectedItemCount: 0,
+        usageUnitsConsumed: 0,
+        createdOn,
+        modifiedOn: createdOn,
+    });
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_SOURCES).doc(packSourceId).set({
+        id: packSourceId,
+        pId: PRODUCT_IDS.ANSWERLATTICE,
+        ...scope,
+        jobId: packJobId,
+        type: 'help_doc',
+        title: 'Billing launch guide',
+        status: 'ready',
+        originUrl: 'https://example.com/billing',
+        contentText: 'Billing setup is available at /billing. Review account state before retrying a payment or changing a plan.',
+        contentExcerpt: 'Billing setup is available at /billing.',
+        contentHash: 'd'.repeat(64),
+        tags: ['billing'],
+        contextKeys: ['billing'],
+        entityIds: [packEntityId],
+        metadata: {},
+        createdOn,
+        modifiedOn: createdOn,
+    });
+
+    let providerCalls = 0;
+    const validProvider = async () => {
+        providerCalls += 1;
+        return {
+            text: JSON.stringify(buildPackCandidates(packSourceId, packEntityId)),
+            usageMetadata: {
+                promptTokenCount: 300,
+                candidatesTokenCount: 200,
+                totalTokenCount: 500,
+                tokenCountSource: 'provider' as const,
+            },
+        };
+    };
+    const generatedPack = await generateAnswerlatticeProductStarterPack(
+        scope,
+        packJobId,
+        'pack_request_001',
+        actor,
+        { generateContent: validProvider },
+    );
+    assert.equal(generatedPack.cached, false);
+    assert.equal(generatedPack.reviewItems.length, 10);
+    assert.equal(generatedPack.cases.length, 10);
+    assert.equal(generatedPack.usage.unitsConsumed, 1);
+    assert.equal(providerCalls, 1);
+    assert.ok(generatedPack.reviewItems.every(item => item.status === 'draft' && item.launchPack?.sourceIds[0] === packSourceId));
+    const unsupportedPackItem = generatedPack.reviewItems[9];
+    assert.equal(unsupportedPackItem?.answer, undefined, 'missing evidence must not be stored as an answer');
+    assert.equal(unsupportedPackItem?.body, undefined, 'missing evidence must not be stored in the canonical proposal body');
+    assert.equal(generatedPack.cases[9]?.expected.source, 'no_answer', 'unsupported launch questions must remain explicit no-answer checks');
+    assert.equal(
+        unsupportedPackItem?.launchPack?.missingEvidence.some(value => value.includes('generated answer text was not retained')),
+        true,
+        'contradictory model answer text must be discarded and surfaced as review evidence',
+    );
+    await assert.rejects(
+        () => updateKnowledgeIntakeReviewItem(scope, packJobId, unsupportedPackItem.id, {
+            status: 'accepted',
+        }, actor),
+        /safe escalation or no answer/,
+        'safe-fallback launch items must never enter the canonical proposal path',
+    );
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 4);
+    const generatedJob = (await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(packJobId).get()).data();
+    assert.equal(generatedJob?.reviewItemCount, 10);
+    assert.equal(generatedJob?.launchPackRun?.status, 'completed');
+
+    const cachedPack = await generateAnswerlatticeProductStarterPack(
+        scope,
+        packJobId,
+        'pack_request_002',
+        actor,
+        { generateContent: validProvider },
+    );
+    assert.equal(cachedPack.cached, true);
+    assert.equal(cachedPack.usage.unitsConsumed, 0);
+    assert.equal(providerCalls, 1, 'unchanged sources must not call the provider again');
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 4);
+
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(packJobId).set({
+        targetAudience: 'Billing administrators preparing a production launch',
+        modifiedOn: Timestamp.now(),
+    }, { merge: true });
+    const contextRefreshedPack = await generateAnswerlatticeProductStarterPack(
+        scope,
+        packJobId,
+        'pack_request_003',
+        actor,
+        { generateContent: validProvider },
+    );
+    assert.equal(contextRefreshedPack.cached, false, 'changed prompt context must create a fresh product pack');
+    assert.notEqual(contextRefreshedPack.sourceHash, generatedPack.sourceHash, 'the generation-input hash must cover intake context');
+    assert.equal(providerCalls, 2, 'changed prompt context must call the provider once');
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 3);
+
+    await assert.rejects(
+        () => updateKnowledgeIntakeReviewItem(scope, packJobId, generatedPack.reviewItems[0].id, {
+            status: 'accepted',
+            answer: '',
+            body: '',
+        }, actor),
+        /Add a supported answer/,
+        'a generated canonical proposal must contain a supported answer before acceptance',
+    );
+
+    const callsBeforeCrossTenant = providerCalls;
+    await assert.rejects(
+        () => generateAnswerlatticeProductStarterPack(
+            { tId: 2, sId: scope.sId },
+            packJobId,
+            'pack_wrong_scope_001',
+            actor,
+            { generateContent: validProvider },
+        ),
+        /not available|Invalid/,
+    );
+    assert.equal(providerCalls, callsBeforeCrossTenant, 'cross-tenant access must fail before provider work');
+
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_SOURCES).doc(packSourceId).set({
+        contentText: 'Updated billing launch evidence.',
+        contentHash: 'e'.repeat(64),
+        modifiedOn: Timestamp.now(),
+    }, { merge: true });
+    await assert.rejects(
+        () => generateAnswerlatticeProductStarterPack(
+            scope,
+            packJobId,
+            'pack_invalid_evidence_001',
+            actor,
+            {
+                generateContent: async () => {
+                    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ status: 'pending' }, { merge: true });
+                    return {
+                        text: JSON.stringify(buildPackCandidates(`kis_${'e'.repeat(28)}`, packEntityId)),
+                    };
+                },
+            },
+        ),
+        /valid source evidence/,
+    );
+    const refundedSubscription = (await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data();
+    assert.equal(refundedSubscription?.monthlyCredits, 3, 'invalid provider evidence must refund the exact reservation even if subscription status changes mid-operation');
+    const usageLedgersAfterRefund = await db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER)
+        .where('tId', '==', scope.tId)
+        .where('sId', '==', scope.sId)
+        .get();
+    assert.equal(usageLedgersAfterRefund.docs.filter(doc => doc.data().status === 'failed_refunded').length, 1);
+    await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).set({ status: 'active' }, { merge: true });
+
+    await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_SOURCES).doc(packSourceId).set({
+        contentText: 'Final billing launch evidence for concurrent generation.',
+        contentHash: 'f'.repeat(64),
+        modifiedOn: Timestamp.now(),
+    }, { merge: true });
+    let releaseProvider: (() => void) | null = null;
+    let providerEntered: (() => void) | null = null;
+    const providerEnteredPromise = new Promise<void>((resolve) => { providerEntered = resolve; });
+    const providerReleasePromise = new Promise<void>((resolve) => { releaseProvider = resolve; });
+    const runningGeneration = generateAnswerlatticeProductStarterPack(
+        scope,
+        packJobId,
+        'pack_concurrent_001',
+        actor,
+        {
+            generateContent: async () => {
+                providerEntered?.();
+                await providerReleasePromise;
+                return { text: JSON.stringify(buildPackCandidates(packSourceId, packEntityId)) };
+            },
+        },
+    );
+    await providerEnteredPromise;
+    await assert.rejects(
+        () => generateAnswerlatticeProductStarterPack(
+            scope,
+            packJobId,
+            'pack_concurrent_002',
+            actor,
+            { generateContent: validProvider },
+        ),
+        /already running/,
+    );
+    releaseProvider?.();
+    const concurrentPack = await runningGeneration;
+    assert.equal(concurrentPack.reviewItems.length, 10);
+    assert.equal((await db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(subscriptionId).get()).data()?.monthlyCredits, 2);
 
     const wrongProductJobId = 'ZYXWVUTSRQPONMLKJIHG';
     await db.collection(DB_COLLECTIONS.ANSWERLATTICE_KNOWLEDGE_INTAKE_JOBS).doc(wrongProductJobId).set({

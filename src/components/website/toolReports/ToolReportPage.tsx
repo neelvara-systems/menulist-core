@@ -394,6 +394,7 @@ function ToolReportLoaded({ report }: { report: ShareableToolReportPayload }) {
               <p>{t('sourcePreview.label')}</p>
               <h3>{report.businessName || t('sourcePreview.defaultBusiness')}</h3>
               <span>{report.businessContext || t('sourcePreview.defaultContext')}</span>
+              <small>{t('sourcePreview.selfReportNotice')}</small>
             </div>
             <div>
               <strong>{t('sourcePreview.generated')}</strong>

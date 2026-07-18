@@ -1,6 +1,6 @@
 # Public Truth Monitor Add-On - Implementation
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Status:** Runtime implemented
 
 ---
@@ -23,6 +23,7 @@ Implemented:
 6. Desktop Business Health panel.
 7. Mobile Business Health card inside the existing mobile shell.
 8. Source gate: `scripts/verification/verify-public-truth-monitor-addon.js`.
+9. Atomic summary updater in `src/database/publicTruthMonitor/server.ts`.
 
 Public Truth Monitor session scope boundary: `/api/public-truth-monitor/summary`, `/api/public-truth-monitor/refresh`, and `serverPublicTruthMonitorEntitlements.ts` normalize authenticated session tenant/store scope as exact positive numeric Firestore document IDs before tenant access checks, Business Health permission checks, store reads, subscription lookups, project summary reads, summary reads/writes, or report entry scope persistence. Whitespace-mutated, leading-zero, zero, negative, unsafe, nonnumeric, reserved, empty, or path-shaped session scope fails before Firestore document access.
 
@@ -74,6 +75,8 @@ maximum 6 reports per store by default
 - Verify tenant/store access before any owner data read.
 - Require the existing Business Health `VIEW_ANALYTICS` store permission before summary reads or refresh writes.
 - Keep history in one capped summary document.
+- Read the current summary and write the merged capped history in one Firestore transaction; do not use a detached read followed by a last-writer-wins set.
+- Fail closed on production rate-limit-provider failure before owner-data reads or writes.
 - Keep reports read-only unless owner-approved repair work has its own workflow.
 - Do not fetch external profiles.
 - Do not send report emails without a separate notification approval.
@@ -81,6 +84,8 @@ maximum 6 reports per store by default
 - Do not mutate canonical MenuList truth from monitor output.
 
 Public Truth Monitor project and scope ID boundary: manual refresh requests validate raw `selectedProjectId` with the shared Firestore document-ID guard before the requested project can be selected from the store's project summary. The server project picker also requires selected and persisted summary project IDs to match their trimmed Firestore document ID exactly, and `readPublicTruthMonitorProjectDataServer()` applies the same raw-value guard before scoped or legacy project reads. Server helpers still validate session-derived store/tenant scope IDs before `stores/{sId}`, `platformSummary/publicTruthMonitor_{sId}`, `platformSummary/projects_{sId}`, and `projects/{tId}/{sId}/{projectId}` refs. Malformed project or scope IDs and whitespace-mutated selected project IDs fail before Firestore access; invalid summary writes throw before building a Firestore ref.
+
+Public Truth Monitor concurrency boundary: `updatePublicTruthMonitorSummaryServer(...)` reads `platformSummary/publicTruthMonitor_{storeId}` through `transaction.get(...)`, passes that current value into `buildPublicTruthMonitorSummary(...)`, and writes the merged capped summary through `transaction.set(...)`. Firestore may retry the callback under contention; the callback is deterministic and performs no external side effect.
 
 ## Remaining Runtime Boundary
 

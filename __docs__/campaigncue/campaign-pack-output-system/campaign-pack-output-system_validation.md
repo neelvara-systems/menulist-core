@@ -19,6 +19,9 @@
 | Language handoff added | Pass | `instructions/language-handoff.txt` is written through the output-pack instruction channel with preferred locale and protected-fact guidance. |
 | Source-to-channel pack stays bounded | Pass | `source_to_channel_pack` uses existing output-intent handling and guarded campaign creation; no content repurposing provider, autopilot publishing, Storage object, or new Firestore path is added. |
 | Local creator test brief stays bounded | Pass | `local_creator_test_brief` uses existing output-intent handling, UGC/video manual delivery fields, and result-memory prompts; no creator marketplace, contract, payment, provider, Storage, or new Firestore path is added. |
+| Output intent is authoritative and auditable | Pass | Strict create schema allowlists intent ids; browser/server share grouped fact requirements; server owns compatible decision and channels; existing campaign pack stores source-template, intent, and requested-output provenance. |
+| Editor-only intents stay out of campaign persistence | Pass | `reuse_old_asset` opens CueLayers, `custom_size` opens the shared editor, and the campaign API rejects both. |
+| No additional Firebase operation | Pass | Intent/provenance fields are written in the existing campaign batch; no collection, document, Storage artifact, provider call, or additional write is introduced. |
 | Manual boundary preserved | Pass | Output pack instruction says CampaignCue does not directly post, send, connect accounts, or start ad spend. |
 
 ## Verification
@@ -26,8 +29,8 @@
 | Command | Result |
 | --- | --- |
 | `npx tsc --noEmit --incremental false --pretty false` | Passed |
-| `npm run verify:campaigncue` | Passed; 1,670 runtime checks, pack-template registry, 273 PWA asset checks, and 108 operating-loop checks |
-| `npm run lint` | Passed with no ESLint warnings or errors |
+| `npm run verify:campaigncue` | Passed July 13, 2026; 1,720 runtime checks, CueLayers boundaries, output-intent/template boundaries, 273 PWA asset checks, 123 operating-loop checks, and Firestore/Storage emulator suites. |
+| Scoped ESLint | Passed over the output-intent constants/types/schema, fact boundary, server, Daily Desk builder, workspace/picker UI, and regression/verifier files. |
 | `git diff --check` | Passed |
 | Documentation gates | `npm run docs:check-links` and `npm run verify:doc-npm-scripts` passed. |
 | Browser smoke | Public CampaignCue site rendered at `1280x720` and `390x844` with no horizontal overflow or console warning/error; safe-reuse FAQ present. Authenticated workspace interaction remains pending because the local shared-auth handoff reaches an external lander unavailable in this environment. |

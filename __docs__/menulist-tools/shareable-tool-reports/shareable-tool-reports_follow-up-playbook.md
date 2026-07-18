@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Follow-Up Playbook
 
 **Status:** Operational playbook for consented report leads
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Founder, support, sales, setup partners
 
 ---
@@ -59,6 +59,10 @@ The ops view reads recent leads only. If an older lead is not visible there, use
 Use the metadata to choose the first response.
 
 Start with `setupJobList` when present. The report gaps become the setup job list; each item is a paid/setup-work candidate only after the owner confirms the source truth.
+
+The public link is an unsigned browser-local self-report, not a verified MenuList record. Confirm the source facts with the owner even when the job list is structurally derived from visible rows.
+
+If Report Leads shows "Recent report-lead limit reached," the filters cover only the bounded recent report-lead query. Do not interpret an empty/short result as proof that no older matching lead exists.
 
 | Signal | Follow-up path |
 | --- | --- |

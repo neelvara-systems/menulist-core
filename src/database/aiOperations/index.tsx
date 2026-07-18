@@ -1,4 +1,8 @@
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
+import {
+    AiOperationHistoryRow,
+    normalizeAiOperationHistoryPage,
+} from '@lib/ai/operationHistoryClientContract';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import dayjs from "dayjs";
@@ -12,8 +16,8 @@ interface PaginationOptions {
 }
 
 interface PaginatedResponse {
-    data: any[];
-    lastVisibleDoc: { id?: string } | null;
+    data: AiOperationHistoryRow[];
+    lastVisibleDoc: { id: string } | null;
     hasMore: boolean;
     requiresManualContinuation: boolean;
 }
@@ -25,27 +29,14 @@ const EMPTY_PAGINATED_RESPONSE: PaginatedResponse = {
     requiresManualContinuation: false,
 };
 const AI_OPERATIONS_RESPONSE_JSON_MAX_BYTES = 512 * 1024;
+const AI_OPERATIONS_REQUEST_POLICY: Pick<RequestInit, 'cache' | 'credentials' | 'redirect'> = {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    redirect: 'manual',
+};
 const AI_OPERATIONS_RESPONSE_PARSE_FAILED = 'ai_operations_client_response_parse_failed';
 const AI_OPERATIONS_RESPONSE_REJECTED = 'ai_operations_client_response_rejected';
 const AI_OPERATIONS_RESPONSE_INVALID = 'ai_operations_client_response_invalid';
-
-const isRecord = (value: unknown): value is Record<string, unknown> => (
-    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-);
-
-const isValidCursor = (value: unknown): value is { id?: string } | null => (
-    value === null
-    || value === undefined
-    || (isRecord(value) && (value.id === undefined || typeof value.id === 'string'))
-);
-
-const isPaginatedResponse = (response: unknown): response is PaginatedResponse => (
-    isRecord(response)
-    && Array.isArray(response.data)
-    && typeof response.hasMore === 'boolean'
-    && isValidCursor(response.lastVisibleDoc)
-    && typeof response.requiresManualContinuation === 'boolean'
-);
 
 const getAiOperationsResponseLogContext = (response: Response, options: PaginationOptions) => ({
     ...getBoundedRuntimeStringContext('action', options.action),
@@ -80,25 +71,24 @@ const readAiOperationsResponse = async (
         return null;
     }
 
-    if (!isPaginatedResponse(payload)) {
+    const normalized = normalizeAiOperationHistoryPage(payload, { requireManualContinuationField: true });
+    if (!normalized || normalized.requiresManualContinuation === undefined) {
         logRuntimeFailure(AI_OPERATIONS_RESPONSE_INVALID, undefined, context);
         return null;
     }
 
-    return payload;
+    return {
+        ...normalized,
+        requiresManualContinuation: normalized.requiresManualContinuation,
+    };
 };
 
 const normalizePaginatedResponse = (response: unknown): PaginatedResponse => {
-    if (
-        response
-        && typeof response === 'object'
-        && Array.isArray((response as PaginatedResponse).data)
-    ) {
+    const normalized = normalizeAiOperationHistoryPage(response, { requireManualContinuationField: true });
+    if (normalized && normalized.requiresManualContinuation !== undefined) {
         return {
-            data: (response as PaginatedResponse).data,
-            lastVisibleDoc: (response as PaginatedResponse).lastVisibleDoc || null,
-            hasMore: Boolean((response as PaginatedResponse).hasMore),
-            requiresManualContinuation: Boolean((response as PaginatedResponse).requiresManualContinuation),
+            ...normalized,
+            requiresManualContinuation: normalized.requiresManualContinuation,
         };
     }
 
@@ -133,6 +123,7 @@ export const getPaginatedAiOperations = async (options: PaginationOptions): Prom
         async () => {
             const query = buildOperationsQuery(options);
             const result = await fetch(`/api/ai-operations${query ? `?${query}` : ''}`, {
+                ...AI_OPERATIONS_REQUEST_POLICY,
                 method: 'GET',
             });
 
@@ -150,27 +141,6 @@ export const getPaginatedAiOperations = async (options: PaginationOptions): Prom
     return normalizePaginatedResponse(response);
 };
 
-export const getAllAiOperations = async () => {
-    const response = await getPaginatedAiOperations({
-        pageNumber: 1,
-        pageSize: 100,
-    });
-    return response.data;
-};
-
-export const getAiOperationsByStoreId = async (_storeId: string | number) => {
-    const response = await getPaginatedAiOperations({
-        pageNumber: 1,
-        pageSize: 100,
-    });
-    return response.data;
-};
-
-export const getAiOperationById = async (id: string | number) => {
-    const operations = await getAllAiOperations();
-    return operations.find((operation) => String(operation.id) === String(id)) || null;
-};
-
-export const addAiOperation = async (_data: any) => {
+export const addAiOperation = async (_data: unknown) => {
     throw new Error("Client AI operation writes are disabled. Use src/lib/ai/accounting.finalizeAiOperationAccounting from server routes.");
 }

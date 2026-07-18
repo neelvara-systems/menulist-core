@@ -1,7 +1,13 @@
 import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, createAiServiceHttpError, logAiServiceFailure, readAiServiceResponseJson } from "@services/ai/aiServiceDiagnostics";
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
-import { ExtractedDataItem, NewItemMetadataAPIParams } from "@template/main-app/projects/types";
+import {
+    ExtractedDataCategory,
+    ExtractedDataItem,
+    NewItemMetadataAPIParams,
+    NewItemMetadataItem,
+} from "@template/main-app/projects/types";
+import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
 import {
     GeneratedItemMetadata,
     normalizeNewItemMetadataOutput,
@@ -10,6 +16,27 @@ import {
 export type { GeneratedItemMetadata } from '@lib/ai/newItemMetadataOutput';
 
 const NEW_ITEM_METADATA_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
+
+export function prepareNewItemMetadataRequestItem(
+    currentItem: ExtractedDataItem,
+    categories: readonly ExtractedDataCategory[],
+    sourceLanguageCode: string,
+): NewItemMetadataItem {
+    const categoryName = categories.find((category) => category.id === currentItem.category)
+        ?.name?.[sourceLanguageCode];
+
+    return {
+        attributes: (currentItem.attributes || []).map((attribute) => ({
+            id: attribute.id,
+            name: String(attribute.name?.[sourceLanguageCode] || '').trim().slice(0, 500),
+            price: String(attribute.price ?? '').trim().slice(0, 120),
+        })),
+        category: String(categoryName || '').trim().slice(0, 100),
+        description: String(currentItem.description?.[sourceLanguageCode] || '').trim().slice(0, 2000),
+        id: currentItem.id,
+        name: String(currentItem.name?.[sourceLanguageCode] || '').trim().slice(0, 500),
+    };
+}
 
 type NewItemMetadataApiResponse = {
     data?: unknown;
@@ -48,7 +75,9 @@ export function mergeGeneratedItemMetadata(
         });
     }
 
-    mergedItem.descriptionSource = 'ai';
+    const hasOwnerDescription = currentItem.descriptionSource === 'manual'
+        && hasAnyNonEmptyDescription(currentItem.description);
+    mergedItem.descriptionSource = hasOwnerDescription ? 'manual' : 'ai';
 
     return mergedItem;
 }

@@ -1,6 +1,6 @@
 # Owner Support Assistant - Feature Documentation
 
-> **Status:** READ-ONLY RUNTIME LIVE - action, AI, feedback, and owner-analytics expansion deferred
+> **Status:** SUMMARY-ONLY RUNTIME LIVE - optional Support Board prefill disabled by default; direct action, AI, feedback, and owner-analytics expansion deferred
 > **Created:** 2026-06-07
 > **Audience:** Product, Engineering, Firebase/Ops, Support
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` (`true` in `src/config/features.ts`)
@@ -10,7 +10,7 @@
 
 ## What Is This
 
-Owner Support Assistant is a private Answerlattice owner/staff review surface that answers a fixed set of operational support questions from five existing compact summaries.
+Owner Support Assistant is a private Answerlattice owner/staff review surface that answers a fixed set of operational support questions from six existing compact summaries.
 
 ## Answerlattice Owner Support Assistant Read-Only Runtime
 
@@ -18,13 +18,14 @@ The live runtime is intentionally smaller than the frozen target architecture:
 
 - `/answerlattice/support-assistant` is visible only when the app flag is enabled and the current management user has `MANAGE_SUPPORT`.
 - The Support Control navigation presents the route as `Daily Brief` and lists it first because the live runtime opens with today's read-only plan before follow-up questions.
-- `GET /api/answerlattice/support-assistant/brief` reads five compact `platformSummary` documents through one bounded `getAll()` call, with a 60-second, 300-entry in-process cache.
+- `GET /api/answerlattice/support-assistant/brief` reads six compact `platformSummary` documents through one bounded `getAll()` call, with a 60-second, 300-entry in-process cache.
 - `POST /api/answerlattice/support-assistant/query` accepts one 3-500 character question, rate-limits before the Firestore-backed permission check, and classifies only attention, answer-risk, friction, readiness, intake, release, install, reply, cost, or unsupported intents.
-- The brief response can include `dailyBrief`, a read-only Daily Founder Brief that ranks the smallest useful actions for today from the same five compact summaries.
+- The brief response can include `dailyBrief`, a read-only Daily Founder Brief that ranks the smallest useful actions for today from the same six compact summaries.
 - Responses are deterministic, private/no-store, source-linked, and summary-only. There is no Gemini/provider call, transcript, assistant collection, write, listener, scheduler, or raw conversation/ticket read.
-- The live UI can open governed review routes. It cannot preview or execute mutations, submit assistant feedback, create drafts/cards/notes, or answer owner period-analytics questions.
+- The default UI opens governed review routes. `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS` is independently disabled by default; when intentionally enabled, selected launch/release items can prefill the existing Support Board create form without writing a card.
+- The UI cannot execute direct ticket/reply/governance mutations, submit assistant feedback, auto-create drafts/cards/notes, or answer owner period-analytics questions.
 
-The action, AI-assisted wording, feedback aggregate, owner analytics summary, bounded-detail, and nightly-summary documents remain deferred design contracts. Their routes and runtime files do not exist and must not be described as live.
+Direct action adapters, AI-assisted wording, feedback aggregate, owner analytics summary, bounded-detail, and nightly-summary documents remain deferred design contracts. The only implemented action preparation is the disabled-by-default, query-parameter-bounded Support Board form prefill; it has no action API and writes nothing until the owner uses the existing Create card flow.
 
 The live runtime helps an owner ask:
 
@@ -63,12 +64,12 @@ The long-term strategy is **review assistant over chat bot**.
 | --- | --- |
 | Owner surface | Dedicated `/answerlattice/support-assistant` route behind the app flag and `MANAGE_SUPPORT`. |
 | Access | Authenticated Answerlattice owner/admin/manager/staff access through the existing Answerlattice session scope and permission model. |
-| Read model | Exactly five compact summaries: coverage, trust metrics, Support Board, friction snapshot, and Knowledge Intake summary. |
+| Read model | Exactly six compact summaries: coverage, trust metrics, Support Board, friction snapshot, Knowledge Intake summary, and Activation proof. |
 | Owner analytics | No dedicated owner-analytics summary is used by the live runtime. |
 | Detail fetches | None. Questions remain summary-only. |
 | Answer shape | Verdict, status, evidence, priority, suggested next action, source links, and optional Daily Founder Brief actions. |
 | Status values | `healthy`, `needs_review`, `at_risk`, `insufficient_data`, `unsupported`. |
-| Safe actions | Live: open governed review routes only. Deferred: typed preview/execute adapters for explicitly confirmed mutations. |
+| Safe actions | Default: open governed review routes only. Flagged: prefill the existing Support Board create form for selected launch/release review items; no write on open. Deferred: typed preview/execute adapters for explicitly confirmed mutations. |
 | Blocked actions | Direct approval, direct publishing, silent ticket closure/reply, widget setting changes, billing/account changes, secret display, cross-product mutations without a product adapter, and unsupported source claims. |
 | Persistence | None. No transcript, answer record, assistant summary, feedback, or AI operation is written. |
 

@@ -1,74 +1,37 @@
-# Answerlattice — Guided Workflows: Mobile Support Assessment
+# Answerlattice Guided Workflows Mobile Support
 
-> **Status:** DESIGNED — Ready for Implementation
-> **Version:** 1.0.0
-> **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
-> **Audience:** Developers
+> **Status:** Implemented
+> **Last verified:** 2026-07-18
 
----
+## Admission
 
-## Feature Admission Test (4 Gates)
+The end-user guide is admitted on mobile because it helps complete an immediate task in the existing widget. Procedure authoring remains an owner governance workflow and is not promoted as a dedicated mobile feature.
 
-| Gate | Question | Answer | Pass? |
-|------|----------|--------|-------|
-| 1 — Frequency | Is this used daily/multiple times per day? | Procedure answers are consumed by end users frequently, but AUTHORING is occasional (governance hub) | ⚠️ Partial |
-| 2 — Speed | Completes in <5 seconds? | Procedure retrieval: <300ms ✅. Procedure authoring: multi-step form ❌ | ⚠️ Partial |
-| 3 — Touch | Works with thumb-only? | Reading procedure steps: ✅. Authoring step editor: ❌ (requires precise input) | ❌ No |
-| 4 — Value | Needed away from desk? | Reading: possibly. Authoring: no (governance is desk work) | ⚠️ Partial |
+## Runtime Behavior
 
-**Verdict: PARTIAL — Consumption mobile-friendly, authoring desktop-only**
+- Widget actions retain at least 44 px touch targets.
+- Procedure steps use the existing vertical widget flow.
+- Guidance controls wrap without horizontal scrolling.
+- The host highlight is fixed, non-interactive, and does not intercept taps.
+- Scroll-to-target respects reduced-motion preference.
+- `100dvh` widget sizing and existing safe-area behavior remain unchanged.
+- A missing target falls back to written instructions.
+- Route/context changes clear the guide rather than pointing at stale mobile UI.
 
----
+## MenuList Reference State
 
-## Mobile Assessment
+MenuList mobile menu import, review, publish, and public-link controls now carry the same semantic target/event contracts as desktop. The Answerlattice widget is still intentionally hidden on MenuList mobile, so these calls safely return without changing behavior. Enabling a mobile guide later requires a separate UX and deployed-client smoke decision; instrumentation alone does not enable it.
 
-### Consumption Side (Widget/End Users)
-- **Mobile-friendly by default** — Widget renders procedure steps as numbered list
-- **Step cards work well on mobile** — Vertical list of atomic steps is inherently mobile-friendly
-- **Warnings/prerequisites display cleanly** — Simple alert boxes
-- **No mobile-specific development needed for consumption**
+## Mobile Risks
 
-### Authoring Side (Governance Hub)
-- **Desktop-only for v1** — Step editor requires:
-  - Drag-and-drop reordering
-  - Action dropdown per step
-  - Multiple text inputs per step
-  - Optional collapsible sections
-- **Mobile authoring deferred** — Governance hub is admin tool, used at desk
-- **Mobile read-only view of procedure answers in governance hub** — Can view but not edit
+| Risk | Control |
+|---|---|
+| Control hidden behind a mobile drawer | Instrument the actual mobile control or omit the target |
+| Desktop/mobile target drift | Reuse one semantic ID for equivalent controls only when they perform the same action |
+| Virtual keyboard changes layout | Highlight is recalculated from the current target rectangle |
+| Small target | Client product remains responsible for accessible touch size |
+| Intrusive scrolling | Scroll occurs only after the user starts/continues a guide |
 
-### Shared Logic
-- **DAL:** Same `canonicalAnswers.ts` functions (no separate mobile DAL)
-- **Types:** Same `AnswerlatticeProcedure`, `AnswerlatticeProcedureStep` types
-- **Validation:** Same `procedureValidation.ts` logic
-- **Feature flag:** Same `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`
+## Verification Boundary
 
----
-
-## Mobile-Specific Considerations
-
-| Aspect | Decision |
-|--------|----------|
-| Step rendering in widget | Numbered vertical list — inherently mobile-friendly |
-| Warning display | Alert banner above/below steps — works on all screen sizes |
-| Prerequisite display | Info banner — works on all screen sizes |
-| Step editor | Desktop-only in v1 |
-| Step viewer in governance | Read-only on mobile (Ant Design Steps component responsive) |
-
----
-
-## No Mobile-Specific Files Required
-
-This feature does not require a dedicated mobile screen because:
-1. Consumption happens in the client's widget (their responsibility)
-2. Authoring happens in governance hub (desktop admin tool)
-3. The structured data format (JSON steps) is inherently device-agnostic
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-03-08 | 1.0.0 | Initial mobile assessment |
+Source-level responsive and touch contracts are verified. A real installed client page must still be tested on mobile Chrome and mobile Safari before that workspace is enabled.

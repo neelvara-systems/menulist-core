@@ -225,6 +225,12 @@ export const FUNCTION_FLAGS = {
     ENABLE_OWNER_BUSINESS_HEALTH_USAGE_LOGGING: true,
     ENABLE_OWNER_BUSINESS_HEALTH_THREADS: true,
 
+    /** Write the project-embedded customer-facing Decision Blocks projection. */
+    ENABLE_DECISION_BLOCKS_SCORING: true,
+
+    /** Write the private scheduler-owned Continuous Menu Intelligence state. */
+    ENABLE_CONTINUOUS_MENU_INTELLIGENCE: true,
+
     // ═══════════════════════════════════════════════════════════════
     // RESELLER DASHBOARD (Assisted Onboarding Portal)
     // @see __docs__/reseller-dashboard/
@@ -269,8 +275,8 @@ export const FUNCTION_FLAGS = {
     /**
      * Public Menu Entry — Nightly cleanup of expired drafts
      *
-     * Deletes publicMenuDrafts docs where expiresAt < now AND claimed == false.
-     * Also deletes associated Storage images.
+     * Deletes expired publicMenuDrafts receipts. Unclaimed sources are deleted
+     * with their Storage object; claimed project sources are preserved.
      *
      * true: Clean up expired drafts in nightly scheduler
      * false: Skip cleanup
@@ -339,20 +345,30 @@ export const FUNCTION_RETENTION_CONFIG = {
     OWNER_NOTIFICATION_RETENTION_DAYS: 30,
     FEEDBACK_EVENT_RETENTION_DAYS: 180,
     SCHEDULER_RUN_LOG_RETENTION_DAYS: 90,
+    SYSTEM_ALERT_RETENTION_DAYS: 90,
 } as const;
 
 /**
  * Helper to check if a function feature is enabled
  * Also checks for environment variable overrides
  */
+export function parseFunctionFeatureOverride(value: string | undefined): boolean | null {
+    if (value === undefined) return null;
+    const normalized = value.trim().toLowerCase();
+    if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+    if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+    return null;
+}
+
 export function isFunctionFeatureEnabled(feature: keyof typeof FUNCTION_FLAGS): boolean {
     // Check environment variable override first
-    // Format: FEATURE_NAME=false (e.g., SENTRY_ENABLED=false)
+    // Format: FEATURE_NAME=false (e.g., SENTRY_ENABLED=false). An invalid
+    // configured override fails closed instead of silently enabling work.
     const envKey = feature.replace('ENABLE_', '') + '_ENABLED';
     const envValue = process.env[envKey];
 
     if (envValue !== undefined) {
-        return envValue.toLowerCase() !== 'false';
+        return parseFunctionFeatureOverride(envValue) ?? false;
     }
 
     return FUNCTION_FLAGS[feature];

@@ -7,6 +7,7 @@ import {
 import { CREATIVE_EDITOR_SCHEMA_VERSION } from '@/modules/creative-editor/types';
 import type { CreativeEditorDocument, CreativeEditorElement } from '@/modules/creative-editor/types';
 import { getPrintShareToolConfig, type PrintShareToolSlug } from './printShareToolConfig';
+import { parsePublicHttpsUrl } from '../public-truth-tools/publicUrlValidation';
 import type {
   PrintShareToolCheck,
   PrintShareToolCheckId,
@@ -36,58 +37,6 @@ function trimMultiline(value?: string): string {
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-}
-
-function hasExplicitProtocol(value: string): boolean {
-  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value);
-}
-
-function getUrlWithProtocol(value: string): string {
-  if (hasExplicitProtocol(value)) return value;
-  if (/^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value)) return `https://${value}`;
-  return value;
-}
-
-function isPrivateIpv4(hostname: string): boolean {
-  const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!match) return false;
-
-  const octets = match.slice(1).map(Number);
-  if (octets.some((octet) => !Number.isInteger(octet) || octet < 0 || octet > 255)) return true;
-
-  const [first, second] = octets;
-  return (
-    first === 0
-    || first === 10
-    || first === 127
-    || (first === 169 && second === 254)
-    || (first === 172 && second >= 16 && second <= 31)
-    || (first === 192 && second === 168)
-  );
-}
-
-function isPublicHostname(hostname: string): boolean {
-  const normalized = hostname.toLowerCase();
-  if (!normalized) return false;
-  if (normalized === 'localhost' || normalized.endsWith('.localhost') || normalized.endsWith('.local')) return false;
-  if (normalized === '[::1]' || normalized === '::1') return false;
-  if (isPrivateIpv4(normalized)) return false;
-  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) return false;
-  return normalized.includes('.');
-}
-
-function parsePublicHttpsUrl(value: string): URL | null {
-  if (!value) return null;
-
-  try {
-    const url = new URL(getUrlWithProtocol(value));
-    if (url.protocol !== 'https:') return null;
-    if (url.username || url.password) return null;
-    if (!isPublicHostname(url.hostname)) return null;
-    return url;
-  } catch {
-    return null;
-  }
 }
 
 function getDisplayLink(url: URL | null, rawValue: string): string {
@@ -316,7 +265,7 @@ export function buildPrintShareToolReport(
     secondaryText: trimToSingleLine(rawInput.secondaryText).slice(0, 130),
     whatsappNumber: trimToSingleLine(rawInput.whatsappNumber).slice(0, 60),
   };
-  const customerUrl = parsePublicHttpsUrl(input.customerLink);
+  const customerUrl = parsePublicHttpsUrl(input.customerLink, 'print_share_tool_customer_link');
   const hasCustomerLink = input.customerLink.length > 0;
   const hasValidCustomerLink = Boolean(customerUrl);
   const normalizedCustomerLink = customerUrl?.toString() || '';

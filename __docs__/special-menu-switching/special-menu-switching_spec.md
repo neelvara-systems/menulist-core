@@ -15,7 +15,7 @@
 
 **For whom:** Primarily food businesses (restaurants, cafés, bakeries, sweet shops, bars). Secondary: salons, gyms, spas with occasional special packages.
 
-**Impact:** Retention weapon. Businesses depend on MenuList during peak revenue days → switching cost rises → lock-in increases. Makes MenuList a living, time-aware menu system instead of a static page.
+**Impact:** Reduces owner cleanup work and lowers the risk of an expired special menu remaining on MenuList-controlled live surfaces.
 
 ---
 
@@ -24,9 +24,9 @@
 | Goal                                         | Metric                                              |
 | -------------------------------------------- | --------------------------------------------------- |
 | Reduce manual menu edits during festivals    | Owners use special menu instead of editing base     |
-| Prevent "wrong menu live" incidents          | Zero customer-facing errors during festival periods |
+| Prevent stale special-menu incidents         | Due transitions settle within the maintenance cadence; nightly recovery repairs missed/legacy markers |
 | Increase product stickiness during peak days | Feature adoption during Diwali, Christmas, Ramadan  |
-| Auto-revert reliability                      | 100% of special menus revert on schedule            |
+| Auto-revert reliability                      | Project/store/summary transition stays atomic; public/screen resolvers fail safe after `endsAt` |
 
 ---
 
@@ -64,12 +64,12 @@ Hardware stores, medical stores, electronics shops, general retail — their cat
 - Schedule activation and deactivation (date + time)
 - Two modes: **Replace** (full menu swap) or **Add Section** (overlay on base menu)
 - Multiple scheduled, only **one active at a time**
-- Automatic activation at scheduled time
+- Automatic activation within the two-minute maintenance cadence
 - Automatic revert to base menu when expired
 - Business-type-aware behavior (food gets full power, salon gets simpler version)
 - Integration with Temp Status Layer (auto-show "Special menu available" banner)
 - Works on the public menu/QR link, OBP, and configured screens through active menu, cache, and screen refresh paths; exported PDFs/printed copies and POS/provider targets require separate export, replacement, or integration evidence
-- MCE validation on special menu before activation
+- Existing editor and project-persistence correctness guards apply; the scheduler does not run a separate MCE job
 - Mobile support for creating and managing special menus
 
 ### Out-of-Scope
@@ -80,7 +80,7 @@ Hardware stores, medical stores, electronics shops, general retail — their cat
 - Promotional badges or banners (beyond temp status)
 - Offer builder or pricing rules
 - Customer analytics for special menus
-- Recurring schedules (e.g., "every Sunday brunch") — deferred, can add later
+- Recurring schedules (e.g., "every Sunday brunch") — not supported by the current contract
 - Multiple simultaneous active special menus
 
 ---
@@ -140,7 +140,7 @@ Uses the **exact same editor** they already know.
 
 System handles everything:
 
-- Activates at scheduled time
+- Normally appears within a few minutes of the scheduled time
 - Shows "Special menu available" banner (via Temp Status Layer)
 - Reverts automatically when expired
 - Owner sees clear status: "Diwali Menu — Active until Oct 25"
@@ -168,7 +168,7 @@ System uses `getBusinessCategory(businessType)` to determine template. **No owne
 | ID    | Invariant                       | Rationale                                                                   |
 | ----- | ------------------------------- | --------------------------------------------------------------------------- |
 | INV-1 | Base menu is NEVER modified     | Special menu is a separate project. Base menu remains canonical truth.      |
-| INV-2 | Auto-revert guaranteed          | After end time, menu returns to base. No manual action required.            |
+| INV-2 | Auto-revert protected           | Two-minute due task, nightly recovery, and fail-safe resolvers prevent an ended menu from remaining canonical. |
 | INV-3 | Owner always sees current state | Dashboard shows "Special Menu Active" or "Scheduled for..." clearly.        |
 | INV-4 | Zero learning required          | Same editor, same flow. Only new thing = schedule picker.                   |
 | INV-5 | One active at a time            | No overlapping active menus. Block at creation time.                        |
@@ -183,7 +183,7 @@ System uses `getBusinessCategory(businessType)` to determine template. **No owne
 | Feature                           | Relationship                                                                                    |
 | --------------------------------- | ----------------------------------------------------------------------------------------------- |
 | **Temp Status Layer**             | Complementary. When special menu activates, system auto-sets `special_menu` temp status banner. |
-| **MCE (Menu Correctness Engine)** | Special menu validated by MCE before activation — same as regular menu.                         |
+| **MCE (Menu Correctness Engine)** | Special projects use the same editor/project correctness paths as regular projects; activation adds no separate MCE run. |
 | **Decision Blocks**               | Run on active menu (base or special). Seamless.                                                 |
 | **Digital Screens**               | Configured screen data uses the active special menu id and screen content-version path.          |
 | **Multi-Outlet**                  | Each outlet manages own special menus independently.                                            |
@@ -192,16 +192,9 @@ System uses `getBusinessCategory(businessType)` to determine template. **No owne
 
 ---
 
-## Competitive Analysis
+## Product Boundary
 
-| Competitor           | What They Do                                   | How MenuList Differs                           |
-| -------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| TouchBistro          | Schedule menus by time/season (POS-integrated) | MenuList is customer-facing truth, not POS     |
-| LOOK Digital Signage | Day-parting for menu boards                    | MenuList covers public menu, OBP, and configured screen paths, not just screens |
-| UpMenu               | Quick digital menu creation for specials       | MenuList reuses existing editor — zero new UI  |
-| Orders.co            | Real-time menu updates across platforms        | MenuList adds scheduling + auto-revert         |
-
-**MenuList's unique advantage:** Not signage, not POS — **operational menu infrastructure** with lifecycle control across supported customer touchpoints.
+This feature is lifecycle control for MenuList customer-facing truth. It is not POS scheduling, signage orchestration, a campaign engine, or a recurring day-parting system. Any competitor comparison requires separate current evidence and is not part of this code-backed spec.
 
 ---
 
@@ -218,14 +211,14 @@ System uses `getBusinessCategory(businessType)` to determine template. **No owne
 | FR-07 | Feature flag `ENABLE_SPECIAL_MENU_SWITCHING`       | P0       |
 | FR-08 | Auto-set temp status banner on activation          | P1       |
 | FR-09 | Business-type-aware mode availability              | P1       |
-| FR-10 | MCE validation before activation                   | P1       |
+| FR-10 | Reuse existing editor/project correctness guards   | P1       |
 | FR-11 | Mobile support for management                      | P1       |
 | FR-12 | Clear dashboard status indicator                   | P0       |
-| FR-13 | Cancel/delete scheduled special menu               | P0       |
+| FR-13 | Cancel scheduled menu; delete only after terminal state | P0    |
 | FR-14 | Edit scheduled (not yet active) special menu       | P0       |
 | FR-15 | Manual early deactivation ("End special menu now") | P0       |
 | FR-16 | Cache invalidation on activation/deactivation      | P0       |
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** July 16, 2026

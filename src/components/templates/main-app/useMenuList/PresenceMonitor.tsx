@@ -13,14 +13,17 @@
 
 import { assertMenuPresenceUpdateSucceeded, type MenuPresenceSurface, updateMenuPresence } from '@database/stores';
 import { withAnalyticsSource } from '@lib/analytics/sourceAttribution';
+import { isMenuPresenceConfirmed } from '@lib/menuPresence/presenceReadiness';
 import {
     STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    applyStarterPresenceUpdateToStoreDetails,
     buildStarterActivationSummary,
     shouldRecordStarterActivationSignal,
 } from '@lib/onboarding/starterActivation';
+import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { StoreDataType } from '@type/platform/store';
 import { Button, Card, Flex, message, Tag, Typography, theme } from 'antd';
-import { useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import {
     LuAlertTriangle,
     LuCheck,
@@ -205,14 +208,14 @@ function buildAutoSurfaces(data: UseMenuListData): AutoSurface[] {
             id: 'digitalScreens',
             label: 'Digital Screens',
             active: data.hasScreen,
-            description: data.hasScreen ? 'Screen connected' : 'Not set up yet',
+            description: data.hasScreen ? 'Screen set up' : 'Not set up yet',
             icon: <LuMonitor size={16} />,
         },
         {
             id: 'feedbackQr',
             label: 'Feedback QR',
-            active: data.hasFeedbackEnabled,
-            description: data.hasFeedbackEnabled ? 'Feedback available' : 'Not enabled',
+            active: data.hasFeedbackEnabled && data.hasPublishedMenu,
+            description: data.hasFeedbackEnabled && data.hasPublishedMenu ? 'Feedback available' : 'Not ready yet',
             icon: <LuMessageCircle size={16} />,
         },
     ];
@@ -221,15 +224,24 @@ function buildAutoSurfaces(data: UseMenuListData): AutoSurface[] {
 // ── Component ────────────────────────────────────────────────
 
 export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorProps) {
+    const { setStoreDetails } = useContext(PlatformGlobalDataContext);
     const { token } = theme.useToken();
     const [updating, setUpdating] = useState<string | null>(null);
     const [localPresence, setLocalPresence] = useState<Record<string, string | undefined>>(
         storeDetails.menuPresence || {}
     );
     const [expandedGuide, setExpandedGuide] = useState<string | null>(null);
+    const currentStoreIdRef = useRef(storeDetails.storeId);
+
+    useEffect(() => {
+        currentStoreIdRef.current = storeDetails.storeId;
+        setLocalPresence(storeDetails.menuPresence || {});
+        setUpdating(null);
+        setExpandedGuide(null);
+    }, [storeDetails.storeId, storeDetails.menuPresence]);
 
     const autoSurfaces = buildAutoSurfaces(data);
-    const isManualActive = (id: string) => !!localPresence[id];
+    const isManualActive = (id: string) => isMenuPresenceConfirmed(localPresence[id]);
 
     const manualActiveCount = MANUAL_SURFACES.filter(s => isManualActive(s.id)).length;
     const autoActiveCount = autoSurfaces.filter(s => s.active).length;
@@ -318,9 +330,19 @@ export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorP
                 true,
                 'use_menulist_presence_confirm_update_rejected',
             );
-            setLocalPresence(prev => ({ ...prev, [surface.id]: new Date().toISOString() }));
-            message.success(`${surface.label} — official link added`);
-            setExpandedGuide(null);
+            setStoreDetails((current: any) => applyStarterPresenceUpdateToStoreDetails(
+                current,
+                result.surface,
+                result.confirmed,
+                result.recordedAt,
+                result.starterSignal,
+                result.storeId,
+            ));
+            if (String(currentStoreIdRef.current) === String(result.storeId)) {
+                setLocalPresence(prev => ({ ...prev, [surface.id]: result.recordedAt }));
+                message.success(`${surface.label} — official link added`);
+                setExpandedGuide(null);
+            }
         } catch (error) {
             logUseMenuListFailure('use_menulist_presence_confirm_failed', error, buildPresenceLogContext('confirm', surface));
             message.error('Failed to update');
@@ -340,11 +362,21 @@ export default function PresenceMonitor({ data, storeDetails }: PresenceMonitorP
                 false,
                 'use_menulist_presence_remove_update_rejected',
             );
-            setLocalPresence(prev => {
-                const next = { ...prev };
-                delete next[surface.id];
-                return next;
-            });
+            setStoreDetails((current: any) => applyStarterPresenceUpdateToStoreDetails(
+                current,
+                result.surface,
+                result.confirmed,
+                result.recordedAt,
+                result.starterSignal,
+                result.storeId,
+            ));
+            if (String(currentStoreIdRef.current) === String(result.storeId)) {
+                setLocalPresence(prev => {
+                    const next = { ...prev };
+                    delete next[surface.id];
+                    return next;
+                });
+            }
         } catch (error) {
             logUseMenuListFailure('use_menulist_presence_remove_failed', error, buildPresenceLogContext('remove', surface));
             message.error('Failed to update');

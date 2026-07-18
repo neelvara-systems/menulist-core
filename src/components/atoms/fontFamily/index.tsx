@@ -123,9 +123,9 @@ export default function FontFamily({ value, onChange, showLabel = false, style =
                     label: <>
                         <Flex style={{ width: "100%", padding: "2px 0" }} align="center" justify="center">
                             {isDark ?
-                                <img style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.whiteTextUrl} />
+                                <img alt={`${fontDetails.code} font preview`} style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.whiteTextUrl} />
                                 :
-                                <img style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.blackTextUrl} />
+                                <img alt={`${fontDetails.code} font preview`} style={{ width: "auto", height: "100%", maxHeight: "20px" }} src={fontDetails.blackTextUrl} />
                             }
                         </Flex>
                     </>,

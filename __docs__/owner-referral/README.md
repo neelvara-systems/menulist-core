@@ -6,9 +6,9 @@
 >
 > **Settlement:** `ENABLE_OWNER_REFERRAL_REWARD_PROCESSING` (implemented, off)
 >
-> **Last updated:** July 11, 2026
+> **Last updated:** July 16, 2026
 
-When the pilot list is populated, desktop, mobile, owner API, capture, and attribution all enforce it. An empty list represents broad rollout and must not be used until the pilot release decision is complete.
+Desktop, mobile, owner API, capture, and attribution all enforce the pilot list. An empty or invalid list now fails closed even if both feature flags are enabled; broad rollout requires a later explicit code/governance decision rather than an accidental empty allowlist.
 
 ## What It Is
 
@@ -47,6 +47,11 @@ These controls remain:
 - one referred business issues one reward pair;
 - rewards are atomic and idempotent;
 - tokens expire after 30 days for security;
+- the explicit non-referral choice clears any previously captured referral cookie before setup continues;
+- a saturated 25-row subscription-history check fails closed instead of risking retroactive attribution;
+- blocked/inactive/deleted stores remain pending under the existing platform security boundary;
+- malformed or overflowing Pack balances reject the complete atomic settlement instead of normalizing to zero;
+- later-payment repair processes at most 25 candidates per request and emits a bounded backlog alert rather than holding payment/webhook requests in an unbounded loop;
 - private status does not expose payment or contact information;
 - every issued reward creates two deterministic zero-cash `payment_transactions` ledger rows with before/after Pack balances;
 - feature flags and the five-business pilot control rollout.
@@ -99,7 +104,7 @@ Engineering implementation was authorized immediately by the founder on `2026-07
 
 - [x] founder approval explicitly accepts payment-only eligibility, no reward cap, and aggregate credit liability;
 - [x] founder waived the remaining cooling-period wait for engineering implementation;
-- [x] implementation, source verifier, TypeScript, lint, and Firestore emulator accounting/rules tests pass;
+- [x] implementation, source verifier, repository TypeScript, scoped lint, and Firestore emulator accounting/rules tests pass;
 - [ ] the required team announcement and lifecycle decision are recorded;
 - [ ] finance approves per-referral provider cost and uncapped aggregate issuance;
 - [ ] legal approves reward and privacy disclosure;

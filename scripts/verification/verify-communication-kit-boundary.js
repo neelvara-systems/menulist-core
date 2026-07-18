@@ -34,6 +34,7 @@ function forbidToken(source, token, label) {
   'src/components/mobile/screens/MobileShareScreen.tsx',
   'src/components/templates/main-app/projects/b2cView/shareModal/MenuKitSection.tsx',
   'src/lib/export/exportDiagnostics.ts',
+  'src/lib/export/browserFileShare.ts',
   'src/lib/menu-kit/menuKitGenerator.ts',
   'src/lib/printable-asset-templates/renderPrintableAsset.ts',
   '__docs__/customer-communication-kit/README.md',
@@ -223,9 +224,18 @@ const menuKitGenerator = read('src/lib/menu-kit/menuKitGenerator.ts');
   'generateMenuKit',
   'downloadBlob',
   'shareBlob',
-  'navigator.canShare',
+  'shareBrowserFile',
+  'Promise<BrowserFileShareResult>',
   'MENU_KIT_ASSET_DEFINITIONS',
 ].forEach((token) => requireToken(menuKitGenerator, token, 'Menu Kit generator'));
+
+const browserFileShare = read('src/lib/export/browserFileShare.ts');
+[
+  "BrowserFileShareResult = 'shared' | 'unsupported' | 'cancelled'",
+  'navigator.canShare',
+  "error.name === 'AbortError'",
+  'throw error',
+].forEach((token) => requireToken(browserFileShare, token, 'browser file-share boundary'));
 [
   'firebase/firestore',
   'addDoc(',
@@ -284,7 +294,8 @@ const physicalReadme = read('__docs__/physical-surfaces/README.md');
 [
   'LEGACY',
   'For all new physical surface work, use Menu Kit.',
-  'Maintenance note: the legacy Today/mobile Hours download buttons are still active',
+  'Maintenance note: the legacy Today/mobile Hours download buttons remain as a read-only compatibility surface',
+  'Current source has no active writer that computes or persists that field',
 ].forEach((token) => requireToken(physicalReadme, token, 'Physical Surfaces README'));
 
 const physicalValidation = read('__docs__/physical-surfaces/physical-surfaces_validation.md');

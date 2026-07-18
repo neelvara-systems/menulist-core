@@ -93,6 +93,11 @@ async function run(): Promise<void> {
                 BYTES,
                 { contentType: 'image/webp' },
             );
+            await uploadBytes(
+                ref(storage, 'campaigncue/templates/platform/food/template-1/arbitrary.json'),
+                BYTES,
+                { contentType: 'application/json' },
+            );
         });
 
         await assertSucceeds(getBytes(ref(ownerStorage, 'campaigncue/renders/cc_1_101/render-1/output.png')));
@@ -120,6 +125,17 @@ async function run(): Promise<void> {
             BYTES,
             { contentType: 'image/webp' },
         ));
+        await assertSucceeds(uploadBytes(
+            ref(platformStorage, 'campaigncue/templates/platform/food/template-2/pack-template-0123456789abcdef.json'),
+            BYTES,
+            { contentType: 'application/json' },
+        ));
+        await assertFails(uploadBytes(
+            ref(platformStorage, 'campaigncue/templates/platform/food/template-2/arbitrary.json'),
+            BYTES,
+            { contentType: 'application/json' },
+        ));
+        await assertFails(deleteObject(ref(platformStorage, 'campaigncue/templates/platform/food/template-1/arbitrary.json')));
         await assertFails(uploadBytes(
             ref(platformStorage, 'campaigncue/templates/platform/not_allowed/template-2/preview.webp'),
             BYTES,
@@ -136,15 +152,30 @@ async function run(): Promise<void> {
             BYTES,
             { contentType: 'application/json' },
         ));
-        await assertFails(uploadBytes(
-            ref(otherStorage, 'campaigncue/templates/workspaces/cc_1_101/template-2/pack-template.json'),
+        await assertSucceeds(uploadBytes(
+            ref(ownerStorage, 'campaigncue/templates/workspaces/cc_1_101/template-1/versions/save-1/pack-template.json'),
             BYTES,
             { contentType: 'application/json' },
         ));
         await assertFails(uploadBytes(
-            ref(ownerStorage, 'campaigncue/templates/workspaces/cc_1_101/template-3/unsafe.svg'),
+            ref(otherStorage, 'campaigncue/templates/workspaces/cc_1_101/template-2/versions/save-1/pack-template.json'),
+            BYTES,
+            { contentType: 'application/json' },
+        ));
+        await assertFails(uploadBytes(
+            ref(ownerStorage, 'campaigncue/templates/workspaces/cc_1_101/template-3/versions/save-1/unsafe.svg'),
             BYTES,
             { contentType: 'image/svg+xml' },
+        ));
+        await assertFails(uploadBytes(
+            ref(ownerStorage, 'campaigncue/templates/workspaces/cc_1_101/template-3/versions/save-1/arbitrary.json'),
+            BYTES,
+            { contentType: 'application/json' },
+        ));
+        await assertFails(uploadBytes(
+            ref(ownerStorage, 'campaigncue/templates/workspaces/cc_1_101/template-3/random/pack-template.json'),
+            BYTES,
+            { contentType: 'application/json' },
         ));
     } finally {
         await testEnv.cleanup();

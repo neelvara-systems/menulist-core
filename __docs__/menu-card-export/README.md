@@ -2,7 +2,7 @@
 
 **Status:** Source-gated route evidence; not current launch certification
 **Owner route:** `/use-menulist/menu-card-export`
-**Current predecessor:** `__docs__/pdf-surface/`
+**Compatibility predecessor:** `__docs__/pdf-surface/`
 **Last Updated:** July 10, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Card Export evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, Digital Menu Output Constitution checks for print/menu outputs, `npm run verify:menu-card-export`, authenticated desktop/mobile browser QA, visual PDF and print-shop artifact review, provider smoke for the AI advisor where enabled, applicable target deploy evidence, and production-host smoke.
@@ -134,7 +134,8 @@ Firebase cost decision:
 - Business-type profile reuse comes from the already-loaded store context. It adds no Firestore read, write, Storage upload, Cloud Function, rule, or index.
 - Auto print design is browser CPU work over the already-built print source. It adds no Firebase cost and no AI unit usage.
 - Empty stores stay read-only: the route uses an existing-projects summary helper and does not create a default menu from the print workflow.
-- Export history is local to the browser/device.
+- Export history is local to the browser/device, scoped by tenant, store, and project, and best-effort if browser storage is unavailable.
+- Native file delivery distinguishes shared, unsupported, and owner-cancelled results. Unsupported file sharing downloads instead; cancellation stays quiet and does not create a false success/history record.
 - Server persistence/export-storage API routes are intentionally not added in the default implementation to protect Firebase cost.
 - The AI layout suggestion is a separate owner-click route, available only to Pro/Premium subscriptions and blocked before provider call for other plans.
 - AI layout suggestion provider-response parsing is fail-closed and bounded. Empty, malformed non-object, or malformed object-fragment provider JSON logs capped `menu_card_design_advisor_provider_response_parse_failed` diagnostics with fixed `return_layout_suggestion_failed` policy and response-shape metadata only, then returns the existing owner-safe suggestion failure without consuming credits. Raw provider response text, menu/source content, warnings, project/store/tenant/user IDs, source hashes, response preview text, and exception text are not logged.

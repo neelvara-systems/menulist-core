@@ -489,7 +489,7 @@ function drawCreativeStudioScene() {
 
 function drawCueLayersScene() {
     const { canvas, ctx } = makeCanvas(1440, 980);
-    header(ctx, 'CueLayers', 'Reuse flat images with conservative fallbacks.', 'The sample shows original preservation, reviewable candidates, protected truth, and a flat-safe fallback instead of source-file recovery claims.', 1440);
+    header(ctx, 'CueLayers', 'Preserve the source. Add only the edits you need.', 'The sample mirrors the active flat-safe flow: one locked uploaded image, separate owner-added elements, saved revision, and manual download.', 1440);
 
     const app = browser(ctx, 96, 326, 1248, 546, 'campaigncue.ai / cuelayers');
     panel(ctx, app.x, app.y + 20, 356, 390, { fill: C.surfacePink });
@@ -501,13 +501,13 @@ function drawCueLayersScene() {
     text(ctx, 'Lunch combo', app.x + 84, app.y + 256, { size: 30, weight: 800, color: C.surface });
     pill(ctx, 'Preserved', app.x + 54, app.y + 350, { fill: C.surface, stroke: C.border, color: C.ink });
 
-    text(ctx, 'to', app.x + 406, app.y + 202, { size: 32, weight: 800, color: C.muted });
+    text(ctx, 'plus', app.x + 392, app.y + 202, { size: 28, weight: 800, color: C.muted });
 
     panel(ctx, app.x + 484, app.y + 20, 352, 390, { fill: C.surface });
-    text(ctx, 'Layer candidates', app.x + 512, app.y + 48, { size: 25, weight: 800 });
-    ['Photo area', 'Offer block', 'Text candidate', 'QR/CTA zone', 'Flat fallback'].forEach((item, index) => {
-        rounded(ctx, app.x + 512, app.y + 108 + index * 54, 292, 40, 10, index === 4 ? C.warnSoft : C.surfacePink, 'rgba(1,27,109,0.08)');
-        text(ctx, item, app.x + 530, app.y + 120 + index * 54, { size: 15, weight: 800, color: index === 4 ? C.warn : C.ink });
+    text(ctx, 'Flat-safe editor', app.x + 512, app.y + 48, { size: 25, weight: 800 });
+    ['Verified business text', 'Shape or drawing', 'QR details', 'Resize canvas', 'Original stays locked'].forEach((item, index) => {
+        rounded(ctx, app.x + 512, app.y + 108 + index * 54, 292, 40, 10, index === 4 ? C.okSoft : C.surfacePink, 'rgba(1,27,109,0.08)');
+        text(ctx, item, app.x + 530, app.y + 120 + index * 54, { size: 15, weight: 800, color: index === 4 ? C.ok : C.ink });
     });
 
     panel(ctx, app.x + 874, app.y + 20, 298, 390, { fill: C.deep });

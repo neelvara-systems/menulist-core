@@ -2,7 +2,7 @@
 
 > **Feature family:** MenuList Public Truth Tools
 > **Status:** Active family - sixteen public tools, five public asset makers, a public shareable report layer, and eighteen owner readiness modules with exact fix targets and owner fix lists implemented
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 16, 2026
 > **Version:** 2.12
 
 ---
@@ -52,7 +52,11 @@ Public Truth Tools are not:
 - an MCP-first product
 - a rankings or AI-citation promise
 
-Owner-entered public/customer links use shared public HTTPS URL validation with bounded parse diagnostics. Malformed URL syntax is treated as a missing/invalid local hint and logs `public_truth_tool_url_parse_failed` with stable source labels and shape metadata only; raw entered URLs are not logged.
+Owner-entered public/customer links use shared public HTTPS URL validation with bounded parse diagnostics. Malformed URL syntax is treated as a missing/invalid local hint and logs `public_truth_tool_url_parse_failed` with stable source labels and shape metadata only; raw entered URLs are not logged. Raw IPv6 literals, IPv4-mapped IPv6, empty hostname labels, localhost with a trailing dot, insecure/private/raw-IP targets, and credentialed URLs all fail the public-link check without a network request.
+
+Phone, `tel:`, `mailto:`, and `whatsapp://send` destinations use one local shape boundary. Arbitrary letters inside phone values and unrecognized WhatsApp scheme hosts do not count as ready actions.
+
+Shareable report hashes remain unsigned browser-local self-reports. The viewer says so explicitly, derives setup jobs from displayed gaps, rejects inconsistent summary counts, requires visible report limits, and confines next actions to the MenuList origin.
 
 Logged-in owner readiness uses bounded owner menu URL generation diagnostics. If the derived MenuList customer link cannot be generated from the current store/project summary, `public_truth_owner_menu_url_generation_failed` logs only domain/project shape metadata and the owner readiness report omits `menuUrl` as before.
 
@@ -66,7 +70,7 @@ Public Truth Tools can grow as a MenuList module/add-on family, but each tool mu
 | --- | --- | --- | --- | --- |
 | V0 | Public free tool / lead magnet | Public Truth Check route where an owner enters a business URL/menu link/Google profile reference and visible facts | Free acquisition and education | No fake scan claims; external URLs are references unless an approved adapter exists |
 | V1 | Logged-in MenuList owner check | Business Health/Public Discovery status from actual store/project truth | Included owner value | Implemented inside desktop/mobile Business Health as eighteen read-only readiness modules with exact fix targets and bounded fix lists; reuse existing MenuList truth, DAL, cache, and mobile shell patterns |
-| V2 | Paid add-on behavior | Recurring checks, saved history, monthly report, multi-location scan, partner/agency reports | Paid only when recurrence/history create value | Requires entitlement, capped history, source policy, audit logs, and cost controls |
+| V2 | Paid add-on behavior | Current saved history/manual report refresh; scheduled, multi-location, and partner reporting only when explicitly enabled later | Paid only when recurrence/history create value | Entitled manual saved-history runtime is implemented with capped atomic history; scheduler and external adapters remain off |
 
 This lets the list keep growing without creating a new SaaS product or adding owner dashboard noise.
 
@@ -227,6 +231,7 @@ Provider-backed owner/admin prototype:
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 2.13 | July 16, 2026 | Deep-audited all public/owner/report/lead/monitor paths; hardened shared URL and phone boundaries, report structure and internal links, bounded lead-scan disclosure, production rate-limit failure behavior, and atomic saved-history refreshes; added executable runtime boundary tests |
 | 2.12 | July 5, 2026 | Made manifest-backed public report URL evidence text name the public HTTPS boundary and source-gated rejection of generic URL-format evidence |
 | 2.11 | July 4, 2026 | Moved public V0 URL readiness checks to the shared public HTTPS URL boundary so local, private, insecure, raw-IP, and credentialed links are not treated as ready public customer links |
 | 2.10 | July 4, 2026 | Expanded V1 owner readiness to eighteen modules covering the remaining public tool jobs and the Print & Share asset cluster without new storage, APIs, or external scans |

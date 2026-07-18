@@ -39,6 +39,8 @@ Repeated reply import is an implemented low-cost subpath. It writes one existing
 
 The repeated-reply entity selector is search-gated. It does not load the ontology on page open. Search requests go through a protected, rate-limited Knowledge Intake API route, query the existing `answerlattice_entitySearchIndex` by tenant/store and prefix token, then read only the matched entity docs needed for labels and active/beta filtering. Older index rows without prefix tokens use a capped tenant/store search-index fallback; the route never fetches the full `answerlattice_entities` list for this form.
 
+Owner review evidence is projected from the sources already returned in the bounded active-job bundle. Showing up to three excerpts and applicability tags adds 0 Firestore reads, 0 writes, 0 listeners, 0 provider calls, and no new evidence collection.
+
 ---
 
 ## 2. Collections

@@ -417,7 +417,7 @@ Do not show hash values to owners unless support mode is active.
 | Decision | Default Recommendation |
 | --- | --- |
 | Renderer | Start with `jsPDF` behind a renderer interface because it exists in the repo. Validate browser-rendered PDF only if runtime/dependency is approved. |
-| Artifact retention | Local browser history keeps latest 20 exports per project. Server artifact retention is not active because server storage is not implemented. |
+| Artifact retention | Local browser history keeps latest 20 exports per tenant/store/project. Server artifact retention is not active because server storage is not implemented. |
 | Print-shop preset | Flag off until file size, bleed, and printer specs are verified. |
 | QR error correction | Use short URLs and choose level by preset; default print QR should favor resilience while keeping module size scan-safe. |
 | Accessibility target | Preserve selectable text at launch; treat tagged PDF/PDF-UA as a verified hardening target, not a launch claim. |

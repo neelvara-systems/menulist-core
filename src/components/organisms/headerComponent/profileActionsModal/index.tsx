@@ -5,7 +5,7 @@ import { useAppDispatch } from '@hook/useAppDispatch';
 import { signOutSession } from '@lib/auth/client';
 import KeyboardShortcutsModal from '@organisms/keyboardShortcutsModal';
 import { toggleAppSettingsPanel } from '@reduxSlices/clientThemeConfig';
-import { showSuccessToast } from '@reduxSlices/toast';
+import { showErrorToast, showSuccessToast } from '@reduxSlices/toast';
 import { Avatar, Badge, Modal, Popconfirm, Space, theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useRouter } from 'next/navigation';
@@ -75,7 +75,7 @@ function ProfileActionsModal({ children, userData = { name: "", email: "", image
                 dispatch(showSuccessToast(t('logoutSuccess')))
                 setIsLoading(false);
             }).catch(() => {
-                dispatch(showSuccessToast(t('logoutFailed')))
+                dispatch(showErrorToast(t('logoutFailed')))
                 setIsLoading(false);
             })
     }

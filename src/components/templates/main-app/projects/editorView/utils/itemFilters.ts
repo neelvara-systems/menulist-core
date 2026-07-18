@@ -1,3 +1,5 @@
+import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import { ExtractedDataItem, ProjectFileType } from '../../types';
 import { EditorFilters } from '../EditorFiltersPopover';
 
@@ -57,15 +59,23 @@ export function itemMatchesFilters(
     // Price range filter
     if (showItemPrices && filters?.priceRange) {
         const { min, max } = filters.priceRange;
-        const price = parseFloat(String(item.price || '0').replace(/[^0-9.-]+/g, ''));
-        if (min !== null && price < min) return false;
-        if (max !== null && price > max) return false;
+        if (min !== null || max !== null) {
+            const numericPrices = [
+                parseSingleMenuPrice(item.price),
+                ...(item.attributes || [])
+                    .filter((attribute) => attribute.active !== false)
+                    .map((attribute) => parseSingleMenuPrice(attribute.price)),
+            ].filter((price): price is number => price !== null);
+            const hasMatchingPrice = numericPrices.some((price) => (
+                (min === null || price >= min) && (max === null || price <= max)
+            ));
+            if (!hasMatchingPrice) return false;
+        }
     }
 
     // Has price filter
     if (showItemPrices && filters?.hasPrice !== null && filters?.hasPrice !== undefined) {
-        const price = Number(String(item.price || '').replace(/[^0-9.-]/g, ''));
-        const hasPrice = Number.isFinite(price) && price > 0;
+        const hasPrice = hasPublicItemDisplayPrice(item);
         if (hasPrice !== filters.hasPrice) return false;
     }
 

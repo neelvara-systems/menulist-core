@@ -4,7 +4,7 @@
 **Status:** 🔒 **LOCKED — FINAL (Post-Market Review)**  
 **Author:** Lead Architect (Cascade)  
 **Audience:** Sales Team, Marketing Team, Partnership Discussions  
-**Last Audit:** February 8, 2026 (Market Research + Strategic Review → Two-surface positioning)
+**Last Audit:** July 16, 2026 (code-truth freshness, valid-price, loaded-offline, access, and lifecycle wording)
 
 ## Source Gate
 
@@ -56,8 +56,8 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 **Menu Board (default)** — your full menu on screen:
 
 - All categories and items with prices
-- Sold out items disappear automatically
-- New items appear automatically
+- Sold-out items leave after the menu is saved and the screen refresh path completes
+- New items appear after save and screen refresh
 - Pages rotate for large menus
 - QR code to your digital menu
 
@@ -101,9 +101,9 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 | Alternative             | Problem                                   | MenuList Advantage                      |
 | ----------------------- | ----------------------------------------- | --------------------------------------- |
 | **Blank TV**            | Wasted opportunity                        | Keeps showing relevant menu content     |
-| **USB slideshow**       | Never updated, manual effort              | Auto-updates from your menu             |
+| **USB slideshow**       | Becomes stale, manual effort               | Refreshes from the saved MenuList source |
 | **Generic signage CMS** | Expensive, complex, another tool to learn | Free with MenuList, zero learning curve |
-| **Hire a designer**     | Expensive, slow, still need to update     | No design needed, real-time updates     |
+| **Hire a designer**     | Expensive, slow, still need to update     | No separate board design for normal menu changes |
 | **DIY Canva**           | Time-consuming, still manual              | Zero time investment                    |
 
 ---
@@ -160,7 +160,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 **Speaker Note:**
 
-> "No app to install. No account to create on the TV. No USB drive. One link. Bookmark. Done."
+> "No app to install. No account to create on the TV. No USB drive. One link. Bookmark. Fullscreen."
 
 ---
 
@@ -272,7 +272,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 - ✓ **Your full menu on screen** — Categories, items, prices from one saved source.
 - ✓ **Sold out? It disappears** — No embarrassment, no manual updates.
 - ✓ **New item? It appears** — Add to MenuList, save, and the screen refreshes through the update path.
-- ✓ **Works offline** — Internet drops? Screen keeps running.
+- ✓ **Connection-resilient after load** — If the connection drops after content has loaded, the screen keeps its last valid display. A cold browser boot still needs the page assets.
 - ✓ **Two modes, one link** — Menu board for ordering, highlights for promotions.
 - ✓ **Zero learning curve** — One link. Fullscreen. Done.
 
@@ -288,9 +288,9 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 
 > Press one button. Your menu takes over the whole screen.
 
-**Step 3: Forget**
+**Step 3: Leave It Running**
 
-> That's it. The screen follows saved MenuList changes through the screen update path.
+> Saved MenuList changes reach the display through the screen update path.
 
 ---
 
@@ -385,7 +385,7 @@ MenuList already knows your menu. It knows what's available. It knows what custo
 4. **Availability-aware** — Sold out = removed automatically
 5. **Two modes, one system** — Menu board + highlights from same link
 6. **Included in MenuList** — Not a separate product or cost
-7. **Works offline** — India-ready, internet-resilient
+7. **Keeps loaded content during a connection loss** — India-ready without promising a cold offline boot
 
 ---
 
@@ -487,7 +487,7 @@ Potential paths:
 
 ### Common Questions
 
-- **"What if internet goes down?"** → "It caches content. Keeps running."
+- **"What if internet goes down?"** → "If the screen is already loaded, it keeps the last valid content. A cold browser start still needs a connection."
 - **"Can I add my own content?"** → "Yes, on the highlights screen. Upload in Settings."
 - **"What screens does it work on?"** → "Any screen with a browser. Smart TV, Android box, old laptop."
 - **"Can I show my full menu?"** → "That's the default. Open the link and your full menu appears."

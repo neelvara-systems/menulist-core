@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import PriceAvailabilityGapCheckPage from '@/components/website/priceAvailabilityGapCheck/PriceAvailabilityGapCheckPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Price Availability Gap Check - MenuList | Check Prices and Availability';
 const description = 'Check whether pasted menu, service, catalog, package, or price-list text makes prices, rates, availability, unavailable items, and quote paths clear for customers.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/price-availability-gap-check',
   },
-};
+});
 
 export default function Page() {
   if (

@@ -1,104 +1,59 @@
 # AI QnA Chatbot — Customer Help Documentation
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** SMB Owners (MenuList dashboard users)
-> **Tone:** Zero jargon, step-by-step, calm
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
+> **Audience:** SaaS customers and support users
+> **Tone:** Direct, calm, and evidence-aware
 
 ---
 
-## Getting Answers from the AI Assistant
+## Getting a Support Answer
 
-The AI assistant searches your knowledge base and gives you a clear answer with a link to the source article. It understands the meaning of your question, not just the exact words.
+Ask a product question in the Answerlattice help surface available to you. Answerlattice checks governed answers first, then approved FAQs, then the workspace knowledge base.
 
----
+The result may include:
 
-## Asking a Question
+- an approved answer;
+- links to supporting knowledge-base articles;
+- suggested follow-up questions;
+- a clarification or safe fallback when the available evidence is insufficient.
 
-1. Open the **Help Chat** from your dashboard
-2. Type your question in the search bar
-3. Press Enter or click Send
-4. The AI finds relevant articles and generates a clear answer
-5. Below the answer, you'll see:
-   - **Source** — The article the answer came from (click to read the full article)
-   - **Suggested questions** — 3 related questions you might want to ask next
+An answer without a source link is not automatically wrong: an approved canonical answer may be returned directly. A generated knowledge-base answer must either include a valid supporting reference or clearly state that the current knowledge base does not contain the answer.
 
----
+## Asking a Useful Question
 
-## Using Screenshots
+1. Describe the task or problem in one sentence.
+2. Include the exact error code, API path, version, command option, or setting name when relevant.
+3. Add the product area or workflow if the same term can mean different things.
+4. Review the answer scope and source before applying it.
 
-If you're seeing something on screen that you need help with:
+Examples:
 
-1. Click the image icon next to the search bar
-2. Upload a JPEG, PNG, WebP, or GIF screenshot up to 5 MB
-3. Type your question about what you see
-4. The assistant extracts safe visual context and finds relevant help articles
+- `Why does /v1/webhooks return 403?`
+- `How do I connect Slack on the Pro plan?`
+- `What changed in v2.4.1 for webhook retries?`
 
-Screenshots are especially useful for error messages, unusual layouts, or visual issues. Do not upload screenshots that contain passwords, payment data, tokens, or private customer information.
+## Using a Screenshot
 
----
+The supported help surfaces may accept JPEG, PNG, WebP, or GIF images up to 5 MB. A screenshot is treated as untrusted context that can help interpret the question; it is not treated as product truth.
 
-## Two Ways to Get Help
+Do not upload passwords, credentials, payment data, access tokens, recovery codes, or private customer information. Remove or obscure sensitive content before submitting the image.
 
-### Quick Answer (QnA Mode)
-- Ask one question, get one answer
-- Best for: "How do I...?" or "What does this mean?"
-- After getting an answer, you'll see two buttons:
-  - **Ask a Follow-up** — Continue talking about the same topic
-  - **New Question** — Start fresh with a different topic
+## Follow-Up Questions
 
-### Conversation Mode (Assistant)
-- Have a back-and-forth conversation
-- The AI remembers what you discussed earlier in the same chat
-- Best for: Complex issues that need several steps to resolve
-- Activate by clicking "Ask a Follow-up" after your first answer
+QnA mode handles an independent question. Assistant mode can use up to the last five validated messages to maintain the current conversation. A follow-up still uses the same governed retrieval order and cannot override approved product knowledge.
 
----
+## When No Confirmed Answer Is Available
 
-## Managing Your Chats
+Answerlattice may:
 
-### Chat History
-Your previous conversations are saved in the left sidebar. Click any conversation to continue where you left off.
+- say that the current knowledge base does not contain a confirmed answer;
+- request clarification;
+- present relevant documented material;
+- recommend the configured support fallback.
 
-### Rename a Chat
-Right-click a conversation in the sidebar and select "Rename" to give it a meaningful name.
+This is intentional. The system should not invent product behavior, pricing, permissions, or policy.
 
-### Delete a Chat
-Right-click a conversation and select "Delete" to remove it permanently.
+## Feedback
 
-### Start Fresh
-Click "New Chat" at the top of the sidebar to start a new conversation.
-
----
-
-## Giving Feedback
-
-Your feedback helps improve the answers:
-
-- **Thumbs up** — Click if the answer was helpful (instant, no extra steps)
-- **Thumbs down** — Click if the answer wasn't helpful, then:
-  - Select the reason(s) from the list
-  - Add a comment explaining what was wrong or missing
-  - Click Submit
-
----
-
-## If the AI Can't Find an Answer
-
-Sometimes the knowledge base might not have information about your specific question. When this happens, the AI will:
-
-1. Let you know it couldn't find a relevant answer
-2. Suggest related topics it can help with
-3. Recommend contacting support if needed
-
-This is better than guessing — you'll always know when the answer comes from real documentation.
-
----
-
-## Tips for Better Answers
-
-- **Be specific** — "How do I change my menu prices?" works better than "prices"
-- **Use natural language** — Write as you would ask a person
-- **Try suggested questions** — They're based on what's actually in the documentation
-- **Use screenshots** — For visual issues, a picture helps the AI understand exactly what you see
-- **Use conversation mode** — For complex multi-step issues, switch to follow-up mode to carry context
+Use positive feedback when the answer resolved the question. Use negative feedback when the answer was incorrect, incomplete, stale, or not useful, and add a short reason when the surface requests it. Feedback is a quality signal; it does not automatically rewrite approved knowledge.

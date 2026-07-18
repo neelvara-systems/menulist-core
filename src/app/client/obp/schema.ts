@@ -73,7 +73,7 @@ export function generateOBPSchema(
         phone: storeData?.phone,
     });
     const priceRange = buildSchemaPriceRange(storeData?.priceRange);
-    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus);
+    const tempStatusHours = buildTempStatusSchema(storeData?.tempStatus, storeData?.timeZone);
     const schemaType = getSchemaType(storeData?.businessType, storeData?.businessCategory);
     const menuUrl = options.hasPublishedMenu
         ? (options.menuUrl || buildMenuUrl(canonicalUrl))

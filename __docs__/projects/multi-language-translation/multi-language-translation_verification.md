@@ -1,395 +1,146 @@
-# Multi-Language Translation — Verification Report
-
-> **Feature:** Multi-Language Translation  
-> **Classification:** Foundational / Preparation Infrastructure  
-> **Verification Date:** February 1, 2026  
-> **Verified By:** Cascade (IDE AI) + ChatGPT Review  
-> **Status:** VERIFIED AND COMPLETE; not current launch certification
-
----
-
-> **Launch boundary:** This February 2026 report is source-verified feature evidence, not standalone production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, deploy evidence for the target environment, and browser/mobile QA for translated menu flows.
-
----
-
-## Executive Summary
-
-Comprehensive verification of the multi-language translation feature following `IDE_PROMPTS/9. FINAL-VARIFICATION.md` checklist. All core functionality is implemented correctly. Minor issues identified and fixed.
-
----
-
-## 1. Deep Codebase Review
-
-### Files Reviewed
-
-| File                                            | Lines | Status | Notes                     |
-| ----------------------------------------------- | ----- | ------ | ------------------------- |
-| `src/app/api/translations/route.ts`             | 147   | ✅     | Secure, validated         |
-| `src/app/api/translations/prompt.ts`            | 59    | ✅     | Clean system instructions |
-| `src/components/.../generateTranslations.ts`    | 34    | ✅     | Fixed typo this session   |
-| `src/components/.../utils/translationsUtils.ts` | 234   | ✅     | Fixed typo this session   |
-| `src/components/.../LanguageSelectorModal.tsx`  | 513   | ✅     | Excellent UX              |
-| `src/components/.../editItemModal.tsx`          | 592   | ✅     | Item translation works    |
-| `src/components/.../editor.tsx`                 | 1056  | ✅     | Language toggle works     |
-| `src/data/languages.ts`                         | 95    | ✅     | 93 languages, 5 RTL       |
-| `src/components/.../types/common.types.ts`      | 32    | ✅     | LanguageType defined      |
-| `src/components/.../types/api.types.ts`         | 87    | ✅     | TranslationAPIParams      |
-| `src/lib/validation/apiSchemas.ts`              | 273   | ✅     | TranslationRequestSchema  |
-
-### Security Compliance
-
-| Requirement      | Implementation                 | Location       | Status |
-| ---------------- | ------------------------------ | -------------- | ------ |
-| Authentication   | `withAuth()` middleware        | route.ts:17    | ✅     |
-| Input Validation | Zod `TranslationRequestSchema` | route.ts:29    | ✅     |
-| Rate Limiting    | `checkAIOperationLimit()`      | route.ts:24    | ✅     |
-| Security Logging | `logger.security()`            | route.ts:35    | ✅     |
-| Content Safety   | Gemini safety settings         | route.ts:75-78 | ✅     |
-
----
-
-## 2. Cross-Check: Chat Messages vs Codebase
-
-### Session Work Completed
-
-| Task                          | Status | Verification                             |
-| ----------------------------- | ------ | ---------------------------------------- |
-| Fix `getTransalations` typo   | ✅     | Grep confirms no occurrences             |
-| Verify edge cases implemented | ✅     | All 5 edge cases verified                |
-| Create fresh documentation    | ✅     | 3 files in `__docs__/`                   |
-| Web research alignment        | ✅     | Feature aligns with industry             |
-| Add deferred improvements     | ✅     | Added to impl.md and misclenious-task.md |
-
----
-
-## 3. Cross-Check: Codebase → Docs
-
-| Codebase Feature       | Documented? | Location                           |
-| ---------------------- | ----------- | ---------------------------------- |
-| 4 translation flows    | ✅          | \_spec.md section "User Flows"     |
-| 93 languages           | ✅          | \_spec.md "Supported Languages"    |
-| 5 RTL languages        | ✅          | \_impl.md "RTL Support"            |
-| Primary language lock  | ✅          | \_spec.md "Primary Language"       |
-| Cancel translation     | ✅          | \_impl.md "Cancel capability"      |
-| Translation key format | ✅          | \_impl.md "Translation Key Format" |
-| Rate limiting          | ✅          | \_impl.md "Security Checklist"     |
-| Quality score UI       | ✅          | \_spec.md "Flow 2"                 |
-
----
-
-## 4. Cross-Check: Docs → Codebase
-
-| Documented Feature          | Implemented? | Location                            |
-| --------------------------- | ------------ | ----------------------------------- |
-| OCR + Translation flow      | ✅           | Cloud Functions (processMenuImages) |
-| File re-translation         | ✅           | `translateFile()`                   |
-| Global add language         | ✅           | `Editor.tsx:handleLanguageToggle`   |
-| Item translation            | ✅           | `translateItem()`                   |
-| Primary language protection | ✅           | `LanguageSelectorModal.tsx:329`     |
-| Translation progress UI     | ✅           | `LanguageSelectorModal.tsx:212`     |
-
----
-
-## 5. Cross-Check: Master Rules Compliance
-
-| Rule                              | Compliance | Notes                                         |
-| --------------------------------- | ---------- | --------------------------------------------- |
-| **Law 1:** 3-Year Architecture    | ✅         | Feature complete, extensible                  |
-| **Law 2:** Codebase is Truth      | ✅         | Docs generated from code                      |
-| **Law 3:** Single Doc Set         | ✅         | All in `__docs__/multi-language-translation/` |
-| **Law 4:** Feature Flags          | ⚠️         | No dedicated flag (part of Projects)          |
-| **Law 5:** Path Verification      | ✅         | All paths verified                            |
-| **Law 6:** Cascade Primary        | ✅         | Codebase explored independently               |
-| **Law 7:** Continuous Improvement | ✅         | Prompts enhanced                              |
-
-### Feature Flag Note
-
-Translation is integral to the Projects feature and doesn't require a separate feature flag. The entire Projects feature can be toggled if needed. No action required.
-
----
-
-## 6. Project Architecture Consistency
-
-| Pattern             | Translation Feature            | Overall Project                | Match |
-| ------------------- | ------------------------------ | ------------------------------ | ----- |
-| API Route Structure | `/api/translations`            | `/api/[feature]`               | ✅    |
-| Zod Validation      | `TranslationRequestSchema`     | All schemas in `apiSchemas.ts` | ✅    |
-| Types Location      | `types/api.types.ts`           | Same file                      | ✅    |
-| Utility Functions   | `translationsUtils.ts`         | Utils folder pattern           | ✅    |
-| Error Handling      | try/catch + bounded `translationDiagnostics.ts` | Secure logging pattern | ✅    |
-| Loader State        | Redux `startLoader/stopLoader` | Project-wide pattern           | ✅    |
-
----
-
-## 7. Related Files Review
-
-### Cloud Functions
-
-| File                          | Translation-Related? | Notes                             |
-| ----------------------------- | -------------------- | --------------------------------- |
-| `processMenuImages.ts`        | ✅                   | Calls translation during OCR      |
-| `parallelProcessingPrompt.ts` | ✅                   | Mentions translation in prompt    |
-| `decisionBlocksScoring.ts`    | ❌                   | Unrelated (Decision Intelligence) |
-
-### No Cloud Function for Translation API
-
-Translation uses the Next.js API route (`/api/translations`) directly, not Cloud Functions. This is correct because:
-
-- Translation is synchronous (fast)
-- No background processing needed
-- Direct response to user action
-
----
-
-## 8-16. Redundancy & Consolidation
-
-### Findings
-
-| Issue                              | Type          | Severity | Action                   |
-| ---------------------------------- | ------------- | -------- | ------------------------ |
-| `LANGUAGE_TRANSATION` typo         | Typo          | Low      | ✅ Fixed                 |
-| `AVAILABLE_LANGUAGES` in common.ts | Redundant     | Low      | Keep (different purpose) |
-| Hardcoded model in route.ts        | Inconsistency | Low      | Document for future      |
-
-### Typo Fixed This Session
-
-```typescript
-// Before (database.ts:88)
-LANGUAGE_TRANSATION: "languageTranslation";
-
-// After
-LANGUAGE_TRANSLATION: "languageTranslation";
-```
-
-### Language Constants Analysis
-
-| Constant              | Location                  | Languages | Purpose            | Keep?              |
-| --------------------- | ------------------------- | --------- | ------------------ | ------------------ |
-| `GlobalLanguagesList` | `src/data/languages.ts`   | 93        | Primary SSOT       | ✅ Yes             |
-| `AVAILABLE_LANGUAGES` | `src/constants/common.ts` | 3         | Legacy/specific UI | ⚠️ Review later    |
-| `APP_LANGUAGES`       | `src/constants/common.ts` | 3         | App UI language    | ✅ Yes (different) |
-
-**Decision:** `GlobalLanguagesList` is the Single Source of Truth for translation. `APP_LANGUAGES` is for app interface language (different purpose). `AVAILABLE_LANGUAGES` may be legacy but doesn't conflict.
-
-### Model Configuration
-
-```typescript
-// route.ts:14 - Hardcoded
-const AI_MODEL = "gemini-2.5-flash";
-
-// constants/AI/models.ts has:
-AI_MODELS.TRANSLATION.model = GEMINI_MODELS.TEXT_GEN; // gemini-2.5-flash
-```
-
-**Note:** Route and centralized model config now both use the stable production text model.
-
----
-
-## 17-21. UI/UX Review
-
-### LanguageSelectorModal.tsx
-
-| Aspect                      | Status       | Notes                         |
-| --------------------------- | ------------ | ----------------------------- |
-| **Native language display** | ✅ Excellent | Shows "Français (French)"     |
-| **Primary language lock**   | ✅ Excellent | Lock icon, non-clickable      |
-| **Translation progress**    | ✅ Good      | File-by-file percentage       |
-| **Cancel capability**       | ✅ Good      | Red button during translation |
-| **Quality score**           | ✅ Good      | Percentage per language       |
-| **Pre-translation summary** | ✅ Excellent | Shows item/file counts        |
-| **Removal impact**          | ✅ Excellent | Shows what will be deleted    |
-
-### Honest Feedback
-
-**What Works Well:**
-
-- Native language names are user-friendly (non-tech owners can recognize their language)
-- Primary language lock prevents accidental data loss
-- Progress indicator reduces anxiety during translation
-- Quality percentage helps identify incomplete translations
-- Pre-translation summary sets expectations
-
-**Could Be Improved (Future):**
-
-- No estimated time shown during translation
-- No retry for failed files (only cancel all)
-- No bulk retry for partial translations
-
-### Language Governance Compliance
-
-| Copy                                     | Compliant? | Notes                           |
-| ---------------------------------------- | ---------- | ------------------------------- |
-| "AI will translate your menu content"    | ⚠️         | Mentions AI (should be neutral) |
-| "Please wait while AI translates..."     | ⚠️         | Mentions AI                     |
-| "Translation failed. Please try again."  | ✅         | Neutral error                   |
-| "Language added and translations saved!" | ✅         | Simple confirmation             |
-
-**Recommendation:** Consider changing "AI will translate" to "Your menu will be translated" for doctrine compliance. **Low priority.**
-
----
-
-## 22-24. Research & Performance
-
-### Web Research Completed (This Session)
-
-| Research Topic         | Finding                  | MenuList Status |
-| ---------------------- | ------------------------ | --------------- |
-| Native language labels | Industry best practice   | ✅ Implemented  |
-| No flags for languages | Prevents cultural issues | ✅ Correct      |
-| Progress visibility    | Reduces user anxiety     | ✅ Implemented  |
-| Translation memory     | Cost savings             | 🔄 Deferred     |
-| Allergen double-check  | Safety-critical          | 🔄 Deferred     |
-
-### Performance Considerations
-
-| Aspect                | Current             | Optimal           | Notes                |
-| --------------------- | ------------------- | ----------------- | -------------------- |
-| Translation speed     | ~5-10s/file         | ✅ Acceptable     | Gemini is fast       |
-| Sequential processing | Yes                 | Parallel possible | Not blocking         |
-| API calls             | 1 per language/file | Could batch       | Future optimization  |
-| Token usage           | Logged              | ✅ Good           | Transaction tracking |
-
----
-
-## 25-27. Bugs Fixed & Type Check
-
-### Bugs Fixed This Session
-
-| Bug                        | File                      | Line        | Fix                   |
-| -------------------------- | ------------------------- | ----------- | --------------------- |
-| `getTransalations` typo    | `generateTranslations.ts` | 3, 34       | Renamed function      |
-| `getTransalations` typo    | `translationsUtils.ts`    | 2, 111, 211 | Updated import/usages |
-| `LANGUAGE_TRANSATION` typo | `database.ts`             | 88          | Fixed spelling        |
-
-### Type Check Result
+# Multi-Language Translation — Verification Record
+
+**Audit date:** July 15, 2026
+**Scope:** API, provider response, accounting, desktop, mobile, project/public copy, business copy, special menus, extraction, linked outlets, persistence, public rendering, transaction history, locales, and docs.
+
+## Defects corrected
+
+| Defect | Correction |
+| --- | --- |
+| Batch array with one target was parsed as single response | Response shape now follows `Array.isArray(targetLang)` |
+| Schema rejected real project-public/business-copy keys | Added exact reserved-key allowlists; unknown keys still fail |
+| Business copy fabricated invalid project IDs | Business-only payloads can omit `projectId`; callers omit it |
+| Special-menu drafts appended an invalid project-ID suffix | Desktop/mobile pass the real base project ID |
+| Mobile used customer display default as source | English source and display default are separate values |
+| Desktop share/PDF export still opened in the first normalized language | Share export now uses the project/store preferred display language while translation continues to source English |
+| English could be removable when another mobile default came first | English has an explicit immutable guard and Source label |
+| Mobile add/repair showed success before durable save | Paid add/repair now await immediate project persistence |
+| Repair touched inherited outlet content | Issue detection, clearing, and translation all receive item/category governance |
+| Latin-script exact matches were treated as wrong | Exact equality alone no longer flags Latin-script languages |
+| Desktop file retry used five-unit image translation | Ordinary text retry now uses `LANGUAGE_ADDITION` |
+| Failed per-file operations could still end with success or discard earlier paid output | Error paths stop; desktop/mobile add and repair retain the last completed project snapshot with partial wording, excluding failed-file clearing |
+| Item retry appeared for English/inherited content | Desktop/mobile controls reject source and inherited targets |
+| Mobile category errors could look like “nothing missing” | Capacity/full/partial failures now have distinct outcomes |
+| Extraction accepted unknown/oversized language sets | Server maps known codes, forces English, deduplicates, caps at six |
+| Translation trusted caller-supplied language labels and oversized batches | Schema now requires catalog-backed code/name pairs and at most five batch targets |
+| Legacy oversized stored language arrays could make a valid owner action fail the stricter schema | Shared batch callers deduplicate, exclude the source, and bound targets to the supported five-target request |
+| Project-public copy could label a non-English localized fallback as English | Provider payloads now require an exact `en` value; legacy plain strings remain canonical English |
+| Project/special-menu/business-copy AI controls were visible to restricted staff | Secondary provider controls now follow `canGenerateDescriptions`; manual localized editing remains available |
+| Provider partial output could be merged as translated source fallbacks | The route exposes bounded coverage; clients reject partial maps before persistence and history reports incomplete rows |
+| A malformed batch success could omit one target/key or report impossible coverage totals | Shared client projection now requires every requested target and key, drops extras, and checks coverage cardinality before merge |
+| Full Business Copy generation could silently lose follow-on translations | Valid English copy is retained, while desktop/mobile explicitly say some translations still need review |
+| Mobile bulk repair could save a partial file but report zero updates | Partial saved output now reports at least one update |
+| Compact translation history lost source details | Owner projection/client contract admit `languageSummary` |
+| Compact transaction summaries showed raw target codes | Shared desktop/mobile owner summaries now resolve catalog-backed language names such as `French (fr)` |
+| Item translation lacked desktop/mobile detail rendering | All three translation action types use language detail views |
+| Owner/website copy said first language was source, promised “one-click” output, or implied translation needed no review | Active locale overrides and docs now describe English source, configurable display default, plan/credit limits, and owner review accurately |
+
+## Source evidence reviewed
+
+- `src/app/api/translations/route.ts`
+- `src/app/api/translations/prompt.ts`
+- `src/lib/validation/apiSchemas.ts`
+- `src/lib/ai/translationOutput.ts`
+- `src/components/templates/main-app/projects/generateTranslations.ts`
+- `src/components/templates/main-app/projects/utils/translationsUtils.ts`
+- `src/components/templates/main-app/projects/editorView/Editor.tsx`
+- `src/components/templates/main-app/projects/editorView/LanguageSelectorModal.tsx`
+- `src/components/templates/main-app/projects/editorView/languageRepair.shared.ts`
+- Desktop/mobile item, category, command, bulk, language, special-menu, transaction, and extraction surfaces
+- Project-public and business-copy services
+- Public localization/render helpers and active locale JSON
+- AI accounting, capacity, history projection, and presentation helpers
+
+## Required automated gates
+
+Run from repository root:
 
 ```bash
+npx tsx scripts/verification/test-translation-output-boundary.ts
+npx tsx scripts/verification/test-ai-operation-history-query.ts
+npm run verify:ai-accounting
+npm run verify:dependency-freeze
+npm run docs:check-links
 npx tsc --noEmit
+git diff --check
 ```
 
-**Result:** Exit code 0 (success) - Errors are in unrelated test files (`__tests__/projects/redistributeExtractedData.test.ts`) with missing Jest types. **Not translation-related.**
+Also parse every active MenuList locale JSON and run targeted lint on touched TypeScript/TSX files when the repository lint command supports file arguments.
 
----
+## July 15, 2026 execution results
 
-## 28-32. Documentation & Wrap-up
+| Gate | Result |
+| --- | --- |
+| `npx tsc --noEmit` | Pass |
+| Targeted Next lint for all translation-touched TypeScript/TSX | Pass, no warnings/errors |
+| `npm run test:translation-output-boundary` | Pass |
+| `npm run test:ai-operation-history-query` | Pass |
+| Business-copy repair and coverage focused tests | Pass |
+| Shared description, new-item metadata, and business-copy output schemas | Pass |
+| `npm run verify:ai-accounting` | Pass, including all adjacent AI regression suites |
+| `npm run verify:menulist-api-tenant-safety` | Pass |
+| `npm run verify:public-business-truth` | Pass, including nested-store/menu-change/drift/extraction-learning tests |
+| `npm run verify:dependency-freeze` | Pass |
+| 52 MenuList locale JSON files | Parse pass |
+| `git diff --check` | Pass |
+| `npm run docs:check-links` | Exit 0, 0 broken links; 27 unrelated uppercase video-artifact naming warnings remain in the current worktree |
+| `npm run verify:agent-readiness` | Pending repository-wide: it expects the production-readiness audit to say 0 naming violations, but the current video artifacts produce the 27 warnings above |
 
-### Files Created/Updated This Session
+## Regression assertions
 
-| File                                         | Action  | Purpose                  |
-| -------------------------------------------- | ------- | ------------------------ |
-| `multi-language-translation_spec.md`         | Created | Product specification    |
-| `multi-language-translation_impl.md`         | Created | Technical implementation |
-| `README.md`                                  | Updated | Navigation hub           |
-| `multi-language-translation_verification.md` | Created | This verification report |
+- Array-of-one batch detection returns true.
+- Single target object detection returns false.
+- Menu entity key schemas pass; empty/unknown/prototype-like inputs fail.
+- Project-public keys pass with a valid project ID.
+- Business-copy keys pass without a project ID.
+- Project-public/menu keys fail without a project ID.
+- Duplicate targets and source-equal targets fail.
+- Unexpected provider response keys do not cross the output boundary.
+- Batch output is accepted only when every requested target has every requested key; unrequested targets/keys are dropped.
+- Coverage target count and translated-plus-fallback totals must match the original request cardinality.
+- Partial provider coverage is exposed as bounded metadata and rejected by clients before translated-field persistence.
+- Owner transaction history reports incomplete translation rows instead of full-success copy.
+- Project-public translation does not treat a localized object lacking `en` as English source text.
+- Legacy oversized caller lists are bounded before the five-target batch schema.
+- Owner operation rows admit compact `languageSummary` and omit unexpected raw fields.
+- English is present after language normalization and cannot be removed by desktop/mobile handlers.
+- Extraction target normalization uses known catalog codes and `MAX_LANGUAGES_PER_PROJECT`.
+- Ordinary text retry contains no `IMAGE_TRANSLATION` action.
+- Desktop/mobile details include `ITEM_TRANSLATION`.
 
-### Version History Update
+## Manual QA matrix
 
-| Version | Date         | Changes                                  |
-| ------- | ------------ | ---------------------------------------- |
-| 3.0     | Jan 31, 2026 | Fresh documentation from codebase        |
-| 3.1     | Jan 31, 2026 | Fixed typos, added deferred improvements |
+| Surface | Case | Expected |
+| --- | --- | --- |
+| Desktop Languages | Add one target to one-file menu | Progress, translated menu/public fields, saved project, separate transaction rows |
+| Desktop Languages | Cancel after first of several files | Completed work saved; partial/cancel wording; no full-success toast |
+| Desktop Retry | Retry a file with two targets | English source, both targets considered, 3 units/request, no image-translation row |
+| Mobile Manage | Default language is non-English | Screen opens in default; add/repair still sources English |
+| Mobile Manage | Add at six-language cap | Add controls disabled; no provider request |
+| Item desktop/mobile | Refresh target | Draft changes; durable only after Save; 1-unit transaction |
+| Category desktop/mobile | Partial provider failure | Partial warning or failure; no “nothing missing” false result |
+| Linked outlet | Inherited item/category | Translation control absent/blocked; no provider/credit call |
+| Linked outlet | Local-only item/category | Translation succeeds and persists through normal save |
+| Project public | Exactly one missing target | Array-of-one batch response merges correctly |
+| Business copy | No project ID | Authenticated store-scoped request succeeds |
+| Special menu create | Multiple project languages | Real base project validates; localized draft fields are returned |
+| Extraction | Unknown codes and more than six inputs | Unknowns dropped; English first; at most six stored |
+| Transactions | New item/language operation | Source and target(s) visible; no misleading empty-row error |
+| Public menu | Missing requested localized field | Safe English/fallback text; no raw object or technical error |
+| RTL public menu | Arabic/Hebrew | Direction/layout verified on target devices |
 
----
+## External/pending evidence
 
-## Scope for Improvement
+Code/source gates cannot certify:
 
-### Immediate (P1)
+- deployed Gemini credentials/model access;
+- actual paid balance reservation/settlement in the target Firebase project;
+- authenticated desktop/mobile flows with production tenant/outlet data and rules behavior;
+- rendered public menu output on real LTR/RTL browsers and devices;
+- Vercel deployment or production-host smoke.
 
-| Item                                   | Effort | Impact              |
-| -------------------------------------- | ------ | ------------------- |
-| Update AI copy to remove "AI" mentions | 30 min | Doctrine compliance |
+Keep these pending in the External Certification Runbook until the owner runs them in the target environment.
 
-### Future (P2)
+## Launch boundary
 
-| Item                              | Effort   | Impact            |
-| --------------------------------- | -------- | ----------------- |
-| Translation memory cache          | 2-3 days | Cost reduction    |
-| Parallel file translation         | 1 day    | Speed improvement |
-| Estimated time during translation | 2 hours  | UX improvement    |
-
-### Not Recommended
-
-| Item                      | Reason                              |
-| ------------------------- | ----------------------------------- |
-| Cultural adaptation       | Violates doctrine (no explanations) |
-| Automatic quality scoring | Creates audit mindset               |
-
----
-
-## Items Needing Discussion
-
-1. ~~**AI Copy in UI:** "AI will translate" should be "Menu will be translated" per Language Governance.~~ ✅ **FIXED** (Feb 1, 2026)
-
-2. ~~**Model Version Mismatch:** Route and centralized model config now both use `gemini-2.5-flash`.~~ ✅ **FIXED** (June 25, 2026)
-
-3. ~~**Provider Prompt Input Boundary:** Request validation now caps translation keys/values and the prompt builder serializes sanitized bounded values without changing stable keys.~~ ✅ **FIXED** (June 30, 2026)
-
-4. **AVAILABLE_LANGUAGES:** Legacy constant with only 3 languages. Consider removing if unused. **Low priority.**
-
----
-
-## External Review: ChatGPT Feedback (Feb 1, 2026)
-
-Shared documentation with ChatGPT for independent review. Key findings:
-
-### Feature Classification (Accepted)
-
-| Classification                  | Meaning                                        |
-| ------------------------------- | ---------------------------------------------- |
-| **Preparation Infrastructure**  | Prepares content, does not influence decisions |
-| **NOT Decision Infrastructure** | Does not assert authority over meaning         |
-| **NOT Execution Surface**       | Does not display to customers directly         |
-
-### Doctrine Alignment Confirmed
-
-| Doctrine               | Status       | Notes                                                   |
-| ---------------------- | ------------ | ------------------------------------------------------- |
-| Authority Doctrine     | ✅ PASS      | Literal translation only, no cultural adaptation        |
-| Silence Principle      | ✅ PASS      | Empty source → skip, no hallucinated fill-ins           |
-| No Explanation Gravity | ✅ PASS      | Fixed AI copy in UI                                     |
-| Data Model             | ✅ EXCELLENT | Stable IDs, idempotent merge, no destructive overwrite  |
-| Cost & Control         | ✅ PASS      | Rate limiting, immediate persistence, no silent retries |
-| Safety & Liability     | ✅ PASS      | Manual edit = human responsibility                      |
-| Architecture Freeze    | ✅ PASS      | No future mutations required                            |
-
-### Actions Taken from Feedback
-
-| Recommendation                  | Action                                    | Status  |
-| ------------------------------- | ----------------------------------------- | ------- |
-| Fix "AI will translate" copy    | Changed to "Your menu will be translated" | ✅ Done |
-| Add feature classification      | Added to README.md header                 | ✅ Done |
-| Add "What NOT to do" guardrails | Added to impl.md                          | ✅ Done |
-| Update marketing language count | Changed 41 → 90+                          | ✅ Done |
-
-### Official Label Applied
-
-> **Multi-Language Translation — COMPLETE (Foundational Infrastructure)**
-
----
-
-## Conclusion
-
-The multi-language translation feature has source-verified implementation evidence and completed historical fixes. Do not treat this verification report as current production deployment approval without active production-readiness audit evidence, External Certification Runbook evidence, target environment deploy evidence, and browser/mobile QA for translated menu flows.
-
-### Verification Checklist
-
-- [x] Deep codebase review
-- [x] Cross-check chat messages with codebase
-- [x] Cross-check codebase with docs
-- [x] Cross-check docs with codebase
-- [x] Cross-check against Master Rules
-- [x] Check project consistency
-- [x] Review all related files
-- [x] Check redundancy
-- [x] UI/UX review
-- [x] Web research
-- [x] Performance check
-- [x] Fix bugs
-- [x] Type check
-- [x] Log to verification.md
-- [x] Log scope for improvement
-- [x] Report discussion items
-- [x] External review (ChatGPT)
-- [x] Apply valid feedback
-
-**Final Status:** ✅ **VERIFIED AND COMPLETE (Foundational Infrastructure)**
+This record is source-verified feature evidence, not standalone production deployment approval. It is not current launch certification. Release clearance requires translated menu flows, provider smoke, public renderer fallback/RTL evidence, customer-menu browser/device QA, deploy evidence, and production-host smoke.

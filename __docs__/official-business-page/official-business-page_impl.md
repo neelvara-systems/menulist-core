@@ -2,7 +2,7 @@
 
 **Status:** IMPLEMENTED — 3-Year Freeze  
 **Author:** Cascade (Lead Architect)  
-**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update) | June 30, 2026 (Mobile Link Copy Acknowledgement)
+**Date:** February 15, 2026 (Created) | March 11, 2026 (Infrastructure Domination Rebuild) | March 18, 2026 (Distribution Strategy Update) | May 10, 2026 (Business Cover Update) | June 30, 2026 (Mobile Link Copy Acknowledgement) | July 16, 2026 (Public Delivery Parity) | July 17, 2026 (Store Index Cost Boundary)
 **Audience:** Developers
 
 ---
@@ -10,6 +10,8 @@
 ## 1. Architecture Overview
 
 OBP is a **server-rendered public page** that reads from the existing `stores` collection. No new Firestore collections. No new API routes for the public page itself.
+
+The routing fields that locate a store remain indexed. Large nested owner-content maps (`publicPresence`, `businessCopyMeta`, `businessAttributes`, and `workingHours`) are never filtered or ordered by current runtime code, so their automatic single-field indexes are disabled. Exact-document reads, owner saves, public rendering, and cache invalidation are unchanged.
 
 ```
 Data Flow:
@@ -20,7 +22,7 @@ Data Flow:
 
 Routing (when ENABLE_OBP = true):
   subdomain.menulist.ai/              → OBP page (new)
-  subdomain.menulist.ai/menu          → Digital Menu (reserved route → default project)
+  subdomain.menulist.ai/menu          → Digital Menu (owner-claimed slug or explicit-default alias)
   subdomain.menulist.ai/{slug}        → Specific project menu (existing)
 
 Cache Strategy:
@@ -115,9 +117,13 @@ permanentlyClosed?: boolean;
 
 Both are wired through `src/database/stores/uploadOBPPhoto.ts` and `src/database/storage/uploadPreparedMediaImage.ts`.
 
-`deleteOBPPhotos()` keeps old-photo cleanup best-effort after the related store save succeeds. Failed cleanup deletes use bounded Storage diagnostics with counts and URL length metadata only; raw Storage URLs and provider errors are not direct-console logged.
+`deleteOBPPhotos()` keeps cleanup best-effort after the related store save succeeds. New uploads and replaced/removed objects enter the same set of retryable cleanup candidates. Every desktop/mobile/embedded caller passes final saved `publicPresence` references; the helper deduplicates the queue and excludes any URL still used by `businessCover` or `photos[]`. Reset, store switch, or unmount can remove abandoned immediate uploads without deleting committed media. The helper returns only failed URLs so callers retain them for retry. Failed cleanup uses bounded Storage diagnostics with counts and URL length metadata only; raw Storage URLs and provider errors are not direct-console logged.
 
-Desktop and mobile public-output failures use the same bounded boundary. `OBPLinkCard` logs `obp_link_card_default_project_load_failed`, `obp_link_card_copy_failed`, `obp_link_card_copy_message_failed`, `obp_link_card_whatsapp_open_failed`, `obp_link_card_open_failed`, `obp_link_card_qr_download_failed`, and `obp_link_card_share_tracking_failed` with store/tenant, OBP/menu URL presence-length metadata, QR type, message lengths, fixed share method values, and clipboard/fallback support booleans only. Its Copy Link and Copy Message success feedback plus `copy_link`/`copy_message` share tracking run only after Clipboard API success or acknowledged textarea fallback success, so failed browser handoffs do not record false owner share actions. `GoogleListingGuide` logs `google_listing_guide_link_copy_failed`, `google_listing_guide_profile_kit_copy_failed`, and `google_listing_guide_open_failed` with subdomain/custom-domain/OBP URL presence-length metadata, profile-kit line count, owner-text presence booleans, and clipboard/fallback support booleans only; link and profile-kit copy success feedback waits for Clipboard API success or acknowledged textarea fallback success. The legacy Custom Domain tab logs `desktop_custom_domain_open_failed`, `desktop_custom_domain_link_copy_failed`, and `desktop_custom_domain_dns_copy_failed` with bounded domain, copy URL, DNS record metadata, and clipboard/fallback support booleans only; active-domain and DNS copied feedback waits for Clipboard API success or acknowledged textarea fallback success. Business Settings marks the Google listing as updated only after `updateStore()` acknowledgement; rejected writes use `desktop_official_page_google_link_store_update_rejected` and route through `desktop_official_page_google_link_update_failed`. The embedded Business Settings Presence Monitor logs `business_settings_presence_screen_links_load_failed` with bounded store, tenant, subdomain/custom-domain, OBP URL, and menu-presence metadata only; official-link copy is owned by the shared Presence Monitor instead of an embedded direct-copy fallback. Owner Dashboard official-link cards use the same store diagnostic boundary: `GoogleListingCard` logs `owner_dashboard_google_listing_copy_failed`, `owner_dashboard_google_listing_open_failed`, and `owner_dashboard_google_listing_mark_done_failed`, waits for acknowledged official-link copy before copied feedback, and requires `owner_dashboard_google_listing_store_update_rejected` acknowledgement before local updated state or save success copy; `BehaviorNudgeCard` logs `owner_dashboard_behavior_nudge_dismiss_load_failed`, `owner_dashboard_behavior_nudge_dismiss_save_failed`, and `owner_dashboard_behavior_nudge_copy_failed`, and waits for acknowledged official-link copy before copied feedback. These desktop paths must not log raw generated public URLs, owner-entered business text, generated share messages, DNS/domain values, analytics payloads, dismiss keys, store IDs, tenant IDs, or browser exception text.
+Desktop `LocationInfoTab` binds `addressLine` and `postalCode`, while initial values read `address` and `pincode` only as legacy fallbacks. `normalizeGeoCoordinateDraft()` is shared by desktop, MobileShell, and public Maps embedding: both coordinates are required together, ranges are enforced, zero remains valid, and an empty pair clears geo. `normalizeOwnerPublicPresenceLinks()` applies the same HTTPS/Google allowlists before desktop, standalone mobile, or embedded B2C persistence that public rendering applies again. Public Call and WhatsApp admission also requires the shared phone helper to produce a real destination.
+
+The root single/multi-outlet decision and brand outlet selector each query canonical active stores with `.limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)`. The extra row detects legacy overflow without allowing an unbounded tenant read; current product policy permits at most 30 outlets.
+
+Desktop and mobile public-output failures use the same bounded boundary. `OBPLinkCard` logs `obp_link_card_default_project_load_failed`, `obp_link_card_copy_failed`, `obp_link_card_copy_message_failed`, `obp_link_card_whatsapp_open_failed`, `obp_link_card_open_failed`, `obp_link_card_qr_download_failed`, and `obp_link_card_share_tracking_failed` with store/tenant, OBP/menu URL presence-length metadata, QR type, message lengths, fixed share method values, and clipboard/fallback support booleans only. Its Copy Link and Copy Message success feedback plus `copy_link`/`copy_message` share tracking run only after Clipboard API success or acknowledged textarea fallback success, so failed browser handoffs do not record false owner share actions. `GoogleListingGuide` logs `google_listing_guide_link_copy_failed`, `google_listing_guide_profile_kit_copy_failed`, and `google_listing_guide_open_failed` with subdomain/custom-domain/OBP URL presence-length metadata, profile-kit line count, owner-text presence booleans, and clipboard/fallback support booleans only; link and profile-kit copy success feedback waits for Clipboard API success or acknowledged textarea fallback success. The legacy Custom Domain tab logs `desktop_custom_domain_open_failed`, `desktop_custom_domain_link_copy_failed`, and `desktop_custom_domain_dns_copy_failed` with bounded domain, copy URL, DNS record metadata, and clipboard/fallback support booleans only; active-domain and DNS copied feedback waits for Clipboard API success or acknowledged textarea fallback success. Business Settings marks the Google listing as updated only after `updateStore()` acknowledgement; rejected writes use `desktop_official_page_google_link_store_update_rejected` and route through `desktop_official_page_google_link_update_failed`. The embedded Business Settings Presence Monitor logs `business_settings_presence_screen_links_load_failed` with bounded store, tenant, subdomain/custom-domain, OBP URL, and menu-presence metadata only; official-link copy is owned by the shared Presence Monitor instead of an embedded direct-copy fallback. Owner Dashboard official-link cards use the same store diagnostic boundary: `GoogleListingCard` logs `owner_dashboard_google_listing_copy_failed`, `owner_dashboard_google_listing_open_failed`, and `owner_dashboard_google_listing_mark_done_failed`, waits for acknowledged official-link copy before copied feedback, and requires `owner_dashboard_google_listing_store_update_rejected` acknowledgement before local updated state or save success copy. Official-link adoption guidance is embedded in existing Dashboard and Share surfaces; there is no separate nudge card, dismissal storage, or associated diagnostic path. These desktop paths must not log raw generated public URLs, owner-entered business text, generated share messages, DNS/domain values, analytics payloads, store IDs, tenant IDs, or browser exception text.
 
 July 5, 2026 server fallback hardening: `src/app/client/obp/OBPContent.tsx` still uses the same 60-second `client-stores` cache and still falls back to a safe non-menu or single-store render when public summary reads fail. OBP server fallback diagnostics log `public_obp_menu_info_lookup_failed`, `public_obp_menu_info_resolution_failed`, and `public_obp_store_count_lookup_failed` through bounded runtime diagnostics with store, tenant, tenant-type, active-special-menu, and operation presence-length metadata plus normalized source error metadata only. Raw store IDs, tenant IDs, special menu IDs, public domains, menu names, project slugs, provider payloads, and exception text are not logged. Source gates: `npm run verify:official-business-page-boundary` and `npm run verify:public-business-truth`.
 
@@ -137,9 +143,11 @@ Public link safety boundary: OBP customer-facing actions, external social links,
 
 Brand OBP public path safety is owned by URL routing. `BrandOBPContent`, outlet OBP breadcrumbs/menu prefixes, client menu outlet canonical redirects, and tenant sitemap outlet entries must use `normalizePublicOutletSlug()` before emitting outlet paths. OBP menu CTA project links and default menu links must receive slugs normalized through `normalizePublicProjectSlug()` before public URL construction. Invalid legacy `outletSlug` or `project.slug` values are hidden from public links and sitemaps instead of being rendered. Source gate: `npm run verify:url-routing-boundary`.
 
-### Reserved Slug
+### `/menu` compatibility route
 
-The string `"menu"` becomes a reserved slug. When a customer navigates to `subdomain.menulist.ai/menu`, the system routes to the default project (same as current root behavior).
+The string `menu` is not reserved. A project may own the canonical slug `/menu` (Layer 1). If no project owns it, `/menu` aliases the explicit `isDefault: true` project and emits that project's real slug as canonical (Layer 2). If neither target exists, the customer sees the not-available recovery ladder; the runtime never chooses the first active project implicitly.
+
+OBP menu info also validates every summary project ID against the current tenant/store before emitting a CTA. Cross-store or malformed summary rows are omitted instead of producing a public link that the menu resolver would later reject.
 
 ---
 
@@ -259,7 +267,7 @@ All files listed in §16 are implemented and verified.
 - [x] `OfficialPageTab.tsx` — full publicPresence settings (photos, reviews, identity, accent color picker, established year)
 - [x] `uploadOBPPhoto.ts` — OBP photo upload DAL
 - [x] `OBPMetricsCard.tsx` — dashboard analytics card
-- [x] `BehaviorNudgeCard.tsx` — link adoption nudge (dismissible)
+- [x] Official-link adoption guidance — embedded in existing Dashboard and Share surfaces; no duplicate card or dismissal state
 
 ### Phase 3: Analytics + Polish (P1) — ✅ COMPLETE
 
@@ -375,7 +383,8 @@ Primary implementation files:
 - Social links use the same social source family as the public menu footer: Instagram, Facebook, X/Twitter, LinkedIn, YouTube, WhatsApp, and Website.
 - Menu CTA listing excludes inactive/deleted menus and only includes the currently active special menu, using its base menu URL so the public resolver can apply the special-menu override.
 - Business attributes are filtered by business type before display and include compact icon labels.
-- Owner-defined custom attributes render after controlled attributes, capped by settings UI, and support the shared category icon/emoji picker on desktop and mobile.
+- Owner-defined custom attributes render after controlled attributes only when `active !== false`, are runtime-normalized to at most six unique IDs (including legacy or malformed persisted input), and support the shared category icon/emoji picker on desktop and mobile.
+- Controlled business attributes cross one known-key/strict-boolean runtime normalizer before desktop, mobile, Public API, schema, or OBP consumption. Malformed legacy values are omitted rather than displayed as enabled or written back from owner forms.
 - Customer quick answers render visibly from already-visible facts only: today hours, address, menu availability, WhatsApp availability, and directions availability. They do not add hidden FAQ schema, crawl external sources, or claim that menus are always current.
 - OBP photos open an in-page preview on click.
 - Privacy, Terms, and Refund footer links are individually show/hide controlled.
@@ -402,9 +411,9 @@ Desktop Projects extraction failure boundary: accepted menu-intake business-deta
 
 Desktop Domain Settings failure boundary: `DomainSettingsTab` writes the public subdomain through the parent Business Settings `updateStore()` callback. The tab must wait for that callback before updating local availability/public-link state; the parent must require `assertStoreUpdateSucceeded()` with `desktop_domain_settings_subdomain_store_update_rejected` before local store state changes. Failed saves log `desktop_domain_settings_subdomain_save_failed` with fixed owner copy. Desktop and mobile Domain Settings copied feedback for public links and DNS records must wait for Clipboard API success or acknowledged textarea fallback success; failed copy diagnostics include bounded clipboard/fallback support metadata without logging raw browser errors.
 
-Desktop B2C editor Official Page failure boundary: `B2CView` can save project design plus `publicPresence` and optional `businessCopyMeta` when publishing public-page changes from the desktop B2C editor. The project publish must require `assertProjectUpdateSucceeded()` before local published project state, success copy, or post-publish verification setup changes; rejected project acknowledgements use `projects_b2c_publish_project_update_rejected`. The store save must require `assertStoreUpdateSucceeded()` before local store state, queued OBP photo cleanup, or publish success copy changes. Rejected store writes use `projects_b2c_official_page_store_update_rejected`, and publish failures log `projects_b2c_publish_failed` with fixed owner copy.
+Desktop B2C editor Official Page failure boundary: `B2CView` can save project design plus `publicPresence` and optional `businessCopyMeta` when publishing public-page changes from the desktop B2C editor. The project publish must require `assertProjectUpdateSucceeded()` before local published project state, success copy, or post-publish verification setup changes; rejected project acknowledgements use `projects_b2c_publish_project_update_rejected`. The store save must require `assertStoreUpdateSucceeded()` before local store state, queued OBP photo cleanup, or publish success copy changes. Cleanup receives the successfully saved draft's retained cover/gallery references and cannot delete a URL still present in that state. Rejected store writes use `projects_b2c_official_page_store_update_rejected`, and publish failures log `projects_b2c_publish_failed` with fixed owner copy.
 
-Mobile Official Page failure boundary: `MobileOfficialPageScreen` uses `updateStore()`, `uploadOBPCover()`, `uploadOBPPhoto()`, and best-effort `deleteOBPPhotos()` for the same publicPresence fields as desktop. Save, cover prepare/upload/generate, photo prepare/upload, public-link copy, and native-share failures must log the bounded `mobile_official_page_*` diagnostics and keep owner-facing copy fixed. Successful saves require `assertStoreUpdateSucceeded()` before photo cleanup, saved baselines, or success copy; public-link copied feedback must wait for Clipboard API success or acknowledged textarea fallback success, with failed copy diagnostics recording only bounded clipboard/fallback support metadata. Public cache invalidation, Storage paths, delete cleanup behavior, OBP link generation, QR sheet behavior, preview opening, and share success remain on the existing shared DAL/helper paths.
+Mobile Official Page failure boundary: `MobileOfficialPageScreen` uses `updateStore()`, `uploadOBPCover()`, `uploadOBPPhoto()`, and best-effort `deleteOBPPhotos()` for the same publicPresence fields as desktop. Save, cover prepare/upload/generate, photo prepare/upload, public-link copy, and native-share failures must log the bounded `mobile_official_page_*` diagnostics and keep owner-facing copy fixed. Successful saves require `assertStoreUpdateSucceeded()` before photo cleanup, saved baselines, or success copy; cleanup receives the just-saved `publicPresence` references and excludes retained URLs. Public-link copied feedback must wait for Clipboard API success or acknowledged textarea fallback success, with failed copy diagnostics recording only bounded clipboard/fallback support metadata. Public cache invalidation, Storage paths, delete cleanup behavior, OBP link generation, QR sheet behavior, preview opening, and share success remain on the existing shared DAL/helper paths.
 
 ---
 
@@ -501,13 +510,13 @@ Request: joespizza.menulist.ai/
 
 Request: joespizza.menulist.ai/menu
   → params.slug = ["menu"]
-  → "menu" is reserved slug
-  → getProjectBySlugOrDefault(tId, sId, undefined)  ← treats as default
-  → renders ClientMenuRenderer
+  → resolve literal project slug `menu` first
+  → otherwise resolve only `isDefault: true` as an alias
+  → without either target render the menu-not-available recovery ladder
 
 Request: joespizza.menulist.ai/food-menu
   → params.slug = ["food-menu"]
-  → not reserved, not root
+  → current/previous project slug resolution
   → existing slug resolution (unchanged)
 ```
 
@@ -582,7 +591,7 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 3. **Feature flag off:**
    - Set `ENABLE_OBP: false`
-   - Visit `subdomain.menulist.ai/` → should show digital menu (current behavior)
+   - Visit `subdomain.menulist.ai/` → should show the digital menu emergency rollback
 
 4. **Missing data graceful handling:**
    - Store with no address → directions button hidden
@@ -621,17 +630,19 @@ Public Link: joespizza.menulist.ai [copy icon]
 
 **Rationale:** Constitution Law 1 (Default Authority) — MenuList decides by default. A toggle adds a decision, violating Law 6 (No Cognitive Load). Infrastructure is consistent — Google Business doesn't let you opt out.
 
-### ADR-3: "menu" as Reserved Slug
+### ADR-3: `menu` as an owner-claim plus default alias
 
-**Decision:** `/menu` is a reserved route that always shows the default project's digital menu.
+**Decision:** `menu` remains claimable as a canonical project slug. When no project owns it, `/menu` aliases only the explicit default project. It never selects the first project when default truth is absent.
 
-**Rationale:** When OBP takes the root URL, the existing digital menu needs a permanent, predictable URL. "menu" is intuitive and matches the "View Menu" CTA text.
+**Rationale:** This preserves owner URL control and a predictable default-backed compatibility route without showing unrelated content for an unknown or under-specified path.
 
 ### ADR-4: No New Firestore Collections
 
 **Decision:** OBP data stored as `publicPresence` nested object on existing stores document.
 
 **Rationale:** Store document already has 90% of needed data. Adding a nested object avoids extra reads and keeps data co-located. Zero additional Firebase cost.
+
+**Nested mutation contract:** Owner mutation DTOs are partial at the store root, so omitted top-level store fields are never interpreted as deletions. Supplied complete nested maps may explicitly enable removed-root-key detection, and nested removals become exact field deletes. `updateStore()` projects changed leaves through Firestore `FieldPath` segments, including literal owner-defined keys such as dotted social labels. Summary-affecting writes merge the patch into transaction-current store truth before projecting `storesSummary`; direct writes retain the existing one-write cost. Desktop and mobile Official Page, business-copy, SEO/analytics, Customer App metadata, social/feedback, POS, locale, Google-link, and hours paths must not submit stale whole nested maps.
 
 ### ADR-5: Server Component (Not Client)
 
@@ -759,7 +770,7 @@ See `official-business-page_firebase.md` for detailed cost tracking.
 
 | File                                                  | Change                                                                         |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| `src/config/features.ts`                              | Added `ENABLE_OBP: false`                                                      |
+| `src/config/features.ts`                              | Current rollout uses `ENABLE_OBP: true`; `false` remains the emergency rollback |
 | `src/types/platform/store.ts`                         | Full `publicPresence` (15 fields) + `permanentlyClosed`                        |
 | `src/types/platform/tenant.ts`                        | Cleaned up — account vs platform-admin fields                                  |
 | `src/app/client/[[...slug]]/page.tsx`                 | OBP routing + AEO canonical title (`Name — Menu, Hours, Contact`)              |

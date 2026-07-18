@@ -1,7 +1,7 @@
 # Public Truth Check - Implementation Plan
 
 **Status:** Implemented - public self-report route and logged-in owner check
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Developers and future maintainers
 
 ---
@@ -226,6 +226,8 @@ The first implementation should perform deterministic checks before any AI/provi
 | Public link | provided URL or not | OBP/menu canonical URL |
 | Photos | not checked by default | logo/businessCover/photos |
 | Machine-readable source | not checked by default | schema/llms/public route availability |
+
+The V0 builder performs fact hint matching only against `menuOrServiceText`. It must not append `publicUrl` before price, hours, location, contact, or action regex checks, because path words are not evidence that the destination page contains those facts.
 
 If a fact cannot be checked safely, return `not_checked`, not a guessed result.
 

@@ -7,6 +7,7 @@ import { getContentCreditOutcomeExamples } from '../../src/data/shared/contentCr
 import {
     isOwnerReferralAcquisitionEnabled,
     isOwnerReferralAcquisitionEnabledForStore,
+    isOwnerReferralPilotConfigured,
     isOwnerReferralPilotStoreAllowed,
 } from '../../src/lib/ownerReferral/ownerReferralFeature';
 import {
@@ -95,13 +96,16 @@ const verifyFeatureFlagRuntime = (): void => {
         (FEATURE_FLAGS as any).ENABLE_OWNER_REFERRAL_REWARD_PROCESSING = true;
         assert(!isOwnerReferralAcquisitionEnabled(), 'Settlement-only repair must not create new referrals');
         (FEATURE_FLAGS as any).ENABLE_OWNER_REFERRAL = true;
-        assert(isOwnerReferralAcquisitionEnabled(), 'Acquisition must run when both flags are on');
+        assert(!isOwnerReferralPilotConfigured(), 'Empty pilot allowlist must fail closed');
+        assert(!isOwnerReferralAcquisitionEnabled(), 'Acquisition must stay off without a configured pilot');
         (FEATURE_FLAGS as any).OWNER_REFERRAL_PILOT_STORE_IDS = [73];
+        assert(isOwnerReferralPilotConfigured(), 'A valid pilot store must configure the pilot');
+        assert(isOwnerReferralAcquisitionEnabled(), 'Acquisition must run when both flags and pilot are configured');
         assert(isOwnerReferralPilotStoreAllowed(73), 'Configured pilot store must be admitted');
         assert(!isOwnerReferralPilotStoreAllowed(74), 'Store outside a configured pilot must be denied');
         assert(isOwnerReferralAcquisitionEnabledForStore(73), 'Store entry must require acquisition and pilot admission');
         (FEATURE_FLAGS as any).OWNER_REFERRAL_PILOT_STORE_IDS = [];
-        assert(isOwnerReferralPilotStoreAllowed(74), 'Empty pilot allowlist must represent broad rollout');
+        assert(!isOwnerReferralPilotStoreAllowed(74), 'Empty pilot allowlist must deny broad rollout');
     } finally {
         (FEATURE_FLAGS as any).ENABLE_OWNER_REFERRAL = originalAcquisition;
         (FEATURE_FLAGS as any).ENABLE_OWNER_REFERRAL_REWARD_PROCESSING = originalSettlement;
@@ -196,6 +200,7 @@ const verifyOwnerReferral = (): void => {
     const tokenServer = read('src/lib/ownerReferral/ownerReferralTokenServer.ts');
     const attribution = read('src/lib/ownerReferral/ownerReferralAttributionServer.ts');
     const settlement = read('src/lib/ownerReferral/ownerReferralSettlementServer.ts');
+    const emulatorTest = read('scripts/verification/test-owner-referral-emulator.ts');
     const ownerApi = read('src/app/api/owner-referrals/route.ts');
     const captureApi = read('src/app/api/public/owner-referrals/capture/route.ts');
     const invitePage = read('src/app/(website)/invite/OwnerReferralInviteClient.tsx');
@@ -234,6 +239,10 @@ const verifyOwnerReferral = (): void => {
     const mobileSupport = read('__docs__/owner-referral/owner-referral_mobile-support.md');
     const website = read('__docs__/owner-referral/owner-referral_website.md');
     const testCases = read('__docs__/owner-referral/owner-referral_test-cases.md');
+    const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
+    const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
+    const tracker = read('__docs__/audits/menulist-feature-flow-audit-tracker.md');
+    const changelog = read('__docs__/changelog.md');
 
     assert(
         packageJson.scripts?.['verify:owner-referral']
@@ -276,6 +285,7 @@ const verifyOwnerReferral = (): void => {
     includes(featureBoundary, 'FEATURE_FLAGS.ENABLE_OWNER_REFERRAL', 'owner referral acquisition boundary');
     includes(featureBoundary, 'FEATURE_FLAGS.ENABLE_OWNER_REFERRAL_REWARD_PROCESSING', 'owner referral settlement dependency');
     includes(featureBoundary, 'isOwnerReferralPilotStoreAllowed', 'owner referral pilot boundary');
+    includes(featureBoundary, 'isOwnerReferralPilotConfigured', 'owner referral configured-pilot boundary');
     includes(featureBoundary, 'isOwnerReferralAcquisitionEnabledForStore', 'owner referral store entry boundary');
 
     [
@@ -291,9 +301,12 @@ const verifyOwnerReferral = (): void => {
         'verifyTenantAccess(session, tenantId, storeId, request)',
         "canManageBillingMutation(session, request, '/api/owner-referrals')",
         "getRateLimitForFeature('OWNER_REFERRAL_READ')",
+        "failClosedOnProviderError: process.env.NODE_ENV === 'production'",
+        "'Retry-After': String(retryAfter)",
         'getDirectVerifiedPaidOwnerReferralWallet({ tenantId, storeId })',
         "'Cache-Control': 'private, no-store'",
     ].forEach((token) => includes(ownerApi, token, 'protected owner referral API'));
+    order(ownerApi, "getRateLimitForFeature('OWNER_REFERRAL_READ')", "canManageBillingMutation(session, request, '/api/owner-referrals')", 'owner referral cheap admission before permission read');
     excludes(ownerApi, 'WAITING_FOR_BOTH_PAYMENTS', 'truthful owner referral status response');
 
     [
@@ -305,6 +318,10 @@ const verifyOwnerReferral = (): void => {
         "failClosedOnProviderError: process.env.NODE_ENV === 'production'",
         'readBoundedJsonBody(request, OWNER_REFERRAL_CAPTURE_MAX_BODY_BYTES',
         'OwnerReferralCaptureSchema.safeParse',
+        "z.discriminatedUnion('action'",
+        "parsed.data.action === 'decline'",
+        'clearOwnerReferralCookie(response)',
+        "'Retry-After': String(retryAfter)",
         'isOwnerReferralPilotStoreAllowed(existingPayload.referrerStoreId)',
         'isOwnerReferralPilotStoreAllowed(payload.referrerStoreId)',
         'setOwnerReferralCookie(response, parsed.data.token)',
@@ -318,7 +335,9 @@ const verifyOwnerReferral = (): void => {
     order(invitePage, "fetch('/api/public/owner-referrals/capture'", "router.push('/create-menu')", 'capture-before-setup navigation');
     includes(invitePage, 'readJsonResponseWithLimit<unknown>', 'public invite bounded capture response');
     excludes(invitePage, 'response.json()', 'public invite direct response parsing');
-    includes(invitePage, "href=\"/create-menu\"", 'normal non-referral setup path');
+    includes(invitePage, "postReferralChoice({ action: 'decline' })", 'normal non-referral cookie-clear path');
+    const declineFlow = invitePage.slice(invitePage.indexOf('const continueWithoutReferral'));
+    order(declineFlow, "postReferralChoice({ action: 'decline' })", "router.push('/create-menu')", 'decline-before-setup navigation');
     includes(referralClient, 'readJsonResponseWithLimit<unknown>', 'owner referral bounded response');
     includes(referralClient, 'Record<string, unknown>', 'owner referral unknown runtime validation');
     excludes(referralClient, 'response.json()', 'owner referral direct response parsing');
@@ -341,6 +360,8 @@ const verifyOwnerReferral = (): void => {
         'if (productId !== DEFAULT_PRODUCT_ID) return false;',
         "status: 'same_scope'",
         "status: 'prior_paid'",
+        'snapshot.size >= OWNER_REFERRAL_SUBSCRIPTION_HISTORY_LIMIT',
+        'isPlatformEntityBlocked(storeData)',
     ].forEach((token) => includes(attribution, token, 'owner referral attribution server'));
     includes(attribution, 'isOwnerReferralPilotStoreAllowed(payload.referrerStoreId)', 'attribution pilot boundary');
 
@@ -368,13 +389,28 @@ const verifyOwnerReferral = (): void => {
         'referredTopUpAfter',
         'referrerRewardTransactionId',
         'referredRewardTransactionId',
+        "throw new Error('owner_referral_wallet_credit_invalid')",
+        "throw new Error('owner_referral_document_invalid')",
+        '.limit(OWNER_REFERRAL_PENDING_REPAIR_LIMIT + 1)',
+        'hasMore: page.size > OWNER_REFERRAL_PENDING_REPAIR_LIMIT',
+        'owner_referral_pending_repair_remaining',
+        'isOwnerReferralStoreEligible',
+        'isPlatformEntityBlocked(store)',
     ].forEach((token) => includes(settlement, token, 'atomic referral reward settlement'));
     excludes(settlement, 'DB_COLLECTIONS.TOPUPS', 'reward settlement must not look like a purchased pack');
     excludes(settlement, 'distribution', 'payment-only settlement');
     excludes(settlement, 'published', 'payment-only settlement');
     excludes(settlement, 'rewardCap', 'uncapped settlement');
     excludes(settlement, 'setInterval', 'event-driven settlement');
+    excludes(settlement, 'while (true)', 'bounded payment-hook repair');
     includes(settlement, '{ skipDirectReferral: true }', 'paid-event direct settlement de-duplication');
+    [
+        'verifySaturatedHistoryFailsClosed',
+        'verifyMalformedWalletBalanceFailsClosed',
+        'verifyBlockedStoreCannotSettle',
+        "error.message === 'owner_referral_wallet_credit_invalid'",
+        "result === 'payment_pending'",
+    ].forEach((token) => includes(emulatorTest, token, 'owner referral emulator regression coverage'));
 
     includes(verifySubscriptionRoute, 'applyProductSubscriptionPayment(productId, {', 'Verify route transactional payment application');
     includes(verifySubscriptionRoute, 'if (!paymentApplication.applied && !paymentApplication.duplicate)', 'Verify route accepts applied and replayed captured payments before repair');
@@ -409,6 +445,10 @@ const verifyOwnerReferral = (): void => {
     includes(mobileReferral, 'title={item.businessName}', 'mobile referral full-name label');
     includes(referralHook, 'navigator.clipboard?.writeText', 'owner referral modern clipboard path');
     includes(referralHook, "document.execCommand('copy')", 'owner referral embedded-browser clipboard fallback');
+    includes(referralHook, 'textarea.remove();', 'owner referral clipboard cleanup');
+    includes(referralHook, "throw new Error('owner_referral_whatsapp_unavailable')", 'owner referral blocked WhatsApp handoff');
+    includes(desktopReferral, 'useFormatter()', 'desktop referral localized date formatting');
+    includes(mobileReferral, 'useFormatter()', 'mobile referral localized date formatting');
     includes(referralHook, 'getOwnerReferralShareTitle(locale)', 'localized owner referral share title');
     includes(referralClient, 'I thought it could help your business too', 'trusted owner referral share message');
     includes(referralClient, 'Invite a business owner you know to MenuList', 'trusted owner referral share title');
@@ -458,6 +498,7 @@ const verifyOwnerReferral = (): void => {
     includes(envValidation, 'isValidOwnerReferralTokenSecret', 'owner referral environment validation');
     includes(envValidation, 'FEATURE_FLAGS.ENABLE_OWNER_REFERRAL', 'flag-aware owner referral environment validation');
     includes(envValidation, 'ENABLE_OWNER_REFERRAL requires ENABLE_OWNER_REFERRAL_REWARD_PROCESSING', 'acquisition/settlement rollout invariant');
+    includes(envValidation, 'ENABLE_OWNER_REFERRAL requires at least one valid OWNER_REFERRAL_PILOT_STORE_IDS entry', 'pilot rollout invariant');
     includes(firestoreRules, 'match /ownerReferrals/{referralId}', 'owner referral Firestore rules');
     includes(firestoreRules, 'allow read, write: if false;', 'server-only referral documents');
 
@@ -476,10 +517,22 @@ const verifyOwnerReferral = (): void => {
         excludes(document, 'implementation not started', `active owner referral document ${index + 1}`);
         excludes(document, '2026-07-12T10:46:23+05:30', `active owner referral document ${index + 1}`);
     });
-    includes(firebase, 'Expected inside the atomic issue transaction: 3 reads and 5 writes.', 'Firebase settlement accounting');
-    includes(firebase, '| **Total** | **15,000** | **6,000** |', 'Firebase reference operation accounting');
+    includes(firebase, 'Expected inside the atomic issue transaction: 5 reads and 5 writes.', 'Firebase settlement accounting');
+    includes(firebase, '| **Total** | **19,000** | **6,000** |', 'Firebase reference operation accounting');
+    includes(spec, 'an empty or invalid pilot allowlist fails closed.', 'spec fail-closed pilot contract');
+    includes(implementation, 'fetches at most 26 rows once, processes at most 25', 'implementation bounded repair contract');
+    includes(firebase, 'One bounded batch with a one-row backlog lookahead', 'Firebase bounded repair accounting');
+    includes(mobileSupport, 'the fallback always removes its temporary textarea', 'mobile clipboard cleanup contract');
+    includes(website, 'clears any previously saved referral cookie', 'website decline-cookie contract');
+    includes(testCases, 'Atomic issue uses 5 transaction reads and 5 writes', 'test settlement accounting');
     includes(website, 'Business-name/general-status disclosure appears before capture.', 'website disclosure acceptance');
     includes(testCases, 'transactional attribution-race', 'test release evidence');
+    includes(inventory, '| owner_referral | Owner Referral |', 'feature inventory owner referral row');
+    includes(inventory, 'item 26 local source complete', 'feature inventory item 26 status');
+    includes(report, '## Owner Referral Boundary', 'feature sweep report owner referral boundary');
+    includes(tracker, '| 26 | Owner referral | Medium | Local source complete; rollout flags off |', 'strict tracker item 26 completion');
+    includes(tracker, '| 27 | Public Truth Tools, shareable reports, and lead handoff | Large | Local source complete |', 'strict tracker item 27 completion');
+    includes(changelog, '## July 16, 2026 - Owner Referral End-to-End Hardening', 'owner referral changelog entry');
 
     verifyTokenRuntime();
     verifyFeatureFlagRuntime();

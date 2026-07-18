@@ -4,7 +4,7 @@
 > **Feature:** AI Menu Manager / Menu Manager
 > **Owner UI route:** `/menu-manager`
 > **Legacy route:** `/use-menulist/ai-menu-manager` redirects to `/menu-manager`
-> **Last updated:** July 10, 2026
+> **Last updated:** July 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This handoff records source-gated deterministic routing, guarded cloud-planner, registered-adapter, approval, desktop/mobile, and compact-session behavior only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:ai-menu-manager`, `npm run verify:ai-accounting`, authenticated desktop/mobile Menu Manager QA, deterministic-command and approval/cancel/receipt regression evidence, supported-adapter smoke behind AMM feature flags, guarded cloud-planner provider smoke in the target environment, public website/help copy review, target Firebase deploy evidence where rules or indexes change, target Vercel deploy evidence where planner/app routes or clients change, and production-host smoke.
 
@@ -203,14 +203,14 @@ Desktop:
 2. The route reads current store context from `PlatformGlobalDataContext`.
 3. It loads project summaries through `getProjectsListWithoutLoader(true)`.
 4. It loads the selected project through `getProjectDataWithoutLoader(projectId)`.
-5. It loads today's compact AMM session through `getAiMenuManagerClientInbox()`.
+5. It loads today's compact AMM session through `getAiMenuManagerClientInbox()`. If that document is absent, the protected inbox may return one exact-scope latest unresolved session; the route remembers the returned session ID until its pending work clears.
 6. It renders the selected project with shared `ProjectSelectorTrigger`.
 
 Mobile:
 
 1. `MobileShell` exposes the `aiMenuManager` tab when AMM mobile flags are enabled.
 2. `MobileAiMenuManagerScreen` uses `useMobileProjects()` for selected project and cached project data.
-3. It loads the same compact inbox through `getAiMenuManagerClientInbox()`.
+3. It loads the same compact inbox and bounded rollover recovery through `getAiMenuManagerClientInbox()`.
 4. It renders the same card model through mobile-native components.
 
 ### 6.2 Owner Sends A Command
@@ -285,7 +285,7 @@ The owner message is still stored as typed, but the DAL rewrites the resolver in
 
 Current safe follow-up rewrites cover one pending proposal for price, availability, item visibility, category visibility, menu note, and menu design/presentation cards. If there is no single matching pending proposal, AMM falls back to normal routing or clarification.
 
-Compound deterministic messages are a separate safe path. The resolver may prepare up to four independent registered project proposals from one message only when every segment resolves without provider help and patch touch keys do not overlap. The resulting cards share a command group. Desktop and MobileShell may approve the group together; the client revalidates each patch and base hash, applies all patches to one clone, calls the existing project save once, then removes the group and appends receipts in one compact session write. A ten-second source fingerprint suppresses accidental immediate duplicate submission with zero additional Firebase/provider work.
+Compound deterministic messages are a separate safe path. The resolver may prepare up to four independent registered project proposals from one message only when every segment resolves without provider help and patch touch keys do not overlap. The resulting cards share a command group. Desktop and MobileShell may approve the group together only when all declared cards remain present with the same session, tenant, store, and project scope. The client revalidates each patch and base hash, applies all patches to one clone, passes the prepared project version into the existing project transaction, calls the project save once, then removes the group and appends receipts in one compact session write. A ten-second source fingerprint suppresses accidental immediate duplicate submission with zero additional Firebase/provider work.
 
 ### 6.4 Owner Approves
 
@@ -339,7 +339,7 @@ Examples:
 - `menu_design_color_update` may patch only approved `config.design` color fields.
 - `bulk_price_update` may patch only the listed resolved item price fields.
 
-If the selected project hash no longer matches the base hash, AMM must show a stale/conflict path and must not apply the patch silently. Patch hashes protect the approved payload; action-scoped patch validation protects the allowed mutation shape.
+If the selected project hash no longer matches the base hash, AMM must show a stale/conflict path and must not apply the patch silently. The existing standard or linked-outlet save transaction also compares the canonical prepared modification version with its fresh project snapshot before writing, closing the concurrent-edit window without another read. Patch hashes protect the approved payload; action-scoped patch validation protects the allowed mutation shape.
 
 ---
 
@@ -395,23 +395,26 @@ The client DAL caps the growing arrays:
 | `compactMessages` | 20 | Owner/manager timeline summaries. |
 | `pendingCardSummaries` | 25 | Lightweight card summaries. |
 | `pendingOperations` | 25 | Full pending deterministic operation payloads. |
+| `pendingCount` | 0-25 | Canonical unique pending-card count paired with `hasPendingOperations` for bounded recovery. |
 | `recentReceiptSummaries` | 20 | Recent receipts. |
 | `artifactRefs` | 20 | References only, not heavy payloads. |
+
+The full compact write also has a conservative 700 KB application budget. Artifact references, older receipts, and oldest messages are trimmed before rejection; pending cards are never trimmed.
 
 Normal deterministic command overhead after screen open:
 
 ```text
 Submit command:
-  0 AMM reads
+  1 compact session transaction read
   1 compact session write
 
 Clarification choice or short follow-up:
-  0 AMM reads
+  1 compact session transaction read
   1 compact session write
   replaces the old pending card in the same write
 
 Approve executed card:
-  0 AMM reads
+  1 compact session transaction read during completion
   1 existing project write through updateProject path
   1 compact session write for receipt
 ```
@@ -433,6 +436,7 @@ For two successful deterministic project operations:
 AMM overhead:
   0 proposal reads
   0 proposal writes
+  4 compact session transaction reads
   4 compact session writes
 
 Existing business write:

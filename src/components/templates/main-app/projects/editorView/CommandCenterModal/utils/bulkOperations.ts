@@ -8,6 +8,7 @@
  */
 
 import type { InheritanceState } from '@type/multiOutlet.types';
+import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
 import { removeObjRef } from '@util/utils';
 import type {
     Project
@@ -54,7 +55,7 @@ export function buildSelectableItems(
             items.push({
                 id: item.id,
                 name: item.name?.[activeLang] || item.name?.['en'] || 'Untitled',
-                price: item.price || '',
+                price: String(item.price ?? ''),
                 category: item.category,
                 categoryName: catMap[item.category] || 'Uncategorized',
                 fileUid: file.uid,
@@ -64,7 +65,7 @@ export function buildSelectableItems(
                 attributes: item.attributes?.map((attr) => ({
                     id: attr.id,
                     name: attr.name?.[activeLang] || attr.name?.['en'] || 'Variant',
-                    price: attr.price || '',
+                    price: String(attr.price ?? ''),
                 })),
             });
         });
@@ -194,14 +195,14 @@ export function computePricingPreview(
     let skipped = 0;
 
     editableItems.forEach((item) => {
-        const currentPrice = parseFloat(item.price);
+        const currentPrice = parseSingleMenuPrice(item.price);
         const canForceFixedPrice = config.method === 'setFixed';
-        if (!canForceFixedPrice && (isNaN(currentPrice) || currentPrice <= 0)) {
+        if (!canForceFixedPrice && (currentPrice === null || currentPrice <= 0)) {
             skipped++;
             return;
         }
 
-        const safeCurrentPrice = isNaN(currentPrice) || currentPrice < 0 ? 0 : currentPrice;
+        const safeCurrentPrice = currentPrice === null || currentPrice < 0 ? 0 : currentPrice;
         const newPrice = calculateNewPrice(safeCurrentPrice, config);
         const changePercent = safeCurrentPrice > 0
             ? ((newPrice - safeCurrentPrice) / safeCurrentPrice) * 100
@@ -218,9 +219,9 @@ export function computePricingPreview(
 
         // Also compute attribute price changes
         item.attributes?.forEach((attr) => {
-            const attrPrice = parseFloat(attr.price);
-            if (!canForceFixedPrice && (isNaN(attrPrice) || attrPrice <= 0)) return;
-            const safeAttrPrice = isNaN(attrPrice) || attrPrice < 0 ? 0 : attrPrice;
+            const attrPrice = parseSingleMenuPrice(attr.price);
+            if (!canForceFixedPrice && (attrPrice === null || attrPrice <= 0)) return;
+            const safeAttrPrice = attrPrice === null || attrPrice < 0 ? 0 : attrPrice;
             const newAttrPrice = calculateNewPrice(safeAttrPrice, config);
             changes.push({
                 itemId: item.id,
@@ -283,20 +284,20 @@ export function applyBulkPricing(
         file.extractedData.data.items = file.extractedData.data.items.map((item) => {
             if (!selectedItemIds.has(item.id)) return item;
 
-            const currentPrice = parseFloat(item.price || '');
+            const currentPrice = parseSingleMenuPrice(item.price);
             const canForceFixedPrice = config.method === 'setFixed';
-            if (!canForceFixedPrice && (isNaN(currentPrice) || currentPrice <= 0)) return item;
+            if (!canForceFixedPrice && (currentPrice === null || currentPrice <= 0)) return item;
 
-            const safeCurrentPrice = isNaN(currentPrice) || currentPrice < 0 ? 0 : currentPrice;
+            const safeCurrentPrice = currentPrice === null || currentPrice < 0 ? 0 : currentPrice;
             const newPrice = calculateNewPrice(safeCurrentPrice, config);
             const updatedItem = { ...item, price: String(newPrice) };
 
             // Also update attribute prices
             if (updatedItem.attributes) {
                 updatedItem.attributes = updatedItem.attributes.map((attr) => {
-                    const attrPrice = parseFloat(attr.price || '');
-                    if (!canForceFixedPrice && (isNaN(attrPrice) || attrPrice <= 0)) return attr;
-                    const safeAttrPrice = isNaN(attrPrice) || attrPrice < 0 ? 0 : attrPrice;
+                    const attrPrice = parseSingleMenuPrice(attr.price);
+                    if (!canForceFixedPrice && (attrPrice === null || attrPrice <= 0)) return attr;
+                    const safeAttrPrice = attrPrice === null || attrPrice < 0 ? 0 : attrPrice;
                     const newAttrPrice = calculateNewPrice(safeAttrPrice, config);
                     return { ...attr, price: String(newAttrPrice) };
                 });

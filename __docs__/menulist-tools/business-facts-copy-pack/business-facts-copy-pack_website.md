@@ -1,7 +1,7 @@
 # Business Facts Copy Pack - Website Copy
 
 **Status:** Implemented V0 public route
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Route:** `/tools/business-facts-copy-pack`
 
 ---

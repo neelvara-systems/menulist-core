@@ -557,6 +557,17 @@ export const RATE_LIMIT_CONFIGS = {
         description: 'Authenticated public menu entry - 5 per 24 hours per user'
     },
 
+    /**
+     * Cheap request admission before multipart parsing, draft lookup, SAFE_MODE,
+     * source acquisition, Storage, or AI work. The independent 5/day source
+     * quota still runs after active/same-source draft reuse.
+     */
+    PUBLIC_MENU_ENTRY_ADMISSION: {
+        limit: 30,
+        window: 300,
+        description: 'Authenticated public menu entry admission - 30 per 5 minutes per user'
+    },
+
     // ─────────────────────────────────────────────────────────────
     // MENU LINK IMPORT (Authenticated owner source acquisition)
     // @see __docs__/menu-link-import/

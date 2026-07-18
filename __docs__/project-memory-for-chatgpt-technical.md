@@ -49,7 +49,7 @@ Primary data patterns in `src/constants/database.ts` map:
 - Infrastructure and controls: `ops_config`, `systemHealth`, `systemAlerts`, `schedulerRunLogs`, `ownerControlUsage`
 - Billing: `pricingPlans`, `subscriptions`, `subscription_payments`, `payment_transactions`, `topups`
 - Auth/data support: `users`, `usersSchedules`, `AI_OPERATIONS_COLLECTIONS` collections (`aiCreditTransactions`, etc.)
-- Chain/multi-location: `masterOperationalState`, `integrations`, `posDeliveryQueue`, `messagingOnboarding*`, `businessEntityIndex`
+- Chain/multi-location and external delivery: `masterOperationalState`, disabled GBP `integrations` scaffolding, server-only `posSyncSecrets`, bounded `stores/{sId}/posDeliveryLogs`, `messagingOnboarding*`, `businessEntityIndex`
 
 Important: avoid changing collection contracts without audit against runtime + docs.
 

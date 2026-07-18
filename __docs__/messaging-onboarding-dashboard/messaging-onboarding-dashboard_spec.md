@@ -32,7 +32,7 @@ This dashboard is platform-only and supports the official WhatsApp Cloud API pat
 |---|---|
 | Route | `/ops/messaging-onboarding` |
 | API | `/api/ops/messaging-onboarding` |
-| Access | `platformRole === "PLATFORM"` |
+| Access | Signed `PLATFORM` plus current persisted role/lifecycle/identity/revocation check after a fail-closed limiter |
 | Feature Flag | `ENABLE_MESSAGING_ONBOARDING_DASHBOARD` |
 | Navigation | Ops Control Room button |
 

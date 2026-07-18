@@ -3,9 +3,21 @@
 > **Purpose**: Production-grade audit of every AI touchpoint across the MenuList codebase.
 > **Goal**: Enable output/credit-based pricing + internal AI usage tracking with zero gaps.
 > **Date**: February 9, 2026
-> **Status**: Historical audit. See June 2 runtime status below for current implementation.
+> **Status**: Historical audit. See the July 14 runtime correction and June 2 status below for current implementation.
 
 > **Launch boundary:** Not current launch certification or deploy approval. This file preserves historical findings and source-gated runtime/accounting evidence only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
+
+## July 14, 2026 Runtime Correction
+
+Positive-unit routes no longer debit after provider work. They reserve exact units transactionally before provider work, settle the same hidden operation shell after valid output, and refund exact charged buckets on terminal failure. The selected outlet remains the operation/history scope; `accountingBillingStoreId` records the effective subscription store when the outlet inherits HQ billing. Returned balance events carry that billing store and are ignored by browser state for any other active subscription.
+
+Menu extraction remains zero-unit. Completed/partial authenticated owner extraction now writes the existing detailed `MENULIST_AI_OPERATIONS` platform record and a compact no-credit owner activity row under `menulistAiOperations/{tId}/{sId}` in one Firestore batch. Public or unscoped extraction keeps only the platform audit row.
+
+The active Answerlattice embedding boundary uses `gemini-embedding-2`, 768
+dimensions, canonical `embedding`, and cache version
+`gemini-embedding-2:768:v1`. The retired `text-embedding-004` rows and
+`embeddingV2` migration references below are preserved only as February audit
+evidence.
 
 ## June 2, 2026 Runtime Status
 
@@ -30,7 +42,7 @@ The original February audit found missing usage tracking across the billable AI 
 | Cloud Functions menu-image processing | Operation log and token/cost metadata use the same `TOKENS_PER_CREDIT = 500` accounting basis as app routes |
 | Image generation model boundary | Active single and batch image generation use `gemini-2.5-flash-image`; the deprecated Imagen branch and Imagen charge constants are removed from active routes |
 
-Balance consumption now happens in `consumeAICapacity()` through a Firestore transaction. It deducts `monthlyCredits` first, then `topUpCredits`, and returns `remainingBalance` for desktop/mobile state sync.
+Balance reservation now happens through `reserveAiCapacity()` in a Firestore transaction before provider work. It deducts `monthlyCredits` first, then `topUpCredits`, and returns a billing-store-scoped `remainingBalance` for desktop/mobile state sync. `consumeAICapacity()` remains only as a guarded legacy compatibility path.
 
 June 2 hardening centralizes billable app-route accounting in `finalizeAiOperationAccounting()`. Operation logging is best-effort, credit consumption is mandatory for billable actions, browser writes to `menulistAiOperations` are denied, and unknown AI actions throw unless explicitly listed in both `AI_UNIT_COSTS` and `GEMINI_COST_USD`.
 

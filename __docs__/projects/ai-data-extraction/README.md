@@ -3,13 +3,13 @@
 **Sub-feature of:** Projects (Menu Digitization)
 **Status:** Controlled owner testing ready; production deploy pending for the legacy callable hardening
 **Model:** `gemini-2.5-flash` via `@google/genai` SDK
-**Last Updated:** July 5, 2026
+**Last Updated:** July 15, 2026
 
 ---
 
 ## Overview
 
-AI Data Extraction uses Google Gemini to read menu images and extract structured data (categories, items, prices, descriptions). It's powered by a Job Queue architecture with batch processing, parallel file upload, circuit breaker protection, per-item confidence scoring, deterministic category icon defaults, and re-extraction workflow.
+AI Data Extraction uses Google Gemini to read menu images and extract structured data (categories, items, prices, descriptions). It uses a job queue with batch processing, parallel file upload, circuit-breaker protection, per-item confidence scoring, deterministic category icon defaults, and an owner-review workflow before authenticated uploads change a project.
 
 ---
 
@@ -20,6 +20,7 @@ AI Data Extraction uses Google Gemini to read menu images and extract structured
 | `_spec.md`                                                | Product, Business | Requirements, user flows, quality scoring     |
 | `_impl.md`                                                | Developers        | Job queue architecture, security, validation  |
 | `_firebase.md`                                            | Developers        | Firestore operations, cost tracking           |
+| `_mobile-support.md`                                      | Product, Developers | Mobile upload/review parity and shell boundary |
 | `_marketing.md`                                           | Sales, Marketing  | Pitch, copy, objection handling               |
 | `_website.md`                                             | Public            | Landing page content                          |
 | `_helpdoc.md`                                             | Public            | Customer help documentation                   |
@@ -41,7 +42,7 @@ AI Data Extraction uses Google Gemini to read menu images and extract structured
 - **File Upload:** Parallel via `Promise.all` to Gemini File API
 - **Category Continuation:** Cross-batch category/item ID continuation
 - **Category Icon Defaults:** Post-extraction deterministic icon assignment from shared category-name and item-context rules
-- **Re-extraction:** `preview_ready` status with client-side comparison engine
+- **Authenticated desktop/mobile upload:** `preview_ready` status with the existing client-side comparison engine before project mutation
 
 ### Key Files (Actual Codebase)
 
@@ -109,8 +110,8 @@ Each extracted item includes confidence: `{ name: "high"/"medium"/"low", price: 
 | --------------- | ----------------------------------------------- |
 | `pending`       | Job created, waiting for CF pickup              |
 | `processing`    | AI extraction in progress                       |
-| `preview_ready` | Re-extraction: raw data ready for client review |
-| `completed`     | First extraction: auto-saved to project         |
+| `preview_ready` | Authenticated owner upload: extracted draft ready for client review |
+| `completed`     | Applied/eligible auto-save or extraction-only work is complete      |
 | `failed`        | Error occurred                                  |
 | `cancelling`    | User requested cancellation                     |
 | `cancelled`     | Job cancelled                                   |
@@ -145,4 +146,4 @@ The following files have been **consolidated** into this folder:
 
 ---
 
-_Last Updated: March 12, 2026_
+_Last Updated: July 15, 2026_

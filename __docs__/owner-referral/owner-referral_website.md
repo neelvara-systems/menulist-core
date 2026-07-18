@@ -3,7 +3,7 @@
 **Feature:** Owner Referral
 **Status:** Implemented behind disabled acquisition controls; public release not approved
 **Primary route:** `/invite#r=<authenticated-encrypted-token>`
-**Last updated:** July 11, 2026
+**Last updated:** July 16, 2026
 **Audience:** Website, product, legal, localization
 
 ---
@@ -69,7 +69,7 @@ Never place the token, referrer identity, reward amounts, business name, or stat
 
 **Secondary CTA:** Continue without referral
 
-The primary CTA calls the capture endpoint. The secondary CTA opens normal `/create-menu` without setting the referral cookie.
+The primary CTA calls the capture endpoint with the displayed token. The secondary CTA sends an explicit decline to the same bounded endpoint, clears any previously saved referral cookie on the canonical host, and only then opens normal `/create-menu`; it never captures the displayed token.
 
 ### Product Proof
 
@@ -199,7 +199,7 @@ Never send token, tenant/store/user/subscription/payment IDs, business name, con
 - [x] Payment-only rule and 100/50 rewards appear above the fold.
 - [x] No referral cap or post-payment condition appears.
 - [x] Business-name/general-status disclosure appears before capture.
-- [x] Non-referral path does not set a cookie.
+- [x] Non-referral path clears any older referral cookie before navigation and never captures the displayed token.
 - [x] Existing unpaid and existing paid states are handled in protected continuation routes.
 - [x] Token is absent from metadata, logs, and analytics.
 - [x] Page remains noindex, frame-denied, mobile-first, and short.

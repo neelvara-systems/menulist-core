@@ -193,6 +193,7 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         plan: Plan,
         currency: Currency,
         quantity: number = 1,
+        replacementForSubscriptionId?: string,
     ): Promise<SubscriptionCheckoutResult> => {
         const subscriptionQuantity = normalizeSubscriptionQuantity(quantity);
         let subscriptionId: string;
@@ -209,7 +210,8 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
                     interval: plan.billingInterval,
                     currency,
                     userType: plan.type,
-                    quantity: subscriptionQuantity
+                    quantity: subscriptionQuantity,
+                    replacementForSubscriptionId,
                 })
             });
 
@@ -447,7 +449,12 @@ const usePaymentHandler = (dispatcher: any, options: PaymentHandlerOptions = {})
         }
         const targetQuantity = normalizeSubscriptionQuantity(quantity ?? currentPlan.quantity ?? 1);
         try {
-            const paymentResponse = await createSubscription(newPlan, currency, targetQuantity);
+            const paymentResponse = await createSubscription(
+                newPlan,
+                currency,
+                targetQuantity,
+                currentPlan.providerSubscriptionId,
+            );
             await handleUpgradeSubscription({ nSi: paymentResponse.subscriptionId, oSi: currentPlan.providerSubscriptionId });
             return paymentResponse;
         } catch (error) {

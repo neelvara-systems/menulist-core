@@ -85,6 +85,12 @@ filesEqual(
   'Shared menu extraction integrity contract is mirrored byte-for-byte',
 );
 
+filesEqual(
+  'src/data/shared/businessAttributeDefaults.ts',
+  'functions/src/sharedData/businessAttributeDefaults.ts',
+  'Shared business-attribute default merge contract is mirrored byte-for-byte',
+);
+
 contains(
   'src/data/shared/menuExtractionJob.ts',
   [
@@ -183,6 +189,8 @@ contains(
     'normalizeMenuExtractionProjectId',
     'const MenuExtractionProjectIdSchema = z.string()',
     'projectId: MenuExtractionProjectIdSchema',
+    'requireAnyStorePermission',
+    'PERMISSIONS.USE_MENU_EXTRACTION',
     'const MenuExtractionJobIdSchema = z.string()',
     'normalizeMenuExtractionJobId(value) === value',
     'retriedFromJobId: MenuExtractionJobIdSchema.optional()',
@@ -203,6 +211,8 @@ contains(
     'MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_LIMITS',
     'getProjectedProjectDocumentSize',
     'PRE_AI_EXTRACTED_DATA_BYTES_PER_FILE',
+    'maximumReservedHeadroomBytes',
+    'reservedHeadroomBytes: documentSizeGate.reservedHeadroomBytes',
     'MENU_EXTRACTION_PROJECT_DOCUMENT_SIZE_ERROR',
     'Reset it or create a new menu before uploading more files.',
     'menu_extraction_project_document_size_gate_blocked',
@@ -211,10 +221,43 @@ contains(
   'Owner job API centralizes auth, retry, source, routing, trusted owner-upload dedupe checks, and pre-AI project-size gating',
 );
 
+contains(
+  'src/app/api/menu-extraction/jobs/route.ts',
+  [
+    'size: z.number().positive().max(MAX_MENU_INTAKE_PREFLIGHT_FILE_SIZE)',
+    'const JobFilesSchema = z.array(JobFileSchema)',
+    'files: JobFilesSchema',
+    'const retryFilesResult = JobFilesSchema.safeParse(retryData.files);',
+    'if (!retryFilesResult.success)',
+    'action: z.literal(AI_ACTIONS_TYPES.IMAGE_PROCESSING).optional()',
+    'getTrustedBusinessContext',
+    'getBusinessTypeConfig(projectData.businessType)',
+    'normalizeBusinessCategory(projectData.businessCategory)',
+    'action: AI_ACTIONS_TYPES.IMAGE_PROCESSING',
+    '...trustedBusinessContext',
+  ],
+  'Owner job request rejects empty files and persists only the fixed extraction action plus canonical business context',
+);
+
+notContains(
+  'src/app/api/menu-extraction/jobs/route.ts',
+  [
+    'size: z.number().min(0)',
+    'action: z.string().min(1).max(80).optional()',
+    'action: validation.data.action || AI_ACTIONS_TYPES.IMAGE_PROCESSING',
+    '...(validation.data.businessType ? { businessType: validation.data.businessType } : {})',
+    '...(validation.data.businessCategory ? { businessCategory: validation.data.businessCategory } : {})',
+  ],
+  'Owner job route does not admit zero-byte files or persist arbitrary request action/business context',
+);
+
 ordered(
   'src/app/api/menu-extraction/jobs/route.ts',
   [
     'const validation = RequestSchema.safeParse(bodyResult.data);',
+    'const projectIds = parseProjectIds(projectId);',
+    'const permissionResponse = await requireAnyStorePermission(',
+    '[PERMISSIONS.USE_MENU_EXTRACTION]',
     'if (validation.data.retriedFromJobId) {',
     'retryContext = await loadRetryContext({',
     'retriedFromJobId: validation.data.retriedFromJobId',
@@ -252,6 +295,60 @@ contains(
     '`loadRetryContext()` re-normalizes the retry job ID before the original `menuImageProcessingJobs/{jobId}` document ref',
   ],
   'Menu Extraction implementation docs record retry job ID boundary',
+);
+
+contains(
+  '__docs__/projects/ai-data-extraction/ai-data-extraction_impl.md',
+  ['action: "image_processing";'],
+  'AI extraction implementation uses the live lowercase action contract',
+);
+
+contains(
+  '__docs__/projects/ai-data-extraction/ai-data-extraction_firebase.md',
+  [
+    'fixed `image_processing` action',
+    'Persisted project identity wins over the bounded legacy request fallback',
+  ],
+  'AI extraction Firebase docs record the fixed action and canonical business context',
+);
+
+contains(
+  '__docs__/projects/ai-data-extraction/production-review.md',
+  [
+    'Historical review snapshot; not current production certification',
+    'Do not use the issue statuses or proposed code fragments below as the live implementation contract',
+    'fixed `image_processing` action',
+  ],
+  'Historical AI extraction production review points to current source authority',
+);
+
+notContains(
+  '__docs__/projects/ai-data-extraction/firebase-cost-scalability-audit.md',
+  ["where('action', '==', 'IMAGE_PROCESSING')", 'action == IMAGE_PROCESSING'],
+  'AI extraction cost docs do not retain the stale uppercase action value',
+);
+
+contains(
+  '__docs__/projects/ai-data-extraction/firebase-cost-scalability-audit.md',
+  [
+    'each read at most 100 matching jobs',
+    '`aiParallel.maxInstances = 5`',
+    'reset alone is not a delete signal',
+    'Do not use hardcoded vendor prices or historical free-tier assumptions as release authority',
+    'Add active-prefix Storage cleanup only with global cross-project/outlet reference protection',
+  ],
+  'AI extraction scale docs retain the live cleanup, concurrency, cost, and Storage-reference boundaries',
+);
+
+notContains(
+  '__docs__/projects/ai-data-extraction/firebase-cost-scalability-audit.md',
+  [
+    '3 queries run without `limit()`',
+    'The 15-min cleanups do NOT have limits',
+    'Gemini 2.0 Flash Lite',
+    '100 CF instances spin up',
+  ],
+  'AI extraction scale docs do not regress to stale unbounded-cleanup, model-routing, or worker fan-out claims',
 );
 
 contains(
@@ -672,7 +769,7 @@ contains(
   '__docs__/production-readiness/infrastructure-risk-tracker.md',
   [
     'src/components/mobile/sheets/MenuUploadSheet.tsx',
-    'Desktop and mobile upload now cap pending extraction batches at the shared 15 file/page limit before Storage upload',
+    'Desktop and mobile upload cap pending extraction batches at the shared 15 file/page limit before Storage upload',
     'mobile passes remaining PDF page slots into conversion before canvas rendering',
   ],
   'Production-readiness tracker records desktop/mobile extraction upload cap parity',
@@ -726,6 +823,8 @@ ordered(
     'const bodyResult = await readBoundedJsonBody(request, MENU_EXTRACTION_JOB_MAX_BODY_BYTES);',
     'const validation = RequestSchema.safeParse(bodyResult.data);',
     'const projectIds = parseProjectIds(projectId);',
+    'const permissionResponse = await requireAnyStorePermission(',
+    '[PERMISSIONS.USE_MENU_EXTRACTION]',
     'const projectDoc = await projectRef.get();',
     'const documentSizeGate = getProjectedProjectDocumentSize(projectData, requestedFiles.length);',
     'menu_extraction_project_document_size_gate_blocked',
@@ -771,7 +870,7 @@ contains(
     'destinationType?: MenuExtractionDestinationType',
     'skipProjectSave?: boolean',
     'reusedCompletedJob',
-    'menu_processing_job_start_rejected',
+    'MENU_PROCESSING_JOB_START_REJECTED_CODE',
     'menu_processing_job_start_response_parse_failed',
     'menu_processing_job_start_response_invalid',
   ],
@@ -1109,6 +1208,12 @@ contains(
 contains(
   'src/components/templates/main-app/projects/index.tsx',
   [
+    'const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;',
+    'const canManageStore = userPermissions?.canManageStore === true;',
+    'if (!canUseMenuExtraction) {',
+    "message.error('Menu extraction is not enabled for this location.');",
+    'if (!canManageStore) return;',
+    'disabled: !canUseMenuExtraction || fileProcessingId !== null',
     'logMenuProcessingFailure',
     'getBoundedMenuProcessingStringContext',
     'getMenuProcessingJobLogContext',
@@ -1120,15 +1225,60 @@ contains(
     'menu_upload_image_optimization_failed',
     'menu_upload_pdf_conversion_failed',
     "getBoundedMenuProcessingStringContext('cleanupReason', cleanupReason)",
-    'failedCleanupCount: failedCleanups.length',
+    'const cleanupResults = await Promise.allSettled(files.map(file => deleteFileByUrl(file.url)));',
+    'const failedCleanupCount = cleanupResults.filter((result) => (',
+    "result.status === 'rejected' || result.value.success !== true",
+    'failedCleanupCount,',
     "'intake_cancelled'",
     "'intake_ignored_files'",
     "'no_files_for_job'",
     "'existing_active_job'",
+    "'job_start_rejected'",
     "message.error('Processing could not be completed. Please try again.')",
     "setFailureMessage('Processing could not be completed. Please try again.')",
   ],
   'Desktop menu upload caller uses bounded diagnostics and generic processing failures',
+);
+
+ordered(
+  'src/components/templates/main-app/projects/index.tsx',
+  [
+    'const uploadAndCreateJob = async (',
+    'if (!canUseMenuExtraction) {',
+    'const uploadPromises = filesToProcess.map',
+  ],
+  'Desktop extraction permission guard runs before Storage uploads',
+);
+
+ordered(
+  'src/components/templates/main-app/projects/index.tsx',
+  [
+    '({ jobId } = await withTimeout(',
+    'catch (error) {',
+    'shouldCleanupUploadedFilesAfterJobStartError(error)',
+    "cleanupUploadedMenuFiles(filesForJob, 'job_start_rejected', targetProjectId)",
+  ],
+  'Desktop cleans uploaded files only after a definitive job-start rejection',
+);
+
+ordered(
+  'src/components/templates/main-app/projects/index.tsx',
+  [
+    'const validateSelectedFile = async',
+    'if (!canUseMenuExtraction) {',
+    'const isValid = await validateFile(',
+  ],
+  'Desktop extraction permission guard runs before upload preparation',
+);
+
+ordered(
+  'src/components/templates/main-app/projects/index.tsx',
+  [
+    'const maybeAcceptBusinessIdentitySuggestions = useCallback',
+    'if (!canManageStore) return;',
+    'const writeResult = await updateStore({',
+  ],
+  'Desktop business identity suggestions require store-management permission before writes',
 );
 
 notContains(
@@ -1174,6 +1324,7 @@ contains(
 contains(
   'src/components/mobile/screens/MobileMenuScreen.tsx',
   [
+    'const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;',
     'mobile_menu_business_attributes_default_apply_failed',
     'assertStoreUpdateSucceeded(',
     'mobile_menu_business_attributes_default_store_update_rejected',
@@ -1183,15 +1334,45 @@ contains(
   'Mobile menu review applies business-attribute and project-profile defaults only after acknowledged writes',
 );
 
+notContains(
+  'src/components/mobile/screens/MobileMenuScreen.tsx',
+  ['userPermissions?.canUseMenuExtraction === true && userPermissions?.canManageMenu === true'],
+  'Mobile upload admission uses the dedicated extraction capability without unrelated menu-management coupling',
+);
+
 contains(
   'src/components/templates/main-app/projects/getProcessedFile.ts',
   [
     'logMenuProcessingFailure',
     'desktop_menu_upload_job_create_failed',
     'getMenuProcessingProjectLogContext(projectId)',
-    'Menu processing failed. Please try again.',
+    'createMenuProcessingJobCallerError(error)',
   ],
   'Desktop processing job creation uses bounded diagnostics and fixed retry text',
+);
+
+contains(
+  'src/lib/menu-extraction/jobStartFailure.ts',
+  [
+    "MENU_PROCESSING_JOB_START_REJECTED_CODE = 'menu_processing_job_start_rejected'",
+    'Number(candidate.status) >= 400',
+    'Number(candidate.status) < 500',
+    'cleanupUploadedFilesAfterJobStartRejection = true',
+    'shouldCleanupUploadedFilesAfterJobStartError',
+  ],
+  'Job-start cleanup classification is limited to definitive 4xx route rejections',
+);
+
+contains(
+  'scripts/verification/test-menu-extraction-job-start-failure.ts',
+  [
+    "status: 403",
+    "status: 500",
+    "status: 200",
+    "new Error('network failure')",
+    'ambiguous failures must preserve uploaded files because a durable job may exist',
+  ],
+  'Job-start cleanup classification tests cover rejection and ambiguous response/transport failures',
 );
 
 notContains(
@@ -1212,6 +1393,11 @@ notContains(
 contains(
   'src/components/mobile/sheets/MenuUploadSheet.tsx',
   [
+    'const canUseMenuExtraction = userPermissions?.canUseMenuExtraction === true;',
+    'const canManageStore = userPermissions?.canManageStore === true;',
+    'if (!canUseMenuExtraction) {',
+    "Toast.show({ content: 'Menu extraction is not enabled for this location.', duration: 1800 });",
+    'if (!canManageStore) return;',
     'logMenuProcessingFailure',
     'getBoundedMenuProcessingStringContext',
     'getMenuProcessingProjectLogContext',
@@ -1226,14 +1412,70 @@ contains(
     'assertProjectUpdateSucceeded(',
     'mobile_menu_upload_create_project_update_rejected',
     "getBoundedMenuProcessingStringContext('cleanupReason', cleanupReason)",
-    'failedCleanupCount: failedCleanups.length',
+    'const cleanupResults = await Promise.allSettled(files.map(file => deleteFileByUrl(file.url)));',
+    'const failedCleanupCount = cleanupResults.filter((result) => (',
+    "result.status === 'rejected' || result.value.success !== true",
+    'failedCleanupCount,',
     "'intake_cancelled'",
     "'intake_ignored_files'",
     "'no_files_for_job'",
     "'existing_active_job'",
+    "'job_start_rejected'",
     "setErrorMessage(t('menuUploadRetry'))",
   ],
   'Mobile menu upload sheet uses bounded diagnostics, acknowledged upload-created project writes, and generic retry text',
+);
+
+ordered(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    'const handleSelectedFile = useCallback',
+    'if (!canUseMenuExtraction) {',
+    'const validationResult = await validateFile(',
+  ],
+  'Mobile extraction permission guard runs before upload preparation',
+);
+
+ordered(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    'const handleUploadAndProcess = useCallback',
+    'if (!canUseMenuExtraction) {',
+    'const uploadedUrl = await uploadFile({',
+  ],
+  'Mobile extraction permission guard runs before Storage uploads',
+);
+
+ordered(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    '({ jobId } = await createProcessingJob({',
+    'catch (error) {',
+    'shouldCleanupUploadedFilesAfterJobStartError(error)',
+    "cleanupUploadedMenuFiles(filesForJob, 'job_start_rejected', targetProjectId)",
+  ],
+  'Mobile cleans uploaded files only after a definitive job-start rejection',
+);
+
+ordered(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    'const maybeAcceptBusinessIdentitySuggestions = useCallback',
+    'if (!canManageStore) return;',
+    'const writeResult = await updateStore({',
+  ],
+  'Mobile business identity suggestions require store-management permission before writes',
+);
+
+ordered(
+  'src/components/mobile/sheets/MenuUploadSheet.tsx',
+  [
+    'const handleMenuLinkImport = useCallback',
+    'if (!canUseMenuExtraction) {',
+    'const newProject = await addProject({',
+    'const result = await createMenuLinkImportJob({',
+  ],
+  'Mobile link import permission guard runs before project creation and route submission',
 );
 
 contains(
@@ -1387,7 +1629,7 @@ contains(
   [
     'getMenuLinkImportClientMessage(error, { publicEntry: true })',
     'PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE',
-    "error: draft.extractionStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null",
+    "error: responseStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null",
     'logSecurityDiagnostic',
     'logSecurityFailure',
     'getBoundedSecurityStringContext',
@@ -1426,6 +1668,8 @@ contains(
     'const MenuExtractionProjectIdSchema = z.string()',
     'projectId: MenuExtractionProjectIdSchema',
     'IntakeRequestSchema.safeParse(bodyResult.data)',
+    'requireAnyStorePermission',
+    'PERMISSIONS.USE_MENU_EXTRACTION',
     'runMenuIntakeIdentityCheck',
   ],
   'Menu intake identity check is auth-scoped, rate-limited, and body-capped before identity analysis',
@@ -1451,6 +1695,8 @@ ordered(
     'const rateLimit = await checkRateLimit({',
     'const bodyResult = await readBoundedJsonBody(request, MENU_INTAKE_IDENTITY_MAX_BODY_BYTES);',
     'const validation = IntakeRequestSchema.safeParse(bodyResult.data);',
+    'const permissionResponse = await requireAnyStorePermission(',
+    '[PERMISSIONS.USE_MENU_EXTRACTION]',
     'runMenuIntakeIdentityCheck({',
   ],
   'Menu intake identity request fails cheap before JSON parsing and analysis work',
@@ -1466,6 +1712,42 @@ notContains(
     'tId: ids.tId',
   ],
   'Menu intake identity route must not use raw session scope after normalization',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_impl.md',
+  ['require the persisted `canUseMenuExtraction` capability', 'includes `canManageStore`', 'only for a definitive 4xx route rejection', 'remain non-destructive'],
+  'Menu extraction implementation docs record current permission and suggestion-write authority',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_firebase.md',
+  ['one current `stores/{sId}` permission read', 'one permission read at each independently callable route boundary', 'No extra Firestore read/write is added by this client cleanup classification'],
+  'Menu extraction Firebase docs record current permission read costs',
+);
+
+contains(
+  '__docs__/menu-extraction-pipeline/menu-extraction-pipeline_mobile-support.md',
+  ['`canManageMenu` is not an additional extraction requirement', 'requires `canManageStore`', 'definitive 4xx rejection', 'malformed-success acknowledgement failures'],
+  'Menu extraction mobile docs record dedicated extraction and store-mutation permissions',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  ['Menu Extraction Current-Permission Authority Checkpoint', '256KB bounded body reader'],
+  'Production-readiness audit records extraction permission authority and corrected intake cap',
+);
+
+notContains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  ['hashed `AI_OPERATION` limiter, 64KB bounded body reader'],
+  'Production-readiness audit does not retain the obsolete menu-intake body cap',
+);
+
+contains(
+  '__docs__/changelog.md',
+  ['Menu Extraction Current-Permission Authority', 'Platform calls add none'],
+  'Changelog records extraction permission authority and cost boundary',
 );
 
 contains(
@@ -2083,6 +2365,8 @@ contains(
     'normalizeMenuExtractionProjectId',
     'const MenuExtractionProjectIdSchema = z.string()',
     'projectId: MenuExtractionProjectIdSchema',
+    'requireAnyStorePermission',
+    'PERMISSIONS.USE_MENU_EXTRACTION',
     'buildProjectMenuExtractionDestination',
     "buildProjectMenuExtractionDestination(projectId, 'review')",
     'buildMenuExtractionRoutingFields',
@@ -2090,6 +2374,18 @@ contains(
     'menuLinkImports/${ids.tId}/${ids.sId}/${projectId}/${jobRef.id}/',
   ],
   'Authenticated link import uses shared project routing and review mode',
+);
+
+ordered(
+  'src/app/api/menu-link-imports/route.ts',
+  [
+    'const validation = RequestSchema.safeParse(bodyResult.data);',
+    'const permissionResponse = await requireAnyStorePermission(',
+    '[PERMISSIONS.USE_MENU_EXTRACTION]',
+    'const projectDoc = await projectRef.get();',
+    'const acquisition = await acquireMenuLinkSource(',
+  ],
+  'Authenticated link import requires current persisted extraction permission before project and provider work',
 );
 
 notContains(
@@ -2117,9 +2413,12 @@ contains(
     'menu_link_import_job_created',
     'menu_link_import_source_rejected',
     'menu_link_import_route_failed',
+    'menu_link_import_job_recovered_after_ambiguous_persistence',
+    'MENU_LINK_IMPORT_PERSISTENCE_PROBE_FAILED',
+    'const [jobSnapshot, artifactSnapshot] = await Promise.all([',
+    'cleanupDeferred = jobSnapshot.exists || artifactSnapshot.exists;',
     'storagePathCount: createdStoragePaths.length',
-    'artifactDocCreated',
-    'jobDocCreated',
+    'persistenceAttempted',
   ],
   'Authenticated link import route uses bounded menu-processing diagnostics',
 );
@@ -2140,6 +2439,8 @@ notContains(
   [
     'artifactRef.set(',
     'await artifactRef.create(',
+    'artifactDocCreated',
+    'jobDocCreated',
   ],
   'Authenticated link import must not create artifact metadata outside the active-job transaction',
 );
@@ -2428,12 +2729,14 @@ contains(
     'appliedChangeCount <= 0',
     'appliedChangeCount !== expectedChangeCount',
     'completed: true',
-    'upsertById(files[fileIndex].extractedData.data.categories, [cat.newCategory]);',
-    'upsertById(files[fileIndex].extractedData.data.items, [item.newItem]);',
-    'const batch = writeBatch(firebaseClient);',
-    'batch.update(projectRef, sanitizeFirestoreValue(updatePayload));',
-    'batch.update(jobRef, buildCompletedReviewJobPayload());',
-    'await batch.commit();',
+    'upsertById(files[fileIndex].extractedData.data.categories, [categoryMutation.newCategory]);',
+    'upsertById(files[fileIndex].extractedData.data.items, [itemMutation.newItem]);',
+    'const committed = await runTransaction(firebaseClient, async (transaction) => {',
+    'transaction.get(projectRef)',
+    'transaction.get(jobRef)',
+    'assertOwnedPreviewJob(currentJob, session, projectId);',
+    'transaction.update(projectRef, sanitizeFirestoreValue({ files: projection.files }));',
+    'transaction.update(jobRef, buildCompletedReviewJobPayload());',
     'function assertOwnedPreviewJob',
     "jobData.status !== 'preview_ready'",
     "throw new Error('Extraction review does not belong to this business')",
@@ -2442,9 +2745,13 @@ contains(
     'deleted: false',
     'index: nextIndex++',
     "message: ''",
-    "await saveLinkedOutletProject(linkedOutletProjectPayload, jobId)",
+    'await saveLinkedOutletProject({',
+    'expectedLocalVersion: Number(projectData.outletLocalState?.localVersion) || 0,',
     "'/api/projects/outlet-save'",
     "await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges')",
+    'const storeResult = await applyStoreBusinessAttributeDefaults({',
+    'assertStoreUpdateSucceeded(',
+    "'menu_review_apply_business_attributes_store_update_rejected'",
     'void logMOLEvent({',
     '}).catch((error) => {',
     '...getBoundedMenuProcessingStringContext(\'actorUserId\', molContext.actorUserId)',
@@ -2457,12 +2764,29 @@ contains(
   'Review apply validates ownership/status, creates standard project file shells, routes linked outlets through outlet-save, and revalidates public render cache',
 );
 
+contains(
+  'src/app/api/projects/outlet-save/route.ts',
+  [
+    'extractionReviewJobRef',
+    'transaction.get(extractionReviewJobRef)',
+    'reviewJob.status !== "preview_ready"',
+    '!reviewJob.uId',
+    '!sessionUserIds.includes(String(reviewJob.uId))',
+    'currentLocalVersion !== extractionReview.expectedLocalVersion',
+    'transaction.update(extractionReviewJobRef',
+    'extractionReviewCompleted: true',
+    'appliedChangeCount: extractionReview.expectedChangeCount',
+  ],
+  'Linked-outlet extraction review validates current job/version and completes atomically with project persistence',
+);
+
 notContains(
   'src/lib/extraction/applyChanges.ts',
   [
     'files[fileIndex].extractedData.data.categories.push(cat.newCategory)',
     'files[fileIndex].extractedData.data.items.push(item.newItem)',
     "await updateDoc(jobRef, {\n            status: 'completed'",
+    'await updateDoc(storeRef, { businessAttributes: nextBusinessAttributes });',
   ],
   'Extraction review apply avoids duplicate add retries and direct project/job split completion writes',
 );
@@ -2879,6 +3203,9 @@ contains(
     'TRUSTED_WHATSAPP_MEDIA_HOST_SUFFIXES',
     'export function isTrustedWhatsAppMediaUrl',
     'mediaLookupUrl.searchParams.set("phone_number_id", this.phoneNumberId)',
+    'redirect: "manual"',
+    'AbortSignal.timeout(WHATSAPP_API_TIMEOUT_MS)',
+    'AbortSignal.timeout(WHATSAPP_MEDIA_DOWNLOAD_TIMEOUT_MS)',
     'if (!isTrustedWhatsAppMediaUrl(url))',
     'millis <= now + 24 * 60 * 60 * 1000',
     'response.status !== 400 && response.status !== 422',
@@ -2893,8 +3220,10 @@ contains(
     'testLinkDeliveryDoesNotAmplifyProviderFailures',
     'interactive status ${status} must not trigger a second provider call',
     '[[401, false], [429, true], [503, true]]',
+    'request.redirect === "manual"',
+    'request.signal instanceof AbortSignal',
   ],
-  'WhatsApp adapter tests cover auth, throttling, and transient interactive-send call amplification',
+  'WhatsApp adapter tests cover redirect refusal, bounded calls, auth, throttling, and transient interactive-send call amplification',
 );
 
 contains(
@@ -2912,12 +3241,25 @@ contains(
   [
     'HEALTH_COMPUTE_LEASE_MS = 15 * 60 * 1000',
     'export function isMessagingHealthComputationDue',
+    'export function shouldCheckMessagingOnboardingHealth',
     'computeLeaseUntil: Timestamp.fromMillis(now.toMillis() + HEALTH_COMPUTE_LEASE_MS)',
     'lastAttemptAt: now',
     'computeLeaseUntil: null',
     'MESSAGING_HEALTH_LEASE_RELEASE_FAILED',
   ],
   'Messaging health snapshots use a recoverable bounded computation lease instead of treating attempts as completions',
+);
+
+contains(
+  'functions/src/messagingOnboarding/intakeProcessor.ts',
+  [
+    'outboundSent: number;',
+    'errors += previewDelivery.errors;',
+    'errors += confirmationDelivery.errors;',
+    'errors += fixDelivery.errors;',
+    'if (shouldCheckMessagingOnboardingHealth(now.toMillis()))',
+  ],
+  'Messaging intake reports outbound delivery activity/failures and checks the hourly health lease only in its bounded window',
 );
 
 notContains(
@@ -3080,19 +3422,19 @@ contains(
     'db.collection(`projects/${core.tenantId}/${core.storeId}`).doc(projectId)',
     'doc(normalizedSessionId)',
     'const projectFiles = sessionData.extractedProjectFiles;',
-    'timeZone: currency.timezone,',
-    'files: projectFiles',
-    'DB_COLLECTIONS.PLATFORM_SUMMARY',
-    'slug: projectSlug',
-	    'revalidateTag(`menu-store-${result.storeId}`)',
-	    'revalidateTag(`store-${result.storeId}`)',
-	    'revalidateTag("client-stores")',
-	    'revalidateTag("screen-data")',
-	    'touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish")',
+	    'timeZone: currency.timezone,',
+	    'files: projectFiles',
+	    'DB_COLLECTIONS.PLATFORM_SUMMARY',
+	    'slug: projectSlug',
+	    'runStorePublicTruthPostCommitEffects({',
+	    'revalidate: revalidateTag',
+	    'touchScreen: () => touchDigitalScreenContentVersionForStoreServer(',
+	    '"messagingOnboardingPublish",',
+	    'invalidateOwnerBusinessAssistantPacketCache({',
 	    'messaging_onboarding_publish_cache_revalidation_failed',
-	    'operation: "next_cache_tags"',
-	    'operation: "digital_screen_content_version"',
-	    'operation: "owner_business_assistant_packet"',
+	    'if (postCommit.effectsPending)',
+	    'failedEffectCount: postCommit.failedEffectCount',
+	    'operation: "post_commit_effects"',
 	    'messaging_onboarding_publish_event_write_failed',
 	    'const eventId = crypto.randomUUID()',
 	    '.doc(eventId)',
@@ -3285,6 +3627,31 @@ contains(
   'Provider uploads are bounded, ordered, all-or-nothing, source-index checked, accounted, and cleaned up',
 );
 
+{
+  const source = read('functions/src/logic/processMenuImages.ts');
+  const boundaryStart = source.indexOf('function buildOwnerExtractionActivity');
+  const boundaryEnd = source.indexOf('/**\n * Add AI operation to Firestore', boundaryStart);
+  const boundary = boundaryStart >= 0 && boundaryEnd > boundaryStart
+    ? source.slice(boundaryStart, boundaryEnd)
+    : '';
+  const admitsAuthenticatedOwnerProject = [
+    'transactionObject.destinationType === MENU_EXTRACTION_DESTINATION_TYPES.PROJECT',
+    'transactionObject.jobSource === MENU_EXTRACTION_SOURCES.OWNER_UPLOAD',
+    'transactionObject.jobSource === MENU_EXTRACTION_SOURCES.MENU_LINK_IMPORT',
+    'userId !== transactionObject.uId',
+  ].every((token) => boundary.includes(token));
+  const excludesNonOwnerDestinations =
+    !boundary.includes('MENU_EXTRACTION_DESTINATION_TYPES.PUBLIC_MENU_DRAFT')
+    && !boundary.includes('MENU_EXTRACTION_DESTINATION_TYPES.MESSAGING_ONBOARDING')
+    && !boundary.includes('MENU_EXTRACTION_SOURCES.PUBLIC_CREATE_MENU')
+    && !boundary.includes('MENU_EXTRACTION_SOURCES.MESSAGING_ONBOARDING');
+  addCheck(
+    'Owner extraction history admits only authenticated project uploads/link imports',
+    Boolean(boundary) && admitsAuthenticatedOwnerProject && excludesNonOwnerDestinations,
+    'public-draft or messaging extraction could enter the nested owner ledger',
+  );
+}
+
 contains(
   'functions/src/logic/saveFilesToProject.ts',
   [
@@ -3332,6 +3699,39 @@ contains(
     'appliedKeyCount:',
   ],
   'Business attribute defaults pass through first-extraction screen refresh intent',
+);
+
+contains(
+  'functions/src/logic/businessAttributeDefaults.ts',
+  [
+    'const transactionResult = await firestoreAdmin.runTransaction(async (transaction) => {',
+    'const storeSnap = await transaction.get(storeRef);',
+    'const nextBusinessAttributes = getBusinessAttributesWithMenuDefaults(params.menuData, storeData);',
+    'transaction.update(storeRef, { businessAttributes: nextBusinessAttributes });',
+    'if (!transactionResult.applied) return false;',
+  ],
+  'Functions business-attribute defaults merge against transaction-current store truth',
+);
+
+notContains(
+  'functions/src/logic/businessAttributeDefaults.ts',
+  [
+    'const storeSnap = await storeRef.get();',
+    'await storeRef.update({ businessAttributes: nextBusinessAttributes });',
+  ],
+  'Functions business-attribute defaults reject the stale split read/write path',
+);
+
+contains(
+  'src/database/stores/index.tsx',
+  [
+    'export const applyStoreBusinessAttributeDefaults = async',
+    'const storeSnapshot = await transaction.get(storeRef);',
+    'mergeMissingBusinessAttributeDefaults(',
+    'transaction.update(storeRef, {',
+    "await revalidatePublicClientCache(storeId, 'applyStoreBusinessAttributeDefaults');",
+  ],
+  'Browser business-attribute defaults merge against transaction-current scoped store truth',
 );
 
 notContains(
@@ -3620,6 +4020,13 @@ notContains(
 contains(
   'functions/src/schedulers/menuJobCleanup.ts',
   [
+    'export async function cleanupOldMenuLinkImportArtifactsLogic',
+    ".collection(DB_COLLECTIONS.MENU_LINK_IMPORT_ARTIFACTS)",
+    ".where('createdAt', '<', cutoff)",
+    'getMenuLinkImportArtifactCleanupDecision({',
+    'await bucket.file(decision.storagePath).delete({ ignoreNotFound: true });',
+    'Preserve the artifact metadata as the durable retry record',
+    'batch.delete(artifactDoc.ref);',
     'export async function pruneCompletedProjectJobPayloadsLogic',
     'buildExtractionResultSummary(',
     "'result.combinedData': FieldValue.delete()",
@@ -3628,6 +4035,59 @@ contains(
     'data.skipProjectSave === true',
   ],
   'Maintenance cleanup prunes heavy completed project job payloads without touching public, messaging, or review jobs',
+);
+
+ordered(
+  'functions/src/schedulers/menuJobCleanup.ts',
+  [
+    'await bucket.file(decision.storagePath).delete({ ignoreNotFound: true });',
+    'batch.delete(artifactDoc.ref);',
+    'await batch.commit();',
+  ],
+  'Menu-link retention cleanup deletes private Storage before its durable retry metadata',
+);
+
+contains(
+  'functions/src/schedulers/menuLinkImportArtifactRetention.ts',
+  [
+    'storedArtifactId !== artifactId',
+    'getMenuLinkImportArtifactJobLookupId',
+    'const expectedPrefix = `menuLinkImports/${tId}/${sId}/${projectId}/${jobId}/`;',
+    "params.job.source !== 'menu_link_import'",
+    "return { eligible: false, reason: 'active_job' };",
+    'return { eligible: true, storagePath };',
+  ],
+  'Menu-link artifact retention validates exact artifact, job, tenant, store, project, owner, and Storage bindings',
+);
+
+ordered(
+  'functions/src/schedulers/menulistMaintenanceScheduler.ts',
+  [
+    'const artifactResult = await cleanupOldMenuLinkImportArtifactsLogic();',
+    'const pruneResult = await pruneCompletedProjectJobPayloadsLogic();',
+    'const result = await cleanupOldJobsLogic();',
+  ],
+  'Daily maintenance removes owned menu-link artifacts before terminal job retention cleanup',
+);
+
+contains(
+  '__docs__/menu-link-import/menu-link-import_firebase.md',
+  [
+    'same seven-day window as terminal extraction jobs',
+    'Storage is deleted before `menuLinkImportArtifacts` metadata',
+    'capped at 100 artifacts per run',
+  ],
+  'Menu-link Firebase contract records bounded source retention, safe ordering, and cost',
+);
+
+contains(
+  '__docs__/audits/menulist-production-readiness-audit.md',
+  [
+    'Menu Link Source-Retention Checkpoint',
+    'Missing already-pruned jobs remain eligible only through the exact artifact/path contract.',
+    'scoped `menulistMaintenanceScheduler` QA deploy',
+  ],
+  'Production audit records menu-link retention behavior and deploy boundary',
 );
 
 contains(
@@ -3725,15 +4185,65 @@ contains(
 );
 
 contains(
+  'src/lib/firebase/menuProcessing.ts',
+  [
+    "where('tId', '==', String(session.tId ?? ''))",
+    "where('sId', '==', String(session.sId ?? ''))",
+    "where('projectId', '==', projectId)",
+    "where('uId', '==', session.uId)",
+    "where('status', 'in', ['pending', 'processing', 'preview_ready'])",
+  ],
+  'Client active-job discovery constrains tenant, store, project, user, and active status',
+);
+
+ordered(
+  'src/lib/firebase/menuProcessing.ts',
+  [
+    'export async function checkExistingActiveJob',
+    "where('tId', '==', String(session.tId ?? ''))",
+    "where('sId', '==', String(session.sId ?? ''))",
+    "where('projectId', '==', projectId)",
+    "where('uId', '==', session.uId)",
+  ],
+  'Client active-job query scopes current tenant/store before project/user filters',
+);
+
+contains(
   'firestore.rules',
   [
     'match /menuImageProcessingJobs/{jobId}',
     'allow create: if false',
+    'isMenuProcessingJobOwner()',
+    'isMenuProcessingJobScopeMember()',
+    'belongsToTenantById(resource.data.tId)',
+    'belongsToStoreById(resource.data.sId)',
     'isClientJobCancellationRequest()',
     "request.resource.data.diff(resource.data).affectedKeys().hasOnly",
     'isClientPreviewReviewResolution()',
   ],
-  'Firestore rules keep job creation server-only while preserving restricted client cancellation/review updates',
+  'Firestore rules scope owner job reads and updates while keeping create server-only and platform monitoring explicit',
+);
+
+ordered(
+  'firestore.indexes.json',
+  [
+    '"collectionGroup": "menuImageProcessingJobs"',
+    '"fieldPath": "tId"',
+    '"fieldPath": "sId"',
+    '"fieldPath": "projectId"',
+    '"fieldPath": "uId"',
+    '"fieldPath": "status"',
+  ],
+  'Menu extraction indexes support the fully scoped active-job query',
+);
+
+contains(
+  'package.json',
+  [
+    'test:menu-extraction-job-rules',
+    'scripts/verification/test-menu-extraction-job-rules.ts',
+  ],
+  'Menu extraction tenant isolation has a registered Firestore rules emulator regression',
 );
 
 contains(

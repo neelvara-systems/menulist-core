@@ -25,7 +25,32 @@ export interface DeploymentStageEnv {
     VERCEL?: string;
     VERCEL_ENV?: string;
     NEXT_PUBLIC_ENV?: string;
+    NEXT_PUBLIC_VERCEL_ENV?: string;
     NODE_ENV?: string;
+}
+
+export type DeploymentStageConfigurationErrorCode =
+    | 'INVALID_PUBLIC_DEPLOYMENT_STAGE'
+    | 'INVALID_PUBLIC_VERCEL_STAGE'
+    | 'INVALID_SERVER_VERCEL_STAGE'
+    | 'MISSING_SERVER_VERCEL_STAGE'
+    | 'PUBLIC_DEPLOYMENT_STAGE_CONFLICT'
+    | 'SERVER_PUBLIC_DEPLOYMENT_STAGE_CONFLICT';
+
+export interface DeploymentStageResolution {
+    errorCode: DeploymentStageConfigurationErrorCode | null;
+    stage: DeploymentStage;
+    valid: boolean;
+}
+
+export class DeploymentStageConfigurationError extends Error {
+    readonly code: DeploymentStageConfigurationErrorCode;
+
+    constructor(code: DeploymentStageConfigurationErrorCode) {
+        super(code);
+        this.name = 'DeploymentStageConfigurationError';
+        this.code = code;
+    }
 }
 
 export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProductId, ProductDeploymentTarget>> = {
@@ -166,19 +191,95 @@ export const DEPLOYMENT_TARGETS: Record<DeploymentStage, Record<DeploymentProduc
 const normalizeStageValue = (value?: string | null): string =>
     value?.trim().toLowerCase() || '';
 
+const parseDeploymentStageValue = (
+    value?: string | null,
+): DeploymentStage | null => {
+    const normalized = normalizeStageValue(value);
+    if (!normalized) return null;
+    if (normalized === 'production') return 'production';
+    if (normalized === 'preview') return 'preview';
+    if (normalized === 'development' || normalized === 'local') return 'local';
+    return null;
+};
+
+const hasStageValue = (value?: string | null): boolean => Boolean(normalizeStageValue(value));
+
+/**
+ * Capture public deployment markers through direct process.env property reads.
+ * Next.js only inlines statically referenced NEXT_PUBLIC_* variables into the
+ * browser bundle; passing process.env through an alias loses those values.
+ */
+export const getDeploymentStageEnvSnapshot = (): DeploymentStageEnv => ({
+    VERCEL: process.env.VERCEL,
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    NEXT_PUBLIC_ENV: process.env.NEXT_PUBLIC_ENV,
+    NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV,
+    NODE_ENV: process.env.NODE_ENV,
+});
+
+export function resolveDeploymentStage(
+    env: DeploymentStageEnv = getDeploymentStageEnvSnapshot(),
+): DeploymentStageResolution {
+    const serverVercelStage = parseDeploymentStageValue(env.VERCEL_ENV);
+    const publicVercelStage = parseDeploymentStageValue(env.NEXT_PUBLIC_VERCEL_ENV);
+    const publicStage = parseDeploymentStageValue(env.NEXT_PUBLIC_ENV);
+    const isVercel = env.VERCEL === '1' || hasStageValue(env.VERCEL_ENV);
+
+    const fallbackStage = serverVercelStage || publicVercelStage || publicStage || 'local';
+    const invalid = (errorCode: DeploymentStageConfigurationErrorCode): DeploymentStageResolution => ({
+        errorCode,
+        stage: fallbackStage,
+        valid: false,
+    });
+
+    if (hasStageValue(env.VERCEL_ENV) && !serverVercelStage) {
+        return invalid('INVALID_SERVER_VERCEL_STAGE');
+    }
+    if (hasStageValue(env.NEXT_PUBLIC_VERCEL_ENV) && !publicVercelStage) {
+        return invalid('INVALID_PUBLIC_VERCEL_STAGE');
+    }
+    if (hasStageValue(env.NEXT_PUBLIC_ENV) && !publicStage) {
+        return invalid('INVALID_PUBLIC_DEPLOYMENT_STAGE');
+    }
+    if (env.VERCEL === '1' && !serverVercelStage) {
+        return invalid('MISSING_SERVER_VERCEL_STAGE');
+    }
+    if (
+        publicVercelStage
+        && publicStage
+        && publicVercelStage !== publicStage
+    ) {
+        return invalid('PUBLIC_DEPLOYMENT_STAGE_CONFLICT');
+    }
+    if (
+        serverVercelStage
+        && (
+            (publicVercelStage && publicVercelStage !== serverVercelStage)
+            || (publicStage && publicStage !== serverVercelStage)
+        )
+    ) {
+        return invalid('SERVER_PUBLIC_DEPLOYMENT_STAGE_CONFLICT');
+    }
+
+    return {
+        errorCode: null,
+        stage: isVercel && serverVercelStage
+            ? serverVercelStage
+            : publicVercelStage || publicStage || serverVercelStage || 'local',
+        valid: true,
+    };
+}
+
 export function getDeploymentStage(
-    env: DeploymentStageEnv = process.env as DeploymentStageEnv,
+    env: DeploymentStageEnv = getDeploymentStageEnvSnapshot(),
 ): DeploymentStage {
-    const vercelEnv = normalizeStageValue(env.VERCEL_ENV);
-    const publicEnv = normalizeStageValue(env.NEXT_PUBLIC_ENV);
-    const nodeEnv = normalizeStageValue(env.NODE_ENV);
-
-    if (vercelEnv === 'production' || publicEnv === 'production') return 'production';
-    if (vercelEnv === 'preview' || publicEnv === 'preview') return 'preview';
-    if (env.VERCEL === '1') return 'preview';
-    if (nodeEnv === 'production' && publicEnv === 'production') return 'production';
-
-    return 'local';
+    const resolution = resolveDeploymentStage(env);
+    if (!resolution.valid || resolution.errorCode) {
+        throw new DeploymentStageConfigurationError(
+            resolution.errorCode || 'INVALID_PUBLIC_DEPLOYMENT_STAGE',
+        );
+    }
+    return resolution.stage;
 }
 
 export function getProductDeploymentTarget(

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { PRODUCT_IDS } from '@constant/product';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 
 import {
     normalizeAnswerlatticeCanonicalAnswerId,
@@ -45,7 +46,7 @@ export const AnswerlatticeCanonicalContentSchema = z.object({
     detailedExplanation: z.string().trim().min(1).max(24_000),
     edgeCases: z.string().trim().max(8_000).optional(),
     constraints: z.string().trim().max(8_000).optional(),
-    procedure: z.unknown().optional(),
+    procedure: AnswerlatticeProcedureSchema.optional(),
 }).strict();
 
 export const AnswerlatticeCanonicalProposalAnswerSchema = z.object({
@@ -55,14 +56,29 @@ export const AnswerlatticeCanonicalProposalAnswerSchema = z.object({
     scope: AnswerlatticeCanonicalScopeSchema,
     productBinding: AnswerlatticeCanonicalProductBindingSchema,
     content: AnswerlatticeCanonicalContentSchema,
-}).strict();
+}).strict().superRefine((answer, context) => {
+    if (answer.answerType === 'procedure' && !answer.content.procedure) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Procedure answers require structured procedure steps.',
+            path: ['content', 'procedure'],
+        });
+    }
+    if (answer.answerType !== 'procedure' && answer.content.procedure) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Structured procedure steps require answerType procedure.',
+            path: ['answerType'],
+        });
+    }
+});
 
 const AnswerlatticeMutationSuggestedChangeSchema = z.object({
     structuredSummary: z.string().trim().min(1).max(500).optional(),
     detailedExplanation: z.string().trim().min(1).max(24_000).optional(),
     edgeCases: z.string().trim().max(8_000).optional(),
     constraints: z.string().trim().max(8_000).optional(),
-    procedure: z.unknown().optional(),
+    procedure: AnswerlatticeProcedureSchema.optional(),
     draftTitle: z.string().trim().min(1).max(180).optional(),
     draftStatus: z.enum(['pending', 'generated', 'failed']).optional(),
     draftSource: z.enum([
@@ -136,6 +152,16 @@ export const AnswerlatticeStoredMutationProposalSchema = z.object({
 
 const RequestIdSchema = z.string().trim().min(8).max(80).regex(/^[A-Za-z0-9_-]+$/);
 
+export const AnswerlatticeGovernanceEditedContentSchema = z.object({
+    title: z.string().trim().min(1).max(180).optional(),
+    structuredSummary: z.string().trim().min(1).max(500).optional(),
+    detailedExplanation: z.string().trim().min(1).max(24_000).optional(),
+    edgeCases: z.string().trim().max(8_000).optional(),
+    constraints: z.string().trim().max(8_000).optional(),
+}).strict();
+
+export type AnswerlatticeGovernanceEditedContent = z.infer<typeof AnswerlatticeGovernanceEditedContentSchema>;
+
 const AnswerlatticeGovernanceActionBaseSchema = z.discriminatedUnion('action', [
     z.object({
         action: z.literal('propose_create'),
@@ -151,13 +177,7 @@ const AnswerlatticeGovernanceActionBaseSchema = z.discriminatedUnion('action', [
     z.object({
         action: z.literal('approve_proposal'),
         proposalId: MutationProposalIdSchema,
-        editedContent: z.object({
-            title: z.string().trim().min(1).max(180).optional(),
-            structuredSummary: z.string().trim().min(1).max(500).optional(),
-            detailedExplanation: z.string().trim().min(1).max(24_000).optional(),
-            edgeCases: z.string().trim().max(8_000).optional(),
-            constraints: z.string().trim().max(8_000).optional(),
-        }).strict().optional(),
+        editedContent: AnswerlatticeGovernanceEditedContentSchema.optional(),
     }).strict(),
     z.object({
         action: z.literal('reject_proposal'),
@@ -229,13 +249,7 @@ export type AnswerlatticeGovernanceAction =
     | {
         action: 'approve_proposal';
         proposalId: string;
-        editedContent?: {
-            title?: string;
-            structuredSummary?: string;
-            detailedExplanation?: string;
-            edgeCases?: string;
-            constraints?: string;
-        };
+        editedContent?: AnswerlatticeGovernanceEditedContent;
     }
     | { action: 'reject_proposal'; proposalId: string }
     | { action: 'mark_implemented'; proposalId: string }
@@ -251,6 +265,7 @@ export type AnswerlatticeGovernanceActionResult = {
     status?: 'pending_review' | 'approved' | 'rejected' | 'implemented';
     created?: boolean;
     transferredAnswers?: number;
+    transferredArticles?: number;
     transferredRelations?: number;
 };
 
@@ -271,5 +286,6 @@ export const AnswerlatticeGovernanceActionResultSchema = z.object({
     status: z.enum(['pending_review', 'approved', 'rejected', 'implemented']).optional(),
     created: z.boolean().optional(),
     transferredAnswers: z.number().int().nonnegative().optional(),
+    transferredArticles: z.number().int().nonnegative().optional(),
     transferredRelations: z.number().int().nonnegative().optional(),
 }).strict() as z.ZodType<AnswerlatticeGovernanceActionResult>;

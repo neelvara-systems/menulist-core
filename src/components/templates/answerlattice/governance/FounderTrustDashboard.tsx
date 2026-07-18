@@ -3,7 +3,7 @@
 /**
  * Answerlattice — Founder Trust Dashboard
  * 
- * Displays 4 trust metrics + top failing entities + escalation breakdown.
+ * Displays trust metrics + top failing entities + escalation breakdown.
  * Reads from platformSummary/trustMetrics_{tId}_{sId} (1 Firestore read).
  * 
  * Feature-flagged: ENABLE_ANSWERLATTICE_TRUST_METRICS
@@ -123,6 +123,10 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
 
     const coverageTrend = getTrend(data.coverage.rate, data.coverage.previousRate, token);
     const resolutionTrend = getTrend(data.resolution.rate, data.resolution.previousRate, token);
+    const hasConfirmedResolution = Boolean(data.confirmedResolution && data.confirmedResolution.explicitOutcomeTotal > 0);
+    const confirmedResolutionTrend = hasConfirmedResolution && data.confirmedResolution
+        ? getTrend(data.confirmedResolution.rate, data.confirmedResolution.previousRate, token)
+        : null;
     const driftTrend = getTrend(data.drift.rate, data.drift.previousRate, token, true);
     const healthTrend = getTrend(data.entityHealth.avgScore, data.entityHealth.previousAvgScore, token);
 
@@ -194,7 +198,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                 </Text>
             </Flex>
 
-            {/* 4 Metric Cards */}
+            {/* Metric cards */}
             <Flex gap={16} wrap="wrap">
                 {/* Coverage */}
                 <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
@@ -214,10 +218,39 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                     </Flex>
                 </Card>
 
-                {/* Resolution */}
+                {/* Confirmed resolution */}
+                <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
+                    <Tooltip title="Based only on end users explicitly selecting Solved in the widget">
+                        <Statistic
+                            title={<Space><LuShieldCheck size={14} /> Confirmed resolved</Space>}
+                            value={hasConfirmedResolution && data.confirmedResolution ? data.confirmedResolution.rate : 'Not available'}
+                            suffix={hasConfirmedResolution ? '%' : undefined}
+                            valueStyle={{
+                                fontSize: hasConfirmedResolution ? 28 : 18,
+                                color: hasConfirmedResolution && data.confirmedResolution
+                                    ? getMetricColor('standard', data.confirmedResolution.rate, token)
+                                    : token.colorTextSecondary,
+                            }}
+                        />
+                    </Tooltip>
+                    <Flex align="center" gap={4} style={{ marginTop: 4 }}>
+                        {confirmedResolutionTrend ? (
+                            <span style={{ color: confirmedResolutionTrend.color, display: 'flex', alignItems: 'center', gap: 2, fontSize: 12 }}>
+                                {confirmedResolutionTrend.icon} {confirmedResolutionTrend.label}
+                            </span>
+                        ) : null}
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                            {hasConfirmedResolution && data.confirmedResolution
+                                ? `${data.confirmedResolution.confirmedResolved} solved / ${data.confirmedResolution.explicitOutcomeTotal} outcomes - ${data.confirmedResolution.recontactedSameSession} recontacts`
+                                : 'Waiting for explicit widget outcomes'}
+                        </Text>
+                    </Flex>
+                </Card>
+
+                {/* Non-escalation */}
                 <Card size="small" style={{ flex: '1 1 200px', minWidth: 180 }}>
                     <Statistic
-                        title={<Space><LuBarChart3 size={14} /> Resolution</Space>}
+                        title={<Space><LuBarChart3 size={14} /> No escalation</Space>}
                         value={data.resolution.rate}
                         suffix="%"
                         valueStyle={{ fontSize: 28, color: getMetricColor('standard', data.resolution.rate, token) }}
@@ -227,7 +260,7 @@ export default function FounderTrustDashboard({ tId, sId }: FounderTrustDashboar
                             {resolutionTrend.icon} {resolutionTrend.label}
                         </span>
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            {data.resolution.resolved} resolved / {data.resolution.total} total
+                            {data.resolution.resolved} without escalation / {data.resolution.total} total
                         </Text>
                     </Flex>
                 </Card>

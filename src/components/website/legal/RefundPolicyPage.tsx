@@ -8,12 +8,12 @@ import WebsiteButton from '../shared/WebsiteButton';
 import WebsiteHeadline from '../shared/WebsiteHeadline';
 
 const policyFacts = [
-    { label: 'Subscription fees', value: 'Final and non-refundable once billing cycle starts' },
-    { label: 'Credit pack purchases', value: 'Non-refundable once added to your account' },
-    { label: 'Automatic renewals', value: 'Non-refundable — cancel before renewal date' },
+    { label: 'Subscription fees', value: 'Generally final once a billing cycle starts, subject to applicable law and confirmed billing errors' },
+    { label: 'Credit pack purchases', value: 'Generally non-refundable once credits are added or used, subject to applicable law and confirmed billing errors' },
+    { label: 'Automatic renewals', value: 'Cancel before renewal to avoid the next charge' },
     { label: 'Cancellation', value: 'Cancel any time from account settings' },
-    { label: 'Access after cancellation', value: 'Continues until end of current billing period' },
-    { label: 'Data retention', value: 'Preserved for 30 days after subscription expires' },
+    { label: 'Access after cancellation', value: 'Current paid plan continues until the end of its billing period' },
+    { label: 'Data retention', value: 'Handled under the purpose-based retention terms in our Privacy Policy' },
 ];
 
 const whyNoRefund = [
@@ -30,11 +30,11 @@ const whyNoRefund = [
     {
         icon: LuShield,
         title: 'Immediate value delivery',
-        desc: 'Upon subscribing, you receive immediate access to the complete platform — tools, templates, and resources. The value starts as soon as access is granted.',
+        desc: 'When payment is confirmed, the tools, limits, and credits included in the selected plan become available. The value starts as soon as access is granted.',
         points: [
-            'Full platform access from the moment of subscription',
+            'Selected-plan access from the moment payment is confirmed',
             'Content generation credits available immediately',
-            'All features unlocked without delay',
+            'Features and limits remain specific to the purchased plan',
         ],
     },
     {
@@ -63,10 +63,10 @@ const cancellationCards = [
     {
         icon: LuCheck,
         title: 'What happens when you cancel',
-        desc: 'You retain full access to all features and credits until the end of your current billing period.',
+        desc: 'You retain the access and remaining credits included in your current paid plan until the end of its billing period.',
         points: [
             'Account remains active until billing period ends',
-            'All features continue to work normally',
+            'Current plan features continue through the paid cycle',
             'Your credits remain available',
             'No future charges after cancellation',
         ],
@@ -76,16 +76,16 @@ const cancellationCards = [
         title: 'After your billing period ends',
         desc: 'Once your billing period expires, your account access changes.',
         points: [
-            'Platform features become inaccessible',
-            'Data preserved for 30 days',
-            'After 30 days, data may be permanently deleted',
-            'You can resubscribe at any time to restore access',
+            'Features that require the ended plan become inaccessible',
+            'Account and business data follow the purpose-based retention terms in our Privacy Policy',
+            'Deletion or anonymization may be limited by billing, security, dispute, or legal obligations',
+            'You can choose a new plan later if the account remains available',
         ],
     },
 ];
 
 export default function RefundPolicyPage() {
-    const lastUpdated = 'November 5, 2025';
+    const lastUpdated = 'July 16, 2026';
 
     return (
         <div className="ws-page">
@@ -104,7 +104,7 @@ export default function RefundPolicyPage() {
                             ]}
                         />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-6)', maxWidth: '580px', marginLeft: 'auto', marginRight: 'auto' }}>
-                            Clear terms for subscription cancellations, refunds, and billing. All fees are final and non-refundable.
+                            Clear terms for subscription cancellations, refunds, and billing. Fees are generally final once value is delivered, except where applicable law requires otherwise or MenuList confirms a duplicate or incorrect charge.
                         </p>
                         <p className="ws-caption" style={{ marginTop: 'var(--ws-space-4)' }}>
                             Last updated: {lastUpdated} · Questions? Contact us at{' '}
@@ -216,7 +216,7 @@ export default function RefundPolicyPage() {
                     <div style={{ textAlign: 'center', maxWidth: 'var(--ws-max-w-text)', margin: '0 auto' }}>
                         <WebsiteHeadline as="h2" text="Questions about billing?" />
                         <p className="ws-body" style={{ marginTop: 'var(--ws-space-4)' }}>
-                            Our support team is here to help clarify any questions about billing, subscriptions, or this policy.
+                            Our support team can clarify billing, subscriptions, or this policy. Report a duplicate, incorrect, or unrecognized charge promptly so we can review the billing record.
                         </p>
                         <p style={{ marginTop: 'var(--ws-space-4)', fontSize: '0.9375rem', color: 'var(--ws-text-secondary)' }}>
                             Reach us at{' '}

@@ -1,7 +1,7 @@
 # Public Truth Tools - Mobile Support
 
 **Status:** Active family; Public Truth Tools owner mobile readiness card implemented
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Product, mobile, developers
 
 ---
@@ -105,3 +105,4 @@ Current verifier:
 
 - `npm run verify:public-truth-check` checks shared hook/card wiring and mobile fix-target callbacks.
 - `npm run verify:owner-business-assistant` checks Business Health and mobile-shell guardrails.
+- `npm run verify:public-truth-tools` also runs executable URL, action-destination, report-payload, and print/share boundary tests. The July 16 hardening adds no mobile route, mobile-only DAL, or shell bypass.

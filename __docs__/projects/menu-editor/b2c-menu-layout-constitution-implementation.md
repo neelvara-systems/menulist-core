@@ -1,5 +1,21 @@
 # B2C Menu Layout Constitution Implementation
 
+## July 16, 2026 current code-truth addendum
+
+The maintained B2C specification and implementation are now `../b2c-view/b2c-view_spec.md` and `../b2c-view/b2c-view_impl.md`. This older implementation summary remains historical evidence and does not override them.
+
+The current code enforces the constitution at these material boundaries:
+
+- exact mood/layout compatibility: Clean List/Grid; Warm List/Card/Grid; Premium List/Card; Bold Card/Grid; Fast List;
+- category tabs as navigation rather than a structural layout, including safe legacy-tabs migration;
+- owned-key and malformed-boolean normalization before owner preview and again before public rendering;
+- WCAG-AA baseline accent/price contrast, readable metadata/warning badges, full-opacity prices, and readable unavailable items;
+- base/range plus every active priced option before item interaction, with inactive/unpriced/non-finite options removed and variant analytics prevented from using stale base price;
+- HTTPS/root-relative public backgrounds, preview-only data images, and scroll attachment on mobile;
+- stable full item addressability for search, category navigation, and direct links after removing the estimated-height 150-item placeholder.
+
+`npm run verify:menu-design-presentation-boundary` locks these source/runtime contracts. This is not current launch certification: the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke remain required.
+
 **Date:** December 21, 2024  
 **Status:** Historical implementation note; not current launch certification
 

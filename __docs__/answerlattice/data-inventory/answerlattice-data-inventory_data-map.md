@@ -115,7 +115,7 @@ Public/widget/MCP write and AI-triggering routes keep their auth, product, purpo
 | Storage target | What is stored | When written | How used | Why it exists | Current retention |
 | --- | --- | --- | --- | --- | --- |
 | `chatSessions` | Chat title/history/messages, user/workspace fields from composer, feedback state, admin metadata, image URLs. | Chat save/update/message feedback. | User chat history, admin conversation monitoring, support debugging. | Support conversation continuity. | Durable; latest 50 user query cap but no cleanup found. |
-| Storage `chatSessions/chatimages/{tId}/{sId}/{imageId}` | Chat images uploaded from base64 with private immutable metadata. | Chat image upload. | Chat/image search and support context. | Preserve user-provided visual context. | Metadata says tied to chat session; hard delete now reads the session and deletes image URLs before deleting the Firestore doc. |
+| Storage `chatSessions/chatimages/{tId}/{sId}/{imageId}` | Chat images uploaded from base64 with private immutable metadata. | Chat image upload. | Chat/image search and support context. | Preserve user-provided visual context. | Metadata says tied to chat session; hard delete validates and deletes the Firestore session transactionally, then performs best-effort cleanup of only the owned image URLs captured from that committed session truth. |
 | `supportTickets` | Ticket subject, category, priority, client details, documents, messages, statuses, satisfaction, logs, client debug context, escalation context, deleted flag. | Ticket create/update/message/status/satisfaction/delete/restore. | Ticket inbox, support operations, signals, notifications. | Human support workflow. | Durable ticket workflow; hard delete reads persisted ticket data and deletes top-level documents plus message attachments before deleting Firestore doc. |
 | Storage `supportTickets/documents/{tId}/{sId}/{fileId}` | Ticket top-level documents/images. | Ticket create/update. | Support evidence. | Attachments for support tickets. | Deleted by ticket hard delete. |
 | Storage `supportTickets/messages/{tId}/{sId}/{fileId}` | Message attachments. | Ticket message add. | Conversation evidence. | Attachments for replies. | Deleted by ticket hard delete. |
@@ -231,7 +231,7 @@ All current Next route files under `src/app/api/answerlattice`, `src/app/api/wid
 | Owner notifications | Compact event/delivery/rate docs, 90-day event/delivery expiry, 2-day rate-limit expiry, TTL overrides, and legacy cleanup. | Implemented for Answerlattice rows only. |
 | Contact enquiries | Sanitization, hashed IP, honeypot, public rate limit, 365-day expiry, TTL override, and legacy cleanup. | Implemented with a 365-day platform lifecycle. |
 | Compiled context bundles | Manifest points to active/latest versions, in-memory proxy/cache, and scheduler Storage cleanup keeps active/last-ready plus previous two versions. | Implemented. |
-| Chat/ticket attachments | Storage paths tenant/store scoped; hard delete now removes chat images, ticket documents, and ticket message attachments. | Implemented for hard-delete paths. |
+| Chat/ticket attachments | Storage paths are tenant/store scoped. Chat images are retained after session mutations because URLs can be shared across sessions; ticket hard delete removes ticket documents and message attachments. | Chat scope-wide orphan reclamation remains deferred until bounded cross-session non-reference proof exists. |
 
 ## 7. Production interpretation
 

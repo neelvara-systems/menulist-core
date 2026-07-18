@@ -19,8 +19,9 @@ Current runtime:
 - `POST /api/campaigncue/sources` saves manual notes, menu links, booking links, offers, events, optional expiry, and upload metadata; the server derives source facts and refreshes `sourceSnapshots/current`.
 - The same protected POST accepts `inspiration_pattern`. It validates one public HTTPS link plus notes, discards raw notes after deterministic analysis, stores one current compact pattern on the existing workspace document, and refreshes source trace without creating a new collection or read path. Inspiration never becomes a business fact.
 - `GET /api/campaigncue/integrations` returns read-only future provider posture.
+- `CAMPAIGNCUE_META_ADS_MCP_POSTURE` records the disabled read-first Meta capability order and mutation blocklist; it does not initialize an MCP client.
 
-Direct provider integrations, social account connection, setup-request writes, OAuth token storage, webhooks, MenuList write-back, and background sync are not enabled. MenuList source access is read-only and scoped by the signed-in tenant/store session. Provider posture is returned as manual-only/future-disabled from the workspace overview. The owner workspace shows saved facts from Business details and Inputs so owners can see what CampaignCue is allowed to use.
+Direct provider integrations, social account connection, setup-request writes, OAuth token storage, Meta MCP calls, provider metric imports, webhooks, MenuList write-back, and background sync are not enabled. MenuList source access is read-only and scoped by the signed-in tenant/store session. Provider posture is returned as manual-only/future-disabled from the workspace overview. The owner workspace shows saved facts from Business details and Inputs so owners can see what CampaignCue is allowed to use.
 
 ## Validation
 

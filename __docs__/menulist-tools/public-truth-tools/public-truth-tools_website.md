@@ -1,7 +1,7 @@
 # Public Truth Tools - Website Content
 
-**Status:** Planning documentation only
-**Last Updated:** July 4, 2026
+**Status:** Active copy guidance for implemented public routes
+**Last Updated:** July 16, 2026
 **Audience:** Public website writers
 
 ---
@@ -33,22 +33,26 @@ The report shows what is present, what is missing, and what can be turned into o
 
 ## Tool Sequence
 
-The public tool layer should launch as a small sequence, not a broad toolbox:
+The implemented public tool layer is:
 
 1. Public Truth Check
 2. Business Facts Copy Pack
 3. QR Link Health Check
 4. Menu / Service Readability Check
 5. Customer Question Coverage Check
-6. Booking Inquiry Readiness Check
-7. Price Availability Gap Check
-8. Menu PDF Cleanup Check
-9. Google Profile Basics Checklist
-10. WhatsApp Action Link Check
-11. Hours & Holiday Hours Check
-12. Photo / Visual Identity Gap Check
-13. One Customer Link Preview
-14. Social Bio Link Consistency Check
+6. Customer FAQ Reply Pack
+7. Booking Inquiry Readiness Check
+8. Price Availability Gap Check
+9. Menu PDF Cleanup Check
+10. Google Profile Basics Checklist
+11. One Customer Link Preview
+12. Social Bio Link Consistency Check
+13. WhatsApp Action Link Check
+14. WhatsApp Reply Pack
+15. Hours & Holiday Hours Check
+16. Photo / Visual Identity Gap Check
+
+Five browser-local asset makers also turn the current customer link into QR, WhatsApp Status, holiday-hours, customer-link card, and ethical feedback-card outputs.
 
 Each tool should keep the same CTA: create, import, or fix one current MenuList customer link.
 
@@ -87,6 +91,8 @@ The tools fit restaurants, cafes, salons, studios, clinics, repair shops, and se
 1. **Add the source** - Enter your public link or current menu/service list.
 2. **Get the report** - MenuList marks the clear, missing, and unclear facts.
 3. **Create one link** - Turn the approved source into one customer link.
+
+Shared report links are browser-local self-reports, not digitally verified records. Readers must confirm owner-entered facts before changing MenuList truth.
 
 ---
 

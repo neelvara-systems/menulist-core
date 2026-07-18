@@ -1,6 +1,6 @@
 # Canonical Truth Infrastructure — Firebase Cost Tracking
 
-**Last Updated:** 2025-02-24
+**Last Updated:** 2026-07-16
 **Feature Flag:** `ENABLE_MCE`, `ENABLE_MENU_OBSERVATION`, `ENABLE_MENU_SNAPSHOTS`
 
 ---
@@ -20,7 +20,7 @@
 | Operation | Trigger | Reads | Notes |
 |-----------|---------|-------|-------|
 | MCE validation | Every save (updateProject) | 0 | Client-side only, zero Firebase |
-| MOL old state fetch | Every save (if MOL enabled) | 1 | Existing — reads current project for diff |
+| Current project read | Every acknowledged update | 1 before + transaction retry reads as required | Shared mutation identity/concurrency authority; MOL and MCE reuse it |
 
 **Total new reads per this feature: 0**
 
@@ -50,11 +50,11 @@
 |-----------|---------|--------|-----------|
 | Snapshot document | Every `publishProject()` call | 1 | $0.18/100K writes |
 
-**Document size estimate:** 200 items × ~300 bytes = ~60KB per snapshot. Well within 1MB Firestore limit.
+**Document size boundary:** Typical 200-item snapshots are about 60KB. The writer estimates serialized size and skips payloads above 900 KiB, leaving safety below Firestore's 1 MiB document limit.
 
 **Estimate:** 1000 stores × 5 publishes/month = 5,000 writes/month = **$0.009/month**
 
-**Security and shape contract:** Client reads require both tenant membership and assigned-store access. Creates additionally require owner/manager write authority, exact numeric `tId`/`sId` payload values matching the document path, an existing project in that path, count-consistent bounded item/category arrays, valid timestamps/retention, and the canonical snapshot mode. Updates and deletes remain denied. The publish writer captures one operation scope and sanitizes optional nested values before the append-only write, so an active-store switch or an `undefined` item field cannot redirect or reject the snapshot.
+**Security and shape contract:** Client reads require both tenant membership and assigned-store access. Creates additionally require owner/manager write authority, exact numeric `tId`/`sId` payload values matching the document path, an existing project in that path, count-consistent bounded item/category arrays, valid timestamps/retention, and the canonical snapshot mode. Updates and deletes remain denied. Linked publishes resolve the already-read master with the committed outlet state before observation, so the snapshot represents public menu truth instead of raw outlet-local storage.
 
 ### 4. MCE _mce Metadata
 
@@ -91,10 +91,10 @@
 
 | Collection | Growth Rate (1000 stores) | Notes |
 |-----------|--------------------------|-------|
-| menuSnapshots | ~300MB/year | 5000 snapshots/month × 60KB avg |
+| menuSnapshots | ~25MB steady-state per 1000 stores at the example rate | 5000 snapshots/month × 60KB × 90-day window, after native TTL is active |
 | menuChangeLog | ~50MB/year | 30K events/month × ~0.5KB avg |
 
-**Cold archive strategy:** After 18-24 months, move old snapshots/events to Firebase Storage (JSON gzip). See backlog item 8.1.
+**Retention:** `menuSnapshots` is short-term proof/debug state. Writers set a 90-day `expiresAt`. The nested path ends in a dynamic store-named collection, so Firestore collection-group TTL cannot target these documents. The existing leased `menu_snapshot_cleanup` maintenance task reads `storesSummary` once, selects a deterministic daily page of at most 200 known stores including inactive rows, queries at most 25 expired snapshots per selected store, and batch-deletes only returned rows. Every summary-known store receives eventual coverage without a new cursor document or standalone scheduler. MOL change summaries remain retained operational memory by design and all readers are capped/paginated.
 
 ---
 

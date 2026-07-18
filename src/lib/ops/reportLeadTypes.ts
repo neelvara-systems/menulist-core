@@ -51,6 +51,7 @@ export interface ReportLeadOpsSnapshot {
     dashboardEnabled: boolean;
     accessModel: 'platform_role';
     realtimeListeners: false;
+    scanMayBeIncomplete: boolean;
   };
   filters: {
     reportStatus: ReportLeadReportStatusFilter;

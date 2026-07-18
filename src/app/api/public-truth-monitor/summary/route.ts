@@ -24,7 +24,9 @@ export const GET = withAuth(async (request: NextRequest, session) => {
             return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
         }
 
-        const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read");
+        const rateLimitResponse = await checkAIRateLimit("DATA_READ", "public-truth-monitor-read", {
+            failClosedOnProviderError: process.env.NODE_ENV === "production",
+        });
         if (rateLimitResponse) return rateLimitResponse;
 
         const sessionScope = getPublicTruthMonitorSessionScope(session);

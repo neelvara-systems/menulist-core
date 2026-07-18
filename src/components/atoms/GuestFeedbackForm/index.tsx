@@ -15,11 +15,12 @@ import {
     getBoundedPublicFeedbackStringContext,
     logPublicFeedbackFormFailure,
 } from '@lib/feedback/publicFeedbackDiagnostics';
+import { createRuntimeId } from '@lib/runtime/randomId';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getMoodWithBrandColor, MenuMood } from '@template/main-app/projects/b2cView/designSystem';
 import MenuFooter from '@template/main-app/projects/b2cView/output/MenuFooter';
 import { message } from 'antd';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuBadgeCheck,
     LuChevronRight,
@@ -71,6 +72,10 @@ const GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY = {
     credentials: 'same-origin' as RequestCredentials,
     redirect: 'manual' as RequestRedirect,
 };
+
+function createGuestFeedbackSubmissionId(): string {
+    return createRuntimeId('feedback');
+}
 
 const RATING_COPY: Record<number, { eyebrow: string; notePrompt: string; placeholder: string; prompt: string }> = {
     1: {
@@ -239,7 +244,6 @@ function validateField(field: keyof Omit<FormState, 'website'>, value: string): 
 
     if (field === 'customerName') {
         if (trimmedValue.length < 2) return 'Please enter at least 2 characters.';
-        if (!/^[A-Za-z\s'.-]+$/.test(trimmedValue)) return 'Please enter a valid name.';
         return '';
     }
 
@@ -298,6 +302,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
     const [captchaToken, setCaptchaToken] = useState<string | null>(null);
     const [captchaStatus, setCaptchaStatus] = useState<TurnstileStatus>(isTurnstileClientEnabled() ? 'loading' : 'disabled');
     const [captchaResetSignal, setCaptchaResetSignal] = useState(0);
+    const submissionIdRef = useRef<string | null>(null);
     const captchaRequired = isTurnstileClientEnabled();
 
     const settings = { ...DEFAULT_FEEDBACK_SETTINGS, ...feedbackDefaults };
@@ -373,6 +378,8 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
         setSubmitState('submitting');
 
         try {
+            const submissionId = submissionIdRef.current || createGuestFeedbackSubmissionId();
+            submissionIdRef.current = submissionId;
             const response = await fetch('/api/public/feedback/submit', {
                 ...GUEST_FEEDBACK_SUBMIT_REQUEST_POLICY,
                 method: 'POST',
@@ -382,6 +389,7 @@ export const GuestFeedbackForm: React.FC<GuestFeedbackFormProps> = ({
                     sId,
                     projectId,
                     source,
+                    submissionId,
                     rating,
                     message: settings.collectComment ? formValues.message.trim() || undefined : undefined,
                     customerName: formValues.customerName.trim() || undefined,

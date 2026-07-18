@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
+import { getCurrentPlatformUser } from '@lib/auth/currentPlatformUser';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { logger } from '@lib/monitoring/logger';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -18,6 +19,11 @@ import type {
   PlatformCostSourceCoverage,
   PlatformSafeModeStatus,
 } from '@lib/ops/costPostureTypes';
+import {
+  parseCostPostureDate,
+  summarizeBusinessHealthCostRecords,
+  summarizeExtractionCostRecords,
+} from '@lib/ops/costPostureAggregation';
 import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { z } from 'zod';
@@ -37,11 +43,6 @@ type SourceReadResult<T> = {
   coverage: PlatformCostSourceCoverage;
 };
 const reportedTimestampParseShapes = new Set<string>();
-
-function safeNumber(value: unknown): number {
-  const numberValue = Number(value || 0);
-  return Number.isFinite(numberValue) ? numberValue : 0;
-}
 
 function cleanText(value: unknown, max = 260): string {
   return String(value || '')
@@ -132,50 +133,8 @@ function logTimestampParseFailure(source: string, value: unknown, error: unknown
   });
 }
 
-function toDate(value: any, source = 'unknown'): Date | null {
-  if (!value) return null;
-  try {
-    if (typeof value.toDate === 'function') {
-      const date = value.toDate();
-      return date instanceof Date && Number.isFinite(date.getTime()) ? date : null;
-    }
-    if (typeof value.seconds === 'number' && Number.isFinite(value.seconds)) {
-      const date = new Date(value.seconds * 1000);
-      return Number.isFinite(date.getTime()) ? date : null;
-    }
-    if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;
-    if (typeof value === 'string' || typeof value === 'number') {
-      const date = new Date(value);
-      return Number.isFinite(date.getTime()) ? date : null;
-    }
-  } catch (error) {
-    logTimestampParseFailure(source, value, error);
-    return null;
-  }
-  return null;
-}
-
 function toIso(value: any, source = 'unknown'): string | null {
-  return toDate(value, source)?.toISOString() || null;
-}
-
-function maxIso(left: string | null, right: string | null): string | null {
-  if (!left) return right;
-  if (!right) return left;
-  return new Date(left).getTime() >= new Date(right).getTime() ? left : right;
-}
-
-function getDocumentDate(data: Record<string, any>): Date | null {
-  return toDate(data.createdAt, 'createdAt')
-    || toDate(data.createdOn, 'createdOn')
-    || toDate(data.created_at, 'created_at')
-    || toDate(data.timestamp, 'timestamp')
-    || toDate(data.modifiedOn, 'modifiedOn');
-}
-
-function inPeriod(data: Record<string, any>, periodStartMs: number): boolean {
-  const date = getDocumentDate(data);
-  return !date || date.getTime() >= periodStartMs;
+  return parseCostPostureDate(value, source, logTimestampParseFailure)?.toISOString() || null;
 }
 
 async function readDocuments(
@@ -202,7 +161,9 @@ async function readDocuments(
         documentsConsidered: snap.size,
         detail: snap.empty
           ? 'No recent documents were found for this source.'
-          : `Read latest ${snap.size} documents with a hard limit of ${readLimit}.`,
+          : snap.size === readLimit
+            ? `Read limit of ${readLimit} documents was reached; period totals can be partial.`
+            : `Read latest ${snap.size} documents with a hard limit of ${readLimit}.`,
       },
     };
   } catch (error) {
@@ -281,42 +242,28 @@ async function readSystemConfig(): Promise<{
 function summarizeExtractionSignal(
   docs: FirebaseFirestore.QueryDocumentSnapshot[],
   periodStartMs: number,
+  periodEndMs: number,
   periodLabel: string,
 ): PlatformCostSignal {
-  let count = 0;
-  let realCostPaise = 0;
-  let ownerChargePaise = 0;
-  let providerCalls = 0;
-  let latestAt: string | null = null;
-
-  docs.forEach((doc) => {
-    const data = doc.data() || {};
-    if (!inPeriod(data, periodStartMs)) return;
-
-    count += 1;
-    providerCalls += 1;
-    const knownRealCost = data.realCostPaise != null ? safeNumber(data.realCostPaise) : safeNumber(data.totalCharge);
-    realCostPaise += knownRealCost;
-    ownerChargePaise += data.ownerChargePaise != null
-      ? safeNumber(data.ownerChargePaise)
-      : data.ourChargePaise != null
-        ? safeNumber(data.ourChargePaise)
-        : safeNumber(data.totalCharge);
-    latestAt = maxIso(latestAt, toIso(getDocumentDate(data)));
-  });
+  const aggregate = summarizeExtractionCostRecords(
+    docs.map((doc) => doc.data() || {}),
+    periodStartMs,
+    periodEndMs,
+    logTimestampParseFailure,
+  );
 
   return {
     id: 'menu-extraction',
     label: 'Menu extraction AI',
-    description: 'Known provider cost from recent extraction operation audit rows.',
-    coverage: 'Latest bounded extraction rows only',
+    description: 'Known provider cost and owner charge from recent extraction operation audit rows.',
+    coverage: 'Latest bounded extraction rows only; row count is used as a provider-call proxy when the producer has no explicit call count',
     periodLabel,
-    count,
-    realCostPaise,
-    ownerChargePaise,
-    providerCalls,
+    count: aggregate.count,
+    realCostPaise: aggregate.realCostPaise,
+    ownerChargePaise: aggregate.ownerChargePaise,
+    providerCalls: aggregate.providerCalls,
     firestoreReadsObserved: 0,
-    latestAt,
+    latestAt: aggregate.latestAt,
     source: DB_COLLECTIONS.MENULIST_AI_EXTRACTION_OPERATIONS,
     linkHref: '/ops/extraction',
   };
@@ -325,26 +272,15 @@ function summarizeExtractionSignal(
 function summarizeBusinessHealthSignal(
   docs: FirebaseFirestore.QueryDocumentSnapshot[],
   periodStartMs: number,
+  periodEndMs: number,
   periodLabel: string,
 ): PlatformCostSignal {
-  let count = 0;
-  let realCostPaise = 0;
-  let ownerChargePaise = 0;
-  let providerCalls = 0;
-  let firestoreReadsObserved = 0;
-  let latestAt: string | null = null;
-
-  docs.forEach((doc) => {
-    const data = doc.data() || {};
-    if (!inPeriod(data, periodStartMs)) return;
-
-    count += 1;
-    realCostPaise += safeNumber(data.realCostPaise);
-    ownerChargePaise += safeNumber(data.ownerChargePaise);
-    providerCalls += data.providerUsed === true ? 1 : 0;
-    firestoreReadsObserved += safeNumber(data.firestoreReadCount);
-    latestAt = maxIso(latestAt, toIso(getDocumentDate(data)));
-  });
+  const aggregate = summarizeBusinessHealthCostRecords(
+    docs.map((doc) => doc.data() || {}),
+    periodStartMs,
+    periodEndMs,
+    logTimestampParseFailure,
+  );
 
   return {
     id: 'business-health-answers',
@@ -352,12 +288,12 @@ function summarizeBusinessHealthSignal(
     description: 'Internal answer-route cost and observed summary-document reads.',
     coverage: 'Latest bounded answer events only',
     periodLabel,
-    count,
-    realCostPaise,
-    ownerChargePaise,
-    providerCalls,
-    firestoreReadsObserved,
-    latestAt,
+    count: aggregate.count,
+    realCostPaise: aggregate.realCostPaise,
+    ownerChargePaise: aggregate.ownerChargePaise,
+    providerCalls: aggregate.providerCalls,
+    firestoreReadsObserved: aggregate.firestoreReadsObserved,
+    latestAt: aggregate.latestAt,
     source: DB_COLLECTIONS.OWNER_BUSINESS_ASSISTANT_ANSWER_EVENTS,
     linkHref: '/platform/owner-business-assistant',
   };
@@ -468,6 +404,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     const rateLimit = await checkRateLimit({
       key: `platform-cost-posture:${userRateLimitHash}`,
       ...rateLimitConfig,
+      failClosedOnProviderError: true,
     });
 
     if (!rateLimit.allowed) {
@@ -482,12 +419,14 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
 
       return NextResponse.json(
         {
-          error: `Too many requests. Please wait ${waitSeconds} seconds.`,
+          error: rateLimit.reason === 'provider_unavailable'
+            ? 'Platform cost posture is temporarily unavailable.'
+            : `Too many requests. Please wait ${waitSeconds} seconds.`,
           retryAfter: waitSeconds,
           resetAt: rateLimit.resetAt,
         },
         {
-          status: 429,
+          status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
           headers: {
             'Retry-After': String(waitSeconds),
             'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -498,8 +437,17 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
       );
     }
 
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+      logger.security('Authorization Failed - Platform Cost Posture Current Role', {
+        ...getBoundedRuntimeStringContext('requestPath', request.nextUrl.pathname),
+      }, 'high');
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const periodDays = parsed.data.days;
-    const periodStart = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+    const generatedAt = new Date();
+    const periodStart = new Date(generatedAt.getTime() - periodDays * 24 * 60 * 60 * 1000);
     const periodLabel = `Last ${periodDays} day${periodDays === 1 ? '' : 's'}`;
 
     const [systemConfig, alertRead, extractionRead, businessHealthRead] = await Promise.all([
@@ -522,8 +470,8 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     ]);
 
     const signals = [
-      summarizeExtractionSignal(extractionRead.docs, periodStart.getTime(), periodLabel),
-      summarizeBusinessHealthSignal(businessHealthRead.docs, periodStart.getTime(), periodLabel),
+      summarizeExtractionSignal(extractionRead.docs, periodStart.getTime(), generatedAt.getTime(), periodLabel),
+      summarizeBusinessHealthSignal(businessHealthRead.docs, periodStart.getTime(), generatedAt.getTime(), periodLabel),
     ];
     const alerts = alertRead.docs
       .map(serializeCostAlert)
@@ -571,7 +519,7 @@ export const GET = withPlatformAuth(async (request: NextRequest, session: any) =
     const guardrails = buildGuardrails(systemConfig.safeMode, billingExport.blocksBillForecast, sourceCoverage);
 
     const data: PlatformCostPostureData = {
-      generatedAt: new Date().toISOString(),
+      generatedAt: generatedAt.toISOString(),
       periodDays,
       periodStart: periodStart.toISOString(),
       status,

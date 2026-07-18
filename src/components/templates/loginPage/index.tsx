@@ -417,6 +417,7 @@ function LoginPage() {
   // Claim account flow (messaging onboarding → Google account linking OR email/password setup)
   const [claimInfo, setClaimInfo] = useState<{ businessName: string; phone: string | null } | null>(null);
   const [claimProcessing, setClaimProcessing] = useState(false);
+  const claimProcessingRef = useRef(false);
   const [showClaimEmailSetup, setShowClaimEmailSetup] = useState(false);
   const [showClaimPhoneSetup, setShowClaimPhoneSetup] = useState(false);
   const [claimSetupSuccess, setClaimSetupSuccess] = useState(false);
@@ -552,7 +553,9 @@ function LoginPage() {
 
         // Claim account flow: If there's a pending claim token, link accounts before redirecting
         const pendingClaim = localStorage.getItem('pendingClaimToken');
-        if (pendingClaim && !claimProcessing) {
+        if (pendingClaim && claimProcessingRef.current) return;
+        if (pendingClaim) {
+          claimProcessingRef.current = true;
           setClaimProcessing(true);
           try {
             const claimRes = await fetch('/api/auth/claim-account', {
@@ -586,6 +589,7 @@ function LoginPage() {
           } catch {
             localStorage.removeItem('pendingClaimToken');
           } finally {
+            claimProcessingRef.current = false;
             setClaimProcessing(false);
           }
         }
@@ -597,7 +601,7 @@ function LoginPage() {
     };
 
     setupFirebaseAuth();
-  }, [sessionData, router, claimProcessing, dispatch, updateSession])
+  }, [sessionData, router, dispatch, updateSession])
 
   // Handle email/password setup for messaging-onboarded users (claim flow MODE 2)
   const handleClaimEmailSetup = async (values: any) => {

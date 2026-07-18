@@ -1,0 +1,57 @@
+{
+  "updated": "2026-07-14",
+  "defaultTrackId": "menulist-one-link-motion-v2-seed-260719",
+  "tracks": [
+    {
+      "id": "menulist-one-link-motion-v2-seed-260719",
+      "name": "MenuList One Link Motion v2",
+      "selectionStatus": "primary-default",
+      "bestFor": [
+        "general MenuList launch assets",
+        "one-link stories",
+        "feature reveals",
+        "short-form conversion videos"
+      ],
+      "durationSeconds": 54,
+      "seed": 260719,
+      "source": "source-tracks/lyria-realtime-menulist-one-link-motion-v2-seed-260719-20260714-112840/menulist-one-link-motion-v2-seed-260719-20260714-112840.wav",
+      "sha256": "ea6d0e959feea758593fd5865c30b2475937e8ea4207b8bc39ad6291d09355e3"
+    },
+    {
+      "id": "menulist-outlet-control-v2-seed-260721",
+      "name": "MenuList Outlet Control v2",
+      "selectionStatus": "approved-operational-alternate",
+      "bestFor": [
+        "multi-location",
+        "outlet governance",
+        "controlled operational workflows",
+        "premium-plan explainers"
+      ],
+      "durationSeconds": 40,
+      "seed": 260721,
+      "source": "source-tracks/lyria-realtime-menulist-outlet-control-v2-seed-260721-20260714-113810/menulist-outlet-control-v2-seed-260721-20260714-113810.wav",
+      "sha256": "828b6c8fe35bbc5a980c9ff5ebe0f4e9f0ed46362ce559e1b4865c92bc4febf2"
+    },
+    {
+      "id": "midnight-lo-fi-focus-auto-20260712",
+      "name": "Midnight Lo-Fi Focus",
+      "selectionStatus": "approved-calm-baseline-and-v1.0-frozen",
+      "bestFor": [
+        "calm owner-ease stories",
+        "quiet trust-led edits",
+        "Owner Ease v1.0"
+      ],
+      "durationSeconds": 68,
+      "seed": null,
+      "seedMode": "auto",
+      "source": "source-tracks/lyria-realtime-midnight-lo-fi-focus-auto-20260712-124940/midnight-lo-fi-focus-seed-auto-20260712-124940.wav",
+      "sha256": "88d3b595dee25aa9c8d7117407439722df3192bd64ac892a2c331a476c9dde71"
+    }
+  ],
+  "rules": {
+    "defaultMeans": "First audition choice for a new MenuList video, not a forced fit for every narrative or duration.",
+    "longForm": "For assets longer than the selected source, create a structured extension from the approved preset or use the documented two-minute library. Do not carelessly loop a short source.",
+    "mix": "Retain Indian-English narration priority, speech-frequency carving, voice-reactive ducking, audible opening music, pause recovery, controlled final lift, and encoded loudness QA.",
+    "rights": "Retain generated source provenance and review current generating-service terms before public distribution."
+  }
+}

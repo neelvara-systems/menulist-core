@@ -4,6 +4,7 @@ import {
     normalizeAnswerlatticeKnowledgeIntakeReviewItemId,
     normalizeAnswerlatticeKnowledgeIntakeSourceId,
 } from '@lib/answerlattice/knowledgeIntakeIdBoundary';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
@@ -71,6 +72,17 @@ export const AnswerlatticeKnowledgeIntakeJobSchema = z.object({
         completedAt: timestampLike.nullable().optional(),
         createdCount: nonNegativeCount.optional(),
     }).optional(),
+    launchPackRun: z.object({
+        id: boundedId,
+        sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+        status: z.enum(['processing', 'completed', 'failed']),
+        startedAt: timestampLike,
+        leaseExpiresAt: timestampLike,
+        completedAt: timestampLike.nullable().optional(),
+        reviewItemIds: z.array(intakeReviewItemId).max(10).optional(),
+        createdCount: nonNegativeCount.max(10).optional(),
+        usageLedgerId: boundedId.nullable().optional(),
+    }).optional(),
     publishRun: z.object({
         id: boundedId,
         status: z.enum(['processing', 'completed', 'failed']),
@@ -134,6 +146,8 @@ export const AnswerlatticeIntakeReviewItemSchema = z.object({
     body: z.string().max(12_000).optional(),
     question: z.string().max(500).optional(),
     answer: z.string().max(4_000).optional(),
+    answerType: z.enum(['explanation', 'navigation', 'procedure']).optional(),
+    procedure: AnswerlatticeProcedureSchema.optional(),
     routePath: z.string().max(500).nullable().optional(),
     versionLabel: z.string().max(120).nullable().optional(),
     tags: z.array(z.string().max(80)).max(20).optional(),
@@ -141,6 +155,24 @@ export const AnswerlatticeIntakeReviewItemSchema = z.object({
     entityIds: z.array(z.string().max(180)).max(25).optional(),
     confidenceScore: z.number().finite().min(0).max(1).optional(),
     reason: z.string().max(1_000).optional(),
+    launchPack: z.object({
+        version: z.literal(1),
+        sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+        sourceIds: z.array(intakeSourceId).min(1).max(5),
+        missingEvidence: z.array(z.string().trim().min(1).max(240)).max(5),
+        expectedSource: z.enum(['canonical', 'escalation', 'no_answer']),
+        riskLevel: z.enum(['standard', 'critical']),
+        requiresEscalation: z.boolean(),
+        position: z.number().int().min(1).max(10),
+        applicability: z.object({
+            path: z.string().trim().max(500).optional(),
+            feature: z.string().trim().max(100).optional(),
+            workflow: z.string().trim().max(100).optional(),
+            plan: z.string().trim().max(100).optional(),
+            role: z.string().trim().max(100).optional(),
+            version: z.string().trim().max(100).optional(),
+        }).strict().optional(),
+    }).strict().optional(),
     publishTargetId: boundedId.nullable().optional(),
     publishedOn: timestampLike.nullable().optional(),
     sortOrder: nonNegativeCount.optional(),
@@ -149,7 +181,22 @@ export const AnswerlatticeIntakeReviewItemSchema = z.object({
     createdBy: z.string().max(180).optional(),
     modifiedBy: z.string().max(180).optional(),
     uId: z.union([z.string().max(180), z.number().safe()]).optional(),
-}).passthrough();
+}).passthrough().superRefine((item, context) => {
+    if (item.answerType === 'procedure' && !item.procedure) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Procedure review items must include a procedure.',
+            path: ['procedure'],
+        });
+    }
+    if (item.procedure && item.answerType !== 'procedure') {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Structured procedures require answerType procedure.',
+            path: ['answerType'],
+        });
+    }
+});
 
 export const AnswerlatticeKnowledgeIntakeSummarySchema = z.object({
     id: boundedId.optional(),

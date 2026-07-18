@@ -1,22 +1,22 @@
 # Menu Correctness Engine (MCE) — Mobile Support
 
-**Last Updated:** February 16, 2026
-**Decision:** ❌ NO UI — Backend validation layer, runs silently on save
+**Last Updated:** July 16, 2026
+**Decision:** No separate MCE UI; shared local validation plus owner-facing Menu Check
 
 ---
 
 ## Feature Admission Test
 
-Not applicable — MCE is a validation layer that runs on every menu save. It has no separate UI on desktop or mobile.
+MCE has no dedicated mobile screen. Mobile owners use Menu Check for advisory quality signals, while shared project mutations retain their current validation and outlet-policy boundaries.
 
 ---
 
 ## How MCE Relates to Mobile
 
-MCE validates project data on every `updateProject()` call. Since mobile uses the same `updateProject()` DAL function as desktop, MCE validation runs identically for mobile edits:
+Standalone mobile mutations that use `updateProject()` receive the same transaction-local MCE stamp as desktop. Linked-outlet mutations cross `/api/projects/outlet-save`, which rechecks scope, permission, linkage, policy, input shape, and concurrency but does not persist `_mce`:
 
-- Toggle availability → `updateProject()` → MCE stamps `_mce` metadata ✅
-- Edit item → `updateProject()` → MCE validates ✅
-- Add/delete item → `updateProject()` → MCE validates ✅
+- Standalone toggle/edit/add/delete → `updateProject()` → MCE stamps `_mce` in the existing write
+- Linked outlet edit → authenticated outlet-save transaction → no extra MCE write
+- Mobile Menu Check → pure computation from the loaded project → no Firebase operation
 
-The MCE "Publish-Gate" (validation feedback to owner) only runs in the desktop editor's "Continue" button flow. Mobile edits are live-saved without the publish gate, which is acceptable because mobile edits are simpler (individual item changes, not bulk restructuring).
+The blocking MCE editor gate remains on the desktop editor transition. Mobile Menu Check is advisory and routes owners to exact review/repair contexts; it never blocks an acknowledged mobile save.

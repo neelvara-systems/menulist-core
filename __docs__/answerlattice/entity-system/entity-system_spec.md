@@ -1,21 +1,21 @@
 # Entity System — Specification
 
 > **Version:** 2.0.0
-> **Last Updated:** 2026-03-08
+> **Last Updated:** 2026-07-18
 > **Audience:** CEO, PM, Product
-> **Status:** ENHANCEMENT — 6 targeted improvements to existing infrastructure
+> **Status:** MAINTAINED — Six entity-loop capabilities are implemented; post-save extraction is best effort and hybrid retrieval remains rollout-gated
 
 ---
 
 ## 1. Problem Statement
 
-Answerlattice's entity system (Pillar 1 — Product Ontology) is **architecturally complete** but has a critical operational gap: **entities are disconnected from KB articles**. The canonical answer engine uses entities (`scope.entityIds`), but the knowledge base articles — the raw documentation that feeds everything — have no entity references.
+Answerlattice's entity system (Pillar 1 — Product Ontology) links entities to KB articles and canonical answer scopes. The remaining product problem is operational: maintain those links safely as articles and entities change, preserve human review for new truth, and prove that entity-aware retrieval improves real answer outcomes.
 
-This means:
-- Entity extraction creates candidates → entities, but doesn't map back to source articles
-- RAG fallback retrieval cannot use entity-centric filtering (falls back to pure vector search)
-- Entity coverage metrics cannot measure how well articles cover product concepts
-- The entity graph is "floating" — exists but isn't wired into the article lifecycle
+Current boundaries:
+- Post-save extraction is best effort and feature-flagged; it never blocks the article write.
+- Existing entity matches may update article `entityIds`; new concepts remain candidates for review.
+- Canonical answers retain priority over entity-linked fallback retrieval.
+- Entity merge must preserve canonical, relation, search-index, and article references transactionally.
 
 ---
 
@@ -25,9 +25,9 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 
 | Goal | Metric |
 |------|--------|
-| Entities linked to KB articles | 100% of published articles have entityIds |
-| Duplicate entity reduction | Entity reuse rate >70% during extraction |
-| Automatic entity synchronization | Entity graph updates on every article save |
+| Entities linked to KB articles | Published-article entity-link coverage, including explicit unmapped articles |
+| Duplicate entity reduction | Entity reuse rate during extraction |
+| Post-save entity synchronization | Eligible article saves trigger scoped extraction without blocking the save |
 | Better RAG fallback quality | Entity descriptions included in LLM context |
 | Entity hygiene over time | Merge capability prevents graph fragmentation |
 | Owner governance | Aliases manageable directly on entity documents |
@@ -59,17 +59,17 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 
 **What:** Add an `entityIds: string[]` field to `KnowledgeBaseArticleType` — the core KB article interface.
 
-**Why:** This is the **most critical enhancement**. It creates the bidirectional entity-article mapping that ChatGPT correctly identified as essential:
+**Why:** It creates the bidirectional entity-article mapping required by governed retrieval:
 - Article → entities (via entityIds)
 - Entity → articles (via Firestore `array-contains` query)
 
-**User Flow:**
-1. Author creates/edits KB article
-2. On save, AI extraction runs asynchronously
-3. System suggests entities (matched from registry + new candidates)
-4. Author sees entity suggestions panel in editor
-5. Author confirms/modifies entity tags
-6. Article saved with entityIds
+**Current User Flow:**
+1. Author creates an article or saves an eligible content update.
+2. The article write completes first.
+3. A best-effort browser request calls the protected extraction route.
+4. Active known entities may be linked to the article, capped at 10.
+5. Unknown concepts become candidates in the separate governance review queue.
+6. A failed request leaves the authoritative article save intact and requires coverage review or retry.
 
 **Invariants:**
 - Maximum 10 entityIds per article (prevents entity dilution)
@@ -83,45 +83,50 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 
 **What:** Enhance the extraction prompt to include existing entities as context, so AI prefers reusing existing entities over creating new ones.
 
-**Why:** Current extraction (`entityExtraction.ts`) runs blind — it doesn't know what entities already exist. This causes duplicate candidates. By passing the existing registry, extraction becomes:
+**Why:** Registry context lets extraction prefer existing governed concepts and leaves deterministic name, slug, and alias matching as the final reuse boundary.
 - "Webhook Retry" → matches existing "Retry Policy" entity
 - "API Token" → matches existing "API Keys" entity
 
 **User Flow:**
 1. Article saved → extraction triggered
-2. System loads existing entities for tenant (filtered by relevance)
-3. AI extraction prompt includes: "Existing entities: [list]. Prefer reusing existing entities."
-4. AI output marks each entity as `source: "existing"` or `source: "new"`
-5. Existing matches → attach entityId directly
-6. New entities → create candidate for review
+2. The protected route loads at most 500 scoped entity rows and keeps only active Answerlattice entities.
+3. The extraction prompt includes at most 50 existing entities and asks the model to prefer reuse.
+4. Post-extraction matching resolves exact names, slugs, and owner-managed aliases deterministically.
+5. Existing matches attach normalized entity IDs, capped at 10.
+6. New entities create governed candidates for review.
 
 **Invariants:**
 - Maximum 50 existing entities passed as context (to stay within token limits)
-- Entities filtered by category/section relevance before passing to AI
-- AI must output structured JSON with `source` field
-- Existing entity name must match exactly (case-insensitive)
+- Only active `pId = AL` entity rows from the exact workspace may be reused.
+- At most 50 existing entities are placed in the prompt.
+- Model output must be structured JSON; final known-entity matching uses name, slug, or alias.
+- Persisted article entity IDs are normalized, deduplicated, and capped at 10.
 
 ---
 
 ### E4 — Auto-Extract Entities on Article Save
 
+**Current status:** Implemented as a best-effort post-save trigger to the protected extraction route when ontology is enabled.
+
 **What:** Trigger entity extraction automatically when a KB article is created or updated.
 
-**Why:** Currently extraction is manual (called from admin UI). Articles can be saved without entity mapping, leaving the entity graph stale.
+**Why:** Article entity links otherwise drift as content changes. The maintained path attempts extraction after save without making the article write depend on an AI call.
 
 **User Flow:**
 1. Author saves article in KB editor
-2. System fires async entity extraction job (non-blocking)
-3. Extraction runs → entities matched → entityIds updated on article
-4. If new entities found → candidates created for review
-5. Author sees entity suggestions on next edit
+2. The browser starts a best-effort request to the protected extraction route.
+3. The route re-reads the stored article, verifies product and workspace ownership, and attempts extraction.
+4. A confirmed successful extraction replaces the article's entity IDs, including clearing stale links when no current match remains, and invalidates KB-backed retrieval only when links changed.
+5. New concepts become candidates for governance review.
+6. Failure is logged without rolling back the article save.
 
 **Invariants:**
 - Extraction is async — never blocks article save
-- Extraction only runs if article content changed (debounce)
+- Create and eligible updates that include content and title trigger the request.
 - Feature-flagged: `ENABLE_ANSWERLATTICE_ONTOLOGY` must be true
-- Extraction failure never corrupts article data (graceful degradation)
-- Rate limited: max 1 extraction per article per 5 minutes
+- Extraction or provider-response failure preserves the stored article links and returns a visible failed request.
+- The protected route applies the existing AI-operation rate limit before provider work.
+- The live browser trigger has no durable retry lease or per-article five-minute debounce.
 
 ---
 
@@ -136,13 +141,13 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 2. Chooses which entity survives (canonical)
 3. System transfers: article entityIds, canonical answer scope.entityIds, search index entries, relations
 4. Surviving entity gains merged entity's name as alias
-5. Merged entity marked with status `merged` (soft delete)
+5. Merged entity marked `deprecated` (soft delete)
 6. Audit log records the merge
 
 **Invariants:**
 - Cannot merge entities of different types
 - Merged entity is never hard-deleted (audit trail)
-- All references atomically transferred
+- Bounded canonical, article, relation, and search-index references are transferred atomically; an over-limit merge is rejected for controlled migration.
 - Merge is irreversible (by design — owner can always create new entities)
 
 ---
@@ -169,7 +174,7 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 - Maximum 5 entity descriptions in context (token budget)
 - Entity descriptions ≤200 chars each
 - Only active entities included
-- Zero additional Firestore reads if entities already loaded during canonical retrieval attempt
+- At most five exact-scope entity point reads; failures degrade without blocking RAG.
 
 ---
 
@@ -228,8 +233,8 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 
 | Rejected Concept | ChatGPT Proposed | Reason for Rejection |
 |-----------------|-----------------|---------------------|
-| Entity Memory (query learning) | Yes | No queries/tenants yet. Premature. |
-| Cross-Tenant Pattern Intelligence | Yes | No tenants. Zero data to learn from. |
+| Entity Memory (query learning) | Yes | Interactions are evidence signals, not approved product truth. Keep human review. |
+| Cross-Tenant Pattern Intelligence | Yes | Violates the tenant-isolated product boundary and is not required for the founder wedge. |
 | Support Reasoning Engine | Yes | Overkill. Canonical answers + guided workflows sufficient. |
 | Knowledge Execution Control | Yes | Canonical retrieval already enforces evidence boundaries. |
 | Knowledge Trust & Confidence System | Yes | `confidenceScore` fields already exist on entities + answers. |
@@ -244,11 +249,11 @@ The 6 enhancements achieve one objective: **close the entity loop** so that enti
 
 ## 6. Success Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Article entity coverage | >80% of published articles have ≥1 entityId | Nightly audit |
-| Entity reuse rate | >70% during extraction | Extraction logs |
-| Candidate approval rate | >60% | Candidate status distribution |
-| Entity density per article | 2-5 entities average | Article entityIds.length |
-| Duplicate entity rate | <10% | Candidate merge count / total |
-| RAG answer quality | Measurably better with entity context | A/B comparison (future) |
+| Metric | Decision use | Measurement |
+|---|---|---|
+| Published article mapping coverage | Find missing or failed extraction work | Mapped and explicitly unmapped published articles |
+| Entity reuse rate | Detect duplicate-candidate pressure | Existing matches divided by all valid extracted concepts |
+| Candidate review outcome | Evaluate extraction usefulness | Approved, merged, edited, and rejected candidates |
+| Stale-link correction rate | Verify post-save synchronization | Articles whose stored entity set changed after confirmed extraction |
+| Hybrid retrieval uplift | Decide whether to enable the lane | Answer Tests with technical literals and ordinary-language controls |
+| Answer-quality regressions | Block rollout | Citation, unsupported-claim, freshness, and abstention failures |

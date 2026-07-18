@@ -1,113 +1,105 @@
-# POS Webhook Sync — Documentation Hub
+# External Menu Sync (POS Webhook) — Documentation Hub
 
-> **Feature:** POS Webhook Sync (Menu Snapshot Broadcast)
-> **Status:** Implemented — Feature flag: `ENABLE_POS_SYNC: true`
-> **Last Updated:** July 2, 2026
-> **Version:** 2.16
+> **Runtime name:** POS Webhook Sync / `posSync`
+> **Owner-facing name:** External Menu Sync
+> **Status:** Implemented in source; `ENABLE_POS_SYNC: true`
+> **Last code-truth review:** July 16, 2026
+> **Version:** 3.0
 
----
+## Documents
 
-## Quick Navigation
+| Audience | Document |
+| --- | --- |
+| Product and acceptance contract | [Specification](./pos-webhook-sync_spec.md) |
+| Engineering and release order | [Implementation](./pos-webhook-sync_impl.md) |
+| Firebase operations and cost | [Firebase](./pos-webhook-sync_firebase.md) |
+| Desktop/mobile parity | [Mobile support](./pos-webhook-sync_mobile-support.md) |
+| Owner instructions | [Help](./pos-webhook-sync_helpdoc.md) |
+| Approved internal positioning | [Marketing](./pos-webhook-sync_marketing.md) |
+| Website claim boundary | [Website](./pos-webhook-sync_website.md) |
+| Verification matrix | [Test cases](./pos-webhook-sync_test-cases.md) |
 
-| Audience              | Document                                          | Purpose                |
-| --------------------- | ------------------------------------------------- | ---------------------- |
-| **CEO / PM**          | [\_spec.md](./pos-webhook-sync_spec.md)           | Business requirements  |
-| **Developers**        | [\_impl.md](./pos-webhook-sync_impl.md)           | Technical blueprint    |
-| **Sales / Marketing** | [\_marketing.md](./pos-webhook-sync_marketing.md) | Pitch deck, messaging  |
-| **Website**           | [\_website.md](./pos-webhook-sync_website.md)     | Landing page content   |
-| **Customers**         | [\_helpdoc.md](./pos-webhook-sync_helpdoc.md)     | Help documentation     |
-| **Cost Control**      | [\_firebase.md](./pos-webhook-sync_firebase.md)   | Firebase cost tracking |
+## Code truth
 
----
+External Menu Sync is a one-way outbound webhook. For a loaded store with the feature enabled and a public HTTPS provider URL configured, an acknowledged `updateProject()` or `updateProjectWithoutLoader()` save registers a debounced delivery request. After 25 seconds without another save for the same tenant/store/project, the protected server route reads the current project, assigns a version, builds one full snapshot, signs it, and makes one five-second HTTPS attempt.
 
-## What Is This Feature?
+It is not a named POS connector, bidirectional sync, guaranteed job queue, retry service, real-time stream, or provider marketplace.
 
-**One-liner:** External Menu Sync lets MenuList safely share official business/menu updates with a trusted connected system.
+## End-to-end flow
 
-**Problem Solved:** When a business uses both MenuList (for digital menu) and a POS system, menu changes must be manually replicated in both places. This leads to price mismatches, missing items, and daily operational friction — especially for chains with multiple outlets.
+1. An authorized owner or manager opens External Menu Sync on desktop or in `MobileShell > More`.
+2. Desktop/mobile loads the signing secret through `GET /api/pos-sync/secret`. A legacy `store.posSync.webhookSecret` is copied to the server-only `posSyncSecrets` collection and removed from the store document transactionally.
+3. Enabling without a secret calls `POST /api/pos-sync/secret` with `action: ensure`. Rotation uses `action: rotate`.
+4. The owner saves a validated public HTTPS provider URL and runs the connection test.
+5. The loaded store context registers only non-secret delivery admission state.
+6. Every acknowledged project save through the shared project DAL calls `triggerPosSyncForAcknowledgedProjectSave()`.
+7. The browser debounce collapses rapid saves by tenant/store/project.
+8. `/api/pos-sync/deliver` revalidates auth and tenant/store scope, applies the fail-closed store limiter before Firestore, then uses the exact canonical store read to check lifecycle and integration-or-publish permission before URL, DNS, project, connection-version, and server-owned-secret admission.
+9. The project snapshot and next menu version are claimed in the same Firestore transaction.
+10. The route pins the approved DNS addresses into a Node HTTPS request, follows no redirects, signs the exact raw JSON body, and waits at most five seconds.
+11. A bounded delivery log is written. Status completion applies only to the same connection and a newer version.
+12. The first two consecutive live failures remain owner-quiet; the third marks `connection_issue`. An explicit failed test or invalid target marks the issue immediately.
 
-**Solution:** When External Menu Sync is connected for a store, MenuList sends a signed full menu snapshot to the configured provider/developer URL after approved menu-affecting changes. MenuList stays upstream; the connected system consumes the current menu truth.
+## Important limits
 
----
+- One outbound destination per store.
+- One attempt per debounced save; no automatic retry worker.
+- Delivery is browser-triggered. Closing the app before the 25-second timer fires can prevent that attempt. The next acknowledged project save sends the latest full snapshot.
+- Background project writes that do not cross the client project DAL do not create a separate webhook attempt. A later acknowledged project save sends the then-current full snapshot.
+- No gzip transport and no advertised 5 MB payload contract.
+- A 2xx response means the endpoint accepted the request; it does not prove the connected system applied the menu.
+- Compatibility is proven only by the provider's successful test and payload implementation. MenuList does not claim support for named POS vendors without certification.
 
-## Architecture Overview (60-Second Summary)
+## Security invariants
 
+- Signing secrets are server-owned in `posSyncSecrets/{tenantId}_{storeId}` and denied to direct clients by Firestore rules.
+- Only users with `canManageIntegrations` can read, ensure, or rotate a secret through the protected no-store route.
+- Legacy secrets migrate on settings read, connection test, or delivery.
+- Store documents retain only `posSync.secretVersion`; the version invalidates in-flight work after rotation.
+- Provider URLs must use HTTPS, contain no credentials or fragments, resolve only to public addresses, and cannot redirect.
+- Secret, test, and delivery routes refuse provider work with retry guidance when the shared rate-limit provider is unavailable.
+- Provider response bodies and raw exception text are not exposed to owners or logs.
+
+## Key source files
+
+| Responsibility | Source |
+| --- | --- |
+| Feature posture | `src/config/features.ts` |
+| Loaded-store registration and debounce | `src/lib/posSync/eventBuilder.ts` |
+| Shared acknowledged-save trigger | `src/database/projects/index.ts` |
+| Provider URL and DNS admission | `src/lib/posSync/webhookUrl.ts`, `serverWebhookTarget.ts` |
+| Pinned HTTPS transport | `src/lib/posSync/pinnedWebhookRequest.ts` |
+| Server secret store | `src/lib/posSync/serverSecretStore.ts` |
+| Secret API | `src/app/api/pos-sync/secret/route.ts` |
+| Test and delivery APIs | `src/app/api/pos-sync/test/route.ts`, `deliver/route.ts` |
+| Desktop/mobile | `PosSyncTab.tsx`, `MobilePosSyncScreen.tsx` |
+| Firestore client denial | `firestore.rules` |
+| Source verifier | `scripts/verification/verify-pos-sync-boundary.js` |
+| Behavioral tests | `scripts/verification/test-pos-sync-boundaries.ts` |
+| Rules emulator test | `scripts/verification/test-pos-sync-secret-rules.ts` |
+
+## Release boundary
+
+The server-owned secret change needs coordinated release order:
+
+1. deploy the app routes/UI;
+2. deploy Firestore rules;
+3. open/test each existing connection or run the documented migration tool when added to the release procedure;
+4. run a real provider smoke in staging, then production.
+
+Do not deploy the new Firestore rule before the compatible app: the previous browser implementation wrote `store.posSync.webhookSecret`, which the new rule intentionally rejects.
+
+## Verification
+
+```bash
+npm run verify:pos-sync-boundary
+npm run test:pos-sync-boundaries
+npm run test:pos-sync-secret:rules
+npx tsc --noEmit
 ```
-Owner edits menu in MenuList Editor
-        ↓
-Editor.tsx syncChanges() → triggerPosSyncDebounced()
-        ↓
-Debounce (25 sec after last edit)
-        ↓
-POST /api/pos-sync/deliver (server-side)
-        ↓
-Build full menu snapshot (versioned) + Sign (HMAC-SHA256)
-        ↓
-POST to store's webhook URL (5s timeout)
-        ↓
-Log delivery result to stores/{storeId}/posDeliveryLogs
-```
 
-**Key design decisions:**
+These gates do not contact a real external provider. Provider smoke and coordinated deployment remain release-owner work.
 
-- **Full snapshot only** — no delta/partial updates, ever (ADR-3)
-- **Store-level only** — each outlet configures its own webhook
-- **Silent operation** — no toasts, no UI feedback when healthy
-- **Only 2 server routes** — test + deliver; 3 ops moved client-side (ADR-1)
-- **HMAC-SHA256 signatures** — enterprise-grade security
-- **3 failed live deliveries in a row** before marking `connection_issue`; explicit connection-test/configuration failures mark the issue immediately
-- See `_impl.md` §14 for full Architecture Decision Record (12 ADRs)
+## History
 
----
-
-## Key Files in Codebase
-
-| Purpose                  | File Path                                                                |
-| ------------------------ | ------------------------------------------------------------------------ |
-| Feature flag             | `src/config/features.ts` → `ENABLE_POS_SYNC`                             |
-| DB collection constants  | `src/constants/database.ts` → `POS_DELIVERY_LOGS`; `POS_DELIVERY_QUEUE` is reserved and inactive |
-| Store type (posSync)     | `src/types/platform/store.ts` → `StoreDataType.posSync`                  |
-| Shared types             | `src/lib/posSync/types.ts`                                               |
-| Signature utility        | `src/lib/posSync/signature.ts`                                           |
-| Payload formatter        | `src/lib/posSync/payloadFormatter.ts`                                    |
-| Event builder (debounce) | `src/lib/posSync/eventBuilder.ts`                                        |
-| Test response/request helper | `src/lib/posSync/testResponse.ts`                                    |
-| External Menu Sync settings tab | `src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx` |
-| Editor integration       | `src/components/.../editorView/Editor.tsx` (syncChanges)                 |
-| API: test webhook        | `src/app/api/pos-sync/test/route.ts`                                     |
-| API: deliver snapshot    | `src/app/api/pos-sync/deliver/route.ts`                                  |
-
----
-
-## Feature Flag
-
-```typescript
-// src/config/features.ts
-ENABLE_POS_SYNC: true, // POS webhook sync is enabled in the current runtime
-```
-
----
-
-## Version History
-
-| Version | Date              | Changes                                                                                                                                                                                           |
-| ------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2.16    | July 2, 2026      | Live delivery failure handling now tracks `posSync.consecutiveFailures`; first and second delivery failures stay quiet, the third consecutive delivery failure marks `connection_issue`, and successful delivery/test or owner connection edits reset the counter. |
-| 2.15    | July 1, 2026      | Desktop and mobile connection tests now require an OK HTTP response plus the shared successful-response acknowledgement guard before showing reachable feedback. |
-| 2.14    | June 30, 2026     | Desktop and mobile connection tests now import the same `POS_SYNC_TEST_REQUEST_POLICY` from the shared test response helper. |
-| 2.4     | May 23, 2026      | Added owner-native explanation layer, value bullets, "Who should use this?" guidance, clearer connected-system labels, and protected source-of-truth copy on desktop and mobile. |
-| 2.3     | May 23, 2026      | Renamed owner-facing copy to External Menu Sync, masked signing secrets by default, added reveal/copy/regenerate safety, and logged secret rotations without storing secret values. |
-| 2.2     | May 18, 2026      | Status corrected to match current runtime flag. Public website positioning constrained to connected store POS webhook, signed full-menu snapshot language; no universal POS or real-time-sync claims. |
-| 1.0     | February 13, 2026 | Initial documentation (no code yet)                                                                                                                                                               |
-| 2.0     | February 14, 2026 | Full implementation complete. 5→2 server routes. ADR section added.                                                                                                                               |
-| 2.1     | March 14, 2026    | ChatGPT infrastructure audit review. +4 ADRs (9-12). payloadHash added to delivery logs. Delivery failure threshold 1→3 documented. Conditional worker architecture documented as inactive. MOL synergy documented. Open questions resolved. |
-
----
-
-## Archive
-
-| Document                                                  | Date         | Purpose                                                         |
-| --------------------------------------------------------- | ------------ | --------------------------------------------------------------- |
-| `_archive/chatgpt-review-session-pos-intelligence.md`     | Feb 2026     | Initial ChatGPT conversation review                             |
-| `_archive/code-feedback-audit.md`                         | Feb 2026     | Code feedback audit                                             |
-| `_archive/chatgpt-review-session-infrastructure-audit.md` | Mar 14, 2026 | Infrastructure-grade webhook architecture audit (~40% accuracy) |
+Historical proposals and prior external reviews remain under [`_archive`](./_archive/). They are not active runtime commitments.

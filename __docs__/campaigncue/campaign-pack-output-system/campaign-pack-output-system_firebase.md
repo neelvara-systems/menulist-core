@@ -22,6 +22,7 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 | Download campaign pack ZIP | Existing campaign action write for `export`; no new output-pack write. |
 | ZIP file creation | Browser-local only; no Firestore or Storage write. |
 | Safe reuse | Uses the existing campaign-create read/write path and creates a normal new campaign/trust report/event/idempotency result; no reuse collection or copied output artifact. |
+| Output-intent campaign creation | Uses the existing campaign-create reads and batch. Three optional bounded provenance fields are stored in the campaign pack; there is no additional document, write, or Storage artifact. |
 | Approval lifecycle | Reuses one deterministic approval document per campaign and atomically writes campaign/event/idempotency state; request adds the existing summary increment. No approval-history fan-out collection or duplicate campaign pre-read. |
 
 ## Cost Guards
@@ -35,6 +36,7 @@ It is derived from the existing CampaignCue overview and generated as a browser-
 - Campaign Proof Deck content is derived from the already-loaded output pack, Business Brain Brand Playbook, source facts, and trust summary.
 - Pack readiness and Campaign Rhythm are response-derived from the already-loaded overview.
 - Safe reuse stores two compact provenance fields on the new campaign; it does not duplicate the old pack JSON, source hash, approval, result receipt, or export files.
+- Output intents reuse the already-loaded browser overview for preflight and the existing server campaign-create data load for authoritative checks. They do not add a client read, server read, collection, summary document, or provider call.
 
 ## Future Boundary
 

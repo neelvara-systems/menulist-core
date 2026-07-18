@@ -1,9 +1,11 @@
 import { ANSWERLATTICE_GOVERNANCE_TABS, ANSWERLATTICE_ROUTES, getAnswerlatticeGovernanceRoute } from '@constant/answerlattice/navigations';
 import { PRODUCT_IDS } from '@constant/product';
+import { EMPTY_ANSWERLATTICE_ACTIVATION_ANSWER_TEST_SUMMARY } from '@lib/answerlattice/activationAnswerTestSummary';
 import { buildAnswerlatticeWidgetKeySummaries, normalizeAnswerlatticeWidgetApiState } from '@lib/answerlattice/widgetKeyManager';
 import { getNotificationReadiness } from '@lib/notifications';
 import type {
     AnswerlatticeActivationStage,
+    AnswerlatticeActivationAnswerTestSummary,
     AnswerlatticeActivationStep,
     AnswerlatticeActivationStepStatus,
     AnswerlatticeActivationSubscriptionSummary,
@@ -33,7 +35,7 @@ const getTimestampMillis = (value: any): number => {
 const getReadinessStage = (score: number, steps: AnswerlatticeActivationStep[]): AnswerlatticeActivationStage => {
     if (score >= 85) return 'live';
     if (steps.some(step => step.key === 'widget-install' && step.status !== 'complete')) return 'install';
-    if (steps.some(step => ['knowledge', 'help-center', 'entities', 'canonical-answers', 'product-surfaces', 'page-context'].includes(step.key) && step.status !== 'complete')) return 'knowledge';
+    if (steps.some(step => ['knowledge', 'help-center', 'entities', 'canonical-answers', 'answer-tests', 'product-surfaces', 'page-context'].includes(step.key) && step.status !== 'complete')) return 'knowledge';
     return 'setup';
 };
 
@@ -205,6 +207,7 @@ export function buildAnswerlatticeActivationSummary(params: {
     coverage?: AnswerlatticeCoverageData | null;
     trustMetrics?: AnswerlatticeTrustMetrics | null;
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
+    answerTests?: AnswerlatticeActivationAnswerTestSummary | null;
 }): AnswerlatticeActivationSummary {
     const storeData = params.storeData || {};
     const subscription = normalizeSubscription(storeData.answerlatticeSubscription || params.subscription);
@@ -239,6 +242,10 @@ export function buildAnswerlatticeActivationSummary(params: {
         || params.compiledContext?.privateBundlesReady === true
         || Number(params.compiledContext?.bundleVersion || 0) > 0
     );
+    const answerTests = params.answerTests || EMPTY_ANSWERLATTICE_ACTIVATION_ANSWER_TEST_SUMMARY;
+    const answerTestsReady = answerTests.firstTenCount >= 10
+        && answerTests.latestProofStatus === 'ready'
+        && answerTests.latestCriticalFailureCount === 0;
 
     const steps: AnswerlatticeActivationStep[] = [
         buildStep({
@@ -313,6 +320,27 @@ export function buildAnswerlatticeActivationSummary(params: {
             route: getAnswerlatticeGovernanceRoute(ANSWERLATTICE_GOVERNANCE_TABS.ANSWERS),
             actionLabel: 'Review Answers',
             costNote: 'Uses the trust metrics summary; no canonical answer collection scan on this page.',
+        }),
+        buildStep({
+            key: 'answer-tests',
+            title: 'Priority answers tested',
+            description: answerTests.firstTenCount < 10
+                ? `${answerTests.firstTenCount}/10 launch questions are ready. Define the questions most likely to interrupt launch.`
+                : answerTests.latestProofStale
+                    ? 'Priority questions or governed source truth changed after the retained run. Run the First 10 checks again.'
+                : !answerTests.latestProofStatus
+                    ? 'The First 10 are defined. Run the deterministic canonical checks to verify the expected answer or safe escalation.'
+                    : answerTestsReady
+                        ? 'The latest retained run covers the First 10 with no critical failure.'
+                        : `The latest First 10 proof is ${answerTests.latestProofStatus}; review ${answerTests.latestCriticalFailureCount} critical failure${answerTests.latestCriticalFailureCount === 1 ? '' : 's'}.`,
+            status: answerTestsReady
+                ? 'complete'
+                : answerTests.firstTenCount >= 10 || answerTests.latestProofStatus
+                    ? 'attention'
+                    : 'pending',
+            route: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS,
+            actionLabel: answerTests.firstTenCount < 10 ? 'Build First 10' : 'Run Answer Checks',
+            costNote: 'Reads the bounded Answer Tests summary. Canonical-only checks do not call a provider.',
         }),
         buildStep({
             key: 'product-surfaces',
@@ -441,6 +469,14 @@ export function buildAnswerlatticeActivationSummary(params: {
             actionLabel: 'Review Governance',
         },
         {
+            key: 'priority-answer-checks',
+            title: 'Priority answer checks',
+            description: 'The First 10 launch questions have a retained ready proof with no critical failure.',
+            status: getCombinedStatus(steps, ['answer-tests']),
+            route: ANSWERLATTICE_ROUTES.LAUNCH_ANSWERS,
+            actionLabel: answerTests.firstTenCount < 10 ? 'Build First 10' : 'Review Answer Checks',
+        },
+        {
             key: 'widget-runtime',
             title: 'Widget runtime proof',
             description: 'Widget key, allowed origins, install telemetry, and page context have all been verified.',
@@ -495,6 +531,7 @@ export function buildAnswerlatticeActivationSummary(params: {
         })),
         entityCount,
         activeCanonicalAnswerCount,
+        answerTests,
         compiledContextStatus: params.compiledContext?.status || null,
         compiledContextVersion: params.compiledContext?.bundleVersion || 0,
         launchProof: launchProof.items.map(item => ({
@@ -547,13 +584,14 @@ export function buildAnswerlatticeActivationSummary(params: {
             canonicalCoverageTotal,
             trustScore,
         },
+        answerTests,
         compiledContext: params.compiledContext || null,
         launchProof,
         steps,
         readModel: {
-            firestoreReads: 6,
+            firestoreReads: 8,
             firestoreWrites: '0 on normal view; 1 compact platformSummary write only when readiness signature changes or becomes stale.',
-            source: 'stores + platformSummary activation/context/coverage/trust/bundle docs',
+            source: 'stores + platformSummary activation/context/coverage/trust/bundle/answer-tests/source-version docs',
         },
     };
 }

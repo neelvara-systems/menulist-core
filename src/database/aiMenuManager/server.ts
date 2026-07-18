@@ -21,10 +21,15 @@ import type {
 } from '@type/aiMenuManager';
 import { buildExecutionId, isDailySessionIdForScope } from '@lib/ai-menu-manager/idempotency';
 import { assertAiMenuManagerPatchAllowedForAction } from '@lib/ai-menu-manager/patchPolicy';
-import { normalizeAiMenuManagerSessionSnapshot } from '@lib/ai-menu-manager/sessionIntegrity';
+import {
+    buildAiMenuManagerPendingState,
+    normalizeAiMenuManagerSessionSnapshot,
+    prepareAiMenuManagerSessionWrite,
+} from '@lib/ai-menu-manager/sessionIntegrity';
 import { normalizeAiMenuManagerProposalSnapshot } from '@lib/ai-menu-manager/proposalIntegrity';
 import { normalizeAiMenuManagerProjectSnapshot } from '@lib/ai-menu-manager/projectIntegrity';
 import { projectContainsAiMenuManagerPatch } from '@lib/ai-menu-manager/actions/projectPatches';
+import { logger } from '@lib/monitoring/logger';
 import type { Transaction } from 'firebase-admin/firestore';
 
 const MAX_COMPACT_MESSAGES = 20;
@@ -293,6 +298,33 @@ export async function getAiMenuManagerSession(sessionId: string) {
     return snap.exists ? normalizeAiMenuManagerSessionSnapshot(snap.data()) : null;
 }
 
+async function getLatestPendingAiMenuManagerSession(params: {
+    tId: string;
+    sId: string;
+    projectId: string;
+}) {
+    try {
+        const snapshot = await firestoreAdmin
+            .collection(DB_COLLECTIONS.AI_MENU_MANAGER_SESSIONS)
+            .where('tId', '==', params.tId)
+            .where('sId', '==', params.sId)
+            .where('projectId', '==', params.projectId)
+            .where('hasPendingOperations', '==', true)
+            .orderBy('updatedAt', 'desc')
+            .limit(1)
+            .get();
+        if (snapshot.empty) return null;
+        return normalizeAiMenuManagerSessionSnapshot(snapshot.docs[0].data());
+    } catch (error) {
+        const code = String((error as { code?: unknown })?.code || '').toLowerCase();
+        if (['9', 'failed-precondition', 'firestore/failed-precondition'].includes(code)) {
+            logger.warn('AI Menu Manager pending recovery index is not ready');
+            return null;
+        }
+        throw error;
+    }
+}
+
 export async function getAiMenuManagerProposal(proposalId: string) {
     const proposalRef = getProposalRef(proposalId);
     if (!proposalRef) return null;
@@ -415,32 +447,37 @@ export async function persistAiMenuManagerCommand(params: {
             ...existingPending,
         ].slice(0, MAX_PENDING_SUMMARIES);
 
-        const sessionPayload: Partial<AiMenuManagerSessionDoc> = sanitizeAiMenuManagerFirestoreValue({
-            sessionId: params.sessionId,
-            tId: scope.tId,
-            sId: scope.sId,
-            projectId,
-            sessionDate: params.sessionDate,
-            storageMode: params.storageMode,
-            status: 'active',
-            compactMessages: compactMessages({
-                existing: existingSession?.compactMessages,
-                ownerText: params.ownerText,
-                managerText: params.card.title,
-                messageId: params.messageId,
+        const sessionPayload: Partial<AiMenuManagerSessionDoc> = prepareAiMenuManagerSessionWrite(
+            sanitizeAiMenuManagerFirestoreValue({
+                ...(existingSession || {}),
+                sessionId: params.sessionId,
+                tId: scope.tId,
+                sId: scope.sId,
+                projectId,
+                sessionDate: params.sessionDate,
+                storageMode: params.storageMode,
+                status: 'active',
+                compactMessages: compactMessages({
+                    existing: existingSession?.compactMessages,
+                    ownerText: params.ownerText,
+                    managerText: params.card.title,
+                    messageId: params.messageId,
+                }),
+                pendingCardSummaries,
+                recentReceiptSummaries: existingSession?.recentReceiptSummaries || [],
+                counters: {
+                    ...(existingSession?.counters || {}),
+                    commands: (existingSession?.counters?.commands || 0) + 1,
+                    proposalsCreated: (existingSession?.counters?.proposalsCreated || 0) + 1,
+                    approvals: existingSession?.counters?.approvals || 0,
+                    executions: existingSession?.counters?.executions || 0,
+                },
+                expiresAt: admin.firestore.Timestamp.fromDate(ttlDate(SESSION_TTL_DAYS)),
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                ...(!existingSession ? { createdAt: admin.firestore.FieldValue.serverTimestamp() } : {}),
             }),
-            pendingCardSummaries,
-            recentReceiptSummaries: existingSession?.recentReceiptSummaries || [],
-            counters: {
-                commands: (existingSession?.counters?.commands || 0) + 1,
-                proposalsCreated: (existingSession?.counters?.proposalsCreated || 0) + 1,
-                approvals: existingSession?.counters?.approvals || 0,
-                executions: existingSession?.counters?.executions || 0,
-            },
-            expiresAt: admin.firestore.Timestamp.fromDate(ttlDate(SESSION_TTL_DAYS)),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            ...(!existingSession ? { createdAt: admin.firestore.FieldValue.serverTimestamp() } : {}),
-        });
+            existingSession,
+        );
 
         transaction.set(sessionRef, sessionPayload, { merge: true });
         transaction.set(proposalRef, sanitizeAiMenuManagerFirestoreValue({
@@ -483,28 +520,35 @@ export async function getAiMenuManagerInbox(params: {
         || !normalizeAiMenuManagerProjectId(params.projectId)
         || !scope
     ) {
-        return { session: null, cards: [], receipts: [] };
+        return { session: null, cards: [], receipts: [], sessionId: params.sessionId };
     }
 
-    const session = await getAiMenuManagerSession(params.sessionId);
+    const requestedSession = await getAiMenuManagerSession(params.sessionId);
+    const session = requestedSession?.hasPendingOperations
+        ? requestedSession
+        : await getLatestPendingAiMenuManagerSession({
+            tId: scope.tId,
+            sId: scope.sId,
+            projectId: params.projectId,
+        }) || requestedSession;
     if (
         !session
         || String(session.tId) !== scope.tId
         || String(session.sId) !== scope.sId
         || String(session.projectId) !== String(params.projectId)
         || !isDailySessionIdForScope({
-            sessionId: params.sessionId,
+            sessionId: session.sessionId,
             tId: scope.tId,
             sId: scope.sId,
             projectId: params.projectId,
             sessionDate: session.sessionDate,
         })
     ) {
-        return { session: null, cards: [], receipts: [] };
+        return { session: null, cards: [], receipts: [], sessionId: params.sessionId };
     }
 
     const projectId = normalizeAiMenuManagerProjectId(params.projectId);
-    if (!projectId) return { session: null, cards: [], receipts: [] };
+    if (!projectId) return { session: null, cards: [], receipts: [], sessionId: params.sessionId };
 
     const proposalIds = Array.from(new Set((session.pendingCardSummaries || [])
         .map((entry) => normalizeAiMenuManagerProposalId(entry.proposalId))
@@ -519,7 +563,7 @@ export async function getAiMenuManagerInbox(params: {
         .filter((entry): entry is { proposal: AiMenuManagerProposalDoc; proposalId: string } => Boolean(entry.proposal))
         .filter(({ proposal, proposalId }) => (
             proposal.proposalId === proposalId
-            && proposal.sessionId === params.sessionId
+            && proposal.sessionId === session.sessionId
             && String(proposal.tId) === scope.tId
             && String(proposal.sId) === scope.sId
             && String(proposal.projectId) === projectId
@@ -534,6 +578,7 @@ export async function getAiMenuManagerInbox(params: {
 
     return {
         session,
+        sessionId: session.sessionId,
         cards,
         receipts: session.recentReceiptSummaries || [],
     };
@@ -615,9 +660,11 @@ export async function updateAiMenuManagerProposalStatus(params: {
         }), { merge: true });
 
         if (session && sessionRef) {
-            transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
-                pendingCardSummaries: (session.pendingCardSummaries || [])
-                    .filter((entry) => entry.proposalId !== params.proposalId),
+            const pendingCardSummaries = (session.pendingCardSummaries || [])
+                .filter((entry) => entry.proposalId !== params.proposalId);
+            const nextSession = prepareAiMenuManagerSessionWrite({
+                ...session,
+                pendingCardSummaries,
                 ...(receipt ? {
                     compactMessages: appendCompactReceipt(session.compactMessages, receipt),
                     recentReceiptSummaries: [
@@ -625,6 +672,12 @@ export async function updateAiMenuManagerProposalStatus(params: {
                         ...(session.recentReceiptSummaries || []).filter((entry) => entry.proposalId !== params.proposalId),
                     ].slice(0, MAX_RECEIPTS),
                 } : {}),
+            }, session);
+            transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
+                compactMessages: nextSession.compactMessages,
+                pendingCardSummaries: nextSession.pendingCardSummaries,
+                recentReceiptSummaries: nextSession.recentReceiptSummaries,
+                ...buildAiMenuManagerPendingState(nextSession),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }), { merge: true });
         }
@@ -732,6 +785,7 @@ export async function approveAiMenuManagerProposal(params: {
         if (session && sessionRef) {
             transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
                 counters: {
+                    ...(session.counters || {}),
                     commands: session.counters?.commands || 0,
                     proposalsCreated: session.counters?.proposalsCreated || 0,
                     approvals: (session.counters?.approvals || 0) + 1,
@@ -842,7 +896,8 @@ export async function completeAiMenuManagerProposal(params: {
         }), { merge: true });
 
         if (session && sessionRef) {
-            transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
+            const nextSession = prepareAiMenuManagerSessionWrite({
+                ...session,
                 pendingCardSummaries: (session.pendingCardSummaries || [])
                     .filter((entry) => entry.proposalId !== params.proposalId),
                 recentReceiptSummaries: [
@@ -851,11 +906,19 @@ export async function completeAiMenuManagerProposal(params: {
                 ].slice(0, MAX_RECEIPTS),
                 compactMessages: appendCompactReceipt(session.compactMessages, receipt),
                 counters: {
+                    ...(session.counters || {}),
                     commands: session.counters?.commands || 0,
                     proposalsCreated: session.counters?.proposalsCreated || 0,
                     approvals: session.counters?.approvals || 0,
                     executions: (session.counters?.executions || 0) + (nextStatus === 'executed' ? 1 : 0),
                 },
+            }, session);
+            transaction.set(sessionRef, sanitizeAiMenuManagerFirestoreValue({
+                pendingCardSummaries: nextSession.pendingCardSummaries,
+                recentReceiptSummaries: nextSession.recentReceiptSummaries,
+                compactMessages: nextSession.compactMessages,
+                counters: nextSession.counters,
+                ...buildAiMenuManagerPendingState(nextSession),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             }), { merge: true });
         }

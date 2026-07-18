@@ -1,6 +1,6 @@
 # WhatsApp Reply Pack - Help Doc
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 WhatsApp Reply Pack creates reusable reply text from the facts you enter.
 

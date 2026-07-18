@@ -1,7 +1,7 @@
 # Creative Editor Template Registry Test Cases
 
 **Status:** Implemented
-**Last Updated:** June 16, 2026
+**Last Updated:** July 13, 2026
 
 ## Platform Manager
 
@@ -15,6 +15,9 @@
 | Publish metadata | Select an existing draft, change status to `Published`, and save metadata. | One catalog read/write updates status; no Storage upload is needed. |
 | Reopen unpublished template | Select a draft or archived template and choose Edit design. | Platform manager opens the stored editor document even though owner-facing opens still require published templates. |
 | Delete platform template | Delete a selected platform template. | Summary is removed from `data`; document and preview Storage cleanup runs best-effort. |
+| Concurrent category saves | Save two templates against the same category catalog concurrently. | The transaction retries from current catalog truth and both committed summaries remain. |
+| Generic mirror atomicity | Fail one generic catalog write inside the transaction. | No category mirror commits; the uploaded immutable attempt is deleted only after the authoritative probe proves absence. |
+| Full platform catalog | Save a new template when the 200-summary cap is reached. | The requested template remains in the bounded catalog and the lowest-priority evicted object is cleaned only after commit. |
 | Feature flag off | Disable `ENABLE_PLATFORM_ASSET_TEMPLATE_MANAGER`. | Platform nav item hides and direct manager route shows disabled state. |
 
 ## Desktop Printable Assets
@@ -34,6 +37,9 @@
 | Save failure is recoverable | Simulate DAL/Storage failure on save. | Editor remains open and generated templates still work. |
 | List failure is non-blocking | Simulate platform catalog/store template index read failure. | MenuList template cards still render. |
 | Delete saved template | Delete through client action. | Template index entry is removed from `data`, the `default` doc remains, and Storage document/preview are removed. |
+| Concurrent saved-design writes | Save or delete while another owner session mutates the same store index. | Transaction retry preserves unrelated committed summaries and applies the requested mutation once. |
+| Ambiguous save acknowledgement | Commit the index write, then simulate a lost client acknowledgement. | Probe finds the exact immutable document path and returns the committed summary without deleting it. |
+| Failed save probe | Fail the index transaction and fail the authoritative probe. | New attempt-owned objects are retained for reconciliation; existing referenced objects remain untouched. |
 
 ## Security
 
@@ -47,6 +53,8 @@
 | Oversized document | DAL rejects before Storage upload. |
 | Raw persistence path in request | Ignored/rejected; DAL computes scoped paths. |
 | Platform delete attempt | Owner UI/DAL does not expose platform delete; Storage/Firestore writes require platform admin. |
+| Cleanup path substitution | Supply a cross-store, cross-category, or cross-template path through malformed persisted metadata. | Cleanup ownership boundary refuses deletion and logs bounded diagnostics. |
+| Versioned filename rules | Upload valid `document-{versionId}.json` and `preview-{versionId}.{ext}` paths. | Correct owner/platform scope and MIME succeed; short/malformed names, cross-store paths, and wrong MIME fail. Legacy exact filenames remain readable/deletable for migration cleanup. |
 
 ## Cost
 

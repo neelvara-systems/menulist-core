@@ -81,6 +81,11 @@ const bulkActionsSheet = read('src/components/mobile/sheets/BulkActionsSheet.tsx
 const projectDal = read('src/database/projects/index.ts');
 const projectSlugOwnership = read('src/lib/menu/projectSlugOwnership.ts');
 const projectDocumentScope = read('src/lib/menu/projectDocumentScope.ts');
+const projectMutationAuthority = read('src/lib/menu/projectMutationAuthority.ts');
+const projectUploadIdentity = read('src/lib/menu/projectUploadIdentity.ts');
+const projectUploadPayload = read('src/lib/menu/projectUploadPayload.ts');
+const projectUpdateProjection = read('src/lib/menu/projectUpdateProjection.ts');
+const projectImageGeneration = read('src/lib/image/projectImageGeneration.ts');
 const timeSlotPresetBoundary = read('src/lib/menu/timeSlotPresetBoundary.ts');
 const timedCategories = read('src/hooks/useTimedCategories.ts');
 const storeDal = read('src/database/stores/index.tsx');
@@ -101,7 +106,7 @@ const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,
-  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:time-slot-data-flow"',
+  '"verify:menu-project-editor-boundary": "node scripts/verification/verify-menu-project-editor-boundary.js && npm run test:project-partial-update-projection && npm run test:project-slug-ownership && npm run test:project-document-scope && npm run test:project-mutation-authority && npm run test:project-upload-identity && npm run test:project-upload-payload && npm run test:time-slot-data-flow"',
   'package scripts',
 );
 
@@ -160,7 +165,6 @@ requireNamedImport(editor, '@database/projects', [
   'projectId: selectedProject.projectId,',
   'menu_editor_sync_changes_project_update_rejected',
   'menu_editor_persist_project_update_rejected',
-  'triggerPosSyncDebounced(',
   'menu_editor_project_public_content_project_update_rejected',
   'menu_editor_project_public_content_metadata_update_rejected',
   'FEATURE_FLAGS.ENABLE_MENU_COMMAND_CENTER',
@@ -176,7 +180,6 @@ requireOrder(
     'const updatedProject = await saveRequest;',
     'assertProjectUpdateSucceeded(',
     'menu_editor_sync_changes_project_update_rejected',
-    'triggerPosSyncDebounced(',
   ],
   'desktop editor save path order',
 );
@@ -191,6 +194,7 @@ requireOrder(
   'desktop editor in-flight save cleanup order',
 );
 forbidToken(editor, 'console.error(', 'desktop editor direct error logging');
+forbidToken(editor, 'triggerPosSyncDebounced(', 'desktop editor direct POS delivery trigger');
 forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw publish-gate error exposure');
 
 [
@@ -206,28 +210,57 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   'export function assertProjectDeleteSucceeded',
   '// INVARIANT: All customer-facing truth must pass through updateProject().',
   'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");',
-  'export const publishProject = async (data: Partial<Project>) => {',
-  'const publishedAt = Timestamp.now();',
-  'menuVersion: increment(1),',
+  'export const publishProject = async (',
+  'options: ProjectPublishOptions = {},',
+  'const requestedModifiedOn = options.expectedModifiedOn',
+  '(data as Partial<Project> & { modifiedOn?: unknown }).modifiedOn;',
+  'const currentProjectDoc = await getDoc(operationProjectRef);',
+  "throw new Error('Project update identity mismatch');",
+  "throw new Error('Project publish identity mismatch');",
+  'const storedMasterProjectId = resolveStoredProjectMasterId(oldProject, data)',
+  'const storedMasterProjectId = resolveStoredProjectMasterId(currentProject, data)',
+  'body: JSON.stringify({',
+  'project: { ...data, masterProjectId: storedMasterProjectId }',
+  'extractedVisualDefaults',
+  'const transactionResult = await runTransaction(firebaseClient, async (transaction) => {',
+  "throw new Error('Project update state changed');",
+  'previousProject: freshProject,',
+  'savedProject: buildProjectAfterPartialUpdate(freshProject, persistedUpdateData),',
+  'const publishTransactionResult = await runTransaction(firebaseClient, async (transaction) => {',
+  'persistedPublishData._mce = publishMceRuntime.toMCEMetadata(mceResult);',
+  "throw new Error('Invalid project publish precondition');",
+  "throw new Error('Project publish state changed');",
+  '...(expectedModifiedOnMillis !== null ? { expectedModifiedOnMillis } : {}),',
+  'projectDocumentMutationVersionMillis(',
+  'const nextMenuVersion = nextProjectMenuVersion(freshProject.menuVersion);',
+  'menuVersion: nextMenuVersion,',
   'lastPublishedAt: publishedAt,',
-  'await revalidatePublicClientCacheForProject(data.projectId, "publishProject");',
+  'await revalidatePublicClientCacheForProject(operationProjectId, "publishProject");',
   'LINKED_OUTLET_SAVE_REQUEST_POLICY',
   'project_linked_outlet_save_rejected',
   'project_linked_outlet_publish_rejected',
   'menu_observation_publish_event_failed',
-  'buildProjectAfterPartialUpdate(oldProject, data)',
+  'recordPublishedMenuTruth(\n                    operationProjectId,\n                    publishedProject,',
+  'uploadedProjectFileUrls.map((url) => deleteFileByUrl(url))',
   'sanitizeProjectPartialUpdate(stripGeneratedProjectReadModels(data))',
   'projectData: projectForValidation as Record<string, any>',
-  'buildProjectAfterPartialUpdate(oldProject, updateData)',
+  'buildProjectAfterPartialUpdate(freshProject, persistedUpdateData)',
   'const buildProjectSummaryMutation = (',
   'const suppliedProjectId = Boolean(data.projectId);',
   'const existingProjectDoc = suppliedProjectId',
+  'const SLUG_RESERVATION_QUERY_LIMIT = 25;',
+  "where('slug', '==', normalized)",
+  "where('previousSlugs', 'array-contains', normalized)",
+  'currentSlugSnapshot.size === SLUG_RESERVATION_QUERY_LIMIT',
+  'previousSlugSnapshot.size === SLUG_RESERVATION_QUERY_LIMIT',
   'transaction.set(projectDocRef, projectData, { merge: false });',
   'created && FEATURE_FLAGS.ENABLE_PROJECT_PROPAGATION',
   "throw new Error('Invalid project metadata scope');",
   "throw new Error('Project summary not found');",
   'const transactionResult = await runTransaction(firebaseClient, async (transaction) => {',
-  'const { slug: _ignoredSlug, previousSlugs: _ignoredPreviousSlugs, ...safeData } = data;',
+  'const currentAwareData = options.preserveExistingProjectImage',
+  'preserveExistingProjectImageMetadata(data, freshCurrentSummary)',
+  'const { slug: _ignoredSlug, previousSlugs: _ignoredPreviousSlugs, ...safeData } = currentAwareData;',
   "throw new Error('This menu URL is already in use. Please choose a different name.');",
   'const newProjectId = `${scope.tId}-${timestamp}-${entropy}-${scope.sId}`;',
   'delete duplicateSource._specialMenu;',
@@ -253,19 +286,47 @@ forbidToken(editor, 'validationErrors.push(error.message)', 'desktop editor raw 
   'const currentDoc = await transaction.get(projectDoc.ref);',
   'const projection = projectTimeSlotPresetReferences(currentProject, mutation);',
   'files: projection.files,',
+  'persistenceOutcomeAmbiguous = true;',
+  'persistenceCommitted = true;',
+  '!persistenceCommitted && !persistenceOutcomeAmbiguous',
+  'buildProjectUploadObjectId({',
+  'import { triggerPosSyncForAcknowledgedProjectSave } from "@lib/posSync/eventBuilder";',
+  'triggerPosSyncForAcknowledgedProjectSave(',
+  'current.deleted === true',
+  '!projectDocumentMatchesScope(current, {',
 ].forEach((token) => requireToken(projectDal, token, 'project DAL'));
+[
+  'export const preserveExistingProjectImageMetadata',
+  "patch.projectImage === undefined",
+  'resolveProjectImageUrl(currentSummary.projectImage)',
+  "const { projectImage: _ignoredProjectImage, ...preservedPatch } = patch;",
+].forEach((token) => requireToken(projectUpdateProjection, token, 'project update projection'));
+[
+  '{ preserveExistingProjectImage: true }',
+  'if (metadataResult.projectImage !== imageUrl) {',
+  "return { skippedReason: 'existing-image' };",
+].forEach((token) => requireToken(projectImageGeneration, token, 'generated project image persistence'));
+forbidToken(
+  projectImageGeneration,
+  'updateProjectMetadata(projectId, { projectImage: imageUrl });',
+  'generated project image stale metadata write',
+);
 forbidToken(projectDal, 'void detectAndLogChanges(data.projectId, oldProject, data, operationScope);', 'project DAL partial observation');
 forbidToken(projectDal, 'await syncProjectToSummary(newProjectId, summaryData);', 'project DAL split duplicate summary write');
 forbidToken(projectDal, 'batch.set(doc(projectCollectionRef, projectId), projectData, { merge: true });', 'project DAL destructive deterministic create merge');
 forbidToken(projectDal, 'await setDoc(projectDocRef, { active }, { merge: true });', 'project DAL split active project write');
 forbidToken(projectDal, 'batch.set(docSnap.ref, project, { merge: true });', 'project DAL stale preset cascade write');
 forbidToken(projectDal, 'await setDoc(await getDataDocRef(project.projectId), project, {', 'project DAL stale preset update write');
+forbidToken(projectDal, 'FEATURE_FLAGS.ENABLE_MULTI_OUTLET && data.projectId && data.masterProjectId', 'project DAL caller-controlled linked outlet routing');
+forbidToken(projectDal, "where('deleted', '==', true),\n            limit(50)", 'project DAL arbitrary deleted-project slug scan');
 forbidToken(projectDal, 'console.error(', 'project DAL direct error logging');
 forbidToken(projectDal, 'console.warn(', 'project DAL direct warn logging');
 
 [
   'export const isProjectSlugClaimed = (',
   'summary.previousSlugs.some(',
+  'export const isRecentlyDeletedProjectSlugReservation = (',
+  'deletedAtMillis === null || deletedAtMillis < cutoffMillis',
   'export const resolveAvailableProjectSlug = (',
   'for (let attempt = 2; attempt <= 100; attempt += 1)',
 ].forEach((token) => requireToken(projectSlugOwnership, token, 'project slug ownership'));
@@ -278,6 +339,37 @@ forbidToken(projectDal, 'console.warn(', 'project DAL direct warn logging');
   '["tId", "tenantId", "tenantID"]',
   '["sId", "storeId", "storeID"]',
 ].forEach((token) => requireToken(projectDocumentScope, token, 'project document scope'));
+
+[
+  'export const resolveStoredProjectMasterId = (',
+  'Object.prototype.hasOwnProperty.call(requestedUpdate, "masterProjectId")',
+  'project_master_linkage_mutation_rejected',
+  'export const nextProjectMenuVersion = (',
+  'export const nextProjectLocalVersion = (',
+  'project_menu_version_exhausted',
+  'project_local_version_exhausted',
+  'Number.isSafeInteger(currentVersion)',
+].forEach((token) => requireToken(projectMutationAuthority, token, 'project mutation authority'));
+
+[
+  'export const buildProjectUploadObjectId = ({',
+  'if (!cleanAttemptId) throw new Error("project_upload_attempt_id_invalid");',
+  'return `${stablePrefix}-${cleanAttemptId}`.slice(0, 120);',
+].forEach((token) => requireToken(projectUploadIdentity, token, 'project upload identity'));
+
+[
+  'export const validateProjectUploadDataUrl = ({',
+  'PROJECT_UPLOAD_MAX_IMAGE_BYTES',
+  'PROJECT_UPLOAD_MAX_PDF_BYTES',
+  'project_file_upload_type_mismatch',
+  'project_file_upload_signature_mismatch',
+  'project_file_upload_too_large',
+].forEach((token) => requireToken(projectUploadPayload, token, 'project upload payload'));
+forbidToken(projectDal, "'image/svg+xml'", 'project DAL active SVG upload');
+forbidToken(projectDal, 'SUPPORTED_PROJECT_UPLOAD_FILE_TYPES', 'project DAL duplicated upload allowlist');
+forbidToken(projectDal, 'data.url.includes("base64")', 'project DAL substring-based base64 admission');
+requireToken(projectDal, 'const validatedPayload = validateProjectUploadDataUrl({', 'project DAL fallback upload payload validation');
+requireToken(projectDal, 'type: validatedPayload.mimeType,', 'project DAL canonical fallback upload MIME');
 
 [
   'export const parseClockMinutes = (',

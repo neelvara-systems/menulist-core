@@ -115,7 +115,7 @@ The UI follows the existing Scheduler/Ops Control Room pattern: platform-only, m
 
 | Concern | Implementation |
 |---|---|
-| Route protection | `withAuth` with `requiredPlatformRole: "PLATFORM"` |
+| Route protection | Signed `withAuth` PLATFORM admission, fail-closed DATA_READ limit, then exact current persisted platform-user check |
 | Client collection access | `messagingOnboarding*` collections remain `allow read, write: if false` |
 | Health collection access | `systemHealth` explicitly `allow read, write: if false` |
 | Provider credentials | Firebase Secret Manager only |

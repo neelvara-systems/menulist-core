@@ -31,9 +31,11 @@ A single calm signal that tells business owners whether customers are coming bac
 
 77.4% of restaurant guests never return (Bloom Intelligence 2025). Owners don't know their return rate. They rely on recognizing faces and gut feeling. MenuList can detect returning visit patterns from aggregate analytics and give a simple loyalty health signal.
 
-## Current Runtime Truth — July 13, 2026
+## Current Runtime Truth — July 17, 2026
 
 The shared computation helper exists but is not exported or scheduled, the desktop card component is unmounted, no mobile consumer exists, and `ENABLE_LOYALTY_HEALTH_SIGNAL` is intentionally `false`. The flow performs no current Firestore work. The diagram below is the target activation design.
+
+The retained page-view/daily-unique heuristic cannot prove that the same customer returned: summing daily unique counts does not create weekly distinct or returning-customer counts. The processor therefore fails closed before Firestore work. A privacy-safe aggregate returning-visitor contract, measured thresholds, and product validation are mandatory before activation.
 
 ## Target Architecture (Not Active Runtime)
 
@@ -74,4 +76,4 @@ Same computation infrastructure, different input signals. Computed in same Cloud
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026

@@ -2,8 +2,8 @@
 
 **Feature:** Project CRUD and Menu Builder Lifecycle
 **Parent Feature:** Projects / Menu Digitization
-**Status:** Production implementation exists; audited June 11, 2026
-**Last Updated:** June 11, 2026
+**Status:** Production implementation exists; audited July 16, 2026
+**Last Updated:** July 16, 2026
 
 ## Product Role
 
@@ -18,9 +18,9 @@ It is not a generic document manager. Project actions exist only to keep the pub
 | FR-01 | Atomically create a project and summary with localized name/description and a unique stable slug; deterministic-ID retries must repair missing summary state without overwriting an existing menu. | Implemented |
 | FR-02 | List project summaries with one summary-doc read. | Implemented |
 | FR-03 | Load a full project for editing/rendering. | Implemented |
-| FR-04 | Transactionally update metadata without rewriting full menu data; reject missing/cross-store identities and current, redirect, reserved, malformed, or recently deleted slug conflicts. | Implemented |
+| FR-04 | Transactionally update metadata without rewriting full menu data; reject missing/cross-store identities and current, redirect, reserved, malformed, or recently deleted slug conflicts without scanning unrelated deleted projects. | Implemented July 16, 2026 |
 | FR-05 | Save full menu data and invalidate public cache. | Implemented |
-| FR-06 | Publish a project with monotonic menu versioning. | Implemented |
+| FR-06 | Publish a project with monotonic menu versioning and reject stale desktop/mobile publish snapshots before they can replace newer menu truth. | Implemented July 16, 2026 |
 | FR-07 | Soft-delete projects and remove them from public/list summaries. | Implemented |
 | FR-08 | Atomically restore soft-deleted project and summary state without losing fields or creating a second active default. | Implemented July 13, 2026 |
 | FR-09 | Prevent duplicate default restore when another active default exists. | Implemented June 11, 2026 |
@@ -82,10 +82,12 @@ When restoring a project:
 - Project slugs must remain stable public handles.
 - Previous slugs must remain available for redirect resolution.
 - A current slug or any retained redirect slug can belong to only one project in a store summary, including inactive projects.
+- Recently deleted current and redirect slugs remain reserved for 90 days. Reservation reads must query only exact matching slug fields, stay bounded, and fail closed if a matching query reaches its cap or cannot be completed.
 - Project and summary creation, duplicate, restore, delete, and default handoff operations must not expose split durable state.
 - Current and legacy project reads must validate the requested project ID plus tenant/store identity before returning runtime data; legacy fallback must never drift to a sibling store.
 - `/menu` alias/default behavior depends on the public route resolver, but project summary state must keep the default project unambiguous.
 - Any write affecting project summary, menu content, active state, publish state, special-menu status, or copied time-slot windows must invalidate public cache.
+- Standalone and linked-outlet publish must enforce the caller's loaded `modifiedOn` version against fresh transactional project truth. A stale publish fails without changing public menu data or reporting success.
 
 ## Mobile Requirements
 

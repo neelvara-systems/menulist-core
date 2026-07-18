@@ -9,17 +9,11 @@
  */
 
 import { firebaseStorage } from '@lib/firebase/firebaseClient';
-import { getMediaFileExtension } from '@lib/media/mediaStorage';
-import type { PreparedMediaImage } from '@lib/media/prepareMediaImage';
-import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
-import { generateStoragePath } from '@lib/storage/pathGenerator';
+import { filterUnreferencedObpMediaUrls } from '@lib/media/obpMediaReferences';
+import { prepareMediaImage, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import { uploadPreparedMediaImage } from '@database/storage/uploadPreparedMediaImage';
 import { getBoundedStringLogContext, logStorageHelperFailure } from '@database/storage/storageDiagnostics';
-import { getDownloadURL, ref, uploadBytesResumable, deleteObject } from 'firebase/storage';
-
-function getPhotoExtension(mimeType?: string): string {
-    return getMediaFileExtension(mimeType || 'image/jpeg');
-}
+import { ref, deleteObject } from 'firebase/storage';
 
 /**
  * Upload a single OBP business photo to Firebase Storage
@@ -34,45 +28,16 @@ export async function uploadOBPPhoto(
     index: number,
     prepared?: PreparedMediaImage,
 ): Promise<string> {
-    if (prepared) {
-        return uploadPreparedMediaImage({
-            blob: prepared.blob || file,
-            contentType: prepared.mimeType || file.type,
-            entityId: `gallery-${index}`,
-            prepared,
-            profile: 'galleryImage',
-            storeId: session.sId,
-            tenantId: session.tId,
-            variant: 'full',
-        });
-    }
-
-    const fileId = `${Date.now()}-photo-${index}.${getPhotoExtension(file.type)}`;
-    const storagePath = generateStoragePath({
-        collection: 'stores',
-        fileType: 'obp-photos',
-        session,
-        fileId,
-    });
-
-    const storageRef = ref(firebaseStorage, storagePath);
-    const metadata = {
-        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
-        contentType: file.type || 'image/jpeg',
-    };
-
-    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
-
-    return new Promise((resolve, reject) => {
-        uploadTask.on(
-            'state_changed',
-            () => { },
-            (error) => reject(error),
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve(downloadURL);
-            },
-        );
+    const resolvedPrepared = prepared || await prepareMediaImage(file, 'galleryImage');
+    return uploadPreparedMediaImage({
+        blob: resolvedPrepared.blob,
+        contentType: resolvedPrepared.mimeType,
+        entityId: `gallery-${index}`,
+        prepared: resolvedPrepared,
+        profile: 'galleryImage',
+        storeId: session.sId,
+        tenantId: session.tId,
+        variant: 'full',
     });
 }
 
@@ -85,45 +50,16 @@ export async function uploadOBPCover(
     session: { tId: number | string; sId: number | string },
     prepared?: PreparedMediaImage,
 ): Promise<string> {
-    if (prepared) {
-        return uploadPreparedMediaImage({
-            blob: prepared.blob || file,
-            contentType: prepared.mimeType || file.type,
-            entityId: 'official-page-cover',
-            prepared,
-            profile: 'businessCover',
-            storeId: session.sId,
-            tenantId: session.tId,
-            variant: 'hero',
-        });
-    }
-
-    const fileId = `${Date.now()}-business-cover.${getPhotoExtension(file.type)}`;
-    const storagePath = generateStoragePath({
-        collection: 'stores',
-        fileType: 'obp-covers',
-        session,
-        fileId,
-    });
-
-    const storageRef = ref(firebaseStorage, storagePath);
-    const metadata = {
-        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
-        contentType: file.type || 'image/jpeg',
-    };
-
-    const uploadTask = uploadBytesResumable(storageRef, file, metadata);
-
-    return new Promise((resolve, reject) => {
-        uploadTask.on(
-            'state_changed',
-            () => { },
-            (error) => reject(error),
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                resolve(downloadURL);
-            },
-        );
+    const resolvedPrepared = prepared || await prepareMediaImage(file, 'businessCover');
+    return uploadPreparedMediaImage({
+        blob: resolvedPrepared.blob,
+        contentType: resolvedPrepared.mimeType,
+        entityId: 'official-page-cover',
+        prepared: resolvedPrepared,
+        profile: 'businessCover',
+        storeId: session.sId,
+        tenantId: session.tId,
+        variant: 'hero',
     });
 }
 
@@ -143,21 +79,19 @@ export async function deleteOBPPhoto(photoUrl: string): Promise<void> {
     }
 }
 
-export async function deleteOBPPhotos(photoUrls: Array<string | null | undefined>): Promise<void> {
-    const uniquePhotoUrls = Array.from(new Set(
-        photoUrls.filter((photoUrl): photoUrl is string => (
-            typeof photoUrl === 'string' &&
-            photoUrl.trim().length > 0 &&
-            !photoUrl.startsWith('data:')
-        )),
-    ));
+export async function deleteOBPPhotos(
+    photoUrls: Array<string | null | undefined>,
+    retainedPhotoUrls: Array<string | null | undefined> = [],
+): Promise<string[]> {
+    const uniquePhotoUrls = filterUnreferencedObpMediaUrls(photoUrls, retainedPhotoUrls);
 
-    if (uniquePhotoUrls.length === 0) return;
+    if (uniquePhotoUrls.length === 0) return [];
 
     const results = await Promise.allSettled(
         uniquePhotoUrls.map((photoUrl) => deleteOBPPhoto(photoUrl)),
     );
 
+    const failedPhotoUrls = uniquePhotoUrls.filter((_, index) => results[index]?.status === 'rejected');
     const failedIndex = results.findIndex((result) => result.status === 'rejected');
     const failed = failedIndex >= 0 ? results[failedIndex] : null;
     if (failed?.status === 'rejected') {
@@ -166,9 +100,11 @@ export async function deleteOBPPhotos(photoUrls: Array<string | null | undefined
             failed.reason,
             {
                 requestedDeleteCount: uniquePhotoUrls.length,
-                failedDeleteCount: results.filter((result) => result.status === 'rejected').length,
+                failedDeleteCount: failedPhotoUrls.length,
                 ...getBoundedStringLogContext('firstFailedPhotoUrl', uniquePhotoUrls[failedIndex]),
             },
         );
     }
+
+    return failedPhotoUrls;
 }

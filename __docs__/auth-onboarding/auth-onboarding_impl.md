@@ -1,687 +1,83 @@
-# Auth & Onboarding — Technical Implementation
+# Auth and Onboarding Implementation
 
-**Feature:** Complete Signup/Login/Onboarding/Payment Flow
-**Status:** Implemented source evidence; not current launch certification
-**Date:** July 2, 2026
+**Status:** Current source map
+**Last updated:** July 16, 2026
 
----
+## Runtime map
 
-## Current Launch Boundary
+| Concern | Primary source |
+| --- | --- |
+| NextAuth providers, callbacks, session projection | `src/lib/auth/index.ts` |
+| Current account lifecycle/revocation admission | `src/lib/auth/currentPlatformUser.ts` |
+| Unique email/phone/staff identity lookup | `src/lib/auth/serverUserContext.ts` |
+| Browser login and three-mode claim handoff | `src/components/templates/loginPage/index.tsx` |
+| Phone OTP routes and durable challenge/token helper | `src/app/api/auth/phone-otp/*`, `src/lib/auth/phoneOtp.ts` |
+| Claim preview, mutation, concurrency | `src/app/api/auth/validate-claim/route.ts`, `src/app/api/auth/claim-account/route.ts`, `src/lib/auth/claimAccountConcurrency.ts` |
+| Firebase custom claims | `src/app/api/auth/set-claims/route.ts`, `src/lib/auth/setClaimsWorkspace.ts` |
+| First tenant/store transaction | `src/lib/onboarding/createTenantStore.ts` |
+| Onboarding plus Razorpay coordination | `src/app/api/onboarding/create-subscription/route.ts` |
+| Provider/local failure compensation | `src/lib/onboarding/compensateFailedOnboarding.ts` |
+| Browser checkout/session handoff | `src/hooks/usePaymentHandler.ts` |
+| Pricing return/pending recovery | `src/components/website/pricing/PricingWrapper.tsx`, `src/components/website/pricing-pages/SubscriptionManagement.tsx` |
+| Active session parsing and store/product projection | `src/lib/auth/getActiveSession.ts`, `src/lib/auth/loginSessionBoundary.ts` |
 
-This implementation guide records current source evidence for MenuList auth, onboarding, subscription setup, custom claims, and payment verification. It is not current production-launch approval by itself.
+## Login and session
 
-Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, current auth/security source review against mandatory rules, Google OAuth and credentials smoke, claim-account and store-switch smoke, Firebase Auth custom-claims/token evidence, Razorpay sandbox checkout plus payment-verification evidence, webhook/provider failure evidence, mobile browser onboarding/payment QA, target deploy evidence, and production-host smoke.
+The Google provider resolves the normalized email and creates a deterministic unscoped owner profile when no user exists. Credentials resolve email, phone, or staff aliases, apply lockout and lifecycle checks, and verify the password through Firebase Auth. Phone OTP produces a one-time token which the same credentials provider consumes transactionally.
 
-The local verifier source-gates current code wiring only. It does not run live OAuth, Razorpay checkout, provider webhooks, Firebase Auth token minting, Firestore writes, browser/device QA, Firebase deploys, Vercel deploys, a production build, or production-host behavior.
+Google user creation sanitizes its allowlisted write through the canonical `src/lib/firestore/sanitizeForFirestore.ts` boundary. Auth does not maintain a private recursive sanitizer: SDK values retain their prototypes, undefined values retain the established null semantics, and cycles, accessors, unsupported values, or dangerous object keys fail before the user transaction.
 
-## 1. System Architecture
+The JWT callback re-reads the current user, using a bounded 15-second process-local cache only for already scoped sessions. `useSession().update()` forces a fresh read, so onboarding and store-switch changes are projected from Firestore rather than trusted from the browser update payload.
 
-### 1.1 Dual Auth System
+The session contains both top-level shortcuts and the compact `session.user` projection. `platformRole` is account level; `role` is derived from the mapping for the active store.
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    TWO AUTH SYSTEMS                              │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  NextAuth (Server-Side)          Firebase Auth (Client-Side)    │
-│  ━━━━━━━━━━━━━━━━━━━━━━          ━━━━━━━━━━━━━━━━━━━━━━━━━━━    │
-│  • JWT in HTTP-only cookie       • Access token in localStorage │
-│  • 7 days lifespan               • 1 hour (auto-refresh)        │
-│  • Used for API auth             • Used for Firestore rules     │
-│  • useSession() hook             • firebaseAuth.currentUser     │
-│                                                                  │
-│  SYNC: /api/auth/set-claims creates custom token                │
-│        signInWithCustomToken() establishes Firebase session     │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+## Google claim handoff
 
-### 1.2 Key Flows
+The login page stores a pending claim token across OAuth. After NextAuth returns, one synchronous `claimProcessingRef` guard prevents session rerenders from starting Firebase sync or redirect while the claim request is still committing. On success it refreshes the session, syncs Firebase Auth, and hard-navigates into the refreshed scope. On failure it clears the local pending token and continues with normal login behavior.
 
-| Flow                    | Entry Point                          | End State            |
-| ----------------------- | ------------------------------------ | -------------------- |
-| **New User Signup**     | Pricing → OAuth → Onboard → Pay      | Dashboard access     |
-| **Existing User Login** | Login Page → OAuth/Credentials       | Dashboard access     |
-| **Session Refresh**     | useSession() + useFirebaseAuthSync() | Both systems synced  |
-| **Logout**              | signOutSession()                     | Both systems cleared |
+## Phone OTP
 
----
+Start and verify routes apply fail-closed shared rate limits before paid WhatsApp work or challenge verification. The helper stores only HMAC forms of OTP/login secrets, commits invalid-attempt and expiry state, reserves valid verification with a lease, atomically creates the one-time login token, and consumes it only after reading the exact bound user.
 
-## 2. Pricing Page Flow
+## First workspace transaction
 
-### 2.1 Component: `src/components/templates/website/platformSite/landingPage/pricing/index.tsx`
+`assertCurrentUserAvailableForOnboardingInTransaction()` runs before allocation. `createTenantStoreInTransaction()` creates the tenant, master store, canonical business type/category fields, time settings, subdomain reservation, default roles, `storesSummary`, and counters. `updateUserWithTenantStore()` adds the owner mapping in the same transaction.
 
-```typescript
-// Key state management
-const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
-const {
-  onClickPaymentCard,
-  pendingPlan,
-  executePostOnboarding,
-  isScriptLoaded,
-} = usePaymentHandler(handleLoader);
+This website-specific admission is not applied blindly to reseller, messaging, public-create-menu, or Answerlattice sources; those callers retain their own identity contract while sharing tenant/store creation.
 
-// Flow when plan card clicked
-const handlePaymentCardClick = (plan: Plan) => {
-  onClickPaymentCard(plan, currency, () => setIsOnboardingModalOpen(true)).then(
-    (paymentResponse) => handlePaymentSuccessResponse(paymentResponse),
-  );
-};
-```
+## Identity and compensation scope boundary
 
-### 2.2 Purchase Intent Storage
+### Onboarding user-ID boundary
 
-```typescript
-// Stored in localStorage before OAuth redirect
-const purchaseIntent: PurchaseIntent = {
-  businessName: string;      // From modal
-  businessIndustry: string;  // From modal
-  plan: Plan;                // Selected plan object
-  currency: Currency;        // USD or INR
-};
-localStorage.setItem('purchaseIntent', JSON.stringify(purchaseIntent));
+All first-workspace helpers normalize user IDs through `src/lib/onboarding/onboardingUserId.ts` before creating a `users/{userId}` reference. Empty, whitespace-mutated, oversized, slash-containing, or reserved Firestore document IDs fail before a transaction reads or writes identity state.
+
+`createTenantStoreInTransaction()` and `updateUserWithTenantStore()` use that same guard. Reseller onboarding normalizes Firebase Auth-generated UIDs through `requireOnboardingUserId()` before owner-document creation or compensation.
+
+### Onboarding compensation scope boundary
+
+`compensateFailedTenantStoreOnboarding()` revalidates the user ID and requires exact positive numeric tenant/store document IDs before constructing any tenant, store, summary, or user reference. It also removes only mappings whose persisted tenant/store identity exactly matches the failed workspace. This keeps provider-failure cleanup from crossing scopes or deleting a different onboarding attempt.
+
+## Razorpay convergence
+
+After the Firestore transaction, the route creates the provider plan/subscription using server plan data and an `onboardingAttemptId`. If provider create throws ambiguously, a bounded list scan accepts only the exact attempt identity. The route then persists a pending subscription.
+
+If persistence reports failure, the route re-reads `subscriptions/{providerSubscriptionId}`. It accepts the record only when document/provider ID, provider, user, tenant, store, and plan identity match the attempted onboarding; status may already have advanced through a fast webhook. Otherwise it cancels the provider subscription, and only successful cancellation proceeds to local tenant/store/user/referral compensation. This avoids deactivating a workspace while a live provider subscription may still exist.
+
+The browser updates the session from current user truth, opens Razorpay, and verifies the signed checkout response through the existing subscription verification route. A dismissed checkout leaves the pending record and allowlisted short URL available. Pricing, desktop Billing, and Mobile Billing normalize the stored checkout URL through the same HTTPS `rzp.io` allowlist before exposing recovery.
+
+## Firebase claims
+
+`/api/auth/set-claims` validates an optional UID, product, and target store; resolves the product user; verifies target membership; reads the canonical target store; derives tenant scope from that store; and resolves the active store role. Missing normal-user roles and non-platform `PLATFORM` role values fail with 403 instead of defaulting to owner.
+
+The browser signs in with the returned custom token or forces an existing Firebase token refresh. Store switching additionally checks the refreshed claim acknowledgement before changing browser-local active-store context.
+
+## Focused verification
+
+```bash
+npm run verify:auth-onboarding-flow
+npm run test:phone-otp-transaction:emulator
+npm run test:claim-account-concurrency:emulator
+npm run test:onboarding-user-concurrency:emulator
 ```
 
-### 2.3 Post-OAuth Resume
-
-```typescript
-// src/components/templates/website/platformSite/landingPage/pricing/index.tsx:70-84
-useEffect(() => {
-  const intentExists = localStorage.getItem("purchaseIntent");
-  if (status === "authenticated" && session?.user) {
-    if (intentExists) {
-      if (session.user.tenantId) {
-        // Already onboarded - direct to payment
-        handlePaymentCardClick(JSON.parse(intentExists).plan);
-      } else {
-        // New user - run full onboarding
-        startPaymentprocessing();
-      }
-    }
-  }
-}, [session, isScriptLoaded]);
-```
-
----
-
-## 3. Authentication
-
-### 3.1 NextAuth Configuration
-
-**File:** `src/lib/auth/index.ts`
-
-```typescript
-export const authOptions: NextAuthOptions = {
-  session: {
-    strategy: "jwt",
-    maxAge: 7 * 24 * 60 * 60, // 7 days
-  },
-  providers: [
-    GoogleProvider({...}),
-    CredentialsProvider({...})
-  ],
-  callbacks: {
-    signIn: async ({ user, account }) => {
-      // 1. Validate email (block disposable)
-      // 2. Get or create user in Firestore
-      // 3. Check isVerified && active
-      // 4. Return true/false/redirect
-    },
-    jwt: async ({ token, user, trigger }) => {
-      // 1. Load dbUser on first login
-      // 2. Refresh on trigger === 'update'
-      // 3. Keep JWT minimal
-    },
-    session: async ({ session, token }) => {
-      // 1. Populate session.user from token.dbUser
-      // 2. Add shortcuts: tId, sId, uId, role
-    }
-  }
-};
-```
-
-### 3.2 User Creation (OAuth)
-
-**File:** `src/lib/auth/index.ts:122-151`
-
-```typescript
-// New OAuth user - create minimal record
-const newUser = {
-  email: email,
-  name: user.name || email.split("@")[0],
-  image: user.image || "",
-  isVerified: true, // OAuth = pre-verified
-  active: true,
-  tenantId: null, // Set during onboarding
-  storeId: null,
-  platformRole: "OWNER",
-  stores: [],
-};
-dbUser = await addPlatformUser(newUser);
-```
-
-### 3.3 Session Structure
-
-```typescript
-// What useSession() returns
-{
-  user: {
-    id: "abc123",
-    email: "user@example.com",
-    name: "John Doe",
-    tenantId: 14,          // null before onboarding
-    storeId: 15,           // null before onboarding
-    platformRole: "OWNER",
-    stores: [{ storeId: 15, roles: ['OWNER'] }]
-  },
-  tId: 14,                 // Shorthand
-  sId: 15,                 // Shorthand
-  uId: "abc123",           // Shorthand
-  role: "OWNER",           // First role from stores array
-  expires: "2026-02-02T..."
-}
-```
-
----
-
-## 4. Onboarding API
-
-### 4.1 Endpoint: `POST /api/onboarding/create-subscription`
-
-**File:** `src/app/api/onboarding/create-subscription/route.ts`
-
-**Security:**
-
-- `withAuth()` middleware required
-- Rate limited (centralized config)
-- Blocks if user already has tenantId/storeId
-- Atomic Firestore transaction
-- Onboarding subscription validation, existing-user attempts, success breadcrumbs, and local dev payment logs use stable codes plus identifier presence/length metadata only; raw business names, user IDs, tenant IDs, store IDs, plan IDs, subscription IDs, and exception messages are not persisted in diagnostics.
-
-### 4.2 Atomic Transaction
-
-```typescript
-const result = await db.runTransaction(async (transaction) => {
-  // 1. Create tenant, store, roles, storesSummary entry, and platform counters.
-  const core = await createTenantStoreInTransaction(transaction, db, {
-    businessName,
-    businessType: businessIndustry || FALLBACK_BUSINESS_TYPE,
-    businessIndustry: userType,
-    timeZone,
-    businessDayEndTime,
-    email: session.user.email,
-    onboardingSource: "WEBSITE_ONBOARDING",
-    subdomain: { preChecked: preCheckedSubdomain },
-    includeTimeSlotPresets: true,
-  });
-
-  // createTenantStoreInTransaction writes:
-  // - tenant/store businessType = actual type, for example "Restaurant"
-  // - tenant/store businessIndustry = plan type, for example "B2C"
-  // - store/storesSummary businessCategory from shared business-type data
-
-  // 2. Update user: users/{userId}
-  updateUserWithTenantStore(transaction, db, userId, core);
-
-  return { tenantId: core.tenantId, storeId: core.storeId };
-});
-```
-
-### 4.3 Post-Transaction: Razorpay Subscription
-
-```typescript
-// Create Razorpay subscription with secure server-generated IDs
-const razorpaySubscription = await razorpayClient.subscriptions.create({
-  plan_id: razorpayPlanId,
-  total_count: interval === "MONTH" ? 24 : 1,
-  quantity: 1,
-  notes: {
-    tenantId: result.tenantId, // Server-created (secure)
-    storeId: result.storeId,
-    userId,
-    userType,
-    planId,
-    // ...
-  },
-});
-
-// Create Firestore subscription record
-await createInitialSubscription(razorpaySubscription.id, {
-  status: "pending",
-  tenantId: result.tenantId,
-  storeId: result.storeId,
-  // ...
-});
-```
-
-If Razorpay plan lookup or subscription creation fails after the tenant/store/user transaction succeeds, the route calls `compensateFailedTenantStoreOnboarding()`. That failure path marks the created tenant and store inactive, updates `platformSummary/storesSummary.stores.{storeId}.active` to `false`, clears the failed tenant/store mapping from the user document when it matches the just-created scope, and revalidates the public menu/OBP cache. The route then rethrows the provider error through the existing bounded payment error handler.
-
-July 13 authority/concurrency contract: the session-only empty-scope check is advisory. Before any tenant/store counter allocation, `assertCurrentUserAvailableForOnboardingInTransaction()` reads the exact `users/{userId}` document in the same transaction and applies current document/email, active, verified, lifecycle/block and session-revocation admission. It also requires both scalar tenant/store fields and the `stores`/`storeIds` collections to be empty. Firestore retries therefore make one concurrent request the winner; every loser re-reads the committed mapping and fails with a fixed conflict response.
-
-July 13 distributed payment contract: the route validates a purchasable positive-integer price and nonnegative integer credit allowance before local writes. Each Razorpay create carries a UUID `onboardingAttemptId` plus exact source/plan/user/tenant/store notes. If creation throws after an ambiguous provider result, the route searches a bounded recent plan window and accepts only an exact attempt match. If the provider succeeds but the initial Firestore subscription write fails, it attempts immediate provider cancellation, compensates the tenant/store/user/summary/referral state, revalidates the public cache, logs cancellation/compensation failures separately, and returns failure. Provider checkout URLs are allowlisted before private persistence, and the public response projects only `{subscription:{id},tenantId,storeId}` rather than the raw Razorpay entity.
-
-The focused regression bundle is `npm run verify:onboarding-subscription-boundary`; the Admin Firestore concurrency proof is `npm run test:onboarding-user-concurrency:emulator`. Neither command substitutes for live Razorpay sandbox, timeout, cancellation, webhook, deployed-session or browser/device evidence.
-
----
-
-## 5. Payment Flow
-
-### 5.1 Payment Handler Hook
-
-**File:** `src/hooks/usePaymentHandler.ts`
-
-```typescript
-const executePostOnboarding = async (purchaseIntent: PurchaseIntent) => {
-  // 1. Call onboarding API
-  const response = await fetch("/api/onboarding/create-subscription", {
-    method: "POST",
-    body: JSON.stringify({
-      businessName,
-      businessIndustry,
-      planId: plan.planId,
-      interval: plan.billingInterval,
-      currency,
-      userType: plan.type,
-    }),
-  });
-
-  const { subscription, tenantId, storeId } = await response.json();
-
-  // 2. Update NextAuth session with new IDs
-  await update({ tenantId, storeId, sId: storeId, tId: tenantId });
-
-  // 3. Open Razorpay modal
-  const paymentObject = new window.Razorpay({
-    key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-    subscription_id: subscription.id,
-    handler: (response) => {
-      verifySubscriptionPaymentResponse(response);
-    },
-  });
-  paymentObject.open();
-};
-```
-
-### 5.2 Payment Verification
-
-**File:** `src/app/api/razorpay/verify-subscription/route.ts`
-
-```typescript
-export const POST = withAuth(async (request, session) => {
-  const { razorpay_payment_id, razorpay_subscription_id } = body;
-
-  // 1. Fetch payment from Razorpay (server-side verification)
-  const payment = await razorpayClient.payments.fetch(razorpay_payment_id);
-
-  // 2. Fetch subscription details
-  const providerSubscription = await razorpayClient.subscriptions.fetch(razorpay_subscription_id);
-
-  // 3. Get internal subscription record
-  const internalSub = await getSubscriptionById(razorpay_subscription_id);
-
-  // 4. Verify tenant access
-  if (!verifyTenantAccess(session, internalSub.tenantId, internalSub.storeId)) {
-    return 403;
-  }
-
-  // 5. Update subscription to active
-  await updateSubscription(razorpay_subscription_id, {
-    status: 'active',
-    monthlyCredits: creditsForPlan,
-    cycleStartDate: Timestamp.fromMillis(providerSubscription.current_start * 1000),
-    cycleEndDate: Timestamp.fromMillis(providerSubscription.current_end * 1000),
-    paymentMethod: { type: payment.method, ... }
-  });
-
-  return { success: true, status: 'active' };
-});
-```
-
-### 5.3 Webhook Handler
-
-**File:** `src/app/api/razorpay/webhook/route.ts`
-
-```typescript
-// Handles async payment status updates
-switch (event.event) {
-  case "subscription.activated":
-  case "subscription.charged":
-    // Update status to active, set billing dates
-    break;
-
-  case "payment.failed":
-  case "subscription.halted":
-    // Set status to past_due, record failure
-    break;
-
-  case "subscription.cancelled":
-    // Already handled by cancel API
-    break;
-
-  case "subscription.completed":
-    // Set status to completed
-    break;
-}
-```
-
----
-
-## 6. Firebase Auth Sync
-
-### 6.1 Set Claims API
-
-**File:** `src/app/api/auth/set-claims/route.ts`
-
-```typescript
-export const POST = withAuth(async (request, session) => {
-  const dbUser = await getUserByEmail(session.user.email);
-
-  // Get role for current store
-  const userRole = dbUser.stores?.find(
-    (store) => store.storeId === dbUser.storeId,
-  )?.roles[0];
-
-  const customClaims = {
-    role: userRole || "OWNER",
-    tenantId: String(dbUser.tenantId),
-    storeId: String(dbUser.storeId),
-    uId: dbUser.id,
-  };
-
-  // Set claims on Firebase Auth
-  await authAdmin.setCustomUserClaims(uid, customClaims);
-
-  // Create custom token for OAuth users
-  const customToken = await authAdmin.createCustomToken(uid, customClaims);
-
-  return { customToken, claims: customClaims };
-});
-```
-
-### 6.2 Client-Side Sync
-
-**File:** `src/components/templates/loginPage/index.tsx:42-105`
-
-```typescript
-useEffect(() => {
-  const setupFirebaseAuth = async () => {
-    if (session?.user?.email && !firebaseAuth.currentUser) {
-      // OAuth user - need to establish Firebase session
-      const response = await fetch("/api/auth/set-claims", {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-
-      const { customToken } = await response.json();
-
-      // Sign in with custom token
-      await signInWithCustomToken(firebaseAuth, customToken);
-    }
-
-    // Redirect to dashboard
-    router.push("/dashboard");
-  };
-
-  setupFirebaseAuth();
-}, [session]);
-```
-
----
-
-## 7. Logout Flow
-
-### 7.1 Sign Out Function
-
-**File:** `src/lib/auth/client.ts`
-
-```typescript
-export const signOutSession = (callbackUrl = "/signin") => {
-  return new Promise((res, rej) => {
-    // 1. Sign out Firebase Auth first
-    signOutFirebaseAuth()
-      .then(() => {
-        // 2. Then sign out NextAuth
-        signOut({ redirect: false, callbackUrl })
-          .then(() => res(true))
-          .catch(rej);
-      })
-      .catch(rej);
-  });
-};
-```
-
----
-
-## 8. Database Schema
-
-### 8.1 Users Collection
-
-**Path:** `users/{docId}`
-
-```typescript
-{
-  id: string;
-  email: string;
-  name: string;
-  isVerified: boolean;
-  active: boolean;
-  tenantId: number | null;      // null before onboarding
-  storeId: number | null;       // null before onboarding
-  platformRole: string;
-  stores: [{
-    storeId: number;
-    name: string;
-    roles: string[];            // ['OWNER'] for first user
-  }];
-  createdOn: Timestamp;
-  modifiedOn: Timestamp;
-}
-```
-
-### 8.2 Tenants Collection
-
-**Path:** `tenants/{tenantId}`
-
-```typescript
-{
-  tenantId: number;
-  name: string;
-  businessType: string; // Actual business type, for example "Restaurant"
-  businessIndustry: 'B2C' | 'B2B'; // Plan type marker
-  email: string;
-  active: boolean;
-  verified: boolean;
-  storesList: [{ storeId: number; name: string }];
-  createdOn: Timestamp;
-  modifiedOn: Timestamp;
-}
-```
-
-### 8.3 Stores Collection
-
-**Path:** `stores/{storeId}`
-
-```typescript
-{
-  storeId: number;
-  tenantId: number;
-  name: string;
-  businessType: string; // Actual business type, for example "Restaurant"
-  businessCategory: string;
-  businessIndustry: 'B2C' | 'B2B'; // Plan type marker
-  email: string;
-  active: boolean;
-  verified: boolean;
-  timeSlotPresets: TimeSlotPreset[];
-  createdOn: Timestamp;
-  modifiedOn: Timestamp;
-}
-```
-
-### 8.4 Subscriptions Collection
-
-**Path:** `subscriptions/{razorpaySubscriptionId}`
-
-```typescript
-{
-  id: string;
-  paymentProvider: 'razorpay';
-  providerSubscriptionId: string;
-  userId: string;
-  tenantId: number;
-  storeId: number;
-  status: 'pending' | 'active' | 'past_due' | 'cancelled' | 'expired' | 'completed';
-  planId: string;
-  planName: string;
-  planType: 'MONTH' | 'YEAR';
-  userType: 'B2C' | 'B2B';
-  currency: 'USD' | 'INR';
-  amount: number;
-  monthlyCredits: number;
-  monthlyCreditsAllowance: number;
-  topUpCredits: number;
-  cycleStartDate: Timestamp;
-  cycleEndDate: Timestamp;
-  subscriptionStartDate: Timestamp;
-  subscriptionEndDate: Timestamp;
-  renewsOn: Timestamp;
-  pastDueSinceAt: Timestamp | null;
-  paymentMethod: {
-    type: string;
-    brand: string;
-    last4: string;
-    upiId: string;
-  };
-  statuses: StatusEntry[];
-  billingHistory: string[];
-}
-```
-
----
-
-## 9. Security Checklist
-
-| Check                                 | Implementation                              |
-| ------------------------------------- | ------------------------------------------- |
-| ✅ withAuth() on all protected routes | All payment/onboarding APIs                 |
-| ✅ Input validation (Zod)             | All API inputs validated                    |
-| ✅ Rate limiting                      | Onboarding: 3/hour, Subscription: 5/hour    |
-| ✅ Tenant access verification         | verifyTenantAccess() on subscription verify |
-| ✅ Atomic transactions                | Onboarding uses runTransaction()            |
-| ✅ Server-side ID generation          | tenantId/storeId from platformSummary       |
-| ✅ Disposable email blocking          | validateEmail() in auth callbacks           |
-| ✅ Account lockout                    | 5 failed attempts = 15min lock              |
-| ✅ Secure logging                     | secureLog() masks sensitive data            |
-| ✅ Webhook signature validation       | validateRazorpayWebhookSignature()          |
-
----
-
-## 10. File Inventory
-
-| File                                                  | Purpose                           | LOC  |
-| ----------------------------------------------------- | --------------------------------- | ---- |
-| `src/lib/auth/index.ts`                               | NextAuth configuration            | 381  |
-| `src/lib/auth/client.ts`                              | Client-side auth utils            | 40   |
-| `src/lib/auth/security.ts`                            | Security utils (lockout, logging) | ~200 |
-| `src/app/api/auth/set-claims/route.ts`                | Firebase claims API               | 133  |
-| `src/app/api/onboarding/create-subscription/route.ts` | Onboarding API                    | 343  |
-| `src/app/api/razorpay/create-subscription/route.ts`   | Subscription creation             | 218  |
-| `src/app/api/razorpay/verify-subscription/route.ts`   | Payment verification              | 213  |
-| `src/app/api/razorpay/webhook/route.ts`               | Webhook handler                   | 247  |
-| `src/hooks/usePaymentHandler.ts`                      | Payment flow hook                 | 350  |
-| `src/database/users/index.ts`                         | User DAL                          | 170  |
-| `src/database/subscriptions/index.ts`                 | Subscription DAL                  | 143  |
-| `src/components/.../pricing/index.tsx`                | Pricing page                      | 281  |
-| `src/components/.../pricing/OnboardingModal.tsx`      | Onboarding modal                  | 197  |
-| `src/components/.../loginPage/index.tsx`              | Login page                        | 287  |
-
----
-
----
-
-## 11. Auth Audit Updates (Feb 19, 2026)
-
-### New API Endpoints
-
-| File                                        | Purpose                                                     | LOC |
-| ------------------------------------------- | ----------------------------------------------------------- | --- |
-| `src/app/api/auth/create-staff/route.ts`    | Server-side Firebase Auth staff creation                    | 91  |
-| `src/app/api/auth/claim-account/route.ts`   | Claim account (Google OAuth MODE 1 + Email/Password MODE 2) | 254 |
-| `src/app/api/auth/validate-claim/route.ts`  | Validate claim token, return business info                  | ~50 |
-| `src/app/api/auth/update-profile/route.ts`  | Profile field updates (name, phone)                         | 68  |
-| `src/app/api/auth/change-password/route.ts` | Password change with current password verification          | 110 |
-
-### New UI Components
-
-| File                                                                                      | Purpose                                          |
-| ----------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `src/components/organisms/headerComponent/profileActionsModal/userProfileModal/index.tsx` | Profile modal (edit name/phone, change password) |
-
-### Modified Files
-
-| File                                                                     | Change                                                                              |
-| ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
-| `src/lib/auth/index.ts`                                                  | Removed `roles` (plural) from session sanitizer — only `role` (singular)            |
-| `src/components/templates/loginPage/index.tsx`                           | Added claim flow UI (MODE 1: Google, MODE 2: email/password)                        |
-| `src/components/templates/main-app/users/usersList/userForm/index.tsx`   | Replaced client-side `createUserWithEmailAndPassword` with server API               |
-| `src/components/templates/platform/users/index.tsx`                      | Same fix for platform admin verify flow, removed dead code                          |
-| `src/components/organisms/headerComponent/profileActionsModal/index.tsx` | Wired UserProfileModal + feature flag gate                                          |
-| `src/config/features.ts`                                                 | Added `ENABLE_CLAIM_ACCOUNT`, `ENABLE_USER_PROFILE`, `ENABLE_SERVER_STAFF_CREATION` |
-
-### Claim Account Flow (Two Modes)
-
-```
-MODE 1: Google OAuth (requires active NextAuth session)
-  1. Owner clicks claim link → login page shows welcome message
-  2. Owner clicks "Sign in with Google" → Google OAuth
-  3. Post-login: localStorage pendingClaimToken → POST /api/auth/claim-account { claimToken }
-  4. API transfers tenant/store from messaging user to Google user doc
-  5. API syncs tenant/store email and revalidates public menu/OBP/store cache
-  6. Redirect to dashboard
-
-MODE 2: Email + Password (no session required)
-  1. Owner clicks claim link → login page shows welcome message
-  2. Owner clicks "Set up with email and password" → form appears
-  3. Owner enters email + password → POST /api/auth/claim-account { claimToken, email, password }
-  4. API creates Firebase Auth user, updates messaging user doc with real email
-  5. API syncs tenant/store email and revalidates public menu/OBP/store cache
-  6. Owner can now log in via email/password
-```
-
-**June 26 admission note:** `POST /api/auth/claim-account` now applies the `AUTH_SENSITIVE` IP limiter before a 16KB bounded JSON body and claim-token lookup. `POST /api/auth/change-password` keeps `AUTH_SENSITIVE` before a 2KB body cap and Firebase Auth verification.
-
-**June 29 rate-limit key note:** `POST /api/auth/change-password` and `POST /api/auth/switch-store` hash authenticated user limiter key material before calling the shared rate-limit provider. Limits, windows, admission order, Firebase Auth verification, store-switch reads, and owner responses are unchanged except that raw user IDs are no longer stored in provider key names.
-
-**June 30 provider-boundary note:** `POST /api/auth/change-password` now builds the Firebase Auth `accounts:signInWithPassword` verification URL from a fixed host/path with `URLSearchParams`, rejects malformed local API keys before network I/O, and fetches with manual redirect handling. Password verification, password update, Firestore `passwordChangedAt`, rate limits, and owner-facing responses remain unchanged.
-
-**July 13 current-authority note:** change-password current-authority hardening now re-reads exact current user lifecycle, email, and revocation truth before Firebase work; binds enabled Firebase Auth identity and optional stored `firebaseUid`; fails the sensitive limiter closed with 503 provider-failure behavior; aborts password verification after eight seconds; and treats the post-Auth `passwordChangedAt` write as observable metadata so a metadata outage cannot produce a false retry after the password has already changed.
-
-**June 27 diagnostic note:** Firebase client bootstrap, App Check initialization, Firebase Auth sync hook failures, and session-provider auth bootstrap failures now use `src/lib/firebase/firebaseDiagnostics.ts`. Normal successful sync paths stay quiet; failures log normalized failure codes, error name/code/status, and bounded session/path metadata only.
-
-**June 28 diagnostic note:** `POST /api/auth/claim-account` unexpected catch-path failures now use `src/lib/auth/authDiagnostics.ts` with the stable `claim_account_unexpected_error` code, source error name/code/status, and bounded request metadata only. Claim-token lookup, Firebase Auth user creation/update, custom claims, tenant/store email sync, subscription linking, and public cache revalidation behavior are unchanged.
-
-**June 28 follow-up:** `GET /api/auth/validate-claim` and `POST /api/auth/change-password` now also use bounded auth diagnostics for unexpected claim validation failures, missing Firebase API key, current-password verification exceptions, and unexpected password-route failures. Claim validation, password verification, password update, Firestore `passwordChangedAt`, and owner-facing response behavior are unchanged.
-
-**July 1 acknowledgement note:** `GET /api/auth/validate-claim` now returns an explicit preview acknowledgement (`valid: true`, `status: "valid"`, `preview: "claim-token"`) with the business preview name. `src/components/templates/loginPage/index.tsx` requires that shaped acknowledgement before showing claim setup options and only displays masked phone values. Claim-token lookup, claim-account writes, Firebase Auth operations, tenant/store email sync, public cache revalidation, and owner-facing failure copy are unchanged.
-
-**July 1 Platform Users verification note:** `/api/auth/create-staff` compatibility responses are still parsed through the shared bounded staff client, but successful verification now must match a create-staff mode (`new_user_created` or `existing_user_added_to_store`) and return user identity before Platform Users marks the user verified. The existing `EMAIL_EXISTS` compatibility fallback remains allowlisted. Staff creation, Firebase Auth lookup, platform user document updates, and owner-facing behavior are unchanged.
-
-**July 5 onboarding user-ID boundary note:** Shared onboarding helpers now route `users/{userId}` document refs through `src/lib/onboarding/onboardingUserId.ts`. `updateUserWithTenantStore()` normalizes the supplied user ID before normal website-onboarding user updates, `compensateFailedTenantStoreOnboarding()` normalizes `params.userId` before provider-failure cleanup reads/writes, and reseller onboarding normalizes Firebase Auth-generated UIDs before creating a new owner user doc. This preserves valid onboarding, reseller onboarding, and provider-failure compensation behavior while rejecting whitespace-mutated, path-shaped, reserved, empty, or oversized user IDs before user document path composition.
-
-**July 6 onboarding compensation scope boundary note:** `compensateFailedTenantStoreOnboarding()` now requires exact positive numeric tenant/store document IDs before provider-failure compensation can compose `tenants/{tenantId}`, `stores/{storeId}`, or `platformSummary/storesSummary.stores.{storeId}` paths. Valid generated onboarding IDs keep the same compensation writes; malformed, whitespace-mutated, path-shaped, reserved, zero, negative, unsafe, leading-zero, or nonnumeric scope fails before document path composition.
-
-**July 6 claim-account tenant/store scope note:** `POST /api/auth/claim-account` now normalizes the messaging user's tenant/store IDs as exact positive numeric Firestore document IDs before Firebase Auth user mutation, tenant/store email sync, subscription relinking, cache revalidation, custom claims, or success acknowledgement. The final one-time-claim transaction repeats the same scope guard after re-reading the messaging user document.
-
-### Key Decisions (see `__docs__/auth/auth_audit-decisions.md` for full reasoning)
-
-- `isVerified` — KEPT (login gate: false = no Firebase Auth account)
-- `platformRole` — KEPT (controls admin access)
-- `role` vs `roles` — Only `role` (singular) used. One role per store per user.
-- Claim token expiry — REMOVED (256-bit random = brute force impossible)
-- Staff creation — Moved to server-side Admin SDK (client-side was signing out admin)
-
----
-
-**DOCUMENT STATUS:** Source evidence only - not current launch certification
-**LAST UPDATED:** July 2, 2026 (Launch boundary clarification)
-**CROSS-CHECKED:** Source paths reviewed against codebase; live launch evidence still belongs in the production-readiness audit and External Certification Runbook
+Do not replace provider, device, or deployed-host smoke with these source gates.

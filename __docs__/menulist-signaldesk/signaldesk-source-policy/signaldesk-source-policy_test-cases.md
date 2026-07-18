@@ -1,6 +1,6 @@
 # SignalDesk Source Policy - Test Cases
 
-**Status:** Initial test matrix
+**Status:** Policy matrix plus implemented Patch R1 retention emulator coverage
 **Created:** June 23, 2026
 
 ## Policy Tests
@@ -41,3 +41,35 @@
 | Mobile approves policy | Not available. |
 | Mobile starts source run | Not available. |
 | Mobile pauses source provider | Allowed with audit. |
+
+## Patch R1 Retention Lifecycle Tests
+
+Focused emulator coverage lives in `scripts/verification/test-signaldesk-source-data-lifecycle.ts`.
+
+| Test | Expected |
+| --- | --- |
+| Expired policy with dependent target | Policy becomes inactive and target is held/scrub-pending before any dependent value is removed. |
+| Reconciliation resumes after zero/partial step budget | Stored phase/cursor resumes and exact counters are written once. |
+| Due provider retention | Provider ID/URL is replaced by a hash tombstone in the same transaction that holds the target. |
+| Explicit provider negative | Only status `blocked`/`expired` with lifecycle state `scrub_ready` enters the negative pipeline. |
+| Active and already-revoked outcome route tokens | Active token is revoked by the lifecycle; an existing revocation remains intact; both retained target display names are scrubbed. |
+| Unsent draft, approval, handoff, step, and export | Personalized content is removed and delivery is rejected/stopped/blocked. |
+| Sent or inbound communication | Content survives and receives `legalRetentionReviewRequired`; it is not silently deleted. |
+| Suppression, outcome, idempotency, and audit truth | Survives unchanged. |
+| Foreign-product dependency with same target ID | Counted as foreign and never mutated. |
+| Malformed SignalDesk dependency followed by clean target | Malformed target is failed/retried; later clean target completes without starvation. |
+| Fixed poison document after retry delay | Failed target rearms and completes from stored progress. |
+| Stale failure writer after a fresh target observation | Authority hash mismatch prevents the stale failure from clobbering fresh state. |
+| Same-policy renewal without re-import | Completed/held target stays tombstoned; source fields are not revived. |
+| Authority cap exceeded | Overflow flag is true and only the bounded page is processed. |
+| Concurrent scheduler invocations | Each independently leased task runs once; overlap and same-hour repeats skip safely. |
+
+The existing `scripts/verification/test-signaldesk-proof-permission-lifecycle.ts` suite also covers the refactored multi-task scheduler so the proof lifecycle remains isolated and idempotent.
+
+Validation evidence on July 15, 2026:
+
+- SignalDesk Functions TypeScript build: passed.
+- Source-data lifecycle Firestore emulator suite: passed on isolated local ports.
+- Existing proof-permission lifecycle Firestore emulator suite: passed on isolated local ports.
+
+The source-data emulator suite is intentionally demo-project-only and refuses to run unless `FIRESTORE_EMULATOR_HOST` is present. Firebase deployment remains blocked until root writers and action guards implement the integration contract in the implementation document.

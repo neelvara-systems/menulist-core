@@ -1,11 +1,13 @@
 export const dynamic = 'force-dynamic';
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { PERMISSIONS } from '@constant/permissions';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
+import { requireAnyStorePermission } from '@lib/permissions/server';
 import {
     AI_OPERATION_DATE_FILTER_MAX_LENGTH,
     isAiOperationHistoryCursorAdmissible,
@@ -73,6 +75,7 @@ const OWNER_VISIBLE_FIELDS = new Set([
     'inputStrings',
     'itemDetails',
     'itemsList',
+    'languageSummary',
     'modifiedOn',
     'processingTime',
     'projectId',
@@ -321,6 +324,14 @@ export const GET = withAuth(async (request: NextRequest, session) => {
         if (!dateRange) {
             return NextResponse.json({ error: 'Invalid date filter' }, { status: 400 });
         }
+
+        const permissionError = await requireAnyStorePermission(
+            request,
+            session,
+            [PERMISSIONS.ACCESS_BILLING],
+            'AI transaction history',
+        );
+        if (permissionError) return permissionError;
 
         let query: FirebaseFirestore.Query = firestoreAdmin
             .collection(DB_COLLECTIONS.MENULIST_AI_OPERATIONS)

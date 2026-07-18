@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import CustomerLinkPreviewPage from '@/components/website/customerLinkPreview/CustomerLinkPreviewPage';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'One Customer Link Preview - MenuList | Check Customer-Facing Facts';
 const description = 'Preview whether one customer-facing business link has the basics customers need before they call, visit, order, book, or ask a question.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/customer-link-preview',
   },
-};
+});
 
 export default function Page() {
   if (

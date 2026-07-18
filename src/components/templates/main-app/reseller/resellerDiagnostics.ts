@@ -1,4 +1,5 @@
 import { secureError } from '@lib/security/secureLogger';
+import { createRuntimeUuid } from '@lib/runtime/randomId';
 
 export type ResellerLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -8,6 +9,41 @@ export const RESELLER_REQUEST_POLICY = {
     cache: 'no-store' as RequestCache,
     credentials: 'same-origin' as RequestCredentials,
     redirect: 'manual' as RequestRedirect,
+};
+
+const RESELLER_OPERATION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const hashResellerOperationIntent = (value: string, seed: number): string => {
+    let hash = seed >>> 0;
+    for (let index = 0; index < value.length; index += 1) {
+        hash ^= value.charCodeAt(index);
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, '0');
+};
+
+/** Creates a non-PII session-storage key while keeping retries input-specific. */
+export const getResellerOperationIntentKey = (namespace: string, input: unknown): string => {
+    const serialized = JSON.stringify(input);
+    return `${namespace}:${hashResellerOperationIntent(serialized, 0x811c9dc5)}${hashResellerOperationIntent(serialized, 0x9e3779b9)}`;
+};
+
+export const getOrCreateResellerOperationId = (intentKey: string): string => {
+    const storageKey = `menulist:reseller-operation:${intentKey}`;
+    if (typeof sessionStorage !== 'undefined') {
+        const existing = sessionStorage.getItem(storageKey);
+        if (existing && RESELLER_OPERATION_ID_PATTERN.test(existing)) return existing;
+    }
+
+    const operationId = createRuntimeUuid();
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(storageKey, operationId);
+    return operationId;
+};
+
+export const clearResellerOperationId = (intentKey: string): void => {
+    if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(`menulist:reseller-operation:${intentKey}`);
+    }
 };
 
 export const getBoundedResellerStringContext = (

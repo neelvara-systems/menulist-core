@@ -90,10 +90,13 @@ Weekly digest manual regeneration response handling is also acknowledged before 
 | File | Schedule | Purpose | Output |
 |------|----------|---------|--------|
 | `functions-answerlattice/src/answerlattice/chatAnalyticsAggregation.ts` | Existing Answerlattice nightly tenant run | Rebuild changed UTC dates from scoped sessions with continuation state | `chatAnalytics/{tId}_{sId}_{YYYY-MM-DD}` plus one compact state doc |
+| `functions-answerlattice/src/index.ts::backfillChatAnalytics` | Explicit platform action | Validate exact Answerlattice store scope, acquire a scoped lease, and rebuild 1-90 UTC days | Bounded response plus the canonical daily documents |
 | `functions-answerlattice/src/answerlattice/chatIntelligence.ts` | After changed summaries; weekly projection on Sunday UTC | Build deterministic, source-hash-idempotent feedback and weekly summaries | `insights/{tId}/stores/{sId}/ai/{feedback,weekly}` |
 | `src/app/api/analytics/weekly-narrative/generate-local/route.ts` | Explicit operator action only | Read two exact non-overlapping completed UTC weeks and optionally refresh wording with the Answerlattice provider client | `insights/{tId}/stores/{sId}/ai/weekly` |
 
 The old root `functions/src/analytics/{feedbackIntelligence,weeklyNarrative,kbQuality,healthSignalsComputation}` workers are not active scheduler entry points. They must not be reconnected to MenuList Firestore.
+
+The old root `aggregateDailyChatStats`, `backfillAggregates`, and `triggerAggregationManual` paths are compatibility-only. The MenuList maintenance task records `migrated_to_answerlattice_runtime`, both callables return `failed-precondition`, and those files contain no MenuList datastore access. The operator service calls `backfillChatAnalytics` through `answerlatticeFunctions`, validates the full response before updating UI state, and never falls back to the root Firebase client.
 
 ### 2.4 Types
 

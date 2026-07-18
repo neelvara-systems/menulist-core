@@ -27,9 +27,11 @@ service firebase.storage {
     match /campaigncue/templates/platform/shared/{templateId}/{fileName} {
       allow read: if isPlatformAdmin() || hasCampaignCueWorkspaceClaims();
       allow write: if isPlatformAdmin()
+        && isCampaignCueTemplateArtifactName(fileName)
         && isCampaignCueTemplateArtifactType()
         && request.resource.size <= 750 * 1024;
-      allow delete: if isPlatformAdmin();
+      allow delete: if isPlatformAdmin()
+        && isCampaignCueTemplateArtifactName(fileName);
     }
 
     match /campaigncue/templates/platform/{categoryId}/{templateId}/{fileName} {
@@ -37,18 +39,35 @@ service firebase.storage {
         && isCampaignCuePackTemplateCategoryId(categoryId);
       allow write: if isPlatformAdmin()
         && isCampaignCuePackTemplateCategoryId(categoryId)
+        && isCampaignCueTemplateArtifactName(fileName)
         && isCampaignCueTemplateArtifactType()
         && request.resource.size <= 750 * 1024;
       allow delete: if isPlatformAdmin()
-        && isCampaignCuePackTemplateCategoryId(categoryId);
+        && isCampaignCuePackTemplateCategoryId(categoryId)
+        && isCampaignCueTemplateArtifactName(fileName);
     }
 
     match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/{fileName} {
       allow read: if isCampaignCueWorkspaceMember(workspaceId);
       allow write: if isCampaignCueWorkspaceMember(workspaceId)
+        && isCampaignCueWorkspaceTemplateArtifactName(fileName)
         && isCampaignCueTemplateArtifactType()
         && request.resource.size <= 750 * 1024;
-      allow delete: if isCampaignCueWorkspaceMember(workspaceId);
+      allow delete: if isCampaignCueWorkspaceMember(workspaceId)
+        && isCampaignCueWorkspaceTemplateArtifactName(fileName);
+    }
+
+    match /campaigncue/templates/workspaces/{workspaceId}/{templateId}/versions/{versionId}/{fileName} {
+      allow read: if isCampaignCueWorkspaceMember(workspaceId)
+        && isCampaignCueWorkspaceTemplateVersionId(versionId);
+      allow write: if isCampaignCueWorkspaceMember(workspaceId)
+        && isCampaignCueWorkspaceTemplateVersionId(versionId)
+        && isCampaignCueWorkspaceTemplateArtifactName(fileName)
+        && isCampaignCueTemplateArtifactType()
+        && request.resource.size <= 750 * 1024;
+      allow delete: if isCampaignCueWorkspaceMember(workspaceId)
+        && isCampaignCueWorkspaceTemplateVersionId(versionId)
+        && isCampaignCueWorkspaceTemplateArtifactName(fileName);
     }
 
     match /campaigncue/cue-layers/{workspaceId}/{designId}/{allPaths=**} {
@@ -102,6 +121,19 @@ service firebase.storage {
     function isCampaignCueTemplateArtifactType() {
       return request.resource.contentType.matches('application/json')
         || request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function isCampaignCueTemplateArtifactName(fileName) {
+      return fileName.matches('^(pack-template|editor-document)(-[a-f0-9]{16,64})?\\.json$')
+        || fileName.matches('^preview(-[a-f0-9]{16,64})?\\.(png|jpeg|webp)$');
+    }
+
+    function isCampaignCueWorkspaceTemplateArtifactName(fileName) {
+      return fileName.matches('^(pack-template\\.json|editor-document\\.json|preview\\.(png|jpeg|webp))$');
+    }
+
+    function isCampaignCueWorkspaceTemplateVersionId(versionId) {
+      return versionId.matches('^[a-zA-Z0-9_-]{3,160}$');
     }
   }
 }

@@ -244,7 +244,7 @@ export default function OwnerUploads({
                                     <Popconfirm
                                         key="delete"
                                         title="Delete this custom slide?"
-                                        description={`"${normalizeOwnerSlideCaption(slide.caption)}" will be removed from Highlights and will stop showing on your digital screens immediately.`}
+                                        description={`"${normalizeOwnerSlideCaption(slide.caption)}" will be removed from Highlights after the screen refreshes.`}
                                         onConfirm={() => handleDelete(slide.id)}
                                         okText="Delete slide"
                                         cancelText="Cancel"

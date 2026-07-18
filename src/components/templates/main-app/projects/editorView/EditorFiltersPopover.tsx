@@ -23,6 +23,7 @@ interface EditorFiltersPopoverProps {
     onFiltersChange: (filters: EditorFilters) => void;
     showItemPrices?: boolean;
     timeSlotPresets?: TimeSlotPreset[]; // Store-level time slot presets
+    currencySymbol?: string;
 }
 
 /**
@@ -46,7 +47,8 @@ export default function EditorFiltersPopover({
     filters,
     onFiltersChange,
     showItemPrices = true,
-    timeSlotPresets = []
+    timeSlotPresets = [],
+    currencySymbol = '₹',
 }: EditorFiltersPopoverProps) {
     const [open, setOpen] = useState(false);
     const [localFilters, setLocalFilters] = useState<EditorFilters>(filters);
@@ -162,7 +164,7 @@ export default function EditorFiltersPopover({
                                     priceRange: { ...localFilters.priceRange, min: value }
                                 })}
                                 style={{ width: '100%' }}
-                                prefix="$"
+                                prefix={currencySymbol}
                             />
                             <Text type="secondary">to</Text>
                             <InputNumber
@@ -174,7 +176,7 @@ export default function EditorFiltersPopover({
                                     priceRange: { ...localFilters.priceRange, max: value }
                                 })}
                                 style={{ width: '100%' }}
-                                prefix="$"
+                                prefix={currencySymbol}
                             />
                         </Flex>
                     </Flex>

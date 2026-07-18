@@ -73,6 +73,7 @@ export const AnswerlatticeWidgetConfigSchema = z.object({
     launcherVisibility: z.enum(['visible', 'manual']).default('visible'),
     mobileVisibility: z.enum(['show', 'hide']).default('show'),
     poweredByVisible: z.boolean().default(true),
+    guidedResolutionEnabled: z.boolean().default(false),
     blockedRoutes: z.preprocess(
         normalizeWidgetBlockedRoutes,
         z.array(z.string().min(1).max(MAX_WIDGET_BLOCKED_ROUTE_LENGTH)).max(MAX_WIDGET_BLOCKED_ROUTES).default([])
@@ -185,5 +186,17 @@ export function buildAnswerlatticeWidgetRouteSnippet(): string {
         "  name: currentUser?.name,",
         "  email: currentUser?.email,",
         '});',
+    ].join('\n');
+}
+
+export function buildAnswerlatticeGuidedResolutionSnippet(): string {
+    return [
+        '<!-- Use stable semantic IDs. Do not use CSS selectors or private data. -->',
+        '<button data-answerlattice-target="billing.change_plan">',
+        '  Change plan',
+        '</button>',
+        '',
+        '// Emit only after your product has verified the expected state change.',
+        "window.AnswerlatticeWidget?.emitWorkflowEvent('billing.plan_changed');",
     ].join('\n');
 }

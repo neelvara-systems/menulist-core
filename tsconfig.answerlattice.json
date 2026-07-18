@@ -1,0 +1,49 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "incremental": true,
+    "tsBuildInfoFile": ".next/cache/tsconfig.answerlattice.tsbuildinfo"
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/app/(answerlattice)/**/*.ts",
+    "src/app/(answerlattice)/**/*.tsx",
+    "src/app/(main)/platform/answerlattice-intake/**/*.ts",
+    "src/app/(main)/platform/answerlattice-intake/**/*.tsx",
+    "src/app/answerlattice-hosted-help/**/*.ts",
+    "src/app/answerlattice-hosted-help/**/*.tsx",
+    "src/app/api/answerlattice/**/*.ts",
+    "src/app/api/helpCenter/**/*.ts",
+    "src/app/api/platform/answerlattice-intake/**/*.ts",
+    "src/app/api/revalidate/answerlattice/**/*.ts",
+    "src/app/api/widget/**/*.ts",
+    "src/app/sites/answerlattice/**/*.ts",
+    "src/app/sites/answerlattice/**/*.tsx",
+    "src/app/widget/**/*.ts",
+    "src/app/widget/**/*.tsx",
+    "src/components/answerlattice/**/*.ts",
+    "src/components/answerlattice/**/*.tsx",
+    "src/components/atoms/answerlattice*/**/*.ts",
+    "src/components/atoms/answerlattice*/**/*.tsx",
+    "src/components/templates/answerlattice/**/*.ts",
+    "src/components/templates/answerlattice/**/*.tsx",
+    "src/components/templates/main-app/platform/answerlatticeIntakeMonitor/**/*.ts",
+    "src/components/templates/main-app/platform/answerlatticeIntakeMonitor/**/*.tsx",
+    "src/constants/answerlattice/**/*.ts",
+    "src/content/answerlatticePublic/**/*.ts",
+    "src/data/answerlattice/**/*.ts",
+    "src/database/answerlattice/**/*.ts",
+    "src/hooks/answerlattice/**/*.ts",
+    "src/lib/answerlattice/**/*.ts",
+    "src/types/answerlattice/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next",
+    "functions",
+    "functions-answerlattice",
+    "functions-signaldesk",
+    "sites",
+    "src/__tests__"
+  ]
+}

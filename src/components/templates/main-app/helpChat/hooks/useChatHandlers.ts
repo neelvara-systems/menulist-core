@@ -3,6 +3,7 @@ import {
     assertChatSessionSaveSucceeded,
     assertChatSessionUpdateSucceeded,
     appendChatSessionMessages,
+    discardUnpersistedChatImage,
     deleteChatSession,
     getUserChatSessions,
     replaceChatSessionMessageBranch,
@@ -391,6 +392,25 @@ export function useChatHandlers({
                     });
 
                 } catch (error) {
+                    if (uploadedImage && uploadedImage !== image) {
+                        try {
+                            await discardUnpersistedChatImage(uploadedImage);
+                            setChatSessions((previous) => previous.map((chatSession) => ({
+                                ...chatSession,
+                                messages: chatSession.messages.map((chatMessage) => (
+                                    chatMessage.id === newUserMessage.id
+                                        ? { ...chatMessage, image: undefined }
+                                        : chatMessage
+                                )),
+                            })));
+                        } catch (cleanupError) {
+                            logHelpChatFailure('help_chat_unpersisted_image_cleanup_failed', cleanupError, {
+                                ...getBoundedHelpChatStringContext('activeSessionId', activeSessionId),
+                                ...getBoundedHelpChatStringContext('tenantId', loggedInSession?.tId),
+                                ...getBoundedHelpChatStringContext('storeId', loggedInSession?.sId),
+                            });
+                        }
+                    }
                     logHelpChatFailure('help_chat_search_failed', error, {
                         mode: effectiveMode,
                         ...getBoundedHelpChatStringContext('query', content),
@@ -840,8 +860,8 @@ export function useChatHandlers({
      * ═══════════════════════════════════════════════════════════════════════
      * 
      * PURPOSE:
-     * Provides a handler function to delete all chat-related data from 
-     * Firestore during development/testing. This is passed to the 
+     * Provides a handler function to delete the current user's loaded chat
+     * sessions during development/testing. This is passed to the
      * DevOnlyClearDataButton component.
      * 
      * WHY IN useChatHandlers:
@@ -855,10 +875,9 @@ export function useChatHandlers({
      * 3. Clears all local React state (sessions, active session, search)
      * 4. Shows success/error messages to user
      * 
-     * COLLECTIONS DELETED:
-     * - aiSearchHistory   - All AI search analytics
-     * - chatSessions      - All chat conversations  
-     * - queryEmbeddings   - All cached vector embeddings
+     * DATA DELETED:
+     * - chatSessions      - The current user's loaded conversations
+     * - Firebase Storage  - Images owned by successfully deleted sessions
      * 
      * SAFETY:
      * - Dynamic import: devUtils code is tree-shaken from production
@@ -879,19 +898,28 @@ export function useChatHandlers({
 
         try {
             // Dynamic import: This code is removed from production bundle
-            const { clearAllChatData } = await import('@database/devUtils');
-            const result = await clearAllChatData();
+            const { clearCurrentUserChatSessions } = await import('@database/devUtils');
+            const result = await clearCurrentUserChatSessions(
+                chatSessionsRef.current.map((chatSession) => chatSession.id),
+            );
 
-            // Clear all local state after successful deletion
-            setChatSessions([]);           // Clear all sessions
-            setActiveSessionId(undefined); // Reset active session
-            setSearchQuery('');            // Clear search input
+            const deletedIds = new Set(result.deletedSessionIds);
+            setChatSessions((currentSessions) => (
+                currentSessions.filter((chatSession) => !deletedIds.has(chatSession.id))
+            ));
+            if (activeSessionId && deletedIds.has(activeSessionId)) {
+                setActiveSessionId(undefined);
+                setSearchQuery('');
+            }
 
-            // Show success with count of deleted documents and images
-            const message = result.imagesDeleted > 0
-                ? `🗑️ Deleted ${result.totalDeleted} documents and ${result.imagesDeleted} images`
-                : `🗑️ Deleted ${result.totalDeleted} documents`;
-            antMessage.success(message);
+            const successMessage = result.imagesDeleted > 0
+                ? `Deleted ${result.totalDeleted} chats and ${result.imagesDeleted} images.`
+                : `Deleted ${result.totalDeleted} chats.`;
+            if (result.success) {
+                antMessage.success(successMessage);
+            } else {
+                antMessage.warning(`${successMessage} ${result.failedSessionIds.length} chats could not be deleted.`);
+            }
         } catch (error) {
             antMessage.error('Failed to clear data');
         }

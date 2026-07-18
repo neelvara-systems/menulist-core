@@ -31,12 +31,13 @@ A single calm signal that tells business owners whether customer trust is holdin
 
 Every business owner constantly wonders: "Do customers still trust us?" They rely on gut feeling, daily sales, and random comments — none reliable. MenuList can give a calm, behavior-based trust signal derived from aggregate visitor patterns on public pages.
 
-## Current Runtime Truth — July 13, 2026
+## Current Runtime Truth — July 17, 2026
 
 - `ENABLE_TRUST_HEALTH_SIGNAL`, `ENABLE_LOYALTY_HEALTH_SIGNAL`, and `ENABLE_RISK_DECLINE_DETECTION` exist and are `false`.
 - `functions/src/analytics/healthSignalsComputation.ts` is retained and regression-tested as dormant logic, but no exported Cloud Function or consolidated scheduler task calls it.
 - `HealthSignalCards.tsx` exists but is not mounted by the owner dashboard, and there is no mobile health-signal consumer.
 - Current runtime performs zero health-signal reads/writes. Activation requires exact unique/direct aggregate counters, a bounded scheduler task with lease/cost evidence, desktop/mobile wiring, emulator coverage, and an explicit flag decision.
+- The retained processor now rejects with `HEALTH_SIGNALS_DORMANT_UNVALIDATED_COUNTERS` before any store scan. Summed daily unique counts are not weekly distinct visitors, and view ratios do not prove trust or returning customers. Activation requires validated weekly distinct and returning-customer counters rather than relabeling the current proxies.
 
 ## Target Architecture (Not Active Runtime)
 
@@ -82,4 +83,4 @@ ENABLE_TRUST_HEALTH_SIGNAL: false; // Present and intentionally dormant
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026

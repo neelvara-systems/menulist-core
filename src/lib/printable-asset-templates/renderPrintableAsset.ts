@@ -7,6 +7,7 @@ import type { PrintableAssetOutputFormat, PrintableAssetRenderInput, PrintableAs
 
 const PDFJS_CDN_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const PDFJS_CDN_TIMEOUT_MS = 5000;
 
 let pdfjsLoadPromise: Promise<any> | null = null;
 
@@ -112,15 +113,29 @@ async function loadPdfJsFromCdn(): Promise<any> {
     if (!pdfjsLoadPromise) {
         pdfjsLoadPromise = new Promise((resolve, reject) => {
             const existingScript = document.querySelector(`script[src="${PDFJS_CDN_SRC}"]`) as HTMLScriptElement | null;
+            let settled = false;
+            const settle = (callback: () => void) => {
+                if (settled) return;
+                settled = true;
+                window.clearTimeout(timeout);
+                callback();
+            };
+            const timeout = window.setTimeout(() => settle(() => {
+                pdfjsLoadPromise = null;
+                reject(new Error('PDF preview library load timed out'));
+            }), PDFJS_CDN_TIMEOUT_MS);
 
             const handleLoaded = () => {
                 const loadedLib = (window as any).pdfjsLib;
                 if (!loadedLib) {
-                    reject(new Error('PDF preview library loaded but was unavailable'));
+                    settle(() => {
+                        pdfjsLoadPromise = null;
+                        reject(new Error('PDF preview library loaded but was unavailable'));
+                    });
                     return;
                 }
                 loadedLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_SRC;
-                resolve(loadedLib);
+                settle(() => resolve(loadedLib));
             };
 
             if (existingScript) {
@@ -130,8 +145,10 @@ async function loadPdfJsFromCdn(): Promise<any> {
                 }
                 existingScript.addEventListener('load', handleLoaded, { once: true });
                 existingScript.addEventListener('error', () => {
-                    pdfjsLoadPromise = null;
-                    reject(new Error('Failed to load PDF preview library'));
+                    settle(() => {
+                        pdfjsLoadPromise = null;
+                        reject(new Error('Failed to load PDF preview library'));
+                    });
                 }, { once: true });
                 return;
             }
@@ -144,8 +161,10 @@ async function loadPdfJsFromCdn(): Promise<any> {
                 handleLoaded();
             };
             script.onerror = () => {
-                pdfjsLoadPromise = null;
-                reject(new Error('Failed to load PDF preview library'));
+                settle(() => {
+                    pdfjsLoadPromise = null;
+                    reject(new Error('Failed to load PDF preview library'));
+                });
             };
             document.head.appendChild(script);
         });

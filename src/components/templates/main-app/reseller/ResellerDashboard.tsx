@@ -1,21 +1,24 @@
 'use client';
 
-import { calculateOfflineLocationTopup } from "@config/resellerPricing";
+import { calculateOfflineAmount, calculateOfflineLocationTopup, RESELLER_COMMITMENT_OPTIONS } from "@config/resellerPricing";
 import { useResellerDashboard } from "@hook/useResellerDashboard";
+import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { ResellerTransaction } from "@type/reseller";
 import { formatDateTime, type IntlFormatter } from "@util/dateTime";
 import { formatInrPaise } from "@util/formatters";
-import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Spin, Statistic, Table, Tag, Typography, theme } from "antd";
+import { Badge, Button, Card, Col, Empty, Flex, InputNumber, message, Modal, Row, Select, Spin, Statistic, Table, Tag, Typography, theme } from "antd";
 import { useSession } from "next-auth/react";
 import { useFormatter } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { LuCopy, LuExternalLink, LuPlus, LuRefreshCw, LuUsers } from "react-icons/lu";
 import {
+    clearResellerOperationId,
     copyResellerTextToClipboard,
     createResellerStatusError,
     getBoundedResellerStringContext,
+    getOrCreateResellerOperationId,
     hasResellerClipboardWrite,
     hasResellerCopyFallback,
     logResellerFailure,
@@ -40,6 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const RESELLER_ADD_LOCATION_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
+const RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES = 8 * 1024;
 
 type ResellerAddLocationCapacityResponse = {
     amountExpected?: unknown;
@@ -53,6 +57,17 @@ type ResellerAddLocationCapacityExpectation = {
     locationCount: number;
     storeId: unknown;
     tenantId: unknown;
+};
+
+type ResellerRenewResponse = {
+    amountExpected?: unknown;
+    locationCount?: unknown;
+    storeId?: unknown;
+    subscriptionId?: unknown;
+    success?: unknown;
+    tenantId?: unknown;
+    transactionId?: unknown;
+    validUntil?: unknown;
 };
 
 function formatDate(value: any, formatter: IntlFormatter) {
@@ -116,6 +131,39 @@ async function readAddLocationCapacityResponse(
     }
 }
 
+function isValidRenewResponse(
+    data: ResellerRenewResponse | null,
+    expected: { operationId: string; storeId: unknown; subscriptionId: string; tenantId: unknown },
+): data is ResellerRenewResponse & { amountExpected: number; success: true; validUntil: string } {
+    return data?.success === true
+        && typeof data.amountExpected === 'number'
+        && Number.isFinite(data.amountExpected)
+        && data.amountExpected > 0
+        && isMatchingResellerEntityId(data.storeId, expected.storeId)
+        && data.subscriptionId === expected.subscriptionId
+        && isMatchingResellerEntityId(data.tenantId, expected.tenantId)
+        && data.transactionId === expected.operationId
+        && typeof data.validUntil === 'string'
+        && Number.isFinite(new Date(data.validUntil).getTime());
+}
+
+async function readRenewResponse(
+    response: Response,
+    context: ResellerLogContext,
+): Promise<ResellerRenewResponse | null> {
+    try {
+        return await readJsonResponseWithLimit<ResellerRenewResponse>(response, RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES);
+    } catch (error) {
+        logResellerFailure('desktop_reseller_dashboard_renew_response_parse_failed', error, {
+            ...context,
+            maxBytes: RESELLER_RENEW_RESPONSE_JSON_MAX_BYTES,
+            responseOk: response.ok,
+            responseStatus: response.status,
+        });
+        return null;
+    }
+}
+
 function ResellerDashboard() {
     const { token } = theme.useToken();
     const formatter = useFormatter();
@@ -125,10 +173,13 @@ function ResellerDashboard() {
     const resellerEmail = (session as any)?.user?.email || '';
     const isPlatform = (session as any)?.platformRole === 'PLATFORM' || (session?.user as any)?.platformRole === 'PLATFORM';
 
-    const { profile, monthlySummary, transactions, stats, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
+    const { profile, monthlySummary, transactions, stats, isClientListPartial, isLoading, refresh } = useResellerDashboard(resellerId, isPlatform, resellerEmail);
     const [selectedClient, setSelectedClient] = useState<ResellerTransaction | null>(null);
     const [locationCount, setLocationCount] = useState(1);
     const [addingLocation, setAddingLocation] = useState(false);
+    const [renewalClient, setRenewalClient] = useState<ResellerTransaction | null>(null);
+    const [renewalMonths, setRenewalMonths] = useState<number>(3);
+    const [renewing, setRenewing] = useState(false);
     const locationTopup = selectedClient
         ? (() => {
             try {
@@ -142,10 +193,25 @@ function ResellerDashboard() {
             }
         })()
         : null;
+    const renewalAmount = renewalClient
+        ? (() => {
+            try {
+                return calculateOfflineAmount(
+                    renewalClient.pricingTier,
+                    renewalMonths,
+                    renewalClient.subscriptionQuantity || renewalClient.locationCount || 1,
+                );
+            } catch {
+                return null;
+            }
+        })()
+        : null;
 
     const handleAddLocationCapacity = async () => {
         if (!selectedClient) return;
         setAddingLocation(true);
+        const operationIntentKey = `add-location:${selectedClient.subscriptionId}:${locationCount}`;
+        const operationId = getOrCreateResellerOperationId(operationIntentKey);
         const addLocationLogContext: ResellerLogContext = {
             action: 'add_location_capacity',
             locationCount,
@@ -158,6 +224,7 @@ function ResellerDashboard() {
                 ...RESELLER_REQUEST_POLICY,
                 body: JSON.stringify({
                     locationCount,
+                    operationId,
                     storeId: selectedClient.storeId,
                     tenantId: selectedClient.tenantId,
                 }),
@@ -185,6 +252,7 @@ function ResellerDashboard() {
                 throw createResellerStatusError('desktop_reseller_dashboard_add_location_response_invalid', response.status);
             }
             message.success(`Location capacity added. Collect ${formatInrPaise(data.amountExpected)}.`);
+            clearResellerOperationId(operationIntentKey);
             setSelectedClient(null);
             setLocationCount(1);
             refresh();
@@ -193,6 +261,55 @@ function ResellerDashboard() {
             message.error('Failed to add location');
         } finally {
             setAddingLocation(false);
+        }
+    };
+
+    const handleRenew = async () => {
+        if (!renewalClient || !renewalAmount) return;
+        setRenewing(true);
+        const operationIntentKey = `renew:${renewalClient.subscriptionId}:${renewalClient.pricingTier}:${renewalMonths}`;
+        const operationId = getOrCreateResellerOperationId(operationIntentKey);
+        const context: ResellerLogContext = {
+            action: 'renew_manual_subscription',
+            durationMonths: renewalMonths,
+            ...getBoundedResellerStringContext('resellerId', resellerId),
+            ...getBoundedResellerStringContext('storeId', renewalClient.storeId),
+            ...getBoundedResellerStringContext('tenantId', renewalClient.tenantId),
+        };
+        try {
+            const response = await fetch('/api/reseller/renew', {
+                ...RESELLER_REQUEST_POLICY,
+                body: JSON.stringify({
+                    durationMonths: renewalMonths,
+                    operationId,
+                    paymentMode: 'offline',
+                    pricingTier: renewalClient.pricingTier,
+                    storeId: renewalClient.storeId,
+                    tenantId: renewalClient.tenantId,
+                }),
+                headers: { 'Content-Type': 'application/json' },
+                method: 'POST',
+            });
+            const data = await readRenewResponse(response, context);
+            if (!response.ok) throw createResellerStatusError('desktop_reseller_dashboard_renew_rejected', response.status);
+            if (!isValidRenewResponse(data, {
+                operationId,
+                storeId: renewalClient.storeId,
+                subscriptionId: renewalClient.subscriptionId,
+                tenantId: renewalClient.tenantId,
+            })) {
+                throw createResellerStatusError('desktop_reseller_dashboard_renew_response_invalid', response.status);
+            }
+            clearResellerOperationId(operationIntentKey);
+            message.success(`Renewed. Collect ${formatInrPaise(data.amountExpected)}.`);
+            setRenewalClient(null);
+            setRenewalMonths(3);
+            refresh();
+        } catch (error) {
+            logResellerFailure('desktop_reseller_dashboard_renew_failed', error, context);
+            message.error('Failed to renew client');
+        } finally {
+            setRenewing(false);
         }
     };
 
@@ -215,9 +332,13 @@ function ResellerDashboard() {
     });
 
     const copyPaymentLink = async (link?: string | null, record?: ResellerTransaction | null) => {
-        if (!link) return;
+        const checkoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(link);
+        if (!checkoutUrl) {
+            message.error('Payment link is unavailable.');
+            return;
+        }
         try {
-            await copyResellerTextToClipboard(link);
+            await copyResellerTextToClipboard(checkoutUrl);
             message.success('Payment link copied.');
         } catch (error) {
             logResellerFailure('desktop_reseller_dashboard_payment_link_copy_failed', error, buildResellerDashboardHandoffLogContext('copy_payment_link', record, {
@@ -230,9 +351,13 @@ function ResellerDashboard() {
     };
 
     const openPaymentLink = (link?: string | null, record?: ResellerTransaction | null) => {
-        if (!link) return;
+        const checkoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(link);
+        if (!checkoutUrl) {
+            message.error('Payment link is unavailable.');
+            return;
+        }
         try {
-            const opened = window.open(link, '_blank', 'noopener,noreferrer');
+            const opened = window.open(checkoutUrl, '_blank', 'noopener,noreferrer');
             if (!opened) {
                 throw new Error('desktop_reseller_dashboard_payment_link_open_blocked');
             }
@@ -333,16 +458,29 @@ function ResellerDashboard() {
             render: (_: unknown, record: ResellerTransaction) => {
                 const isManual = record.paymentMode === 'offline' || record.subscriptionBillingMode === 'manual';
                 const canAddLocation = isManual && record.status === 'active';
+                const canRenew = isManual && ['active', 'expired'].includes(record.status);
                 const hasPendingPaymentLink = record.paymentMode === 'online'
                     && record.status === 'pending_payment'
                     && Boolean(record.subscriptionShortUrl);
-                return canAddLocation ? (
-                    <Button size="small" onClick={() => {
-                        setSelectedClient(record);
-                        setLocationCount(1);
-                    }}>
-                        Add location
-                    </Button>
+                return isManual ? (
+                    <Flex gap={8} wrap="wrap">
+                        {canRenew ? (
+                            <Button size="small" onClick={() => {
+                                setRenewalClient(record);
+                                setRenewalMonths(3);
+                            }}>
+                                Renew
+                            </Button>
+                        ) : null}
+                        {canAddLocation ? (
+                            <Button size="small" onClick={() => {
+                                setSelectedClient(record);
+                                setLocationCount(1);
+                            }}>
+                                Add location
+                            </Button>
+                        ) : null}
+                    </Flex>
                 ) : hasPendingPaymentLink ? (
                     <Flex gap={8}>
                         <Button icon={<LuCopy />} size="small" onClick={() => void copyPaymentLink(record.subscriptionShortUrl, record)}>
@@ -443,6 +581,11 @@ function ResellerDashboard() {
             )}
 
             {/* Clients Table */}
+            {isClientListPartial ? (
+                <Card size="small" style={{ marginBottom: 16 }}>
+                    <Text type="warning">Showing a bounded client list. Monthly reporting has its own completeness indicator.</Text>
+                </Card>
+            ) : null}
             {transactions.length === 0 ? (
                 <Card>
                     <Empty
@@ -492,6 +635,38 @@ function ResellerDashboard() {
                                 <Text strong>{formatInrPaise(locationTopup?.amountPaise)}</Text>
                                 <Text type="secondary">
                                     Valid until {formatDate(selectedClient.validUntil, formatter)} ({locationTopup?.daysRemaining || 0} days remaining).
+                                </Text>
+                            </Flex>
+                        </Card>
+                    </Flex>
+                ) : null}
+            </Modal>
+            <Modal
+                destroyOnHidden
+                okButtonProps={{ disabled: !renewalAmount, loading: renewing }}
+                okText="Confirm prepaid renewal"
+                onCancel={() => setRenewalClient(null)}
+                onOk={handleRenew}
+                open={Boolean(renewalClient)}
+                title="Renew Manual Access"
+            >
+                {renewalClient ? (
+                    <Flex gap={12} vertical>
+                        <Text>{renewalClient.storeName || `Store ${renewalClient.storeId}`}</Text>
+                        <Select
+                            onChange={(value) => setRenewalMonths(Number(value))}
+                            options={RESELLER_COMMITMENT_OPTIONS.map((months) => ({
+                                label: `${months} months`,
+                                value: months,
+                            }))}
+                            value={renewalMonths}
+                        />
+                        <Card size="small">
+                            <Flex gap={4} vertical>
+                                <Text type="secondary">Collect before confirming</Text>
+                                <Text strong>{formatInrPaise(renewalAmount)}</Text>
+                                <Text type="secondary">
+                                    Covers {renewalClient.subscriptionQuantity || renewalClient.locationCount || 1} paid location{(renewalClient.subscriptionQuantity || renewalClient.locationCount || 1) > 1 ? 's' : ''}.
                                 </Text>
                             </Flex>
                         </Card>

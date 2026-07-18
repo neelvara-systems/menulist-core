@@ -1,6 +1,7 @@
 import { POS_DOCS_URL, getPublicBaseUrl, getTenantBaseUrl, normalizeBaseUrl } from '@constant/urls';
 import { withAnalyticsSource, type AnalyticsEntrySource } from '@lib/analytics/sourceAttribution';
 import { generateProjectUrl } from '@lib/utils/slugify';
+import { isValidScreenToken } from '@lib/screen/utils';
 
 export type AiMenuManagerFeedbackSource = 'direct_link' | 'feedback_qr';
 
@@ -50,7 +51,7 @@ export function buildAiMenuManagerDigitalScreenUrl(params: {
     screenToken?: string;
 }) {
     const token = String(params.screenToken || '').trim();
-    if (!token) return '';
+    if (!isValidScreenToken(token)) return '';
     const baseUrl = normalizeBaseUrl(params.publicBaseUrl) || getPublicBaseUrl();
     return `${baseUrl}/screen/${encodeURIComponent(token)}`;
 }

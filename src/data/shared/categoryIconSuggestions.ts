@@ -150,7 +150,19 @@ function normalizeKeyword(value: string): string {
 
 function matchesKeyword(normalizedValue: string, keyword: string): boolean {
     const normalizedKeyword = normalizeKeyword(keyword);
-    return normalizedKeyword.length > 0 && normalizedValue.includes(normalizedKeyword);
+    if (!normalizedKeyword) return false;
+
+    const words = normalizedKeyword.split(' ');
+    const lastWord = words[words.length - 1];
+    const pluralLastWord = /[^aeiou]y$/.test(lastWord)
+        ? `${lastWord.slice(0, -1)}ies`
+        : /(s|x|z|ch|sh)$/.test(lastWord)
+            ? `${lastWord}es`
+            : `${lastWord}s`;
+    const pluralKeyword = [...words.slice(0, -1), pluralLastWord].join(' ');
+    const paddedValue = ` ${normalizedValue} `;
+    return [normalizedKeyword, pluralKeyword]
+        .some((candidate) => paddedValue.includes(` ${candidate} `));
 }
 
 function findSuggestionMatch(

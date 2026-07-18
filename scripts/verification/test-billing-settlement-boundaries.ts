@@ -5,7 +5,7 @@ import {
     isValidBillingPeriodKey,
 } from '../../src/lib/billing/billingPeriod';
 import { resolveProviderBillingProductId } from '../../src/lib/billing/productBillingPlans';
-import { resolveVerifiedTopupSettlement } from '../../src/lib/billing/topupSettlement';
+import { resolveCurrentTopupSubscriptionSettlement, resolveVerifiedTopupSettlement } from '../../src/lib/billing/topupSettlement';
 import {
     isAnswerlatticeIntakeLedgerInScope,
     resolveAnswerlatticeIntakeRefundAllocation,
@@ -32,6 +32,14 @@ import {
 import type { FirestoreSubscriptionDoc } from '../../src/types/razorpay';
 import { resolveSubscriptionUpgradeCreditTransfer } from '../../src/lib/billing/subscriptionUpgradeSettlement';
 import { formatBillingHistoryEvents } from '../../src/lib/billing/billingHistoryFormatter';
+import {
+    appendBoundedBillingStatusHistory,
+    BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT,
+} from '../../src/lib/billing/subscriptionStatusHistory';
+import {
+    getActivePlanTypeForSubscription,
+    hasCurrentSubscriptionPlanEntitlement,
+} from '../../src/lib/billing/subscriptionPlanEntitlement';
 
 const utcDate = (year: number, monthIndex: number, day: number) => new Date(Date.UTC(year, monthIndex, day));
 const cycleStart = utcDate(2026, 0, 31);
@@ -45,6 +53,40 @@ assert.equal(getProviderCycleBillingPeriodKey('not-a-number'), null);
 assert.equal(isValidBillingPeriodKey(202601), true);
 assert.equal(isValidBillingPeriodKey(202600), false);
 assert.equal(isValidBillingPeriodKey(202613), false);
+
+const statusHistory = appendBoundedBillingStatusHistory(
+    Array.from({ length: BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT + 20 }, (_, index) => index),
+    999,
+);
+assert.equal(statusHistory.length, BILLING_SUBSCRIPTION_STATUS_HISTORY_LIMIT);
+assert.equal(statusHistory[0], 21);
+assert.equal(statusHistory.at(-1), 999);
+
+const entitlementNowMs = Date.UTC(2026, 6, 16, 12, 0, 0);
+const futureCycleEnd = { seconds: Math.floor((entitlementNowMs + 60_000) / 1_000) };
+const endedCycle = { toMillis: () => entitlementNowMs - 1 };
+assert.equal(getActivePlanTypeForSubscription({ status: 'active', planId: ' Pro ' }, entitlementNowMs), 'pro');
+assert.equal(getActivePlanTypeForSubscription({
+    cycleEndDate: futureCycleEnd,
+    planId: 'premium',
+    status: 'cancelled',
+}, entitlementNowMs), 'premium');
+assert.equal(getActivePlanTypeForSubscription({
+    cycleEndDate: futureCycleEnd,
+    planId: 'starter',
+    status: 'paused',
+}, entitlementNowMs), 'starter');
+assert.equal(hasCurrentSubscriptionPlanEntitlement({
+    cycleEndDate: endedCycle,
+    status: 'cancelled',
+}, entitlementNowMs), false);
+assert.equal(hasCurrentSubscriptionPlanEntitlement({
+    cycleEndDate: endedCycle,
+    status: 'paused',
+}, entitlementNowMs), false);
+assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: futureCycleEnd, planId: 'pro', status: 'past_due' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: futureCycleEnd, planId: 'pro', status: 'expired' }, entitlementNowMs), null);
+assert.equal(getActivePlanTypeForSubscription({ cycleEndDate: 'invalid', planId: 'pro', status: 'cancelled' }, entitlementNowMs), null);
 
 const validHistoryTimestampSeconds = 1_767_225_600;
 assert.equal(formatBillingHistoryEvents([{
@@ -213,6 +255,7 @@ const order = {
         productId: 'ML',
         tenantId: 101,
         storeId: 202,
+        billingStoreId: 303,
         packId: 'enhancement',
         creditAmount: 250,
         price: 299900,
@@ -225,6 +268,7 @@ const topupSnapshot = {
     productId: 'ML',
     tenantId: 101,
     storeId: 202,
+    billingStoreId: 303,
     packId: 'enhancement',
     creditsAdded: 250,
     amount: 299900,
@@ -258,8 +302,86 @@ assert.deepEqual(resolveVerifiedTopupSettlement(settlementInput), {
 });
 assert.equal(resolveVerifiedTopupSettlement({
     ...settlementInput,
+    topupSnapshot: { ...topupSnapshot, billingStoreId: 304 },
+}), null);
+assert.equal(resolveVerifiedTopupSettlement({
+    ...settlementInput,
     expectedProductId: 'AL',
 }), null);
+
+const currentTopupSubscription = {
+    productId: 'ML',
+    pId: 'ML',
+    tenantId: 101,
+    tId: 101,
+    storeId: 202,
+    sId: 202,
+    topUpCredits: 9,
+    monthlyCredits: 4,
+    monthlyCreditsAllowance: 10,
+    creditsLastResetMonth: 202607,
+};
+assert.deepEqual(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: currentTopupSubscription,
+}), {
+    creditsLastResetMonth: 202607,
+    monthlyCredits: 4,
+    monthlyCreditsAllowance: 10,
+    storeId: 202,
+    tenantId: 101,
+    topUpCredits: 9,
+});
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: null,
+}), null, 'deleted subscriptions must not be recreated by top-up settlement');
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, tId: 999 },
+}), null, 'conflicting transaction-current tenant aliases must fail closed');
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, sId: 999 },
+}), null, 'conflicting transaction-current store aliases must fail closed');
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, pId: 'AL' },
+}), null, 'conflicting transaction-current product aliases must fail closed');
+assert.equal(resolveCurrentTopupSubscriptionSettlement({
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: { ...currentTopupSubscription, topUpCredits: '9' },
+}), null, 'coercible persisted balances must not enter credit arithmetic');
+assert.deepEqual(resolveCurrentTopupSubscriptionSettlement({
+    allowMissingProductId: true,
+    expectedProductId: 'ML',
+    expectedTenantId: 101,
+    expectedStoreId: 202,
+    subscriptionSnapshot: {
+        tenantId: 101,
+        storeId: 202,
+        topUpCredits: 0,
+    },
+}), {
+    creditsLastResetMonth: null,
+    monthlyCredits: 0,
+    monthlyCreditsAllowance: 0,
+    storeId: 202,
+    tenantId: 101,
+    topUpCredits: 0,
+}, 'legacy MenuList subscriptions may omit product identity when all scope and balance fields are valid');
 assert.equal(resolveVerifiedTopupSettlement({
     ...settlementInput,
     payment: { ...payment, amount: 1 },

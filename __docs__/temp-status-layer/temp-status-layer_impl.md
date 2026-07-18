@@ -1,208 +1,74 @@
-# Temporary Status Layer — Implementation Plan
+# Temporary Status Layer - Implementation
 
-**Status:** ✅ IMPLEMENTED
-**Author:** Cascade (Lead Architect)
-**Date:** February 19, 2026
-**Audience:** Developers
-**Feature Flag:** `ENABLE_TEMP_STATUS`
-**Last Source Gate Update:** July 6, 2026
-
----
+**Status:** Current runtime evidence; not deploy approval
+**Last reviewed:** July 16, 2026
 
 ## Source Gate
 
-This implementation doc is source-gated by `npm run verify:temporary-status-boundary`.
+Run `npm run verify:temporary-status-boundary` for source/docs parity.
 
-Current source contract:
-
-- `POST /api/store/temp-status` is dynamic, authenticated with `withAuth()`, feature-gated by `ENABLE_TEMP_STATUS`, scoped to the session tenant/store, and requires `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE`. Session tenant/store IDs pass through the shared Firestore document-ID guard with an exact raw-value check and a 160-character ceiling before permission checks, limiter keys, store writes, public cache tags, Digital Screens invalidation, Owner Business Assistant cache invalidation, or diagnostics. The optional session actor ID is normalized through the same boundary before limiter material or `tempStatus.createdBy` metadata is written.
-- The route uses the `DATA_WRITE` limiter with hashed owner/store key segments, reads at most 4KB of JSON, validates with Zod, rejects past expiries, writes only the existing store document `tempStatus` field, and returns fixed owner-safe failure copy.
-- Successful set/clear writes revalidate `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`, touch the Digital Screens content version with `storeTempStatus`, and invalidate the Owner Business Assistant packet cache.
-- Desktop Business Settings, Mobile Temporary Status, and Mobile Today/Hours shortcuts call the route through `AUTH_BROWSER_REQUEST_POLICY`, parse responses with the shared 8KB bounded parser, and roll back optimistic local state unless `{ success: true }` is confirmed.
-- Public output renders through `TempStatusBanner` on OBP, digital menu, and feedback surfaces; the banner hides expired statuses. The public pull API hides expired temporary status values by returning `tempStatus: null`.
-
-Historical blueprint sections below remain useful context, but the source gate above is the current launch boundary.
-
-## Architecture Overview
-
-```
-Owner sets temp status (Dashboard / Mobile)
-  ↓
-API Route: POST /api/store/temp-status
-  ├── withAuth() + session-scoped store permission
-  ├── Zod validation (type, message, expiresAt)
-  └── updateDoc() on store document (tempStatus field)
-  ↓
-Store Document (tempStatus field)
-  ↓
-Client Pages (OBP + Digital Menu)
-  ├── Server-side: Read tempStatus from store data (already loaded)
-  ├── Check expiry: if expiresAt < now → hide banner
-  └── Display: Yellow/orange banner above content
-  ↓
-Auto-expiry:
-  ├── Client-side: Banner hides when expiresAt passes (real-time check)
-  └── Nightly cleanup CF (optional): Clear expired tempStatus fields
+```bash
+npm run verify:temporary-status-boundary
 ```
 
----
+## Write Flow
 
-## Database Schema
+`src/app/api/store/temp-status/route.ts` owns the manual set/clear boundary:
 
-### No New Collections
+1. `withAuth()` and `ENABLE_TEMP_STATUS` admit the route.
+2. Session tenant/store/actor values are normalized as bounded Firestore document IDs. Session tenant/store IDs pass through the shared Firestore document-ID guard before limiter material, permission work, document refs, effects, or diagnostics.
+3. A hashed owner/store `DATA_WRITE` limiter runs with `failClosedOnProviderError: true` before request-body parsing or permission-backed Firestore work.
+4. The route reads at most 4KB, validates the discriminated Zod request, then requires `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE`.
+5. `set` rejects non-future expiry, normalizes the message, and updates `stores/{storeId}.tempStatus`. `clear` deletes that field.
+6. `runStorePublicTruthPostCommitEffects()` attempts menu, store, client-store, and `screen-data` tags with `Promise.allSettled`. The route also touches Digital Screens and invalidates the Owner Business Assistant packet cache through that helper.
+7. A post-commit effect failure returns `{ success: true, effectsPending: true }`; only a failed store mutation returns the fixed 500 response.
 
-Single field addition to existing store document:
+This ordering prevents expensive/authorized work on rate-limit-provider outage and prevents owner clients from rolling back after persisted truth has already committed.
 
-```typescript
-// Addition to StoreDataType (src/types/platform/store.ts)
-tempStatus?: {
-  type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
-  message?: string;        // Custom message (max 100 chars), optional for predefined types
-  expiresAt: string;       // ISO 8601 string (Firestore-safe, timezone-aware)
-  createdAt: string;       // ISO 8601 string
-  createdBy?: string;      // userId who set the status
-};
-```
+## Canonical Read Boundary
 
-**Why ISO strings instead of Timestamps:** Store doc is read by both server components (firebase-admin) and client components (firebase/firestore). ISO strings are universally serializable.
+`src/lib/tempStatus/statusBoundary.ts` is the shared evaluator. It accepts only a known type, parseable future expiry, and object input. It strips controls and invisible formatting, collapses whitespace, caps messages at 100 characters, and supplies a type default when needed.
 
----
+`src/hooks/useActiveTempStatus.ts` schedules the next expiry. Long durations are rescheduled under the browser timeout ceiling. It is used by the public banner and owner surfaces, so a mounted screen cannot show an expired notice indefinitely.
 
-## API Contract
+Public consumers:
 
-### POST /api/store/temp-status
+- `src/app/client/obp/OBPResolvedSurface.tsx`
+- `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx`
+- `src/app/feedback/[projectId]/page.tsx`
+- `src/lib/publicTruth/clientStoreProjection.ts`
+- `src/app/api/public/v1/business/route.ts`
+- `src/lib/schema/index.ts`
 
-**Purpose:** Set or clear temporary status on a store.
-**Feature gate:** `ENABLE_TEMP_STATUS` is checked in the route before permission, rate-limit, body parsing, or writes.
-**Rate limit:** Existing `DATA_WRITE` limiter keyed by hashed owner/store segments.
-**Browser request policy:** desktop Business Settings, mobile Temporary Status, and mobile Today/Hours shortcuts call this route through the shared `AUTH_BROWSER_REQUEST_POLICY` from `src/lib/auth/browserRequestPolicy.ts`. That keeps requests uncached, same-origin, and manual-redirect before shared bounded response parsing.
+The public pull API hides expired temporary status values. Browser/client store payloads omit inactive truth rather than serializing the raw field.
 
-```typescript
-// Request body
-const TempStatusSchema = z.object({
-  action: z.enum(['set', 'clear']),
-  // Required when action === 'set'
-  type: z.enum(['closed_today', 'opening_late', 'closing_early', 'kitchen_closed', 'special_menu', 'custom']).optional(),
-  message: z.string().max(100).optional(),
-  expiresAt: z.string().datetime().optional(), // ISO 8601
-});
+## Structured Data
 
-// Response
-{ success: true }
-// or
-{ error: string, status: 400 | 403 | 500 }
-```
+`buildTempStatusSchema()` uses the same active-status evaluator and store timezone. Only `closed_today` produces `specialOpeningHoursSpecification`, limited to the current store-local calendar day. Kitchen-only, late-open, early-close, special-menu, and custom banners do not claim that the whole LocalBusiness is closed. Invalid timezones or dates omit the status schema safely.
 
-**Browser response boundary:** Desktop Business Settings, mobile Temporary Status, and mobile Today/Hours shortcuts route responses through `src/lib/tempStatus/clientResponse.ts`. The helper caps JSON at 8KB, logs `temp_status_response_parse_failed` for malformed/oversized responses, logs `temp_status_response_invalid` for invalid successful envelopes, and only lets optimistic UI state remain after `{ success: true }`.
+## Owner Clients
 
-**Security:**
+- Desktop: `src/components/templates/main-app/businessSettings/TempStatusCard.tsx`
+- Mobile dedicated screen: `src/components/mobile/screens/MobileTempStatusScreen.tsx`
+- Mobile Today/Hours shortcuts: `src/components/mobile/screens/MobileHoursScreen.tsx`
+- MobileShell route: `src/components/mobile/screens/MobileMoreScreen.tsx`
 
-- `withAuth()` plus `MANAGE_STORE` or `MANAGE_PUBLIC_PRESENCE` — Only authorized store users can set status
-- Tenant/store identity comes from the authenticated session, not from request body fields, and oversized or whitespace-mutated session document IDs fail before route-local limiter/ref material
-- 4KB bounded JSON body before Zod validation
-- Zod validation before any DB operation
-- Rate limit: `DATA_WRITE` (50 req/min)
-- Unexpected update failures log `store_temp_status_update_failed` through bounded runtime diagnostics only
-- Browser callers use no-store, same-origin credentials, and manual redirect handling, then cap response JSON at 8KB and require `{ success: true }` before keeping optimistic desktop/mobile state
+All mutation callers use `AUTH_BROWSER_REQUEST_POLICY` and `readTempStatusResponse()`. The response parser caps JSON at 8KB, accepts legacy `{ success: true }`, normalizes it to `effectsPending: false`, and rejects all other successful envelopes. Optimistic changes are restored on failure; normal or pending-refresh success copy appears only after the parser returns.
 
----
+## Special Menu Integration
 
-## File Structure
+Browser/Admin lifecycle code in `src/database/projects/specialMenuLifecycle.ts` and scheduled lifecycle code in `functions/src/schedulers/specialMenuLifecycle.ts` write a `special_menu` status with the menu end time and `sourceProjectId`. Deactivate/cancel/repair deletes the notice only when ownership matches, with a legacy fallback tied to the active pointer.
 
-| File                                                                    | Purpose                                | LOC  | Status      |
-| ----------------------------------------------------------------------- | -------------------------------------- | ---- | ----------- |
-| `src/types/platform/store.ts`                                           | Add `tempStatus` type to StoreDataType | ~15  | ✅ MODIFIED |
-| `src/app/api/store/temp-status/route.ts`                                | API route to set/clear temp status     | ~105 | ✅ NEW      |
-| `src/lib/tempStatus/clientResponse.ts`                                  | Bounded browser response parser        | ~105 | ✅ NEW      |
-| `src/components/atoms/TempStatusBanner/index.tsx`                       | Banner component for OBP + menu        | ~50  | ✅ NEW      |
-| `src/components/atoms/TempStatusBanner/tempStatusBanner.module.scss`    | Banner styles                          | ~30  | ✅ NEW      |
-| `src/app/client/obp/OBPResolvedSurface.tsx`                             | Add TempStatusBanner above identity    | ~5   | ✅ MODIFIED |
-| `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` | Add TempStatusBanner above menu        | ~5   | ✅ MODIFIED |
-| `src/app/feedback/[projectId]/page.tsx`                                 | Add TempStatusBanner above feedback    | ~5   | ✅ MODIFIED |
-| `src/app/api/public/v1/business/route.ts`                               | Return active tempStatus only          | ~15  | ✅ MODIFIED |
-| `src/components/templates/main-app/businessSettings/TempStatusCard.tsx` | Desktop dashboard card                 | ~215 | ✅ NEW      |
-| `src/components/mobile/screens/MobileTempStatusScreen.tsx`              | Mobile status toggle screen            | ~260 | ✅ NEW      |
-| `src/components/mobile/screens/MobileMoreScreen.tsx`                    | Add temp status nav item + routing     | ~15  | ✅ MODIFIED |
+The current audit did not change Functions source; it verified the already-shipped lifecycle contract. No Firebase infrastructure deployment is triggered by the Temporary Status changes.
 
-**Total new code:** ~660 lines across 4 new files + 4 modified files
+## Failure and Cleanup
 
----
+- Invalid or expired persisted truth fails hidden.
+- Explicit clear deletes the field.
+- An expired field may remain persisted and is replaced by a later set. There is no cleanup scheduler.
+- Cache/screen/assistant failures are bounded diagnostics plus `effectsPending`; no second Firestore write or retry queue is added.
+- The feature adds no owner toggle beyond the existing flag and status controls.
 
-## Implementation Details
+## Verification
 
-### Phase 1: Type + API
-
-1. Add `tempStatus` type to `StoreDataType`
-2. Create API route with full security (withAuth, verifyTenantAccess, Zod, rate limit)
-3. Revalidate customer-facing cache tags after every set/clear: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, and `screen-data`
-4. Touch Digital Screens content version and invalidate the Owner Business Assistant packet cache
-
-### Phase 2: Customer-Facing Banner
-
-1. Create `TempStatusBanner` atom component
-2. Add to OBP page (server component — read from store data)
-3. Add client-side expiry check (hide when expired)
-4. Keep the public pull API on the same expiry boundary so expired statuses return `null`
-
-### Phase 3: Owner Controls (Desktop)
-
-1. Create `TempStatusCard` for Business Settings
-2. Status type selector (4 options)
-3. Custom message input (when type=custom)
-4. Expiry picker (DatePicker)
-5. Set/Clear buttons
-
-### Phase 4: Owner Controls (Mobile)
-
-1. Create `MobileTempStatusScreen`
-2. Use temporary status for one-day close actions. Regular weekday hour edits remain explicit working-hours updates and are labeled as recurring schedule edits.
-2. ActionSheet for type selection
-3. DatePicker for expiry
-4. Wire into MobileMoreScreen navigation
-5. Optimistic update pattern with shared bounded response validation before state is kept
-
----
-
-## Security Checklist
-
-- [x] API route uses `withAuth()`
-- [x] Tenant access verified with `verifyTenantAccess()`
-- [x] Input validated with Zod schema
-- [x] Rate limiting configured (DATA_WRITE)
-- [x] No new Firestore collections (field on existing doc)
-- [x] No sensitive data in logs
-- [x] Feature flag gated (`ENABLE_TEMP_STATUS`)
-- [x] Browser response parser caps JSON at 8KB and validates `{ success: true }`
-
----
-
-## Firebase Cost
-
-**Zero additional reads.** Store document is already loaded on every OBP/menu page visit. `tempStatus` is just another field on that document.
-
-| Operation                | Frequency         | Cost       |
-| ------------------------ | ----------------- | ---------- |
-| Write tempStatus (set)   | ~2/week per store | Negligible |
-| Write tempStatus (clear) | ~2/week per store | Negligible |
-| Read (part of store doc) | 0 extra reads     | ₹0         |
-
-Cache revalidation has no Firestore cost. It only clears public Next.js cache tags so OBP and menu pages pick up the status change promptly.
-Digital Screens content-version touch and Owner Business Assistant cache invalidation are also cache/metadata invalidations, not extra store reads.
-
----
-
-## Testing Guide
-
-1. Enable `ENABLE_TEMP_STATUS: true` in features.ts
-2. Open Business Settings → Temp Status card should appear
-3. Set "Closed Today" with 24hr expiry
-4. Visit OBP page → yellow banner should show "Closed today"
-5. Clear status → banner should disappear
-6. Set status with past expiry → banner should NOT show (expired)
-7. Test mobile: MobileMoreScreen → "Temporary Status" → set/clear
-8. Test custom message: type "custom", message "Private event tonight"
-9. Verify feature flag: set `ENABLE_TEMP_STATUS: false` → no card, no banner
-
----
-
-**Last Updated:** July 6, 2026
+`scripts/verification/test-temporary-status-boundary.ts` deterministically covers normalization, exact expiry, invalid truth, timezone closure schema, kitchen-only omission, and response-envelope compatibility. `scripts/verification/verify-temporary-status-boundary.js` guards source/docs wiring and acknowledgement order.

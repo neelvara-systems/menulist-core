@@ -1,75 +1,73 @@
-# Description Generation — Help Documentation
+# Description Generation - Help Documentation
 
-## Quick Summary
-Prepare description drafts for selected menu items. Review the generated text in the Editor, edit anything that needs attention, and save only the approved descriptions before publishing.
+**Audience:** MenuList owners and team members
+**Last updated:** July 15, 2026
 
----
+## What it does
 
-## Getting Started
+Prepare description drafts for selected menu items. MenuList uses the item name, category, variants, project languages, and your generation defaults to prepare copy for owner review.
 
-### Prerequisites
-- A menu project with items (names are required; categories help improve quality)
-- Items should be organized into categories for best results
-- Description generation must be enabled for your workspace, and enough credits must be available for the request
+## Add missing descriptions
 
----
+1. Open Menu.
+2. Choose Generate Descriptions on desktop or Add missing descriptions on mobile.
+3. Choose a description length and writing style.
+4. Select Generate missing.
+5. Wait for the save confirmation.
 
-## How-To Guides
+First descriptions do not use content credits. Items need a source-language name. An item with manual description text in any menu language is left unchanged.
 
-### How to generate descriptions for items without them
-1. Go to **Projects** → select your project → **Editor**
-2. Click the **Generate Descriptions** button
-3. Select **Generate Empty** (only items without descriptions)
-4. Choose content size: **Standard** (25-35 words) or **Detailed** (50+ words)
-5. Click **Generate**
-6. Wait for processing; timing depends on provider status, item count, and current system conditions
-7. Review the draft descriptions in the Editor
-8. Edit anything that does not match the real item
-9. Click **Save** to keep the approved descriptions
+## Refresh generated descriptions
 
-> 📸 **Screenshot:** Generate descriptions modal with mode and size options
+Use Refresh Descriptions when MenuList-generated copy needs a new version. Review the confirmation first: it shows the exact current refresh credit count before the action, and your manual descriptions remain protected.
 
-### How to rewrite all descriptions
-1. Go to **Editor** → click **Generate Descriptions**
-2. Select **Rewrite All** only if the existing descriptions should be replaced
-3. Choose content size
-4. Click **Generate**
-5. Review the drafts before saving
+A large menu may be processed in more than one request. MenuList checks the complete current refresh count before the first request and directs you to Billing before work starts when the available enhancements are insufficient. Each successful refresh request appears in Transactions with its credit use.
 
-> ⚠️ **Warning:** "Rewrite All" replaces existing descriptions. Make sure you want to overwrite them.
+## Work on one item
 
-### How descriptions work with multiple languages
-- Description drafts follow the languages configured for the project and the current release behavior
-- Check each customer language before publishing
-- If a language needs a correction, edit the text before saving the approved menu
+Open the item editor:
 
----
+- If the source description is empty, Generate Description prepares the first description and configured-language drafts at no credit cost.
+- If generated copy exists, Refresh Descriptions asks for confirmation and uses a description-refresh enhancement.
+- If the description is manual, MenuList shows that it is protected. You can edit it directly or use a language control to refresh one translation.
 
-## Troubleshooting
+Single-item results are drafts inside the editor. Select Save to update the menu. If you cancel after a successful refresh, the menu is unchanged, but the completed provider operation and its credit entry remain in Transactions.
 
-### Descriptions sound too generic
-**Fix:** Make sure your item names are specific. "Chicken Curry" generates better than "Item #4".
+## Multiple languages
 
-### "Rate limit exceeded" error
-**Fix:** Wait and try again. The route is rate-limited to protect credits and provider capacity.
+Description drafts follow the languages configured for the project and the current release behavior. Adding missing source descriptions prepares the configured language set for those items. If an already-described item is missing only a translation, use Manage Languages or Repair Menu instead of first-description generation.
 
-### Some items still have no description after generation
-**Why:** Items without names can't be described.
-**Fix:** Add names to unnamed items first, then regenerate.
+Bulk generation saves after the complete action succeeds, so review each saved customer language promptly and adjust any wording that needs owner input. A single-item result remains a draft until you select Save.
 
----
+For a single-item draft, save only the approved descriptions before publishing that edit. Bulk generation follows the auto-save behavior above.
 
-## Tips
-- 💡 Better item names = better descriptions
-- 💡 Use **Standard** for shorter drafts and **Detailed** for longer drafts
-- 💡 You can always edit generated descriptions manually in the Editor
-- 💡 Check configured customer languages before publishing the menu
+## Repair Menu
 
-## Related Features
-- **[Data Editor]** — Edit descriptions manually after generation
-- **[Multi-Language Translation]** — Prepare customer-language drafts
-- **[AI Image Generation]** — Prepare image drafts for review
+Repair Menu can rebuild missing language text, add missing source descriptions, and fill eligible project-copy gaps in one reviewed workflow. Prices and photos are not generated by Description Generation. Manual review items remain visible instead of being guessed.
 
-## Need More Help?
-- **Email:** support@menulist.ai
-- **In-app:** Click the help icon in your dashboard
+## If something does not work
+
+- Add the item name in the source language.
+- Confirm that your role can generate descriptions.
+- For a linked outlet, confirm that description changes are enabled for the location.
+- If Billing is shown, add an enhancement pack before refreshing existing copy.
+- Keep the screen open until the save result appears.
+- Try again later when the provider is unavailable; timing depends on provider status, item count, and current system conditions.
+
+The route is rate-limited to protect credits and provider capacity. A failed or incomplete request does not save a partial bulk menu or show a success result.
+
+## Transactions
+
+Transactions shows:
+
+- Prepared descriptions for first-pass generation;
+- Revised descriptions for refreshes;
+- Prepared item details for the first single-item metadata action;
+- descriptions/items prepared where a compact count is available;
+- credits used or No credits used.
+
+Enhancement history stores the result count rather than generated text. Open the saved menu item to review the current version.
+
+## Still required before release approval
+
+This help page describes implemented behavior. Target provider smoke, authenticated desktop/mobile QA, deploy evidence, and production-host smoke remain part of the External Certification Runbook.

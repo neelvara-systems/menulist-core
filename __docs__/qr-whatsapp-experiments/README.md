@@ -1,10 +1,10 @@
 # QR WhatsApp Experiments
 
-**Status:** Docs-ready
+**Status:** PLANNING ONLY — NO RUNTIME
 **Owner:** MenuList
-**Last Updated:** June 25, 2026
+**Last Updated:** July 17, 2026
 
-QR WhatsApp Experiments is the future campaign layer for testing physical QR creatives that drive a customer into a tracked WhatsApp conversation. It is separate from normal Assets/Menu Kit QR output.
+QR WhatsApp Experiments is a future campaign proposal for testing physical QR creatives that drive a customer into a tracked WhatsApp conversation. The repository currently contains only these planning docs and one disabled, unconsumed feature flag. It is separate from normal Assets/Menu Kit QR output.
 
 The core flow is:
 
@@ -19,6 +19,8 @@ Physical asset
 ```
 
 The feature exists because scan count alone is not a business result. For SMB owners, the useful outcome is qualified WhatsApp conversations, opt-ins, bookings, orders, redemptions, or repeat-customer actions per physical placement.
+
+There is no experiment route, token helper, owner/mobile UI, DAL, Firestore collection, rule, index, Storage path, Function, webhook, consent ledger, counter, or provider-send integration. None of the journey below is current owner/customer functionality.
 
 ## Document Index
 

@@ -7,7 +7,11 @@ export const dynamic = 'force-dynamic';
  * 2. Email exists, same tenant → Add store mapping to existing user (multi-store)
  * 3. Email exists, different tenant → Reject (email belongs to another business)
  *
- * Requires: Active NextAuth session with owner/manager role.
+ * Existing unverified Firestore users are only marked verified after this
+ * handler creates a new Firebase Auth user and commits that UID binding.
+ * An unrelated pre-existing Auth email is rejected and never adopted.
+ *
+ * Requires: Active NextAuth session with canManageUsers for the target store.
  *
  * @see __docs__/auth/adr-email-uniqueness-strategy.md
  * @see __docs__/auth/README.md — Staff User Creation

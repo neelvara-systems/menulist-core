@@ -9,6 +9,8 @@ const INSTALLED_KEY = '__menulistTicketLogCaptureInstalled';
 const sensitiveAssignmentPattern = /(password|passwd|token|secret|authorization|api[_-]?key|session|cookie)=([^&\s]+)/gi;
 const sensitiveJsonFieldPattern = /("(?:password|passwd|token|customToken|accessToken|refreshToken|secret|authorization|api[_-]?key|session|cookie)"\s*:\s*")([^"]*)(")/gi;
 const emailJsonFieldPattern = /("email"\s*:\s*")([^"]+@[^"]+)(")/gi;
+const emailTextPattern = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
+const bearerTextPattern = /\bbearer\s+[A-Za-z0-9._~+/=-]+/gi;
 
 let logs: LogEntry[] = [];
 let isCapturing = false;
@@ -21,7 +23,9 @@ function sanitizeLogText(value: string): string {
     const redacted = value
         .replace(sensitiveAssignmentPattern, '$1=[redacted]')
         .replace(sensitiveJsonFieldPattern, '$1[redacted]$3')
-        .replace(emailJsonFieldPattern, '$1[redacted]$3');
+        .replace(emailJsonFieldPattern, '$1[redacted]$3')
+        .replace(emailTextPattern, '[redacted-email]')
+        .replace(bearerTextPattern, 'Bearer [redacted]');
 
     return redacted.length > MAX_MESSAGE_LENGTH ? `${redacted.slice(0, MAX_MESSAGE_LENGTH)}...[truncated]` : redacted;
 }
@@ -93,11 +97,21 @@ export function startLogCapture() {
     };
 
     window.addEventListener('error', e => {
-        capture('error', e.message);
+        capture('error', {
+            event: 'window_error',
+            error: e.error instanceof Error ? sanitizeErrorForLog(e.error) : undefined,
+            messageLength: typeof e.message === 'string' ? e.message.length : 0,
+            messagePresent: Boolean(e.message),
+        });
     });
 
     window.addEventListener('unhandledrejection', e => {
-        capture('error', String(e.reason));
+        capture('error', {
+            event: 'unhandled_rejection',
+            error: e.reason instanceof Error ? sanitizeErrorForLog(e.reason) : undefined,
+            reasonPresent: e.reason !== undefined && e.reason !== null,
+            reasonType: typeof e.reason,
+        });
     });
 }
 

@@ -3,12 +3,14 @@
 import { getSchedulerDashboardSnapshot } from '@database/ops/scheduler';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
+import { normalizeSchedulerRecoveryResponse, normalizeSchedulerRecoveryRunLogId } from '@lib/ops/schedulerRecoveryResponse';
 import type { SchedulerHealthSummary, SchedulerRunLog, SchedulerSettlementSummary, SchedulerTaskResult } from '@lib/ops/schedulerTypes';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { LuActivity, LuClock, LuPlay, LuRefreshCw, LuShieldAlert } from 'react-icons/lu';
+import { Alert } from 'antd';
 import { Button, Card, Dialog, DotLoading, Flex, List, Select, Tag, Text, Title, Toast } from '../antd';
 import MobileSettingsScreenHeader from '../components/MobileSettingsScreenHeader';
 
@@ -107,7 +109,9 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
     const [settlement, setSettlement] = useState<SchedulerSettlementSummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [triggering, setTriggering] = useState(false);
+    const [loadError, setLoadError] = useState(false);
     const {
+        error: storesError,
         loading: storesLoading,
         selectedStore,
         selectedStoreId,
@@ -121,12 +125,14 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
     const loadData = useCallback(async () => {
         if (!isPlatform) return;
         setLoading(true);
+        setLoadError(false);
         try {
             const snapshot = await getSchedulerDashboardSnapshot({ limit: 10 }, 50);
             setHealth(snapshot.health);
             setRuns(snapshot.runHistory);
             setSettlement(snapshot.settlement);
         } catch {
+            setLoadError(true);
             Toast.show({ content: 'Could not load scheduler data', duration: 1800 });
         } finally {
             setLoading(false);
@@ -163,17 +169,20 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                 try {
                     const { getFunctions, httpsCallable } = await import('firebase/functions');
                     const triggerFn = httpsCallable(getFunctions(), 'triggerStoreNightlyScheduler', { timeout: 600000 });
-                    const result: any = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
-                    const summary = result?.data || {};
+                    const result = await triggerFn({ tId: selectedStore.tId, sId: selectedStore.sId });
+                    const summary = normalizeSchedulerRecoveryResponse(result?.data);
+                    if (!summary) throw new Error('mobile_scheduler_recovery_response_invalid');
                     Toast.show({
-                        content: `Done: ${summary.successCount || 0} DI success, ${summary.failedCount || 0} failed`,
+                        content: `${summary.status}: ${summary.successCount} DI success, ${summary.failedCount} failed`,
                         duration: 2200,
                     });
                     await loadData();
                 } catch (error) {
-                    const runLogId = error && typeof error === 'object' && 'details' in error
-                        ? (error as { details?: { runLogId?: unknown } }).details?.runLogId
-                        : undefined;
+                    const runLogId = normalizeSchedulerRecoveryRunLogId(
+                        error && typeof error === 'object' && 'details' in error
+                            ? (error as { details?: { runLogId?: unknown } }).details?.runLogId
+                            : null,
+                    );
                     logOpsFailure('mobile_scheduler_recovery_trigger_failed', error, buildRecoveryLogContext({
                         ...getBoundedOpsStringContext('runLogId', runLogId),
                     }));
@@ -233,6 +242,14 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                     </Card>
                 ) : (
                     <>
+                        {loadError ? (
+                            <Alert
+                                message="Scheduler state unavailable"
+                                description="Values may be missing or from the previous successful refresh."
+                                showIcon
+                                type="error"
+                            />
+                        ) : null}
                         <Card size="small" title={<Text strong>Manual Recovery</Text>}>
                             <Flex gap={10} vertical>
                                 <Text type="secondary">Select a store from storesSummary. Recovery runs all active projects under that store.</Text>
@@ -242,6 +259,7 @@ export default function MobileSchedulerMonitorScreen({ onBack }: MobileScheduler
                                     value={selectedStoreId}
                                     onChange={setSelectedStoreId}
                                 />
+                                {storesError ? <Text type="danger">Store options are unavailable. Refresh before recovery.</Text> : null}
                                 {selectedStore ? (
                                     <Text type="secondary">Tenant {selectedStore.tId} · Store {selectedStore.sId}</Text>
                                 ) : null}

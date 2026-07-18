@@ -38,14 +38,18 @@ const getPhoneOtpVerifyFailureLogContext = (request: NextRequest) => ({
     ...getBoundedAuthStringContext('userAgent', request.headers.get('user-agent')),
 });
 
-const rateLimitResponse = (resetAt: number) => (
+const rateLimitResponse = (resetAt: number, providerUnavailable = false) => (
     NextResponse.json(
-        { error: 'Too many attempts. Please wait before trying again.' },
+        {
+            error: providerUnavailable
+                ? 'Phone verification is temporarily unavailable. Please try again shortly.'
+                : 'Too many attempts. Please wait before trying again.',
+        },
         {
             headers: {
                 'Retry-After': String(Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))),
             },
-            status: 429,
+            status: providerUnavailable ? 503 : 429,
         },
     )
 );
@@ -62,8 +66,11 @@ export async function POST(request: NextRequest) {
         const ipRate = await checkRateLimit({
             key: `auth-phone-otp-verify:ip:${ipHash}`,
             ...verifyRateConfig,
+            failClosedOnProviderError: true,
         });
-        if (!ipRate.allowed) return rateLimitResponse(ipRate.resetAt);
+        if (!ipRate.allowed) {
+            return rateLimitResponse(ipRate.resetAt, ipRate.reason === 'provider_unavailable');
+        }
 
         const bodyResult = await readBoundedJsonBody(request, PHONE_OTP_VERIFY_MAX_BODY_BYTES, {
             invalidJsonMessage: 'Enter the verification code.',
@@ -79,8 +86,11 @@ export async function POST(request: NextRequest) {
         const challengeRate = await checkRateLimit({
             key: `auth-phone-otp-verify:challenge:${challengeHash}`,
             ...verifyRateConfig,
+            failClosedOnProviderError: true,
         });
-        if (!challengeRate.allowed) return rateLimitResponse(challengeRate.resetAt);
+        if (!challengeRate.allowed) {
+            return rateLimitResponse(challengeRate.resetAt, challengeRate.reason === 'provider_unavailable');
+        }
 
         const verified = await verifyPhoneOtpChallenge({
             challengeId: parsed.data.challengeId,

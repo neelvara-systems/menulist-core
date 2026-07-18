@@ -58,6 +58,7 @@ const mobileHealthScreen = read('src/components/mobile/screens/MobileBusinessHea
 const mobilePublicTruthOwnerCard = read('src/components/mobile/components/MobilePublicTruthOwnerCheckCard.tsx');
 const mobileShell = read('src/components/mobile/MobileShell.tsx');
 const mobileMoreScreen = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+const permissionRequirements = read('src/lib/permissions/permissionRequirements.ts');
 const currentRoute = read('src/app/api/owner-business-assistant/current/route.ts');
 const analyticsRoute = read('src/app/api/owner-business-assistant/analytics/route.ts');
 const locationsRoute = read('src/app/api/owner-business-assistant/locations/route.ts');
@@ -90,6 +91,7 @@ const implDoc = read('__docs__/owner-business-assistant/owner-business-assistant
 const mobileSupportDoc = read('__docs__/owner-business-assistant/owner-business-assistant_mobile-support.md');
 const firebaseDoc = read('__docs__/owner-business-assistant/owner-business-assistant_firebase.md');
 const validationDoc = read('__docs__/owner-business-assistant/owner-business-assistant_validation.md');
+const helpDoc = read('__docs__/owner-business-assistant/owner-business-assistant_helpdoc.md');
 const inventory = read('FEATURE_SWEEP_MASTER_INVENTORY.md');
 const report = read('FEATURE_SWEEP_MASTER_REPORT.md');
 const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -174,8 +176,17 @@ forbidToken(mobilePublicTruthOwnerCard, 'window.location', 'mobile public truth 
   "'/business-health': { tab: 'more', todayScreen: 'main', moreScreen: 'businessHealth' }",
   'OWNER_PATH_TO_MOBILE_ROUTE[normalizedPathname]',
   "setMoreScreen('businessHealth')",
+  "if (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !canViewAnalytics)",
+  "moreScreen === 'businessHealth'",
+  "&& (!FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH || !canViewAnalytics)",
+  'canViewAnalytics && FEATURE_FLAGS.ENABLE_OWNER_BUSINESS_HEALTH',
   '<MobileMoreScreen initialScreen={moreScreen}',
 ].forEach((token) => requireToken(mobileShell, token, 'MobileShell business health route'));
+
+[
+  'pathname === "/dashboard" || pathname === "/business-health"',
+  'requirement: { anyOf: [PERMISSIONS.VIEW_ANALYTICS], label: "Analytics" }',
+].forEach((token) => requireToken(permissionRequirements, token, 'desktop analytics permission route guard'));
 
 [
   "else if (subScreen === 'businessHealth')",
@@ -394,6 +405,10 @@ forbidToken(schemas, 'targetKind', 'owner business action target schema');
   'getBoundedSecurityRouteContext',
   "getBoundedSecurityStringContext('attemptedStoreId', selectedStoreId)",
   'applyOwnerBusinessAssistantRateLimit',
+  "const failClosedOnProviderError = params.feature === 'AI_OPERATION';",
+  'failClosedOnProviderError,',
+  "const providerUnavailable = rateLimit.reason === 'provider_unavailable';",
+  'status: providerUnavailable ? 503 : 429',
 ].forEach((token) => requireToken(apiGuards, token, 'owner business API guards'));
 
 [
@@ -536,8 +551,16 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
 ].forEach((token) => requireToken(validationDoc, token, 'validation doc'));
 
 [
+  'Status:** Implemented owner-help source',
+  'Business Health is read-only.',
+  'It does not prepare a price, description, image, publish, store, outlet, staff, or public-information change.',
+].forEach((token) => requireToken(helpDoc, token, 'owner help doc'));
+forbidToken(helpDoc, 'Draft for post-enable owner help', 'owner help doc stale status');
+forbidToken(helpDoc, 'Business Health may open the right screen or prepare a draft for you.', 'owner help doc stale action claim');
+
+[
   ['inventory', inventory, 'owner_business_health'],
-  ['inventory', inventory, 'owner-business-health boundary source gate passed'],
+  ['inventory', inventory, 'owner-business-health and assistant gates passed'],
   ['report', report, '## Owner Business Health Boundary'],
   ['report', report, '`npm run verify:owner-business-health-boundary`'],
   ['audit', audit, 'Owner Business Health boundary checkpoint'],
@@ -561,13 +584,15 @@ forbidToken(platformMonitorRoute, 'OWNER_BUSINESS_ASSISTANT_ACTIONS', 'platform 
 requireOrder(
   answerRoute,
   [
+    'applyOwnerBusinessAssistantRateLimit({',
     'await readBoundedJsonBody(',
     'OwnerBusinessAssistantAnswerRequestSchema.safeParse(bodyResult.data)',
     'resolveOwnerAssistantSelectedStoreScope(request, session, normalizedRequest.storeId)',
     'requireAnyStorePermissionForStore(',
+    'const safeMode = await checkSafeMode();',
     'resolveOwnerBusinessAssistantAnswer({',
   ],
-  'answer route admission order',
+  'answer route cost and admission order',
 );
 
 requireToken(apiGuards, 'normalizeStoreSwitchStoreId', 'Business Health selected-store exact shared store ID normalization');

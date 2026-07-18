@@ -2,7 +2,7 @@
 
 > **Feature:** Public Truth Monitor Add-On
 > **Status:** V2 paid add-on runtime implemented for entitlement-gated saved history and reports
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -10,7 +10,7 @@
 
 Public Truth Monitor Add-On is the paid V2 lane for MenuList Tools.
 
-It exists only when the owner, agency, or multi-location operator needs recurring checks, saved history, monthly reports, multi-location comparison, or owner-approved setup/repair work. It is not a better one-time free check.
+The implemented slice exists when an entitled owner needs manual saved history and a downloadable report. Recurring checks, multi-location comparison, email delivery, and managed repair remain separate disabled scopes. It is not a better one-time free check.
 
 ## Quick Navigation
 
@@ -44,6 +44,8 @@ Implemented runtime:
 - desktop Business Health panel
 - mobile Business Health card inside `MobileShell`
 - text report download for owner/partner handoff
+- atomic current-summary merge so overlapping manual refreshes cannot silently drop saved history
+- production fail-closed read/write rate-limit-provider behavior
 
 Still not implemented:
 

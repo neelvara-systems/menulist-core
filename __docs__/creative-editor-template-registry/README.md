@@ -2,8 +2,8 @@
 
 > **Feature:** Creative Editor Template Registry
 > **Status:** Implemented for MenuList printable asset customization
-> **Last Updated:** June 16, 2026
-> **Version:** 1.5
+> **Last Updated:** July 13, 2026
+> **Version:** 1.6
 
 ---
 
@@ -71,6 +71,8 @@ Product surface
 | Shared editor UI | `src/modules/creative-editor/CreativeEditor.tsx` |
 | Registry validation | `src/lib/validation/creativeEditorTemplateSchemas.ts` |
 | Registry DAL | `src/lib/creative-editor/templateRegistryDal.ts` |
+| Transaction/index boundary | `src/lib/creative-editor/templateRegistryIndexBoundary.ts` |
+| Storage ownership boundary | `src/lib/creative-editor/templateRegistryStorageBoundary.ts` |
 | Platform manager page | `src/app/(main)/platform/asset-templates/page.tsx` |
 | Platform manager UI | `src/components/templates/platform/assetTemplates/index.tsx` |
 | Firestore rules | `firestore.rules` |
@@ -82,6 +84,7 @@ Product surface
 
 | Version | Date | Changes |
 | --- | --- | --- |
+| 1.6 | July 13, 2026 | Added immutable attempt-versioned Storage objects, transactional user indexes and platform mirrors, ambiguous-write probes, ownership-scoped cleanup, cap retention, and focused boundary/rules tests. |
 | 1.5 | June 16, 2026 | Added platform asset template manager for category catalogs, draft/published/archived status, platform editor save, metadata edits, and platform template delete. |
 | 1.4 | June 15, 2026 | Simplified user templates to one store-level `default` document with `data: []`; platform/user list loading is now one category doc plus one store doc, with asset filtering in UI. |
 | 1.3 | June 15, 2026 | Moved template registry persistence from Next.js API routes to the client-side DAL, with Firestore/Storage rules enforcing scope. |

@@ -1,6 +1,6 @@
 # Public Truth Monitor Add-On - Help Doc
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Status:** Owner help draft for implemented paid runtime
 
 ---

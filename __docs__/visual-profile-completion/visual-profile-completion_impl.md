@@ -44,13 +44,13 @@ Behavior:
 
 - pass `businessCategory` and `businessType` into `OfficialPageTab`
 
-Project OBP wrapper:
+Embedded project OBP editor:
 
-`src/components/templates/main-app/projects/b2cView/officialPage/officialPageSettings.tsx`
+`src/components/templates/main-app/projects/b2cView/index.tsx` and `src/components/templates/main-app/projects/b2cView/sidebar/index.tsx`
 
 Behavior:
 
-- pass the same store category/type into the reused compact `OfficialPageTab`
+- render `MobileOfficialPageScreen` in embedded mode with the current store draft and already-loaded project summary; the same shared completion helper therefore uses current store category/type without another read
 
 ## Mobile Integration
 

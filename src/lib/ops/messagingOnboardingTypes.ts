@@ -79,7 +79,7 @@ export interface MessagingOnboardingOpsSnapshot {
   feature: {
     dashboardEnabled: boolean;
     providerMode: 'official_cloud_api';
-    accessModel: 'platform_role';
+    accessModel: 'current_persisted_platform_user';
   };
   health: MessagingOnboardingOpsHealth;
   webhookWindow: {

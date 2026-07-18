@@ -55,8 +55,12 @@ function escapeRegExp(value) {
 }
 
 const packageJson = read('package.json');
+const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
 const features = read('src/config/features.ts');
 const route = read('src/app/api/store/temp-status/route.ts');
+const postCommitHelper = read('src/lib/cache/storePublicTruthPostCommit.ts');
+const statusBoundary = read('src/lib/tempStatus/statusBoundary.ts');
+const activeStatusHook = read('src/hooks/useActiveTempStatus.ts');
 const publicBusinessApi = read('src/app/api/public/v1/business/route.ts');
 const publicBusinessProjection = read('src/lib/publicApi/businessProjection.ts');
 const clientResponse = read('src/lib/tempStatus/clientResponse.ts');
@@ -70,6 +74,9 @@ const feedbackPage = read('src/app/feedback/[projectId]/page.tsx');
 const obpResolvedSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
 const obpSchema = read('src/app/client/obp/schema.ts');
 const clientMenuPage = read('src/app/client/[[...slug]]/page.tsx');
+const schema = read('src/lib/schema/index.ts');
+const specialMenuLifecycle = read('src/database/projects/specialMenuLifecycle.ts');
+const scheduledSpecialMenuLifecycle = read('functions/src/schedulers/specialMenuLifecycle.ts');
 const readme = read('__docs__/temp-status-layer/README.md');
 const impl = read('__docs__/temp-status-layer/temp-status-layer_impl.md');
 const firebaseDoc = read('__docs__/temp-status-layer/temp-status-layer_firebase.md');
@@ -83,10 +90,18 @@ const changelog = read('__docs__/changelog.md');
 
 requireToken(
   packageJson,
-  '"verify:temporary-status-boundary": "node scripts/verification/verify-temporary-status-boundary.js"',
+  'scripts/verification/test-temporary-status-boundary.ts',
   'package scripts',
 );
 requireToken(features, 'ENABLE_TEMP_STATUS: true', 'Temporary Status feature flag');
+if (!(firestoreIndexes.fieldOverrides || []).some((entry) => (
+  entry.collectionGroup === 'stores'
+  && entry.fieldPath === 'tempStatus'
+  && Array.isArray(entry.indexes)
+  && entry.indexes.length === 0
+))) {
+  failures.push('stores.tempStatus must stay exempt from unused automatic single-field indexes');
+}
 
 [
   "export const dynamic = 'force-dynamic';",
@@ -105,6 +120,7 @@ requireToken(features, 'ENABLE_TEMP_STATUS: true', 'Temporary Status feature fla
   'requireAnyStorePermission(',
   'PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE',
   "getRateLimitForFeature('DATA_WRITE')",
+  'failClosedOnProviderError: true',
   "hashPublicRateLimitValue(userId || 'unknown')",
   'const storeRateLimitHash = hashPublicRateLimitValue(storeId);',
   'key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`',
@@ -115,12 +131,11 @@ requireToken(features, 'ENABLE_TEMP_STATUS: true', 'Temporary Status feature fla
   'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);',
   'createdBy: userId || null',
   'admin.firestore.FieldValue.delete()',
-  'revalidateTag(`menu-store-${storeId}`)',
-  'revalidateTag(`store-${storeId}`)',
-  "revalidateTag('client-stores')",
-  "revalidateTag('screen-data')",
-  "touchDigitalScreenContentVersionForStoreServer(storeId, 'storeTempStatus')",
+  'runStorePublicTruthPostCommitEffects({',
+  "touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus')",
   'invalidateOwnerBusinessAssistantPacketCache',
+  "logRuntimeFailure('store_temp_status_post_commit_failed'",
+  'effectsPending: postCommit.effectsPending, success: true',
   'logRuntimeFailure("store_temp_status_update_failed"',
   '{ error: "Failed to update status" }',
 ].forEach((token) => requireToken(route, token, 'Temporary Status route'));
@@ -131,14 +146,12 @@ requireOrder(
       'if (!FEATURE_FLAGS.ENABLE_TEMP_STATUS)',
       'const tenantId = normalizeSessionDocumentId(rawTenantId);',
       'const storeId = normalizeSessionDocumentId(rawStoreId);',
-      'requireAnyStorePermission(',
       "getRateLimitForFeature('DATA_WRITE')",
     'readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES',
     'RequestSchema.safeParse(body)',
+    'requireAnyStorePermission(',
     'await storeRef.update',
-    'revalidateTag(`menu-store-${storeId}`)',
-    "touchDigitalScreenContentVersionForStoreServer(storeId, 'storeTempStatus')",
-    'invalidateOwnerBusinessAssistantPacketCache',
+    'runStorePublicTruthPostCommitEffects({',
   ],
   'Temporary Status route admission and cache order',
 );
@@ -148,10 +161,19 @@ forbidToken(route, 'doc(String(storeId))', 'Temporary Status route raw store ref
 forbidToken(route, 'console.error', 'Temporary Status route diagnostics');
 
 [
+  'params.deps.revalidate(`menu-store-${storeId}`)',
+  'params.deps.revalidate(`store-${storeId}`)',
+  "params.deps.revalidate('client-stores')",
+  "params.deps.revalidate('screen-data')",
+  'Promise.allSettled',
+].forEach((token) => requireToken(postCommitHelper, token, 'Temporary Status post-commit helper'));
+
+[
   'TEMP_STATUS_RESPONSE_JSON_MAX_BYTES = 8 * 1024',
   'readJsonResponseWithLimit<unknown>',
   'isTempStatusSuccessResponse',
   'value.success === true',
+  "typeof value.effectsPending === 'boolean'",
   'temp_status_response_parse_failed',
   'temp_status_response_invalid',
   "new Error('Temporary status request failed')",
@@ -167,13 +189,23 @@ forbidToken(clientResponse, '.json().catch', 'Temporary Status client response p
   "readTempStatusResponse(res, 'clear'",
   'desktop_temp_status_set_failed',
   'desktop_temp_status_clear_failed',
-  "setStoreDetails((prev: any) => ({ ...prev, tempStatus: currentStatus }))",
+  "setStoreDetails((prev: any) => ({ ...prev, tempStatus: storedStatus }))",
   "setStoreDetails((prev: any) => ({ ...prev, tempStatus: prevStatus }))",
   "setError('Failed to set status')",
   "setError('Failed to clear status')",
 ].forEach((token) => requireToken(desktopCard, token, 'Desktop Temporary Status card'));
 requireOccurrenceAtLeast(desktopCard, "fetch('/api/store/temp-status'", 2, 'Desktop Temporary Status route calls');
 requireOccurrenceAtLeast(desktopCard, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Desktop Temporary Status request policy');
+requireOrder(
+  desktopCard,
+  ["readTempStatusResponse(res, 'set'", "antdMessage.success('Temporary status is live.')"],
+  'Desktop Temporary Status set acknowledgement before success copy',
+);
+requireOrder(
+  desktopCard,
+  ["readTempStatusResponse(res, 'clear'", "antdMessage.success('Temporary status cleared.')"],
+  'Desktop Temporary Status clear acknowledgement before success copy',
+);
 forbidToken(desktopCard, 'res.json()', 'Desktop Temporary Status card');
 forbidToken(desktopCard, '.json().catch', 'Desktop Temporary Status card');
 forbidToken(desktopCard, 'data.error ||', 'Desktop Temporary Status card');
@@ -193,6 +225,16 @@ forbidToken(desktopCard, 'err.message ||', 'Desktop Temporary Status card');
 ].forEach((token) => requireToken(mobileTempStatus, token, 'Mobile Temporary Status screen'));
 requireOccurrenceAtLeast(mobileTempStatus, "fetch('/api/store/temp-status'", 2, 'Mobile Temporary Status route calls');
 requireOccurrenceAtLeast(mobileTempStatus, '...AUTH_BROWSER_REQUEST_POLICY', 2, 'Mobile Temporary Status request policy');
+requireOrder(
+  mobileTempStatus,
+  ["readTempStatusResponse(res, 'set'", 'Toast.show({'],
+  'Mobile Temporary Status set acknowledgement before success copy',
+);
+requireOrder(
+  mobileTempStatus.slice(mobileTempStatus.indexOf("readTempStatusResponse(res, 'clear'")),
+  ["readTempStatusResponse(res, 'clear'", 'Toast.show({'],
+  'Mobile Temporary Status clear acknowledgement before success copy',
+);
 forbidToken(mobileTempStatus, 'res.json()', 'Mobile Temporary Status screen');
 forbidToken(mobileTempStatus, '.json().catch', 'Mobile Temporary Status screen');
 forbidToken(mobileTempStatus, "throw new Error('Failed to set status')", 'Mobile Temporary Status screen');
@@ -212,6 +254,23 @@ forbidToken(mobileTempStatus, "throw new Error('Failed to clear status')", 'Mobi
 ].forEach((token) => requireToken(mobileHours, token, 'Mobile Today Temporary Status shortcuts'));
 requireOccurrenceAtLeast(mobileHours, "fetch('/api/store/temp-status'", 3, 'Mobile Today Temporary Status route calls');
 requireOccurrenceAtLeast(mobileHours, '...AUTH_BROWSER_REQUEST_POLICY', 3, 'Mobile Today Temporary Status request policy');
+[
+  "readTempStatusResponse(res, 'set'",
+  "readTempStatusResponse(res, 'clear'",
+].forEach((token) => requireToken(mobileHours, token, 'Mobile Today acknowledgement boundary'));
+const firstTodaySetAck = mobileHours.indexOf("readTempStatusResponse(res, 'set'");
+const secondTodaySetAck = mobileHours.indexOf("readTempStatusResponse(res, 'set'", firstTodaySetAck + 1);
+const todayClearAck = mobileHours.indexOf("readTempStatusResponse(res, 'clear'");
+[
+  ['close-today', firstTodaySetAck],
+  ['set-status', secondTodaySetAck],
+  ['clear-status', todayClearAck],
+].forEach(([label, acknowledgementIndex]) => {
+  const successIndex = mobileHours.indexOf('Toast.show({', acknowledgementIndex);
+  if (acknowledgementIndex === -1 || successIndex === -1) {
+    failures.push(`Mobile Today ${label} missing acknowledgement-before-success boundary`);
+  }
+});
 forbidToken(mobileHours, 'res.json()', 'Mobile Today Temporary Status shortcuts');
 forbidToken(mobileHours, '.json().catch', 'Mobile Today Temporary Status shortcuts');
 forbidToken(mobileHours, 'if (!res.ok) throw new Error();', 'Mobile Today Temporary Status shortcuts');
@@ -226,15 +285,26 @@ forbidToken(mobileHours, 'if (!res.ok) throw new Error();', 'Mobile Today Tempor
 ].forEach((token) => requireToken(mobileMore, token, 'Mobile More Temporary Status route'));
 
 [
-  'if (!tempStatus) return null;',
-  'const expiresAt = new Date(tempStatus.expiresAt);',
-  'if (expiresAt.getTime() <= now.getTime()) return null;',
-  "const message = tempStatus.message || 'Temporary notice';",
+  "'use client';",
+  'const activeStatus = useActiveTempStatus(tempStatus);',
+  'if (!activeStatus) return null;',
+  'activeStatus.message',
 ].forEach((token) => requireToken(tempStatusBanner, token, 'Temporary Status banner'));
 
 [
-  'const isActiveTempStatus = (tempStatus?: { expiresAt?: string } | null): boolean =>',
-  'Number.isFinite(expiresAt) && expiresAt > Date.now()',
+  'export function getActiveTempStatus(',
+  'if (!Number.isFinite(nowMs) || !Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return null;',
+  'normalizeTempStatusMessage(type, status.message)',
+  'TEMP_STATUS_MESSAGE_MAX_LENGTH = 100',
+].forEach((token) => requireToken(statusBoundary, token, 'Canonical Temporary Status boundary'));
+[
+  'MAX_TIMEOUT_MS = 2_147_000_000',
+  'const activeStatus = useMemo(() => getActiveTempStatus(value, nowMs)',
+  'window.setTimeout(() => setNowMs(Date.now()), delay)',
+].forEach((token) => requireToken(activeStatusHook, token, 'Temporary Status live-expiry hook'));
+
+[
+  'getActiveTempStatus(storeDetails?.tempStatus)',
   'FEATURE_FLAGS.ENABLE_TEMP_STATUS && activeTempStatus',
   '<TempStatusBanner tempStatus={activeTempStatus as any} variant="pill" />',
 ].forEach((token) => requireToken(menuPage, token, 'Digital menu Temporary Status output'));
@@ -261,19 +331,37 @@ forbidToken(publicBusinessApi, 'tempStatus: storeData.tempStatus ? {', 'Public b
 [
   'export function getActivePublicTempStatus(',
   'value: unknown,',
-  'const expiresAtMs = Date.parse(status.expiresAt);',
-  'if (!Number.isFinite(expiresAtMs) || expiresAtMs <= nowMs) return null;',
-  "PUBLIC_TEMP_STATUS_TYPES.has(status.type as PublicTempStatus['type'])",
-  "message.trim().slice(0, 100)",
+  'return getActiveTempStatus(value, nowMs);',
 ].forEach((token) => requireToken(publicBusinessProjection, token, 'Public business Temporary Status projection'));
 
 [
-  'buildTempStatusSchema(storeData?.tempStatus)',
+  'buildTempStatusSchema(storeData?.tempStatus, storeData?.timeZone)',
   'specialOpeningHoursSpecification: tempStatusHours',
 ].forEach((token) => {
   requireToken(obpSchema, token, 'OBP schema Temporary Status output');
   requireToken(clientMenuPage, token, 'Client menu schema Temporary Status output');
 });
+
+[
+  "activeStatus.type !== 'closed_today'",
+  'validThrough: today',
+  'description: activeStatus.message',
+].forEach((token) => requireToken(schema, token, 'Temporary Status structured-data boundary'));
+
+[
+  "type: 'special_menu'",
+  'expiresAt: currentMetadata.endsAt',
+  'sourceProjectId: scope.project.projectId',
+  'storeUpdate.tempStatus = deleteField();',
+].forEach((token) => requireToken(specialMenuLifecycle, token, 'Browser Special Menu Temporary Status ownership'));
+[
+  "storeData.tempStatus?.type !== 'special_menu'",
+  'sourceProjectId === projectId',
+  "type: 'special_menu'",
+  'expiresAt: metadata.endsAt',
+  'sourceProjectId: projectId',
+  'storeUpdate.tempStatus = FieldValue.delete();',
+].forEach((token) => requireToken(scheduledSpecialMenuLifecycle, token, 'Scheduled Special Menu Temporary Status ownership'));
 
 [
   '## Source Gate',

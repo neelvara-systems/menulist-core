@@ -1,15 +1,19 @@
+'use client';
+
 /**
  * TempStatusBanner — Displays temporary status notice on public pages
  * 
  * Used on OBP and digital menu pages to show banners like
  * "Closed today", "Opening late", "Special menu available today".
  * 
- * Server-safe: No client hooks. Expiry check is pure date comparison.
+ * Uses the shared expiry hook so a mounted customer page hides the banner at
+ * the exact expiry boundary without requiring a refresh.
  * 
  * @see __docs__/temp-status-layer/temp-status-layer_impl.md
  */
 
 import { LuAlarmClock, LuChefHat, LuClock, LuInfo, LuLock, LuUtensils } from 'react-icons/lu';
+import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import styles from './tempStatusBanner.module.scss';
 
 interface TempStatusBannerProps {
@@ -32,20 +36,15 @@ const TYPE_ICONS = {
 };
 
 export default function TempStatusBanner({ tempStatus, variant = 'banner' }: TempStatusBannerProps) {
-    if (!tempStatus) return null;
+    const activeStatus = useActiveTempStatus(tempStatus);
+    if (!activeStatus) return null;
 
-    // Check expiry (server-side safe — pure date comparison)
-    const now = new Date();
-    const expiresAt = new Date(tempStatus.expiresAt);
-    if (expiresAt.getTime() <= now.getTime()) return null;
-
-    const Icon = TYPE_ICONS[tempStatus.type] || LuInfo;
-    const message = tempStatus.message || 'Temporary notice';
+    const Icon = TYPE_ICONS[activeStatus.type] || LuInfo;
 
     return (
         <div className={`${styles.banner} ${variant === 'pill' ? styles.pill : ''}`}>
             <span className={styles.icon}><Icon aria-hidden="true" size={16} /></span>
-            <span className={styles.message}>{message}</span>
+            <span className={styles.message}>{activeStatus.message}</span>
         </div>
     );
 }

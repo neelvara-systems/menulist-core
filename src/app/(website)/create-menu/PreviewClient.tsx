@@ -61,6 +61,9 @@ interface PreviewClientProps {
 
 const CREATE_MENU_PREVIEW_RESPONSE_JSON_MAX_BYTES = 4 * 1024 * 1024;
 const CREATE_MENU_PREVIEW_CLAIM_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
+const CREATE_MENU_PREVIEW_POLL_INTERVAL_MS = 5_000;
+const CREATE_MENU_PREVIEW_MAX_POLLS = 36;
+const CREATE_MENU_SESSION_REFRESH_TIMEOUT_MS = 3_000;
 
 type PreviewDraftResponse = Omit<Partial<DraftData>, 'status'> & {
     status?: unknown;
@@ -251,7 +254,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const searchParams = useSearchParams();
     const t = useTranslations('Website');
     const isClaimMode = searchParams.get('claim') === 'true';
-    const { status: sessionStatus, update: updateSession } = useSession();
+    const { data: session, status: sessionStatus, update: updateSession } = useSession();
     const createMenuPath = useWebsitePath('/create-menu');
     const createMenuSuccessPath = useWebsitePath('/create-menu/success');
     const previewCallbackUrl = useWebsitePath(`/create-menu/preview/${draftId}${isClaimMode ? '?claim=true' : ''}`);
@@ -261,6 +264,9 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
     const [draft, setDraft] = useState<DraftData | null>(null);
     const [loading, setLoading] = useState(true);
     const [pollCount, setPollCount] = useState(0);
+    const [pollCycle, setPollCycle] = useState(0);
+    const [pollTimedOut, setPollTimedOut] = useState(false);
+    const hasExistingAccount = Boolean(session?.user?.tenantId && session?.user?.storeId);
 
     // Claim form state
     const [businessName, setBusinessName] = useState('');
@@ -373,26 +379,35 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
 
         if (sessionStatus !== 'authenticated') return;
 
-        let timer: NodeJS.Timeout;
+        let timer: ReturnType<typeof setTimeout> | undefined;
         let active = true;
+        let attempts = 0;
+        setPollTimedOut(false);
 
         const poll = async () => {
-            const status = await fetchDraft();
-            if (active && (status === 'pending' || status === 'processing') && pollCount < 30) {
-                timer = setTimeout(() => {
-                    setPollCount(prev => prev + 1);
-                    poll();
-                }, 2000); // Poll every 2 seconds
+            if (!active) return;
+            if (attempts >= CREATE_MENU_PREVIEW_MAX_POLLS) {
+                setPollTimedOut(true);
+                return;
             }
+            attempts += 1;
+            setPollCount(attempts);
+            const status = await fetchDraft();
+            if (!active || (status !== 'pending' && status !== 'processing')) return;
+            if (attempts >= CREATE_MENU_PREVIEW_MAX_POLLS) {
+                setPollTimedOut(true);
+                return;
+            }
+            timer = setTimeout(poll, CREATE_MENU_PREVIEW_POLL_INTERVAL_MS);
         };
 
         poll();
 
         return () => {
             active = false;
-            clearTimeout(timer);
+            if (timer) clearTimeout(timer);
         };
-    }, [fetchDraft, pollCount, router, sessionStatus, signInUrl]);
+    }, [fetchDraft, pollCycle, router, sessionStatus, signInUrl]);
 
     const handleSignUp = () => {
         if (sessionStatus === 'authenticated') {
@@ -409,7 +424,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
             setClaimError(t('CreateMenu.previewClaimBusinessNameRequired'));
             return;
         }
-        if (!city.trim() || city.trim().length < 2) {
+        if (!hasExistingAccount && (!city.trim() || city.trim().length < 2)) {
             setClaimError(t('CreateMenu.previewClaimCityRequired'));
             return;
         }
@@ -423,7 +438,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     businessName: businessName.trim(),
                     businessType: draft?.detectedBusinessType || undefined,
                     businessCategory: draft?.detectedBusinessCategory || undefined,
-                    city: city.trim(),
+                    city: hasExistingAccount ? undefined : city.trim(),
                     phone: phone.trim() || undefined,
                     addressLine: addressLine.trim() || undefined,
                 }),
@@ -470,9 +485,16 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                 }
             }
             try {
-                await updateSession();
-            } catch {
+                await Promise.race([
+                    updateSession(),
+                    new Promise((resolve) => setTimeout(resolve, CREATE_MENU_SESSION_REFRESH_TIMEOUT_MS)),
+                ]);
+            } catch (error) {
                 // Non-blocking: the next authenticated page can refresh session state again.
+                logRuntimeFailure('public_create_menu_claim_session_refresh_failed', error, {
+                    ...getBoundedRuntimeStringContext('draftId', draftId),
+                    isNewAccount: data.isNewAccount === true,
+                });
             }
             const params = new URLSearchParams({
                 menuUrl: data.menuUrl,
@@ -516,6 +538,29 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                     <LuLoader size={40} color="var(--ws-brand-secondary)" style={{ animation: 'spin 1s linear infinite' }} />
                     <p style={{ fontSize: '16px', color: 'var(--ws-text-secondary)', marginTop: '16px' }}>{t('CreateMenu.previewLoading')}</p>
                     <style>{spinCSS}</style>
+                </div>
+            </AnimateOnScroll>
+        );
+    }
+
+    if ((draft?.status === 'pending' || draft?.status === 'processing') && pollTimedOut) {
+        return (
+            <AnimateOnScroll>
+                <div style={containerStyle}>
+                    <LuAlertCircle size={48} color="var(--ws-warning)" />
+                    <p style={{ fontSize: '15px', color: 'var(--ws-text-secondary)', marginTop: '16px', maxWidth: '360px', textAlign: 'center' }}>
+                        {t('CreateMenu.previewErrorConnection')}
+                    </p>
+                    <button
+                        onClick={() => {
+                            setPollCount(0);
+                            setPollTimedOut(false);
+                            setPollCycle((cycle) => cycle + 1);
+                        }}
+                        style={primaryBtnStyle}
+                    >
+                        {t('CreateMenu.tryAgain')}
+                    </button>
                 </div>
             </AnimateOnScroll>
         );
@@ -890,7 +935,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                 }}
                             />
                         </AnimateStaggerChild>
-                        <AnimateStaggerChild index={1}>
+                        {!hasExistingAccount ? <AnimateStaggerChild index={1}>
                             <input
                                 type="text"
                                 value={city}
@@ -907,7 +952,7 @@ export default function PreviewClient({ draftId }: PreviewClientProps) {
                                     boxSizing: 'border-box',
                                 }}
                             />
-                        </AnimateStaggerChild>
+                        </AnimateStaggerChild> : null}
                         <AnimateStaggerChild index={2}>
                             <input
                                 type="tel"

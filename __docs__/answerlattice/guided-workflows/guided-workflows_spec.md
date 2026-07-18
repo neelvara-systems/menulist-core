@@ -1,247 +1,129 @@
-# Answerlattice — Guided Workflows: Business Specification
+# Answerlattice Guided Workflows Specification
 
-> **Status:** DESIGNED — Ready for Implementation
-> **Version:** 1.0.0
-> **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
-> **Audience:** CEO, PM, Clients
-> **Feature Flag:** `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`
+> **Status:** Implemented, workspace opt-in
+> **Version:** 2.1.0
+> **Last verified:** 2026-07-18
 
----
+## Problem
 
-## 1. Problem Statement
+Static support instructions still make an end user translate a generic answer into the live product. The user may be on the correct screen but not know which control applies, whether the interface has changed, or whether the expected result occurred.
 
-Most SaaS support queries fall into three classes:
+Answerlattice already owns approved canonical answers and safe page context. Guided Workflows use those existing contracts to help a user complete an approved linear procedure without giving Answerlattice arbitrary control of the client product.
 
-| Class | Example | Current Answerlattice Answer | Problem |
-|-------|---------|------------------------|---------|
-| 1 — Concept | "What is workspace visibility?" | Explanation text ✅ | Works well |
-| 2 — Navigation | "Where do I change billing email?" | Explanation text ⚠️ | Adequate but could be more precise |
-| 3 — Procedural | "How to invite a teammate?" | Explanation text ❌ | Paragraphs fail. Users need steps. |
+## Users
 
-**~60-70% of SaaS support load is Class 3 (procedural)**. These queries require deterministic, step-by-step instructions — not prose explanations. Current Answerlattice canonical answers serve all three classes as text blobs (`structuredSummary` + `detailedExplanation`), which is insufficient for procedural queries.
+- **SaaS founder or support owner:** approves the procedure and enables guidance for the workspace.
+- **Client engineer:** adds stable semantic target attributes and emits verified workflow events.
+- **End user:** starts a guide from an approved procedure answer and remains in control of every product action.
+- **Support operator:** receives an escalation after a guide cannot resolve the task.
 
-**Industry evidence:**
-- Intercom Fin 3 (2025) introduced "Procedures" as first-class objects for deterministic multi-step interactions
-- Zendesk AI agents use "Generative Procedures" tied to use cases for step-by-step resolution
-- Schema.org defines `HowTo` + `HowToStep` as the web standard for structured instructions
-- SOP documentation best practices confirm: step-based procedures allow even unfamiliar users to execute tasks reliably
+## Functional Contract
 
----
+### Owner
 
-## 2. Solution
+1. Create or edit a canonical answer.
+2. Choose `procedure`.
+3. Add 1-12 ordered steps.
+4. Optionally add a semantic target, expected event, expected result, and troubleshooting text.
+5. Approve the canonical answer through existing governance.
+6. Enable Guided Resolution in Widget Management.
+7. Install semantic target/event instrumentation for selected workflows.
 
-Add a **procedure structure** to Answerlattice's existing canonical answer system. When a canonical answer represents a procedural workflow, it carries structured steps instead of (or in addition to) prose text.
+### End User
 
-### What Changes
+1. Ask a question in the Answerlattice widget.
+2. Receive an approved canonical procedure.
+3. Select **Guide me**.
+4. See the current target highlighted when it exists.
+5. Perform the product action.
+6. Continue manually only when the step has no expected event. Event-gated steps advance only after the matching client-verified event.
+7. Complete, report a missing target, or escalate.
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Answer content | Text only (structuredSummary + detailedExplanation) | Text + optional structured procedure (steps, warnings, prerequisites) |
-| Answer type | Implicit (always explanation) | Explicit: `explanation` \| `navigation` \| `procedure` |
-| Widget response | Plain text | Plain text OR structured steps (based on answerType) |
-| Authoring UI | Text areas only | Text areas + step editor (when procedure) |
-| Retrieval | Returns text | Returns text OR structured procedure object |
+## Procedure Contract
 
-### What Does NOT Change
+| Field | Required | Constraint |
+|---|---|---|
+| `procedureSlug` | No | Lowercase alphanumeric/underscore, max 60 |
+| `steps` | Yes | 1-12 ordered steps |
+| `stepOrder` | Yes | Positive, unique integer |
+| `action` | Yes | Existing approved action vocabulary |
+| `instruction` | Yes | Max 80 characters |
+| `target` | No | Semantic ID, max 120 |
+| `expectedEvent` | No | Semantic ID, max 120 |
+| `expectedResult` | No | Max 120 characters |
+| `troubleshootingHint` | No | Max 200 characters |
+| `warnings` | No | Maximum 5 |
+| `prerequisites` | No | Maximum 5 |
 
-- Canonical-first retrieval pipeline (same 3-layer stack)
-- Entity matching and specificity scoring
-- Governance: drift detection, mutation proposals, audit logs
-- 2-read retrieval cost (search index + answer document)
-- Existing text-only answers continue working unchanged
-- Feature flag architecture
+A semantic ID matches:
 
----
-
-## 3. User Stories
-
-### For SaaS Founders (Answerlattice Clients)
-
-**US-1:** As a SaaS founder, I want to create step-by-step procedure answers so that my users get clear, actionable instructions instead of paragraphs.
-
-**US-2:** As a SaaS founder, I want to add warnings to procedural answers so that users are alerted before performing destructive actions (e.g., "Deleting a workspace removes all data permanently").
-
-**US-3:** As a SaaS founder, I want to add prerequisites to procedural answers so that users know what role/plan/state is required before attempting a workflow (e.g., "Requires Admin role").
-
-**US-4:** As a SaaS founder, I want procedure answers to be version-tracked so that when my product UI changes, outdated procedures are flagged for review.
-
-**US-5:** As a SaaS founder, I want the mutation engine to propose content refinements for procedure answers when users report they're unclear or outdated.
-
-### For End Users (Users of SaaS Products Using Answerlattice)
-
-**US-6:** As an end user, I want to receive numbered step-by-step instructions when I ask "how to" questions, so I can follow along without confusion.
-
-**US-7:** As an end user, I want to see warnings before following destructive procedures, so I understand the consequences.
-
-**US-8:** As an end user, I want to see prerequisites clearly, so I know if I have the right permissions before attempting a workflow.
-
-### For the Answerlattice System
-
-**US-9:** As the retrieval engine, when a `how_to` intent is detected and the matched canonical answer has `answerType === 'procedure'`, I return the structured procedure object instead of just text.
-
-**US-10:** As the drift engine, when a product release occurs, I flag procedure answers whose `productBinding.lastValidatedInVersion` is below the new release version — because product UI changes frequently break procedure steps.
-
----
-
-## 4. Answer Type Classification
-
-| Answer Type | When to Use | Content Required | Example |
-|-------------|-------------|------------------|---------|
-| `explanation` | Concept questions, feature descriptions | `structuredSummary` + `detailedExplanation` | "What is SSO?" |
-| `navigation` | Location questions | `structuredSummary` + optional `procedure` (1-3 steps) | "Where is the billing page?" |
-| `procedure` | How-to questions, workflow instructions | `procedure.steps[]` (required, 1-12 steps) | "How to invite a teammate?" |
-
-**Default:** All existing answers are `explanation` (backward compatible).
-
----
-
-## 5. Procedure Step Structure
-
-Each step represents **one atomic user action**.
-
-| Field | Required | Description | Example |
-|-------|----------|-------------|---------|
-| `stepOrder` | ✅ | Integer position (1-based) | `1` |
-| `action` | ✅ | Verb from approved vocabulary | `"click"` |
-| `instruction` | ✅ | Human-readable instruction (≤80 chars) | `"Click Team Members"` |
-| `target` | Optional | UI element identifier | `"team_members_tab"` |
-| `expectedResult` | Optional | What should happen after | `"Team members page opens"` |
-| `troubleshootingHint` | Optional | Fallback if step fails | `"If disabled, check permissions"` |
-
-### Approved Action Vocabulary (v1)
-
-```
-open, navigate, click, select, enter, toggle, submit, confirm, 
-download, upload, copy, paste, scroll, expand, collapse
+```text
+^[a-z0-9]+(?:[._:-][a-z0-9]+)*$
 ```
 
-15 verbs. Enforced at write-time. Extensible via additive update.
+Examples: `billing.change_plan`, `slack.oauth.started`.
 
-### Step Constraints
+## Trust Invariants
 
-- **Max steps per procedure:** 12
-- **Max instruction length:** 80 characters
-- **One action per step:** No compound instructions
-- **Linear flow only:** No conditional branching in v1
-- **No screenshots/media in v1:** Text-only steps
+1. Guidance is returned only with an approved canonical widget result.
+2. The client declares targets through `data-answerlattice-target`; Answerlattice does not store CSS selectors.
+3. The client declares successful state changes by emitting an allowlisted event.
+4. The runtime never invokes `.click()`, `eval()`, arbitrary callbacks, or product mutations.
+5. No raw DOM, form values, tokens, screenshots, or unrestricted application state are collected.
+6. The public outcome endpoint derives product/workspace scope from the validated widget credential.
+7. The endpoint requires an exact scoped widget search-history document with `canonical === true`.
+8. The endpoint is byte-bounded, strict-schema validated, origin/runtime-token protected, rate-limited, and idempotent.
+9. Terminal outcomes are signals, not product truth.
+10. Human approval remains required for every canonical answer change.
 
----
+## Outcome States
 
-## 6. Warnings and Prerequisites
+| State | Meaning | Write behavior |
+|---|---|---|
+| `completed` | Every manual step was confirmed and every event-gated step received its matching verified event | One deduplicated guided-resolution signal |
+| `abandoned` | The user explicitly stopped before completion | One deduplicated guided-resolution signal |
+| `target_missing` | A declared semantic target was not found | One deduplicated guided-resolution signal |
+| `escalated` | The user requested support from a blocked step | One deduplicated escalation signal |
 
-### Warnings
+Closing, hiding, navigating, or changing context clears the in-memory guide without creating an outcome. If signal mutation is disabled, the endpoint acknowledges the request with `recorded: false` and performs no Firestore write.
 
-Displayed before or after procedure steps. For destructive or important context.
+## Success Measures
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `message` | ✅ | Warning text (≤200 chars) |
-| `severity` | ✅ | `info` \| `warning` \| `destructive` |
+The first proof should use:
 
-**Examples:**
-- `{ message: "Deleting a workspace permanently removes all projects", severity: "destructive" }`
-- `{ message: "Invited users gain access immediately", severity: "info" }`
+- task completion rate;
+- target-missing rate;
+- median steps completed;
+- escalation rate;
+- time to completion measured by the client product;
+- repeated issue reduction after an approved knowledge update.
 
-### Prerequisites
+Chat volume and raw answer count are not success measures.
 
-Conditions that must be met before executing the procedure.
+## MenuList Reference Scope
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `description` | ✅ | Human-readable prerequisite (≤200 chars) |
-| `type` | ✅ | `role` \| `plan` \| `state` \| `general` |
-| `value` | Optional | Machine-readable identifier (e.g., `"admin"`, `"pro"`) |
+The first reference implementation is deliberately narrow:
 
-**Examples:**
-- `{ description: "You must be a workspace owner", type: "role", value: "owner" }`
-- `{ description: "Requires Pro plan or higher", type: "plan", value: "pro" }`
+| Workflow | Semantic completion evidence |
+|---|---|
+| Import first menu | accepted job, review ready, acknowledged apply |
+| Recover failed import | visible retry control, accepted retry job, acknowledged apply |
+| Publish and check menu | acknowledged publish, optional verified health result, Share/open intent |
 
----
+Events contain only fixed semantic names. They do not contain menu content, owner/customer identifiers, URLs, job IDs, form values, or errors.
 
-## 7. Procedure Authoring Flow
+MenuList mobile controls use the same target/event vocabulary for parity. This does not enable the currently suppressed mobile widget.
 
-### Manual Creation (v1)
-1. Founder opens Canonical Answer Editor in Governance Hub
-2. Creates new answer → selects `answerType: procedure`
-3. Step editor appears: add steps with action dropdown + instruction input
-4. Optionally adds warnings and prerequisites
-5. Saves → answer enters standard governance lifecycle (draft/active/archived)
+## Out of Scope
 
-### AI-Assisted Drafting (Future — v2)
-- Founder pastes documentation text
-- AI segments into atomic steps using approved action vocabulary
-- Founder reviews and refines
-- Goes through same approval flow
-
----
-
-## 8. Widget/API Response Format
-
-When a procedure answer is returned:
-
-```json
-{
-  "answer": "To invite a teammate, follow these steps:",
-  "canonical": true,
-  "confidence": "high",
-  "answerType": "procedure",
-  "procedure": {
-    "steps": [
-      { "stepOrder": 1, "action": "open", "instruction": "Open Settings" },
-      { "stepOrder": 2, "action": "click", "instruction": "Click Team Members" },
-      { "stepOrder": 3, "action": "click", "instruction": "Click Invite User" }
-    ],
-    "warnings": [
-      { "message": "Invited users gain access immediately", "severity": "info" }
-    ],
-    "prerequisites": [
-      { "description": "You must be a workspace admin", "type": "role", "value": "admin" }
-    ]
-  }
-}
-```
-
-When an explanation answer is returned (unchanged):
-
-```json
-{
-  "answer": "SSO allows users to authenticate using their organization's identity provider.",
-  "canonical": true,
-  "confidence": "high",
-  "answerType": "explanation"
-}
-```
-
----
-
-## 9. Success Metrics
-
-| Metric | Target | How Measured |
-|--------|--------|--------------|
-| Procedure coverage | 30%+ of canonical answers are type `procedure` within 3 months | Count by answerType |
-| Canonical hit rate for `how_to` queries | Increase by 15%+ | Coverage KPI filtered by intent |
-| User satisfaction on procedure answers | Higher than text-only answers | Feedback signals on procedure vs explanation answers |
-| Procedure step clarity | Average ≤5 steps per procedure | Step count aggregation |
-
----
-
-## 10. Out of Scope (v1)
-
-- Conditional branching / if-else logic in steps
-- Screenshots / media attachments in steps
-- Interactive guided walkthroughs / UI highlighting
-- Automated step generation from documentation
-- Sub-procedures / procedure chaining
-- Product tour automation
-- Step analytics (which step users fail on)
-
-These are valid future enhancements. The v1 architecture supports them without redesign.
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-03-08 | 1.0.0 | Initial specification |
+- arbitrary browser control;
+- branching or sub-procedures;
+- registered write actions;
+- sensitive account actions;
+- automatic target discovery;
+- visual control recognition;
+- DOM/screenshot capture;
+- automatic approval or publication;
+- proactive guidance;
+- dedicated owner analytics that require raw event scans.
+- automatic publication of reference procedure drafts.

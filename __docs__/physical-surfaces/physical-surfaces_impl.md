@@ -208,9 +208,11 @@ function getValidUntil(days: number): Timestamp {
 
 ---
 
-## Backend: Current Integration
+## Backend: Legacy Read Compatibility
 
-Physical-surface eligibility is stored on `platformSummary/campaigns_{sId}.physicalSurfaces` and read through `getTodayCampaigns`. The old campaign sync helper has been removed from active code; any future writer must update the summary document directly in the same write path that creates or mutates the prepared Today action.
+`getTodayCampaigns()` still reads an already-populated `platformSummary/campaigns_{sId}.physicalSurfaces` field for desktop Today and mobile Hours compatibility. Current source has no active writer for this field, and `calculatePhysicalSurfaceEligibility()` has no runtime caller. The normal campaign complete/skip mutations do not create it.
+
+Do not claim current autonomous generation from this legacy module. Any future reactivation requires an explicit product decision and must transactionally update or clear eligibility in the same authoritative path that creates, changes, resolves, or invalidates the prepared Today action. New supported physical identity output belongs to Menu Kit and Print Menu Surfaces instead.
 
 ---
 

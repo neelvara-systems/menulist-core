@@ -108,31 +108,33 @@ Do not enter personal contact details. Business identities and source URLs expir
 | 02 | Grumpy Girl Coffee | Cafe | Indiranagar | https://grumpygirlcoffee.in/ | Official page exposes named menu cards and some prices, but the fetched page did not provide a complete independently reviewable current list and some indexed items had no visible price | 2026-07-10 | Unsure | None | Re-review the official menu experience before admission; no contact |
 | 03 | Eddy's Cafe | Cafe | Indiranagar | https://www.eddyscafe.com/menu | Official menu route presents a 14-image menu; item names, prices, and availability were not machine-readable in the reviewed page | 2026-07-10 | Pass | None | Hold for founder or partner introduction; no contact |
 | 04 | Nanav Cafe | Cafe | Indiranagar | https://www.nanavcafe.com/ | Official first-party page exposes a broad menu with item names and prices in readable page content; no clear current-list gap was established | 2026-07-10 | Fail | None | Close unless later owner evidence shows a different problem |
-| 05 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 06 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 07 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 08 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 09 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 10 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 11 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 12 | Pending | Pending | Indiranagar | Pending | Pending | Pending | Unreviewed | None | Research evidence |
+| 05 | Give Me 5 Cafe | Cafe | Indiranagar | https://www.greenenterprise.co.in/giveme5cafe/ | Official first-party page makes the current menu dependent on a downloadable Adobe PDF rather than a directly reviewable customer list | 2026-07-15 | Pass | None | Hold for founder or partner introduction; no contact |
+| 06 | Vanamo | Cafe/restaurant | Indiranagar | https://vanamo.in/ | Official page requires a menu download or QR scan; the current item and price list was not exposed in the reviewed page content | 2026-07-15 | Pass | None | Hold for founder or partner introduction; no contact |
+| 07 | Casa Fresco | Cafe/restaurant | Indiranagar | https://casafresco.in/ | Official page confirms the Indiranagar location and discusses the menu, but the reviewed page did not expose a complete current item and price list | 2026-07-15 | Unsure | None | Re-review the first-party menu destination; no contact |
+| 08 | Clean & Green Cafe | Cafe | Indiranagar | https://www.eatcleanandgreen.com/ | Official page confirms the Indiranagar cafe and describes menu curation, but the reviewed page did not expose a complete current item and price list | 2026-07-15 | Unsure | None | Re-review the first-party menu destination; no contact |
+| 09 | Meld | Bakery/restaurant | Indiranagar | https://www.meldfoods.com/ | Official page says the 100 Feet Road venue opens in July 2026 and currently routes a limited online menu through Airmenus; live operating and menu state is not yet established | 2026-07-15 | Unsure | None | Re-review only after the venue is confirmed open; no contact |
+| 10 | Lavonne Cafe | Patisserie/cafe group | Indiranagar | https://www.lavonnecafe.com/locations/indiranagar-cafe/ | Official site exposes an Indiranagar location and menu route across a multi-location group; no first-pod current-list gap was established | 2026-07-15 | Fail | None | Exclude from the independent first pod |
+| 11 | Magnolia Bakery | Bakery chain | Indiranagar | https://magnoliabakery.in/l/2 | Official location page supplies a downloadable menu, but the business is an established multi-location international chain outside the first-pod profile | 2026-07-15 | Fail | None | Exclude from the independent first pod |
+| 12 | Brik Oven | Restaurant group | Indiranagar | https://www.brikoven.com/landingpage | Official site presents location selection and multiple Bengaluru outlets; the business is outside the independent first-pod profile | 2026-07-15 | Fail | None | Exclude from the independent first pod |
 | 13 | Vienna Bakehouse & Kitchen | Bakery/cafe | Koramangala | https://www.viennabakehouse.com/media/menu.pdf | Official site links the full menu as a PDF while the main page shows category-level descriptions; current item details depend on the PDF | 2026-07-10 | Pass | None | Hold for founder or partner introduction; no contact |
-| 14 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 15 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 16 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 17 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 18 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 19 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 20 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 21 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 22 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 23 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 24 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
-| 25 | Pending | Pending | Koramangala | Pending | Pending | Pending | Unreviewed | None | Research evidence |
+| 14 | Bao To Me | Restaurant | Koramangala | https://www.baotome.co.in/ | Official page offers a menu action and identifies the Koramangala venue, but the reviewed page did not expose a complete current item and price list | 2026-07-15 | Unsure | None | Re-review the first-party menu destination; no contact |
+| 15 | Dulce Patisserie | Patisserie/cafe | Koramangala | https://www.dulcepatisserie.in/ | Official page confirms Koramangala and says the menu is highly customizable, but the reviewed page did not establish a stable complete current list | 2026-07-15 | Unsure | None | Re-review the first-party menu destination; no contact |
+| 16 | Maffei Kitchen | Restaurant | Koramangala | https://www.maffei.in/ | Official first-party site provides a dedicated menu path and extensive cuisine information; no clear current-list gap was established | 2026-07-15 | Fail | None | Close unless later owner evidence shows a different problem |
+| 17 | Avoke | Cafe group | Koramangala | https://avoke.in/cafes | Official page lists four cafe locations and direct menu actions; the business is outside the independent first-pod profile | 2026-07-15 | Fail | None | Exclude from the independent first pod |
+| 18 | Toca Koramangala | Restaurant/nightlife venue | Koramangala | https://toca.club/wp-content/uploads/2024/11/Toca-Koramangala-food-Menu_compressed.pdf | Official site links customer menu information through a PDF stored under a `/2024/11/` URL path; that path does not prove publication date or currentness, and the owner has not confirmed either | 2026-07-15 | Pass | None | Hold for founder or partner introduction; no contact |
+| 19 | Kori | Cafe | Koramangala | https://kori.cafe/wp-content/uploads/2025/09/Kori-Food-Menu.pdf | Official menu is a PDF asset whose reviewed food version omits prices; owner has not confirmed completeness or currentness | 2026-07-15 | Pass | None | Hold for founder or partner introduction; no contact |
+| 20 | The Bier Library | Brewery/restaurant | Koramangala | https://www.thebierlibrary.in/ | Official site showcases a beer list and promotes an app, but the reviewed public page did not expose a complete current food and price list | 2026-07-15 | Pass | None | Hold for founder or partner introduction; no contact |
+| 21 | Brik Oven | Restaurant group | Koramangala | https://www.brikoven.com/ | Official site identifies multiple Bengaluru outlets including Koramangala; the business is outside the independent first-pod profile | 2026-07-15 | Fail | None | Exclude from the independent first pod |
+| 22 | The Craftery by Subko | Cafe/bakehouse group | Koramangala | https://www.subko.coffee/pages/sopi | Official site exposes the Koramangala venue and menu route within a multi-city brand; the business is outside the independent first-pod profile | 2026-07-15 | Fail | None | Exclude from the independent first pod |
+| 23 | Dyu Art Cafe | Cafe | Koramangala | https://dyuartcafe.com/gallery | Official site confirms the Koramangala business, but the reviewed first-party page did not provide enough current menu evidence to establish the gap safely | 2026-07-15 | Unsure | None | Locate and review a first-party menu destination; no contact |
+| 24 | The Hole in the Wall Cafe | Cafe group | Koramangala | https://theholeinthewallcafe.org/ | Official page exposes a broad readable menu and identifies multiple outlets; no clear first-pod current-list gap was established | 2026-07-15 | Fail | None | Close unless later owner evidence shows a different problem |
+| 25 | Cafe Medley | Cafe | Koramangala | No approved first-party source established | Search results established the business identity only through third-party ordering/listing pages, which are excluded from this evidence policy | 2026-07-15 | Hold | None | Do not score or contact until a first-party source is established |
 
-### July 10 Evidence Review Note
+### July 15 Evidence Review Note
 
-The first daily cap of five public evidence-only reviews is complete: three `Pass`, one `Unsure`, and one `Fail`. Reviews used official first-party websites/menu destinations only. No phone, email, social handle, personal identity, customer data, outreach permission, or inferred consent was copied into the board. A `Pass` is an internal fit signal only; it does not authorize contact.
+The bounded 25-candidate public evidence board is complete: eight `Pass`, seven `Unsure`, nine `Fail`, and one policy `Hold`. Reviews used official first-party websites/menu destinations only; the held row records that an approved first-party source was not established and does not use the third-party result as evidence. No phone, email, social handle, personal identity, customer data, outreach permission, or inferred consent was copied into the board. A `Pass` is an internal fit signal only; it does not authorize contact.
+
+All July 15 evidence expires after August 14, 2026 unless re-reviewed. July 10 evidence retains its original August 9, 2026 expiry. Expiry does not convert evidence into contact permission.
 
 ## Evidence Packet
 
@@ -148,6 +150,39 @@ Create no more than 12 complete packets. Every packet must answer:
 8. Which two surfaces would be useful if the owner approves?
 9. Which claims are prohibited?
 10. What is the next safe action?
+
+The runtime packet must also show:
+
+- `current-menu-presence-v1` diagnostic version;
+- observed format and source references;
+- owner-control and mobile-access verification state;
+- contradiction state;
+- exact proposed route, subject, body, CTA, expected outcome, and unsupported-claim result;
+- source-policy state and expiry;
+- action fingerprint.
+
+An evidence-only source may produce a packet for internal review, but its route remains `none` and its recommendation remains `hold`. If the message, evidence, sender, CTA, source rights, suppression state, or route changes after packet preparation, refresh the packet before any approval.
+
+### Prepared Evidence Packet Register
+
+These 12 documentation-level packets are prepared for founder-authenticated runtime entry after QA access is restored. Every packet remains held with route `none`, source policy `Public business research`, contact and personalization disallowed, permission absent, and zero budget. Runtime entry must recheck the source and preserve the evidence date and expiry below.
+
+| Packet | Business | Evidence basis | Not verified / rejected facts | Expiry | Status |
+| --- | --- | --- | --- | --- | --- |
+| BEP-01 | Nuha Patisserie & Cafe | First-party page exposes only a small selection while stating 12+ daily pastry varieties | Completeness, current prices, owner intent, customer impact | 2026-08-09 | Hold; no route |
+| BEP-02 | Grumpy Girl Coffee | First-party page exposes some named items and prices but not a complete independently reviewable list | Completeness, missing-price cause, owner intent | 2026-08-09 | Hold for evidence recheck |
+| BEP-03 | Eddy's Cafe | First-party menu destination is image-based | Currentness, machine readability as owner priority, customer impact | 2026-08-09 | Hold; no route |
+| BEP-04 | Give Me 5 Cafe | First-party menu depends on an Adobe PDF download | PDF currentness, owner priority, customer impact | 2026-08-14 | Hold; no route |
+| BEP-05 | Vanamo | First-party menu depends on download or QR scan | Download content currentness, owner priority, customer impact | 2026-08-14 | Hold; no route |
+| BEP-06 | Casa Fresco | First-party page confirms the venue but did not expose a complete current item and price list | Whether another first-party route is complete, owner priority | 2026-08-14 | Hold for evidence recheck |
+| BEP-07 | Clean & Green Cafe | First-party page confirms the venue but did not expose a complete current item and price list | Whether another first-party route is complete, owner priority | 2026-08-14 | Hold for evidence recheck |
+| BEP-08 | Vienna Bakehouse & Kitchen | First-party site links the complete menu as a PDF | PDF currentness, owner priority, customer impact | 2026-08-09 | Hold; no route |
+| BEP-09 | Bao To Me | First-party page offers a menu action but reviewed content did not expose a complete list | Destination content, currentness, owner priority | 2026-08-14 | Hold for evidence recheck |
+| BEP-10 | Toca Koramangala | First-party food-menu PDF is stored under a `/2024/11/` URL path | Publication date, whether the asset remains current, owner priority, customer impact | 2026-08-14 | Hold; no route |
+| BEP-11 | Kori | First-party PDF menu omits prices in the reviewed version | Whether a separate current price list exists, owner priority | 2026-08-14 | Hold; no route |
+| BEP-12 | The Bier Library | First-party page exposes beer information and an app but no complete public food and price list | App contents, whether omission is intentional, owner priority | 2026-08-14 | Hold; no route |
+
+No packet asserts stale information, lost sales, poor ranking, owner need, contact permission, or platform affiliation. Those facts were not established.
 
 Allowed evidence wording:
 

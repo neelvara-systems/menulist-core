@@ -1,7 +1,7 @@
 # Domain Environment Setup (Prod / Preview / Local)
 
 > **Category:** Infrastructure  
-> **Last Updated:** April 17, 2026
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -28,6 +28,14 @@ These values are used by:
 - `NEXT_PUBLIC_PLATFORM_DOMAIN`
 - `NEXT_PUBLIC_PLATFORM_DOMAIN_ALIASES`
 - `NEXT_PUBLIC_APP_URL`
+
+For custom-domain provider management in the Next.js server runtime:
+
+- `VERCEL_TOKEN`
+- `VERCEL_PROJECT_ID`
+- `VERCEL_TEAM_ID` only when the project is team-owned
+
+These provider variables are server-only. Never expose them through `NEXT_PUBLIC_*`. `POST/GET/DELETE /api/domain` reads them through `src/lib/domains/vercelDomains.ts`; the owner browser receives only bounded domain/configuration results. DNS rows come from Vercel `recommendedIPv4`, `recommendedCNAME`, project `apexName`, and verification challenges. No generic DNS target is an accepted fallback.
 
 ## Public Cache Revalidation
 
@@ -80,6 +88,7 @@ Notes:
 - Add **Preview/Staging** values in Vercel Environment Variables with scope: a custom `staging` environment, or `Preview` if staging is implemented as a Preview branch/domain mapping.
 - Keep `NEXT_PUBLIC_ENV=preview` for staging unless the deployment target matrix is extended to support a separate `staging` stage.
 - Keep local values only in `.env.local` (do not commit).
+- Add `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, and optional `VERCEL_TEAM_ID` to every Vercel environment where owner custom-domain management is enabled. Provider credentials and project membership must be verified separately in each environment.
 
 ---
 

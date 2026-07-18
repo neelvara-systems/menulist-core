@@ -2,7 +2,8 @@
 
 **Status:** Planning QA matrix
 **Created:** May 31, 2026
-**Runtime status:** No tests can run until implementation exists.
+**Runtime status:** Planning-boundary tests run now; runtime/emulator tests remain
+pending until implementation exists.
 
 ---
 
@@ -184,6 +185,17 @@ firebase --config firebase-kitstamp.json emulators:exec "npm run test:kitstamp:r
 ```
 
 Add product route smoke tests after the actual host and route implementation exists.
+
+## Current Planning-Boundary Verification
+
+```bash
+npm run verify:kitstamp-boundary
+```
+
+The current gate passes 31 checks and fails if KitStamp accidentally gains
+routes, APIs, Firebase infrastructure, Functions, environment variables,
+runtime feature flags, provider/billing behavior, or publishing behavior before
+the product foundation is approved.
 
 ## 14. Documentation Cost
 

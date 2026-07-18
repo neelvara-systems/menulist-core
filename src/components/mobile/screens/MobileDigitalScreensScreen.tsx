@@ -1,11 +1,15 @@
 'use client'
 
+import { FEATURE_FLAGS } from '@config/features';
+import { PERMISSIONS } from '@constant/permissions';
 import { assertDigitalScreenMutationSucceeded, getScreenState, initializeScreenState, removePinnedSlide, updatePinnedSlideCaption, updateScreenSettings, uploadScreenSlide } from '@database/campaigns';
+import { trackOwnerControlUsage } from '@database/ownerControlUsage';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent, type PreparedMediaImage } from '@lib/media/prepareMediaImage';
 import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import MediaImageAdjustModal from '@/components/shared/media/MediaImageAdjustModal';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { normalizeOwnerSlideCaption } from '@lib/screen/screenContent';
 import {
     copyScreenTextToClipboard,
@@ -20,7 +24,7 @@ import type { ScreenSlide } from '@type/campaigns';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
-import { useContext, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LuCheck, LuCopy, LuExternalLink, LuMonitor, LuPencil, LuPlay, LuTrash2, LuWifi } from 'react-icons/lu';
 import { Button, Card, Dialog, DotLoading, Flex, Input, Switch, Tag, Text, Title, Toast } from '../antd';
@@ -51,8 +55,8 @@ interface MobileScreenLinkCardProps {
     title: string;
 }
 
-const MAX_UPLOADS = 3;
-const UPLOAD_EXPIRY_DAYS = 14;
+const MAX_UPLOADS = FEATURE_FLAGS.DIGITAL_SCREENS_MAX_UPLOADS;
+const UPLOAD_EXPIRY_DAYS = FEATURE_FLAGS.DIGITAL_SCREENS_UPLOAD_EXPIRY_DAYS;
 
 function getDaysRemaining(validUntil?: any): number {
     if (!validUntil) return UPLOAD_EXPIRY_DAYS;
@@ -173,7 +177,9 @@ function MobileScreenLinkCard({
 export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScreensScreenProps) {
     const t = useTranslations('MobileDigitalScreens');
     const { token } = theme.useToken();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
+        && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const publicBaseUrl = generateOBPUrl(
         storeDetails?.subdomain || '',
         storeDetails?.customDomain
@@ -192,6 +198,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
     const [editingSlideCaption, setEditingSlideCaption] = useState('');
     const [savingCaptionId, setSavingCaptionId] = useState<string | null>(null);
+    const loadRequestRef = useRef(0);
 
     const highlightsUrl = screenUrl ? `${screenUrl}?mode=highlights` : '';
     const compactMenuUrl = useMemo(() => compactScreenUrl(screenUrl), [screenUrl]);
@@ -256,25 +263,37 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
     ), [t]);
 
     const fetchState = async () => {
+        const requestId = ++loadRequestRef.current;
         try {
             setLoading(true);
             let state = await getScreenState();
             if (!state) state = await initializeScreenState();
+            if (requestId !== loadRequestRef.current) return;
             setScreenUrl(buildScreenUrl(state.screenToken, publicBaseUrl));
             setScreenLastSeenAt(state.screenLastSeenAt || null);
             setOwnerOverride(state.ownerOverrideEnabled || false);
             setPinnedSlides(state.pinnedSlides || []);
         } catch (error) {
+            if (requestId !== loadRequestRef.current) return;
             logScreenSettingsFailure('mobile_digital_screen_state_load_failed', error, buildMobileDigitalScreenLogContext('load_state'));
             Toast.show({ content: t('failedToLoad'), duration: 2000 });
         } finally {
-            setLoading(false);
+            if (requestId === loadRequestRef.current) setLoading(false);
         }
     };
 
     useEffect(() => {
+        if (!canAccessDigitalScreens) {
+            loadRequestRef.current += 1;
+            setScreenUrl('');
+            setScreenLastSeenAt(null);
+            setOwnerOverride(false);
+            setPinnedSlides([]);
+            setLoading(false);
+            return;
+        }
         void fetchState();
-    }, [publicBaseUrl]);
+    }, [canAccessDigitalScreens, publicBaseUrl]);
 
     const handleCopy = async (url: string, type: 'menu' | 'highlights') => {
         try {
@@ -301,6 +320,10 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
 
     const handleOverrideToggle = async (enabled: boolean) => {
         try {
+            void trackOwnerControlUsage('screenOverride', {
+                previousValue: ownerOverride,
+                newValue: enabled,
+            });
             const updateResult = await updateScreenSettings({ ownerOverrideEnabled: enabled });
             assertDigitalScreenMutationSucceeded(
                 updateResult,
@@ -417,6 +440,10 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
         }
     };
+
+    if (!canAccessDigitalScreens) {
+        return null;
+    }
 
     if (loading) {
         return (
@@ -603,7 +630,7 @@ export default function MobileDigitalScreensScreen({ onBack }: MobileDigitalScre
                                                     void Dialog.confirm({
                                                         cancelText: 'Cancel',
                                                         confirmText: 'Delete slide',
-                                                        content: `Delete "${normalizeOwnerSlideCaption(slide.caption)}" from Highlights? This removes it from your custom slides list and it will stop showing on digital screens right away.`,
+                                                        content: `Delete "${normalizeOwnerSlideCaption(slide.caption)}" from Highlights? It will stop showing after the screen refreshes.`,
                                                         onConfirm: () => void handleDeleteSlide(slide.id),
                                                     });
                                                 }}

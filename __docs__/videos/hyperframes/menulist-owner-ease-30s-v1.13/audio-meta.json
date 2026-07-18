@@ -1,0 +1,36 @@
+{
+  "mode": "founder-review-music-comparison",
+  "selectionStatus": "approved-operational-alternate",
+  "durationSeconds": 30,
+  "voice": {
+    "provider": "macos-local",
+    "id": "Tara",
+    "language": "en-IN",
+    "source": "assets/audio/voice-macos-en-in-tara-192-selected-processed.wav",
+    "durationSeconds": 26.7
+  },
+  "master": {
+    "source": "assets/mix/owner-ease-30s-v1.13-master.wav",
+    "music": "MenuList Outlet Control v2, seed 260721",
+    "musicSource": "assets/music/source/menulist-outlet-control-v2-seed-260721.wav",
+    "canonicalMusicSource": "../../brand-audio/source-tracks/lyria-realtime-menulist-outlet-control-v2-seed-260721-20260714-113810/menulist-outlet-control-v2-seed-260721-20260714-113810.wav",
+    "musicSourceSha256": "828b6c8fe35bbc5a980c9ff5ebe0f4e9f0ed46362ce559e1b4865c92bc4febf2",
+    "ducking": "voice-reactive comparison mix with restrained rhythmic bed and final lift",
+    "integratedLufs": -15.5,
+    "truePeakDbfs": -2.0,
+    "masterSha256": "c5375f940b1835e5c96966444e35acb95836a99d4b808d85fb0743735588a1f1",
+    "regenerationAllowed": false,
+    "visualSource": "v1.11 with readable final URL label"
+  },
+  "captionSegments": [
+    { "start": 0.0, "end": 2.92 },
+    { "start": 3.31, "end": 6.65 },
+    { "start": 7.01, "end": 9.51 },
+    { "start": 9.85, "end": 11.53 },
+    { "start": 11.81, "end": 14.35 },
+    { "start": 14.68, "end": 16.38 },
+    { "start": 16.67, "end": 22.39 },
+    { "start": 22.74, "end": 24.52 },
+    { "start": 24.86, "end": 26.7 }
+  ]
+}

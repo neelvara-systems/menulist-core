@@ -51,5 +51,5 @@ export const CAMPAIGNCUE_PACK_TEMPLATE_OWNER_COPY = {
     loaded: "Template ready. Confirm missing details before using the pack.",
     saved: "Reusable campaign pack saved for this workspace.",
     saveBlocked: "Create or open a campaign pack before saving it as a reusable base.",
-    noExtraReads: "Search is filtered locally from the loaded category templates.",
+    noExtraReads: "Search these ready options instantly.",
 } as const;

@@ -69,12 +69,11 @@ import {
 
 export { menulistMaintenanceScheduler };
 
-// Chat analytics manual backfill only. Daily aggregation now runs inside
-// menulistMaintenanceScheduler to keep operational scheduled jobs centralized.
+// Retired compatibility exports. Answerlattice chat analytics runs only in the
+// dedicated Answerlattice Firebase project; these callables fail closed.
 const aggregateModule = require('./aggregateDailyChatStats');
 exports.backfillAggregates = aggregateModule.backfillAggregates;
 
-// Manual aggregation trigger (owner/admin only)
 const triggerModule = require('./triggerAggregationManual');
 exports.triggerAggregationManual = triggerModule.triggerAggregationManual;
 

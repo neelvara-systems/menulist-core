@@ -1,4 +1,5 @@
 import { MENU_DESIGN_PRESETS, getMenuDesignPresetPatch, getPreferredMenuLayoutForMood } from '@lib/menu/menuDesignPresets';
+import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
 import {
     BRAND_COLOR_PRESETS,
     MENU_LAYOUTS,
@@ -209,8 +210,8 @@ function stripCommandWords(value: string, words: RegExp) {
 }
 
 function nextSuggestedPrice(price?: string) {
-    const numeric = Number(String(price || '').replace(/[^0-9.]/g, ''));
-    const nextPrice = Number.isFinite(numeric) && numeric > 0 ? numeric + 10 : 20;
+    const numeric = parseSingleMenuPrice(price);
+    const nextPrice = numeric !== null && numeric > 0 ? numeric + 10 : 20;
     return Number.isInteger(nextPrice) ? String(nextPrice) : nextPrice.toFixed(2);
 }
 
@@ -258,52 +259,64 @@ function buildSelectedItemsPriceUpdate(params: {
     isPercent?: boolean;
     items: AiMenuManagerContextItem[];
     setExact?: boolean;
-}): AiMenuManagerResolvedCommand {
-    const definition = getAiMenuManagerActionDefinition(params.items.length > 1 ? 'bulk_price_update' : 'item_price_update');
-    const itemUpdates = Object.fromEntries(params.items.map((item) => {
-        const currentPrice = Number(String(item.price || '0').replace(/[^0-9.]/g, ''));
+}): AiMenuManagerResolvedCommand | null {
+    const items = params.setExact
+        ? params.items
+        : params.items.filter((item) => {
+            const currentPrice = parseSingleMenuPrice(item.price);
+            return currentPrice !== null && currentPrice > 0;
+        });
+    if (items.length === 0) return null;
+
+    const skippedCount = params.items.length - items.length;
+    const definition = getAiMenuManagerActionDefinition(items.length > 1 ? 'bulk_price_update' : 'item_price_update');
+    const itemUpdates = Object.fromEntries(items.map((item) => {
+        const currentPrice = parseSingleMenuPrice(item.price) ?? 0;
         const nextPrice = params.setExact
             ? params.amount
             : Math.max(0, currentPrice + (params.direction || 1) * (params.isPercent ? currentPrice * (params.amount / 100) : params.amount));
         const formatted = Number.isInteger(nextPrice) ? String(nextPrice) : nextPrice.toFixed(2);
         return [item.id, { price: formatted }];
     }));
-    const patch: AiMenuManagerProjectPatch = params.items.length > 1
+    const patch: AiMenuManagerProjectPatch = items.length > 1
         ? {
             kind: 'bulk_item_update',
-            itemIds: params.items.map((item) => item.id),
+            itemIds: items.map((item) => item.id),
             itemUpdates,
         }
         : {
             kind: 'item_update',
-            itemIds: [params.items[0].id],
-            updates: itemUpdates[params.items[0].id],
+            itemIds: [items[0].id],
+            updates: itemUpdates[items[0].id],
         };
 
     return {
-        actionType: params.items.length > 1 ? 'bulk_price_update' : 'item_price_update',
+        actionType: items.length > 1 ? 'bulk_price_update' : 'item_price_update',
         definition,
-        title: params.items.length > 1
-            ? `Update ${params.items.length} selected item prices`
-            : `Update ${params.items[0].name} price`,
-        message: params.items.length > 1
-            ? `${params.items.length} selected item prices will ${params.setExact ? `be set to ${params.amount}` : `${(params.direction || 1) > 0 ? 'increase' : 'decrease'} by ${params.amount}${params.isPercent ? '%' : ''}`}.`
-            : `${params.items[0].name} will change from ${params.items[0].price || 'not set'} to ${(itemUpdates[params.items[0].id] as any).price}.`,
+        title: items.length > 1
+            ? `Update ${items.length} selected item prices`
+            : `Update ${items[0].name} price`,
+        message: items.length > 1
+            ? `${items.length} selected item prices will ${params.setExact ? `be set to ${params.amount}` : `${(params.direction || 1) > 0 ? 'increase' : 'decrease'} by ${params.amount}${params.isPercent ? '%' : ''}`}.`
+            : `${items[0].name} will change from ${items[0].price || 'not set'} to ${(itemUpdates[items[0].id] as any).price}.`,
         entityRefs: [
             { kind: 'project', id: params.context.projectId, label: params.context.projectName },
-            ...params.items.map((item) => ({ kind: 'menu_item' as const, id: item.id, label: item.name })),
+            ...items.map((item) => ({ kind: 'menu_item' as const, id: item.id, label: item.name })),
         ],
         beforeAfterSummary: {
-            title: params.items.length > 1 ? 'Selected item price update' : params.items[0].name,
-            rows: params.items.map((item) => ({
+            title: items.length > 1 ? 'Selected item price update' : items[0].name,
+            rows: items.map((item) => ({
                 label: item.name,
                 before: item.price || 'Not set',
                 after: String((itemUpdates[item.id] as any).price),
             })),
             warnings: [
-                params.items.length > 1
-                    ? 'Bulk price changes affect every selected item after approval.'
+                items.length > 1
+                    ? 'Bulk price changes affect every listed item after approval.'
                     : 'Price changes affect the public menu after approval.',
+                ...(skippedCount > 0
+                    ? [`${skippedCount} text, range, or missing price${skippedCount === 1 ? ' was' : 's were'} left unchanged.`]
+                    : []),
             ],
         },
         patch,
@@ -1199,14 +1212,14 @@ function buildCategoryBulkPriceUpdate(params: {
     direction: 1 | -1;
     isPercent?: boolean;
 }) {
-    const affectedItems = params.context.items.filter((item) => {
-        const currentPrice = Number(String(item.price || '').replace(/[^0-9.]/g, ''));
-        return item.categoryId === params.category.id && item.price && Number.isFinite(currentPrice);
-    });
+    const affectedItems = params.context.items.filter((item) => (
+        item.categoryId === params.category.id
+        && parseSingleMenuPrice(item.price) !== null
+    ));
     if (!affectedItems.length || !Number.isFinite(params.amount)) return null;
 
     const itemUpdates = Object.fromEntries(affectedItems.map((item) => {
-        const currentPrice = Number(String(item.price || '0').replace(/[^0-9.]/g, ''));
+        const currentPrice = parseSingleMenuPrice(item.price) ?? 0;
         const delta = params.isPercent ? currentPrice * (params.amount / 100) : params.amount;
         const nextPrice = Math.max(0, currentPrice + params.direction * delta);
         const formatted = Number.isInteger(nextPrice) ? String(nextPrice) : nextPrice.toFixed(2);

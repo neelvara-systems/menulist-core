@@ -244,7 +244,7 @@ export default function FeaturesPage() {
               </AnimateStaggerChild>
             ))}
 
-            <div className="ws-analytics-cross-map__core" aria-label="MenuList">
+            <div className="ws-analytics-cross-map__core">
               <span className="ws-analytics-cross-map__ring ws-analytics-cross-map__ring--outer" />
               <div className="ws-analytics-cross-map__logo">
                 <LogoMark height={42} />

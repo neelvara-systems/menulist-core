@@ -1,7 +1,7 @@
 # Founder Support Controls - Specification
 
 > **Status:** Implemented in source; deployment and browser certification remain separate release gates
-> **Feature flags:** `ENABLE_ANSWERLATTICE_ANSWER_TESTS`, `ENABLE_ANSWERLATTICE_KNOWN_ISSUES`, `ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT`, `ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS`, `ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT`
+> **Feature flags:** `ENABLE_ANSWERLATTICE_ANSWER_TESTS`, `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`, `ENABLE_ANSWERLATTICE_KNOWN_ISSUES`, `ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT`, `ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS`, `ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT`
 
 ## Problem
 
@@ -23,12 +23,15 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 ### Answer Test Suite
 
 - Owners can create, edit, delete, and run up to 100 test cases per workspace.
-- A test case contains a question, optional page/surface context, optional plan/role, expected result class, optional expected answer ID, and optional related entity IDs.
+- A test case contains a question, optional page/surface context, optional plan/role, expected result class, optional expected answer/FAQ ID, required and forbidden claims, an evidence policy, a standard/critical risk level, and optional related entity IDs.
 - Expected source classes are `canonical`, `faq`, `rag`, `escalation`, and `no_answer`.
+- Evidence policies are `not_required`, `at_least_one`, and `specific_sources`; the last policy requires one to eight expected article-reference IDs.
+- Existing version-1 cases default to standard risk with no new evidence requirement.
 - Canonical-only runs never invoke the AI fallback provider.
 - Full-runtime runs use the existing search pipeline, existing SAFE_MODE, existing rate limits, and existing support-credit accounting.
 - Test traffic is marked as test traffic and excluded from production search history, signals, conversations, friction, coverage, and ROI.
-- The UI shows pass, needs review, source, answer/version, fallback reason, and duration.
+- The UI shows pass/fail, source, answer/version, evidence outcome, bounded reference IDs, risk level, proof status, and duration.
+- A run is `blocked` when any critical case fails, `review` when only standard cases fail, and `ready` when every case passes. This is an advisory release-proof state, not an automated deployment gate.
 - Only the latest 10 compact run summaries are retained.
 
 ### Release Safety
@@ -36,9 +39,21 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - Release checks select test cases by related entity IDs and product-surface context.
 - A release check never scans all historical tests or all support collections.
 - Failed release checks create no knowledge automatically.
+- Critical failures mark the release-check result blocked without changing release, deployment, or product state.
 - Owners can convert a failure to a mutation proposal.
 - Version history offers `Propose rollback`; this creates a `version_update` mutation proposal containing the selected prior version as review material.
 - Approval and implementation continue through the existing governance flow.
+
+### Proposal Impact Preview
+
+- A governance reviewer can check a pending answer-changing proposal before approving it.
+- The preview uses the same proposal-to-canonical candidate builder as final approval, including any edits currently entered in the draft review form.
+- Only active Answer Tests explicitly linked by expected canonical-answer ID or an affected old/new entity ID are eligible.
+- Critical linked tests are evaluated first and the preview is capped at 10 cases.
+- The response compares current and proposed deterministic outcomes and labels regressions, improvements, changed outcomes, and unchanged outcomes.
+- The projected proof status remains advisory. It does not block or execute approval, change a release, publish an answer, create a retained test run, or modify deployment state.
+- The preview performs no AI-provider fallback. Final approval still performs authoritative entity, state, scope, version-overlap, transaction, audit, and cache-invalidation checks.
+- When no active test is explicitly linked, the UI says that proof is missing instead of scanning unrelated tests or implying safety.
 
 ### Known-Issue Notices
 
@@ -77,15 +92,23 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 
 ### Owner Support Assistant Alignment
 
-- The shipped assistant reads five compact summaries in one bounded `getAll()` call.
+- The shipped assistant reads six compact summaries in one bounded `getAll()` call, including the activation snapshot used for factual launch verification.
 - It can explain attention, answer risk, friction, readiness, and intake status and link to governed routes.
 - It does not run tests, create notices, prepare rollback proposals, start exports, or execute any mutation from free text.
+
+### Progressive Governance Navigation
+
+- Primary navigation keeps Answer Tests, Canonical Answers, Product Ontology, Drift Review, Signal Queue, and Trust Metrics visible.
+- Analytics, entity health, history, candidates, branding, friction, languages, and predictive triggers remain available through an explicit `Advanced tools` menu when their existing permissions and feature flags allow them.
+- Advanced routes remain addressable, authorized, and breadcrumb-aware. Hiding them from the primary list is presentation only and must not weaken route guards or disable their runtime.
+- A direct advanced route shows the active advanced screen plus the primary governance tabs; it does not expose other advanced screens implicitly.
 
 ## Permissions
 
 | Control | Permission |
 | --- | --- |
 | View/run answer tests | `canManageGovernance` |
+| Preview a proposal against linked tests | `canManageGovernance` |
 | Create rollback proposal | `canManageGovernance` |
 | Manage known issues | `canManageGovernance` |
 | Configure verified context | `canManageWidget` |
@@ -98,13 +121,17 @@ Answerlattice already collects product knowledge, serves approved answers, detec
 - Session replay capture or product analytics.
 - Customer CRM, public roadmap, or issue prioritization by revenue.
 - Automatic answer grading by an LLM.
+- Autonomous deployment approval or release mutation from a proof status.
 - Automatic rollback or auto-publishing.
+- Simulating unapproved content through the provider-backed RAG pipeline.
 - Exporting private support conversations or secrets.
 
 ## Success Criteria
 
-- A founder can create five golden questions and run a canonical-only test in one session.
+- A founder can create five priority questions, mark material cases critical, require known article references where applicable, and run a canonical-only test in one session.
+- Legacy test suites load unchanged while new runs retain deterministic evidence and proof-status fields.
 - A release can check only its affected cases without a broad scan.
+- A reviewer can compare a pending proposal against at most 10 explicitly linked active tests without a write or provider call.
 - An active known issue appears on matching widget surfaces and disappears after resolution/expiry.
 - Signed context is verified server-side and unsigned identity remains non-authoritative.
 - Evidence links remain bounded and private.

@@ -5,6 +5,7 @@ import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/anal
 import { getBusinessAnalyticsDateKey, resolveBusinessDayEndTime } from '@lib/analytics/businessDay';
 import { addDaysToAnalyticsDateKey } from '@lib/analytics/dateKey';
 import { getResolvedAnalyticsPreferences, type ResolvedAnalyticsPreferences } from '@lib/analytics/preferences';
+import { normalizeAnalyticsDateKey } from '@lib/analytics/readBoundary';
 import { isValidAnalyticsTimeZone } from '@lib/analytics/timeZoneDiagnostics';
 import { filterAnalyticsUpdateData } from '@lib/analytics/writePolicy';
 import { writePublicAnalyticsEventAdmin } from '@lib/analytics/serverWrite';
@@ -158,10 +159,10 @@ function resolveAcceptedDate(
     businessDayEndTime?: string,
 ) {
     const currentDate = getBusinessAnalyticsDateKey(new Date(), storeTimeZone, businessDayEndTime);
-    const dateString = requestedDate || currentDate;
+    const dateString = normalizeAnalyticsDateKey(requestedDate || currentDate);
     const oldestAcceptedDate = addDaysToAnalyticsDateKey(currentDate, -1);
 
-    if (dateString < oldestAcceptedDate || dateString > currentDate) {
+    if (!dateString || dateString < oldestAcceptedDate || dateString > currentDate) {
         return null;
     }
 
@@ -196,6 +197,9 @@ async function postAnalyticsTrack(req: NextRequest) {
     }
     const tenantId = tenantScope.documentId;
     const storeId = storeScope.documentId;
+    if (data.dateString && !normalizeAnalyticsDateKey(data.dateString)) {
+        return NextResponse.json({ success: false, error: 'Invalid analytics date.' }, { status: 400 });
+    }
 
     try {
         const validTarget = await validateAnalyticsTarget(tenantId, storeId, data.projectId);

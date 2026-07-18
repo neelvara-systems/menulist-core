@@ -7,6 +7,12 @@ import { CAMPAIGNCUE_PRODUCT_CODE } from "../../src/constants/campaigncue/produc
 import { buildCampaignCueDecisions } from "../../src/lib/campaigncue/decisionEngine";
 import { buildCampaignCueDailyDesk, buildCampaignCuePackReadiness } from "../../src/lib/campaigncue/dailyDesk";
 import {
+    assertCampaignCueIdempotencyClaimOwnership,
+    buildCampaignCueIdempotencyRequestHash,
+    getCampaignCueIdempotencyClaimDecision,
+    getCampaignCueIdempotencyReplay,
+} from "../../src/lib/campaigncue/idempotency";
+import {
     buildCampaignCueCampaignRhythm,
     buildCampaignCuePackFreshness,
     evaluateCampaignCueCommercialGate,
@@ -44,6 +50,16 @@ const assert: (condition: unknown, message: string) => asserts condition = (cond
 
 const assertIncludes = (content: string, token: string, label: string) => {
     assert(content.includes(token), `${label} must include ${token}`);
+};
+
+const assertThrows = (callback: () => unknown, message: string) => {
+    let threw = false;
+    try {
+        callback();
+    } catch {
+        threw = true;
+    }
+    assert(threw, message);
 };
 
 const assertExcludes = (content: string, token: string, label: string) => {
@@ -638,6 +654,79 @@ const verifyRequestBoundaries = () => {
     }).success, "valid target locales must validate");
 };
 
+const verifyIdempotencyBoundaries = () => {
+    const firstHash = buildCampaignCueIdempotencyRequestHash({
+        campaignId: "cc_campaign_test",
+        input: { action: "record_outcome", resultSignalId: "got_orders" },
+    });
+    const reorderedHash = buildCampaignCueIdempotencyRequestHash({
+        input: { resultSignalId: "got_orders", action: "record_outcome" },
+        campaignId: "cc_campaign_test",
+    });
+    const changedHash = buildCampaignCueIdempotencyRequestHash({
+        campaignId: "cc_campaign_test",
+        input: { action: "record_outcome", resultSignalId: "not_useful" },
+    });
+    assert(firstHash === reorderedHash, "idempotency request hashing must ignore object key order");
+    assert(firstHash !== changedHash, "idempotency request hashing must bind the full request payload");
+    assert(getCampaignCueIdempotencyReplay({
+        action: "record_outcome",
+        actorId: "owner_test",
+        requestHash: firstHash,
+        resultId: "cc_campaign_test",
+        status: "completed",
+    }, {
+        action: "record_outcome",
+        actorId: "owner_test",
+        requestHash: firstHash,
+    }).resultId === "cc_campaign_test", "completed exact-identity retries must replay");
+    assertThrows(() => getCampaignCueIdempotencyReplay({
+        action: "record_outcome",
+        actorId: "another_owner",
+        requestHash: firstHash,
+        resultId: "cc_campaign_test",
+        status: "completed",
+    }, {
+        action: "record_outcome",
+        actorId: "owner_test",
+        requestHash: firstHash,
+    }), "idempotency replay must reject actor changes");
+    assertThrows(() => getCampaignCueIdempotencyReplay({
+        action: "record_outcome",
+        actorId: "owner_test",
+        requestHash: changedHash,
+        resultId: "cc_campaign_test",
+        status: "completed",
+    }, {
+        action: "record_outcome",
+        actorId: "owner_test",
+        requestHash: firstHash,
+    }), "idempotency replay must reject payload changes");
+    assertThrows(() => getCampaignCueIdempotencyReplay({
+        action: "record_outcome",
+        actorId: "owner_test",
+        requestHash: firstHash,
+        status: "in_progress",
+    }, {
+        action: "record_outcome",
+        actorId: "owner_test",
+        requestHash: firstHash,
+    }), "in-progress retries must fail closed");
+    const expected = { action: "record_outcome", actorId: "owner_test", requestHash: firstHash };
+    const activeClaim = {
+        ...expected,
+        claimId: "claim_test",
+        leaseExpiresAt: { seconds: 20, nanoseconds: 0 },
+        status: "in_progress" as const,
+    };
+    assert(getCampaignCueIdempotencyClaimDecision(null, expected, 10_000).kind === "claim", "missing claims must be claimable");
+    assert(getCampaignCueIdempotencyClaimDecision({ ...expected, status: "in_progress" }, expected, 10_000).kind === "claim", "legacy claims must recover");
+    assert(getCampaignCueIdempotencyClaimDecision(activeClaim, expected, 10_000).kind === "conflict", "active claims must conflict");
+    assert(getCampaignCueIdempotencyClaimDecision(activeClaim, expected, 20_000).kind === "claim", "expired claims must recover");
+    assert(assertCampaignCueIdempotencyClaimOwnership(activeClaim, expected, "claim_test").claimId === "claim_test", "exact claim ownership must pass");
+    assertThrows(() => assertCampaignCueIdempotencyClaimOwnership(activeClaim, expected, "claim_replaced"), "replaced claims must not complete");
+};
+
 const verifyStaticBoundaries = () => {
     const packageJson = JSON.parse(read("package.json"));
     const operatingLoop = read("src/lib/campaigncue/operatingLoop.ts");
@@ -671,12 +760,18 @@ const verifyStaticBoundaries = () => {
     assertIncludes(server, "reusedFromCampaignId: reuseCampaign?.id", "current-truth campaign reuse provenance");
     assertIncludes(server, "campaignCueApprovalId(params.campaignId)", "deterministic approval document id");
     assertIncludes(server, "recordCampaignCueApprovalActionTransactional", "transactional approval lifecycle");
+    assertIncludes(server, "buildCampaignCueIdempotencyRequestHash", "request-bound idempotency identity");
+    assertIncludes(server, "actorId: params.scope.userId", "actor-bound idempotency identity");
+    assertIncludes(actionServerBlock, "return firestoreAdmin.runTransaction", "ordinary action final transaction");
+    assertIncludes(actionServerBlock, "const currentSnap = await transaction.get(campaignRef)", "ordinary action current campaign re-read");
+    assertIncludes(actionServerBlock, "transaction.set(summaryRef", "ordinary action atomic dashboard summary");
+    assertIncludes(actionServerBlock, "transaction.set(idempotencyRef", "ordinary action atomic idempotency completion");
     assertIncludes(server, "current.ownerApprovalState !== \"requested\"", "atomic approval state recheck");
     assertIncludes(server, "Completed or archived campaign packs cannot start a new approval request.", "closed campaign approval guard");
     assertIncludes(server, "current.ownerApprovalState === \"not_requested\"", "approval created-at preservation guard");
     assert(
-        actionServerBlock.indexOf("CAMPAIGNCUE_APPROVAL_ACTIONS.has") < actionServerBlock.indexOf("const campaign = await readCampaign"),
-        "approval actions must enter their transaction before the ordinary campaign pre-read",
+        actionServerBlock.indexOf("CAMPAIGNCUE_APPROVAL_ACTIONS.has") < actionServerBlock.indexOf("const idempotency = await checkIdempotency"),
+        "approval actions must enter their dedicated path before ordinary action idempotency and mutation",
     );
     assertIncludes(server, "workspace.agencyMode && campaign.ownerApprovalState !== \"approved\"", "agency approval public-use gate");
     assertIncludes(dailyDesk, "|| rhythm.status === \"result_due\"", "result-due Daily Desk priority");
@@ -709,6 +804,7 @@ const main = () => {
     verifyCommercialAndFreshnessGates();
     verifyCampaignRhythmAndReadiness();
     verifyRequestBoundaries();
+    verifyIdempotencyBoundaries();
     verifyStaticBoundaries();
     process.stdout.write(`CampaignCue operating loop verification passed (${checks} checks).\n`);
 };

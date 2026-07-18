@@ -1,51 +1,45 @@
 export const dynamic = "force-dynamic";
 
 import {
+    canServeSignalDeskMobileWorkspaceSection,
+    createEmptySignalDeskWorkspace,
+    hasSignalDeskWorkspaceSectionAccess,
+    parseSignalDeskWorkspaceSection,
+} from "@database/signaldesk";
+import {
     applySignalDeskRateLimit,
     getBoundedSignalDeskStringContext,
     getSignalDeskAccessLogContext,
+    isSignalDeskMobileRequest,
     logSignalDeskFailure,
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
 } from "@lib/signaldesk/apiGuards";
+import { loadSignalDeskOverviewServer } from "@lib/signaldesk/server";
 import { loadSignalDeskWorkspaceServer } from "@lib/signaldesk/workflowServer";
-import type { SignalDeskSection } from "@type/signaldesk";
 import { withAuth } from "@/middleware/auth";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
-
-const SECTIONS = new Set<SignalDeskSection>([
-    "dashboard",
-    "mission",
-    "revenue",
-    "targets",
-    "imports",
-    "approvals",
-    "templates",
-    "inbox",
-    "attribution",
-    "policies",
-    "sources",
-    "ai",
-    "channels",
-    "content",
-    "partners",
-    "settings",
-    "control-room",
-    "audit",
-]);
 
 export const GET = withAuth(async (request: NextRequest, session) => {
     const disabled = requireSignalDeskRuntime();
     if (disabled) return disabled;
 
-    const sectionParam = request.nextUrl.searchParams.get("section") || "dashboard";
-    const section: SignalDeskSection = SECTIONS.has(sectionParam as SignalDeskSection)
-        ? sectionParam as SignalDeskSection
-        : "dashboard";
-    const requiredPermission = section === "audit" ? "audit.view" : "signaldesk.view";
-    const accessResult = await requireSignalDeskAccess(request, session, requiredPermission);
+    const section = parseSignalDeskWorkspaceSection(request.nextUrl.searchParams.get("section"));
+    if (!section) {
+        return NextResponse.json({ error: "Invalid SignalDesk section" }, { status: 400 });
+    }
+
+    const accessResult = await requireSignalDeskAccess(request, session, "signaldesk.view");
     if ("response" in accessResult) return accessResult.response;
+    if (!hasSignalDeskWorkspaceSectionAccess(accessResult.access, section)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const mobileReadonly = isSignalDeskMobileRequest(request);
+    if (mobileReadonly && !canServeSignalDeskMobileWorkspaceSection(section)) {
+        return NextResponse.json({ error: "SignalDesk mobile workspace is dashboard-only" }, { status: 403 });
+    }
 
     const rateLimit = await applySignalDeskRateLimit({
         feature: "DATA_READ",
@@ -56,7 +50,12 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (rateLimit) return rateLimit;
 
     try {
-        const workspace = await loadSignalDeskWorkspaceServer(accessResult.access, section);
+        const workspace = mobileReadonly
+            ? {
+                ...await loadSignalDeskOverviewServer(accessResult.access),
+                workspace: createEmptySignalDeskWorkspace("dashboard"),
+            }
+            : await loadSignalDeskWorkspaceServer(accessResult.access, section);
         return NextResponse.json({ data: workspace }, {
             headers: {
                 "Cache-Control": "private, no-store",
@@ -70,7 +69,7 @@ export const GET = withAuth(async (request: NextRequest, session) => {
                 route: "/api/signaldesk/workspace",
                 ...getSignalDeskAccessLogContext(accessResult.access),
                 ...getBoundedSignalDeskStringContext("section", section),
-                ...getBoundedSignalDeskStringContext("requiredPermission", requiredPermission),
+                mobileReadonly,
             },
         );
         return NextResponse.json({ error: "Failed to load SignalDesk workspace" }, { status: 500 });

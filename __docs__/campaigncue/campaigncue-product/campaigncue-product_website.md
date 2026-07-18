@@ -124,7 +124,7 @@ CampaignCue now has feature pages under `src/app/sites/campaigncue/features/[fea
 | `/features/daily-campaign-desk` | Explain the first owner screen, one daily cue, Campaign Rhythm, missing-input prompts, pack readiness, export, result memory, and safe current-fact reuse. | Static Daily Desk preview only; no workspace reads, performance prediction, or automatic recycling. |
 | `/features/campaign-pack-studio` | Explain the multi-output Campaign Pack from one source-backed cue. | Static pack preview only; no direct posting, provider connection, or ad-spend claim. |
 | `/features/creative-studio` | Explain editor value, protected business text, Design Cue, resize/export checks, and CampaignCue adapter scope. | Static editor preview only; owner editor remains under `src/app/(campaigncue)/campaigncue/app`. |
-| `/features/cuelayers` | Explain safe image reuse, editable candidates, source snapshots, review flags, and flat-safe fallback. | Static CueLayers preview only; no perfect source-file recovery claim. |
+| `/features/cuelayers` | Explain the active flat-safe upload flow: locked original, owner-added editor elements, source snapshots, saved revisions, and export. | Static CueLayers preview only; no automatic source-layer candidates or perfect recovery claim while provider decomposition is gated. |
 | `/features/creative-trust-center` | Explain claim/source/risk/action review, rights, consent, spend gates, and blocked states. | Static trust matrix only; no legal-platform certification or predictive scoring. |
 | `/features/brand-playbook-proof-deck` | Explain Brand Playbook guidance and Campaign Proof Deck review brief. | Static proof-deck preview only; not a final rendered ad, video, website, or legal approval. |
 | `/features/reusable-pack-templates` | Explain repeatable approved packs, fact refresh, review, and export. | Static template-loop preview only; not a generic public template marketplace. |
@@ -284,7 +284,7 @@ CampaignCue should reject or soften:
 | Brand Playbook guidance | Brand guidance replaces source proof |
 | Campaign Proof Deck review brief | Proof deck is a final rendered ad, video, website, or legal approval |
 | Reusable pack templates | Template library that ignores source facts |
-| CueLayers creates editable candidates | Perfect source-file recovery |
+| CueLayers preserves the source and supports separate owner-added edits | Automatic source-layer recovery |
 | Direct account posting outside active delivery mode | Account posting already active |
 | Proof note, source fact, or boundary | "AI will handle everything" |
 
@@ -303,7 +303,7 @@ CampaignCue should reject or soften:
 **A:** No. A campaign pack can include WhatsApp text and images, Google local fields, social assets, print and in-store material, staff messages, email or SMS copy, QR or offer-page notes, trust checks, and a result prompt.
 
 **Q:** Can owners reuse existing images?
-**A:** Yes. CueLayers treats uploaded or generated flat images as editable candidates when reconstruction is safe, with protected text, source truth, and a flat fallback when reconstruction is uncertain.
+**A:** The active CueLayers path accepts an uploaded image, preserves it as a locked flat-safe source, and lets the owner add separate verified editor elements. Generated-source intake and automatic layer decomposition remain gated until their provider and validation workers are implemented.
 
 **Q:** Do packs include a review record?
 **A:** Yes. Campaign packs can include a proof deck with brand direction, source trace, trust checks, UGC or reel references, and manual delivery notes so an owner, agency, or client can review before use.

@@ -6,11 +6,13 @@ import { DB_COLLECTIONS } from "../../functions/src/constants/database";
 import { admin, firestoreAdmin } from "../../functions/src/firebaseAdmin";
 import {
   addUploadToSession,
+  appendStoredUploadOrCleanup,
   createSessionWithId,
   findActiveSession,
   findExistingStoreByPhone,
   getUserHash,
   handleMessage,
+  isMessagingUploadPathReferencedBySession,
 } from "../../functions/src/messagingOnboarding/sessionEngine";
 import type { IMessagingProvider } from "../../functions/src/messagingOnboarding/providers/IMessagingProvider";
 import type {
@@ -101,6 +103,31 @@ function buildSession(sessionId: string, userId: string): MessagingOnboardingSes
     validMenuFiles: [],
     validationConfidence: null,
   };
+}
+
+function verifyUploadPersistenceProjection(): void {
+  const session = buildSession("upload-persistence-projection", "919800000100");
+  const retained = session.uploads[0];
+  assert.equal(
+    isMessagingUploadPathReferencedBySession(session, session.sessionId, retained.storagePath),
+    true,
+  );
+  assert.equal(
+    isMessagingUploadPathReferencedBySession(session, session.sessionId, `${retained.storagePath}.other`),
+    false,
+  );
+  assert.equal(
+    isMessagingUploadPathReferencedBySession(
+      { ...session, uploads: [{ ...retained, storagePath: "wrong-scope/path.png" }] },
+      session.sessionId,
+      retained.storagePath,
+    ),
+    null,
+  );
+  assert.equal(
+    isMessagingUploadPathReferencedBySession(session, "different-session", retained.storagePath),
+    null,
+  );
 }
 
 async function verifyAtomicSessionAdmission(): Promise<void> {
@@ -208,6 +235,30 @@ async function verifyConcurrentUploadAppend(): Promise<void> {
     session,
   );
   assert.equal(duplicate.status, "duplicate", "duplicate identity must win before the size cap");
+}
+
+async function verifyCommittedAppendAcknowledgementLossRetainsReference(): Promise<void> {
+  const session = buildSession("append-acknowledgement-loss", "919800000115");
+  await sessions.doc(session.sessionId).set(session);
+  const upload = buildUpload("append-committed-before-throw", Timestamp.now(), session.sessionId);
+  const originalRunTransaction = firestoreAdmin.runTransaction.bind(firestoreAdmin);
+  firestoreAdmin.runTransaction = (async (...args: Parameters<typeof firestoreAdmin.runTransaction>) => {
+    await originalRunTransaction(...args);
+    throw new Error("simulated post-commit acknowledgement loss");
+  }) as typeof firestoreAdmin.runTransaction;
+  try {
+    await assert.rejects(
+      () => appendStoredUploadOrCleanup(upload, session),
+      /simulated post-commit acknowledgement loss/,
+    );
+  } finally {
+    firestoreAdmin.runTransaction = originalRunTransaction as typeof firestoreAdmin.runTransaction;
+  }
+  const persisted = await sessions.doc(session.sessionId).get();
+  assert.equal(
+    isMessagingUploadPathReferencedBySession(persisted.data(), session.sessionId, upload.storagePath),
+    true,
+  );
 }
 
 async function verifyInvalidUploadCounterAndCooldown(): Promise<void> {
@@ -526,8 +577,10 @@ async function verifySessionAndExistingStoreLookupBoundaries(): Promise<void> {
 
 async function main(): Promise<void> {
   assert(process.env.FIRESTORE_EMULATOR_HOST, "FIRESTORE_EMULATOR_HOST is required");
+  verifyUploadPersistenceProjection();
   await verifyAtomicSessionAdmission();
   await verifyConcurrentUploadAppend();
+  await verifyCommittedAppendAcknowledgementLossRetainsReference();
   await verifyInvalidUploadCounterAndCooldown();
   await verifyFailedSessionReopensAtomically();
   await verifyFullResendInvalidatesStaleDeliveryState();

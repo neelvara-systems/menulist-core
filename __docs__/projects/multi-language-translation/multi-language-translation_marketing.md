@@ -1,8 +1,8 @@
 # Multi-Language Translation — Marketing & Sales
 
 **Feature:** Menu Customer-Language Preparation
-**Audience:** Sales Team, Marketing, Partners  
-**Last Updated:** February 2026
+**Audience:** Sales Team, Marketing, Partners
+**Last Updated:** July 15, 2026
 **Status:** Historical marketing draft; not current sales, publication, or launch certification
 
 ---
@@ -129,7 +129,7 @@ Serve published customer-language menu output from reviewed localized content.
 
 **"Easy to manage"**
 
-- Primary language locked (original)
+- English source protected; customer display default stays configurable
 - Add/remove languages anytime
 - Edit translations in visual editor
 
@@ -168,7 +168,7 @@ Do not use testimonials or customer-behavior claims without approved customer ev
 
 ### CTA Copy Variants
 
-- **Primary:** "Add Your First Language Free"
+- **Primary:** "Prepare a Customer Language"
 - **Secondary:** "See Supported Languages"
 - **Subtle:** "Try translation"
 
@@ -222,7 +222,7 @@ Do not use testimonials or customer-behavior claims without approved customer ev
 
 ### Add Language
 
-"I open language management, keep the primary language locked, and select a supported project language for a translated draft."
+"I open language management, keep English as the protected translation source, and select a supported project language for a translated draft."
 
 ### Result
 

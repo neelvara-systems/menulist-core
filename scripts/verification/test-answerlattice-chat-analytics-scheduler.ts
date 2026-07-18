@@ -1,7 +1,12 @@
 #!/usr/bin/env ts-node
 
 import assert from 'node:assert/strict';
-import { syncChatAnalyticsNightly } from '../../functions-answerlattice/src/answerlattice/chatAnalyticsAggregation';
+import {
+    acquireChatAnalyticsBackfillLease,
+    backfillChatAnalyticsDays,
+    releaseChatAnalyticsBackfillLease,
+    syncChatAnalyticsNightly,
+} from '../../functions-answerlattice/src/answerlattice/chatAnalyticsAggregation';
 import { syncAnswerlatticeChatIntelligence } from '../../functions-answerlattice/src/answerlattice/chatIntelligence';
 import { admin, firestoreAdmin } from '../../functions-answerlattice/src/firebaseAdmin';
 
@@ -87,6 +92,33 @@ async function run(): Promise<void> {
     const second = await syncChatAnalyticsNightly(1, 101);
     assert.equal(second.summariesWritten, 0, 'unchanged summaries must not be rewritten');
     assert.ok(second.summariesSkipped >= 1);
+
+    const leaseNow = Timestamp.now();
+    const leaseId = await acquireChatAnalyticsBackfillLease(1, 101, leaseNow);
+    assert.ok(leaseId, 'first manual backfill must acquire the scoped lease');
+    assert.equal(
+        await acquireChatAnalyticsBackfillLease(1, 101, Timestamp.fromMillis(leaseNow.toMillis() + 1)),
+        null,
+        'concurrent manual backfill must be rejected',
+    );
+    await releaseChatAnalyticsBackfillLease(1, 101, 'not-the-owner');
+    assert.equal((await firestoreAdmin.collection('platformSummary').doc('chatAnalyticsState_1_101').get()).get('manualBackfillLeaseId'), leaseId);
+    await releaseChatAnalyticsBackfillLease(1, 101, leaseId as string);
+    assert.equal(
+        await acquireChatAnalyticsBackfillLease(1, 101, Timestamp.fromMillis(leaseNow.toMillis() + 30_000)),
+        null,
+        'immediate repeat must respect the persisted cooldown',
+    );
+    const nextLeaseId = await acquireChatAnalyticsBackfillLease(1, 101, Timestamp.fromMillis(leaseNow.toMillis() + 61_000));
+    assert.ok(nextLeaseId, 'backfill may run again after the cooldown');
+    await releaseChatAnalyticsBackfillLease(1, 101, nextLeaseId as string);
+
+    const backfill = await backfillChatAnalyticsDays(1, 101, 1, new Date(yesterday.getTime() + 24 * 60 * 60 * 1000));
+    assert.equal(backfill.results.length, 1);
+    assert.equal(backfill.results[0].date, dateKey);
+    assert.equal(backfill.results[0].status, 'skipped', 'unchanged canonical summary must not be rewritten');
+    assert.equal(backfill.results[0].chats, 1);
+    assert.equal(backfill.results[0].partial, false);
 
     const intelligenceNow = new Date(yesterday);
     intelligenceNow.setUTCDate(intelligenceNow.getUTCDate() + 1);

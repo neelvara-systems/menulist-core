@@ -7,29 +7,26 @@
  * 
  * PURPOSE:
  * --------
- * Provides a quick way for developers to clear all chat-related database 
- * collections during development/testing without manually deleting from 
- * Firestore Console.
+ * Provides a quick way for developers to clear the current user's loaded chat
+ * sessions during development/testing.
  * 
  * WHY THIS EXISTS:
  * ----------------
- * During development, we frequently need to test the chat system with fresh 
- * data. Manually deleting from 3 different Firestore collections 
- * (aiSearchHistory, chatSessions, queryEmbeddings) is time-consuming and 
- * error-prone. This button does it in one click.
+ * During development, we frequently need to test the chat system with a fresh
+ * user conversation list. This button removes only the loaded user sessions
+ * through the same DAL used by normal single-session deletion.
  * 
  * WHAT IT DELETES:
  * ----------------
- * 1. aiSearchHistory   - All AI search history records (analytics)
- * 2. chatSessions      - All chat conversations
- * 3. queryEmbeddings   - All cached vector embeddings
+ * 1. chatSessions      - The current user's loaded conversations
+ * 2. Firebase Storage  - Images owned by successfully deleted sessions
  * 
  * SAFETY MECHANISMS:
  * ------------------
  * - Triple environment check (component render, handler, database function)
  * - Confirmation modal with clear warning
  * - Only rendered in development (process.env.NODE_ENV !== 'production')
- * - Uses tree-shaking: This entire component is removed from production bundle
+ * - The action is omitted from production UI and rejected by its DAL guard
  * 
  * USAGE:
  * ------
@@ -39,9 +36,8 @@
  * 
  * MAINTENANCE NOTES:
  * ------------------
- * - If you add new chat-related collections, update the deletion logic in 
- *   /src/database/devUtils/index.ts
- * - Update the modal content below to reflect new collections
+ * - Keep deletion routed through the normal Answerlattice chat DAL
+ * - Do not add client deletion for analytics or embedding collections
  * - Keep this file in the same directory as ChatHistory.tsx for co-location
  * 
  * CREATED: 2025-01-23
@@ -95,29 +91,27 @@ const DevOnlyClearDataButton = ({ onClearAllData }: DevOnlyClearDataButtonProps)
      */
     const handleClick = () => {
         Modal.confirm({
-            title: '⚠️ Delete ALL Chat Data?',
+            title: 'Delete your loaded chats?',
             content: (
                 <div>
-                    <Text>This will permanently delete ALL data from:</Text>
+                    <Text>This will permanently delete the chats currently loaded for your signed-in user:</Text>
                     <ul style={{ marginTop: 8, marginBottom: 8 }}>
-                        <li><Text code>aiSearchHistory</Text> - All AI search analytics</li>
-                        <li><Text code>chatSessions</Text> - All chat conversations</li>
-                        <li><Text code>queryEmbeddings</Text> - All cached embeddings</li>
-                        <li><Text code>Firebase Storage</Text> - All uploaded chat images</li>
+                        <li><Text code>chatSessions</Text> - Your loaded chat conversations</li>
+                        <li><Text code>Firebase Storage</Text> - Images owned by those chats</li>
                     </ul>
                     <Text strong style={{ color: token.colorError }}>
                         This action cannot be undone!
                     </Text>
                     <br />
                     <Text type="secondary" style={{ fontSize: 11, marginTop: 8, display: 'block' }}>
-                        💡 This deletes both database records AND storage files to prevent orphaned data.
+                        Chat records are deleted before their owned image files are cleaned up.
                     </Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>
-                        🔒 This is a development tool. It&apos;s disabled in production for safety.
+                        This is a development tool. It&apos;s disabled in production for safety.
                     </Text>
                 </div>
             ),
-            okText: 'Yes, Delete Everything',
+                okText: 'Delete loaded chats',
             cancelText: 'Cancel',
             okButtonProps: {
                 danger: true,

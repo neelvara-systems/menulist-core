@@ -8,6 +8,31 @@ export interface NetworkStatus {
     rtt?: number; // Round-trip time in ms
 }
 
+type NetworkInformation = EventTarget & {
+    downlink?: unknown;
+    effectiveType?: unknown;
+    rtt?: unknown;
+};
+
+function getNetworkInformation(): NetworkInformation | null {
+    const navigatorWithConnection = navigator as Navigator & {
+        connection?: NetworkInformation;
+        mozConnection?: NetworkInformation;
+        webkitConnection?: NetworkInformation;
+    };
+
+    return navigatorWithConnection.connection
+        || navigatorWithConnection.mozConnection
+        || navigatorWithConnection.webkitConnection
+        || null;
+}
+
+function getFiniteMetric(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0
+        ? value
+        : undefined;
+}
+
 /**
  * Hook to monitor network connectivity and speed
  * 
@@ -37,14 +62,14 @@ export const useNetworkStatus = (): NetworkStatus => {
             const isOnline = navigator.onLine;
 
             // Check if Network Information API is available
-            const connection = (navigator as any).connection ||
-                (navigator as any).mozConnection ||
-                (navigator as any).webkitConnection;
+            const connection = getNetworkInformation();
 
             if (connection) {
-                const effectiveType = connection.effectiveType; // '4g', '3g', '2g', 'slow-2g'
-                const downlink = connection.downlink; // Mbps
-                const rtt = connection.rtt; // Round-trip time in ms
+                const effectiveType = typeof connection.effectiveType === 'string'
+                    ? connection.effectiveType
+                    : undefined;
+                const downlink = getFiniteMetric(connection.downlink);
+                const rtt = getFiniteMetric(connection.rtt);
 
                 // Consider network slow if:
                 // - Effective type is 2g or slow-2g
@@ -82,9 +107,7 @@ export const useNetworkStatus = (): NetworkStatus => {
         window.addEventListener('offline', updateNetworkStatus);
 
         // Listen to connection changes (if supported)
-        const connection = (navigator as any).connection ||
-            (navigator as any).mozConnection ||
-            (navigator as any).webkitConnection;
+        const connection = getNetworkInformation();
 
         if (connection) {
             connection.addEventListener('change', updateNetworkStatus);

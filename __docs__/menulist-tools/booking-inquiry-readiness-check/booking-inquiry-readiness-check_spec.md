@@ -1,7 +1,7 @@
 # Booking Inquiry Readiness Check - Specification
 
 **Status:** V0 source-gated evidence; not current launch certification
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Local Source Gate:** `npm run verify:booking-inquiry-readiness-check`
 
 ---
@@ -40,7 +40,7 @@ V0 accepts:
 - current public customer link
 - owner-selected clarity facts
 
-The public URL and action destination are only format-checked locally.
+The public URL and action destination are only format-checked locally. Arbitrary scheme text is not enough: `tel:` requires a phone shape, `mailto:` requires an email shape, `whatsapp://` requires the `send` action and an international phone, and plain phone input cannot contain letters.
 
 ## Outputs
 

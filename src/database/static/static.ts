@@ -198,6 +198,20 @@ const cleanupStorageReferences = async (
     }
 };
 
+const deferPersistedStorageReferenceCleanup = (
+    urls: unknown[],
+    operation: 'category_delete' | 'item_delete' | 'preview_replace' | 'subcategory_delete',
+    context: Record<string, boolean | number | string | undefined>,
+): void => {
+    const retainedCount = new Set(urls.filter(isFirebaseStorageReference)).size;
+    if (retainedCount === 0) return;
+    logStaticAssetDiagnostic('static_asset_persisted_file_cleanup_deferred_shared_reference', {
+        ...context,
+        operation,
+        retainedCount,
+    });
+};
+
 const prepareAssetPreview = async (
     type: CraftBuilderAssetsTypesType,
     input: AssetMutationInput,
@@ -238,18 +252,37 @@ const persistPreparedAsset = async <T>(
     try {
         const result = await persist(prepared.data);
         if (prepared.previousPreview && prepared.previousPreview !== prepared.uploadedPreview) {
-            await cleanupStorageReferences(
+            deferPersistedStorageReferenceCleanup(
                 [prepared.previousPreview],
-                'static_asset_replaced_preview_cleanup_failed',
+                'preview_replace',
                 context,
             );
         }
         return { data: prepared.data, result };
     } catch (error) {
         if (prepared.uploadedPreview) {
+            logStaticAssetFailure(
+                'static_asset_ambiguous_write_preview_retained',
+                new Error('persistence_outcome_ambiguous'),
+                context,
+            );
+        }
+        throw error;
+    }
+};
+
+const validatePreparedAsset = async <T>(
+    prepared: PreparedAssetMutation,
+    validate: (data: AssetMutationInput) => T,
+    context: Record<string, boolean | number | string | undefined>,
+): Promise<T> => {
+    try {
+        return validate(prepared.data);
+    } catch (error) {
+        if (prepared.uploadedPreview) {
             await cleanupStorageReferences(
                 [prepared.uploadedPreview],
-                'static_asset_failed_write_preview_cleanup_failed',
+                'static_asset_pre_persist_preview_cleanup_failed',
                 context,
             );
         }
@@ -272,7 +305,11 @@ export const addAssetsCategory = async (type: CraftBuilderAssetsTypesType, data:
     return await apiCallComposer(
         async () => {
             const prepared = await prepareAssetPreview(type, data);
-            const normalized = requireAssetMutation(prepared.data);
+            const normalized = await validatePreparedAsset(
+                prepared,
+                (nextData) => requireAssetMutation(nextData),
+                getStaticAssetEntityLogContext(type),
+            );
             const persisted = await persistPreparedAsset(
                 { ...prepared, data: normalized },
                 async (nextData) => addDoc(getCollectionRef(type), await requestBodyComposer(nextData, { isNew: true })),
@@ -294,7 +331,11 @@ export const updateAssetsCategory = async (
     return await apiCallComposer(
         async () => {
             const prepared = await prepareAssetPreview(type, data);
-            const patch = normalizeAssetCategoryPatch(prepared.data);
+            const patch = await validatePreparedAsset(
+                prepared,
+                normalizeAssetCategoryPatch,
+                getStaticAssetEntityLogContext(type, docId),
+            );
             await persistPreparedAsset(
                 { ...prepared, data: patch },
                 async (nextData) => updateDoc(getDocRef(type, docId), await requestBodyComposer(nextData, { isNew: false })),
@@ -325,9 +366,9 @@ export const deleteAssetsCategory = async (
                 transaction.delete(categoryRef);
                 return current;
             });
-            await cleanupStorageReferences(
+            deferPersistedStorageReferenceCleanup(
                 collectAssetPreviewReferences(deletedCategory),
-                'static_asset_category_file_cleanup_failed',
+                'category_delete',
                 getStaticAssetEntityLogContext(type, categoryDetails.id),
             );
             return SUCCESS_RESPONSE;
@@ -346,7 +387,11 @@ export const addAssetsSubCategory = async (
     return await apiCallComposer(
         async () => {
             const prepared = await prepareAssetPreview(type, data);
-            const subCategory = requireAssetMutation(prepared.data, { requireId: true });
+            const subCategory = await validatePreparedAsset(
+                prepared,
+                (nextData) => requireAssetMutation(nextData, { requireId: true }),
+                getStaticAssetEntityLogContext(type, docId),
+            );
             await persistPreparedAsset(
                 { ...prepared, data: subCategory },
                 async () => runTransaction(firebaseClient, async (transaction) => {
@@ -379,7 +424,11 @@ export const updateAssetsSubCategory = async (
         async () => {
             if (parentCategory.id === undefined) throw new Error('static_asset_parent_id_missing');
             const prepared = await prepareAssetPreview(type, data);
-            const subCategory = requireAssetMutation(prepared.data, { requireId: true });
+            const subCategory = await validatePreparedAsset(
+                prepared,
+                (nextData) => requireAssetMutation(nextData, { requireId: true }),
+                getStaticAssetEntityLogContext(type, parentCategory.id),
+            );
             await persistPreparedAsset(
                 { ...prepared, data: subCategory },
                 async () => runTransaction(firebaseClient, async (transaction) => {
@@ -425,9 +474,9 @@ export const deleteAssetsSubCategory = async (
                 transaction.update(parentRef, { subCategories: next });
                 return removed;
             });
-            await cleanupStorageReferences(
+            deferPersistedStorageReferenceCleanup(
                 collectAssetPreviewReferences(deletedSubCategory),
-                'static_asset_subcategory_file_cleanup_failed',
+                'subcategory_delete',
                 getStaticAssetEntityLogContext(type, parentCategory.id, categoryDetails.id),
             );
             return SUCCESS_RESPONSE;
@@ -447,7 +496,11 @@ const mutateAssetItem = async (
 ): Promise<AssetsCategoryType> => {
     if (parentCategory.id === undefined) throw new Error('static_asset_parent_id_missing');
     const prepared = await prepareAssetPreview(type, data);
-    const item = requireAssetMutation(prepared.data, { requireId: true });
+    const item = await validatePreparedAsset(
+        prepared,
+        (nextData) => requireAssetMutation(nextData, { requireId: true }),
+        getStaticAssetEntityLogContext(type, parentCategory.id, subCategory?.id),
+    );
 
     await persistPreparedAsset(
         { ...prepared, data: item },
@@ -551,9 +604,9 @@ export const deleteAssetsItem = async (
                 transaction.update(parentRef, { items: nextItems });
                 return removed;
             });
-            await cleanupStorageReferences(
+            deferPersistedStorageReferenceCleanup(
                 collectAssetPreviewReferences(deletedItem),
-                'static_asset_item_file_cleanup_failed',
+                'item_delete',
                 getStaticAssetEntityLogContext(type, parentCategory.id, subCategory?.id, data.id),
             );
             return SUCCESS_RESPONSE;

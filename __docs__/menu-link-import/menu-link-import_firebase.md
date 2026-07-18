@@ -1,8 +1,10 @@
 # Menu Link Import Firebase
 
-**Boundary Reviewed:** July 10, 2026
+**Boundary Reviewed:** July 13, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated Menu Link Import evidence only. Both current intake paths require a signed-in owner before source acquisition or extraction: the owner app uses `/api/menu-link-imports`, while the public `/create-menu` page submits through the authenticated `/api/public/create-menu` route. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:menu-extraction-pipeline`, `npm run verify:functions-deploy-preflight`, authenticated desktop/mobile owner-flow QA, signed-in `/create-menu` browser QA, direct and rendered source-acquisition smoke, Gemini extraction provider smoke where fallback is used, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
+
+The authenticated owner route re-reads `stores/{sId}` and requires current persisted `canUseMenuExtraction` after bounded input validation and before project reads, HTTP/render acquisition, Storage writes, artifact creation, or job creation. This adds one store permission read per valid non-platform owner-route request; rejected requests produce none of the downstream operations. Platform sessions retain the shared permission helper's explicit zero-read bypass. The signed-in public-draft adapter keeps its separate existing admission contract.
 
 ## Collections
 
@@ -78,6 +80,8 @@ menuLinkImports/{tId}/{sId}/{projectId}/{jobId}/source.jpg
 
 Artifacts are private and immutable. The extraction job receives a tokenized Firebase download URL for the single artifact it must process. Raw HTML is not stored separately in v1.
 
+The consolidated MenuList maintenance scheduler retains authenticated link-import sources for the same seven-day window as terminal extraction jobs. Its daily `menu_old_cleanup` task scans at most 100 old artifact rows, batch-loads their jobs, and deletes only exact tenant/store/project/owner/job-bound `source.txt`, `source.pdf`, `source.jpg`, `source.png`, or `source.webp` paths. Active jobs are skipped. Storage is deleted before `menuLinkImportArtifacts` metadata; unsafe bindings or failed Storage deletes preserve the metadata as the durable retry record and fail the scheduler task observably.
+
 ## Cost Impact
 
 - The owner-app path uses one `menuLinkImportArtifacts` write, one `menuImageProcessingJobs` write, and one private Storage object before extraction.
@@ -90,6 +94,7 @@ Artifacts are private and immutable. The extraction job receives a tokenized Fir
 - Deterministic text extraction can process high-confidence `html_text`, `rendered_html_text`, `plain_text`, and `json_text` artifacts with zero model charge. The existing AI extraction cost applies only when the deterministic parser cannot produce a reliable draft or when the artifact is PDF/image.
 - Deterministic text extraction diagnostics add no Firestore reads/writes and no model calls. Success/skip logs use bounded job ID length/count/source metadata and stable local failure codes instead of raw job IDs or exception messages.
 - Failed job creation after Storage writes triggers best-effort cleanup of the new private artifact objects and artifact metadata.
+- Terminal or already-pruned authenticated link-import jobs add one bounded daily retention read per artifact, one Storage delete, and one batched artifact-metadata delete after seven days. The task is capped at 100 artifacts per run and uses the existing scheduler/lease rather than a new scheduled Function or index.
 - Authenticated route diagnostics add no Firestore reads/writes, Storage operations, provider calls, or model calls; they log only bounded project/job/artifact/source-kind presence-length metadata, status/count booleans, and normalized source error metadata.
 - June 29 limiter-key hardening adds no Firestore reads/writes/deletes, Storage operations, provider calls, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, or Firebase deploy requirement. The route still uses the same `MENU_LINK_IMPORT` limiter profile, but owner, tenant, and store key material is HMAC-hashed before storage in Upstash.
 - Local/emulator dev-trigger failure diagnostics add no Firestore reads/writes beyond the existing best-effort job snapshot read and callable attempt; failures log only bounded job/environment metadata and normalized source error metadata.

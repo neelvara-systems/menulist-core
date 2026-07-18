@@ -1,13 +1,16 @@
 export const dynamic = 'force-dynamic';
 import { getOurChargePaise, getRealCostPaise, getUnitCost } from "@constant/AI/unitCosts";
 import { getModelName } from "@constant/AI/models";
-import { CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
+import { AI_ACTIONS_TYPES, CHARGE_PER_CREDIT, TOKENS_PER_CREDIT } from "@constant/common";
 import { PERMISSIONS } from "@constant/permissions";
 import { HarmBlockThreshold, HarmCategory } from "@google/genai";
 import { finalizeAiOperationAccounting } from "@lib/ai/accounting";
 import {
+    createDescriptionProviderItemAliases,
+    isCompleteDescriptionGenerationResult,
     normalizeDescriptionGenerationResult,
     resolveDescriptionBillingAction,
+    restoreDescriptionProviderItemIds,
 } from "@lib/ai/descriptionOutput";
 import { checkAICapacity, refundAiCapacityReservationSafely, reserveAiCapacity } from "@lib/ai/capacityCheck";
 import { getAIGatewayDiagnostics, getAIErrorDiagnostics, getAIRouteLogContext, getAIRouteSecurityContext, logAIRouteFailure } from "@lib/google/genAi/diagnostics";
@@ -248,6 +251,11 @@ export const POST = withAuth(async (request, session) => {
         const action = resolveDescriptionBillingAction(requestedAction, itemsList);
         const targetLangList = (Array.isArray(targetLang) ? targetLang : [targetLang]) as Array<{ code?: string }>;
         const targetLangCodes = targetLangList.map((language) => language?.code || 'unspecified');
+        const {
+            aliasedItems: providerItemsList,
+            originalItemIdsByAlias,
+        } = createDescriptionProviderItemAliases(itemsList);
+        const providerItemIds = providerItemsList.map((item) => item.id);
         const itemSummary = {
             itemCount: itemsList.length,
             itemIdCount: itemsList.filter((item) => Boolean(item.id)).length,
@@ -256,6 +264,9 @@ export const POST = withAuth(async (request, session) => {
             sourceLang: sourceLang?.code || 'unspecified',
             targetLangCount: targetLangCodes.length,
         };
+        const operationRequestCount = action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
+            ? validated.operationRequestCount ?? 1
+            : 1;
 
         const permissionError = await requireAnyStorePermission(
             request,
@@ -270,6 +281,7 @@ export const POST = withAuth(async (request, session) => {
             contentLength,
             itemCount: itemsList.length,
             model: AI_MODEL,
+            operationRequestCount,
             projectId,
             requestId,
             sourceLang: sourceLang?.code || 'unspecified',
@@ -301,6 +313,7 @@ export const POST = withAuth(async (request, session) => {
             session.tId,
             session.sId,
             action,
+            operationRequestCount,
         );
         if (!capacityCheck.allowed) {
             return NextResponse.json({
@@ -310,7 +323,8 @@ export const POST = withAuth(async (request, session) => {
                 code: capacityCheck.reason,
             }, { status: 402 });
         }
-        if (capacityCheck.unitsRequired > 0) {
+        const requestUnitsRequired = getUnitCost(action);
+        if (requestUnitsRequired > 0) {
             capacityReservation = await reserveAiCapacity({
                 action,
                 pId: session.pId ?? session.user?.pId ?? session.user?.productId,
@@ -319,7 +333,9 @@ export const POST = withAuth(async (request, session) => {
                 subscription: capacityCheck.subscription!,
                 tId: session.tId,
                 uId: session.uId ?? session.user?.id,
-                unitsToReserve: capacityCheck.unitsRequired,
+                // Whole-scope admission above is a fail-fast guard. Keep the
+                // established per-request reservation/settlement contract.
+                unitsToReserve: requestUnitsRequired,
             });
         }
 
@@ -336,7 +352,12 @@ export const POST = withAuth(async (request, session) => {
         const temperature = baseSetting.temp;
         const topP = baseSetting.topP;
 
-        const prompt = descriptionPrompt(contentLength, action, { itemsList, targetLang, sourceLang }, tone);
+        const prompt = descriptionPrompt(
+            contentLength,
+            action,
+            { itemsList: providerItemsList, targetLang, sourceLang },
+            tone,
+        );
         const generationConfig = {
             responseMimeType: "application/json",
             temperature,
@@ -486,12 +507,12 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
         }
 
-        const normalizedGeneratedData = normalizeDescriptionGenerationResult(
+        const normalizedProviderGeneratedData = normalizeDescriptionGenerationResult(
             generatedData,
-            itemsList.map((item) => item.id),
+            providerItemIds,
             targetLangCodes,
         );
-        if (!normalizedGeneratedData) {
+        if (!normalizedProviderGeneratedData) {
             logAIRouteFailure('description_generation_invalid_shape_response', undefined, {
                 isArray: Array.isArray(generatedData),
                 model: AI_MODEL,
@@ -522,13 +543,27 @@ export const POST = withAuth(async (request, session) => {
             });
             return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
         }
-        generatedData = normalizedGeneratedData;
+        generatedData = restoreDescriptionProviderItemIds(
+            normalizedProviderGeneratedData,
+            originalItemIdsByAlias,
+        );
 
-        // Response ID validation — verify returned IDs match requested IDs to prevent data corruption
+        // The owner action is atomic. A provider response missing even one
+        // requested item/language is rejected before accounting or persistence.
         const requestedIds = new Set(itemsList.map((item: any) => item.id));
         const returnedIds = new Set(Object.keys(generatedData));
         const missingIds = Array.from(requestedIds).filter(id => !returnedIds.has(id));
-        if (missingIds.length > 0) {
+        const incompleteItemCount = itemsList.filter((item) => (
+            targetLangCodes.some((languageCode) => (
+                typeof generatedData[item.id]?.[languageCode] !== 'string'
+                || generatedData[item.id][languageCode].trim().length === 0
+            ))
+        )).length;
+        if (!isCompleteDescriptionGenerationResult(
+            generatedData,
+            itemsList.map((item) => item.id),
+            targetLangCodes,
+        )) {
             logger.warn('Description generation returned incomplete response', getAIRouteLogContext({
                 userId,
                 projectId,
@@ -537,7 +572,25 @@ export const POST = withAuth(async (request, session) => {
                 requestedCount: requestedIds.size,
                 returnedCount: returnedIds.size,
                 missingIdCount: missingIds.length,
+                incompleteItemCount,
             }));
+            await writeLogEntry({
+                logFileName: LOG_FILE,
+                userId,
+                projectId,
+                fileId,
+                logType: 'INCOMPLETE_RESPONSE',
+                data: {
+                    incompleteItemCount,
+                    missingIdCount: missingIds.length,
+                    model: AI_MODEL,
+                    requestId,
+                    requestedCount: requestedIds.size,
+                    returnedCount: returnedIds.size,
+                    targetLanguageCount: targetLangCodes.length,
+                },
+            });
+            return NextResponse.json({ error: 'Description generation failed' }, { status: 500 });
         }
 
         let transactionObject = {

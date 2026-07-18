@@ -1,5 +1,13 @@
 import { PlatformGlobalDataContext, PlatformGlobalDataProviderType } from '@providers/platformProviders/platformGlobalDataProvider';
+import {
+    getAiOperationHistoryJsonObject,
+    getAiOperationHistoryJsonObjectArray,
+    formatAiOperationHistoryLanguage,
+    type AiOperationHistoryJsonObject,
+    type AiOperationHistoryJsonValue,
+} from '@lib/ai/operationHistoryClientContract';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { formatNumber } from '@util/formatters';
 import { Descriptions, Divider, Image, Table, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import React, { useContext } from 'react';
@@ -9,31 +17,42 @@ interface ImageProcessingDetailsViewProps {
     transaction: TransactionDetails;
 }
 
+const getLocalizedName = (value: AiOperationHistoryJsonValue | undefined, fallback: string) => {
+    if (typeof value === 'string' && value.trim()) return value;
+    const localized = getAiOperationHistoryJsonObject(value);
+    return typeof localized?.en === 'string' && localized.en.trim() ? localized.en : fallback;
+};
+
+const getHistoryCount = (value: unknown): number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
+);
+
 // Helper to render extracted menu items from image processing
 const renderExtractedMenuItems = (
-    clientResponse: any,
-    categories: any[],
+    clientResponse: AiOperationHistoryJsonValue | undefined,
+    categories: AiOperationHistoryJsonObject[],
     currencySymbol: string,
     t: (key: string) => string,
 ) => {
-    if (!clientResponse?.data?.items || clientResponse.data.items.length === 0) {
-        return <Typography.Text>{t('noMenuItemsFound')}</Typography.Text>;
-    }
-    const items = clientResponse.data.items;
+    const response = getAiOperationHistoryJsonObject(clientResponse);
+    const data = getAiOperationHistoryJsonObject(response?.data);
+    const items = getAiOperationHistoryJsonObjectArray(data?.items);
+    if (items.length === 0) return null;
 
     return (
         <Table
-            dataSource={items.map((item: any) => ({
-                key: item.id,
-                name: typeof item.name === 'object' ? item.name?.en : String(item.name) || t('unnamedItem'),
+            dataSource={items.map((item, index) => ({
+                key: typeof item.id === 'string' ? item.id : `item-${index}`,
+                name: getLocalizedName(item.name, t('unnamedItem')),
                 category: (() => {
-                    const category = categories.find((c: any) => c.id === item.category);
-                    if (category && typeof category.name === 'object') {
-                        return category.name?.en || t('unknown');
-                    }
-                    return category?.name || t('unknown');
+                    const category = categories.find((entry) => entry.id === item.category);
+                    return getLocalizedName(category?.name, t('unknown'));
                 })(),
-                price: item.price || (item.attributes ? t('multiplePrices') : t('notAvailable'))
+                price: typeof item.price === 'string' || typeof item.price === 'number'
+                    ? String(item.price)
+                    : Array.isArray(item.attributes)
+                        ? t('multiplePrices')
+                        : t('notAvailable'),
             }))}
             columns={[
                 { title: t('itemName'), dataIndex: 'name', key: 'name' },
@@ -50,24 +69,20 @@ const renderExtractedMenuItems = (
                 }
             ]}
             expandable={{
-                expandedRowRender: (record: any) => {
-                    const item = items.find((i: any) => {
-                        if (typeof i.name === 'object') {
-                            return i.name?.en === record.name;
-                        }
-                        return String(i.name) === record.name;
-                    });
-                    if (!item || !Array.isArray(item.attributes) || item.attributes.length === 0) return null;
+                expandedRowRender: (record: { key: string; name: string }) => {
+                    const item = items.find((entry, index) => (
+                        (typeof entry.id === 'string' ? entry.id : `item-${index}`) === record.key
+                    ));
+                    const attributes = getAiOperationHistoryJsonObjectArray(item?.attributes);
+                    if (attributes.length === 0) return null;
 
                     return (
                         <Table
-                            dataSource={Array.isArray(item.attributes) ?
-                                item.attributes.map((attr: any, index: number) => ({
-                                    ...attr,
+                            dataSource={attributes.map((attr, index) => ({
                                     key: `${record.key}-attr-${index}`,
                                     name: typeof attr.name === 'string' ? attr.name : t('variation'),
-                                    price: typeof attr.price === 'string' ? attr.price : '0'
-                                })) : []}
+                                    price: typeof attr.price === 'string' || typeof attr.price === 'number' ? String(attr.price) : '0',
+                                }))}
                             columns={[
                                 { title: t('variation'), dataIndex: 'name', key: 'name' },
                                 {
@@ -85,14 +100,11 @@ const renderExtractedMenuItems = (
                         />
                     );
                 },
-                rowExpandable: (record: any) => {
-                    const item = items.find((i: any) => {
-                        if (typeof i.name === 'object') {
-                            return i.name?.en === record.name;
-                        }
-                        return String(i.name) === record.name;
-                    });
-                    return item && Array.isArray(item.attributes) && item.attributes.length > 0;
+                rowExpandable: (record: { key: string }) => {
+                    const item = items.find((entry, index) => (
+                        (typeof entry.id === 'string' ? entry.id : `item-${index}`) === record.key
+                    ));
+                    return getAiOperationHistoryJsonObjectArray(item?.attributes).length > 0;
                 }
             }}
             pagination={false}
@@ -107,15 +119,20 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
     const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
     const currencySymbol = storeDetails?.currencySymbol || '₹';
 
-    const categories = clientResponse?.data?.categories || [];
-    const items = clientResponse?.data?.items || [];
+    const response = getAiOperationHistoryJsonObject(clientResponse);
+    const data = getAiOperationHistoryJsonObject(response?.data);
+    const dataSummary = getAiOperationHistoryJsonObject(response?.dataSummary);
+    const categories = getAiOperationHistoryJsonObjectArray(data?.categories);
+    const items = getAiOperationHistoryJsonObjectArray(data?.items);
+    const categoryCount = categories.length || getHistoryCount(dataSummary?.categoriesCount);
+    const itemCount = items.length || getHistoryCount(dataSummary?.itemsCount);
 
     return (
         <>
             <Descriptions title={t('processingInformation')} column={1}>
                 <Descriptions.Item label={t('targetLanguages')}>
                     {targetLanguages?.map((lang) => (
-                        <Tag key={lang.code}>{lang.name} ({lang.code})</Tag>
+                        <Tag key={formatAiOperationHistoryLanguage(lang)}>{formatAiOperationHistoryLanguage(lang)}</Tag>
                     ))}
                 </Descriptions.Item>
             </Descriptions>
@@ -129,7 +146,7 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
                         <Typography.Title level={5}>{t('inputImage')}</Typography.Title>
                         <div style={{ textAlign: 'center' }}>
                             <Image
-                                src={files[0].url}
+                                src={files[0].url || undefined}
                                 alt={t('inputImage')}
                                 style={{ maxHeight: '400px', maxWidth: '100%' }}
                             />
@@ -144,17 +161,32 @@ const ImageProcessingDetailsView: React.FC<ImageProcessingDetailsViewProps> = ({
                         {categories.length > 0 && (
                             <div style={{ marginBottom: '16px' }}>
                                 <Typography.Text strong>{t('menuCategories')}</Typography.Text>
-                                {categories.map((category: any) => (
-                                    <Tag key={category.id} color="blue" style={{ margin: '4px' }}>
-                                        {category.name?.en || t('unnamedCategory')}
-                                    </Tag>
-                                ))}
+                                {categories.map((category, index) => {
+                                    const localizedName = getAiOperationHistoryJsonObject(category.name)?.en;
+                                    const categoryName = typeof localizedName === 'string'
+                                        ? localizedName
+                                        : typeof category.name === 'string'
+                                            ? category.name
+                                            : t('unnamedCategory');
+                                    return (
+                                        <Tag key={typeof category.id === 'string' ? category.id : `category-${index}`} color="blue" style={{ margin: '4px' }}>
+                                            {categoryName}
+                                        </Tag>
+                                    );
+                                })}
                             </div>
                         )}
 
                         {renderExtractedMenuItems(clientResponse, categories, currencySymbol, t)}
 
-                        {items.length === 0 && categories.length === 0 && (
+                        {items.length === 0 && categories.length === 0 && (itemCount > 0 || categoryCount > 0) && (
+                            <Typography.Text>{t('itemsCategoriesExtracted', {
+                                items: formatNumber(itemCount),
+                                categories: formatNumber(categoryCount),
+                            })}</Typography.Text>
+                        )}
+
+                        {itemCount === 0 && categoryCount === 0 && (
                             <Typography.Text>{t('noMenuItemsOrCategoriesFound')}</Typography.Text>
                         )}
                     </div>

@@ -197,7 +197,7 @@ New customers see updated branding
 | name             | Store name                     | "Joe's Pizza"                                           |
 | short_name       | pwaShortName or truncated name | "Joe's Pizza"                                           |
 | icons            | Generated app icon URLs        | `/api/app-icons/{storeId}/192`                          |
-| start_url        | Store-level customer entry     | `/menu` when a customer menu exists, otherwise `/`      |
+| start_url        | Store-level customer entry     | `/menu` when a scoped owner-claimed/default alias exists, otherwise `/` |
 | display          | Fixed value                    | "standalone"                                            |
 | theme_color      | Brand accent or default        | "#ffffff"                                               |
 | background_color | Fixed value                    | "#ffffff"                                               |
@@ -268,7 +268,7 @@ If the cached project-summary lookup used to choose `/menu` is unavailable, the 
 
 | Shortcut       | Condition                 | Action                     |
 | -------------- | ------------------------- | -------------------------- |
-| View Menu      | Always                    | Opens store's default menu |
+| View Menu      | Resolvable `/menu` target exists | Opens owner-claimed or explicit-default menu |
 | Call Store     | If `store.phone` exists   | `tel:{phone}`              |
 | Get Directions | If `store.address` exists | Opens maps with address    |
 

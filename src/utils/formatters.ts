@@ -2,13 +2,12 @@ import {
   APP_DATE_FORMAT_COOKIES_KEY,
   APP_LOCALE_COOKIES_KEY,
   APP_TIME_FORMAT_COOKIES_KEY,
-  DATE_FORMATS,
   defaultDateFormat,
-  defaultDateFormatString,
   defaultLocale,
   defaultTimeFormat,
-  defaultTimeFormatString,
-  TIME_FORMATS
+  getDateFormatOptions,
+  getTimeFormatOptions,
+  normalizeLocalePreference,
 } from '@lib/localization/config';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { getCookie } from 'cookies-next';
@@ -70,6 +69,7 @@ export const formatCurrency = (amount: number | undefined, currency = 'USD', loc
       locale = defaultLocale;
     }
   }
+  locale = normalizeLocalePreference(locale) || defaultLocale;
 
   // Convert cents to the base unit and format
   return new Intl.NumberFormat(locale, {
@@ -78,6 +78,25 @@ export const formatCurrency = (amount: number | undefined, currency = 'USD', loc
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount / 100);
+};
+
+export const formatNumber = (
+  value: number | undefined | null,
+  options: Intl.NumberFormatOptions = {},
+  locale?: string,
+): string => {
+  if (value === undefined || value === null || !Number.isFinite(Number(value))) return '-';
+
+  let resolvedLocale = normalizeLocalePreference(locale);
+  if (!resolvedLocale) {
+    try {
+      resolvedLocale = normalizeLocalePreference(getCookie(APP_LOCALE_COOKIES_KEY) as string);
+    } catch {
+      resolvedLocale = null;
+    }
+  }
+
+  return new Intl.NumberFormat(resolvedLocale || defaultLocale, options).format(Number(value));
 };
 
 export const formatInrAmount = (
@@ -106,19 +125,7 @@ export const formatInrPaise = (
  */
 export const getUserDateFormatOptions = (): DateTimeFormatOptions => {
   try {
-    // Get date format from cookie or use default
-    const dateFormatStr = getCookie(APP_DATE_FORMAT_COOKIES_KEY) as string || defaultDateFormatString;
-
-    // Find the format in predefined formats
-    const dateFormat = DATE_FORMATS.find(format => format.label === dateFormatStr);
-
-    if (dateFormat) {
-      return dateFormat.value;
-    }
-
-    // If not found in predefined formats, parse it
-    const [day, month, year] = dateFormatStr.split('|');
-    return { day, month, year } as DateTimeFormatOptions;
+    return getDateFormatOptions(getCookie(APP_DATE_FORMAT_COOKIES_KEY) as string);
   } catch (e) {
     // If any error occurs, use system default
     logRuntimeFailure('date_format_preference_read_failed', e);
@@ -132,19 +139,7 @@ export const getUserDateFormatOptions = (): DateTimeFormatOptions => {
  */
 export const getUserTimeFormatOptions = (): DateTimeFormatOptions => {
   try {
-    // Get time format from cookie or use default
-    const timeFormatStr = getCookie(APP_TIME_FORMAT_COOKIES_KEY) as string || defaultTimeFormatString;
-
-    // Find the format in predefined formats
-    const timeFormat = TIME_FORMATS.find(format => format.label === timeFormatStr);
-
-    if (timeFormat) {
-      return timeFormat.value;
-    }
-
-    // If not found in predefined formats, parse it
-    const [hour, minute, hour12Str] = timeFormatStr.split('|');
-    return { hour, minute, hour12: hour12Str === 'true' } as DateTimeFormatOptions;
+    return getTimeFormatOptions(getCookie(APP_TIME_FORMAT_COOKIES_KEY) as string);
   } catch (e) {
     // If any error occurs, use system default
     logRuntimeFailure('time_format_preference_read_failed', e);

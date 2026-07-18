@@ -28,7 +28,7 @@ Now implemented and not future scope:
 
 | Priority | Expansion | Why it matters | Activation gate |
 | --- | --- | --- | --- |
-| 1 | Provider adapters behind capability checks | Direct WhatsApp, Google, Meta, and ad workflows can save owner time only after credentials, consent, quotas, and retry controls exist. | Dedicated adapter contracts, idempotency, provider health, and export fallback. |
+| 1 | Provider adapters behind capability checks | Direct WhatsApp/Google work remains separate. Meta Ads MCP is validated only as a read-first reporting, activity-log, signal-health, and troubleshooting candidate; ad mutation stays blocked. | Dedicated server adapter, explicit owner/account selection, verified scopes/tool allowlist, runtime validation, tenant isolation, compact lazy summary, provider health, and manual export fallback. |
 | 2 | Credit ledger and billing checkout | Paid generation, render, provider send, and ad workflows need visible cost before action. | Billing provider, reserve/capture/refund ledger, owner confirmation, and spend caps. |
 | 3 | Media upload and thumbnail pipeline | Asset metadata is live; real uploads need signed upload, thumbnails, moderation, retention, and rights proof. | Storage deploy, upload UI, size/type guard, retention policy, and preview generation. |
 | 4 | Rendered image templates | Restaurants and salons will want ready-to-post images, but template rendering must stay source-checked. | Asset rights checks, template registry, render cost estimate, and export fallback. |
@@ -41,6 +41,8 @@ Now implemented and not future scope:
 | 11 | Imported outcome metrics | Compact manual results are live; imported clicks, replies, calls, bookings, and GBP metrics can improve learning. | Provider connections, confidence labels, summary writes, and no raw event scans. |
 | 12 | Persistent multi-pack library | The current desk focuses on the latest pack review; owners and agencies may later need saved seasonal packs, variants, and reuse history. | Bounded list UX, explicit retention, archived-pack state, and no default realtime listener. |
 | 13 | Vertical decision recipe expansion | The deterministic engine is live; deeper vertical recipes can improve recommendations without changing the authority model. | Recipe tests, owner-copy review, trust checks, bounded input requirements, and no model-owned decision path. |
+
+Meta Ads MCP does not authorize provider work by itself. Revalidate the current Meta tool inventory, scopes, app-review requirements, pricing/quotas, and production terms before implementation. If read and write tools cannot be separated reliably, do not activate the connector.
 
 ## Non-Expansion Guardrail
 

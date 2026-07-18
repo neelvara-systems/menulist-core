@@ -17,6 +17,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import {
     formatScreenPrice,
     getScreenDietType,
+    hasScreenPrice,
     normalizeOwnerSlideCaption,
     resolveScreenText,
     truncateScreenText,
@@ -114,7 +115,11 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
             const serverDataStr = JSON.stringify(initialSlides);
             const currentDataStr = JSON.stringify(state.slides);
             if (serverDataStr !== currentDataStr) {
-                setState(prev => ({ ...prev, slides: initialSlides }));
+                setState(prev => ({
+                    ...prev,
+                    currentIndex: Math.min(prev.currentIndex, initialSlides.length - 1),
+                    slides: initialSlides,
+                }));
             }
         }
     }, [initialSlides]);
@@ -122,7 +127,10 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
     // Cache data for offline use (write after render)
     useEffect(() => {
         try {
-            localStorage.setItem(cacheKey, JSON.stringify(initialData));
+            localStorage.setItem(cacheKey, JSON.stringify({
+                ...initialData,
+                slides: state.slides,
+            }));
         } catch (e) {
             logScreenDisplayFailure('digital_screen_display_cache_write_failed', e, {
                 ...getBoundedScreenStringContext('token', token),
@@ -130,7 +138,7 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
                 slideCount: state.slides.length,
             });
         }
-    }, [cacheKey, initialData, state.slides.length, storeId, token]);
+    }, [cacheKey, initialData, state.slides, storeId, token]);
 
     // HARDENING: Delay QR loading for faster cold boot
     useEffect(() => {
@@ -207,6 +215,10 @@ export default function ScreenDisplay({ initialData }: ScreenDisplayProps) {
             (snapshot) => {
                 if (snapshot.exists()) {
                     const docData = snapshot.data();
+                    if (docData.enabled !== true) {
+                        guardedReload();
+                        return;
+                    }
                     const newVersion = docData.contentVersion || 1;
                     const currentVersion = initialData.contentVersion;
 
@@ -727,7 +739,7 @@ function SlideContent({ slide, storeInfo, qrReady }: { slide: ScreenSlide; store
                     <p className="slide-description">{displayDesc}</p>
                 )}
 
-                {slide.price != null && slide.price > 0 && (
+                {hasScreenPrice(slide.price) && (
                     <div className="slide-meta-row">
                         <div className="slide-price-pill">
                             <span className="price-value">{formatScreenPrice(slide.price, storeInfo.currencySymbol)}</span>

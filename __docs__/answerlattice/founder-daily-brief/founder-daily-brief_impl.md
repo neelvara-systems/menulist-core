@@ -25,9 +25,10 @@
    - `platformSummary/supportBoardSummary_{tId}_{sId}`
    - `platformSummary/frictionSnapshot_{tId}_{sId}`
    - `platformSummary/knowledgeIntakeSummary_{tId}_{sId}`
-5. Server builds existing metrics.
+   - `platformSummary/activation_{tId}_{sId}`
+5. Server builds existing metrics and the factual launch-verification projection.
 6. Server builds ranked Founder Daily Brief actions when `ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF` is enabled.
-7. UI renders today's plan cards before the question box.
+7. UI renders the first action as the primary decision, up to three secondary actions, launch verification, and explicit outcome/recontact evidence before the question box.
 8. Navigation labels the route as `Daily Brief` so the owner starts support control from the daily plan instead of a generic assistant label.
 
 ## Placement Rules
@@ -35,6 +36,8 @@
 - Support Control navigation lists `Daily Brief` first, before Support Board, Ticket Inbox, Conversations, Feedback, Weekly Digest, and knowledge-management screens.
 - Support-only users route to `Daily Brief` first when `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` is enabled, then fall back to Support Board or Ticket Inbox only when the assistant is disabled.
 - Dashboard and Launch Support Setup show a `Today's Brief` action that navigates to the existing route without loading any additional data.
+- The Answerlattice base route enters Daily Brief only when the compact activation snapshot says launch proof is ready; all other states fail safely to Activation.
+- `I shipped a change` opens the existing changelog create form through `?create=1`. The query is consumed once and cleared; release/drift behavior remains owned by the existing changelog save path.
 - The public product page describes one daily support brief card. It does not present a separate generic Support Assistant card.
 
 ## Ranking Rules
@@ -50,7 +53,7 @@ Priority order:
 7. Stable state / release test reminder.
 8. Cost guard.
 
-The server returns a maximum of six actions.
+The server returns a maximum of four actions. Launch proof that is not ready is ranked ahead of normal maintenance. Low confirmed resolution or repeated same-session recontact can add a governed answer-review action without reading raw conversations.
 
 ## AI Boundary
 

@@ -11,6 +11,7 @@ import type {
     OBPSourceBreakdown,
 } from '@database/ownerDashboard';
 import type { OBPDashboardViewData } from '@hook/useOBPDashboard';
+import { formatNumber } from '@util/formatters';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { LuClock, LuExternalLink, LuGlobe, LuInfo, LuMapPin, LuMessageSquare, LuPhone, LuTrendingUp } from 'react-icons/lu';
@@ -158,10 +159,10 @@ function renderSourceRows(sources: OBPSourceBreakdown[] | undefined, token: AntT
                     <Flex key={source.source} align="center" justify="space-between" gap={10}>
                         <Text type="secondary" style={{ fontSize: 12 }}>{source.label}</Text>
                         <Text style={{ fontSize: 12, textAlign: 'right' }}>
-                            {t('obp.sourceViews', { count: source.views.toLocaleString() })}
-                            {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: source.menuClicks.toLocaleString() })}` : ''}
-                            {source.actionClicks > 0 ? ` · ${t('obp.sourceActions', { count: source.actionClicks.toLocaleString() })}` : ''}
-                            {source.linkClicks > 0 ? ` · ${t('obp.sourceLinks', { count: source.linkClicks.toLocaleString() })}` : ''}
+                            {t('obp.sourceViews', { count: formatNumber(source.views) })}
+                            {source.menuClicks > 0 ? ` · ${t('obp.sourceMenu', { count: formatNumber(source.menuClicks) })}` : ''}
+                            {source.actionClicks > 0 ? ` · ${t('obp.sourceActions', { count: formatNumber(source.actionClicks) })}` : ''}
+                            {source.linkClicks > 0 ? ` · ${t('obp.sourceLinks', { count: formatNumber(source.linkClicks) })}` : ''}
                         </Text>
                     </Flex>
                 ))}
@@ -174,20 +175,20 @@ function renderOpenHoursRows(breakdown: OBPOpenHoursActionBreakdown | undefined,
     const rows = [
         {
             key: 'open',
-            label: dashboardLabel(t, 'details.openHours.open', 'Actions while open'),
+            label: dashboardLabel(t, 'details.openHours.open', 'Actions when open'),
             value: Number(breakdown?.open || 0),
             icon: <LuClock color={token.colorSuccess} size={14} />,
         },
         {
             key: 'closed',
-            label: dashboardLabel(t, 'details.openHours.closed', 'Actions while closed'),
+            label: dashboardLabel(t, 'details.openHours.closed', 'Actions when closed'),
             value: Number(breakdown?.closed || 0),
             detail: `${Number(breakdown?.closedShare || 0)}%`,
             icon: <LuClock color={token.colorWarning} size={14} />,
         },
         {
             key: 'unknown',
-            label: dashboardLabel(t, 'details.openHours.unknown', 'Actions with hours hidden'),
+            label: dashboardLabel(t, 'details.openHours.unknown', 'Actions when hours status was unavailable'),
             value: Number(breakdown?.unknown || 0),
             icon: <LuClock color={token.colorTextSecondary} size={14} />,
         },
@@ -198,7 +199,7 @@ function renderOpenHoursRows(breakdown: OBPOpenHoursActionBreakdown | undefined,
     return (
         <div style={getSectionDividerStyle(token)}>
             <Text type="secondary" style={{ display: 'block', fontSize: 12, marginBottom: 8 }}>
-                {dashboardLabel(t, 'details.sections.openHoursActions', 'Open/Closed Action Timing')}
+                {dashboardLabel(t, 'details.sections.openHoursActions', 'Actions by business hours')}
             </Text>
             <Flex gap={6} vertical>
                 {rows.map((row) => (
@@ -234,8 +235,8 @@ function renderLanguageRows(languages: OBPLanguageUsage[] | undefined, token: An
                     <Flex key={language.language} align="center" justify="space-between" gap={10}>
                         <Text type="secondary" style={{ fontSize: 12 }}>{language.label}</Text>
                         <Text style={{ fontSize: 12, textAlign: 'right' }}>
-                            {t('obp.pageOpens', { count: Math.max(language.sessions, language.views).toLocaleString() })}
-                            {language.adoptions > 0 ? ` · ${t('obp.stayed', { count: language.adoptions.toLocaleString() })}` : ''}
+                            {t('obp.pageOpens', { count: formatNumber(Math.max(language.sessions, language.views)) })}
+                            {language.adoptions > 0 ? ` · ${t('obp.stayed', { count: formatNumber(language.adoptions) })}` : ''}
                         </Text>
                     </Flex>
                 ))}
@@ -253,32 +254,32 @@ function renderMetricCards(metrics: OBPPeriodMetrics, token: AntThemeToken, t: D
                         <LuGlobe color={token.colorInfo} size={14} />
                         <Text type="secondary">{t('obp.pageViews')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{metrics.views.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(metrics.views)}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuExternalLink color={token.colorPrimary} size={14} />
                         <Text type="secondary">{t('obp.viewMenuClicks')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{metrics.menuClicks.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(metrics.menuClicks)}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuTrendingUp color={token.colorSuccess} size={14} />
                         <Text type="secondary">{t('obp.actions')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{metrics.actionClicks.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(metrics.actionClicks)}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Text type="secondary">{t('obp.shares')}</Text>
-                    <Title level={3} style={{ margin: 0 }}>{metrics.shares.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(metrics.shares)}</Title>
                 </Card>
                 <Card size="small" style={{ flex: '1 1 45%' }}>
                     <Flex align="center" gap={8}>
                         <LuExternalLink color={token.colorInfo} size={14} />
                         <Text type="secondary">{t('obp.linkTaps')}</Text>
                     </Flex>
-                    <Title level={3} style={{ margin: 0 }}>{metrics.linkClicks.toLocaleString()}</Title>
+                    <Title level={3} style={{ margin: 0 }}>{formatNumber(metrics.linkClicks)}</Title>
                 </Card>
             </Flex>
 
@@ -332,7 +333,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                         <Flex align="center" justify="space-between">
                             <Text strong>{t('obp.officialBusinessPage')}</Text>
                             <Popover content={todayInfoContent} placement="bottom" trigger="click">
-                                <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
+                                <Button aria-label={t('obp.officialBusinessPage')} fill="none" style={{ padding: 4 }}>
                                     <LuInfo color={token.colorTextSecondary} size={16} />
                                 </Button>
                             </Popover>
@@ -354,7 +355,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     <Flex align="center" justify="space-between">
                         <Text strong>{t('obp.officialBusinessPage')}</Text>
                         <Popover content={todayInfoContent} placement="bottom" trigger="click">
-                            <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
+                            <Button aria-label={t('obp.officialBusinessPage')} fill="none" style={{ padding: 4 }}>
                                 <LuInfo color={token.colorTextSecondary} size={16} />
                             </Button>
                         </Popover>
@@ -426,7 +427,7 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                     </Flex>
                     <Flex align="center" gap={8}>
                         <Popover content={sharedInfoContent} placement="bottom" trigger="click">
-                            <Button fill="none" style={{ minHeight: 'auto', padding: 4 }}>
+                            <Button aria-label={t('obp.officialBusinessPage')} fill="none" style={{ padding: 4 }}>
                                 <LuInfo color={token.colorTextSecondary} size={16} />
                             </Button>
                         </Popover>
@@ -469,11 +470,11 @@ export default function MobileOBPMetricsCard({ data, loading, loadingToday, mode
                 <div style={getSectionDividerStyle(token)}>
                     <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
                         {t('obp.lifetimeSummary', {
-                            views: overall.lifetimeViews.toLocaleString(),
-                            menuClicks: overall.lifetimeMenuClicks.toLocaleString(),
-                            actions: overall.lifetimeActionClicks.toLocaleString(),
-                            links: overall.lifetimeLinkClicks.toLocaleString(),
-                            shares: overall.lifetimeShares.toLocaleString(),
+                            views: formatNumber(overall.lifetimeViews),
+                            menuClicks: formatNumber(overall.lifetimeMenuClicks),
+                            actions: formatNumber(overall.lifetimeActionClicks),
+                            links: formatNumber(overall.lifetimeLinkClicks),
+                            shares: formatNumber(overall.lifetimeShares),
                         })}
                     </Text>
                     {overall.firstDataDate ? (

@@ -3,9 +3,8 @@
  *
  * Handles all Firestore operations for the guest feedback collection.
  *
- * NOTE: This DAL has TWO modes:
- * 1. PUBLIC (no auth) - Used by submit endpoint for anonymous guest submissions
- * 2. AUTHENTICATED - Used by owner dashboard for viewing/updating feedback
+ * This client DAL is authenticated and store-scoped. Anonymous submissions use
+ * the public API route and its Admin SDK server DAL.
  *
  * @see __docs__/projects/internal-feedback-system/
  */
@@ -269,8 +268,8 @@ export const getFeedbackById = async (feedbackId: string): Promise<GuestFeedback
             const data = normalizeGuestFeedbackRecord(docSnap.data(), docSnap.id);
             if (!data) return null;
 
-            // Tenant/store isolation check. HQ sessions may not carry a single
-            // sId; store-scoped manager sessions must stay inside their store.
+            // Tenant/store isolation check. HQ users operate through the active
+            // selected-store context; this DAL does not aggregate across stores.
             if (data.tId !== scope.tenantId) {
                 return null;
             }

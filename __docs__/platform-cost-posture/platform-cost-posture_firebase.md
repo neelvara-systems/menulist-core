@@ -24,13 +24,15 @@ The screen is manual refresh and bounded:
 - up to 300 extraction operation reads
 - up to 200 Business Health answer event reads
 
-Expected use is low-frequency platform-only inspection. This is acceptable for an internal control surface and avoids adding a new hot-path monitoring model.
+Expected use is low-frequency platform-only inspection. This is acceptable for an internal control surface and avoids adding a new hot-path monitoring model. A request can read at most 531 documents. Reaching a source cap is disclosed as potentially partial rather than spending another read to probe for one more row.
 
 The API cheap-fails through the shared `DATA_READ` rate-limit profile before Admin SDK reads, and stores only HMAC-hashed platform user key material in the limiter key.
 
-Route and DAL diagnostics are cost-neutral. Source-read, system-config, timestamp parser diagnostics, rate-limit, top-level route, browser response-parse, rejected-response, and invalid-envelope diagnostics now use stable `platform_cost_posture_*` runtime codes, including `platform_cost_posture_timestamp_parse_failed`, with bounded collection/path/user/status/cap/value-shape metadata only. Browser response parsing is capped at 256KB and validates the returned read-model shape before the UI uses it. This adds no Firestore reads/writes, Storage operations, provider calls, Cloud Functions, cache tags, rules, indexes, or deploy requirement.
+Route and DAL diagnostics are cost-neutral. Source-read, system-config, timestamp parser diagnostics, rate-limit, top-level route, browser response-parse, rejected-response, and invalid-envelope diagnostics now use stable `platform_cost_posture_*` runtime codes, including `platform_cost_posture_timestamp_parse_failed`, with bounded collection/path/user/status/cap/value-shape metadata only. Browser response parsing is capped at 256KB and validates period identity, canonical ISO timestamps, non-negative cost values, and safe-integer counters before the UI uses it. Browser request cancellation adds no Firebase operation. This adds no Firestore reads/writes, Storage operations, provider calls, Cloud Functions, cache tags, rules, indexes, or deploy requirement.
 
-Source gate: `npm run verify:platform-cost-posture-boundary` locks the read-only Firebase posture: bounded Admin SDK reads, no Firestore writes, no client Firestore access, no Storage operations, provider calls, Cloud Functions, cache tags, rules, indexes, or deploy requirement.
+Source gate: `npm run verify:platform-cost-posture-boundary` locks the read-only Firebase posture: bounded Admin SDK reads, strict in-memory aggregation, no Firestore writes, no client Firestore access, no Storage operations, provider calls, Cloud Functions, cache tags, rules, indexes, or deploy requirement.
+
+No dashboard summary document or cache collection is introduced. The source collections are already bounded operational logs, the surface is platform-only and manual, and a summary writer would add persistence and reconciliation cost. Revisit that decision only if measured platform use makes the current bounded read budget material.
 
 ## Billing Export Boundary
 

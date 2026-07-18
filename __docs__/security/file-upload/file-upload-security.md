@@ -103,6 +103,7 @@ File validation prevents malicious uploads, but privacy handling depends on the 
 - Shared Firebase Storage helpers, including `src/lib/firebase/storage.ts`, must not direct-console raw upload/download URLs, Storage full paths, caller-provided paths, file IDs, or provider error objects.
 - Storage helper failures use `storageDiagnostics.ts` and record only normalized failure codes, provider error code/name, and bounded string presence/length metadata.
 - Caller-facing Storage failure text stays generic. Return or throw `"Failed to upload file"` / `"Failed to delete file"` style messages instead of provider exception text.
+- A resumable upload can complete before download-URL resolution fails. Callers that use attempt-unique object paths must opt into `cleanupOnDownloadUrlFailure`; the shared helper then awaits deletion of that exact completed upload, logs cleanup failure separately, and still returns only generic failure text. Deterministic/shared paths must not opt in because a later concurrent write could own the same path.
 
 ---
 

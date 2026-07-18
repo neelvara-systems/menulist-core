@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { admin, firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { touchDigitalScreenContentVersionForStoreServer } from '@lib/screen/serverScreenInvalidation';
 import { secureError } from '@lib/security/secureLogger';
@@ -10,8 +11,22 @@ import {
     normalizeBillingSubscriptionDocumentId,
     normalizeBillingSubscriptionScopeDocumentId,
 } from './subscriptionDocumentIdBoundary';
+import {
+    getActivePlanTypeForSubscription,
+    getSubscriptionPlanEntitlementStatusPriority,
+    hasCurrentSubscriptionPlanEntitlement,
+    PLAN_ENTITLED_SUBSCRIPTION_STATUSES,
+    toSubscriptionCycleEndMillis,
+} from './subscriptionPlanEntitlement';
+
+export {
+    getActivePlanTypeForSubscription,
+    hasCurrentSubscriptionPlanEntitlement,
+    PLAN_ENTITLED_SUBSCRIPTION_STATUSES,
+} from './subscriptionPlanEntitlement';
 
 export interface SubscriptionEntitlementSyncInput {
+    cycleEndDate?: unknown;
     id?: string;
     tenantId: string | number;
     storeId: string | number;
@@ -38,16 +53,6 @@ const getSubscriptionEntitlementLogContext = (
     ...getBoundedRazorpayStringContext('source', source),
 });
 
-function normalizePlanId(planId: unknown): string | null {
-    const normalized = String(planId || '').trim().toLowerCase();
-    return normalized || null;
-}
-
-export function getActivePlanTypeForSubscription(subscription: SubscriptionEntitlementSyncInput): string | null {
-    if (subscription.status !== 'active') return null;
-    return normalizePlanId(subscription.planId);
-}
-
 export function isSubscriptionEntitlementSynced(
     subscription: Partial<FirestoreSubscriptionDoc>,
     desiredActivePlanType: string | null,
@@ -55,21 +60,6 @@ export function isSubscriptionEntitlementSynced(
     const syncedPlanType = (subscription as any)?.analyticsEntitlement?.activePlanType ?? null;
     return syncedPlanType === desiredActivePlanType;
 }
-
-const toTimestampMillis = (value: unknown): number => {
-    if (!value || typeof value !== 'object') return 0;
-    try {
-        const toMillis = (value as { toMillis?: unknown }).toMillis;
-        if (typeof toMillis === 'function') {
-            const millis = Number(toMillis.call(value));
-            return Number.isFinite(millis) ? millis : 0;
-        }
-        const seconds = Number((value as { seconds?: unknown }).seconds);
-        return Number.isFinite(seconds) ? seconds * 1000 : 0;
-    } catch {
-        return 0;
-    }
-};
 
 export async function syncStorePlanEntitlementFromSubscription(
     subscription: SubscriptionEntitlementSyncInput,
@@ -82,17 +72,17 @@ export async function syncStorePlanEntitlementFromSubscription(
 
     const subscriptionsRef = firestoreAdmin.collection(DB_COLLECTIONS.SUBSCRIPTIONS);
     const subscriptionRef = subscriptionsRef.doc(subscriptionId);
-    const activeSubscriptionsQuery = subscriptionsRef
-        .where('status', '==', 'active')
+    const entitledSubscriptionsQuery = subscriptionsRef
+        .where('status', 'in', [...PLAN_ENTITLED_SUBSCRIPTION_STATUSES])
         .where('storeId', '==', expectedStoreScope.numericId)
         .where('tenantId', '==', expectedTenantScope.numericId)
         .where('cycleEndDate', '>=', admin.firestore.Timestamp.now())
         .orderBy('cycleEndDate', 'desc')
         .limit(10);
     const syncResult = await firestoreAdmin.runTransaction(async (transaction) => {
-        const [subscriptionSnapshot, activeSubscriptionsSnapshot] = await Promise.all([
+        const [subscriptionSnapshot, entitledSubscriptionsSnapshot] = await Promise.all([
             transaction.get(subscriptionRef),
-            transaction.get(activeSubscriptionsQuery),
+            transaction.get(entitledSubscriptionsQuery),
         ]);
         if (!subscriptionSnapshot.exists) return null;
 
@@ -111,24 +101,30 @@ export async function syncStorePlanEntitlementFromSubscription(
             return null;
         }
 
-        const activeSubscription = activeSubscriptionsSnapshot.docs
+        const entitledSubscription = entitledSubscriptionsSnapshot.docs
             .map((snapshot) => ({
                 ...(snapshot.data() as FirestoreSubscriptionDoc),
                 id: snapshot.id,
             } as FirestoreSubscriptionDoc))
             .filter((candidate) => (
-                normalizeBillingSubscriptionScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
+                hasCurrentSubscriptionPlanEntitlement(candidate)
+                && normalizeBillingSubscriptionScopeDocumentId(candidate.tenantId ?? candidate.tId)?.numericId
                     === expectedTenantScope.numericId
                 && normalizeBillingSubscriptionScopeDocumentId(candidate.storeId ?? candidate.sId)?.numericId
                     === expectedStoreScope.numericId
             ))
-            .sort((left, right) => toTimestampMillis(right.cycleEndDate) - toTimestampMillis(left.cycleEndDate))[0]
+            .sort((left, right) => (
+                getSubscriptionPlanEntitlementStatusPriority(right.status)
+                    - getSubscriptionPlanEntitlementStatusPriority(left.status)
+                || toSubscriptionCycleEndMillis(right.cycleEndDate)
+                    - toSubscriptionCycleEndMillis(left.cycleEndDate)
+            ))[0]
             || null;
-        const activePlanType = activeSubscription
-            ? getActivePlanTypeForSubscription(activeSubscription)
+        const activePlanType = entitledSubscription
+            ? getActivePlanTypeForSubscription(entitledSubscription)
             : null;
         const entitlementValue = activePlanType || admin.firestore.FieldValue.delete();
-        const activeSubscriptionIdValue = activeSubscription?.id || admin.firestore.FieldValue.delete();
+        const activeSubscriptionIdValue = entitledSubscription?.id || admin.firestore.FieldValue.delete();
         const syncedAt = admin.firestore.FieldValue.serverTimestamp();
 
         transaction.set(firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(currentStoreScope.documentId), {
@@ -161,15 +157,35 @@ export async function syncStorePlanEntitlementFromSubscription(
     });
     if (!syncResult) return;
 
-    revalidateTag(`menu-store-${syncResult.storeId}`);
-    revalidateTag(`store-${syncResult.storeId}`);
-    revalidateTag('client-stores');
-    revalidateTag('screen-data');
-    await touchDigitalScreenContentVersionForStoreServer(syncResult.storeId, 'subscriptionEntitlementSync');
-    await invalidateOwnerBusinessAssistantPacketCache({
-        tId: syncResult.tenantId,
-        sId: syncResult.storeId,
+    const postCommit = await runStorePublicTruthPostCommitEffects({
+        chunkSize: 1,
+        storeIds: [syncResult.storeId],
+        tenantId: String(syncResult.tenantId),
+        deps: {
+            invalidateAssistant: (storeId, tenantId) => (
+                invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })
+            ),
+            revalidate: (tag) => revalidateTag(tag),
+            touchScreen: (storeId) => touchDigitalScreenContentVersionForStoreServer(
+                storeId,
+                'subscriptionEntitlementSync',
+            ),
+        },
     });
+    if (postCommit.effectsPending) {
+        secureError(
+            '[Billing] Store plan entitlement post-commit effect failed',
+            new Error('billing_store_plan_entitlement_post_commit_effect_failed'),
+            getRazorpayFailureLogData(
+                'billing_store_plan_entitlement_post_commit_effect_failed',
+                postCommit.firstError,
+                {
+                    failedEffectCount: postCommit.failedEffectCount,
+                    ...getSubscriptionEntitlementLogContext(subscription, source),
+                },
+            ),
+        );
+    }
 }
 
 export async function safeSyncStorePlanEntitlementFromSubscription(

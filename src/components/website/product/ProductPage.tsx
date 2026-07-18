@@ -1,5 +1,5 @@
 import { useTranslations } from 'next-intl';
-import { LuCheck, LuFileText, LuGlobe, LuImage, LuLanguages, LuLink, LuMonitor, LuQrCode, LuShare2, LuSmartphone, LuStar, LuType, LuZap } from 'react-icons/lu';
+import { LuCheck, LuFileText, LuGlobe, LuImage, LuLanguages, LuLink, LuMonitor, LuQrCode, LuShare2, LuSmartphone, LuStar, LuZap } from 'react-icons/lu';
 import AnimateOnScroll, { AnimateStaggerChild } from '../shared/AnimateOnScroll';
 import LogoMark from '../shared/LogoMark';
 import SectionWrapper from '../shared/SectionWrapper';
@@ -34,7 +34,7 @@ export default function ProductPage() {
     { key: 'flowPhoto', Icon: LuImage },
     { key: 'flowPdf', Icon: LuFileText },
     { key: 'flowLink', Icon: LuLink },
-    { key: 'flowTypedText', Icon: LuType },
+    { key: 'flowTypedText', Icon: LuLink },
   ];
   const flowOutputs = [
     { key: 'flowQr', Icon: LuQrCode, pulseClass: 'ws-map-card-output-arrival-0' },

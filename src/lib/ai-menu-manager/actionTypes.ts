@@ -490,7 +490,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
         mobileBehavior: 'Image task card',
         sourceEvidence: ['src/components/templates/main-app/projects/editorView/uploadedImagesList.tsx'],
         readiness: 'manual_task_only',
-        requiredFlags: ['ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS'],
+        requiredFlags: ['ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS', 'ENABLE_AI_IMAGE_GENERATION'],
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.ITEM_ORDER_UPDATE,
@@ -827,7 +827,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
             'src/components/templates/main-app/projects/editorView/AiImageGenerator/index.tsx',
         ],
         readiness: 'existing_api_only',
-        requiredFlags: ['ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS'],
+        requiredFlags: ['ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS', 'ENABLE_AI_IMAGE_GENERATION'],
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.IMAGE_ITEM_APPLY_GENERATED,
@@ -843,7 +843,7 @@ export const AI_MENU_MANAGER_ACTION_DEFINITIONS: AiMenuManagerActionDefinition[]
             'src/lib/ai-menu-manager/actions/projectPatches.ts',
         ],
         readiness: 'needs_adapter_glue',
-        requiredFlags: ['ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS'],
+        requiredFlags: ['ENABLE_AI_MENU_MANAGER_IMAGE_ACTIONS', 'ENABLE_AI_IMAGE_GENERATION'],
     },
     {
         actionType: AI_MENU_MANAGER_ACTION_TYPES.MENU_FILE_UPLOAD,

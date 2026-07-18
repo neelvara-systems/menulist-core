@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { buildAnswerlatticeActivationAnswerTestSummary } from '@lib/answerlattice/activationAnswerTestSummary';
 import {
     ANSWERLATTICE_ANSWER_TEST_MAX_FULL_RUNTIME_CASES,
     ANSWERLATTICE_ANSWER_TEST_MAX_RUN_CASES,
@@ -18,6 +19,7 @@ import {
     saveAnswerlatticeAnswerTestRun,
 } from '@lib/answerlattice/answerTestServer';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { getAnswerlatticeCompiledSourceVersionsAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -87,10 +89,24 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         const scope = { tId: access.scope.tenantId, sId: access.scope.storeId };
+        const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';
         const summary = await loadAnswerlatticeAnswerTestSummary(scope);
         const priorRun = summary.runs.find(run => run.id === parsed.data.requestId);
         if (priorRun) {
-            return NextResponse.json({ run: priorRun, summary, idempotent: true }, {
+            const launchProof = includeLaunchProof
+                ? buildAnswerlatticeActivationAnswerTestSummary(
+                    summary,
+                    scope.tId,
+                    scope.sId,
+                    await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId),
+                )
+                : undefined;
+            return NextResponse.json({
+                run: priorRun,
+                summary,
+                ...(launchProof ? { launchProof } : {}),
+                idempotent: true,
+            }, {
                 headers: { 'Cache-Control': 'private, no-store' },
             });
         }
@@ -123,9 +139,18 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             String(access.user.email || access.user.name || access.user.id || 'unknown'),
         );
         if (reservation.completedRun) {
+            const launchProof = includeLaunchProof
+                ? buildAnswerlatticeActivationAnswerTestSummary(
+                    reservation.summary,
+                    scope.tId,
+                    scope.sId,
+                    await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId),
+                )
+                : undefined;
             return NextResponse.json({
                 run: reservation.completedRun,
                 summary: reservation.summary,
+                ...(launchProof ? { launchProof } : {}),
                 idempotent: true,
             }, { headers: { 'Cache-Control': 'private, no-store' } });
         }
@@ -140,8 +165,20 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         });
         executionCompleted = true;
         const nextSummary = await saveAnswerlatticeAnswerTestRun(scope, run);
+        const launchProof = includeLaunchProof
+            ? buildAnswerlatticeActivationAnswerTestSummary(
+                nextSummary,
+                scope.tId,
+                scope.sId,
+                await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId),
+            )
+            : undefined;
         reservedRunId = null;
-        return NextResponse.json({ run, summary: nextSummary }, {
+        return NextResponse.json({
+            run,
+            summary: nextSummary,
+            ...(launchProof ? { launchProof } : {}),
+        }, {
             headers: { 'Cache-Control': 'private, no-store' },
         });
     } catch (error) {

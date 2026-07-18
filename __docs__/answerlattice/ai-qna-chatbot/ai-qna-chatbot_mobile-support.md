@@ -1,75 +1,46 @@
 # AI QnA Chatbot — Mobile Support Assessment
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-03-02
-> **Audience:** Mobile team, Product
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
+> **Audience:** Mobile and product teams
+> **Status:** Existing-surface assessment
 
 ---
 
-## 1. Feature Admission Test (4 Gates)
+## Current Boundary
 
-| Gate | Question | Answer | Pass? |
-|------|----------|--------|:-----:|
-| **Frequency** | Used daily/multiple times per day? | Yes — owners search for answers frequently | ✅ |
-| **Speed** | Completes in <5 seconds? | Cached: ~100ms, Uncached: ~3s. Both under 5s | ✅ |
-| **Touch** | Works with thumb-only? | Search bar + suggested questions = thumb-friendly | ✅ |
-| **Value** | Needed away from desk? | Yes — owner needs quick answers while on the floor | ✅ |
+`MobileHelpScreen` renders the existing Help Center inside `MobileShell` and supports routed Help Center tabs with 44 px minimum action targets. A separate full-screen AI chat implementation is not verified by this document.
 
-**Result: ALL 4 GATES PASS → Mobile UI is MANDATORY**
+The bounded hybrid evidence lane is server-side. When it is enabled, mobile, desktop, and widget callers that use `coreSearch()` receive the same canonical-first retrieval, tenant scope, source-reference, and fallback behavior. No separate mobile retrieval implementation is required.
 
----
+## Mobile Requirements
 
-## 2. Current Mobile Implementation
+- Keep Help Center navigation inside `MobileShell`.
+- Reuse the shared Answerlattice search API and response validation.
+- Keep question input, references, feedback, clarification, and fallback usable with touch.
+- Preserve the 5 MB image policy and warn users not to upload secrets or private customer data.
+- Keep long technical literals, source titles, and error messages from overflowing narrow screens.
+- Do not present similarity as answer confidence.
+- Do not hide an unsupported or unresolved result to improve containment.
 
-- `MobileHelpScreen.tsx` exists but is a basic help center view, not a dedicated AI chat screen
-- Desktop `HelpChat` uses a 92vw modal with two-panel layout (320px sidebar + chat) — not mobile-friendly
-- `AISearchModal` exists as a global search component but is desktop-optimized
+## Implementation Rules
 
----
+- Use the current Tailwind-driven mobile shell and shared components; do not add `antd-mobile` without an explicit dependency decision.
+- Use `react-icons/lu` for icons.
+- Keep touch targets at least 44 px.
+- Reuse shared DAL, auth, response guards, and Answerlattice tenant scope.
+- Do not add a mobile-only answer model, cache, or Firestore collection.
 
-## 3. Mobile Screens Needed
+## Validation
 
-| Screen | Priority | Complexity | Description |
-|--------|:--------:|:----------:|-------------|
-| **AI Chat (Full Screen)** | P0 | High | Full-screen chat with messages, input, suggested questions |
-| **Chat History** | P1 | Medium | Session list as separate screen (not sidebar) |
-| **Search Bar** | P0 | Low | Prominent search input on help screen |
+Before claiming mobile parity, verify:
 
----
+- question submission and rate-limit errors;
+- approved answer, FAQ, RAG, and empty-result states;
+- source-link wrapping and tap behavior;
+- screenshot upload and sensitive-data warning;
+- keyboard and narrow-viewport behavior;
+- feedback acknowledgement;
+- direct route and hardware-back behavior inside `MobileShell`.
 
-## 4. Mobile Architecture Rules
-
-- **DAL:** Same `src/database/chatSessions/` functions
-- **API:** Same `/api/helpCenter/search-kb` route
-- **Hooks:** Same `useChatHandlers`, `useChatData` hooks
-- **Types:** Same `src/types/chatSession.ts`
-- **UI:** antd-mobile components (NOT antd Modal/Drawer)
-- **Icons:** react-icons/lu (Lucide) only
-- **Touch targets:** 44px minimum
-- **Optimistic updates:** Show user message immediately, AI response streams in
-
----
-
-## 5. Mobile-Specific Considerations
-
-- **Full-screen chat** — No modal, no sidebar. Chat is a full-screen view
-- **Bottom-anchored input** — Input bar at bottom like iMessage/WhatsApp
-- **Camera integration** — Direct camera access for image queries (not file picker)
-- **Keyboard management** — Auto-focus input, dismiss on scroll up, grow TextArea with content
-- **Suggested questions as chips** — Horizontal scrollable chip row below answer
-- **Source tag** — Compact, tappable, opens article in sheet
-- **Message bubbles** — Full-width on mobile (no 70% max-width)
-- **Typing indicator** — Centered, compact
-- **QnA action buttons** — Full-width stacked buttons (not side-by-side)
-- **Back navigation** — Hardware back button returns to help screen, not closes app
-- **Pull-to-refresh** — Refresh chat sessions list
-
----
-
-## 6. What NOT to Build on Mobile
-
-- Chat history sidebar (use separate screen instead)
-- Mode toggle in header (simplify — QnA default, auto-switch to Assistant on follow-up)
-- Dev-only clear data button
-- Rename session (desktop-only)
-- Complex message actions menu (simplify to copy + feedback only)
+No latency or completion-time target should be published until measured on representative devices and real customer workspaces.

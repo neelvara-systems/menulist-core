@@ -5,6 +5,7 @@ import {
     CAMPAIGNCUE_COLLECTIONS,
     CAMPAIGNCUE_DASHBOARD_SUMMARY_ID,
     CAMPAIGNCUE_EVENT_ID_PREFIX,
+    CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES,
     CAMPAIGNCUE_PAGE_SIZE,
     CAMPAIGNCUE_SCHEDULE_ID_PREFIX,
     CAMPAIGNCUE_WORKSPACE_ID_PREFIX,
@@ -19,6 +20,10 @@ import {
     CAMPAIGNCUE_PROVIDER_POSTURES,
 } from "@constant/campaigncue/delivery";
 import { CAMPAIGNCUE_ERROR_CODES } from "@constant/campaigncue/errors";
+import {
+    campaignCueOutputIntentSupportsOwnerGoal,
+    getCampaignCueOutputPickerItem,
+} from "@constant/campaigncue/outputPicker";
 import { CAMPAIGNCUE_PRODUCT_CODE } from "@constant/campaigncue/product";
 import { buildCampaignCueAuthLaunchUrl as buildCampaignCueAuthLaunchUrlFromSignIn } from "@constant/campaigncue/routes";
 import { createTimestampedRuntimeId } from "@lib/runtime/randomId";
@@ -36,6 +41,17 @@ import {
     uniqueCompactStrings,
 } from "@lib/campaigncue/dailyDesk";
 import { buildCampaignCueDecisions, campaignCueRecipeById } from "@lib/campaigncue/decisionEngine";
+import {
+    isCampaignCueWorkspaceStoragePath,
+    parseCampaignCueAssetRecord,
+} from "@lib/campaigncue/assetBoundary";
+import {
+    assertCampaignCueIdempotencyClaimOwnership,
+    buildCampaignCueIdempotencyRequestHash,
+    CampaignCueIdempotencyIdentityError,
+    getCampaignCueIdempotencyClaimDecision,
+} from "@lib/campaigncue/idempotency";
+import { getUnresolvedCampaignCueOutputIntentRequirements } from "@lib/campaigncue/pack-templates/factSlotReadiness";
 import {
     buildCampaignCuePatternCueBrief,
     buildCampaignCuePatternCueObservation,
@@ -108,6 +124,7 @@ export interface CampaignCueSessionScope {
 }
 
 const nowTimestamp = () => admin.firestore.Timestamp.now();
+const CAMPAIGNCUE_IDEMPOTENCY_LEASE_MS = 5 * 60 * 1000;
 type CampaignCueFirestoreBatch = ReturnType<typeof firestoreAdmin.batch>;
 
 const compactString = (value: unknown, fallback = ""): string => {
@@ -330,6 +347,18 @@ class CampaignCueDecisionGateError extends Error {
         super(message);
         this.clientMessage = message;
         this.name = "CampaignCueDecisionGateError";
+    }
+}
+
+class CampaignCueAssetAccessError extends Error {
+    clientMessage: string;
+    status: 404 | 409;
+
+    constructor(message: string, status: 404 | 409) {
+        super(message);
+        this.clientMessage = message;
+        this.name = "CampaignCueAssetAccessError";
+        this.status = status;
     }
 }
 
@@ -1489,6 +1518,29 @@ async function listSubcollection<T>(workspaceId: string, collection: string, lim
     return snap.docs.map((doc) => doc.data() as T);
 }
 
+async function listCampaignCueAssetRecords(workspaceId: string): Promise<CampaignCueAsset[]> {
+    const snap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS)
+        .orderBy("createdAt", "desc")
+        .limit(CAMPAIGNCUE_PAGE_SIZE)
+        .get();
+    const assets: CampaignCueAsset[] = [];
+    let invalidCount = 0;
+    snap.docs.forEach((doc) => {
+        try {
+            assets.push(parseCampaignCueAssetRecord({ assetId: doc.id, value: doc.data(), workspaceId }));
+        } catch {
+            invalidCount += 1;
+        }
+    });
+    if (invalidCount) {
+        logCampaignCueServerError("CampaignCue invalid asset records omitted", new Error("asset_record_invalid"), {
+            invalidCount,
+            workspaceId,
+        });
+    }
+    return assets;
+}
+
 const withCampaignCuePatternSource = (
     workspace: CampaignCueWorkspace,
     sourceInputs: CampaignCueSourceInput[],
@@ -1522,7 +1574,7 @@ export async function listCampaignCueCampaignsServer(scope: CampaignCueSessionSc
 
 export async function listCampaignCueAssetsServer(scope: CampaignCueSessionScope): Promise<CampaignCueAsset[]> {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(scope);
-    return listSubcollection<CampaignCueAsset>(workspace.workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS);
+    return listCampaignCueAssetRecords(workspace.workspaceId);
 }
 
 export async function listCampaignCueSourceInputsServer(scope: CampaignCueSessionScope): Promise<CampaignCueSourceInput[]> {
@@ -1613,7 +1665,7 @@ export async function loadCampaignCueOverviewServer(scope: CampaignCueSessionSco
     const [storedSourceInputs, campaigns, assets, schedules, locations, analytics] = await Promise.all([
         listSubcollection<CampaignCueSourceInput>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS),
         listSubcollection<CampaignCueCampaign>(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS),
-        listSubcollection<CampaignCueAsset>(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS),
+        listCampaignCueAssetRecords(workspaceId),
         listSubcollection<CampaignCueSchedule>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES),
         listSubcollection<CampaignCueLocation>(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS),
         readDashboardSummary(workspaceId),
@@ -2401,86 +2453,87 @@ async function readCampaign(workspaceId: string, campaignId: string): Promise<Ca
 async function checkIdempotency(params: {
     action: string;
     idempotencyKey?: string;
+    requestIdentity: unknown;
     scope: CampaignCueSessionScope;
     workspaceId: string;
-}): Promise<{
-    action?: string;
-    responseError?: string;
-    responseStatus?: number;
-    resultId?: string;
-    status?: "in_progress" | "completed";
-} | null> {
-    if (!params.idempotencyKey) return null;
+}) {
+    if (!params.idempotencyKey) return { claimId: null, replay: null, requestHash: null };
     const ref = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.idempotencyKey);
+    const requestHash = buildCampaignCueIdempotencyRequestHash(params.requestIdentity);
+    const claimId = buildId("idem_claim");
+    const nowMillis = Date.now();
     try {
-        await ref.create(sanitizeForAdminFirestore({
-            id: params.idempotencyKey,
-            action: params.action,
-            status: "in_progress",
-            createdAt: nowTimestamp(),
-            actorId: params.scope.userId,
-        }));
-        return null;
-    } catch (error) {
-        const code = getStructuredErrorField(error, "code").toLowerCase();
-        const alreadyExists = code === "6" || code === "already-exists" || code === "already_exists";
-        if (!alreadyExists) throw error;
-
-        const snap = await ref.get();
-        const existing = snap.exists
-            ? snap.data() as {
-                action?: string;
-                responseError?: string;
-                responseStatus?: number;
-                resultId?: string;
-                status?: "in_progress" | "completed";
-            }
-            : null;
-        if (existing?.action && existing.action !== params.action) {
-            throw new CampaignCueIdempotencyConflictError("This idempotency key was already used for another CampaignCue action.");
+        const result = await firestoreAdmin.runTransaction(async (transaction) => {
+            const snap = await transaction.get(ref);
+            const expected = {
+                action: params.action,
+                actorId: params.scope.userId,
+                requestHash,
+            };
+            const decision = getCampaignCueIdempotencyClaimDecision(
+                snap.exists ? snap.data() : null,
+                expected,
+                nowMillis,
+            );
+            if (decision.kind === "replay") return { claimId: null, replay: decision.replay };
+            if (decision.kind === "conflict") throw new CampaignCueIdempotencyIdentityError();
+            const now = admin.firestore.Timestamp.fromMillis(nowMillis);
+            transaction.set(ref, sanitizeForAdminFirestore({
+                id: params.idempotencyKey,
+                action: params.action,
+                actorId: params.scope.userId,
+                claimId,
+                requestHash,
+                status: "in_progress",
+                createdAt: snap.exists ? snap.data()?.createdAt || now : now,
+                updatedAt: now,
+                leaseExpiresAt: admin.firestore.Timestamp.fromMillis(nowMillis + CAMPAIGNCUE_IDEMPOTENCY_LEASE_MS),
+            }));
+            return { claimId, replay: null };
+        });
+        return { ...result, requestHash };
+    } catch (identityError) {
+        if (identityError instanceof CampaignCueIdempotencyIdentityError) {
+            throw new CampaignCueIdempotencyConflictError(identityError.message);
         }
-        if (existing?.resultId) return existing;
-        throw new CampaignCueIdempotencyConflictError();
+        throw identityError;
     }
 }
 
 async function completeIdempotency(params: {
     action: string;
+    actorId: string;
+    claimId: string | null;
     idempotencyKey?: string;
+    requestHash: string | null;
     responseError?: string;
     responseStatus?: number;
     resultId: string;
     updatedAt?: unknown;
     workspaceId: string;
 }) {
-    if (!params.idempotencyKey) return;
-    const batch = firestoreAdmin.batch();
-    enqueueIdempotencyCompletion(batch, params);
-    await batch.commit();
-}
-
-function enqueueIdempotencyCompletion(batch: CampaignCueFirestoreBatch, params: {
-    action: string;
-    idempotencyKey?: string;
-    responseError?: string;
-    responseStatus?: number;
-    resultId: string;
-    updatedAt?: unknown;
-    workspaceId: string;
-}) {
-    if (!params.idempotencyKey) return;
-    batch.set(
-        workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.idempotencyKey),
-        sanitizeForAdminFirestore({
+    if (!params.idempotencyKey || !params.claimId || !params.requestHash) return;
+    const claimId = params.claimId;
+    const requestHash = params.requestHash;
+    const ref = workspaceSubcollection(params.workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.idempotencyKey);
+    await firestoreAdmin.runTransaction(async (transaction) => {
+        const snap = await transaction.get(ref);
+        assertCampaignCueIdempotencyClaimOwnership(snap.exists ? snap.data() : null, {
             action: params.action,
+            actorId: params.actorId,
+            requestHash,
+        }, claimId);
+        transaction.set(ref, sanitizeForAdminFirestore({
+            action: params.action,
+            actorId: params.actorId,
+            claimId: params.claimId,
             responseError: params.responseError,
             responseStatus: params.responseStatus,
             resultId: params.resultId,
             status: "completed",
             updatedAt: params.updatedAt || nowTimestamp(),
-        }),
-        { merge: true },
-    );
+        }), { merge: true });
+    });
 }
 
 function enqueueEvent(batch: CampaignCueFirestoreBatch, params: {
@@ -2566,12 +2619,14 @@ export async function createCampaignCueCampaignServer(params: {
 }): Promise<{ campaign: CampaignCueCampaign; trustReport: CampaignCueTrustReport; replayed?: boolean }> {
     const { workspace, businessBrain } = await ensureCampaignCueWorkspaceServer(params.scope);
     const workspaceId = workspace.workspaceId;
-    const replay = await checkIdempotency({
+    const idempotency = await checkIdempotency({
         action: "create_campaign",
         idempotencyKey: params.input.idempotencyKey,
+        requestIdentity: { ...params.input, idempotencyKey: undefined },
         scope: params.scope,
         workspaceId,
     });
+    const replay = idempotency.replay;
     if (replay?.resultId) {
         if (replay.responseError) {
             throw new CampaignCueDecisionGateError(replay.responseError);
@@ -2590,9 +2645,31 @@ export async function createCampaignCueCampaignServer(params: {
         throw new CampaignCueIdempotencyConflictError("This campaign request already completed, but its result is unavailable.");
     }
 
+    const outputIntent = getCampaignCueOutputPickerItem(params.input.outputIntentId);
+    if (params.input.outputIntentId && !outputIntent) {
+        throw new CampaignCueDecisionGateError("This campaign output request is unavailable.");
+    }
+    if (outputIntent?.id === "custom_size" || outputIntent?.id === "reuse_old_asset") {
+        const message = outputIntent.id === "custom_size"
+            ? "Use the creative editor to create a custom-size asset."
+            : "Use Reuse old image to upload and preserve the original asset.";
+        await completeIdempotency({
+            action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
+            responseError: message,
+            responseStatus: 409,
+            resultId: `output_intent_${outputIntent.id}`,
+            workspaceId,
+        });
+        throw new CampaignCueDecisionGateError(message);
+    }
+
     const [storedSourceInputs, assets, locations, schedules, campaigns, analytics] = await Promise.all([
         listSubcollection<CampaignCueSourceInput>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_INPUTS),
-        listSubcollection<CampaignCueAsset>(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS),
+        listCampaignCueAssetRecords(workspaceId),
         listSubcollection<CampaignCueLocation>(workspaceId, CAMPAIGNCUE_COLLECTIONS.LOCATIONS),
         listSubcollection<CampaignCueSchedule>(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES),
         listSubcollection<CampaignCueCampaign>(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS),
@@ -2600,6 +2677,29 @@ export async function createCampaignCueCampaignServer(params: {
     ]);
     const sourceInputs = withCampaignCuePatternSource(workspace, storedSourceInputs);
     const sourceFacts = buildSourceFacts(businessBrain, sourceInputs);
+    const unresolvedOutputIntentRequirements = outputIntent
+        ? getUnresolvedCampaignCueOutputIntentRequirements(outputIntent, {
+            assets,
+            businessBrain,
+            sourceFacts,
+            sourceInputs,
+        })
+        : [];
+    if (unresolvedOutputIntentRequirements.length) {
+        const message = unresolvedOutputIntentRequirements[0].ownerQuestion;
+        await completeIdempotency({
+            action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
+            responseError: message,
+            responseStatus: 409,
+            resultId: `output_intent_${outputIntent?.id || "unknown"}`,
+            workspaceId,
+        });
+        throw new CampaignCueDecisionGateError(message);
+    }
     const decisionOpportunities = buildCampaignCueOpportunities({
         analytics,
         assets,
@@ -2631,7 +2731,10 @@ export async function createCampaignCueCampaignServer(params: {
             : "The campaign selected for reuse is unavailable.";
         await completeIdempotency({
             action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
             idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
             responseError: message,
             responseStatus: 409,
             resultId: params.input.reuseCampaignId,
@@ -2657,7 +2760,10 @@ export async function createCampaignCueCampaignServer(params: {
         const message = "This campaign recipe no longer matches the current business context.";
         await completeIdempotency({
             action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
             idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
             responseError: message,
             responseStatus: 409,
             resultId: reuseCampaign.id,
@@ -2665,7 +2771,29 @@ export async function createCampaignCueCampaignServer(params: {
         });
         throw new CampaignCueDecisionGateError(message);
     }
+    const outputIntentDecisions = outputIntent?.ownerGoals.length
+        ? decisionCandidates.filter((decision) => campaignCueOutputIntentSupportsOwnerGoal(outputIntent, decision.ownerGoal))
+        : [];
+    const outputIntentDecision = outputIntentDecisions.find((decision) => (
+        decision.opportunityId === params.input.opportunityId
+    )) || outputIntentDecisions.find((decision) => decision.decisionStatus === "ready_to_prepare") || outputIntentDecisions[0];
+    if (outputIntent?.ownerGoals.length && !outputIntentDecision) {
+        const message = "This output does not match a current campaign opportunity for this business.";
+        await completeIdempotency({
+            action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
+            responseError: message,
+            responseStatus: 409,
+            resultId: `output_intent_${outputIntent.id}`,
+            workspaceId,
+        });
+        throw new CampaignCueDecisionGateError(message);
+    }
     const selectedDecision = reuseDecision
+        || outputIntentDecision
         || decisionCandidates.find((decision) => decision.opportunityId === fallbackOpportunity.id)
         || decisionCandidates[0];
     if (selectedDecision && selectedDecision.decisionStatus !== "ready_to_prepare") {
@@ -2676,7 +2804,10 @@ export async function createCampaignCueCampaignServer(params: {
                 : "Confirm required campaign details before creating this pack.");
         await completeIdempotency({
             action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
             idempotencyKey: params.input.idempotencyKey,
+            requestHash: idempotency.requestHash,
             responseError: decisionGateMessage,
             responseStatus: 409,
             resultId: selectedDecision.decisionId,
@@ -2688,16 +2819,18 @@ export async function createCampaignCueCampaignServer(params: {
         || fallbackOpportunity;
     const recipe = selectedDecision ? campaignCueRecipeById(selectedDecision.recipeId) : dailyDeskRecipeForBusiness(businessBrain.businessType);
     const title = compactString(
-        params.input.title,
+        outputIntent ? selectedDecision?.recommendationTitle : params.input.title,
         reuseCampaign ? `${selectedDecision?.recommendationTitle || recipe.title} refresh` : opportunity.title,
     );
     const brief = compactString(params.input.brief, opportunity.reason);
     const channels = (
-        params.input.channels?.length
-            ? params.input.channels
-            : reuseCampaign?.channels.length
-                ? reuseCampaign.channels
-                : opportunity.channels
+        outputIntent?.id !== "recommended_pack" && outputIntent?.channels.length
+            ? outputIntent.channels
+            : params.input.channels?.length
+                ? params.input.channels
+                : reuseCampaign?.channels.length
+                    ? reuseCampaign.channels
+                    : opportunity.channels
     ) as CampaignCueChannel[];
     const currentPatternCueSource = FEATURE_FLAGS.ENABLE_CAMPAIGNCUE_PATTERN_CUE
         ? getLatestCampaignCuePatternCueSource(sourceInputs)
@@ -2764,6 +2897,9 @@ export async function createCampaignCueCampaignServer(params: {
             patternCueSourceHash: patternCueSource?.patternCue?.sourceHash,
             reusedFromCampaignId: reuseCampaign?.id,
             reuseMode: reuseCampaign ? "rebuild_from_current_truth" : undefined,
+            sourceTemplateId: params.input.sourceTemplateId,
+            outputIntentId: outputIntent?.id === "recommended_pack" ? undefined : outputIntent?.id,
+            requestedOutputTypes: outputIntent?.id === "recommended_pack" ? undefined : outputIntent?.outputTypes,
             freshness: buildCampaignCuePackFreshness({
                 businessBrain,
                 now: createdAt,
@@ -2783,16 +2919,27 @@ export async function createCampaignCueCampaignServer(params: {
         updatedAt: now,
     };
 
-    const batch = firestoreAdmin.batch();
-    batch.set(
+    const idempotencyRef = params.input.idempotencyKey
+        ? workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.input.idempotencyKey)
+        : null;
+    await firestoreAdmin.runTransaction(async (transaction) => {
+    if (idempotencyRef && idempotency.claimId && idempotency.requestHash) {
+        const idempotencySnap = await transaction.get(idempotencyRef);
+        assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
+            action: "create_campaign",
+            actorId: params.scope.userId,
+            requestHash: idempotency.requestHash,
+        }, idempotency.claimId);
+    }
+    transaction.set(
         workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(campaign.id),
         sanitizeForAdminFirestore(campaign),
     );
-    batch.set(
+    transaction.set(
         workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.TRUST_REPORTS).doc(trustReport.id),
         sanitizeForAdminFirestore(trustReport),
     );
-    batch.set(
+    transaction.set(
         workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS).doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX)),
         sanitizeForAdminFirestore({
             workspaceId,
@@ -2804,15 +2951,22 @@ export async function createCampaignCueCampaignServer(params: {
             createdAt: now,
         }),
     );
-    enqueueDashboardSummaryIncrement(batch, { action: "campaign_created", updatedAt: now, workspaceId });
-    enqueueIdempotencyCompletion(batch, {
-        action: "create_campaign",
-        idempotencyKey: params.input.idempotencyKey,
-        resultId: campaign.id,
-        updatedAt: now,
-        workspaceId,
+    transaction.set(
+        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES).doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID),
+        buildDashboardSummaryIncrement({ action: "campaign_created", updatedAt: now, workspaceId }),
+        { merge: true },
+    );
+    if (idempotencyRef) {
+        transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+            action: "create_campaign",
+            actorId: params.scope.userId,
+            claimId: idempotency.claimId,
+            resultId: campaign.id,
+            status: "completed",
+            updatedAt: now,
+        }), { merge: true });
+    }
     });
-    await batch.commit();
 
     return { campaign, trustReport };
 }
@@ -2835,10 +2989,12 @@ const campaignCueWorkspaceRole = (workspace: CampaignCueWorkspace, userId: strin
 async function recordCampaignCueApprovalActionTransactional(params: {
     action: CampaignCueApprovalAction;
     campaignId: string;
+    claimId: string | null;
     idempotencyKey?: string;
     note?: string;
     outputId?: string;
     scope: CampaignCueSessionScope;
+    requestHash: string | null;
     workspaceId: string;
 }): Promise<{
     campaign?: CampaignCueCampaign;
@@ -2864,6 +3020,14 @@ async function recordCampaignCueApprovalActionTransactional(params: {
             return { error: "Campaign not found", status: 404 as const };
         }
         const current = campaignSnap.data() as CampaignCueCampaign;
+        if (idempotencyRef && params.claimId && params.requestHash) {
+            const idempotencySnap = await transaction.get(idempotencyRef);
+            assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
+                action: params.action,
+                actorId: params.scope.userId,
+                requestHash: params.requestHash,
+            }, params.claimId);
+        }
         if (params.action === "request_approval" && (current.status === "used" || current.status === "archived")) {
             return {
                 error: "Completed or archived campaign packs cannot start a new approval request.",
@@ -2962,7 +3126,10 @@ async function recordCampaignCueApprovalActionTransactional(params: {
     if (result.error && params.idempotencyKey) {
         await completeIdempotency({
             action: params.action,
+            actorId: params.scope.userId,
+            claimId: params.claimId,
             idempotencyKey: params.idempotencyKey,
+            requestHash: params.requestHash,
             responseError: result.error,
             responseStatus: result.status,
             resultId: params.campaignId,
@@ -3008,6 +3175,48 @@ const CAMPAIGNCUE_APPROVAL_ACTIONS = new Set<CampaignCueActionType>([
     "reject",
 ]);
 
+const buildCampaignCueActionUpdates = (params: {
+    campaign: CampaignCueCampaign;
+    input: CampaignCueCampaignActionInput;
+    now: unknown;
+}): Partial<CampaignCueCampaign> => {
+    const updates: Partial<CampaignCueCampaign> = {
+        actionCounts: {
+            ...(params.campaign.actionCounts || {}),
+            [params.input.action]: Number(params.campaign.actionCounts?.[params.input.action] || 0) + 1,
+        },
+        updatedAt: params.now,
+    };
+    if (params.input.action === "mark_used") updates.status = "used";
+    if (params.input.action === "record_outcome") {
+        const resultSignalId = params.input.resultSignalId;
+        const isNotUseful = resultSignalId === "not_useful";
+        const isNotUsed = resultSignalId === "not_used";
+        const receipt = params.input.resultReceipt;
+        updates.status = isNotUsed ? params.campaign.status : "used";
+        updates.resultMemory = {
+            ...(params.campaign.resultMemory || {}),
+            lastSignalId: resultSignalId,
+            lastNote: params.input.note || "Owner reported a result.",
+            lastRecordedAt: params.now,
+            usefulCount: Number(params.campaign.resultMemory?.usefulCount || 0) + (!isNotUseful && !isNotUsed ? 1 : 0),
+            notUsefulCount: Number(params.campaign.resultMemory?.notUsefulCount || 0) + (isNotUseful ? 1 : 0),
+            lastReceipt: {
+                signalId: resultSignalId,
+                channel: params.input.channel,
+                usedAt: isNotUsed ? undefined : receipt?.usedAt || params.now,
+                metrics: isNotUsed ? {} : receipt?.metrics || {},
+                evidenceNote: receipt?.evidenceNote || params.input.note,
+                experimentVariable: receipt?.experimentVariable || params.campaign.pack?.experiment?.variable,
+                confidence: "owner_reported",
+                recordedAt: params.now,
+            },
+        };
+    }
+    if (params.input.action === "schedule") updates.status = "scheduled";
+    return updates;
+};
+
 export async function recordCampaignCueActionServer(params: {
     campaignId: string;
     input: CampaignCueCampaignActionInput;
@@ -3022,12 +3231,17 @@ export async function recordCampaignCueActionServer(params: {
         ) {
             return { error: "This workspace role cannot approve or reject campaign packs.", status: 403 as const };
         }
-        const approvalReplay = await checkIdempotency({
+        const approvalIdempotency = await checkIdempotency({
             action: params.input.action,
             idempotencyKey: params.input.idempotencyKey,
+            requestIdentity: {
+                campaignId: params.campaignId,
+                input: { ...params.input, idempotencyKey: undefined },
+            },
             scope: params.scope,
             workspaceId,
         });
+        const approvalReplay = approvalIdempotency.replay;
         if (approvalReplay?.resultId) {
             if (approvalReplay.resultId !== params.campaignId) {
                 throw new CampaignCueIdempotencyConflictError("This idempotency key was already used for another campaign.");
@@ -3047,25 +3261,27 @@ export async function recordCampaignCueActionServer(params: {
         return recordCampaignCueApprovalActionTransactional({
             action: params.input.action as CampaignCueApprovalAction,
             campaignId: params.campaignId,
+            claimId: approvalIdempotency.claimId,
             idempotencyKey: params.input.idempotencyKey,
             note: params.input.note,
             outputId: params.input.outputId,
             scope: params.scope,
+            requestHash: approvalIdempotency.requestHash,
             workspaceId,
         });
     }
 
-    const campaign = await readCampaign(workspaceId, params.campaignId);
-    if (!campaign) {
-        return { error: "Campaign not found", status: 404 as const };
-    }
-
-    const replay = await checkIdempotency({
+    const idempotency = await checkIdempotency({
         action: params.input.action,
         idempotencyKey: params.input.idempotencyKey,
+        requestIdentity: {
+            campaignId: params.campaignId,
+            input: { ...params.input, idempotencyKey: undefined },
+        },
         scope: params.scope,
         workspaceId,
     });
+    const replay = idempotency.replay;
     if (replay?.resultId) {
         if (replay.resultId !== params.campaignId) {
             throw new CampaignCueIdempotencyConflictError("This idempotency key was already used for another campaign.");
@@ -3077,124 +3293,142 @@ export async function recordCampaignCueActionServer(params: {
                 status: (replay.responseStatus || 409) as 409,
             };
         }
-        return { campaign, replayed: true };
-    }
-    let actionError = assertCampaignActionAllowed(campaign, params.input.action, workspace);
-    if (!actionError && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && campaign.pack?.patternCueSourceHash) {
-        const currentPatternHash = workspace.patternCueSource?.patternCue?.sourceHash;
-        if (!currentPatternHash || currentPatternHash !== campaign.pack.patternCueSourceHash) {
-            actionError = "The example format changed after this pack was created. Create a fresh pack before public use.";
-        }
-    }
-    if (!actionError && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && campaign.pack?.freshness?.sourceHash) {
-        const currentSourceSnapshot = await readSourceSnapshot(workspaceId);
-        if (!currentSourceSnapshot?.sourceHash) {
-            actionError = "Campaign facts could not be rechecked. Refresh the workspace before public use.";
-        } else {
-            const freshness = evaluateCampaignCuePackFreshness({
-                currentSourceHash: currentSourceSnapshot.sourceHash,
-                freshness: campaign.pack.freshness,
-            });
-            if (freshness.status === "stale") {
-                actionError = "Business facts changed after this pack was created. Create a fresh pack before public use.";
-            } else if (freshness.status === "expired") {
-                actionError = "This pack has expired. Confirm current stock, slots, dates, and offers, then create a fresh pack.";
-            }
-        }
-    }
-    if (actionError) {
-        const blockedAt = nowTimestamp();
-        const blockedBatch = firestoreAdmin.batch();
-        enqueueEvent(blockedBatch, {
-            action: "export_action_blocked",
-            campaignId: campaign.id,
-            channel: params.input.channel,
-            createdAt: blockedAt,
-            metadata: { blockedAction: params.input.action, reason: actionError },
-            outputId: params.input.outputId,
-            scope: params.scope,
-            workspaceId,
-        });
-        enqueueIdempotencyCompletion(blockedBatch, {
-            action: params.input.action,
-            idempotencyKey: params.input.idempotencyKey,
-            responseError: actionError,
-            responseStatus: 409,
-            resultId: campaign.id,
-            updatedAt: blockedAt,
-            workspaceId,
-        });
-        await blockedBatch.commit();
-        return { error: actionError, status: 409 as const };
+        const replayCampaign = await readCampaign(workspaceId, params.campaignId);
+        return replayCampaign
+            ? { campaign: replayCampaign, replayed: true }
+            : { error: "Campaign not found", status: 404 as const };
     }
 
     const now = nowTimestamp();
-    const updates: Partial<CampaignCueCampaign> = {
-        actionCounts: {
-            ...(campaign.actionCounts || {}),
-            [params.input.action]: Number(campaign.actionCounts?.[params.input.action] || 0) + 1,
-        },
-        updatedAt: now,
-    };
-    if (params.input.action === "mark_used") updates.status = "used";
-    if (params.input.action === "record_outcome") {
-        const resultSignalId = params.input.resultSignalId;
-        const isNotUseful = resultSignalId === "not_useful";
-        const isNotUsed = resultSignalId === "not_used";
-        const receipt = params.input.resultReceipt;
-        updates.status = isNotUsed ? campaign.status : "used";
-        updates.resultMemory = {
-            ...(campaign.resultMemory || {}),
-            lastSignalId: resultSignalId,
-            lastNote: params.input.note || "Owner reported a result.",
-            lastRecordedAt: now,
-            usefulCount: Number(campaign.resultMemory?.usefulCount || 0) + (!isNotUseful && !isNotUsed ? 1 : 0),
-            notUsefulCount: Number(campaign.resultMemory?.notUsefulCount || 0) + (isNotUseful ? 1 : 0),
-            lastReceipt: {
-                signalId: resultSignalId,
+    const campaignRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(params.campaignId);
+    const eventRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS).doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX));
+    const scheduleRef = params.input.action === "schedule"
+        ? workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES).doc(buildId(CAMPAIGNCUE_SCHEDULE_ID_PREFIX))
+        : null;
+    const idempotencyRef = params.input.idempotencyKey
+        ? workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.IDEMPOTENCY_KEYS).doc(params.input.idempotencyKey)
+        : null;
+    const summaryRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ANALYTICS_SUMMARIES)
+        .doc(CAMPAIGNCUE_DASHBOARD_SUMMARY_ID);
+    const sourceSnapshotRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SOURCE_SNAPSHOTS)
+        .doc(defaultSourceSnapshotId);
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const currentSnap = await transaction.get(campaignRef);
+        if (idempotencyRef && idempotency.claimId && idempotency.requestHash) {
+            const idempotencySnap = await transaction.get(idempotencyRef);
+            assertCampaignCueIdempotencyClaimOwnership(idempotencySnap.exists ? idempotencySnap.data() : null, {
+                action: params.input.action,
+                actorId: params.scope.userId,
+                requestHash: idempotency.requestHash,
+            }, idempotency.claimId);
+        }
+        if (!currentSnap.exists) {
+            if (idempotencyRef) {
+                transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+                    action: params.input.action,
+                    responseError: "Campaign not found",
+                    responseStatus: 404,
+                    resultId: params.campaignId,
+                    status: "completed",
+                    updatedAt: now,
+                }), { merge: true });
+            }
+            return { error: "Campaign not found", status: 404 as const };
+        }
+        const current = currentSnap.data() as CampaignCueCampaign;
+        let currentWorkspace = workspace;
+        let currentSourceSnapshot: CampaignCueSourceSnapshot | null = null;
+        let finalActionError: string | null = null;
+        if (CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action)) {
+            const currentWorkspaceSnap = await transaction.get(workspaceRef(workspaceId));
+            if (!currentWorkspaceSnap.exists) {
+                finalActionError = "Campaign workspace unavailable";
+            } else {
+                currentWorkspace = normalizeCampaignCueWorkspace(currentWorkspaceSnap.data() as CampaignCueWorkspace);
+            }
+            if (current.pack?.freshness?.sourceHash) {
+                const currentSourceSnapshotSnap = await transaction.get(sourceSnapshotRef);
+                currentSourceSnapshot = currentSourceSnapshotSnap.exists
+                    ? currentSourceSnapshotSnap.data() as CampaignCueSourceSnapshot
+                    : null;
+            }
+        }
+
+        finalActionError ||= assertCampaignActionAllowed(current, params.input.action, currentWorkspace);
+        if (!finalActionError && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && current.pack?.patternCueSourceHash) {
+            const currentPatternHash = currentWorkspace.patternCueSource?.patternCue?.sourceHash;
+            if (!currentPatternHash || currentPatternHash !== current.pack.patternCueSourceHash) {
+                finalActionError = "The example format changed after this pack was created. Create a fresh pack before public use.";
+            }
+        }
+        if (!finalActionError && CAMPAIGNCUE_TRUST_GATED_ACTIONS.has(params.input.action) && current.pack?.freshness?.sourceHash) {
+            if (!currentSourceSnapshot?.sourceHash) {
+                finalActionError = "Campaign facts could not be rechecked. Refresh the workspace before public use.";
+            } else {
+                const freshness = evaluateCampaignCuePackFreshness({
+                    currentSourceHash: currentSourceSnapshot.sourceHash,
+                    freshness: current.pack.freshness,
+                });
+                if (freshness.status === "stale") {
+                    finalActionError = "Business facts changed after this pack was created. Create a fresh pack before public use.";
+                } else if (freshness.status === "expired") {
+                    finalActionError = "This pack has expired. Confirm current stock, slots, dates, and offers, then create a fresh pack.";
+                }
+            }
+        }
+        if (finalActionError) {
+            transaction.set(eventRef, sanitizeForAdminFirestore({
+                id: eventRef.id,
+                workspaceId,
+                actorId: params.scope.userId,
+                action: "export_action_blocked",
+                campaignId: current.id,
                 channel: params.input.channel,
-                usedAt: isNotUsed ? undefined : receipt?.usedAt || now,
-                metrics: isNotUsed ? {} : receipt?.metrics || {},
-                evidenceNote: receipt?.evidenceNote || params.input.note,
-                experimentVariable: receipt?.experimentVariable || campaign.pack?.experiment?.variable,
-                confidence: "owner_reported",
-                recordedAt: now,
-            },
-        };
-    }
-    if (params.input.action === "schedule") updates.status = "scheduled";
+                outputId: params.input.outputId,
+                metadata: { blockedAction: params.input.action, reason: finalActionError },
+                confidence: "observed",
+                createdAt: now,
+            }));
+            if (idempotencyRef) {
+                transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+                    action: params.input.action,
+                    responseError: finalActionError,
+                    responseStatus: 409,
+                    resultId: current.id,
+                    status: "completed",
+                    updatedAt: now,
+                }), { merge: true });
+            }
+            return { error: finalActionError, status: 409 as const };
+        }
 
-    const batch = firestoreAdmin.batch();
-    const campaignRef = workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.CAMPAIGNS).doc(campaign.id);
-    batch.set(campaignRef, sanitizeForAdminFirestore(updates), { merge: true });
+        const updates = buildCampaignCueActionUpdates({ campaign: current, input: params.input, now });
+        transaction.set(campaignRef, sanitizeForAdminFirestore(updates), { merge: true });
 
-    let schedule: CampaignCueSchedule | null = null;
-    if (params.input.action === "schedule") {
-        schedule = {
-            id: buildId(CAMPAIGNCUE_SCHEDULE_ID_PREFIX),
-            workspaceId,
-            campaignId: campaign.id,
-            outputId: params.input.outputId,
-            channel: params.input.channel || campaign.channels[0],
-            mode: "manual_task",
-            status: "scheduled",
-            scheduledAt: params.input.scheduledAt || null,
-            timezone: workspace.settings.timezone,
-            note: params.input.note || "Manual CampaignCue task",
-            taskType: params.input.taskType || "post",
-            assigneeLabel: params.input.staffAssignee,
-            createdAt: now,
-            updatedAt: now,
-        };
-        batch.set(
-            workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.SCHEDULES).doc(schedule.id),
-            sanitizeForAdminFirestore(schedule),
-        );
-    }
+        let schedule: CampaignCueSchedule | null = null;
+        if (scheduleRef) {
+            schedule = {
+                id: scheduleRef.id,
+                workspaceId,
+                campaignId: current.id,
+                outputId: params.input.outputId,
+                channel: params.input.channel || current.channels[0],
+                mode: "manual_task",
+                status: "scheduled",
+                scheduledAt: params.input.scheduledAt || null,
+                timezone: currentWorkspace.settings.timezone,
+                note: params.input.note || "Manual CampaignCue task",
+                taskType: params.input.taskType || "post",
+                assigneeLabel: params.input.staffAssignee,
+                createdAt: now,
+                updatedAt: now,
+            };
+            transaction.set(scheduleRef, sanitizeForAdminFirestore(schedule));
+        }
 
-    batch.set(
-        workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.EVENTS).doc(buildId(CAMPAIGNCUE_EVENT_ID_PREFIX)),
-        sanitizeForAdminFirestore({
+        transaction.set(eventRef, sanitizeForAdminFirestore({
+            id: eventRef.id,
             workspaceId,
             actorId: params.scope.userId,
             action: params.input.action === "mark_used"
@@ -3202,7 +3436,7 @@ export async function recordCampaignCueActionServer(params: {
                 : params.input.action === "record_outcome"
                     ? "owner_outcome_recorded"
                     : `campaign_${params.input.action}`,
-            campaignId: campaign.id,
+            campaignId: current.id,
             channel: params.input.channel,
             outputId: params.input.outputId,
             metadata: params.input.action === "record_outcome" ? {
@@ -3213,27 +3447,31 @@ export async function recordCampaignCueActionServer(params: {
             } : {},
             confidence: params.input.action === "record_outcome" ? "owner_reported" : "observed",
             createdAt: now,
-        }),
-    );
-    enqueueDashboardSummaryIncrement(batch, { action: params.input.action, updatedAt: now, workspaceId });
-    enqueueIdempotencyCompletion(batch, {
-        action: params.input.action,
-        idempotencyKey: params.input.idempotencyKey,
-        resultId: campaign.id,
-        updatedAt: now,
-        workspaceId,
+        }));
+        transaction.set(summaryRef, buildDashboardSummaryIncrement({
+            action: params.input.action,
+            updatedAt: now,
+            workspaceId,
+        }), { merge: true });
+        if (idempotencyRef) {
+            transaction.set(idempotencyRef, sanitizeForAdminFirestore({
+                action: params.input.action,
+                resultId: current.id,
+                status: "completed",
+                updatedAt: now,
+            }), { merge: true });
+        }
+        const updated: CampaignCueCampaign = {
+            ...current,
+            ...updates,
+            actionCounts: updates.actionCounts || current.actionCounts,
+            ownerApprovalState: updates.ownerApprovalState || current.ownerApprovalState,
+            resultMemory: updates.resultMemory || current.resultMemory,
+            status: updates.status || current.status,
+            updatedAt: now,
+        };
+        return { campaign: updated, schedule };
     });
-    await batch.commit();
-    const updated: CampaignCueCampaign = {
-        ...campaign,
-        ...updates,
-        actionCounts: updates.actionCounts || campaign.actionCounts,
-        ownerApprovalState: updates.ownerApprovalState || campaign.ownerApprovalState,
-        resultMemory: updates.resultMemory || campaign.resultMemory,
-        status: updates.status || campaign.status,
-        updatedAt: now,
-    };
-    return { campaign: updated, schedule };
 }
 
 export async function createCampaignCueAssetServer(params: {
@@ -3242,6 +3480,53 @@ export async function createCampaignCueAssetServer(params: {
 }) {
     const workspace = await ensureCampaignCueWorkspaceOnlyServer(params.scope);
     const workspaceId = workspace.workspaceId;
+    if (params.input.storagePath && !isCampaignCueWorkspaceStoragePath(params.input.storagePath, workspaceId)) {
+        throw new CampaignCueDecisionGateError("This asset file does not belong to the current CampaignCue workspace.");
+    }
+    let linkedCampaign: CampaignCueCampaign | null = null;
+    if (params.input.campaignId) {
+        linkedCampaign = await readCampaign(workspaceId, params.input.campaignId);
+        if (!linkedCampaign) throw new CampaignCueDecisionGateError("The campaign selected for this asset is unavailable.");
+        const linkedOutput = params.input.outputId
+            ? linkedCampaign.outputs.find((output) => output.id === params.input.outputId)
+            : undefined;
+        if (params.input.outputId && !linkedOutput) {
+            throw new CampaignCueDecisionGateError("The campaign output selected for this asset is unavailable.");
+        }
+        if (params.input.channel && !linkedCampaign.channels.includes(params.input.channel)) {
+            throw new CampaignCueDecisionGateError("The selected channel does not belong to this campaign.");
+        }
+        if (params.input.channel && linkedOutput && linkedOutput.channel !== params.input.channel) {
+            throw new CampaignCueDecisionGateError("The selected output and channel do not match.");
+        }
+    }
+    let file: CampaignCueAsset["file"];
+    if (params.input.storagePath) {
+        try {
+            const [metadata] = await campaigncueStorageAdmin.bucket().file(params.input.storagePath).getMetadata();
+            const sizeBytes = Number(metadata.size);
+            const mimeType = metadata.contentType || params.input.mimeType;
+            if (!Number.isSafeInteger(sizeBytes) || sizeBytes < 0 || sizeBytes > CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES) {
+                throw new CampaignCueDecisionGateError("This asset file size is unavailable or unsupported.");
+            }
+            if (mimeType && mimeType.length > 120) {
+                throw new CampaignCueDecisionGateError("This asset file type is unsupported.");
+            }
+            file = {
+                storagePath: params.input.storagePath,
+                mimeType,
+                sizeBytes,
+            };
+        } catch (error) {
+            if (error instanceof CampaignCueDecisionGateError) throw error;
+            throw new CampaignCueDecisionGateError("This asset file could not be verified in CampaignCue Storage.");
+        }
+    } else if (params.input.mimeType || params.input.sizeBytes !== undefined) {
+        file = {
+            mimeType: params.input.mimeType,
+            sizeBytes: params.input.sizeBytes,
+        };
+    }
     const id = buildId(CAMPAIGNCUE_ASSET_ID_PREFIX);
     const now = nowTimestamp();
     const asset: CampaignCueAsset = {
@@ -3256,13 +3541,8 @@ export async function createCampaignCueAssetServer(params: {
             note: params.input.rightsNote,
             consentType: params.input.consentType,
         },
-        tags: params.input.tags || [],
-        file: {
-            storagePath: params.input.storagePath,
-            downloadUrl: params.input.downloadUrl,
-            mimeType: params.input.mimeType,
-            sizeBytes: params.input.sizeBytes,
-        },
+        tags: Array.from(new Set(params.input.tags || [])),
+        ...(file ? { file } : {}),
         usageRefs: params.input.campaignId ? [{
             campaignId: params.input.campaignId,
             outputId: params.input.outputId,
@@ -3294,13 +3574,6 @@ export async function createCampaignCueAssetServer(params: {
     return asset;
 }
 
-const isWorkspaceStoragePath = (storagePath: string, workspaceId: string) => (
-    storagePath.startsWith(`campaigncue/assets/${workspaceId}/`)
-    || storagePath.startsWith(`campaigncue/renders/${workspaceId}/`)
-    || storagePath.startsWith(`campaigncue/reports/${workspaceId}/`)
-    || storagePath.startsWith(`campaigncue/cue-layers/${workspaceId}/`)
-);
-
 export async function createCampaignCueAssetDownloadServer(params: {
     assetId: string;
     scope: CampaignCueSessionScope;
@@ -3310,22 +3583,17 @@ export async function createCampaignCueAssetDownloadServer(params: {
     const snap = await workspaceSubcollection(workspaceId, CAMPAIGNCUE_COLLECTIONS.ASSETS)
         .doc(params.assetId)
         .get();
-    if (!snap.exists) throw new Error("Asset not found.");
-    const asset = snap.data() as CampaignCueAsset;
-    if (asset.workspaceId !== workspaceId) throw new Error("Asset not found.");
-    if (asset.status === "blocked") throw new Error("This asset is blocked.");
-    if (asset.file?.downloadUrl) {
-        return {
-            assetId: asset.id,
-            expiresAt: null,
-            mimeType: asset.file.mimeType,
-            name: asset.name,
-            url: asset.file.downloadUrl,
-        };
+    if (!snap.exists) throw new CampaignCueAssetAccessError("Asset not found.", 404);
+    let asset: CampaignCueAsset;
+    try {
+        asset = parseCampaignCueAssetRecord({ assetId: snap.id, value: snap.data(), workspaceId });
+    } catch {
+        throw new CampaignCueAssetAccessError("This asset record is unavailable.", 409);
     }
+    if (asset.status === "blocked") throw new CampaignCueAssetAccessError("This asset is blocked.", 409);
     const storagePath = asset.file?.storagePath;
-    if (!storagePath || !isWorkspaceStoragePath(storagePath, workspaceId)) {
-        throw new Error("This asset does not have a downloadable file.");
+    if (!storagePath) {
+        throw new CampaignCueAssetAccessError("This asset does not have a downloadable file.", 409);
     }
     const expiresAt = Date.now() + 15 * 60 * 1000;
     const [url] = await campaigncueStorageAdmin.bucket().file(storagePath).getSignedUrl({
@@ -3628,6 +3896,12 @@ export function isCampaignCueFirebaseUnavailableError(error: unknown) {
 }
 
 export function buildCampaignCueApiError(error: unknown, fallbackMessage: string) {
+    if (error instanceof CampaignCueAssetAccessError) {
+        return {
+            body: { error: error.clientMessage },
+            status: error.status,
+        };
+    }
     if (error instanceof CampaignCueIdempotencyConflictError) {
         return {
             body: {

@@ -205,6 +205,7 @@ export const AI_ACTIONS_TYPES = {
     ANSWERLATTICE_ENTITY_EXTRACTION: "answerlattice_entity_extraction",
     ANSWERLATTICE_FRICTION_INSIGHT: "answerlattice_friction_insight",
     ANSWERLATTICE_ANSWER_TEST: "answerlattice_answer_test",
+    ANSWERLATTICE_PRODUCT_STARTER_PACK: "answerlattice_product_starter_pack",
     ANSWERLATTICE_INTAKE_OCR: "answerlattice_intake_ocr",
     ANSWERLATTICE_INTAKE_TRANSCRIPTION: "answerlattice_intake_transcription",
     ANSWERLATTICE_INTAKE_EMBEDDING: "answerlattice_intake_embedding",

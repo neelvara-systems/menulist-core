@@ -14,6 +14,7 @@ import {
     logRuntimeFailure,
 } from '@lib/runtime/runtimeDiagnostics';
 import { sanitizeErrorForLog } from '@lib/security/secureLogger';
+import { isSentryMonitoringEnabled } from '@lib/monitoring/sentryShared';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 
@@ -104,7 +105,7 @@ export default function ErrorReportButton({
     source,
     style,
 }: ErrorReportButtonProps) {
-    const [status, setStatus] = useState<'idle' | 'sent' | 'sending'>('idle');
+    const [status, setStatus] = useState<'copy_ready' | 'idle' | 'sent' | 'sending'>('idle');
     const [copyStatus, setCopyStatus] = useState<'copied' | 'idle'>('idle');
     const [lastDiagnostics, setLastDiagnostics] = useState<string>('');
     const [reportId, setReportId] = useState<string>('');
@@ -132,7 +133,7 @@ export default function ErrorReportButton({
                 reportId: nextReportId,
                 source,
             }));
-            setStatus('sent');
+            setStatus(nextReportId ? 'sent' : 'copy_ready');
         } catch (reportError) {
             logRuntimeFailure('error_report_send_failed', reportError, {
                 ...getBoundedRuntimeStringContext('source', source),
@@ -167,7 +168,7 @@ export default function ErrorReportButton({
     return (
         <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <button
-                disabled={status === 'sending' || status === 'sent'}
+                disabled={status !== 'idle'}
                 onClick={() => { void handleReport(); }}
                 style={{
                     background: 'transparent',
@@ -182,12 +183,22 @@ export default function ErrorReportButton({
                 }}
                 type="button"
             >
-                {status === 'sent' ? 'Report sent' : status === 'sending' ? 'Sending...' : label}
+                {status === 'sent'
+                    ? 'Report sent'
+                    : status === 'copy_ready'
+                        ? 'Support details ready'
+                        : status === 'sending'
+                            ? 'Preparing...'
+                            : isSentryMonitoringEnabled
+                                ? label
+                                : 'Prepare support details'}
             </button>
-            {status === 'sent' ? (
+            {status === 'sent' || status === 'copy_ready' ? (
                 <div style={{ alignItems: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <span style={{ color: 'inherit', fontSize: 12, opacity: 0.78 }}>
-                        {reportId ? `Report ID: ${reportId}` : 'Report queued. You can also copy details for support.'}
+                        {status === 'sent' && reportId
+                            ? `Report ID: ${reportId}`
+                            : 'Automatic reporting is unavailable. Copy the details for support.'}
                     </span>
                     <button
                         onClick={() => { void handleCopyDiagnostics(); }}

@@ -374,6 +374,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
     const metaResponse = await fetch(
       mediaLookupUrl,
       {
+        redirect: "manual",
         headers: { Authorization: `Bearer ${this.accessToken}` },
         signal: AbortSignal.timeout(WHATSAPP_API_TIMEOUT_MS),
       },
@@ -424,6 +425,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
 
     // Step 2: Download media binary
     const mediaResponse = await fetch(urlValidation.normalizedUrl, {
+      redirect: "manual",
       headers: { Authorization: `Bearer ${this.accessToken}` },
       signal: AbortSignal.timeout(WHATSAPP_MEDIA_DOWNLOAD_TIMEOUT_MS),
     });
@@ -456,6 +458,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
       `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.encodedPhoneNumberId}/messages`,
       {
         method: "POST",
+        redirect: "manual",
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
           "Content-Type": "application/json",
@@ -495,6 +498,7 @@ export class WhatsAppAdapter implements IMessagingProvider {
       `https://graph.facebook.com/${GRAPH_API_VERSION}/${this.encodedPhoneNumberId}/messages`,
       {
         method: "POST",
+        redirect: "manual",
         headers: {
           Authorization: `Bearer ${this.accessToken}`,
           "Content-Type": "application/json",

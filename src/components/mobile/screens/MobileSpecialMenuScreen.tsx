@@ -166,7 +166,8 @@ function CreateSpecialMenuSheet({
     open: boolean;
 }) {
     const t = useTranslations('MobileSpecialMenu');
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
     const capabilities = useMemo(
         () => getSpecialMenuCapabilities(storeDetails?.businessType, storeDetails?.businessCategory),
         [storeDetails?.businessType, storeDetails?.businessCategory]
@@ -275,6 +276,7 @@ function CreateSpecialMenuSheet({
     };
 
     const handleTranslatePublicContent = async () => {
+        if (!canTranslatePublicContent) return;
         try {
             setIsTranslatingPublicContent(true);
             const translated = await translateProjectPublicContent({
@@ -284,7 +286,7 @@ function CreateSpecialMenuSheet({
                         displayName: applyLocalizedProjectDraftMap(undefined, displayNameDrafts),
                     },
                 },
-                projectId: `${baseProjectId || defaultBaseProjectId}-special-menu-draft`,
+                projectId: baseProjectId || defaultBaseProjectId,
                 storeDetails,
             });
 
@@ -366,14 +368,16 @@ function CreateSpecialMenuSheet({
                                     selectedLanguage={selectedLanguage}
                                     title="Project content language"
                                 />
-                                <Button
-                                    fill="outline"
-                                    loading={isTranslatingPublicContent}
-                                    onClick={() => { void handleTranslatePublicContent(); }}
-                                    size="small"
-                                >
-                                    Translate missing public content
-                                </Button>
+                                {canTranslatePublicContent ? (
+                                    <Button
+                                        fill="outline"
+                                        loading={isTranslatingPublicContent}
+                                        onClick={() => { void handleTranslatePublicContent(); }}
+                                        size="small"
+                                    >
+                                        Translate missing public content
+                                    </Button>
+                                ) : null}
                                 <Input
                                     maxLength={100}
                                     onChange={(value) => setDisplayNameDrafts((previous) => ({
@@ -504,7 +508,8 @@ function EditSpecialMenuSheet({
     const t = useTranslations('MobileSpecialMenu');
     const tProjectSelector = useTranslations('MobileProjectSelector');
     const tSettings = useTranslations('Settings');
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
     const { token } = theme.useToken();
     const [managedLanguages, setManagedLanguages] = useState<string[]>(['en']);
     const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
@@ -644,6 +649,7 @@ function EditSpecialMenuSheet({
     };
 
     const handleTranslatePublicContent = async () => {
+        if (!canTranslatePublicContent) return;
         if (!item?.projectId) return;
 
         const hasUnsavedContentChanges =
@@ -786,14 +792,16 @@ function EditSpecialMenuSheet({
                                     selectedLanguage={selectedLanguage}
                                     title="Project content language"
                                 />
-                                <Button
-                                    fill="outline"
-                                    loading={isTranslatingPublicContent}
-                                    onClick={() => { void handleTranslatePublicContent(); }}
-                                    size="small"
-                                >
-                                    Translate missing public content
-                                </Button>
+                                {canTranslatePublicContent ? (
+                                    <Button
+                                        fill="outline"
+                                        loading={isTranslatingPublicContent}
+                                        onClick={() => { void handleTranslatePublicContent(); }}
+                                        size="small"
+                                    >
+                                        Translate missing public content
+                                    </Button>
+                                ) : null}
                                 <Input
                                     maxLength={100}
                                     onChange={(value) => setDisplayNameDrafts((previous) => ({
@@ -1126,11 +1134,11 @@ export default function MobileSpecialMenuScreen({ onBack, onOpenMenuTab }: Mobil
         const conflictMessage = getConflictMessage(payload);
         if (!conflictMessage) return null;
 
-        return await Dialog.confirm({
-            cancelText: 'Back',
-            confirmText: 'Continue',
-            content: `${conflictMessage}. Continue anyway?`,
+        await Dialog.alert({
+            confirmText: 'Back',
+            content: `${conflictMessage}. Adjust the dates so only one special menu can be active.`,
         });
+        return false;
     }, [getConflictMessage]);
 
     const handleOpenSpecialProject = async (projectId: string) => {

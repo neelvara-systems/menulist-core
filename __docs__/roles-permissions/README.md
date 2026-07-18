@@ -1,8 +1,8 @@
 # Roles & Permissions — Documentation Hub
 
 > **Feature:** Role-Based Access Control (RBAC)  
-> **Status:** ✅ Staff CRUD + permissions wired end-to-end
-> **Last Updated:** May 19, 2026
+> **Status:** Local source flow verified; hosted release evidence pending
+> **Last Updated:** July 16, 2026
 > **Version:** 3.0
 
 > **Scope:** Staff-level permissions (Layer 1). For chain-level outlet restrictions (Layer 2: OutletPolicy), see [Multi-Chain Permissions](../multi-chain-permissions/).
@@ -18,6 +18,9 @@
 | **Developers** | [\_firebase.md](./roles-permissions_firebase.md)         | Firebase reads/writes/cost       |
 | **QA / Release** | [\_verification.md](./roles-permissions_verification.md) | Final review and production audit |
 | **Mobile**     | [\_mobile-support.md](./roles-permissions_mobile-support.md) | Mobile parity contract         |
+| **Owners**     | [\_helpdoc.md](./roles-permissions_helpdoc.md)          | Owner and staff operating guide  |
+| **Marketing**  | [\_marketing.md](./roles-permissions_marketing.md)      | Approved and prohibited claims   |
+| **Website**    | [\_website.md](./roles-permissions_website.md)          | Current public content contract   |
 | **Developers** | [adding-new-permissions.md](./adding-new-permissions.md) | Guide for adding new permissions |
 
 ---
@@ -40,6 +43,11 @@
 - Simple role IDs: `owner`, `manager`, `staff` (no storeId suffix)
 - Centralized permission constants (`src/constants/permissions.ts`)
 - Staff operations enforce `canManageUsers`; role/store assignment enforces `canAssignRoles`
+- A Manager with `canManageUsers` can manage ordinary staff but cannot reset, sign out, deactivate, remove, or edit an Owner account; Owner-target changes also require `canAssignRoles`
+- Staff mutation responses and role payloads are bounded and shape-checked before desktop/mobile state advances
+- Rejected staff transactions do not revoke Firebase tokens: authoritative session-revocation fields commit first, then Firebase refresh-token revocation runs as a post-commit side effect
+- Platform verification marks a placeholder verified only after a newly created Firebase Auth UID is transactionally bound to the same Firestore user; an unrelated pre-existing Auth email is rejected
+- Session access checks reject deleted or inactive user, tenant, and store truth in addition to block/revocation state
 
 ### Implementation ✅ (Feature-Flag Style)
 
@@ -109,7 +117,8 @@ STAFF (User)
 | Purpose                     | File Path                                                                     |
 | --------------------------- | ----------------------------------------------------------------------------- |
 | **Permission Constants** ✨ | `src/constants/permissions.ts`                                                |
-| **Default Roles** ✨        | `src/data/defaultRoles.ts`                                                    |
+| **Default Roles** ✨        | `src/data/shared/defaultRoles.ts`                                             |
+| **Functions Default-Role Mirror** | `functions/src/sharedData/defaultRoles.ts`                               |
 | **Permission Utility** ✨   | `src/lib/permissions/hasPermission.ts`                                        |
 | **Route Permission Contract** ✨ | `src/lib/permissions/permissionRequirements.ts`                          |
 | **API Permission Guard** ✨  | `src/lib/permissions/server.ts`                                               |
@@ -165,14 +174,18 @@ STAFF (User)
 - Reactivating staff access by adding the staff member back to a store or toggling them active re-enables the Firebase Auth account, but old sessions remain revoked; staff must log in again.
 - Owners can use **Sign out staff** without deactivating the account. This writes `sessionRevokedAt` / `authTokensRevokedAt`, revokes Firebase refresh tokens, and the dashboard session monitor logs the staff member out on the next access check.
 - Owner passcode reset also revokes existing sessions so a staff member using the old passcode cannot keep an already-open dashboard session.
+- Staff mutation transactions write the authoritative revocation marker before Firebase Auth refresh-token revocation. A rejected last-owner, stale, or conflicting transaction therefore has no token side effect.
+- Managers can create and manage ordinary Staff accounts, but cannot mutate an account that has an Owner mapping. Owner rows remain visible but read-only unless the actor can assign roles.
 - MenuList platform user blocking uses the same access model: direct user blocks disable Firebase Auth and revoke sessions; tenant/store blocks are enforced by fresh session access checks and protected API guards.
 - A user can belong to one tenant and multiple stores inside that tenant.
 - If a staff member leaves business A and joins business B, business A removes/deactivates the old tenant account. Business B creates a new staff account, preferably Staff ID + passcode for non-technical staff. Reusing the same personal email across tenants remains blocked until a platform-managed transfer flow exists, preserving tenant isolation and audit history.
 - Store role IDs are validated against the target store before staff creation or update, and staff/role target stores must be same-tenant, active, not soft-deleted, and not platform-blocked.
-- Old stores missing the default `owner`, `manager`, or `staff` roles are repaired automatically when staff management loads or creates staff. Existing default roles are also normalized with any missing permission keys. Custom roles keep missing permission keys denied until an owner turns them on.
+- Old stores missing the default `owner`, `manager`, or `staff` roles are repaired transactionally when staff management loads or creates staff. Concurrent owner role edits are preserved. Existing default roles are normalized with missing permission keys; custom roles keep missing permissions denied until an owner turns them on.
 - The `owner` role is locked from role-editor changes so owners cannot remove the last full-access role definition.
 - A staff member with the last active owner mapping for a store cannot be deactivated, removed, or demoted until another active owner exists.
 - `platformRole` remains separate from store-scoped `role`; `active` / `isVerified` are lifecycle fields, not authorization.
+- An unverified placeholder becomes verified only after Firebase Auth creation and the same-user UID binding commit. `EMAIL_EXISTS` and incomplete pre-existing bindings fail closed; MenuList never adopts an unrelated Auth account by email.
+- `/api/auth/access-status` invalidates sessions when the authoritative tenant or store is inactive/deleted, not only when the user or entity is blocked.
 
 ---
 

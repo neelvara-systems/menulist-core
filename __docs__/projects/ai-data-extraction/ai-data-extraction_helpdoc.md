@@ -1,7 +1,9 @@
 # AI Data Extraction — Help Documentation
 
+**Last Updated:** July 15, 2026
+
 ## Quick Summary
-When you upload a menu photo or PDF, MenuList automatically reads it and extracts all items, prices, and categories. This saves you from typing everything manually.
+When you upload a menu photo or PDF, MenuList prepares items, prices, and categories for your review. You choose whether to apply the extracted changes, saving manual typing without changing the menu before approval.
 
 ---
 
@@ -17,8 +19,9 @@ When you upload a menu photo or PDF, MenuList automatically reads it and extract
 2. Click **Upload Files**
 3. Select your menu photo(s) or PDF
 4. Click **Upload & Continue**
-5. Wait 30-60 seconds while the system reads your menu
-6. Review the extracted items in the Editor
+5. Keep the project open while MenuList prepares the draft; larger or less clear uploads can take longer
+6. Review the extracted draft
+7. Choose **Apply Changes** to add the approved information, or discard it and keep the current menu unchanged
 
 > 📸 **Screenshot:** Upload screen with file picker and "Upload & Continue" button
 
@@ -32,7 +35,7 @@ When you upload a menu photo or PDF, MenuList automatically reads it and extract
 3. Select photos from your phone's camera roll or computer
 4. Supported formats: JPG, PNG, WebP
 5. Click **Upload & Continue**
-6. Wait for processing to complete (you'll see a progress indicator)
+6. Follow the progress indicator until the review draft is ready
 
 > 💡 **Tip:** Take photos in good lighting with the full menu visible. Avoid shadows and angles.
 
@@ -42,32 +45,32 @@ When you upload a menu photo or PDF, MenuList automatically reads it and extract
 3. Select your PDF file
 4. Each page is automatically converted to an image
 5. Click **Upload & Continue**
-6. All pages are processed together
+6. The upload flow will tell you if the selected files or converted pages exceed the supported extraction batch
 
 ### How to review extracted data
-1. After extraction completes, you're taken to the **Editor**
+1. After extraction completes, MenuList opens **Review Extracted Changes**
 2. Review each category and item
 3. Check that prices are correct
-4. Fix any items that were misread
-5. Add descriptions or images if needed
-6. Click **Save** when everything looks good
+4. Exclude or correct anything that should not be applied
+5. Choose **Apply Changes** when the draft is correct
+6. Continue in the Editor for any further manual changes
 
-### How to re-extract if results are poor
+### How to try again if results are poor
 1. Go to your project
-2. Delete the current files
-3. Upload clearer photos (better lighting, closer crop)
-4. The system will re-extract from the new images
+2. Discard the draft if you have not applied it
+3. For a full replacement, reset the menu or create a new menu as instructed in the project screen
+4. Upload clearer photos with better lighting and a closer crop
 
 ---
 
 ## Troubleshooting
 
-### Extraction is taking too long (more than 2 minutes)
+### Extraction is taking longer than expected
 **Why:** Large PDFs with many pages take longer. Complex or low-quality images also slow processing.
 **Fix:**
-1. Wait up to 3 minutes for large files
-2. If still processing, refresh the page — your progress is saved
-3. If it fails, try uploading fewer pages at a time
+1. Keep the project open while the progress indicator is moving
+2. If processing fails, use the available retry action
+3. If the retry also fails, upload fewer or clearer pages
 
 ### Some items are missing from the extraction
 **Why:** Handwritten text, unusual fonts, or poor image quality can cause missed items.
@@ -80,11 +83,11 @@ When you upload a menu photo or PDF, MenuList automatically reads it and extract
 **Why:** Currency symbols or unusual formatting can confuse the extraction.
 **Fix:**
 1. Click on the wrong price in the Editor and correct it
-2. The system learns from your corrections for future extractions
+2. Save the correction to the menu; future extraction attempts remain separate review drafts
 
-### "Rate limit exceeded" error
-**Why:** You can only run 5 extractions per minute to control costs.
-**Fix:** Wait 1 minute and try again.
+### "Too many extraction attempts" message
+**Why:** MenuList temporarily limits repeated extraction attempts to protect the service.
+**Fix:** Wait for the time shown in the message, then try again.
 
 ---
 

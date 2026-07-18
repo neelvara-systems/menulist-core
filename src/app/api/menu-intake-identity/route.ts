@@ -1,4 +1,5 @@
 import { FEATURE_FLAGS } from "@config/features";
+import { PERMISSIONS } from "@constant/permissions";
 import { MenuIntakeFileInput } from "@data/shared/menuIntakeIdentity";
 import {
   isSupportedMenuIntakeMimeType,
@@ -9,6 +10,7 @@ import {
 } from "@lib/menu-extraction/menuIntakeIdentityServer";
 import { normalizeMenuExtractionProjectId } from "@lib/menu-extraction/projectIdBoundary";
 import { checkSafeMode } from "@lib/ops/safeMode";
+import { requireAnyStorePermission } from "@lib/permissions/server";
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -100,6 +102,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
       { status: 400 },
     );
   }
+
+  const permissionResponse = await requireAnyStorePermission(
+    request,
+    session,
+    [PERMISSIONS.USE_MENU_EXTRACTION],
+    "Menu extraction",
+  );
+  if (permissionResponse) return permissionResponse;
 
   try {
     const result = await runMenuIntakeIdentityCheck({

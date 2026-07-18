@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+import { FEATURE_FLAGS } from '@config/features';
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { PERMISSIONS } from '@constant/permissions';
@@ -9,6 +10,7 @@ import {
 } from '@database/imageBatchProcessing/server';
 import { checkAICapacity } from '@lib/ai/capacityCheck';
 import { normalizeImageBatchJobId, normalizeImageBatchProjectId } from '@lib/ai/imageBatchIdBoundary';
+import { mapWithConcurrency } from '@lib/async/boundedConcurrency';
 import { enqueueImageGenerationTask, getImageGenerationTaskConfigStatus } from '@lib/google/cloudTask';
 import { getAIRouteSecurityContext } from '@lib/google/genAi/diagnostics';
 import { logger } from '@lib/monitoring/logger';
@@ -30,6 +32,7 @@ import { withAuth } from "../../../../middleware/auth";
 const LOG_FILE = "batch-image-generation.log"
 const AI_MODEL: AI_MODEL_TYPE = "GEMINI";
 const BATCH_IMAGE_TRIGGER_MAX_BODY_BYTES = 4 * 1024 * 1024;
+const IMAGE_BATCH_TASK_ENQUEUE_CONCURRENCY = 8;
 const IMAGE_BATCH_TASK_CONFIG_MISSING = 'image_batch_task_config_missing';
 const IMAGE_BATCH_TASK_ENQUEUE_FAILED = 'image_batch_task_enqueue_failed';
 const IMAGE_BATCH_TASK_ENQUEUE_REJECTED = 'image_batch_task_enqueue_rejected';
@@ -147,6 +150,9 @@ export const POST = withAuth(async (request, session) => {
     let requestLogContext: BatchImageRouteLogContext = getBatchImageRouteLogContext({});
 
     try {
+        if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) {
+            return NextResponse.json({ error: 'Feature disabled' }, { status: 404 });
+        }
 
         // �️ SAFE_MODE: Block expensive operations during system maintenance
         const { checkSafeMode } = await import('@lib/ops/safeMode');
@@ -335,19 +341,25 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        const taskPromises = itemsList.map(itemDetails => enqueueImageGenerationTask({ jobId, generationConfig, projectId, businessType, itemDetails })
-            .catch(e => {
-                logRuntimeFailure(IMAGE_BATCH_TASK_ENQUEUE_FAILED, e, getBatchImageRouteLogContext({
-                    itemCount: itemsList.length,
-                    itemId: itemDetails.id,
-                    jobId,
-                    projectId,
-                }));
-                return ({ menuItemId: itemDetails.id, error: IMAGE_BATCH_TASK_ENQUEUE_FAILED })
-            })
+        const results = await mapWithConcurrency(
+            itemsList,
+            IMAGE_BATCH_TASK_ENQUEUE_CONCURRENCY,
+            async (itemDetails) => {
+                const [result] = await Promise.allSettled([
+                    enqueueImageGenerationTask({ jobId, generationConfig, projectId, businessType, itemDetails })
+                        .catch(e => {
+                            logRuntimeFailure(IMAGE_BATCH_TASK_ENQUEUE_FAILED, e, getBatchImageRouteLogContext({
+                                itemCount: itemsList.length,
+                                itemId: itemDetails.id,
+                                jobId,
+                                projectId,
+                            }));
+                            return ({ menuItemId: itemDetails.id, error: IMAGE_BATCH_TASK_ENQUEUE_FAILED });
+                        }),
+                ]);
+                return result;
+            },
         );
-
-        const results = await Promise.allSettled(taskPromises);
 
         await writeLogEntry({
             logFileName: LOG_FILE,

@@ -24,8 +24,8 @@ The feature uses existing documents and collections. Campaign rhythm, safe-reuse
 | Save Business Brain/pulse/policy | existing workspace path | existing 3-document batch | Workspace, default Business Brain, and current source snapshot. No event collection write was added. |
 | Decision render | 0 | 0 | Uses overview data and constants. |
 | Campaign create | existing bounded reads | existing create batch | New metadata is nested in the existing campaign document. |
-| Download/export/mark used/schedule for a new pack | 1 conditional source-snapshot read after campaign/idempotency reads | existing action batch | Recheck runs only for public-use actions and only when the campaign carries a freshness hash. |
-| Record result | existing campaign action reads | existing action batch | Metrics and experiment variable remain in the campaign and current event; no result collection is created. |
+| Download/export/mark used/schedule for a new pack | workspace guard + idempotency claim; one transactional campaign read, one current-workspace read for public-use actions, and one conditional source-snapshot read only when the current pack carries a freshness hash | idempotency claim, then campaign + event + summary + optional schedule + idempotency completion in one transaction | The transaction derives updates from current campaign truth and rechecks public-use gates immediately before writes. |
+| Record result | workspace guard + idempotency claim + one transactional campaign read | idempotency claim, then campaign + event + summary + idempotency completion in one transaction | Metrics and experiment variable remain in the campaign and current event; concurrent results cannot lose counters and no result collection is created. |
 | Build campaign rhythm/readiness | 0 | 0 | Uses the existing bounded campaigns, schedules, pack, trust, and summary data in memory. |
 | Reuse a useful pack | 0 incremental | existing campaign-create batch | Source campaign is found inside the campaign list already loaded by creation; a new current-truth pack is built. |
 | Request approval | workspace read, existing idempotency claim, and one transactional campaign read | existing idempotency claim write, then campaign + approval + event + summary increment + idempotency completion in one transaction | Concurrent/repeated requests cannot create multiple approval records or double-count one accepted transition. |
@@ -37,12 +37,15 @@ The feature uses existing documents and collections. Campaign rhythm, safe-reuse
 - No campaign-rhythm, reuse-candidate, or readiness collection.
 - One approval document per campaign instead of one document per request click.
 - Approval mutations use one campaign read inside their transaction instead of a pre-read plus transaction re-read.
+- Ordinary actions also use one campaign read inside their final transaction; the retired pre-read/source-preflight path was removed instead of paying duplicate reads.
+- Idempotency records store the authenticated actor and a canonical SHA-256 request hash in the existing document. This adds fields but no document, collection, listener, or extra completion write.
 - Owner UI busy guards suppress rapid duplicate approval, schedule, export, mark-used, and result requests before they consume additional idempotency/event writes.
 - Re-requesting a rejected pack preserves the deterministic approval document's original `createdAt` without adding an approval-document read.
 - No source/event scan for decision learning.
 - No new page-load read.
 - No persisted derived `CampaignCueOutputPack` blob.
 - No provider read or paid model call.
+- Blocked public-use action event and completed retry outcome are committed in the same transaction as the current campaign/workspace/source recheck.
 - Result metrics are bounded integers and only the latest receipt is retained on each bounded campaign document.
 - Campaign lists remain capped by the existing page size.
 - Source facts are sorted before hashing so order drift cannot trigger unnecessary campaign recreation.

@@ -11,6 +11,10 @@
  */
 
 import { firebaseStorage } from "@lib/firebase/firebaseClient";
+import {
+    resolveBase64UploadConfig,
+    type SupportedBase64UploadFileType,
+} from "@lib/storage/base64UploadBoundary";
 import { getDownloadURL, ref, uploadString, type FirebaseStorage, type UploadMetadata } from "firebase/storage";
 import {
     getBoundedStringLogContext,
@@ -21,19 +25,7 @@ import {
  * Supported file types for upload
  * Covers common image formats and document types
  */
-export type SupportedFileType =
-    // Image formats (extensions)
-    | "jpeg" | "jpg" | "png" | "svg" | "webp" | "gif" 
-    // Image formats (MIME types)
-    | "image/jpeg" | "image/png" | "image/svg+xml" | "image/webp" | "image/gif"
-    // Document formats (extensions)
-    | "pdf" | "doc" | "docx" | "txt"
-    // Document formats (MIME types)
-    | "application/pdf" | "application/msword" | "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "text/plain"
-    // Font formats
-    | "ttf" | "otf" | "woff" | "woff2"
-    | "font/ttf" | "font/otf" | "font/woff" | "font/woff2"
-    | "application/font-woff" | "application/font-sfnt" | "application/x-font-ttf" | "application/x-font-opentype";
+export type SupportedFileType = SupportedBase64UploadFileType;
 
 interface UploadFileData {
     cacheControl?: string;      // Optional Cache-Control metadata for versioned/immutable paths
@@ -43,152 +35,6 @@ interface UploadFileData {
     url: string;                 // Base64 encoded data URL or base64 string
     path: string;                // Storage path (without extension)
     type?: SupportedFileType;    // File type/MIME type (images or documents)
-}
-
-interface FileTypeConfig {
-    extension: string;
-    contentType: string;
-    uploadFormat: 'data_url' | 'raw';
-}
-
-/**
- * Normalize MIME type or extension to standard format
- * Handles both "jpeg", "image/jpeg", "application/pdf", etc.
- * Supports images and documents
- */
-function normalizeFileType(type?: SupportedFileType): FileTypeConfig {
-    if (!type) {
-        // Default to JPEG
-        return {
-            extension: '.jpeg',
-            contentType: 'image/jpeg',
-            uploadFormat: 'data_url'
-        };
-    }
-
-    const normalizedType = type.toLowerCase();
-
-    // Fonts — check before the generic document/image fallbacks so binary
-    // font uploads retain their real extension and browser-loadable MIME.
-    if (normalizedType.includes('woff2')) {
-        return {
-            extension: '.woff2',
-            contentType: 'font/woff2',
-            uploadFormat: 'data_url'
-        };
-    }
-
-    if (normalizedType.includes('woff')) {
-        return {
-            extension: '.woff',
-            contentType: 'font/woff',
-            uploadFormat: 'data_url'
-        };
-    }
-
-    if (normalizedType.includes('opentype') || normalizedType.includes('font/otf') || normalizedType === 'otf') {
-        return {
-            extension: '.otf',
-            contentType: 'font/otf',
-            uploadFormat: 'data_url'
-        };
-    }
-
-    if (normalizedType.includes('truetype') || normalizedType.includes('font/ttf') || normalizedType.includes('font-sfnt') || normalizedType === 'ttf') {
-        return {
-            extension: '.ttf',
-            contentType: 'font/ttf',
-            uploadFormat: 'data_url'
-        };
-    }
-
-    // PNG
-    if (normalizedType.includes('png')) {
-        return {
-            extension: '.png',
-            contentType: 'image/png',
-            uploadFormat: 'data_url'
-        };
-    }
-    
-    // JPEG/JPG
-    if (normalizedType.includes('jpeg') || normalizedType.includes('jpg')) {
-        return {
-            extension: '.jpeg',
-            contentType: 'image/jpeg',
-            uploadFormat: 'data_url'
-        };
-    }
-    
-    // SVG
-    if (normalizedType.includes('svg')) {
-        return {
-            extension: '.svg',
-            contentType: 'image/svg+xml',
-            uploadFormat: 'raw'
-        };
-    }
-    
-    // WebP
-    if (normalizedType.includes('webp')) {
-        return {
-            extension: '.webp',
-            contentType: 'image/webp',
-            uploadFormat: 'data_url'
-        };
-    }
-    
-    // GIF
-    if (normalizedType.includes('gif')) {
-        return {
-            extension: '.gif',
-            contentType: 'image/gif',
-            uploadFormat: 'data_url'
-        };
-    }
-    
-    // PDF (Documents)
-    if (normalizedType.includes('pdf')) {
-        return {
-            extension: '.pdf',
-            contentType: 'application/pdf',
-            uploadFormat: 'data_url'
-        };
-    }
-    
-    // Word Documents (.doc)
-    if (normalizedType.includes('msword') || normalizedType === 'doc') {
-        return {
-            extension: '.doc',
-            contentType: 'application/msword',
-            uploadFormat: 'data_url'
-        };
-    }
-    
-    // Word Documents (.docx)
-    if (normalizedType.includes('wordprocessingml') || normalizedType === 'docx') {
-        return {
-            extension: '.docx',
-            contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            uploadFormat: 'data_url'
-        };
-    }
-    
-    // Plain Text
-    if (normalizedType.includes('text') || normalizedType === 'txt') {
-        return {
-            extension: '.txt',
-            contentType: 'text/plain',
-            uploadFormat: 'data_url'
-        };
-    }
-
-    // Default fallback to JPEG for images, or keep as-is for unknown types
-    return {
-        extension: '.jpeg',
-        contentType: 'image/jpeg',
-        uploadFormat: 'data_url'
-    };
 }
 
 /**
@@ -211,7 +57,7 @@ function normalizeFileType(type?: SupportedFileType): FileTypeConfig {
 const uploadBase64ToStorage = async (fileData: UploadFileData): Promise<string> => {
     try {
         // Normalize file type and get configuration
-        const typeConfig = normalizeFileType(fileData.type);
+        const typeConfig = resolveBase64UploadConfig({ type: fileData.type, url: fileData.url });
         
         // Build complete file path with extension
         const fileName = `${fileData.path}${typeConfig.extension}`;

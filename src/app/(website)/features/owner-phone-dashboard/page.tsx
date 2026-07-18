@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -9,7 +10,7 @@ import { Metadata } from 'next';
 const title = 'Owner Phone Dashboard - MenuList | Manage MenuList From Your Phone';
 const description = 'Use MenuList from a phone browser or saved app to edit menus, publish changes, share QR links, review feedback, check Business Health, manage screens, and handle daily owner work.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description,
     url: '/features/owner-phone-dashboard',
   },
-};
+});
 
 export default function Page() {
   return (

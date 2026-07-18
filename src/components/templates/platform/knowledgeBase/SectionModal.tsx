@@ -1,8 +1,8 @@
-import { assertKnowledgeBaseCategoryWriteSucceeded, updateCategory } from "@database/knowledgeBase/categories";
+import { assertKnowledgeBaseCategoriesMutationSucceeded, upsertSectionInCategory } from "@database/knowledgeBase/categories";
 import { useAppDispatch } from "@hook/useAppDispatch";
 import { startLoader, stopLoader } from "@reduxSlices/loader";
 import { KnowledgeBaseCategoriesType, KnowledgeBaseCategory, KnowledgeBaseSection } from "@type/knowledgeBase";
-import { getNewIndex, updateList } from "@util/utils";
+import { getNewIndex } from "@util/utils";
 import { Divider, Flex, Form, Input, InputNumber, Modal, Switch, message } from "antd";
 import { FormInstance } from 'antd/lib/form';
 import { useEffect, useState } from 'react';
@@ -14,24 +14,27 @@ interface SectionModalProps {
     form: FormInstance;
     onOk: () => void;
     onCancel: () => void;
-    onSuccess: (updatedCategories: KnowledgeBaseCategoriesType) => void;
+    onSuccess?: (updatedCategories: KnowledgeBaseCategoriesType) => void;
+    onReviewSuccess?: (updatedSection: KnowledgeBaseSection) => void;
     categoriesData: KnowledgeBaseCategoriesType | null;
     selectedCategory: KnowledgeBaseCategory | null;
-    from?: string;
+    from?: 'review';
 }
 
-const SectionModal = ({ open, editingSection, form, onOk, onCancel, onSuccess, categoriesData, selectedCategory, from = "" }: SectionModalProps) => {
+const SectionModal = ({ open, editingSection, form, onOk, onCancel, onSuccess, onReviewSuccess, categoriesData, selectedCategory, from }: SectionModalProps) => {
     const dispatch = useAppDispatch();
     const [previewData, setPreviewData] = useState<Partial<KnowledgeBaseSection>>({});
     const titleValue = Form.useWatch('title', form);
 
     useEffect(() => {
-        if (Boolean(titleValue)) {
+        if (!editingSection && Boolean(titleValue)) {
             const slug = titleValue.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
             form.setFieldsValue({ url: slug });
         }
-        form.setFieldsValue({ index: getNewIndex(selectedCategory?.sections || []) });
-    }, [titleValue, form, selectedCategory]);
+        if (!editingSection && form.getFieldValue('index') === undefined) {
+            form.setFieldsValue({ index: getNewIndex(selectedCategory?.sections || []) });
+        }
+    }, [titleValue, form, selectedCategory, editingSection]);
 
     useEffect(() => {
         if (open) setPreviewData(form.getFieldsValue());
@@ -39,10 +42,12 @@ const SectionModal = ({ open, editingSection, form, onOk, onCancel, onSuccess, c
 
     const handleFinish = async (values: any) => {
         if (from === "review") {
-            const sectionToSave = { ...editingSection, ...values };
-            onSuccess(sectionToSave);
+            if (!onReviewSuccess) throw new Error('knowledge_base_section_review_callback_missing');
+            const sectionToSave = { ...editingSection, ...values } as KnowledgeBaseSection;
+            onReviewSuccess(sectionToSave);
             return;
         }
+        if (!onSuccess) throw new Error('knowledge_base_section_persistence_callback_missing');
         if (!selectedCategory || !categoriesData) return;
 
         const isEditing = !!editingSection;
@@ -59,23 +64,15 @@ const SectionModal = ({ open, editingSection, form, onOk, onCancel, onSuccess, c
                 sectionToSave = { ...values, id, articles: [] };
             }
 
-            const updatedSections = updateList(selectedCategory.sections || [], sectionToSave, 'last', 'id');
-            const updatedCategory = { ...selectedCategory, sections: updatedSections };
-
-            const result = await updateCategory(updatedCategory);
-            assertKnowledgeBaseCategoryWriteSucceeded(
+            const result = await upsertSectionInCategory(selectedCategory.id, sectionToSave);
+            assertKnowledgeBaseCategoriesMutationSucceeded(
                 result,
-                updatedCategory.id,
+                'upsertSection',
                 isEditing ? 'platform_kb_section_update_rejected' : 'platform_kb_section_create_rejected',
             );
 
-            const updatedCategoriesMap = {
-                ...categoriesData.categories,
-                [updatedCategory.id]: updatedCategory,
-            };
-
             message.success(`Section ${isEditing ? 'updated' : 'created'} successfully!`);
-            onSuccess({ categories: updatedCategoriesMap });
+            onSuccess({ categories: result.categories });
         } catch (error) {
             message.error("Failed to save section.");
         } finally {

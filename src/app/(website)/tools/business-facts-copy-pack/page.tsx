@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import BusinessFactsCopyPackPage from '@/components/website/businessFactsCopyPack/BusinessFactsCopyPackPage';
 import Header from '@/components/website/Header';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Business Facts Copy Pack - MenuList | Reusable Public Business Copy';
 const description = 'Create reusable profile, WhatsApp, social, website, staff, and customer-link copy from owner-entered business facts without external profile inspection.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/business-facts-copy-pack',
   },
-};
+});
 
 export default function Page() {
   if (

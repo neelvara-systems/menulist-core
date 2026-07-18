@@ -1,7 +1,8 @@
 /**
  * Menu Correctness Engine (MCE) — Entry Point
  *
- * MCE is a client-side validation layer that runs on every menu save.
+ * MCE is a pure validation layer used by supported project mutations and the
+ * editor Publish-Gate.
  * It validates project data against deterministic correctness rules
  * and stamps verification metadata (_mce) on the existing project document.
  *
@@ -22,7 +23,7 @@ import type { CSRInput, CSRResult, MCEMetadata } from "./types";
  * Run MCE validation on project data.
  *
  * This is the main entry point called from updateProject() in the DAL.
- * Runs entirely client-side in < 100ms. Zero Firebase calls.
+ * Runs locally in < 100ms. Zero Firebase calls.
  *
  * @param input - CSR input containing project data and context
  * @returns CSRResult with verification status, errors, and warnings

@@ -1,45 +1,29 @@
-export function timeAgo(dateParam: Date) {
-    const getDifferenceInUnits = (
-        unit: string,
-        differenceInMilliseconds: number
-    ) => {
-        const units: { [unit: string]: number } = {
-            second: 1000,
-            minute: 1000 * 60,
-            hour: 1000 * 60 * 60,
-            day: 1000 * 60 * 60 * 24,
-            week: 1000 * 60 * 60 * 24 * 7,
-            month: 1000 * 60 * 60 * 24 * 30, // assumes average month length
-            year: 1000 * 60 * 60 * 24 * 365, // non-leap year
-        };
-        return differenceInMilliseconds / units[unit];
-    };
+import { defaultLocale, normalizeLocalePreference } from '@lib/localization/config';
 
-    const date = new Date(dateParam).getTime();
-    const NOW = new Date().getTime();
-    const differenceInMilliseconds = NOW - date;
+const RELATIVE_UNITS: Array<{
+    milliseconds: number;
+    unit: Intl.RelativeTimeFormatUnit;
+}> = [
+    { milliseconds: 365 * 24 * 60 * 60 * 1000, unit: 'year' },
+    { milliseconds: 30 * 24 * 60 * 60 * 1000, unit: 'month' },
+    { milliseconds: 7 * 24 * 60 * 60 * 1000, unit: 'week' },
+    { milliseconds: 24 * 60 * 60 * 1000, unit: 'day' },
+    { milliseconds: 60 * 60 * 1000, unit: 'hour' },
+    { milliseconds: 60 * 1000, unit: 'minute' },
+];
 
-    if (getDifferenceInUnits("minute", differenceInMilliseconds) < 1) {
-        return "Just now";
-    } else if (getDifferenceInUnits("hour", differenceInMilliseconds) < 1) {
-        return `${Math.round(
-            getDifferenceInUnits("minute", differenceInMilliseconds)
-        )}m`;
-    } else if (getDifferenceInUnits("day", differenceInMilliseconds) < 1) {
-        return `${Math.round(
-            getDifferenceInUnits("hour", differenceInMilliseconds)
-        )}h`;
-    } else if (getDifferenceInUnits("week", differenceInMilliseconds) < 1) {
-        return `${Math.round(
-            getDifferenceInUnits("day", differenceInMilliseconds)
-        )}d`;
-    } else if (getDifferenceInUnits("year", differenceInMilliseconds) < 1) {
-        return `${Math.round(
-            getDifferenceInUnits("month", differenceInMilliseconds)
-        )}mo`;
-    } else {
-        return `${Math.round(
-            getDifferenceInUnits("year", differenceInMilliseconds)
-        )}y`;
-    }
+export function timeAgo(dateParam: Date, locale?: string, now = Date.now()): string {
+    const timestamp = new Date(dateParam).getTime();
+    if (!Number.isFinite(timestamp)) return '';
+
+    const difference = timestamp - now;
+    const formatter = new Intl.RelativeTimeFormat(
+        normalizeLocalePreference(locale) || defaultLocale,
+        { numeric: 'auto', style: 'short' },
+    );
+
+    const resolved = RELATIVE_UNITS.find(({ milliseconds }) => Math.abs(difference) >= milliseconds);
+    if (!resolved) return formatter.format(0, 'second');
+
+    return formatter.format(Math.round(difference / resolved.milliseconds), resolved.unit);
 }

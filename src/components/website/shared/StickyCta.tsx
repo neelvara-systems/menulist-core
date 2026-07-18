@@ -69,9 +69,8 @@ export default function StickyCta() {
     };
   }, [enabled]);
 
-  if (!enabled) return null;
-
   const visible = pastStart && !nearStop;
+  if (!enabled || !visible) return null;
 
   return (
     <div
@@ -83,9 +82,7 @@ export default function StickyCta() {
         right: 'auto',
         zIndex: 90,
         width: 'min(calc(100vw - 32px), 760px)',
-        transform: visible ? 'translate3d(-50%, 0, 0)' : 'translate3d(-50%, calc(100% + 32px), 0)',
-        transition: 'transform 0.3s ease',
-        pointerEvents: visible ? 'auto' : 'none',
+        transform: 'translate3d(-50%, 0, 0)',
       }}
     >
       <div

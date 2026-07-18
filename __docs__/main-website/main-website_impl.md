@@ -1,7 +1,7 @@
 # Main Website (menulist.ai) — Implementation
 
-**Status:** IMPLEMENTED — v3.6.111 Header Interaction Hardening
-**Last Updated:** July 11, 2026
+**Status:** IMPLEMENTED — v3.6.115 Website Truth and Owner Journey Audit
+**Last Updated:** July 18, 2026
 **Audience:** Developers
 
 ---
@@ -10,6 +10,12 @@
 
 The main website lives in the `(website)` route group under Next.js App Router. All pages use a shared layout with system-aware light/dark theme tokens, localization, and analytics.
 
+The v3.6.115 audit aligns the complete acquisition journey with current runtime: homepage and How It Works advertise only the public photo/image or owned-link intake; `/ml/create-menu` and its preview retain the product alias; the seven-day setup explains that the starter URL/QR can be used during setup and needs a paid plan before the deadline to stay live; pricing comparison language preserves entitlement values while removing unsupported posting, search, speed, and accuracy claims. Contact success now means “recorded,” not guaranteed team delivery. The footer exposes About and Contact and uses real route/anchor targets. Protected owner pages emit `noindex, nofollow, nocache`.
+
+Accessibility hardening keeps the mobile drawer focus-contained with Escape/focus restoration, gives desktop dropdown triggers expanded/control state without invalid menu roles, gives Pricing the shared `main-content` landmark, makes the full create-menu drop zone keyboard-operable, provides form labels and localized field errors, removes hidden sticky-CTA focus targets, strengthens muted text contrast, and avoids loading the hero video for reduced-motion visitors. These are presentation and website-boundary changes only; extraction, publish, cache, subscription, payment, owner-dashboard data, Firebase, and provider contracts are unchanged.
+
+Route metadata with an Open Graph object must pass through `completeWebsiteMetadata`. Next.js replaces nested metadata objects at the leaf route, so the helper preserves each route's title, description, canonical URL, and article fields while restoring the approved MenuList preview image and matching Twitter title/description. The same completion applies to generated localized Resource metadata. `npm run verify:website-public-copy-boundary` scans every website page with Open Graph metadata and fails if this completion is bypassed.
+
 The latest analytics pass adds consent-gated Plausible Cloud support for the MenuList and Answerlattice public marketing websites only. The scripts mount only after analytics consent and only when the product-specific Plausible domain env var is configured. GA4 remains available for paid-ad/conversion continuity, Microsoft Clarity remains MenuList-only and env-gated by `NEXT_PUBLIC_CLARITY_ID` for visual behavior observation, and product analytics plus owner-facing business truth stay in the existing MenuList-owned analytics pipeline.
 
 Google Analytics page views strip query strings and hash fragments from `page_location`, and the GA script fails closed unless `NEXT_PUBLIC_GA_MEASUREMENT_ID` matches the GA4 `G-...` measurement-id shape. Public utility-route query strings, report hash payloads, and success-page URLs should not enter default GA page-view URLs.
@@ -17,6 +23,14 @@ Google Analytics page views strip query strings and hash fragments from `page_lo
 Resource GA4 custom-event payloads are bounded through `trackGoogleMarketingEvent`: resource page, CTA, AI/referrer, create-menu/pricing, and checklist-copy event strings strip control characters and cap URL/referrer/UTM-style values before GA4 receives them. Resource Plausible events remain property-free.
 
 The public contact write boundary is `POST /api/public/contact`. It applies the `MENULIST_CONTACT_FORM` limiter with fail-closed behavior for limiter infrastructure errors, rejects JSON above 8KB, validates the exact form/report-summary DTO, ignores honeypot submissions, and verifies Turnstile before the single Admin SDK write. Turnstile delivery uses a fixed endpoint, manual redirect handling, an 8-second abort deadline, bounded JSON response parsing, and `finally` timer cleanup. Persisted `sourcePath` and `referrer` retain only path/origin-path identity, never query strings or fragments; optional numeric report values use nullish preservation so zero remains zero. `npm run verify:public-contact-boundary`, `npm run test:public-contact-boundary`, and `npm run test:public-turnstile-boundary` guard these contracts.
+
+The general `/contact` success state is intentionally bounded to persisted acknowledgement. The current maintained Ops consumer is scoped to report leads, not every `sourceKind`, so a monitored general-enquiry alert/inbox and its response ownership remain production-owner work. Website copy must not promise that every form row has been read or give a response-time commitment until that operating evidence exists.
+
+The contact collection keeps query/routing scalars indexed, including the scoped Report Leads `sourceKind + createdOn` path. `landingPageEnquiries.message` and `landingPageEnquiries.sourceContext` are exact-document payload fields and are exempt from unused automatic indexing. This reduces index-entry fanout and storage without changing admission, the one-write success path, private Ops projection, or end-user behavior. The validated QA index deploy currently remains pending because the July 17 `menulist-qa` attempt failed before upload with Firebase Rules test-endpoint HTTP 403 caller permission.
+
+`WebsiteProductPathProvider` is the canonical browser routing boundary for the `menulist.digital/ml` product alias. It prefixes every current website route family, including reviewed locale-prefixed resource paths; consumers strip the active base path before route-state or locale inspection and reapply it to internal navigation. `Header` and `WebsiteLanguageSwitcher` must not hardcode `/ml` or inspect an aliased pathname as if its first segment were the website locale. `npm run test:website-product-path-boundary` exercises canonical, aliased, reviewed-locale, external/unsafe, and app-route cases without network or browser work.
+
+Public legal copy follows runtime truth. Terms do not promise universal publishing, absolute ownership of generated output, or external provider certification. Refund copy does not promise fixed 30-day deletion or all-plan access. Cancelled/paused subscriptions keep the purchased plan mirror only through a valid paid `cycleEndDate`; the existing leased maintenance scheduler expires at most 500 due rows per hourly run and repairs store/platform entitlement. External legal approval and target deploy evidence remain separate from source completion.
 
 ```
 Route Group: src/app/(website)/
@@ -109,6 +123,7 @@ Build:       Minimal src/pages defaults satisfy generated Pages Router manifest 
 - `/faq` carries the full 16-question owner FAQ that was removed from the homepage scroll. It is registered in platform discovery, static sitemap, footer resources, `llms.txt`, and `llms-full.txt`.
 - `/tools` is the feature-gated public MenuList Tools hub. Concrete child routes under `/tools/*` are browser-local public acquisition tools, and `/tools/reports` is the hash-fragment public report viewer; all must stay in `PLATFORM_DISCOVERY_PAGES`, static sitemap, LLM context, and this route table.
 - `/create-menu` is feature-gated by `ENABLE_PUBLIC_MENU_ENTRY` — shows a locale-backed guided-setup fallback when OFF.
+- `/create-menu` uses a two-column desktop conversion layout: owner-readable context and one canonical process/proof set on the left, with the unchanged sign-in or authenticated source-entry task on the right. Below 960px it returns to document-flow order: heading, active action, then process and proof. The action panel must not become sticky because phone/OTP and source-entry states can exceed short viewport heights.
 - `/create-menu/success` is a post-setup utility route that may carry query-string menu URLs. It must remain outside discovery inventories and emit explicit `noindex, nofollow, nocache` robots metadata from the server wrapper, with a self canonical to `/create-menu/success`.
 - `/create-menu/success` Copy Link and WhatsApp handoffs are browser-local, use localized fixed failure copy, log bounded presence/length metadata only, open WhatsApp with `noopener,noreferrer`, and record starter activation signals only after copy/open succeeds. Copy Link falls through from rejected Clipboard API writes to acknowledged textarea fallback before failure.
 - `/create-menu` upload/link creation, preview polling, and claim submission use same-origin credentials, no-store cache policy, and manual redirect handling before trusting route responses. Upload/link acknowledgements stay capped at 8KB, preview polling at 4MB, and claim acknowledgements at 32KB.
@@ -147,11 +162,11 @@ LocalisationProvider (locale from next-intl/server)
 - OG image: `/images/website/menulist-og-official-source.png`
 - Backward-compatible OG copy: `/og-image.png`
 - Robots: index, follow (full crawling enabled)
-- Viewport: device-width, initialScale 1, maximumScale 1
+- Viewport: device-width, initialScale 1; browser and operating-system zoom remain available
 
 ---
 
-## 4. Homepage Sections (7 sections plus sticky CTA, in order)
+## 4. Homepage Sections (8 sections plus sticky CTA, in order)
 
 **File:** `src/components/website/home/HomePage.tsx`
 
@@ -161,9 +176,10 @@ LocalisationProvider (locale from next-intl/server)
 | 2 | Create menu preview | `CreateMenuPreviewSection.tsx` |
 | 3 | Before/after | `BeforeAfterSection.tsx` |
 | 4 | Customer browse proof | `CustomerBrowseSection.tsx` |
-| 5 | Owner USP proof | `OwnerProofSection.tsx` |
-| 6 | FAQ preview | `FaqSection.tsx` |
-| 7 | Final CTA | `FinalCtaSection.tsx` |
+| 5 | Customer-link inclusions | `CustomerLinkIncludesSection.tsx` |
+| 6 | Owner USP proof | `OwnerProofSection.tsx` |
+| 7 | FAQ preview | `FaqSection.tsx` |
+| 8 | Final CTA | `FinalCtaSection.tsx` |
 
 `ProblemSection.tsx`, `SwitchComparisonSection.tsx`, `InteractiveWorkflowSection.tsx`, `PublicTruthLoopSection.tsx`, `AiMenuManagerSection.tsx`, `SetupReliefSection.tsx`, `SurfacesSection.tsx`, `BusinessHealthSection.tsx`, `ResourcesSection.tsx`, `RevenuePathSection.tsx`, `StatsSection.tsx`, `SearchDiscoverySection.tsx`, `AnalyticsInsightsSection.tsx`, `SmartFeaturesSection.tsx`, `BusinessSection.tsx`, and `IndustrySection.tsx` remain in the codebase as supporting components/future page material, but they are not mounted in the current compressed homepage. The old `SolutionSection.tsx` was removed in v3.5.8 because its one-source SVG and bullet grid duplicated the hero, problem, workflow source map, setup proof, and public-surface proof.
 
@@ -195,7 +211,9 @@ LocalisationProvider (locale from next-intl/server)
 
 **Customer Feedback Loop campaign page:** v3.6.43 adds `/features/customer-feedback-loop` as a generic `FeatureDetailPage` route for public guest feedback. The page frames the shipped Internal Feedback System as a correction loop: customers can report wrong prices, missing items, outdated details, or service concerns from public menu/OBP/QR/direct-link surfaces; owners review feedback privately; real issues route back to the approved source. The `/features` Operations group, desktop Features dropdown, and mobile hamburger feature list now include a linked `Customer feedback loop` entry through `websiteFeatureNavLinks` / `websiteFeatureNavGroups`. Platform discovery is updated through `PLATFORM_DISCOVERY_PAGES`, `public/sitemap.xml`, `public/llms.txt`, and `public/llms-full.txt`. This is public website locale/metadata/discovery/docs copy only; guest feedback runtime, owner inbox runtime, mobile shell runtime, Firebase, Cloud Functions, pricing, payment, auth, and customer menu runtime were not changed.
 
-**Feature dropdown interaction polish:** v3.6.44 changes the desktop `Features` top-nav item from a direct `/features` link into a menu trigger button. The `/features` route is still available through the `Feature overview` row inside the panel. The desktop panel now renders the same Start, Publish, and Operate groups used by the mobile hamburger, and `websiteFeatureNavGroups` is the shared grouping source. CSS adds a small invisible hover bridge between the trigger and fixed panel so pointer travel does not close the dropdown, and the panel border/shadow is softened for dark mode. v3.6.110 changes the desktop panel from a three-column sitemap-like grid into stacked workflow rows with card wrapping, keeping the same shared mobile grouping source. v3.6.111 adds Escape-key close behavior to both desktop Features and Resources dropdown wrappers and gives the Resources dropdown the same scroll containment and pointer-travel bridge treatment so long resource lists stay usable on smaller desktop heights. This is static website header/CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
+**Feature dropdown interaction polish:** v3.6.44 changes the desktop `Features` top-nav item from a direct `/features` link into a menu trigger button. The `/features` route is still available through the `Feature overview` row inside the panel. The desktop panel now renders the same Start, Publish, and Operate groups used by the mobile hamburger, and `websiteFeatureNavGroups` is the shared grouping source. CSS adds a small invisible hover bridge between the trigger and fixed panel so pointer travel does not close the dropdown, and the panel border/shadow is softened for dark mode. v3.6.110 changes the desktop panel from a three-column sitemap-like grid into stacked workflow rows with card wrapping, keeping the same shared mobile grouping source. v3.6.111 adds Escape-key close behavior to both desktop Features and Resources dropdown wrappers and gives the Resources dropdown the same scroll containment and pointer-travel bridge treatment so long resource lists stay usable on smaller desktop heights. v3.6.112 adds a visible resting arrow affordance to every desktop feature route card, coordinates icon/arrow movement on hover and focus, and raises description contrast so the card grid reads clickable without adding more copy. This is static website header/CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
+
+**Create-menu conversion layout:** v3.6.113 changes presentation only in `CreateMenuClient.tsx` and `website.css`. Desktop places the owner-facing promise and compact process/proof context beside the existing sign-in or authenticated photo/link intake. Mobile keeps the active task directly after the heading and moves supporting context below it. The previous duplicated process list and supported-input block inside the unauthenticated sign-in card are consolidated into one canonical context area. No locale keys, auth providers, API requests, rate limits, upload/link validation, extraction, preview, claim/publish behavior, pricing/payment, Firebase, Cloud Functions, or Vercel deployment changed.
 
 **Mobile feature drawer accordion:** v3.6.62 changes the mobile hamburger drawer from an always-expanded feature map into a two-level accordion. `Header.tsx` keeps the top-level Features accordion open by default, keeps Resources collapsed unless the visitor is already on a resource route, opens the active Start/Publish/Operate feature group, and removes the duplicate top-level AI Menu Manager mobile entry because it already appears inside Features -> Operate. v3.6.86 keeps that same behavior while expanding the shared group source to include Analytics Dashboard and Menu Quality Validation, matching the desktop hover dropdown. v3.6.110 keeps mobile on the same grouping source after moving Menu Quality Validation to Operate and raises the drawer/backdrop layer above the public analytics consent banner so the hamburger menu is not blocked on first visit. v3.6.111 marks the drawer as a dialog, closes it on Escape, gives the scrollable nav a minimum-height boundary, and moves the bottom CTA padding into `.ws-drawer-cta` so safe-area spacing is consistent on short phones. `website.css` owns the drawer accordion triggers, nested group panels, Feature overview card, active route states, overlay stacking, and light/dark token styling. This is static website header/CSS/docs only; feature routes, owner dashboard runtime, customer menu runtime, Firebase, Cloud Functions, pricing, payment, auth, and Vercel deployment were not changed.
 
@@ -349,6 +367,7 @@ src/pages/
 | `WebsitePageHero.tsx` | Shared supporting-page hero with eyebrow, headline, subline, and CTA slots |
 | `WebsiteProofStrip.tsx` | Shared proof strip used by supporting pages |
 | `WebsiteLanguageSwitcher.tsx` | Language dropdown (8 languages), mounted in the footer |
+| `WebsiteProductPathProvider.tsx` | Canonical/`/ml` internal-link, public-pathname, and reviewed resource-locale alias boundary |
 | `WebsiteThemeSwitcher.tsx` | Compact footer Light/System/Dark segmented control backed by the website `ThemeProvider` |
 
 ---
@@ -368,6 +387,7 @@ src/pages/
 - **Long-form resources:** Resource articles use `src/content/websiteResources/`. `en-US` is the source, and `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, and `es-ES` are reviewed full packs for the current 15-article registry that pass `npm run verify:website-resource-locales`.
 - **Website language switcher:** `WEBSITE_LANGUAGES` drives 8 selectable locales
   (`en-US`, `hi-IN`, `ta-IN`, `te-IN`, `mr-IN`, `bn-IN`, `ar-SA`, `es-ES`) from `src/config/websiteLanguages.ts`.
+- **Alias-safe resource switching:** On the `/ml` product alias, the switcher removes the provider base path before recognizing `/resources` or `/{reviewedLocale}/resources`, then adds the same base path to the selected language URL. Escape closes the open menu and returns focus to its trigger.
 - **Website theme switcher:** `WebsiteThemeSwitcher.tsx` exposes Light, System, and Dark choices as a compact footer segmented control and persists through the existing `ThemeProvider` localStorage contract.
 - Additional locale files (`en-GB`, `gu-IN`, `zh-CN`) exist in `public/locales/menulist.ai/` for broader app usage and fallback-only coverage.
 

@@ -34,6 +34,7 @@ import { getFounderSubscriptionMrrPaise } from '@lib/ops/founderRevenueReadModel
 import { isValidBillingPeriodKey } from './billingPeriod';
 import { resolveSubscriptionUpgradeCreditTransfer } from './subscriptionUpgradeSettlement';
 import { validateTransition } from './subscriptionStateMachine';
+import { appendBoundedBillingStatusHistory } from './subscriptionStatusHistory';
 import {
     normalizeBillingProductId,
     isAnswerlatticeBillingProduct,
@@ -387,16 +388,13 @@ const expireIfGracePeriodEnded = async (
             status: 'expired',
             cycleEndDate: expiredAt as any,
             subscriptionEndDate: expiredAt as any,
-            statuses: [
-                ...(Array.isArray(current.statuses) ? current.statuses : []),
-                {
+            statuses: appendBoundedBillingStatusHistory(current.statuses, {
                     status: 'expired',
                     timestamp: expiredAt as any,
                     amount: current.amount,
                     currency: current.currency,
                     remark: `Expired after the payment recovery period ended on ${gracePeriod.graceEndsDate?.toLocaleDateString()}`,
-                },
-            ],
+            }),
         };
         transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });
         return {
@@ -579,10 +577,7 @@ export async function applyProductSubscriptionPayment(
             status: 'active' as const,
             pastDueSinceAt: null,
             billingHistory: [...billingHistory, paymentHistoryId],
-            statuses: [
-                ...(Array.isArray(current.statuses) ? current.statuses : []),
-                params.statusEntry,
-            ],
+            statuses: appendBoundedBillingStatusHistory(current.statuses, params.statusEntry),
             ...(shouldResetCredits ? {
                 monthlyCredits: Number.isFinite(nextAllowance) && nextAllowance > 0 ? nextAllowance : 0,
                 creditsLastResetMonth: params.billingPeriod,
@@ -701,10 +696,7 @@ export async function applyProductSubscriptionStatusTransition(
         const update = {
             ...safeUpdate,
             status: params.nextStatus,
-            statuses: [
-                ...(Array.isArray(current.statuses) ? current.statuses : []),
-                params.statusEntry,
-            ],
+            statuses: appendBoundedBillingStatusHistory(current.statuses, params.statusEntry),
         };
         transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });
 
@@ -872,16 +864,13 @@ export async function applyProductSubscriptionUpgradeCarryForward(
             cycleEndDate: appliedAt as any,
             subscriptionEndDate: appliedAt as any,
             upgradeReplacementSubscriptionId: newSubscriptionId,
-            statuses: [
-                ...(Array.isArray(oldSubscription.statuses) ? oldSubscription.statuses : []),
-                {
+            statuses: appendBoundedBillingStatusHistory(oldSubscription.statuses, {
                     status: 'expired',
                     timestamp: appliedAt as any,
                     amount: oldSubscription.amount,
                     currency: oldSubscription.currency,
                     remark: `Upgraded with ${remainingCredits} credits transferred to ${newSubscriptionId}`,
-                },
-            ],
+            }),
         };
         const newUpdate: Partial<FirestoreSubscriptionDoc> & Record<string, unknown> = {
             topUpCredits: nextTopUpCredits,
@@ -892,16 +881,13 @@ export async function applyProductSubscriptionUpgradeCarryForward(
             founderMonitorReplacementMrrPaise: getFounderSubscriptionMrrPaise(oldSubscription),
             founderMonitorReplacementPlanId: oldSubscription.planId || null,
             founderMonitorReplacementPlanName: oldSubscription.planName || null,
-            statuses: [
-                ...(Array.isArray(newSubscription.statuses) ? newSubscription.statuses : []),
-                ...(carryAlreadyApplied ? [] : [{
+            statuses: appendBoundedBillingStatusHistory(newSubscription.statuses, carryAlreadyApplied ? [] : [{
                     status: 'carry_forward_applied',
                     timestamp: appliedAt as any,
                     amount: newSubscription.amount,
                     currency: newSubscription.currency,
                     remark: `Credits transferred from upgraded subscription: ${remainingCredits}`,
-                }]),
-            ],
+            }]),
         };
         transaction.set(oldSubscriptionRef, productDocPayload(productId, oldUpdate), { merge: true });
         transaction.set(newSubscriptionRef, productDocPayload(productId, newUpdate), { merge: true });
@@ -1007,10 +993,7 @@ export async function applyProductSubscriptionWebhookEvent(
             } : {}),
             webhookEventHistory: [...eventHistory.slice(-99), eventKey],
             ...(params.statusEntry ? {
-                statuses: [
-                    ...(Array.isArray(current.statuses) ? current.statuses : []),
-                    params.statusEntry,
-                ],
+                statuses: appendBoundedBillingStatusHistory(current.statuses, params.statusEntry),
             } : {}),
         };
         transaction.set(subscriptionRef, productDocPayload(productId, update), { merge: true });

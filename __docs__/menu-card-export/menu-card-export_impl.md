@@ -225,7 +225,7 @@ export type MenuCardExportRecord = {
 };
 ```
 
-The implemented local history stores file names and source hashes only. It does not store Firebase artifact paths because no Storage upload occurs.
+The implemented local history stores file names and source hashes only. Keys are scoped by tenant, store, and project so equal project IDs in different outlets/accounts cannot share browser history. Legacy project-only keys are not read. A rejected `localStorage` write is best-effort: it may omit persistence, but it cannot turn an already delivered file into an owner-visible export failure. No Firebase artifact path is stored because no Storage upload occurs.
 
 `MenuCardExportSettings` must be narrow and serializable:
 
@@ -259,7 +259,7 @@ Brand source rules:
 - `buildPrintSource()` must prefer `store.publicPresence.accentColor`, matching OBP.
 - Logo comes from the existing store logo fields, primarily `store.logo`.
 - Older `primaryColor`, `brandColor`, `themeColor`, and project design brand color are fallback-only.
-- The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices.
+- The renderer embeds the logo in the PDF header when the image can be loaded safely and uses the brand color for the header, category dividers, and prices. Remote logo loading is bounded to five seconds; timeout/CORS failure omits the logo and keeps rendering. Successful data is cached for the route session, while a failed load is not cached permanently.
 - The renderer prints subtle `Menu powered by MenuList | menulist.ai` attribution with the MenuList logo mark in the footer for non-Premium stores. `src/lib/platform/menuListBranding.ts` hides visible MenuList attribution only when the already-loaded `activePlanType` is `premium`; missing, Starter, Pro, and unknown plans keep attribution visible. This is platform attribution only; the business logo/name/color remain the primary visual identity.
 - The source hash includes logo URL, brand color, business type, business category, catalog kind, offering kind, currency symbol, and currency code so local export history does not reuse stale unbranded, wrong-profile, or wrong-currency files after the owner changes store settings.
 
@@ -381,12 +381,15 @@ Route behavior:
 9. Apply safe overrides.
 10. Run preflight.
 11. Block final export when preflight has blockers.
-12. Check local browser history for a matching source/settings hash.
+12. Check tenant/store/project-scoped local browser history for a matching source/settings hash.
 13. Render PDF or print-shop ZIP in the browser.
-14. Download/share the browser Blob.
-15. Save local browser history only.
+14. Download/share the browser Blob through the shared browser file-share contract.
+15. Treat unsupported file sharing as a download fallback, an owner-cancelled share as a quiet cancellation, and other share failures as failures.
+16. Save local browser history only after delivery; a device-local history write failure remains best-effort.
 
 The export path deliberately avoids Firestore writes, Storage uploads, export API rate limits, server rendering, and signed download URLs.
+
+Store changes are part of the controller load key. Switching outlets reloads project data and local history even when both outlets happen to use the same project ID.
 
 ### Failure Diagnostics
 

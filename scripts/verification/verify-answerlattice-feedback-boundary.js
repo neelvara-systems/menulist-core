@@ -158,6 +158,9 @@ const changelogDal = read('src/database/changelog/index.ts');
 const customerIdentity = read('src/lib/answerlattice/customerIdentity.ts');
 const contentFeedbackStorage = read('src/lib/contentFeedbackStorage/index.ts');
 const packageJson = JSON.parse(read('package.json'));
+const widgetFeedbackRoute = read('src/app/api/widget/feedback/route.ts');
+const widgetClient = read('src/app/widget/[apiKey]/WidgetClient.tsx');
+const nightly = read('functions-answerlattice/src/answerlattice/answerlatticeNightly.ts');
 
 const feedbackValidationIndex = dal.indexOf('normalizeAnswerlatticeFeedbackSubmission(data)');
 const feedbackComposerIndex = dal.indexOf('answerlatticeRequestBodyComposer(normalized');
@@ -216,5 +219,15 @@ assert(packageJson.scripts['verify:answerlattice-feedback-boundary'] === 'node s
 assert(packageJson.scripts['test:answerlattice-feedback:rules']?.includes('test-answerlattice-feedback-rules.ts'), 'package must expose the feedback rules emulator test');
 assert(packageJson.scripts['test:answerlattice-content-feedback-contracts']?.includes('test-answerlattice-content-feedback-contracts.ts'), 'package must expose content-feedback contract tests');
 assert(packageJson.scripts['test:answerlattice-content-feedback:emulator']?.includes('test-answerlattice-content-feedback-emulator.ts'), 'package must expose content-feedback server emulator tests');
+assert(widgetFeedbackRoute.includes("resolutionOutcome: z.enum(['resolved', 'not_resolved']).optional()"), 'widget feedback must admit only explicit resolved/not-resolved outcomes');
+assert(widgetFeedbackRoute.includes("resolutionOutcome === 'resolved' && value.isGood !== true"), 'widget feedback must reject inconsistent positive outcome payloads');
+assert(widgetFeedbackRoute.includes('...(resolutionOutcome ? { resolutionOutcome } : {})'), 'widget feedback must persist explicit outcome on the existing search-history record');
+assert(widgetClient.includes('Did this solve your issue?'), 'widget feedback must ask an explicit resolution question');
+assert(widgetClient.includes("handleFeedback(msg.id, 'resolved')"), 'widget must submit explicit resolved outcomes');
+assert(widgetClient.includes("handleFeedback(msg.id, 'not_resolved')"), 'widget must submit explicit not-resolved outcomes');
+assert(nightly.includes('calculateConfirmedResolutionMetrics(coverageResult.historyRows, 24)'), 'nightly trust aggregation must reuse the existing bounded coverage rows with an explicit observation window');
+assert(nightly.includes(".where('pId', '==', 'AL')"), 'nightly outcome history must remain Answerlattice product scoped');
+assert(nightly.includes(".orderBy('createdOn', 'desc')\n            .limit(500)"), 'nightly outcome history must select the newest bounded 500-row sample');
+assert(!nightly.includes("collection(DB_COLLECTIONS.AI_SEARCH_HISTORY)\n                .where('resolutionOutcome'"), 'confirmed resolution must not add a second search-history query');
 
 process.stdout.write('Answerlattice feedback boundary verification passed.\n');

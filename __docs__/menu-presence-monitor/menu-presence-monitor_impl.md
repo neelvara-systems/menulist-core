@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Implementation Plan
 
-> **Version:** 2.8 (atomic presence projection)
-> **Last Updated:** July 11, 2026
+> **Version:** 2.9 (canonical publish evidence and stale-state hardening)
+> **Last Updated:** July 16, 2026
 > **Audience:** Developers
 
 ---
@@ -10,7 +10,7 @@
 
 Menu Presence Monitor is a **pure UI component** embedded in the Use MenuList page. It combines:
 
-- **Auto-detected statuses** from existing data (screen token, Menu Kit download, feedback setting)
+- **Source-derived statuses** from existing data (valid publish acknowledgement, screen token, feedback setting)
 - **Manual confirmations** stored as a lightweight field on the store document
 - **Starter activation telemetry** piggybacked on the same store document for unpaid public starter workspaces
 - **Activation-proof summary** from `buildStarterActivationSummary()` so owners and SignalDesk can tell whether an action was MenuList-recorded or owner-confirmed
@@ -19,13 +19,31 @@ Zero new collections. Zero new API routes. Client-side DAL only.
 
 Failed desktop copy/confirm/remove actions use `use_menulist_presence_official_link_copy_failed`, `use_menulist_presence_confirm_failed`, and `use_menulist_presence_remove_failed` through Use MenuList diagnostics. Failed mobile copy/confirm/remove actions use `mobile_presence_official_link_copy_failed`, `mobile_presence_confirm_failed`, and `mobile_presence_remove_failed` through mobile owner diagnostics. Official-link copied feedback must wait for Clipboard API or acknowledged textarea fallback success, and failed copy diagnostics may include clipboard/fallback support booleans. Business Settings' embedded Presence Monitor wrapper logs `business_settings_presence_screen_links_load_failed` through Business Settings diagnostics when local screen-link loading fails; embedded official-link copy remains owned by the shared Presence Monitor component. Context is limited to bounded store/tenant, project/link, surface ID/key, active-count, starter-signal, screen-link, domain-presence, clipboard/fallback support, and source error metadata. Do not log raw official business links, store names, surface labels, owner-entered values, or browser/Firestore exception text.
 
-`updateMenuPresence()` returns a typed `MenuPresenceUpdateResult` with `success: true`, `storeId`, `surface`, and `confirmed`. Desktop and mobile callers must call `assertMenuPresenceUpdateSucceeded()` before changing local presence state, showing success copy, or closing/clearing the selected surface. If the DAL wrapper returns a fallback value after a failed write, the existing bounded confirm/remove failure handlers must run instead.
+`updateMenuPresence()` returns a typed `MenuPresenceUpdateResult` with `success: true`, `storeId`, `surface`, `confirmed`, `recordedAt`, and the canonical starter signal when that action was written/removed. Desktop and mobile callers must call `assertMenuPresenceUpdateSucceeded()` before changing local/global presence state, showing success copy, or closing/clearing the selected surface. If the DAL wrapper returns a fallback value after a failed write, the existing bounded confirm/remove failure handlers must run instead.
 
 `updateMenuPresence()` and `recordStarterActivationSignal()` must call the active-session store guard before any store write. A passed store that does not match the active session must reject with `menu_presence_store_scope_mismatch` or `starter_activation_signal_store_scope_mismatch` before writing `menuPresence` or `starterActivationSignals`.
 
 `recordStarterActivationSignal()` also requires a positive safe-integer store ID and `isStarterActivationSignal(signal)` before interpolating the signal into a Firestore dotted field path. Invalid runtime values reject with `starter_activation_signal_input_invalid`.
 
-For presence confirmation/removal, the DAL also validates the surface, boolean action, optional starter signal, numeric store/tenant scope, and freshly read store identity. It transactionally updates the canonical store and current `storesSummary` slot, including the bounded tenant identity required by Firestore rules. `revalidatePublicClientCache` runs only after the transaction commits. A rejected summary scope or changed store scope therefore rolls back both projections, and consumers are not told that a partial write succeeded.
+For presence confirmation/removal, the DAL also validates the surface, boolean action, optional backwards-compatible signal hint, numeric store/tenant scope, and freshly read store identity. The hint must match the immutable surface-to-signal map, while actual starter eligibility is derived from the transaction-current store. Confirm writes the matching starter action only when currently eligible; remove deletes the matching action. It transactionally updates the canonical store and current `storesSummary` slot, including the bounded tenant identity required by Firestore rules. Inactive, deleted, blocked, tenant-blocked, missing, or scope-changed stores reject. A rejected summary scope therefore rolls back both projections.
+
+Presence confirmation is owner-private distribution evidence, not customer-facing menu/store output. The DAL intentionally does not call `revalidatePublicClientCache`; public cache invalidation remains on actual public store/project mutation paths.
+
+`recordStarterActivationSignal()` returns a typed store/signal/timestamp acknowledgement. Desktop Use MenuList and Mobile Share assert it, then apply it to loaded store context only when the same store is still selected. Presence confirm/remove follows the same same-store projection rule. This keeps the banner/setup cards current without a refresh read.
+
+Both presence components resynchronize local confirmation state when loaded `menuPresence` or store ID changes. Late acknowledgements may update global context only through the expected-store helper and may update local state only while that same store is still current. Invalid timestamp-like confirmation values do not render as confirmed.
+
+### 1.1 Canonical automatic evidence
+
+`src/lib/menuPresence/presenceReadiness.ts` is shared by desktop Use MenuList, Business Settings, Mobile Share, and Mobile Presence Monitor. An active/non-deleted project counts as published only when it has a non-empty `projectId` and a valid `lastPublishedAt`. Feedback readiness additionally requires `feedbackEnabled !== false`. Business Settings uses the already-loaded store `lastPublishedAt`; it does not add a project query.
+
+The timestamp is now committed by every active publish path:
+
+- standard `publishProject()` reads current project/store truth and atomically updates the full project, `platformSummary/projects_{sId}` entry, and store `lastPublishedAt`;
+- linked-outlet publish folds project-summary `lastPublishedAt` into its existing bounded summary write and updates the already-read outlet store;
+- public create-menu claim folds `lastPublishedAt` into its existing store, project, and project-summary writes without another document operation.
+
+Desktop and mobile publish callers project the acknowledged timestamp into the currently selected loaded store only when store identity still matches. This makes Business Settings readiness current without a refresh read. Use MenuList loader dependencies are field-scoped, so a presence/starter-only context update does not repeat the projects/screen reads. The Business Settings screen-state effect follows the same stable-field rule.
 
 ---
 
@@ -51,7 +69,7 @@ starterActivationSignals?: {
 }
 ```
 
-`starterActivationSignals` is only written for stores in starter activation state. The signal contract lives in `src/lib/onboarding/starterActivation.ts`.
+Presence-derived `starterActivationSignals` is only written for transaction-current starter activation state. Direct product-action recording remains guarded by the caller's loaded starter state plus active-session store and signal allowlist. The signal contract and valid timestamp boundary live in `src/lib/onboarding/starterActivation.ts`.
 
 ### 2.2 Activation Proof Helper
 
@@ -85,9 +103,9 @@ This is the practical "how do we know it is done" contract:
 
 | Surface         | Source                    | Detection Logic                                                     |
 | --------------- | ------------------------- | ------------------------------------------------------------------- |
-| Table QR        | Use MenuList data loader  | At least one non-deleted active project exists                      |
+| Table QR        | Existing project summary  | Active/non-deleted project with valid `lastPublishedAt`             |
 | Digital Screens | `data.hasScreen`          | Screen token exists in campaigns collection                         |
-| Feedback QR     | `data.hasFeedbackEnabled` | Store `feedbackEnabled !== false`                                   |
+| Feedback QR     | Project/store truth       | Valid published menu and store `feedbackEnabled !== false`          |
 
 ### 2.4 Surface Status Type
 
@@ -142,9 +160,9 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
        stores: { [storeId]: { menuPresence: { [surface]: timestampOrNull }, tId: tenantId } },
      }, { merge: true });
    });
-   await revalidatePublicClientCache(storeId, "updateMenuPresence");
+   // No public cache invalidation: menuPresence is owner-private evidence.
    ```
-3. Add feature flag `ENABLE_MENU_PRESENCE_MONITOR: false` to `src/config/features.ts`
+3. Keep the existing `ENABLE_MENU_PRESENCE_MONITOR` runtime flag as the single mount control; it is enabled in current source
 
 ### Phase 2: Desktop UI (~1 hour)
 
@@ -197,6 +215,7 @@ src/config/features.ts           # Modified — add ENABLE_MENU_PRESENCE_MONITOR
 7. Set flag to `false` → card disappears
 8. Confirm Activation proof distinguishes MenuList-recorded actions from owner-confirmed external placements
 9. Run `npm run test:stores-summary:rules` and confirm rejected forged-summary identity rolls back the canonical presence update
+10. Verify an active never-published project is not shown as Table QR/Feedback ready; publish it and verify desktop/mobile readiness changes from the acknowledged timestamp
 
 ---
 

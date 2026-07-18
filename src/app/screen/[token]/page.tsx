@@ -72,6 +72,10 @@ function resolveScreenMode(searchParams: { mode?: string }): "menu_board" | "hig
 export default async function ScreenPage({ params, searchParams }: PageProps) {
     const { token } = params;
 
+    if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED) {
+        notFound();
+    }
+
     // Validate token format
     if (!isValidScreenToken(token)) {
         notFound();

@@ -56,7 +56,8 @@ export default function CreateSpecialMenuModal({
     const [loading, setLoading] = useState(false);
     const { token } = theme.useToken();
     const tBusiness = useTranslations('BusinessSettings');
-    const { storeDetails } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext<PlatformGlobalDataProviderType>(PlatformGlobalDataContext);
+    const canTranslatePublicContent = userPermissions?.canGenerateDescriptions === true;
     const dateTimePickerFormat = `YYYY-MM-DD ${getClockTimeInputFormat()}`;
     const managedLanguages = useMemo(
         () => normalizeProjectLanguages([...(baseProjectLanguages || []), storeDetails?.defaultLanguage || 'en']),
@@ -97,7 +98,11 @@ export default function CreateSpecialMenuModal({
             });
 
             if (result.success) {
-                message.success(`"${values.displayName}" created! It will activate on schedule.`);
+                message.success(
+                    Date.parse(startsAt) <= Date.now()
+                        ? `"${displayName}" created and active.`
+                        : `"${displayName}" created. It will switch within a few minutes of the scheduled time.`,
+                );
                 form.resetFields();
                 setDisplayNameDrafts({ [referenceLanguage]: '' });
                 setSelectedLanguage(referenceLanguage);
@@ -105,14 +110,24 @@ export default function CreateSpecialMenuModal({
             } else {
                 message.error("Could not create special menu.");
             }
-        } catch {
-            // Form validation error — handled by antd
+        } catch (error) {
+            const validationError = error as { errorFields?: unknown[] } | null;
+            if (Array.isArray(validationError?.errorFields)) return;
+            logProjectPageFailure('projects_page_special_menu_create_failed', error, {
+                ...getProjectPageProjectLogContext(baseProjectId),
+                ...getProjectPageStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
+                ...getBoundedProjectPageStringContext('selectedLanguage', selectedLanguage),
+                languageCount: managedLanguages.length,
+                draftCount: Object.keys(displayNameDrafts).length,
+            });
+            message.error("Could not create special menu.");
         } finally {
             setLoading(false);
         }
     };
 
     const handleTranslatePublicContent = async () => {
+        if (!canTranslatePublicContent) return;
         try {
             setIsTranslatingPublicContent(true);
             const translated = await translateProjectPublicContent({
@@ -122,7 +137,7 @@ export default function CreateSpecialMenuModal({
                         displayName: applyLocalizedProjectDraftMap(undefined, displayNameDrafts),
                     },
                 },
-                projectId: `${baseProjectId}-special-menu-draft`,
+                projectId: baseProjectId,
                 storeDetails,
             });
 
@@ -193,13 +208,15 @@ export default function CreateSpecialMenuModal({
                                     }))}
                                     value={selectedLanguage}
                                 />
-                                <Button
-                                    loading={isTranslatingPublicContent}
-                                    onClick={() => void handleTranslatePublicContent()}
-                                    size="small"
-                                >
-                                    Translate missing public content
-                                </Button>
+                                {canTranslatePublicContent ? (
+                                    <Button
+                                        loading={isTranslatingPublicContent}
+                                        onClick={() => void handleTranslatePublicContent()}
+                                        size="small"
+                                    >
+                                        Translate missing public content
+                                    </Button>
+                                ) : null}
                             </>
                         ) : null}
                         <Input

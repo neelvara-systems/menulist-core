@@ -1,5 +1,14 @@
 import { match as matchLocale } from '@formatjs/intl-localematcher';
-import { APP_LOCALE_COOKIES_KEY, APP_TIMEZONE_COOKIES_KEY, AppSupportedLocales, defaultLocale, defaultTimezone, Locale } from '@lib/localization/config';
+import {
+    APP_LOCALE_COOKIES_KEY,
+    APP_TIMEZONE_COOKIES_KEY,
+    AppSupportedLocales,
+    defaultLocale,
+    defaultTimezone,
+    Locale,
+    normalizeLocalePreference,
+    normalizeTimeZone,
+} from '@lib/localization/config';
 import Negotiator from 'negotiator';
 import { getRequestConfig } from 'next-intl/server';
 import { cookies, headers } from 'next/headers';
@@ -15,8 +24,7 @@ export default getRequestConfig(async () => {
         let locale: Locale = defaultLocale;
 
         //2. get current user app locale (Get this from database affter saving user preferances into database)
-        // @ts-ignore 
-        let localLocale: Locale = cookies().get(APP_LOCALE_COOKIES_KEY)?.value || defaultLocale
+        const localLocale = normalizeLocalePreference(cookies().get(APP_LOCALE_COOKIES_KEY)?.value);
 
         //3. get user browser locale if user accessing app first time or not selected any locale
         if (!localLocale) {
@@ -24,10 +32,12 @@ export default getRequestConfig(async () => {
             const negotiatorHeaders: Record<string, string> = {}
             headersList.forEach((value, key) => (negotiatorHeaders[key] = value))
             const languages = new Negotiator({ headers: negotiatorHeaders }).languages()
-            // @ts-ignore 
+                .map((language) => normalizeLocalePreference(language))
+                .filter(Boolean) as Locale[];
             const availableLocales: string[] = AppSupportedLocales;
-            // @ts-ignore 
-            locale = matchLocale(languages, availableLocales, defaultLocale)
+            locale = languages.length
+                ? matchLocale(languages, availableLocales, defaultLocale)
+                : defaultLocale;
         } else {
             locale = localLocale;
         }
@@ -37,10 +47,8 @@ export default getRequestConfig(async () => {
         const referer = headers().get('referer');
         const currentLocalePath = "menulist.ai";
 
-        //5. redirect all en to en_us
-        locale = (locale.includes("en")) ? "en-US" : locale
-        let timeZone: Locale = cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value;
-        if (!timeZone) timeZone = defaultTimezone;
+        locale = normalizeLocalePreference(locale) || defaultLocale;
+        const timeZone = normalizeTimeZone(cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value);
 
         let messages;
         try {
@@ -67,7 +75,7 @@ export default getRequestConfig(async () => {
             // The time zone can either be statically defined, read from the
             // user profile if you store such a setting, or based on dynamic
             // request information like the locale or a cookie.
-            timeZone: timeZone || defaultTimezone,
+            timeZone,
             locale: locale || defaultLocale,
             messages
         };

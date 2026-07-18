@@ -1,4 +1,10 @@
 import { isPublicHttpsUrl as isValidHttpUrl } from './publicUrlValidation';
+import {
+  getWhatsAppSchemePhoneDigits,
+  isLikelyPhoneNumber,
+  isValidMailtoDestination,
+  isValidTelDestination,
+} from './phoneValidation';
 import type {
   BookingInquiryPrimaryAction,
   BookingInquiryReadinessCheckId,
@@ -39,23 +45,15 @@ function normalizeActionText(value?: string): string {
   return (value || '').replace(/\r\n/g, '\n').trim();
 }
 
-function normalizePhoneDigits(value: string): string {
-  const trimmed = value.trim();
-  const digits = trimmed.replace(/\D/g, '');
-  if (trimmed.startsWith('00') && digits.length > 2) return digits.slice(2);
-  return digits;
-}
-
-function isLikelyPhoneNumber(value: string): boolean {
-  const digits = normalizePhoneDigits(value);
-  return digits.length >= 8 && digits.length <= 15;
-}
-
 function isValidActionDestination(value: string, diagnosticSource = 'booking_inquiry_action_destination'): boolean {
   if (!value) return false;
-  if (isValidHttpUrl(value, diagnosticSource)) return true;
-  if (/^tel:/i.test(value) || /^mailto:/i.test(value) || /^whatsapp:\/\//i.test(value)) return true;
-  return isLikelyPhoneNumber(value);
+  if (isValidTelDestination(value) || isValidMailtoDestination(value)) return true;
+  if (getWhatsAppSchemePhoneDigits(value)) return true;
+  if (isLikelyPhoneNumber(value)) return true;
+
+  const looksLikeWebUrl = /^https?:\/\//i.test(value)
+    || /^[a-z0-9.-]+\.[a-z]{2,}(?:[/:?#].*)?$/i.test(value);
+  return looksLikeWebUrl && isValidHttpUrl(value, diagnosticSource);
 }
 
 function hasActionHint(actionText: string, primaryAction: BookingInquiryPrimaryAction): boolean {

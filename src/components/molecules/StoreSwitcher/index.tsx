@@ -2,7 +2,7 @@
 
 /**
  * StoreSwitcher — Header dropdown for users with mapped multi-store access
- * @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md §8.4
+ * @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md §8.4
  */
 
 import { getStoreContextName } from '@lib/businessIdentity/names';

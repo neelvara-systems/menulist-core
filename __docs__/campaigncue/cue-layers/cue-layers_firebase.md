@@ -262,14 +262,14 @@ Provider cost dominates Firebase cost, so the implementation should optimize for
 | Workspace guard read | 1 | Via CampaignCue API scope guard. |
 | Hash/dedupe lookup | 0-1 | Direct/indexed lookup by source hash or design-intent hash before creating a new expensive job. |
 | SAFE_MODE/rate/capacity checks | 1-3 bounded reads | Must run before worker/provider dispatch. Reuse existing helpers where product scope allows. |
-| Idempotency claim | 0-1 write | Only when the caller supplies an idempotency key; creates the in-progress guard before Storage writes. |
+| Idempotency claim | 0-1 transaction read + write | Only when the caller supplies an idempotency key; transactionally creates or reclaims a five-minute actor/action/request-bound lease before Storage writes. Live leases conflict, completed rows replay, and abandoned legacy/malformed/expired rows recover. |
 | Create/upload session write | 0 in active v1 | Add only when a signed/resumable landing-zone flow is introduced. |
 | Upload to Storage | 1 image + 3 JSON artifacts | Original image, source package with inline truth snapshots, layer index, and initial editor snapshot. |
 | Create design doc | 1 write | Small pointer/state doc. |
 | Create job doc | 1 write | Small state doc. |
 | Create version doc | 1 write | Pointer metadata for the initial editor snapshot. |
 | Event/quality/cost initial record | 0 in active v1 | Job events, quality reports, and cost records stay dormant until provider/worker decomposition is enabled. |
-| Idempotency completion | 0-1 write | Only when the caller supplies an idempotency key; batched with design/job/version writes. |
+| Idempotency completion | 0-1 write | Only when the caller supplies an idempotency key; batched with design/job/version writes after the transaction proves the exact current claim id. |
 
 The active flat-safe upload stores `cueLayerDesigns.current.jobId` as the current job pointer. Idempotent upload replay uses that pointer for a direct job document read and falls back to an indexed `designId` query only for legacy design records that do not have the pointer.
 
@@ -301,6 +301,8 @@ The active flat-safe upload stores `cueLayerDesigns.current.jobId` as the curren
 | --- | ---: | --- |
 | Local IndexedDB write | free | Browser-local draft. |
 | Editor document snapshot Storage write | 1 per debounced save | Validate size first. |
+| Layer index Storage read | 1 per debounced save | Required to validate every persisted image reference against the design-owned asset sidecar; no layer-index rewrite occurs. |
+| Design transaction reads | 1 design + 0-1 idempotency record | Rechecks the revision immediately before pointer/version writes; Firestore may retry the transaction. |
 | Layer index Storage write | 0 per normal save | Autosave reuses the existing layer index unless a future decomposition/asset-change flow explicitly changes it. |
 | Design pointer update | 1 write | Update current revision; batched with the version pointer write. |
 | Version doc write | 1 debounced checkpoint | Batched with the design pointer update. |
@@ -310,17 +312,21 @@ The active flat-safe upload stores `cueLayerDesigns.current.jobId` as the curren
 | Operation | Count | Notes |
 | --- | ---: | --- |
 | Export request doc write | 1 final export record | Written after output bytes and Asset Library metadata are ready. |
-| Editor document snapshot Storage read | Browser/editor-owned before request | Active v1 receives rendered bytes from the saved editor revision; future server export workers should read the snapshot directly. |
+| Editor document snapshot Storage read | 1 | Active v1 reads the immutable snapshot to bind the submitted document and rendered canvas to the saved revision. |
+| Design transaction reads | 1 design + 0-1 idempotency record | Rechecks revision before output registration; Firestore may retry the transaction. |
 | Asset reads | Browser/editor-owned before request | Future server export workers use server bucket access. |
 | Output Storage write | 1 | Final downloadable file; export registration is not created unless this write succeeds. |
 | Export report artifact | 0 in active v1 | Avoid duplicate report JSON unless a future server renderer needs it. |
 | CampaignCue asset record write | 1 | Export is registered into Asset Library for manual download/reuse; asset metadata and its audit event are owned by the shared CampaignCue asset path. |
+| Audit event write | 1 | Batched atomically with the asset and export record. |
 
 ### Repair
 
 | Operation | Count | Notes |
 | --- | ---: | --- |
 | Repair patch Storage write | 0 in active v1 | Restore-fallback repair has no large patch body. |
+| Layer index Storage read | 0-1 | Only when a specific `layerId` is supplied. |
+| Design transaction reads | 1 design + 0-1 idempotency record | Rechecks source revision before writing the repair request. |
 | Repair request write | 1 | Compact restore-fallback intent and source revision. |
 | Correction event write | 0 in active v1 | Provider repair and learning streams remain dormant. |
 
@@ -401,15 +407,14 @@ Initial constants should include:
 
 ## Indexes
 
-Planned query patterns:
+The current runtime needs no composite index:
 
-- `cueLayerDesigns` by `updatedAt desc` with bounded page size.
-- `cueLayerJobs` by `designId`, `createdAt desc`.
-- `cueLayerExports` by `designId`, `createdAt desc`.
-- `cueLayerRepairRequests` by `designId`, `createdAt desc`.
-- Dormant provider indexes: `cueLayerQualityReports` by `designId`, `createdAt desc`; `cueLayerReviewSamples` by `status`, `createdAt desc` for internal review. These do not add active read/write cost until those collections contain documents.
+- design lists use `updatedAt desc` inside one exact workspace subcollection with a bounded page size;
+- current job/export/design lookups use exact document IDs;
+- the one legacy replay fallback uses a single `designId ==` filter with `limit(1)`;
+- repair, quality-report, and review-sample collection queries are not active.
 
-Avoid cross-workspace collection group queries unless an internal admin/reporting use case is explicitly built.
+Automatic single-field indexes cover these shapes. `firestore-campaigncue.indexes.json` therefore keeps `indexes: []`; the removed pre-provisioned composites had no matching runtime query and would add index fanout/storage to active writes. Avoid cross-workspace collection-group or dormant-provider indexes unless an implemented bounded query and verifier require them.
 
 ## Abuse And Cost Protection
 

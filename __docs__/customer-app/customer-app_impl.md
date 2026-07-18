@@ -92,6 +92,8 @@ Settings saves must also require explicit DAL acknowledgements. `updatePWASettin
 
 `npm run verify:customer-app-pwa` enforces the desktop/mobile settings diagnostic contract and the Customer App analytics source-chain contract from event field mapping through public analytics preference checks, daily writes, summary aggregation, dashboard-summary generation, scheduler inclusion, dashboard DAL reads, `useCustomerAppDashboard`, and desktop/mobile KPI cards.
 
+Custom icon replacement uses an attempt-unique `stores/pwa-icons/{tId}/{sId}/{pwa_icon_runtimeId}.png` object. If resumable upload completes but download-URL resolution fails, `uploadPWAIconOverride()` opts into shared completed-upload cleanup before returning generic failure. Once a URL is available, `replacePWAIconOverride()` persists `publicPresence` truth first. A rejected/ambiguous client acknowledgement is reconciled through an exact tenant/store server-only read: confirmed new URL plus timestamp is treated as committed, confirmed different truth permits new-attempt compensation, and unreadable/indeterminate truth retains the object with a stable ambiguity diagnostic. Previous owned-object cleanup occurs only after acknowledgement and a current server-reference guard; guard failure retains the object rather than risking a broken public icon.
+
 ---
 
 ## Manifest Contract
@@ -102,7 +104,7 @@ The Customer App manifest is store-level.
 | --- | --- |
 | `id` | Stable per store: `/?store={storeId}` |
 | `scope` | `/` on the tenant origin |
-| `start_url` | `/menu` when an active customer menu exists, otherwise `/` |
+| `start_url` | `/menu` only when a scoped active regular project either owns slug `menu` or is explicitly `isDefault`; otherwise `/` |
 | `name` | Store/public presence display name |
 | `short_name` | `pwaSettings.pwaShortName` if set, otherwise derived from store name |
 | `theme_color` | `publicPresence.accentColor` when valid, otherwise platform default |
@@ -119,6 +121,7 @@ Important rules:
 - Deleted or renamed project slugs do not define installed app identity.
 - `MANIFEST_START_URL_DEGRADED` is no longer part of this architecture.
 - `pwaInstallSurface` is analytics source context only.
+- The project-summary start-url check validates each immutable project ID against the manifest tenant/store and ignores inactive, deleted, and special-menu rows. This keeps an installed app from launching `/menu` when the resolver has neither a Layer 1 owner claim nor a Layer 2 default target.
 - If the cached project-summary read used to choose `/menu` fails, the manifest keeps the existing `/` start-url fallback and logs capped `customer_app_manifest_start_url_lookup_failed` diagnostics with store-id and summary-doc presence/length metadata only.
 - Unexpected manifest generation failures still return the existing empty 404 manifest fallback, but internal diagnostics use bounded secure logging: hostname presence/length, domain type, client-domain booleans, store-id presence/length, and error name only.
 
@@ -137,9 +140,22 @@ Frozen rules:
 - Offline means branded offline page only.
 - Never serve a stale cached menu as a fallback.
 
-Owner dashboard can keep `next-pwa`/Workbox behavior through `public/sw.js`, but tenant/customer origins must use the minimal customer SW.
+The owner dashboard keeps a bounded `next-pwa`/Workbox worker through
+`public/sw.js`, but only for the generic offline fallback, precached build/icon
+assets, and public Google fonts. Authenticated owner pages, sign-in pages,
+screen pages, APIs, Firestore/Storage responses, broad extension matches, and
+customer routes are not runtime-cached. On activation, the
+custom worker deletes the retired `start-url`, `owner-dashboard-pages`,
+`auth-pages`, `screen-pages`, `firebase-images`, and `static-assets` caches so
+old private HTML or broadly cached media does not remain on a shared device.
 
 Platform public website routes do not install the owner Workbox worker, but they preserve an already-registered `public/sw.js` owner worker. Standalone platform launches are treated as owner-app context so an installed owner PWA can repair/register `public/sw.js` even if iOS opens it at `/`. This keeps a normal visit to `menulist.online/` from removing the owner PWA offline fallback for the same origin.
+
+Vercel preview and development builds do not generate the owner worker.
+`ServiceWorkerRegister` therefore refuses to register the checked-in `sw.js` on
+those stages and removes a stale registration instead. Existing production
+registrations are explicitly checked for updates on each full app load.
+Reconnection does not auto-reload an owner workflow.
 
 Service-worker cleanup is best-effort but observable. If unregistering a stale or wrong-scope worker fails, `src/components/ServiceWorkerRegister.tsx` logs `service_worker_unregister_failed` with only bounded worker labels (`owner`, `customer`, `mycodex`, `none`, or `unknown`), cleanup reason, controller presence, and source error name/code/status. It does not log tenant hostnames, raw service-worker URLs, store IDs, tenant IDs, or route paths.
 
@@ -195,6 +211,8 @@ Current DAL:
 - `updatePWAIconOverride()`
 - `uploadPWAIconOverride()`
 - `resolvePWASettings()`
+- `replacePWAIconOverride()`
+- `removePWAIconOverride()`
 
 Source: `src/database/pwa/index.ts`.
 
@@ -292,7 +310,7 @@ Current shortcuts are app actions inside the same store app.
 
 | Shortcut | Condition | URL Strategy |
 | --- | --- | --- |
-| View Menu | Always | Store-level `start_url` with `entry_source=shortcut-menu` |
+| View Menu | Only when `/menu` has a scoped owner-claimed or explicit-default target | `/menu` with `entry_source=shortcut-menu` |
 | Call | Phone exists and public call action enabled | Same-origin `/pwa/call` handoff |
 | Directions | Maps URL exists and public directions enabled | Same-origin `/pwa/directions` handoff |
 | WhatsApp | WhatsApp number exists and public WhatsApp enabled | Same-origin `/pwa/whatsapp` handoff |

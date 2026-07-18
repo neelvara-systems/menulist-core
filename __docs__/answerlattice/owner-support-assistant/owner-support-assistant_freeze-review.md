@@ -17,7 +17,7 @@ The original docs freeze was reopened because the app flag, route, navigation, A
 | --- | --- | --- |
 | Feature flag | `src/config/features.ts` sets `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT: true`. | Live in source. |
 | Route and navigation | `/answerlattice/support-assistant` is in the route registry, Support Control navigation, and route-permission map. | Management-only; `MANAGE_SUPPORT` required. |
-| Brief endpoint | `GET /api/answerlattice/support-assistant/brief` checks the flag, applies the dashboard read limiter, requires `MANAGE_SUPPORT`, and reads five compact summaries. | Read-only, private/no-store. |
+| Brief endpoint | `GET /api/answerlattice/support-assistant/brief` checks the flag, applies the dashboard read limiter, requires `MANAGE_SUPPORT`, and reads six compact summaries. | Read-only, private/no-store. |
 | Query endpoint | `POST /api/answerlattice/support-assistant/query` resolves exact session scope, applies a hashed 20/minute limiter before the permission read, requires `MANAGE_SUPPORT`, caps the body at 4 KiB, and validates a strict question. | Read-only, private/no-store. |
 | Answer engine | `src/lib/answerlattice/ownerSupportAssistant.ts` classifies six bounded intents and uses one five-document summary packet with a 60-second, 300-entry cache. | Deterministic; no AI provider. |
 | Client | The client bounds JSON responses at 128 KiB, uses no-store/same-origin/manual-redirect fetches, exposes the read-only limit, and gives owner actions 44px targets. | Responsive source contract. |

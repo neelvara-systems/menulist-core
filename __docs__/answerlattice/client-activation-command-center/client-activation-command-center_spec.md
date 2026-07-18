@@ -27,7 +27,9 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Show license status from the store subscription summary.
 - Show whether the help center has published content.
 - Show whether product entities and active canonical answers exist, using trust summary counts.
+- Show whether the founder's First 10 answer set exists and whether its latest retained proof is ready, needs review, or is blocked.
 - Show a first-client launch proof that groups setup, knowledge/surfaces, ontology/canonical answers, widget runtime, governance summaries, and signal-source test status.
+- Present one ordered founder journey above the detailed diagnostics: product details, product knowledge, First 10, approved support truth, product surfaces, secure install, and launch verification.
 - Avoid reading source KB, changelog, ticket, and signal collections.
 - Keep Firebase/cache implementation details out of the client-facing UI.
 
@@ -47,6 +49,7 @@ Answerlattice client owner or admin. This is not a MenuList platform-owner surfa
 - Help center ready
 - Product entities reviewed
 - Canonical answers reviewed
+- Priority answers tested
 - Product surfaces mapped
 - Widget key ready
 - Allowed origins locked
@@ -64,6 +67,18 @@ Proof groups:
 - Self-serve setup: workspace, product profile, and license.
 - Knowledge and surfaces: imported content, help center, and product-surface mapping.
 - Ontology and canonical answers: product entities and active canonical answers.
+- Priority answer checks: ten launch questions exist, the latest retained proof is ready, and no critical test is failing.
 - Widget runtime proof: widget key, allowed origins, install telemetry, and page context.
 - Governance summaries: coverage, trust, and compiled context summaries.
 - Signal source test: fallback or ticket signal source visible before broader rollout; Signal Queue remains the confirmation surface for proposal quality.
+
+## Founder Entry Rule
+
+The Answerlattice base route is stage-aware:
+
+- before launch proof is ready, management owners enter Activation;
+- after launch proof is ready, owners with Support Control access enter Daily Brief when the Daily Brief flags are enabled;
+- a missing, malformed, inaccessible, or unavailable activation snapshot fails safely to Activation;
+- support, knowledge, widget, and other restricted roles retain their existing permission-based fallback routes.
+
+The entry decision may read only the compact activation summary. It must not rebuild readiness or scan source collections.

@@ -1,6 +1,7 @@
 import { AI_ACTIONS_TYPES } from "@constant/common";
 import { getBoundedAiServiceStringContext, logAiServiceFailure } from "@services/ai/aiServiceDiagnostics";
 import { AICapacityError } from "@services/ai/capacityError";
+import { hasAnyNonEmptyDescription } from "@lib/menu/descriptionQuality";
 import type { DescriptionTone } from "@template/main-app/projects/editorView/descriptionGeneration.shared";
 import { LanguageType, Project, ProjectFileType } from "@template/main-app/projects/types";
 import { InheritanceState } from "@type/multiOutlet.types";
@@ -9,6 +10,49 @@ import getDescriptionsViaAPI from "./generateDescriptionViaAPI";
 
 const AI_DESCRIPTION_EMPTY_RESPONSE = 'ai_description_empty_response';
 const AI_DESCRIPTION_FILE_GENERATION_FAILED = 'ai_description_file_generation_failed';
+export const DESCRIPTION_ITEMS_PER_REQUEST = 100;
+export const DESCRIPTION_ITEM_PAYLOAD_BYTES_PER_REQUEST = 180 * 1024;
+// Keep common one-to-three-language menus at the 100-item ceiling while
+// bounding structured output for unusually multilingual projects.
+export const DESCRIPTION_OUTPUT_CELLS_PER_REQUEST = 300;
+
+export function chunkDescriptionItems<T>(
+    items: readonly T[],
+    options: { targetLanguageCount?: number } = {},
+): T[][] {
+    const chunks: T[][] = [];
+    const encoder = new TextEncoder();
+    const targetLanguageCount = Number.isSafeInteger(options.targetLanguageCount)
+        && Number(options.targetLanguageCount) > 0
+        ? Number(options.targetLanguageCount)
+        : 1;
+    const itemsPerOutputScope = Math.max(
+        1,
+        Math.floor(DESCRIPTION_OUTPUT_CELLS_PER_REQUEST / targetLanguageCount),
+    );
+    const itemCountLimit = Math.min(DESCRIPTION_ITEMS_PER_REQUEST, itemsPerOutputScope);
+    let currentChunk: T[] = [];
+    let currentBytes = 2; // JSON array brackets
+
+    for (const item of items) {
+        const itemBytes = encoder.encode(JSON.stringify(item)).byteLength + (currentChunk.length > 0 ? 1 : 0);
+        const exceedsCount = currentChunk.length >= itemCountLimit;
+        const exceedsBytes = currentChunk.length > 0
+            && currentBytes + itemBytes > DESCRIPTION_ITEM_PAYLOAD_BYTES_PER_REQUEST;
+
+        if (exceedsCount || exceedsBytes) {
+            chunks.push(currentChunk);
+            currentChunk = [];
+            currentBytes = 2;
+        }
+
+        currentChunk.push(item);
+        currentBytes += itemBytes;
+    }
+
+    if (currentChunk.length > 0) chunks.push(currentChunk);
+    return chunks;
+}
 
 /**
  * Multi-outlet description governance options
@@ -51,8 +95,8 @@ export const prepareDescriptionPayload = (
     sourceLang: string,
     action: string,
     governance?: DescriptionGovernanceOptions
-) => {
-    const payloadList: any = [];
+): any[] => {
+    const payloadList: any[] = [];
 
     // Extract item names and attribute names (only local-only if governance provided)
     fileData.items?.forEach((item: any) => {
@@ -61,26 +105,60 @@ export const prepareDescriptionPayload = (
             return;
         }
 
-        if (item.name?.[sourceLang]) {
-            const existingDescription = item.description?.[sourceLang]?.trim();
+        const sourceName = typeof item.name?.[sourceLang] === 'string'
+            ? item.name[sourceLang].trim().slice(0, 500)
+            : '';
+        if (sourceName) {
+            const existingDescription = typeof item.description?.[sourceLang] === 'string'
+                ? item.description[sourceLang].trim().slice(0, 2000)
+                : '';
             const descriptionSource = item.descriptionSource;
+            const hasManualDescription = descriptionSource === 'manual'
+                && hasAnyNonEmptyDescription(item.description);
 
-            // For ADD_DESCRIPTION: only include items WITHOUT descriptions (skip items that already have)
-            if (action === AI_ACTIONS_TYPES.ADD_DESCRIPTION && existingDescription) {
-                return; // Skip - already has description
+            // First-pass generation only owns an empty source description.
+            // Any non-empty owner-written description remains protected even
+            // when it exists only in another configured language.
+            if (
+                action === AI_ACTIONS_TYPES.ADD_DESCRIPTION
+                && (
+                    existingDescription.length > 0
+                    || hasManualDescription
+                )
+            ) {
+                return;
             }
 
-            // For REWRITE_DESCRIPTION: protect manually written descriptions
-            if (action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION && descriptionSource === 'manual') {
-                return; // Skip - manually written, protected from refresh
+            // A paid refresh owns existing generated/legacy source copy. Empty
+            // source copy stays in the free first-pass path, and manual copy
+            // remains protected.
+            if (
+                action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
+                && (
+                    descriptionSource === 'manual'
+                    || existingDescription.length === 0
+                )
+            ) {
+                return;
             }
 
             payloadList.push({
                 id: item.id,
-                name: item.name[sourceLang],
-                category: fileData.categories?.find((cat: any) => cat.id === item.category)?.name[sourceLang],
-                attributes: (item.attributes?.map((attr: any) => attr.name[sourceLang]))?.join(', ') || "",
-                description: existingDescription || ""
+                name: sourceName,
+                category: String(
+                    fileData.categories?.find((cat: any) => cat.id === item.category)?.name?.[sourceLang] || '',
+                ).trim().slice(0, 200),
+                attributes: (item.attributes || [])
+                    .map((attr: any) => typeof attr.name?.[sourceLang] === 'string' ? attr.name[sourceLang].trim() : '')
+                    .filter(Boolean)
+                    .join(', ')
+                    .slice(0, 500),
+                // ADD_DESCRIPTION must remain a free first-pass operation. The
+                // server also derives billing from this field, so only rewrite
+                // requests may carry existing copy.
+                description: action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION
+                    ? existingDescription
+                    : ""
             });
         }
     });
@@ -91,7 +169,11 @@ export const prepareDescriptionPayload = (
 export const mergeDescription = (fileData: any, generatedDescription: any) => {
     const updatedFileData = removeObjRef(fileData);
     updatedFileData.items?.forEach((item: any) => {
-        if (generatedDescription[item.id]) {
+        const hasGeneratedDescription = Object.prototype.hasOwnProperty.call(
+            generatedDescription,
+            item.id,
+        );
+        if (hasGeneratedDescription) {
             item.description = { ...item.description, ...generatedDescription[item.id] };
             item.descriptionSource = 'ai'; // Mark as AI-generated so it can be refreshed later
         }
@@ -107,7 +189,8 @@ export const addDescription = async (
     action: any,
     contentLength: "Standard" | "Detailed",
     tone: DescriptionTone = "Professional",
-    governance?: DescriptionGovernanceOptions
+    governance?: DescriptionGovernanceOptions,
+    operationRequestCount?: number,
 ) => {
     const prevData = removeObjRef(projectData)
 
@@ -117,21 +200,48 @@ export const addDescription = async (
 
         // Skip API call if no items to process (e.g., all items already have descriptions for ADD_DESCRIPTION)
         if (itemsList.length === 0) {
-            return { updatedProject: prevData, message: "", messageType: "" };
+            return { updatedProject: prevData, message: "", messageType: "", requestCount: 0 };
         }
 
         try {
-            const generatedDescription = await getDescriptionsViaAPI({
-                itemsList,
-                targetLang: targetLanguages,
-                sourceLang: sourceLanguage,
-                action,
-                projectId: projectData.projectId,
-                fileId: file.uid,
-                contentLength,
-                tone
+            const itemBatches = chunkDescriptionItems(itemsList, {
+                targetLanguageCount: targetLanguages.length,
             });
-            if (generatedDescription) {
+            const generatedDescription = Object.create(null) as Record<string, Record<string, string>>;
+
+            for (let batchIndex = 0; batchIndex < itemBatches.length; batchIndex += 1) {
+                const itemBatch = itemBatches[batchIndex];
+                const batchResult = await getDescriptionsViaAPI({
+                    itemsList: itemBatch,
+                    targetLang: targetLanguages,
+                    sourceLang: sourceLanguage,
+                    action,
+                    projectId: projectData.projectId,
+                    fileId: file.uid,
+                    contentLength,
+                    tone,
+                    ...(batchIndex === 0 && operationRequestCount !== undefined
+                        ? { operationRequestCount }
+                        : {}),
+                });
+                if (!batchResult) {
+                    logAiServiceFailure(AI_DESCRIPTION_EMPTY_RESPONSE, undefined, {
+                        action,
+                        batchItemCount: itemBatch.length,
+                        contentLength,
+                        itemCount: itemsList.length,
+                        targetLanguageCount: targetLanguages.length,
+                        tone,
+                        ...getBoundedAiServiceStringContext('fileId', file.uid),
+                        ...getBoundedAiServiceStringContext('projectId', projectData.projectId),
+                        ...getBoundedAiServiceStringContext('sourceLanguage', sourceLanguage.code)
+                    });
+                    return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error", requestCount: itemBatches.length };
+                }
+                Object.assign(generatedDescription, batchResult);
+            }
+
+            if (Object.keys(generatedDescription).length > 0) {
                 const updated = {
                     ...prevData,
                     files: prevData.files?.map(f =>
@@ -146,7 +256,7 @@ export const addDescription = async (
                             : f
                     )
                 }
-                return { updatedProject: updated, message: `${targetLanguages.map(l => l.name).join(', ')} (${targetLanguages.map(l => l.code).join(', ')}) Descriptions added successfully`, messageType: "success" };
+                return { updatedProject: updated, message: `${targetLanguages.map(l => l.name).join(', ')} (${targetLanguages.map(l => l.code).join(', ')}) Descriptions added successfully`, messageType: "success", requestCount: itemBatches.length };
             } else {
                 logAiServiceFailure(AI_DESCRIPTION_EMPTY_RESPONSE, undefined, {
                     action,
@@ -158,7 +268,7 @@ export const addDescription = async (
                     ...getBoundedAiServiceStringContext('projectId', projectData.projectId),
                     ...getBoundedAiServiceStringContext('sourceLanguage', sourceLanguage.code)
                 });
-                return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error" };
+                return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error", requestCount: itemBatches.length };
             }
 
         } catch (error) {
@@ -173,8 +283,8 @@ export const addDescription = async (
                 ...getBoundedAiServiceStringContext('projectId', projectData.projectId),
                 ...getBoundedAiServiceStringContext('sourceLanguage', sourceLanguage.code)
             });
-            return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error" };
+            return { updatedProject: prevData, message: "Error getting descriptions", messageType: "error", requestCount: 0 };
         }
     }
-    return { updatedProject: prevData, message: "", messageType: "" };
+    return { updatedProject: prevData, message: "", messageType: "", requestCount: 0 };
 }

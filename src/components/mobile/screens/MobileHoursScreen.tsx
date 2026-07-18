@@ -12,8 +12,11 @@ import {
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { useTodayCampaigns } from '@hook/useTodayCampaigns';
 import { useGrowthOS } from '@hook/useGrowthOS';
+import { useActiveTempStatus } from '@hook/useActiveTempStatus';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { getHoursConfidenceState } from '@lib/outputControl';
+import { getStoreDayKey, getStoreStatus, parseWorkingHoursRanges } from '@lib/hours/hoursEngine';
+import { isValidClockRange } from '@lib/menu/timeSlotPresetBoundary';
 import { buildTodayMenuLink, performTodaySurfaceAction } from '@lib/campaigns/todayActionExecutor';
 import { getBoundedCampaignStringContext, logCampaignFailure } from '@lib/campaigns/campaignDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
@@ -49,7 +52,6 @@ import { openMobilePublicLink } from '../utils/openMobilePublicLink';
 
 type TodayStatus = 'open' | 'closed_today' | 'closed_after_hours';
 
-const getTodayKey = () => ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'][new Date().getDay()];
 const DAY_LABELS: Record<string, string> = {
     sun: 'Sunday',
     mon: 'Monday',
@@ -60,16 +62,6 @@ const DAY_LABELS: Record<string, string> = {
     sat: 'Saturday',
 };
 const TEMP_CLOSED_TYPES = new Set(['closed_today', 'kitchen_closed']);
-
-const parseTimeToMinutes = (value?: string): number | null => {
-    if (!value) return null;
-    const [hoursRaw, minutesRaw] = value.split(':');
-    const hours = Number(hoursRaw);
-    const minutes = Number(minutesRaw);
-    if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
-    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-    return hours * 60 + minutes;
-};
 
 const toPluralLabel = (count: number, singular: string, plural: string) => `${count} ${count === 1 ? singular : plural}`;
 
@@ -104,40 +96,12 @@ const buildTodayDigest = (
     return `${parts.join(' · ')}.`;
 };
 
-const getCurrentMinutesForTimeZone = (timeZone?: string): number => {
-    try {
-        const parts = new Intl.DateTimeFormat('en-GB', {
-            hour: '2-digit',
-            hour12: false,
-            minute: '2-digit',
-            timeZone: timeZone || undefined,
-        }).formatToParts(new Date());
-        const hour = Number(parts.find((part) => part.type === 'hour')?.value ?? '0');
-        const minute = Number(parts.find((part) => part.type === 'minute')?.value ?? '0');
-        if (!Number.isFinite(hour) || !Number.isFinite(minute)) {
-            throw new Error('invalid time parts');
-        }
-        return hour * 60 + minute;
-    } catch {
-        const now = new Date();
-        return now.getHours() * 60 + now.getMinutes();
-    }
-};
-
 const getTodayTimeRange = (value?: string) => {
-    if (!value || value.toLowerCase() === 'closed') {
+    const range = parseWorkingHoursRanges(value)[0];
+    if (!range) {
         return { closeTime: '', isClosed: true, openTime: '' };
     }
-
-    const [openRaw = '', closeRaw = ''] = value.split('-');
-    const openTime = openRaw.slice(0, 5);
-    const closeTime = closeRaw.slice(0, 5);
-
-    if (!openTime || !closeTime) {
-        return { closeTime: '', isClosed: true, openTime: '' };
-    }
-
-    return { closeTime, isClosed: false, openTime };
+    return { closeTime: range.endTime, isClosed: false, openTime: range.startTime };
 };
 
 interface MobileHoursScreenProps {
@@ -158,10 +122,11 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const storeBrandColor = useMemo(() => resolveStoreBrandColor(storeDetails as any), [storeDetails]);
     const storeLogoUrl = (storeDetails as any)?.logo || undefined;
     const { selectedProject, selectedProjectId, selectedProjectSummary } = useMobileProjects();
-    const currentTempStatus = storeDetails?.tempStatus;
-    const isTempActive = currentTempStatus && new Date(currentTempStatus.expiresAt).getTime() > Date.now();
+    const currentTempStatus = useActiveTempStatus(storeDetails?.tempStatus);
+    const isTempActive = Boolean(currentTempStatus);
     const [isUpdating, setIsUpdating] = useState(false);
-    const todayKey = getTodayKey();
+    const [hoursNow, setHoursNow] = useState(() => new Date());
+    const todayKey = getStoreDayKey(storeDetails?.timeZone, hoursNow);
     const todayLabel = DAY_LABELS[todayKey] || 'today';
     const { todayCampaigns, staffPrompt, physicalSurfaces, isLoading: isCampaignsLoading, mutate } = useTodayCampaigns();
     const [isCampaignProcessing, setIsCampaignProcessing] = useState(false);
@@ -180,6 +145,11 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     const [isInactiveReminderDismissed, setIsInactiveReminderDismissed] = useState(false);
     const [todayOpenTime, setTodayOpenTime] = useState('');
     const [todayCloseTime, setTodayCloseTime] = useState('');
+
+    useEffect(() => {
+        const interval = window.setInterval(() => setHoursNow(new Date()), 60_000);
+        return () => window.clearInterval(interval);
+    }, []);
     const menuUrl = useMemo(() => {
         if (!storeDetails?.subdomain && !storeDetails?.customDomain) {
             return '';
@@ -224,32 +194,14 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             return 'closed_today';
         }
 
-        const todayValue = storeDetails?.workingHours?.[todayKey];
-        if (!todayValue || todayValue.toLowerCase() === 'closed') {
-            return 'closed_today';
-        }
+        const status = getStoreStatus(storeDetails?.workingHours, storeDetails?.timeZone, undefined, hoursNow);
+        if (status.isOpen) return 'open';
 
-        const todayRange = getTodayTimeRange(todayValue);
-        if (todayRange.isClosed) {
-            return 'closed_today';
-        }
-
-        const openMinutes = parseTimeToMinutes(todayRange.openTime);
-        const closeMinutes = parseTimeToMinutes(todayRange.closeTime);
-        if (openMinutes === null || closeMinutes === null) {
-            return 'closed_today';
-        }
-
-        const currentMinutes = getCurrentMinutesForTimeZone(storeDetails?.timeZone);
-        const isOvernight = closeMinutes <= openMinutes;
-        const isOpenNow = isOvernight
-            ? (currentMinutes >= openMinutes || currentMinutes < closeMinutes)
-            : (currentMinutes >= openMinutes && currentMinutes < closeMinutes);
-
-        if (isOpenNow) return 'open';
-        if (!isOvernight && currentMinutes >= closeMinutes) return 'closed_after_hours';
-        return 'closed_today';
-    }, [currentTempStatus?.type, isTempActive, storeDetails?.timeZone, storeDetails?.workingHours, todayKey]);
+        const hasTodayHours = parseWorkingHoursRanges(storeDetails?.workingHours?.[todayKey]).length > 0;
+        return hasTodayHours && !status.nextChange?.startsWith('Opens at ')
+            ? 'closed_after_hours'
+            : 'closed_today';
+    }, [currentTempStatus?.type, hoursNow, isTempActive, storeDetails?.timeZone, storeDetails?.workingHours, todayKey]);
 
     const inactiveItemsReminder = useMemo(
         () => getInactiveItemsReminder(selectedProject as any),
@@ -277,7 +229,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         };
         const previousStatus = storeDetails?.tempStatus;
         setStoreDetails((previous: any) => ({ ...previous, tempStatus: nextStatus }));
-        Toast.show({ content: t('closedForToday'), duration: 1500 });
 
         try {
             const res = await fetch('/api/store/temp-status', {
@@ -286,13 +237,17 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'set', type: 'closed_today', expiresAt }),
             });
-            await readTempStatusResponse(res, 'set', {
+            const result = await readTempStatusResponse(res, 'set', {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
                 ...getBoundedMobileOwnerStringContext('tempStatusType', 'closed_today'),
                 ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
                 hasPreviousStatus: Boolean(previousStatus),
                 hasCustomMessage: false,
                 surface: 'mobile_today_hours',
+            });
+            Toast.show({
+                content: result.effectsPending ? 'Saved. Customer pages may take a moment to refresh.' : t('closedForToday'),
+                duration: result.effectsPending ? 2200 : 1500,
             });
         } catch (error) {
             logMobileOwnerFailure('mobile_today_close_today_failed', error, {
@@ -531,7 +486,12 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         setStoreDetails((previous: any) => ({ ...previous, hoursLastUpdatedAt, workingHours: nextHours }));
 
         try {
-            const writeResult = await updateStore({ ...storeDetails, hoursLastUpdatedAt, workingHours: nextHours } as any);
+            const writeResult = await updateStore({
+                hoursLastUpdatedAt,
+                storeId: storeDetails.storeId,
+                tenantId: storeDetails.tenantId,
+                workingHours: { [todayKey]: nextRange },
+            });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,
@@ -559,8 +519,8 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
     };
 
     const handleSaveTodayHours = () => {
-        if (!todayOpenTime || !todayCloseTime) {
-            Toast.show({ content: 'Please select both opening and closing time', duration: 1500 });
+        if (!isValidClockRange(todayOpenTime, todayCloseTime)) {
+            Toast.show({ content: 'Select valid, different opening and closing times.', duration: 1500 });
             return;
         }
 
@@ -598,7 +558,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
         const newStatus = { type: tempStatusType, message, expiresAt, createdAt: new Date().toISOString() };
         const prevStatus = storeDetails?.tempStatus;
         setStoreDetails((prev: any) => ({ ...prev, tempStatus: newStatus }));
-        Toast.show({ content: 'Customers can see this now', icon: 'success', duration: 1500 });
         try {
             const res = await fetch('/api/store/temp-status', {
                 ...AUTH_BROWSER_REQUEST_POLICY,
@@ -611,13 +570,18 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                     message: tempStatusType === 'custom' ? customTempStatusMessage.trim() : undefined,
                 }),
             });
-            await readTempStatusResponse(res, 'set', {
+            const result = await readTempStatusResponse(res, 'set', {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
                 ...getBoundedMobileOwnerStringContext('tempStatusType', tempStatusType),
                 ...getBoundedMobileOwnerStringContext('expiresAt', expiresAt),
                 hasPreviousStatus: Boolean(prevStatus),
                 hasCustomMessage: Boolean(customTempStatusMessage.trim()),
                 surface: 'mobile_today_hours',
+            });
+            Toast.show({
+                content: result.effectsPending ? 'Saved. Customer pages may take a moment to refresh.' : 'Customers can see this now',
+                icon: result.effectsPending ? undefined : 'success',
+                duration: result.effectsPending ? 2200 : 1500,
             });
         } catch (error) {
             logMobileOwnerFailure('mobile_today_temp_status_set_failed', error, {
@@ -651,7 +615,6 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
             const { tempStatus, ...rest } = prev || {};
             return rest;
         });
-        Toast.show({ content: 'Status cleared', icon: 'success', duration: 1500 });
         try {
             const res = await fetch('/api/store/temp-status', {
                 ...AUTH_BROWSER_REQUEST_POLICY,
@@ -659,10 +622,15 @@ export default function MobileHoursScreen({ onOpenDashboard, onOpenHistory, onOp
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: 'clear' }),
             });
-            await readTempStatusResponse(res, 'clear', {
+            const result = await readTempStatusResponse(res, 'clear', {
                 ...getMobileOwnerStoreLogContext(storeDetails?.storeId, (storeDetails as any)?.tenantId),
                 hasPreviousStatus: Boolean(prevStatus),
                 surface: 'mobile_today_hours',
+            });
+            Toast.show({
+                content: result.effectsPending ? 'Cleared. Customer pages may take a moment to refresh.' : 'Status cleared',
+                icon: result.effectsPending ? undefined : 'success',
+                duration: result.effectsPending ? 2200 : 1500,
             });
         } catch (error) {
             logMobileOwnerFailure('mobile_today_temp_status_clear_failed', error, {

@@ -10,6 +10,7 @@ import {
 import { admin, firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { formatStaffLoginId, getPhoneLookupCandidates, normalizeLoginDigits } from "@lib/auth/loginIdentifiers";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
+import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
 import { normalizeStorePermissionScopeDocumentId } from "@lib/permissions/server";
 import { removeDangerousKeys } from "@lib/security/sanitizeObject";
 import { createHash } from "crypto";
@@ -35,29 +36,6 @@ export const getGlobalEmailUserDocumentId = (email: string): string | null => {
 };
 
 export const getOAuthUserDocumentId = getGlobalEmailUserDocumentId;
-
-const sanitizeForAdminFirestore = <T>(value: T): T => {
-    if (value === undefined) return null as T;
-    if (value === null) return value;
-
-    if (Array.isArray(value)) {
-        return value.map((item) => sanitizeForAdminFirestore(item)) as T;
-    }
-
-    if (typeof value === 'object') {
-        if ((value as any).constructor?.name === 'Timestamp') {
-            return value;
-        }
-
-        const result: Record<string, unknown> = {};
-        Object.entries(value as Record<string, unknown>).forEach(([key, entryValue]) => {
-            result[key] = sanitizeForAdminFirestore(entryValue);
-        });
-        return result as T;
-    }
-
-    return value;
-};
 
 const getUsersCollection = () => firestoreAdmin.collection(USERS_COLLECTION);
 
@@ -142,7 +120,7 @@ export const addAuthPlatformUser = async (data: any) => {
     if (existing) return existing;
 
     const now = admin.firestore.Timestamp.now();
-    const userToAdd = sanitizeForAdminFirestore({
+    const userToAdd = sanitizeForFirestore({
         ...data,
         email: normalizedEmail || data?.email || null,
         pId: data?.pId ?? DEFAULT_PRODUCT_ID,

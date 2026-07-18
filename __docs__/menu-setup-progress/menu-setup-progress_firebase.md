@@ -1,52 +1,32 @@
-# Menu Setup Progress — Firebase Cost Tracking
+# Menu Setup Progress - Firebase and Scale
 
-> **Version:** 1.0
-> **Last Updated:** July 7, 2026
+**Status:** Local source complete; scoped Firestore index deployment pending
+**Last reviewed:** July 17, 2026
 
-## Collections Affected
+## Read boundary
 
-| Collection | Operation | When | Cost |
-| --- | --- | --- | --- |
-| `projects/{tId}/{sId}/{projectId}` | READ (1) | Desktop dashboard selected project load | Shared with Menu Check |
-| `stores` | READ (0 additional) | Uses already-loaded `storeDetails` | $0.00 |
-| Mobile selected project | READ (0-1) | Uses `MobileProjectsProvider` selected project cache; More root may eager-load the selected project if it has not been cached yet | Shared mobile provider path |
+| Surface | Incremental behavior |
+| --- | --- |
+| Desktop dashboard | At most one selected-project document read when Menu Setup Progress or Menu Quality needs it; shared between both cards and deduped for 10 minutes. |
+| Mobile Menu/Share/More | Reuses `MobileProjectsProvider` project list/selected-project cache; no setup-specific query. |
+| Store/activation | Reuses already-loaded `storeDetails`; zero setup-specific read. |
 
-## New Fields
+The desktop read is not universally zero incremental: if Menu Quality is disabled and Menu Setup Progress is enabled, this feature is the reason the selected project is loaded. It remains one bounded current-project read, not a scan.
 
-None.
+## Write boundary
 
-## New Collections
+The progress computation writes nothing. Existing owner actions keep their current costs:
 
-None.
+- copied/share/downloaded starter action: one existing store update;
+- presence confirmation/removal: one store read plus existing store and `storesSummary` transaction writes;
+- project import/edit/publish: owned by existing project/extraction flows.
 
-## New API Routes
+Acknowledged action and presence results update in-memory store context without another read. Removing an external presence confirmation deletes its matching starter action in the same existing transaction, so stale evidence does not keep completion true.
 
-None.
+## Infrastructure
 
-## New Cloud Functions
+No new collection, document, listener, API route, Storage object/rule, Cloud Function, scheduler task, provider call, or dependency is introduced.
 
-None.
+`stores.starterActivationSignals` is consumed only from the exact loaded store document; no runtime query filters or orders by the nested action map. Its automatic single-field index is therefore disabled in `firestore.indexes.json`. This keeps the stored activation evidence and all read/write behavior unchanged while avoiding nested-map index fanout on each acknowledged placement action.
 
-## Writes
-
-None.
-
-Menu Setup Progress does not persist progress. It computes status from existing project/store truth:
-
-- project files, item data, menu languages, and public menu text
-- project `lastPublishedAt`
-- store `starterActivationSignals`
-- store `menuPresence`
-- store `socialMedia`
-- store `publicPresence`
-
-## Cost Notes
-
-The dashboard uses one selected-project read so Menu Setup Progress and Menu Check can share the same project document. This avoids adding a second read beside the existing Menu Check dashboard behavior.
-
-Mobile uses the existing `MobileProjectsProvider` selected-project path. The Menu and Share cards reuse already-loaded selected project data. The More shortcut may cause the provider to eager-load the selected project on the More root, but it does not add a separate DAL path, API route, write, collection, listener, or backend job.
-
----
-
-**Document Signature:** Firebase Cost Analysis
-**Created:** July 7, 2026
+The scoped Firestore index configuration must be deployed before this saving is live.

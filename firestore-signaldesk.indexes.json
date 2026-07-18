@@ -442,6 +442,163 @@
         { "fieldPath": "targetId", "order": "ASCENDING" },
         { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "signaldeskProofPermissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskProofPermissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "proofExpiryLifecycleState", "order": "ASCENDING" },
+        { "fieldPath": "proofExpiryLifecycleRetryAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskProofPermissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "proofExpiryLifecycleState", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSourcePolicies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSourcePolicies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSourcePolicies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataPolicyLifecycleState", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataPolicyLifecycleRetryAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskSourcePolicies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataPolicyLifecycleState", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskTargetSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourcePolicyId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskTargetSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataLifecycleState", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataExpiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskTargetSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataLifecycleState", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataLifecycleRetryAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskTargetSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataLifecycleState", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskProviderSourceRetention",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "retentionExpiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskProviderSourceRetention",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataLifecycleState", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskProviderSourceRetention",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataLifecycleState", "order": "ASCENDING" },
+        { "fieldPath": "sourceDataLifecycleRetryAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskAiWorkerRuns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "aiDetailLifecycleState", "order": "ASCENDING" },
+        { "fieldPath": "aiDetailExpiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskEnrichmentResults",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskVendorRuns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "provider", "order": "ASCENDING" },
+        { "fieldPath": "providerUse", "order": "ASCENDING" },
+        { "fieldPath": "accountingMonth", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "signaldeskEnrichmentResults",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "provider", "order": "ASCENDING" },
+        { "fieldPath": "providerUse", "order": "ASCENDING" },
+        { "fieldPath": "accountingMonth", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

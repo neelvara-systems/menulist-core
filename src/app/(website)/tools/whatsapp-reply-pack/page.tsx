@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'WhatsApp Reply Pack - MenuList | Reusable Customer Replies';
 const description = 'Create reusable WhatsApp greeting, hours, menu, price, order, delivery, fallback, and customer-link replies from owner-entered business facts without sending messages or calling WhatsApp APIs.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/whatsapp-reply-pack',
   },
-};
+});
 
 export default function Page() {
   if (

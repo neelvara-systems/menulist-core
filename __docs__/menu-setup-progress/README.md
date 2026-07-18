@@ -1,79 +1,35 @@
 # Menu Setup Progress
 
-> **Status:** IMPLEMENTED
-> **Feature Flag:** `ENABLE_MENU_SETUP_PROGRESS`
-> **Route:** Owner dashboard setup card
-> **Mobile:** Compact card on MobileMenuScreen and MobileShareScreen
-> **Owner-facing name:** Menu setup
+**Status:** Local source complete; app/browser evidence pending
+**Flag:** `ENABLE_MENU_SETUP_PROGRESS`
+**Last reviewed:** July 16, 2026
 
-## What It Is
+Menu Setup Progress is one pure owner-side computation over the selected project, already-loaded store details, Menu Quality signals, and starter activation evidence. It adds no setup document, API route, listener, queue, or Function.
 
-Menu Setup Progress is a calm onboarding progress layer for MenuList-specific setup. It answers one owner question: **"Is my menu ready, and what is the next useful step?"**
+## Current required path
 
-It tracks menu creation/import, key menu details, publish status, optional content polish, and placement of the official link.
+1. **Source added** only when a real selected project with a non-empty `projectId` is loaded. Store `onboardingSource` alone does not impersonate project truth.
+2. **Menu imported** only when active extracted items exist. Categories without active items remain incomplete.
+3. **Key details checked** when active items exist and current price/price-outlier quality signals are clear.
+4. **Menu published** only when `lastPublishedAt` is a valid supported timestamp. Malformed or throwing legacy timestamp adapters fail closed.
+5. **Link placed/ready** after publish. Starter stores require the existing two distinct validated activation actions; non-starter stores preserve the current published-link-ready behavior.
 
-On the owner dashboard, Menu setup now sits inside the broader official customer source loop: prepare the menu, publish it, place the same link on customer surfaces, then keep prices, availability, hours, and feedback clear. This remains a read-only progress layer over existing project/store truth.
+Descriptions, images, translations, official-page links, and public photos remain optional hints while required setup is still open. **Translations ready** appears only when the selected project has a translation/project-content quality signal. Optional work does not keep the setup card alive after publish-and-placement completes.
 
-## What It Is Not
+## Surfaces
 
-- Not business setup progress
-- Not account/profile completion
-- Not a Public Presence duplicate
-- Not a score or gamified badge
-- Not a blocker for optional descriptions, images, photos, or social links
-- Not an external-platform scan, Google/social sync, or new placement report
+- Desktop owner dashboard card.
+- Mobile Menu card.
+- Mobile Share card after publication.
+- One Mobile More root shortcut while setup remains incomplete.
 
-## Setup Model
+All mobile actions stay inside MobileShell through current callbacks. The summary hides when required setup is complete; optional quality/profile work remains available in its normal feature surfaces.
 
-| Group | Step | Source |
-| --- | --- | --- |
-| Required | Source added | selected project or onboarding source |
-| Required | Menu imported | active extracted menu items |
-| Required | Key details checked | existing Menu Check critical signals |
-| Required | Menu published | project `lastPublishedAt` |
-| Required | Link placed | existing starter activation and presence signals |
-| Optional | Descriptions | existing Menu Check description signal |
-| Optional | Images | existing Menu Check image signal |
-| Optional | Translations | existing Menu Check language signals when multiple menu languages are selected |
-| Optional | OBP links | existing `socialMedia` and `publicPresence` fields |
-| Optional | OBP photo | existing `publicPresence.businessCover`, `photos`, logo, or project image |
+## Data and recovery
 
-## Key Files
+- Desktop loads at most one selected project document for Menu Setup Progress and Menu Check, with the existing 10-minute SWR dedupe window. If Menu Check is disabled, the progress feature can be the reason for that one bounded read.
+- Mobile reuses `MobileProjectsProvider`; More waits for provider loading to finish and adds no separate query.
+- Malformed project files/items, invalid timestamps, and invalid activation timestamps fail incomplete instead of breaking the owner screen.
+- Late acknowledgements are applied only when the current store still matches the acknowledged store.
 
-| File | Purpose |
-| --- | --- |
-| `src/lib/menuSetupProgress/buildMenuSetupProgress.ts` | Pure progress computation |
-| `src/components/templates/main-app/dashboard/MenuSetupProgress.tsx` | Desktop dashboard card |
-| `src/components/mobile/components/MenuSetupProgress.tsx` | Mobile compact card |
-| `src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx` | Dashboard mount and shared project read |
-| `src/components/templates/main-app/dashboard/MenuQualitySignals.tsx` | Reuses shared dashboard project data |
-| `src/components/mobile/screens/MobileMoreScreen.tsx` | Conditional More shortcut while setup is incomplete |
-| `src/components/mobile/MobileShell.tsx` | Keeps More shortcut inside shell navigation and selected-project provider cache |
-| `src/components/mobile/screens/MobileMenuScreen.tsx` | Mobile menu setup mount |
-| `src/components/mobile/screens/MobileShareScreen.tsx` | Mobile placement setup mount |
-
-## Related Features
-
-- [Public Menu Entry](../public-menu-entry/README.md)
-- [Messaging Onboarding](../messaging-onboarding/README.md)
-- [Menu Quality Signals](../menu-quality-signals/README.md)
-- [Menu Presence Monitor](../menu-presence-monitor/README.md)
-- [Official Business Page](../official-business-page/README.md)
-
-## Documents
-
-| Doc | Audience |
-| --- | --- |
-| [menu-setup-progress_spec.md](./menu-setup-progress_spec.md) | Product/Business |
-| [menu-setup-progress_impl.md](./menu-setup-progress_impl.md) | Engineering |
-| [menu-setup-progress_firebase.md](./menu-setup-progress_firebase.md) | Firebase/Cost |
-| [menu-setup-progress_mobile-support.md](./menu-setup-progress_mobile-support.md) | Mobile |
-| [menu-setup-progress_marketing.md](./menu-setup-progress_marketing.md) | Marketing |
-| [menu-setup-progress_website.md](./menu-setup-progress_website.md) | Website |
-| [menu-setup-progress_helpdoc.md](./menu-setup-progress_helpdoc.md) | Help Center |
-| [menu-setup-progress_test-cases.md](./menu-setup-progress_test-cases.md) | QA |
-
----
-
-**Created:** July 7, 2026
-**Last Updated:** July 9, 2026
+Previous narratives are preserved in [`_archive/pre-2026-07-16/`](./_archive/pre-2026-07-16/).

@@ -129,7 +129,7 @@ This document should be checked line-by-line before go-live.
 
 **Why this is correct:** the client-menu system is store-first and project slugs are internal menu surfaces under the same tenant origin. Creating a separate installed identity per project would break the original client-menu routing model, fragment install KPIs, and confuse customers with multiple apps for one restaurant.
 
-**Confirmed implementation:** the manifest is generated per store at the tenant origin root, `id` remains store-level, `scope` remains `/`, and `start_url` uses the store-level customer entry (`/menu` when a customer menu exists, otherwise `/`) rather than the page where installation started.
+**Confirmed implementation:** the manifest is generated per store at the tenant origin root, `id` remains store-level, `scope` remains `/`, and `start_url` uses `/menu` only when a scoped owner-claimed/default alias exists; otherwise it uses `/`. The install page never changes app identity.
 
 **Expected behavior now:**
 
@@ -486,7 +486,8 @@ Perform these checks on a real tenant origin such as `https://demo.menulist.ai/`
 - [ ] `name` matches the restaurant identity
 - [ ] `short_name` uses override when configured
 - [ ] `id` is stable per store and does not include the current route
-- [ ] `start_url` is `/menu` when a customer menu exists, otherwise `/`
+- [ ] `start_url` is `/menu` only when an owner-claimed/default alias resolves, otherwise `/`
+- [ ] `View Menu` shortcut is omitted when `/menu` has no resolvable target
 - [ ] `scope` is `/`
 - [ ] `display` is standalone
 - [ ] `display_override` is correct

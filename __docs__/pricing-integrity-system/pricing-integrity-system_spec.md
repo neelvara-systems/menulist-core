@@ -1,67 +1,51 @@
-# Pricing Integrity System - Product Specification
+# Pricing Integrity System - Specification
 
-**Document Type:** Non-technical PRD
-**Status:** Current source-boundary spec, not current launch certification
-**Priority:** P0 feature boundary
-**Last Updated:** July 2, 2026
+**Status:** Current source-boundary specification, not current launch certification
+**Last updated:** July 16, 2026
 
----
+## Owner outcome
 
-## Current Runtime Truth
+An owner can save the price wording their business actually uses without a second pricing system. The same saved truth reaches MenuList customer and export surfaces, while operations that require arithmetic touch only unambiguous single numeric prices.
 
-Pricing consistency is currently source-backed by the shared project save path, not by a separately wired Pricing Integrity engine:
+## Canonical price contract
 
-- Owner price edits are saved through `updateProject()` in `src/database/projects/index.ts`.
-- Project saves revalidate public menu/OBP cache through `revalidatePublicClientCacheForProject()`.
-- The same public-cache helper touches Digital Screens `screen.contentVersion` through `touchDigitalScreenContentVersion()` when Digital Screens are enabled and a screen token exists.
-- QR/menu pages and staff-facing reads use saved project truth.
-- PDF downloads are generated on demand from the currently loaded project data through `src/lib/export/menuPdfGenerator.ts`.
-- `src/lib/pricing/integrityEngine.ts` exists as dormant scaffold. `runPricingIntegrity()` has no current caller.
-- `src/lib/pricing/pdfQueue.ts` keeps `ENABLE_BACKGROUND_PDF_REGEN = false`; background PDF regeneration is not active runtime.
+Accepted persisted values include:
 
-## Product Promise Boundary
+- `299`, `₹1,299`, or another supported currency-prefixed single value;
+- `199-249`, `199/249`, `199–249`, or `199—249`;
+- `Market Price`, `Seasonal`, or a multilingual label;
+- an explicit blank value for an intentionally missing base/option price.
 
-Safe current promise:
+The boundary trims input, caps it at 40 characters, rejects negative numeric endpoints, markup/control/invisible-format characters, emoji, non-finite numbers, objects, and arrays. A zero value can be normalized safely; the existing Menu Correctness publish policy continues to decide whether an active zero-priced item is acceptable.
 
-> Edit prices in MenuList. Saved menu truth is the source for customer menus, staff-facing views, configured Digital Screens refresh signals, and on-demand PDF downloads.
+## Required active flows
 
-Do not claim:
-
-- Background PDF regeneration is live.
-- A standalone Pricing Integrity engine is wired into editor saves.
-- Every surface is externally certified without current QA evidence.
-- This doc grants production launch approval.
-
-## In Scope Today
-
-| Capability | Current boundary |
+| Flow | Required behavior |
 | --- | --- |
-| QR/Web menu price consistency | Uses saved project truth and public cache revalidation after project saves |
-| Staff-facing price consistency | Uses saved project truth |
-| Digital Screens refresh signal | `screen.contentVersion` touch is attempted after project save when screens are configured |
-| PDF download freshness | Browser-local PDF generation uses the currently loaded menu data |
-| Price display formatting | `formatMenuPrice()` preserves text prices and numeric ranges |
+| Desktop item editor | Validate base and option prices before local save; preserve text/ranges |
+| MobileShell item editor | Same contract; no `parseFloat` conversion or blank-to-zero mutation |
+| Bulk price actions | Preview/apply only single numeric values for relative changes; an explicit fixed-price action may replace text/range values |
+| AI Menu Manager | Same relative-versus-fixed rule, with approval card and no silent text/range coercion |
+| Extraction/review | Admit the shared contract and reject unsafe values |
+| Project update/publish | Normalize every item, option, item override, and option override before the existing write |
+| Linked-outlet save | Normalize standard and override price payloads before authority/billing persistence |
+| Owner quality/filter UI | Text and active-option prices count as present; numeric range filters use only single numeric values |
+| Public list/PDP | Show base price or active option range/labels; exclude inactive/unpriced options |
+| Digital Screens | Preserve text/ranges and active option projections |
+| PDF/share | Generate from current loaded truth; active priced options prevent a false missing-price warning |
 
-## Reserved Scaffold
+## Propagation and failure
 
-| Capability | Current boundary |
-| --- | --- |
-| `runPricingIntegrity()` | Source scaffold only; no current caller |
-| `pricingIntegrity.pdf.status` writes | Scaffolded in `integrityEngine.ts`, not reached by editor saves |
-| MOL price-change logging via `logPriceChange()` | Reserved for the dormant engine path |
-| Background PDF queue | Hard-disabled by `ENABLE_BACKGROUND_PDF_REGEN = false` |
-| PDF freshness URL/state writes | Reserved until a wired worker/job path exists |
+- A successful existing project mutation keeps its existing cache invalidation and Digital Screens content-version touch.
+- Invalid price input fails before the project write; it does not partially sanitize into a different price.
+- Relative bulk/assistant changes skip text, range, blank, and nonnumeric values instead of guessing.
+- Screen/PDF/public renderers show less rather than inventing a number.
+- Existing owner-safe save errors and optimistic rollback behavior remain authoritative.
 
-## Release Gates
+## Reserved scaffold
 
-Current release approval still requires:
+`runPricingIntegrity()` has no current caller. Background PDF jobs, MOL events from that engine, and `pricingIntegrity.pdf.*` state are not part of an active owner save. They remain isolated until a separate architecture/cost/deploy decision is approved.
 
-- Active production-readiness audit evidence.
-- External Certification Runbook evidence.
-- `npm run verify:pricing-integrity-boundary`.
-- `npm run verify:agent-readiness`.
-- `npm run verify:menulist-api-tenant-safety`.
-- Authenticated desktop and mobile editor price-change QA.
-- public menu and PDF artifact QA, plus staff view and configured Digital Screens checks.
-- Target deploy evidence and production-host smoke.
-- Scoped Firebase deploy evidence if a release scope adds or changes Cloud Function logic.
+## Release boundary
+
+This spec is not current launch certification. Current release approval requires the production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/MobileShell price mutation QA, public menu and PDF artifact QA, configured-screen QA, target deploy evidence, and production-host smoke.

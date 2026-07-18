@@ -1,48 +1,14 @@
-# Physical Surfaces — Help Documentation
+# Physical Surfaces — Owner Help Boundary
 
-## Quick Summary
-Generate print-ready menus (PDF, poster, table tent) directly from your digital menu data. Same items, same prices, professional layout.
+**Status:** Legacy compatibility; supported print work lives elsewhere
+**Last Updated:** July 16, 2026
 
----
+For current owner print files:
 
-## How-To Guides
+- Use **Print Menu** for a full menu/service/catalog PDF or print-shop packet.
+- Use **QR and print assets** for table tents, counter cards, entrance posters, feedback QR cards, and the Menu Kit.
+- Review every generated file and scan its QR before printing. Download a fresh file after menu, price, hours, link, or business-detail changes.
 
-### How to generate a PDF menu
-1. Go to **Projects** → select your project
-2. Click **Export** or **Print Menu**
-3. Choose format: PDF Menu, Poster, or Table Tent
-4. Preview the result
-5. Click **Download**
-6. Print at any print shop or office printer
+An older campaign recommendation tent card or counter sticker may appear in Today only when an existing campaign summary already contains legacy eligibility data. MenuList does not currently create new legacy eligibility records. If that card appears, it is download-only; supported new physical identity output remains under Print Menu and QR/print assets.
 
-### How to keep printed menus current
-1. Update your menu in the Editor as usual
-2. After saving, generate a new PDF
-3. The new PDF reflects all your latest changes
-4. Reprint as needed
-
----
-
-## Troubleshooting
-
-### PDF looks different from my digital menu
-**Why:** Print layouts are optimized for paper. Some elements may be rearranged for readability.
-**Fix:** This is by design. The content (items, prices) matches exactly.
-
-### Images look blurry in print
-**Fix:** Use high-quality images in your menu. Generated images may look good on screen but less sharp in print.
-
----
-
-## Tips
-- 💡 Generate a fresh PDF after every significant menu change
-- 💡 Use the PDF for menus you hand to customers or display at the counter
-- 💡 The poster format works great for window displays
-- 💡 Table tents are perfect for specials and promotions
-
-## Related Features
-- **[Data Editor]** — Edit items that appear in print menus
-- **[Pricing Integrity]** — Ensures digital and print prices match
-
-## Need More Help?
-- **Email:** support@menulist.ai
+Related guides: [Menu Card Export](../menu-card-export/menu-card-export_helpdoc.md), [Print Assets](../print-assets/README.md), and [Menu Kit](../menu-kit/menu-kit_helpdoc.md).

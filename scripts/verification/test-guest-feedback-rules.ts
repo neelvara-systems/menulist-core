@@ -1,6 +1,7 @@
 #!/usr/bin/env ts-node
 
 import fs from 'fs';
+import { strict as nodeAssert } from 'node:assert';
 import path from 'path';
 import {
     assertFails,
@@ -122,6 +123,56 @@ async function run(): Promise<void> {
         };
         await assertFails(addDoc(collection(publicDb, 'feedbackEvents'), forgedEvent));
         await assertFails(addDoc(collection(storeOneDb, 'feedbackEvents'), forgedEvent));
+
+        const { submitGuestFeedbackAdmin, logFeedbackMOLEventAdmin } = await import('@database/guestFeedback/server');
+        const { firestoreAdmin } = await import('@lib/firebase/firebaseAdmin');
+        const idempotentInput = {
+            customerName: 'अन्वी',
+            message: 'The printed price needs checking.',
+            projectId: '1-idempotency-101',
+            rating: 2 as const,
+            sId: 101,
+            source: 'feedback_qr' as const,
+            submissionId: 'idempotency-test-request-001',
+            tId: 1,
+        };
+        const firstSubmission = await submitGuestFeedbackAdmin(idempotentInput);
+        const replayedSubmission = await submitGuestFeedbackAdmin(idempotentInput);
+        nodeAssert.equal(firstSubmission.created, true);
+        nodeAssert.equal(replayedSubmission.created, false);
+        nodeAssert.equal(replayedSubmission.feedback.id, firstSubmission.feedback.id);
+        await nodeAssert.rejects(
+            submitGuestFeedbackAdmin({ ...idempotentInput, rating: 3 }),
+            /replay conflict/,
+        );
+
+        await logFeedbackMOLEventAdmin(
+            'FEEDBACK_SUBMITTED',
+            idempotentInput.tId,
+            idempotentInput.sId,
+            idempotentInput.projectId,
+            idempotentInput.rating,
+            firstSubmission.feedback.id,
+        );
+        await logFeedbackMOLEventAdmin(
+            'FEEDBACK_SUBMITTED',
+            idempotentInput.tId,
+            idempotentInput.sId,
+            idempotentInput.projectId,
+            idempotentInput.rating,
+            firstSubmission.feedback.id,
+        );
+
+        const persistedFeedback = await firestoreAdmin
+            .collection('guestFeedback')
+            .where('projectId', '==', idempotentInput.projectId)
+            .get();
+        const persistedEvents = await firestoreAdmin
+            .collection('feedbackEvents')
+            .where('projectId', '==', idempotentInput.projectId)
+            .get();
+        nodeAssert.equal(persistedFeedback.size, 1);
+        nodeAssert.equal(persistedEvents.size, 1);
     } finally {
         await testEnv.cleanup();
     }

@@ -163,6 +163,10 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
         } catch (err: any) {
             if (err.code === 'EMAIL_EXISTS') {
                 dispatch(showWarningToast("Email already used"))
+            } else if (err.code === 'AUTH_BINDING_INVALID') {
+                dispatch(showErrorToast("This account needs MenuList support before it can be added"))
+            } else if (err.code === 'STAFF_LOGIN_COLLISION') {
+                dispatch(showWarningToast("Could not reserve a Staff ID. Try again."))
             } else if (err.code === 'INVALID_EMAIL') {
                 dispatch(showWarningToast("Invalid email"))
             } else if (err.code === 'EMAIL_OTHER_TENANT') {
@@ -199,7 +203,13 @@ function UserAddUpdateForm({ canAssignRoles = true, modalData, onCloseModal, sta
                     dispatch(showSuccessToast("User updated successfully"))
                     onClose(response.user || { ...originalUser, ...updatedChanges })
                 }).catch((err: any) => {
-                    dispatch(showErrorToast(err.code === 'ROLE_ASSIGNMENT_FORBIDDEN' ? "You cannot change roles or store access" : "Could not update staff member"))
+                    dispatch(showErrorToast(
+                        err.code === 'ROLE_ASSIGNMENT_FORBIDDEN'
+                            ? "You cannot change roles or store access"
+                            : err.code === 'OWNER_MANAGEMENT_FORBIDDEN'
+                                ? "Only an Owner can change an Owner account"
+                                : "Could not update staff member",
+                    ))
                     logStaffClientFailure('staff_update_user_failed', err, getStaffMutationLogContext(changesToUpload, 'update'))
                 })
             } else {

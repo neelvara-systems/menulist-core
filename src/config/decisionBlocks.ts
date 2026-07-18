@@ -13,6 +13,11 @@
  */
 
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
+import {
+    DECISION_BLOCK_DURATION_CONFIGS,
+    DECISION_BLOCK_ENABLED_BLOCKS,
+    DEFAULT_DECISION_BLOCK_CATEGORY,
+} from '@data/shared/decisionBlockConfig';
 
 // ============================================
 // TYPES
@@ -138,50 +143,7 @@ const HEALTH_LABELS: Record<DecisionBlockType, DecisionBlockLabels> = {
 // DURATION DEFAULTS BY BUSINESS CATEGORY
 // ============================================
 
-const DURATION_CONFIGS: Record<string, DurationConfig> = {
-    food: {
-        default: 15,          // 15 min default prep time
-        quickThreshold: 10,   // Quick Pick if <= 10 min
-        unit: 'min',
-        label: 'Prep time',
-    },
-    service: {
-        default: 30,          // 30 min default service
-        quickThreshold: 20,   // Quick Pick if <= 20 min
-        unit: 'min',
-        label: 'Duration',
-    },
-    retail: {
-        default: 0,           // Instant (no prep)
-        quickThreshold: 5,    // Quick Pick if <= 5 min (assembly/packaging)
-        unit: 'min',
-        label: 'Ready time',
-    },
-    health: {
-        default: 45,          // 45 min default session
-        quickThreshold: 30,   // Quick Pick if <= 30 min
-        unit: 'min',
-        label: 'Session duration',
-    },
-    professional: {
-        default: 60,          // 60 min default consultation
-        quickThreshold: 30,   // Quick Pick if <= 30 min
-        unit: 'min',
-        label: 'Duration',
-    },
-    creative: {
-        default: 45,          // 45 min default
-        quickThreshold: 30,   // Quick Pick if <= 30 min
-        unit: 'min',
-        label: 'Duration',
-    },
-    specialty: {
-        default: 30,          // 30 min default
-        quickThreshold: 20,   // Quick Pick if <= 20 min
-        unit: 'min',
-        label: 'Duration',
-    },
-};
+const DURATION_CONFIGS: Record<string, DurationConfig> = DECISION_BLOCK_DURATION_CONFIGS;
 
 // ============================================
 // CATEGORY CONFIGURATIONS
@@ -191,39 +153,39 @@ const CATEGORY_CONFIGS: Record<string, CategoryDecisionConfig> = {
     food: {
         labels: FOOD_LABELS,
         duration: DURATION_CONFIGS.food,
-        enabledBlocks: ['popular', 'quickPick', 'bestValue'],
+        enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS.food,
     },
     service: {
         labels: SERVICE_LABELS,
         duration: DURATION_CONFIGS.service,
-        enabledBlocks: ['popular', 'quickPick', 'bestValue'],
+        enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS.service,
     },
     retail: {
         labels: RETAIL_LABELS,
         duration: DURATION_CONFIGS.retail,
-        enabledBlocks: ['popular', 'bestValue'],  // No Quick Pick for retail (instant)
+        enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS.retail,
     },
     health: {
         labels: HEALTH_LABELS,
         duration: DURATION_CONFIGS.health,
         // Quick Pick disabled for Health - speed ≠ desirability in healthcare contexts
         // Patients optimize for reassurance and quality, not minutes
-        enabledBlocks: ['popular', 'bestValue'],
+        enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS.health,
     },
     professional: {
         labels: SERVICE_LABELS,
         duration: DURATION_CONFIGS.professional,
-        enabledBlocks: ['popular', 'bestValue'],  // Professional services usually not "quick"
+        enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS.professional,
     },
     creative: {
         labels: SERVICE_LABELS,
         duration: DURATION_CONFIGS.creative,
-        enabledBlocks: ['popular', 'bestValue'],
+        enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS.creative,
     },
     specialty: {
         labels: SERVICE_LABELS,
         duration: DURATION_CONFIGS.specialty,
-        enabledBlocks: ['popular', 'quickPick', 'bestValue'],
+        enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS.specialty,
     },
 };
 
@@ -232,8 +194,8 @@ const CATEGORY_CONFIGS: Record<string, CategoryDecisionConfig> = {
 // Food is the most common SMB vertical, so this is a reasonable default
 const DEFAULT_CONFIG: CategoryDecisionConfig = {
     labels: FOOD_LABELS,
-    duration: DURATION_CONFIGS.food,
-    enabledBlocks: ['popular', 'quickPick', 'bestValue'],
+    duration: DURATION_CONFIGS[DEFAULT_DECISION_BLOCK_CATEGORY],
+    enabledBlocks: DECISION_BLOCK_ENABLED_BLOCKS[DEFAULT_DECISION_BLOCK_CATEGORY],
 };
 
 // ============================================

@@ -5,7 +5,7 @@
 **Internal feature name:** AI Menu Manager
 **Public launch name:** AI Menu Manager
 **In-app owner label:** Menu Manager, with AI badge where useful
-**Last Updated:** July 10, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -35,7 +35,8 @@ Conversation is flexible. Execution is registered.
 Smoothness rules:
 
 - One message may prepare multiple independent selected-project changes, but every segment must pass the same registered action, patch allowlist, approval, scope, and stale-base rules as a single command.
-- Related cards may expose one grouped approval only when their patches do not overlap; grouped approval uses one existing project save and one compact completion write.
+- Related cards may expose one grouped approval only when their patches do not overlap and the complete group retains one session/tenant/store/project scope; grouped approval uses one existing project save and one compact completion write.
+- Every executable project approval must pass its prepared project version into the existing standard or linked-outlet save transaction so concurrent menu edits fail before the write.
 - A recent duplicate submit must return the already prepared pending card group from loaded session state instead of creating duplicate messages, cards, provider calls, or writes.
 - `Restore <item>` means availability when the item is sold out, visibility when it is hidden, and a one-tap clarification when both states are off.
 - Accepted model answers must retain validated selected-context grounding and show the grounded owner-facing entity names on the answer card.
@@ -189,7 +190,7 @@ The first screen should not be an empty generic chat screen. It should show:
 7. Conflicting pending changes must be shown explicitly.
 8. Critical cards do not disappear silently.
 9. Notifications deep-link to the relevant card.
-10. Completion receipts show what changed, where, who approved, and rollback if available.
+10. Completion receipts show what changed, where it was applied, and whether the prepared work applied or failed.
 11. Work on context selection is draft context only. It must not execute, approve, or persist anything until the owner sends the composed message.
 12. Suggestion and starter-card selection is draft text only. It must not execute, approve, or persist anything until the owner sends the composed message.
 13. Work on and Suggestions are mutually exclusive composer guidance surfaces. Opening either closes the other on desktop and mobile.
@@ -365,7 +366,8 @@ The data model must:
 - store heavy prompts, raw responses, full transcripts, generated images, and debug traces in Storage.
 - cache menu context packets with `unstable_cache`, Redis/Upstash, or compact summaries.
 - enforce explicit caps on compact arrays inside session/proposal docs.
-- expose active pending cards without scanning old daily sessions.
+- expose active pending cards without scanning old daily sessions: when today's selected-project document is absent, use one protected exact-scope indexed latest-pending lookup and continue that session until the work clears.
+- keep the compact document below the 700 KB application write budget by trimming expendable history first; never silently trim pending cards.
 - use deterministic IDs or idempotency keys for retry-safe command/proposal creation.
 - merge related approved patches into one project update when approval scope and risk allow it.
 - prefer Storage lifecycle or existing cleanup paths for generated drafts and debug artifacts.

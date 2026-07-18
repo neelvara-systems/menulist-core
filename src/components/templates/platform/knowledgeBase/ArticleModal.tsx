@@ -454,7 +454,7 @@ const ArticleModal = ({ open, editingArticle, form, onOk, onCancel, onSuccess, s
         }
     };
 
-    const isSearchReady = Boolean(editingArticle?.embeddingV2);
+    const isSearchReady = Boolean(editingArticle?.embedding);
 
     const RenderTitle = () => {
         return (

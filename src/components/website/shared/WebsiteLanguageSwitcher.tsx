@@ -11,8 +11,13 @@ import { setUserLocale } from '@lib/localization';
 import { Locale } from '@lib/localization/config';
 import { useLocale, useTranslations } from 'next-intl';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { LuChevronDown, LuGlobe } from 'react-icons/lu';
+import {
+    useWebsiteBasePath,
+    withoutWebsiteBasePath,
+    withWebsiteBasePath,
+} from './WebsiteProductPathProvider';
 
 interface WebsiteLanguageSwitcherProps {
     surface?: 'default' | 'footer';
@@ -22,12 +27,14 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
     const locale = useLocale();
     const router = useRouter();
     const pathname = usePathname();
+    const basePath = useWebsiteBasePath();
     const searchParams = useSearchParams();
     const t = useTranslations('Website');
     const [open, setOpen] = useState(false);
     const [openUp, setOpenUp] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
     const btnRef = useRef<HTMLButtonElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     const currentLang = WEBSITE_LANGUAGES.find(l => l.code === locale) || WEBSITE_LANGUAGES[0];
     const isFooter = surface === 'footer';
@@ -43,6 +50,53 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        if (!open) return;
+
+        const focusFrame = window.requestAnimationFrame(() => {
+            const options = menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]');
+            const selectedOption = menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitemradio"][aria-checked="true"]');
+            (selectedOption || options?.[0])?.focus();
+        });
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            setOpen(false);
+            btnRef.current?.focus();
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => {
+            window.cancelAnimationFrame(focusFrame);
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [open]);
+
+    const handleMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+        if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+
+        const options = Array.from(
+            menuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]') || [],
+        );
+        if (options.length === 0) return;
+
+        event.preventDefault();
+        const activeIndex = options.findIndex((option) => option === document.activeElement);
+        if (event.key === 'Home') {
+            options[0].focus();
+            return;
+        }
+        if (event.key === 'End') {
+            options[options.length - 1].focus();
+            return;
+        }
+
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        const nextIndex = activeIndex < 0
+            ? 0
+            : (activeIndex + direction + options.length) % options.length;
+        options[nextIndex].focus();
+    };
+
     const handleToggle = () => {
         if (!open && btnRef.current) {
             const rect = btnRef.current.getBoundingClientRect();
@@ -55,7 +109,8 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
     const getLocalizedResourcePath = (targetLocale: string) => {
         if (!pathname) return null;
 
-        const pathParts = pathname.split('/').filter(Boolean);
+        const publicPathname = withoutWebsiteBasePath(pathname, basePath);
+        const pathParts = publicPathname.split('/').filter(Boolean);
         const firstPart = pathParts[0];
         const isLocalizedResourcePath = isReviewedWebsiteResourceLocale(firstPart)
             && pathParts[1] === WEBSITE_RESOURCE_HUB_PATH.replace('/', '');
@@ -71,7 +126,8 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
             : buildWebsiteResourcePath(slug, targetLocale);
         const queryString = searchParams.toString();
 
-        return queryString ? `${nextPath}?${queryString}` : nextPath;
+        const aliasedNextPath = withWebsiteBasePath(nextPath, basePath);
+        return queryString ? `${aliasedNextPath}?${queryString}` : aliasedNextPath;
     };
 
     const handleSelect = async (code: string) => {
@@ -90,6 +146,7 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
     return (
         <div ref={ref} style={{ position: 'relative' }} className={isFooter ? 'ws-language-switcher--footer' : undefined}>
             <button
+                type="button"
                 ref={btnRef}
                 onClick={handleToggle}
                 style={{
@@ -117,14 +174,22 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                     e.currentTarget.style.color = isFooter ? 'var(--ws-panel-contrast-secondary)' : 'var(--ws-text-secondary)';
                 }}
                 aria-label={t('LanguageSwitcher.label')}
+                aria-expanded={open}
+                aria-haspopup="menu"
+                aria-controls="website-language-menu"
             >
-                <LuGlobe size={14} />
+                <LuGlobe size={14} aria-hidden="true" />
                 <span>{currentLang.nativeName}</span>
-                <LuChevronDown size={12} style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
+                <LuChevronDown aria-hidden="true" size={12} style={{ transition: 'transform 0.2s', transform: open ? 'rotate(180deg)' : 'none' }} />
             </button>
 
             {open && (
                 <div
+                    ref={menuRef}
+                    id="website-language-menu"
+                    role="menu"
+                    aria-label={t('LanguageSwitcher.label')}
+                    onKeyDown={handleMenuKeyDown}
                     style={{
                         position: 'absolute',
                         ...(openUp
@@ -147,6 +212,9 @@ export default function WebsiteLanguageSwitcher({ surface = 'default' }: Website
                         const isActive = lang.code === locale;
                         return (
                             <button
+                                type="button"
+                                role="menuitemradio"
+                                aria-checked={isActive}
                                 key={lang.code}
                                 onClick={() => handleSelect(lang.code)}
                                 style={{

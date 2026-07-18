@@ -3,7 +3,7 @@
 import { useOwnerReferral } from '@hook/useOwnerReferral';
 import { getContentCreditOutcomeExamples } from '@data/shared/contentCreditPolicy';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useFormatter, useTranslations } from 'next-intl';
 import { useEffect } from 'react';
 import { LuCopy, LuGift, LuMessageCircle, LuShare2, LuX } from 'react-icons/lu';
 import { Button, Flex, NavBar, Popup, Tag, Text, Toast } from '../antd';
@@ -14,6 +14,7 @@ export default function MobileOwnerReferralSheet({ onClose, visible }: {
 }) {
     const { token } = theme.useToken();
     const t = useTranslations('OwnerReferral');
+    const format = useFormatter();
     const referral = useOwnerReferral();
     const referrerExamples = getContentCreditOutcomeExamples(referral.data?.policy.referrerCredits || 0);
     const referredExamples = getContentCreditOutcomeExamples(referral.data?.policy.referredCredits || 0);
@@ -39,6 +40,14 @@ export default function MobileOwnerReferralSheet({ onClose, visible }: {
             if (error?.name !== 'AbortError') {
                 Toast.show({ content: t('shareFailed'), duration: 1800 });
             }
+        }
+    };
+
+    const openWhatsApp = () => {
+        try {
+            referral.openWhatsApp();
+        } catch {
+            Toast.show({ content: t('shareFailed'), duration: 1800 });
         }
     };
 
@@ -99,7 +108,7 @@ export default function MobileOwnerReferralSheet({ onClose, visible }: {
                                 {t('shareInvitation')}
                             </Button>
                             <Flex gap={10}>
-                                <Button block fill="outline" icon={<LuMessageCircle size={18} />} onClick={referral.openWhatsApp} size="large">
+                                <Button block fill="outline" icon={<LuMessageCircle size={18} />} onClick={openWhatsApp} size="large">
                                     {t('whatsApp')}
                                 </Button>
                                 <Button block fill="outline" icon={<LuCopy size={18} />} onClick={() => void copy()} size="large">
@@ -141,7 +150,11 @@ export default function MobileOwnerReferralSheet({ onClose, visible }: {
                                                 {item.businessName}
                                             </Text>
                                             <Text style={{ color: token.colorTextSecondary, fontSize: 12 }}>
-                                                {new Date(item.date).toLocaleDateString()}
+                                                {format.dateTime(new Date(item.date), {
+                                                    day: 'numeric',
+                                                    month: 'short',
+                                                    year: 'numeric',
+                                                })}
                                             </Text>
                                         </Flex>
                                         <Tag color={status.color} style={{ flexShrink: 0, marginInlineEnd: 0 }}>{status.label}</Tag>

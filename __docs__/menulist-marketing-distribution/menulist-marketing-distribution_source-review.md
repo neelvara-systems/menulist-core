@@ -5,6 +5,11 @@
 **Source:** [Marketing and Distribution Plan ChatGPT capture](../strategy/_archive/marketing-and-distribution-plan-chatgpt-conversation-2026-06-22.md)  
 **Captured coverage:** 62 message blocks, 32/32 turn placeholders
 
+> This document reviews the June 22 captured conversation. Record new discrete
+> posts, articles, videos, expert feedback, market observations, and deferred
+> ideas in the maintained
+> [External Insight Ledger](./menulist-marketing-distribution_external-insight-ledger.md).
+
 ## Review Posture
 
 The captured ChatGPT conversation is useful source material, but it is not operating truth.

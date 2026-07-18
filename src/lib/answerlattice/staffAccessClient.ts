@@ -411,7 +411,9 @@ export const updateAnswerlatticeStaffUser = async (payload: {
             method: 'PATCH',
         }),
         {
-            isValid: (value) => isStaffMutationWithUser(value, payload.userId),
+            isValid: (value): value is AnswerlatticeStaffMutationResponse => (
+                isStaffMutationWithUser(value, payload.userId)
+            ),
             responseKind: 'staff_update',
         },
     )
@@ -425,7 +427,9 @@ export const removeAnswerlatticeStaffUser = async (userId: string) => {
             method: 'DELETE',
         }),
         {
-            isValid: (value) => isStaffRemoveResponse(value, userId),
+            isValid: (value): value is AnswerlatticeStaffMutationResponse => (
+                isStaffRemoveResponse(value, userId)
+            ),
             responseKind: 'staff_remove',
         },
     );
@@ -440,7 +444,9 @@ export const requestAnswerlatticeStaffPasswordReset = async (userId: string) => 
             method: 'POST',
         }),
         {
-            isValid: (value) => isStaffPasswordResetResponse(value, userId),
+            isValid: (value): value is AnswerlatticeStaffMutationResponse => (
+                isStaffPasswordResetResponse(value, userId)
+            ),
             responseKind: 'staff_password_reset',
         },
     )
@@ -455,7 +461,9 @@ export const forceSignOutAnswerlatticeStaffUser = async (userId: string) => (
             method: 'POST',
         }),
         {
-            isValid: (value) => isStaffMutationWithUser(value, userId),
+            isValid: (value): value is AnswerlatticeStaffMutationResponse => (
+                isStaffMutationWithUser(value, userId)
+            ),
             responseKind: 'staff_force_signout',
         },
     )
@@ -479,7 +487,9 @@ export const saveAnswerlatticeRoleDefinition = async (payload: {
             method: payload.role.id ? 'PATCH' : 'POST',
         }),
         {
-            isValid: (value) => isAnswerlatticeRoleMutationResponse(value, true),
+            isValid: (value): value is AnswerlatticeRoleMutationResponse => (
+                isAnswerlatticeRoleMutationResponse(value, true)
+            ),
             responseKind: 'role_save',
         },
     )
@@ -493,7 +503,9 @@ export const deleteAnswerlatticeRoleDefinition = async (roleId: string) => {
             method: 'DELETE',
         }),
         {
-            isValid: (value) => isAnswerlatticeRoleMutationResponse(value, false),
+            isValid: (value): value is AnswerlatticeRoleMutationResponse => (
+                isAnswerlatticeRoleMutationResponse(value, false)
+            ),
             responseKind: 'role_delete',
         },
     );

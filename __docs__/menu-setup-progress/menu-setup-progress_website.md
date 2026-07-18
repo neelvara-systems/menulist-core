@@ -1,27 +1,11 @@
-# Menu Setup Progress — Website Content
+# Menu Setup Progress - Website Boundary
 
-## Website Decision
+**Status:** Local source complete; no standalone website route
 
-Do not create a standalone public feature page for Menu Setup Progress.
+Menu Setup Progress is owner-app behavior. It does not need a public landing page, sitemap entry, metadata route, or public product name.
 
-It can be mentioned as supporting proof under Menu Import, Menu Content Prep, Official Business Page, or QR Menu Links.
+Website/help copy may say:
 
-## Suggested Supporting Copy
+> MenuList shows the next setup step for the selected menu, from source and price review to publishing and sharing the official link.
 
-MenuList shows the owner what is ready: source added, menu imported, key details checked, menu published, link placed, and optional menu improvements.
-
-## Placement
-
-Use only as supporting content when explaining the MenuList lifecycle:
-
-`Start -> Prepare -> Review -> Publish -> Place -> Improve`
-
-## Public Boundaries
-
-- Do not present it as a business profile setup system.
-- Do not claim business listing automation.
-- Do not imply required descriptions/images before publishing.
-
----
-
-**Created:** July 7, 2026
+It must not imply automatic third-party placement, verified customer use, guaranteed outcomes, or anonymous processing.

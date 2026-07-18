@@ -109,6 +109,8 @@ export interface ProjectSummaryData {
     isDefault?: boolean;
     createdOn?: Timestamp;
     modifiedOn?: Timestamp;
+    /** Last explicit publish acknowledged for this project. */
+    lastPublishedAt?: Timestamp;
 
     // ── URL PERMANENCE (Feature: URL Routing Architecture) ──────────
     /** Permanent URL slug for this project */
@@ -416,7 +418,8 @@ export interface Project {
     // ══════════════════════════════════════════════════════════
 
     /**
-     * MCE verification metadata — stamped on every save when ENABLE_MCE is true.
+     * MCE verification metadata — stamped by standalone update/publish
+     * transactions when ENABLE_MCE is true.
      * Part of the same setDoc() call — zero extra Firebase writes.
      *
      * - verified: Did all critical rules pass?

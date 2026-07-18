@@ -2,7 +2,9 @@
 
 > Like a book index: find any doc across any feature instantly.
 >
-> **Last Updated:** June 22, 2026 | **Total Features:** 32+ | **Doc Types:** 7 per feature
+> **Last Updated:** July 18, 2026 | **Core catalog:** 32+ documented families | **Doc Types:** 7 per feature
+
+> **Current inventory boundary:** This index preserves the core documentation catalog but is not an exhaustive runtime feature count. Current routes, feature flags, maintained feature docs, and the [MenuList Feature Flow Audit Tracker](./audits/menulist-feature-flow-audit-tracker.md) are authoritative for the 41 completed numbered audits, the 35 MenuList-owned flows within that ledger, eight cross-cutting MenuList system audits, twelve dedicated audited subflows, and the explicit adjacent-product exclusions.
 
 ---
 
@@ -44,6 +46,7 @@
 | 17  | **Roles & Permissions**           | `roles-permissions/`                         |  ✅  |  ✅  |    ➖     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 17a | **POS Webhook Sync**              | `pos-webhook-sync/`                          |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
 | 17b | **Owner Business Assistant**      | `owner-business-assistant/`                  |  ✅  |  ✅  |    ✅     |   ✅    |   ✅    |    ✅    |   ✅   |
+| 17c | **External Integrations Inventory** | `external-integrations/`                   |  ➖  |  ➖  |    ➖     |   ➖    |   ➖    |    ➖    |   ✅   |
 
 ## Projects (Menu Builder)
 

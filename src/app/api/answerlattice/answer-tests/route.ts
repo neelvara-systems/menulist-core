@@ -4,10 +4,12 @@ import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
+import { buildAnswerlatticeActivationAnswerTestSummary } from '@lib/answerlattice/activationAnswerTestSummary';
 import {
     AnswerlatticeAnswerTestSaveSchema,
     ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
     getAnswerlatticeAnswerTestSummaryId,
+    prepareAnswerlatticeAnswerTestCasesForWrite,
 } from '@lib/answerlattice/answerTestContracts';
 import {
     AnswerlatticeAnswerTestSummaryTooLargeError,
@@ -16,6 +18,7 @@ import {
     normalizeAnswerlatticeAnswerTestSummary,
 } from '@lib/answerlattice/answerTestServer';
 import { buildAnswerlatticeRateLimitKey } from '@lib/answerlattice/rateLimitKeys';
+import { getAnswerlatticeCompiledSourceVersionsAdmin } from '@lib/answerlattice/compiledSourceVersionsAdmin';
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import { checkRateLimit } from '@lib/rateLimit';
@@ -48,11 +51,29 @@ export const GET = withAuth(async (request: NextRequest, session) => {
     if (!access) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
     try {
-        const summary = await loadAnswerlatticeAnswerTestSummary({
+        const scope = {
             tId: access.scope.tenantId,
             sId: access.scope.storeId,
-        });
-        return NextResponse.json({ summary }, {
+        };
+        const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';
+        const [summary, sourceVersions] = await Promise.all([
+            loadAnswerlatticeAnswerTestSummary(scope),
+            includeLaunchProof
+                ? getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId)
+                : Promise.resolve(null),
+        ]);
+        if (!sourceVersions) {
+            return NextResponse.json({ summary }, {
+                headers: { 'Cache-Control': 'private, no-store' },
+            });
+        }
+        const launchProof = buildAnswerlatticeActivationAnswerTestSummary(
+            summary,
+            scope.tId,
+            scope.sId,
+            sourceVersions,
+        );
+        return NextResponse.json({ summary, launchProof }, {
             headers: { 'Cache-Control': 'private, no-store' },
         });
     } catch (error) {
@@ -144,19 +165,37 @@ export const PUT = withAuth(async (request: NextRequest, session) => {
             if (current.revision !== parsed.data.revision) {
                 throw new Error('answer_test_revision_conflict');
             }
+            const cases = prepareAnswerlatticeAnswerTestCasesForWrite(
+                current.cases,
+                parsed.data.cases,
+                now,
+            );
             const next = compactAnswerlatticeAnswerTestSummaryForWrite({
                 ...current,
                 schemaVersion: ANSWERLATTICE_ANSWER_TEST_SUMMARY_SCHEMA_VERSION,
                 revision: current.revision + 1,
-                cases: parsed.data.cases,
+                cases,
                 updatedAt: now,
                 updatedBy,
             });
             transaction.set(summaryRef, next, { merge: false });
             return next;
         });
+        const includeLaunchProof = request.nextUrl.searchParams.get('includeLaunchProof') === '1';
+        if (!includeLaunchProof) {
+            return NextResponse.json({ summary }, {
+                headers: { 'Cache-Control': 'private, no-store' },
+            });
+        }
+        const sourceVersions = await getAnswerlatticeCompiledSourceVersionsAdmin(scope.tId, scope.sId);
+        const launchProof = buildAnswerlatticeActivationAnswerTestSummary(
+            summary,
+            scope.tId,
+            scope.sId,
+            sourceVersions,
+        );
 
-        return NextResponse.json({ summary }, {
+        return NextResponse.json({ summary, launchProof }, {
             headers: { 'Cache-Control': 'private, no-store' },
         });
     } catch (error) {

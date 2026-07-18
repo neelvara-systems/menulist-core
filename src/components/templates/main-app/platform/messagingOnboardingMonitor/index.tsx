@@ -8,6 +8,7 @@ import type {
     MessagingOnboardingOpsSession,
     MessagingOnboardingOpsSnapshot,
 } from '@lib/ops/messagingOnboardingTypes';
+import { isMessagingOnboardingOpsSnapshotResponse } from '@lib/ops/messagingOnboardingOpsBoundary';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { formatDateTime, type IntlFormatter } from '@util/dateTime';
@@ -17,7 +18,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 const { Title, Text } = Typography;
 
@@ -53,164 +54,6 @@ const MESSAGING_ONBOARDING_MONITOR_RESPONSE_REJECTED = 'messaging_onboarding_mon
 const MESSAGING_ONBOARDING_MONITOR_REQUEST_FAILED = 'messaging_onboarding_monitor_request_failed';
 
 type MessagingOnboardingMonitorLogContext = Record<string, boolean | number | string | null | undefined>;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-}
-
-function isNullableString(value: unknown): value is string | null {
-    return value === null || typeof value === 'string';
-}
-
-function isFiniteNumber(value: unknown): value is number {
-    return typeof value === 'number' && Number.isFinite(value);
-}
-
-function isAllowedString(value: unknown, allowed: string[]): value is string {
-    return typeof value === 'string' && allowed.includes(value);
-}
-
-function isNumberRecord(value: unknown): value is Record<string, number> {
-    return isRecord(value) && Object.values(value).every(isFiniteNumber);
-}
-
-function isMetricRecord(value: unknown): boolean {
-    if (!isRecord(value)) return false;
-    return Object.entries(value).every(([key, entry]) => (
-        key === 'eventsByType'
-            ? isNumberRecord(entry)
-            : isFiniteNumber(entry)
-    ));
-}
-
-function isCostRecord(value: unknown): boolean {
-    if (!isRecord(value)) return false;
-    return Object.entries(value).every(([key, entry]) => (
-        key === 'currency'
-            ? typeof entry === 'string'
-            : isFiniteNumber(entry)
-    ));
-}
-
-function isOpsMetadataValue(value: unknown): boolean {
-    return value === null
-        || typeof value === 'boolean'
-        || typeof value === 'string'
-        || isFiniteNumber(value);
-}
-
-function isOpsMetadata(value: unknown): value is Record<string, unknown> {
-    return isRecord(value) && Object.values(value).every(isOpsMetadataValue);
-}
-
-function isHealthAlert(value: unknown): boolean {
-    return isRecord(value)
-        && typeof value.key === 'string'
-        && isAllowedString(value.severity, ['warning', 'critical'])
-        && typeof value.title === 'string'
-        && typeof value.message === 'string';
-}
-
-function isMessagingOnboardingOpsHealth(value: unknown): value is MessagingOnboardingOpsHealth {
-    return isRecord(value)
-        && isNullableString(value.id)
-        && isAllowedString(value.status, ['healthy', 'degraded', 'critical', 'unknown'])
-        && isNullableString(value.windowStart)
-        && isNullableString(value.windowEnd)
-        && isMetricRecord(value.runMetrics)
-        && isMetricRecord(value.metrics)
-        && isCostRecord(value.costs)
-        && isNumberRecord(value.retention)
-        && Array.isArray(value.alerts)
-        && value.alerts.every(isHealthAlert);
-}
-
-function isWebhookWindow(value: unknown): boolean {
-    return isRecord(value)
-        && isFiniteNumber(value.hours)
-        && isFiniteNumber(value.recentEventsShown)
-        && isFiniteNumber(value.invalidSignatures)
-        && isFiniteNumber(value.inboundQueued)
-        && isFiniteNumber(value.inboundProcessed)
-        && isFiniteNumber(value.inboundFailed)
-        && isFiniteNumber(value.messageSent)
-        && isFiniteNumber(value.messageSendFailed)
-        && isFiniteNumber(value.providerMediaDownloadFailed);
-}
-
-function isInboundQueue(value: unknown): boolean {
-    return isRecord(value)
-        && isFiniteNumber(value.pending)
-        && isFiniteNumber(value.processing)
-        && isFiniteNumber(value.failed);
-}
-
-function isOpsEventError(value: unknown): boolean {
-    return value === undefined
-        || (
-            isRecord(value)
-            && (value.code === undefined || typeof value.code === 'string')
-            && (value.retryable === undefined || typeof value.retryable === 'boolean')
-        );
-}
-
-function isOpsEvent(value: unknown): value is MessagingOnboardingOpsEvent {
-    return isRecord(value)
-        && typeof value.id === 'string'
-        && typeof value.eventType === 'string'
-        && typeof value.provider === 'string'
-        && typeof value.sessionId === 'string'
-        && typeof value.sessionState === 'string'
-        && typeof value.userIdMasked === 'string'
-        && isNullableString(value.timestamp)
-        && isOpsMetadata(value.metadata)
-        && isOpsEventError(value.error);
-}
-
-function isOpsSession(value: unknown): value is MessagingOnboardingOpsSession {
-    return isRecord(value)
-        && typeof value.id === 'string'
-        && typeof value.provider === 'string'
-        && typeof value.state === 'string'
-        && typeof value.providerDisplayIdMasked === 'string'
-        && isFiniteNumber(value.uploadCount)
-        && isFiniteNumber(value.processingRuns)
-        && isNullableString(value.updatedAt)
-        && isNullableString(value.createdAt);
-}
-
-function isOpsAlert(value: unknown): value is MessagingOnboardingOpsAlert {
-    return isRecord(value)
-        && typeof value.id === 'string'
-        && isAllowedString(value.severity, ['info', 'warning', 'critical'])
-        && typeof value.title === 'string'
-        && typeof value.message === 'string'
-        && isNullableString(value.timestamp)
-        && typeof value.acknowledged === 'boolean';
-}
-
-function isMessagingOnboardingOpsFeature(value: unknown): boolean {
-    return isRecord(value)
-        && typeof value.dashboardEnabled === 'boolean'
-        && value.providerMode === 'official_cloud_api'
-        && value.accessModel === 'platform_role';
-}
-
-function isMessagingOnboardingOpsSnapshotResponse(value: unknown): value is MessagingOnboardingOpsSnapshot {
-    return isRecord(value)
-        && typeof value.generatedAt === 'string'
-        && isMessagingOnboardingOpsFeature(value.feature)
-        && isMessagingOnboardingOpsHealth(value.health)
-        && isWebhookWindow(value.webhookWindow)
-        && isInboundQueue(value.inboundQueue)
-        && isNumberRecord(value.sessionsByState)
-        && Array.isArray(value.recentSessions)
-        && value.recentSessions.every(isOpsSession)
-        && Array.isArray(value.recentEvents)
-        && value.recentEvents.every(isOpsEvent)
-        && Array.isArray(value.recentAlerts)
-        && value.recentAlerts.every(isOpsAlert);
-}
 
 function getMessagingOnboardingMonitorResponseContext(response: Response): MessagingOnboardingMonitorLogContext {
     return {
@@ -311,6 +154,7 @@ function MessagingOnboardingMonitor() {
     const { data: session, status: sessionStatus } = useSession();
     const [loading, setLoading] = useState(true);
     const [snapshot, setSnapshot] = useState<MessagingOnboardingOpsSnapshot | null>(null);
+    const activeRequestRef = useRef<AbortController | null>(null);
     const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
 
@@ -320,37 +164,53 @@ function MessagingOnboardingMonitor() {
 
     const loadData = useCallback(async () => {
         if (!isPlatform) {
+            activeRequestRef.current?.abort();
+            setSnapshot(null);
             setLoading(false);
             return;
         }
 
+        activeRequestRef.current?.abort();
+        const controller = new AbortController();
+        activeRequestRef.current = controller;
         setLoading(true);
         try {
             const response = await fetch('/api/ops/messaging-onboarding', {
                 cache: 'no-store',
                 credentials: 'same-origin',
                 redirect: 'manual',
+                signal: controller.signal,
             });
             const nextSnapshot = await readMessagingOnboardingMonitorSnapshot(response);
+            if (activeRequestRef.current !== controller) return;
             if (!nextSnapshot) {
+                setSnapshot(null);
                 message.error(MESSAGING_ONBOARDING_MONITOR_LOAD_FAILED);
                 return;
             }
             setSnapshot(nextSnapshot);
         } catch (error) {
+            if (controller.signal.aborted || activeRequestRef.current !== controller) return;
+            setSnapshot(null);
             logRuntimeFailure(MESSAGING_ONBOARDING_MONITOR_REQUEST_FAILED, error, {
                 ...getBoundedRuntimeStringContext('endpoint', '/api/ops/messaging-onboarding'),
                 isPlatform,
             });
             message.error(MESSAGING_ONBOARDING_MONITOR_LOAD_FAILED);
         } finally {
-            setLoading(false);
+            if (activeRequestRef.current === controller) {
+                activeRequestRef.current = null;
+                setLoading(false);
+            }
         }
     }, [isPlatform]);
 
     useEffect(() => {
         if (sessionStatus === 'loading') return;
         void loadData();
+        return () => {
+            activeRequestRef.current?.abort();
+        };
     }, [loadData, sessionStatus]);
 
     const eventColumns: ColumnsType<MessagingOnboardingOpsEvent> = useMemo(() => [

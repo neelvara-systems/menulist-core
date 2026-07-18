@@ -87,6 +87,7 @@ for (const file of [
   COMPONENT_PATH,
   CONFIG_PATH,
   REPORT_PATH,
+  'src/lib/public-truth-tools/publicUrlValidation.ts',
   RENDER_PATH,
   TYPES_PATH,
   'src/styles/website.css',
@@ -99,6 +100,7 @@ for (const file of [
 const component = read(COMPONENT_PATH);
 const config = read(CONFIG_PATH);
 const report = read(REPORT_PATH);
+const publicUrlValidation = read('src/lib/public-truth-tools/publicUrlValidation.ts');
 const render = read(RENDER_PATH);
 const types = read(TYPES_PATH);
 const css = read('src/styles/website.css');
@@ -154,12 +156,13 @@ assertIncludes(report, 'externalSourcesFetched: false', 'Print & Share Tools no 
 assertIncludes(report, 'aiOrSearchChecked: false', 'Print & Share Tools no AI/search boundary');
 assertIncludes(report, 'externalPlatformUpdated: false', 'Print & Share Tools no external mutation boundary');
 assertIncludes(report, 'evidenceText: getEvidenceText(evidence)', 'Print & Share Tools evidence text contract');
-assertIncludes(report, 'function parsePublicHttpsUrl', 'Print & Share Tools public HTTPS URL parser');
-assertIncludes(report, "url.protocol !== 'https:'", 'Print & Share Tools must reject insecure URL protocols');
-assertIncludes(report, "normalized === 'localhost'", 'Print & Share Tools must reject localhost links');
-assertIncludes(report, "normalized.endsWith('.local')", 'Print & Share Tools must reject local network hostnames');
-assertIncludes(report, 'isPrivateIpv4', 'Print & Share Tools must reject private IPv4 links');
-assertIncludes(report, 'url.username || url.password', 'Print & Share Tools must reject credentialed URLs');
+assertIncludes(report, "parsePublicHttpsUrl(input.customerLink, 'print_share_tool_customer_link')", 'Print & Share Tools shared public HTTPS URL parser use');
+assertIncludes(publicUrlValidation, 'function isPrivateIpv4', 'Print & Share Tools shared parser must reject private IPv4 links');
+assertIncludes(publicUrlValidation, "url.protocol !== 'https:'", 'Print & Share Tools shared parser must reject insecure URL protocols');
+assertIncludes(publicUrlValidation, "normalized === 'localhost'", 'Print & Share Tools shared parser must reject localhost links');
+assertIncludes(publicUrlValidation, "normalized.endsWith('.local')", 'Print & Share Tools shared parser must reject local network hostnames');
+assertIncludes(publicUrlValidation, "normalized.includes(':')", 'Print & Share Tools shared parser must reject IPv6 literals');
+assertIncludes(publicUrlValidation, 'url.username || url.password', 'Print & Share Tools shared parser must reject credentialed URLs');
 assertIncludes(report, 'customerLink: normalizedCustomerLink', 'Print & Share Tools must not render invalid links into QR targets');
 assertIncludes(report, 'HTTPS public URL format was checked locally. The destination page was not opened or fetched.', 'Print & Share Tools URL evidence boundary');
 assertIncludes(report, 'Local, private, or insecure URLs are not ready for customer QR assets.', 'Print & Share Tools invalid URL evidence boundary');
@@ -242,7 +245,7 @@ assertIncludes(toolsHubDoc, 'Print & Share Assets', 'Tools Hub docs group');
 assertIncludes(toolsHubDoc, 'QR Poster Maker', 'Tools Hub docs asset route list');
 
 for (const [docPath, docContent] of docs) {
-  assertIncludes(docContent, 'Last Updated:** July 4, 2026', `${docPath} current documentation date`);
+  assertIncludes(docContent, 'Last Updated:** July 16, 2026', `${docPath} current documentation date`);
   assertIncludes(docContent, 'public', `${docPath} public access boundary`);
   assertIncludes(docContent, 'browser-local', `${docPath} browser-local boundary`);
 }

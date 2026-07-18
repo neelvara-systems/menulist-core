@@ -2,7 +2,7 @@
 
 **Status:** Required mobile support plan
 **Decision:** Partial mobile support inside MobileShell with a guarded bottom-tab entry
-**Last Updated:** July 10, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -13,6 +13,8 @@
 AI Menu Manager is highly relevant to mobile because owners make urgent menu corrections during business hours. However, not every AMM action belongs fully on mobile.
 
 Mobile AMM must support fast operating actions and approvals. Heavy authoring/review work must remain controlled and may hand off to a desktop-first or full review surface.
+
+Desktop and mobile now share the same transaction-current project-version precondition. A card prepared before another menu edit fails closed before the project write. Group approval also requires the complete same-scope command group before the one project save, preserving desktop/mobile behavior parity without another mobile read.
 
 ---
 
@@ -235,6 +237,7 @@ Mobile must not create separate AMM collections or mobile-only DAL.
 Mobile reads:
 
 - current compact session summary.
+- when the current-day summary is absent, the shared DAL may recover one latest unresolved selected-project session through the protected bounded inbox query; MobileShell stores the returned session ID and does not add a mobile-only listener, collection, or recovery path.
 - selected proposal detail when opened.
 - current project from existing mobile provider/cache.
 - selected store/project context from existing mobile shell/providers.

@@ -1,7 +1,7 @@
 # KB Generation Pipeline — Firebase Cost & Operations Tracking
 
 > **Version:** 1.1.0
-> **Last Updated:** 2026-07-12
+> **Last Updated:** 2026-07-13
 > **Audience:** Developers, Ops
 > **Source:** Codebase forensic audit
 
@@ -37,7 +37,7 @@
 
 | Purpose | Path Pattern | Size | Lifecycle |
 |---------|-------------|------|-----------|
-| Source files | `ingestion_source_files/{tId}/{sId}/{uuid}-{filename}` | Variable (PDFs: 1-50MB, Images: 0.5-10MB) | Deleted on job delete only |
+| Source files | `ingestion_source_files/{tId}/{sId}/{uuid}-{filename}` | Variable (PDFs: 1-50MB, Images: 0.5-10MB) | Retained on job delete until workspace-wide non-reference is proved |
 
 Source file uploads attach Storage custom metadata for operational inspection:
 
@@ -59,6 +59,7 @@ June 29 browser-handoff hardening changes only new-tab source-file opens in the 
 | Step | Reads | Writes | Storage | Gemini |
 |------|:-----:|:------:|:-------:|:------:|
 | Upload N files to Storage | 0 | 0 | N uploads | 0 |
+| Completed-upload URL failure compensation | 0 | 0 | 0-1 delete per failed UUID attempt | 0 |
 | Create job document | 0 | 1 | 0 | 0 |
 | [Dev] Trigger CF manually | 0 | 0 | 0 | 0 |
 | **Total** | **0** | **1** | **N uploads** | **0** |
@@ -79,10 +80,10 @@ June 29 browser-handoff hardening changes only new-tab source-file opens in the 
 | Publish transaction: job + navigation + A job articles + R replacement articles | `2 + A + R` | Up to `6A + 6R + 2` | 0 |
 | Deterministic task dispatch state | 1 | 1 | 0 |
 | Worker with reusable current embedding | 4 | 2 | 0 |
-| Worker requiring a new active embedding | 5 | 4 | 1 `gemini-embedding-2` call; legacy v1 is reused or best-effort dual-written only when rollback coverage is missing/stale |
+| Worker requiring a new active embedding | 5 | 4 | 1 `gemini-embedding-2` call |
 | Final job/cache/source/bundle transaction | 1 | 4 | 0 |
 
-`A <= 60`, `R <= 20`, and each article owns at most five generated FAQ operations, so the publish transaction is bounded to at most 482 writes. Existing generation-time embeddings are reused only when the active v2 cache version, 768 dimensions, finite non-zero `embeddingV2` vector, and normalized source hash match. Edits that change category, section, title, or content force v2 re-embedding; unchanged articles do not incur a provider call. During migration, a valid legacy `embedding` with the same source hash is retained without a second v1 call.
+`A <= 60`, `R <= 20`, and each article owns at most five generated FAQ operations, so the publish transaction is bounded to at most 482 writes. Existing generation-time embeddings are reused only when cache version `gemini-embedding-2:768:v1`, 768 dimensions, a finite non-zero `embedding` vector, and the normalized source hash match. Edits that change category, section, title, or content force re-embedding; unchanged articles do not incur a provider call.
 
 ### 3.4 Get Previous Jobs
 
@@ -90,18 +91,18 @@ June 29 browser-handoff hardening changes only new-tab source-file opens in the 
 |------|:-----:|:------:|
 | Query: tId + sId + status in [published, failed, cancelled] | N | 0 |
 
-### 3.5 Delete Unpublished Job (Recoverable Cleanup)
+### 3.5 Delete Unpublished Job (Shared-Reference-Safe Retention)
 
 | Step | Reads | Writes | Storage |
 |------|:-----:|:------:|:-------:|
 | Read job document | 1 | 0 | 0 |
 | Query exact-scope articles by jobId | N | 0 | 0 |
 | Claim deletion lease + delete unpublished article drafts | 1 | 1+N | 0 |
-| Delete source files | 0 | 0 | N deletes |
-| Persist failed cleanup or delete job under owned lease | 1 | 1 | 0 |
-| **Total** | **3+N** | **2+N** | **N deletes** |
+| Record bounded source-retention diagnostic | 0 | 0 | 0 |
+| Delete job under owned lease | 1 | 1 | 0 |
+| **Total** | **3+N** | **2+N** | **0 deletes** |
 
-Deletion is platform-only and accepts only `needs_review`, `failed`, or `cancelled` jobs with exact Answerlattice tenant/store scope. Published/active related articles block deletion so `jobId` provenance remains durable. Storage helpers return acknowledged result objects; fulfilled `{ success: false }` results are counted. Any failure retains the job with a retryable `deletionRun.status = failed`; the job document is removed only after every source cleanup succeeds and the final transaction still owns the same deletion run.
+Deletion is platform-only and accepts only `needs_review`, `failed`, or `cancelled` jobs with exact Answerlattice tenant/store scope. Published/active related articles block deletion so `jobId` provenance remains durable. The DAL accepts a valid source path already present inside the workspace, so one job cannot prove exclusive ownership of a source object. Persisted source media is retained with a bounded diagnostic; the job document is removed only after the final transaction proves the same deletion run. Failed upload-to-job handoff may still clean attempt-owned uploads before persistence.
 
 ### 3.6 Real-Time Listener (Active Jobs)
 
@@ -138,11 +139,17 @@ Deletion is platform-only and accepts only `needs_review`, `failed`, or `cancell
 
 This is a platform-admin, low-frequency feature. Do not hard-code a currency estimate in this contract because Firebase and model pricing can change; operation bounds and provider-call avoidance are the durable cost controls.
 
-The one-time v2 backfill belongs to `answerlatticeNightly`: at most 101 published active article reads, 100 article processes with concurrency 3, up to 100 provider calls and article writes when no reusable v2 vector exists, plus one migration-state write per batch. The state document is `platformSummary/answerlatticeEmbeddingV2Migration`; completed state with the current cache version makes later scheduler runs no-op.
+Because this is a pre-launch corpus, the canonical `embedding` field is written directly. There is no embedding backfill scan, migration-state write, duplicate vector index, or dual provider call in the nightly scheduler.
 
 The active runtime is the dedicated Answerlattice Firebase package. The shared MenuList Functions tree remains a documented emulator/legacy compatibility path and mirrors the same durable-set, run-ID, source-hash, vector, and finalization contracts.
 
-Job acknowledgement hardening remains cost-neutral for add/update/retry/cancel callers. The later recoverable deletion repair intentionally adds one transactional job write and final transactional read so failed Storage cleanup can remain observable and retryable instead of losing its recovery record. Review updates add no reads and now validate their exact persisted shape plus UTF-8 size before the existing write.
+Timeout recovery is also dedicated-runtime only. The existing Answerlattice nightly function scans at most 10 `processing` jobs older than 30 minutes, rejects any row without exact numeric `pId: AL`, `tId`, and `sId`, and revalidates status/scope/time inside a transaction before writing fixed failure state. A changed or completed job is skipped. A successful timeout costs the query read plus one transaction read and one write; invalid-scope candidates cost only their bounded query read. The MenuList nightly scheduler performs no `kb_generation_jobs` read or write and retains only a `moved_to_answerlattice_runtime` run-log record.
+
+QA deployment evidence (July 14, 2026): the exact MenuList scheduler trio and dedicated Answerlattice scheduled/manual-nightly pair passed their configured local predeploy lint/build where applicable. Cloud Resource Manager then returned HTTP 403 caller permission for both QA projects before any remote mutation. QA revisions remain unchanged. An authorized operator must repeat `firebase deploy --only functions:computeDecisionBlocksScores,functions:triggerDecisionBlocksScoring,functions:triggerStoreNightlyScheduler --project menulist-qa --non-interactive` and `firebase deploy --only functions:answerlattice:answerlatticeNightly,functions:answerlattice:triggerAnswerlatticeNightly --project answerlattice-qa --config firebase-answerlattice.json --non-interactive`.
+
+Job acknowledgement hardening remains cost-neutral for add/retry/cancel callers. Deletion intentionally adds one transactional job write and final transactional read so draft cleanup and operation ownership remain atomic; persisted source objects are not deleted from one-job truth. General review-field updates already use one transaction read plus one job write. July 13 review-navigation hardening keeps that **1 read + 1 write** profile but moves category/section/article navigation changes to `updateReviewJobNavigation()`, which transforms the transaction-current map instead of persisting a browser snapshot. No collection, document, Storage object, route, rule, index, Cloud Function, Firebase deployment, or Vercel deployment is added.
+
+Source uploads use attempt-unique UUID paths. If bytes upload successfully but download-URL resolution fails, the shared client helper performs one best-effort delete of that exact unreferenced attempt before returning failure. Normal successful uploads add no operation. If cleanup itself fails, bounded diagnostics retain evidence; no Firestore job exists for that failed URL handoff.
 
 July 5 session lookup diagnostics update: `getIngestionJobs()` session lookup failures now log `answerlattice_kb_generation_session_lookup_failed` and continue to return an empty non-platform list instead of opening global job reads. This adds no Firestore reads, writes, deletes, Storage operations, routes, rules, indexes, schema fields, Cloud Functions, owner settings, Firebase deployment, or Vercel deployment.
 

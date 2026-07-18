@@ -4,6 +4,8 @@
 **Target Feature:** continuous-menu-intelligence  
 **Status:** Historical logic verification evidence; not current launch certification
 
+> **Superseded runtime authority (July 16, 2026):** Use `continuous-menu-intelligence_spec.md`, `continuous-menu-intelligence_impl.md`, and `../decision-intelligence/decision-intelligence_verification-2026-07-16.md`. The hiding-based DAL examples, 02:30 UTC references, formulas, and line numbers below are retained only as historical evidence.
+
 > **Current release boundary (July 2, 2026):** This logic-verification report preserves January 2026 source evidence only. It is not current release approval. Current launch approval remains gated by the active production-readiness audit, External Certification Runbook evidence, `npm run verify:agent-readiness`, `npm run verify:functions-deploy-preflight`, scoped `menulist-qa` deploy evidence where Cloud Functions logic changes, current scheduler behavior checks, and browser/device QA where the release uses CMI surfaces.
 
 ---

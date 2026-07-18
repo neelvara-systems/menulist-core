@@ -51,12 +51,14 @@ function verifyRoute(route) {
     'function buildSafeModeReasonSummary',
     'function buildCostAlertResponseId',
     "createHash('sha256').update(docId).digest('hex').slice(0, 12)",
+    'parseCostPostureDate,',
+    'summarizeBusinessHealthCostRecords,',
+    'summarizeExtractionCostRecords,',
     'function getTimestampParseContext',
     "logRuntimeFailure('platform_cost_posture_timestamp_parse_failed'",
     "fallbackPolicy: 'omit_timestamp'",
     'reportedTimestampParseShapes.add(shapeKey)',
-    'return date instanceof Date && Number.isFinite(date.getTime()) ? date : null',
-    'if (value instanceof Date) return Number.isFinite(value.getTime()) ? value : null;',
+    'parseCostPostureDate(value, source, logTimestampParseFailure)?.toISOString() || null',
     'async function readDocuments(',
     ".orderBy(orderField, 'desc')",
     '.limit(readLimit)',
@@ -72,6 +74,9 @@ function verifyRoute(route) {
     "getRateLimitForFeature('DATA_READ')",
     'const userRateLimitHash = hashPublicRateLimitValue(userId);',
     'key: `platform-cost-posture:${userRateLimitHash}`',
+    'failClosedOnProviderError: true',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
+    "Authorization Failed - Platform Cost Posture Current Role",
     "logger.security('Rate Limit Exceeded - Platform Cost Posture'",
     "getBoundedRuntimeStringContext('userId', userId)",
     "'Retry-After': String(waitSeconds)",
@@ -81,6 +86,10 @@ function verifyRoute(route) {
     'id: buildCostAlertResponseId(doc.id)',
     'title: buildCostAlertTitle(data)',
     'message: buildCostAlertMessage(data)',
+    'const generatedAt = new Date();',
+    'summarizeExtractionSignal(extractionRead.docs, periodStart.getTime(), generatedAt.getTime(), periodLabel)',
+    'summarizeBusinessHealthSignal(businessHealthRead.docs, periodStart.getTime(), generatedAt.getTime(), periodLabel)',
+    'generatedAt: generatedAt.toISOString()',
     "status: 'pending' as const",
     'blocksBillForecast: true',
     'buildGuardrails(systemConfig.safeMode, billingExport.blocksBillForecast, sourceCoverage)',
@@ -94,6 +103,7 @@ function verifyRoute(route) {
     'QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()))',
     "getRateLimitForFeature('DATA_READ')",
     'const rateLimit = await checkRateLimit({',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
     'const [systemConfig, alertRead, extractionRead, businessHealthRead] = await Promise.all([',
     'return NextResponse.json({ data });',
   ], 'Platform Cost Posture API admission/read order');
@@ -111,6 +121,7 @@ function verifyRoute(route) {
     '.delete(',
     'writeBatch',
     'runTransaction',
+    'data.realCostPaise != null ? safeNumber(data.realCostPaise) : safeNumber(data.totalCharge)',
   ].forEach((token) => assertNotIncludes(route, token, 'Platform Cost Posture API boundary'));
 
   assertNotMatches(route, /\.collection\([^)]*\)\s*\.add\s*\(/, 'Platform Cost Posture API Firestore write boundary');
@@ -125,6 +136,9 @@ function verifyDal(dal) {
     'PLATFORM_COST_POSTURE_RESPONSE_JSON_MAX_BYTES = 256 * 1024',
     'function createPlatformCostPostureLoadError(status?: number): Error',
     'function isPlatformCostPostureData(value: unknown): value is PlatformCostPostureData',
+    'function isNonNegativeFiniteNumber(value: unknown): value is number',
+    'function isNonNegativeSafeInteger(value: unknown): value is number',
+    'function isValidIsoTimestamp(value: unknown): value is string',
     'isBillingExportStatus(value.billingExport)',
     'isSafeModeStatus(value.safeMode)',
     'isCostTotals(value.totals)',
@@ -139,6 +153,8 @@ function verifyDal(dal) {
     "cache: 'no-store'",
     "credentials: 'same-origin'",
     "redirect: 'manual'",
+    'signal: options.signal',
+    'if (!Number.isSafeInteger(days) || days < 1 || days > 90)',
     'logRuntimeFailure(\n      PLATFORM_COST_POSTURE_RESPONSE_PARSE_FAILED',
     'logRuntimeFailure(\n      PLATFORM_COST_POSTURE_RESPONSE_REJECTED',
     'logRuntimeFailure(\n      PLATFORM_COST_POSTURE_RESPONSE_INVALID',
@@ -157,11 +173,52 @@ function verifyDal(dal) {
   ].forEach((token) => assertNotIncludes(dal, token, 'Platform Cost Posture browser DAL boundary'));
 }
 
+function verifyAggregation(aggregation, aggregationTest, clientTest) {
+  [
+    'export function parseCostPostureDate(',
+    'export function getCostPostureDocumentDate(',
+    'export function readNonNegativeFiniteNumber(',
+    'export function readNonNegativeSafeInteger(',
+    'export function summarizeExtractionCostRecords(',
+    'export function summarizeBusinessHealthCostRecords(',
+    'if (!date || date.getTime() < periodStartMs || date.getTime() > periodEndMs) return;',
+    'function addWithoutOverflow(current: number, value: number): number',
+    'readOptionalNonNegativeInteger(data.providerCallCount) ?? 1',
+    'readNonNegativeSafeInteger(data.firestoreReadCount)',
+  ].forEach((token) => assertIncludes(aggregation, token, 'Platform Cost Posture aggregation boundary'));
+
+  [
+    'aggregate.realCostPaise += readNonNegativeFiniteNumber(data.totalCharge)',
+    'Number(value || 0)',
+    'return !date ||',
+  ].forEach((token) => assertNotIncludes(aggregation, token, 'Platform Cost Posture aggregation boundary'));
+
+  [
+    'totalCharge must never substitute for provider cost',
+    'createdAt: new Date(\'2026-08-01T00:00:00.000Z\')',
+    "realCostPaise: '400'",
+    'toDate() {',
+    'Number.MAX_SAFE_INTEGER + 1',
+  ].forEach((token) => assertIncludes(aggregationTest, token, 'Platform Cost Posture aggregation regression tests'));
+
+  [
+    'invalid client lookbacks must fail before network access',
+    "safeMode: { ...validData.safeMode, alertsMutedUntil: 'not-a-date' }",
+    'data: { ...validData, periodDays: 7 }',
+    'knownInternalCostPaise: -1',
+    "assert.equal(error.message, 'Failed to load platform cost posture')",
+  ].forEach((token) => assertIncludes(clientTest, token, 'Platform Cost Posture client regression tests'));
+}
+
 function verifyDesktop(component) {
   [
     "platformRole === 'PLATFORM'",
     "redirect('/dashboard')",
-    'getPlatformCostPosture(days)',
+    'getPlatformCostPosture(days, { signal: controller.signal })',
+    'const activeRequestRef = useRef<AbortController | null>(null);',
+    'activeRequestRef.current?.abort();',
+    'if (controller.signal.aborted || activeRequestRef.current !== controller) return;',
+    'setData(null);',
     "logRuntimeFailure('platform_cost_posture_load_failed'",
     "message.error('Failed to load platform cost posture')",
     'Known internal cost signals for {data.periodDays} days. Whole-bill forecasting waits for Cloud Billing export.',
@@ -251,7 +308,7 @@ function verifyTypes(types) {
 function verifyDocsAndPackage(packageJson, readme, implDoc, firebaseDoc, mobileDoc, auditDoc, changelog) {
   assertIncludes(
     packageJson,
-    '"verify:platform-cost-posture-boundary": "node scripts/verification/verify-platform-cost-posture-boundary.js"',
+    '"verify:platform-cost-posture-boundary": "node scripts/verification/verify-platform-cost-posture-boundary.js && npm run test:platform-cost-posture-aggregation && npm run test:platform-cost-posture-client"',
     'package.json platform cost posture verifier',
   );
 
@@ -266,7 +323,7 @@ function verifyDocsAndPackage(packageJson, readme, implDoc, firebaseDoc, mobileD
 
   [
     'Source gate: `npm run verify:platform-cost-posture-boundary`',
-    'feature flag, platform auth, query validation, DATA_READ rate limit',
+    'feature flag, signed platform admission, fail-closed DATA_READ rate limit, exact current persisted platform-user reauthorization, query validation',
     'fixed read limits',
     'hashed alert row IDs',
     'SAFE_MODE reason summary',
@@ -309,6 +366,9 @@ function verifyPlatformCostPostureBoundary() {
     packageJson: read('package.json'),
     route: read('src/app/api/platform/cost-posture/route.ts'),
     dal: read('src/database/ops/costPosture.ts'),
+    aggregation: read('src/lib/ops/costPostureAggregation.ts'),
+    aggregationTest: read('scripts/verification/test-platform-cost-posture-aggregation.ts'),
+    clientTest: read('scripts/verification/test-platform-cost-posture-client.ts'),
     desktop: read('src/components/templates/main-app/platform/costPosture/index.tsx'),
     mobileShell: read('src/components/mobile/MobileShell.tsx'),
     mobileMore: read('src/components/mobile/screens/MobileMoreScreen.tsx'),
@@ -327,6 +387,7 @@ function verifyPlatformCostPostureBoundary() {
 
   verifyRoute(files.route);
   verifyDal(files.dal);
+  verifyAggregation(files.aggregation, files.aggregationTest, files.clientTest);
   verifyDesktop(files.desktop);
   verifyMobileAndNavigation(
     files.mobileShell,

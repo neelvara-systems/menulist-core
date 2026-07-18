@@ -3,6 +3,7 @@ import { FEATURE_FLAGS } from '@config/features';
 import { normalizeBaseUrl } from '@constant/urls';
 import { getBoundedStoreStringContext, logStoreDataFailure } from '@database/stores/storeDiagnostics';
 import { AUTH_BROWSER_REQUEST_POLICY } from '@lib/auth/browserRequestPolicy';
+import { normalizeVercelDomainDnsRecords, type VercelDomainDnsRecord } from '@lib/domains/vercelDnsRecords';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { getBoundedBusinessSettingsStringContext, logBusinessSettingsFailure } from '../utils/businessSettingsDiagnostics';
 import { Alert, Button, Card, Col, Divider, Input, Row, Space, Steps, Tag, Typography, notification, theme } from 'antd';
@@ -19,11 +20,7 @@ interface CustomDomainTabProps {
 
 type DomainStatus = 'none' | 'adding' | 'pending' | 'verified' | 'error';
 
-interface DnsRecord {
-    type: string;
-    name: string;
-    value: string;
-}
+type DnsRecord = VercelDomainDnsRecord;
 
 type ComplianceTab = 'privacy' | 'terms' | 'refund';
 type CompliancePageData = { content: string; customContent?: string; source: string; systemContent?: string } | null;
@@ -42,16 +39,24 @@ type DesktopCustomDomainAddResponse = {
     domain?: unknown;
     verified?: unknown;
     verification?: unknown;
+    projectDomain?: unknown;
+    claimReleasePending?: unknown;
+    providerCleanupPending?: unknown;
+    refreshPending?: unknown;
 };
 type DesktopCustomDomainStatusResponse = {
     hasDomain?: unknown;
     domain?: unknown;
     verified?: unknown;
     config?: unknown;
+    projectDomain?: unknown;
 };
 type DesktopCustomDomainRemoveResponse = {
     removed?: unknown;
     success?: unknown;
+    claimReleasePending?: unknown;
+    providerCleanupPending?: unknown;
+    refreshPending?: unknown;
 };
 
 const DESKTOP_CUSTOM_DOMAIN_RESPONSE_JSON_MAX_BYTES = 32 * 1024;
@@ -434,37 +439,16 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
             setStatus('pending');
             setDomainInput(data.domain);
 
-            // Extract DNS records from Vercel config
-            const config = data.verification as any;
-            if (config) {
-                const records: DnsRecord[] = [];
-                // CNAME record for the domain
-                records.push({
-                    type: 'CNAME',
-                    name: data.domain.startsWith('www.') ? 'www' : '@',
-                    value: 'cname.vercel-dns.com',
-                });
-                // If there's a TXT verification record
-                if (config.verificationRecords) {
-                    config.verificationRecords.forEach((r: any) => {
-                        records.push({
-                            type: r.type || 'TXT',
-                            name: r.domain || '_vercel',
-                            value: r.value || r.reason || '',
-                        });
-                    });
-                }
-                setDnsRecords(records);
-            } else {
-                // Default CNAME instruction
-                setDnsRecords([{
-                    type: 'CNAME',
-                    name: data.domain.startsWith('www.') ? 'www' : '@',
-                    value: 'cname.vercel-dns.com',
-                }]);
-            }
+            setDnsRecords(normalizeVercelDomainDnsRecords(
+                data.verification,
+                data.projectDomain,
+                data.domain,
+            ));
 
             onStoreUpdate?.({ customDomain: data.domain, domainVerified: data.verified === true });
+            if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
+                notification.warning({ message: 'Domain saved. Background refresh is still finishing.' });
+            }
         } catch (err: any) {
             logStoreDataFailure(
                 'desktop_custom_domain_add_failed',
@@ -492,7 +476,10 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
             if (!response.ok) {
                 throw createStatusError('desktop_custom_domain_status_load_rejected', response.status);
             }
-            if (typeof data?.hasDomain !== 'boolean' || (data.hasDomain && !isNonEmptyString(data.domain))) {
+            if (
+                typeof data?.hasDomain !== 'boolean'
+                || (data.hasDomain && (!isNonEmptyString(data.domain) || typeof data.verified !== 'boolean'))
+            ) {
                 logStoreDataFailure(
                     'desktop_custom_domain_status_response_invalid',
                     createStatusError('desktop_custom_domain_status_response_invalid', response.status),
@@ -511,6 +498,13 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                 setStatus('none');
                 setError('No custom domain is connected.');
             } else {
+                setStatus('pending');
+                setDnsRecords(normalizeVercelDomainDnsRecords(
+                    data.config,
+                    data.projectDomain,
+                    isNonEmptyString(data.domain) ? data.domain : domainInput,
+                ));
+                onStoreUpdate?.({ domainVerified: false });
                 setError('Domain not verified yet. Please check your DNS settings and try again in a few minutes.');
             }
         } catch (error) {
@@ -557,6 +551,9 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
             setDomainInput('');
             setDnsRecords([]);
             onStoreUpdate?.({ customDomain: null, domainVerified: false });
+            if (data.providerCleanupPending === true || data.claimReleasePending === true || data.refreshPending === true) {
+                notification.warning({ message: 'Domain removed. Background cleanup is still finishing.' });
+            }
         } catch (error) {
             logStoreDataFailure('desktop_custom_domain_remove_failed', error, buildCustomDomainLogContext(
                 storeDetails,
@@ -644,6 +641,14 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                         <Title level={5} style={{ margin: '0 0 12px 0', fontSize: 14 }}>
                             DNS Records to Add
                         </Title>
+                        {dnsRecords.length === 0 ? (
+                            <Alert
+                                message="DNS records are not available yet. Check verification again in a moment."
+                                showIcon
+                                style={{ marginBottom: 12 }}
+                                type="info"
+                            />
+                        ) : null}
                         <div style={{ overflowX: 'auto' }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                                 <thead>
@@ -655,11 +660,7 @@ function CustomDomainTab({ scrollRef, storeDetails, onStoreUpdate }: CustomDomai
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {(dnsRecords.length > 0 ? dnsRecords : [{
-                                        type: 'CNAME',
-                                        name: '@',
-                                        value: 'cname.vercel-dns.com',
-                                    }]).map((record, i) => (
+                                    {dnsRecords.map((record, i) => (
                                         <tr key={i} style={{ borderBottom: `1px solid ${token.colorBorder}` }}>
                                             <td style={{ padding: '8px' }}>
                                                 <Tag color="blue">{record.type}</Tag>

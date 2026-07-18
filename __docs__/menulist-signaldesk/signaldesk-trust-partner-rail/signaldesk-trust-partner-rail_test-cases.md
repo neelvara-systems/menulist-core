@@ -42,6 +42,8 @@
 | SDTP-T061 | Owner submits current list from partner CTA. | Outcome attribution links to partner/niche/deal. |
 | SDTP-T062 | Metrics entered without post URL or source note. | Held for review. |
 | SDTP-T063 | Cost per activated business exceeds cap. | Renewal recommendation is hold or cut. |
+| SDTP-T064 | Two identical metric observations race | One actor/key transaction owns the metric, demand increment, timeline, audit, control, and cost effects; the other replays durable truth. |
+| SDTP-T065 | Metric references a missing or different partner's deliverable | Rejected before metric or aggregate writes. |
 
 ## Security And Access Tests
 

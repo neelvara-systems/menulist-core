@@ -1,37 +1,39 @@
-# Pricing Integrity System - Firebase Cost Tracking
+# Pricing Integrity System - Firebase and Cost
 
-**Feature:** Cross-surface price consistency
-**Status:** Current cost boundary, not current launch certification
-**Last Updated:** July 2, 2026
+**Status:** Current source/cost boundary, not current launch certification
+**Last updated:** July 17, 2026
 
----
+## Active operation ledger
 
-## Current Firebase Operations
-
-| Operation | Current path | Cost boundary |
-| --- | --- | --- |
-| Project save | Existing project document write through `updateProject()` | Existing owner edit cost |
-| Public menu/OBP cache revalidation | `/api/revalidate/menu` call from `revalidatePublicClientCacheForProject()` | No extra Firestore collection |
-| Digital Screens refresh signal | `platformSummary/campaigns_{storeId}.screen.contentVersion` increment when screens are configured | One bounded summary write when applicable |
-| On-demand PDF generation | Browser-local generation from loaded project data | No background job write |
-
-## Dormant/Reserved Operations
-
-| Operation | Current boundary |
+| Operation | Active cost |
 | --- | --- |
-| Background PDF regeneration jobs | Not active; `ENABLE_BACKGROUND_PDF_REGEN = false` in `src/lib/pricing/pdfQueue.ts` |
-| `pricingIntegrity.pdf.status` writes | Not reached by editor saves because `runPricingIntegrity()` has no current caller |
-| MOL price-change events from pricing engine | Reserved for the dormant `runPricingIntegrity()` path |
-| Cloud Function PDF worker | Not active in the current Pricing Integrity path |
+| Item/option edit through project update | Existing project write; price normalization is in memory |
+| Project publish | Existing project write/transaction path; no price-specific document |
+| Linked-outlet standard or override save | Existing route transaction/batch and entitlement checks; no new price read/write |
+| Public menu/OBP invalidation | Existing `/api/revalidate/menu` request after successful mutation |
+| Configured Digital Screens touch | Existing bounded `platformSummary/campaigns_{storeId}` version update where applicable |
+| Public/menu/PDF/screen display projection | Uses already loaded project/screen data; no price-specific Firestore read |
+| On-demand PDF | Browser-local generation and scoped local history; no job document |
 
-July 5, 2026 PDF failure reason persistence update: `markPDFFailed()` remains dormant with no current editor-save caller, but if a future caller uses the scaffold it stores only a bounded local failure code in `pricingIntegrity.pdf.lastFailureReason`. Arbitrary caller text collapses to `pricing_pdf_generation_failed`, and diagnostics keep raw input as presence/length metadata only. This adds no reads, writes, deletes, Storage operations, Cloud Functions, API routes, indexes, rules, queue behavior, public cache invalidation, owner/customer UI, or deploy requirement beyond the dormant write that already existed if the scaffold is explicitly called.
+The July 16 normalization, option-price projection, filters, quality summaries, and AI/bulk arithmetic fixes add zero Firestore reads, writes, deletes, collections, indexes, Storage objects, Cloud Functions, or scheduler tasks.
 
-## Current Cost Claim
+## Dormant operations
 
-Current incremental Pricing Integrity cost is limited to existing project-save writes, public cache revalidation, and Digital Screens content-version touches where screens are configured. There is no active background PDF queue cost.
+- `runPricingIntegrity()` is not called by project save/publish.
+- `ENABLE_BACKGROUND_PDF_REGEN` is false.
+- No current owner action writes a PDF regeneration job.
+- Dormant MOL/PDF-integrity writes are not counted as active runtime cost.
 
-## Verification
+There is no active background PDF queue cost.
 
-This cost boundary is guarded by `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, and `npm run verify:menulist-api-tenant-safety`. Release approval still requires the active production-readiness audit, External Certification Runbook evidence, authenticated desktop/mobile price-change QA, public menu and PDF artifact QA, Digital Screens refresh QA where applicable, target deploy evidence, and production-host smoke.
+## Scale boundary
 
-If a future release wires `runPricingIntegrity()` or enables background PDF regeneration, this file must be updated with exact reads, writes, storage paths, queue behavior, scheduler/function behavior, and scoped Firebase deploy evidence.
+Price validation is linear over the already loaded project mutation and does not fan out by tenant/store. Public and screen projections reuse bounded project/screen payloads. The implementation deliberately avoids a per-price ledger, observer, worker, or duplicate summary because existing project truth and cache/version propagation are sufficient.
+
+The July 17 cost pass found no justified additional Firebase artifact. Project subcollections use store IDs as their terminal collection names, so a broad price-field collection-group index exemption is not available without changing the canonical project path. Adding a price mirror, summary, queue, or per-item document would increase writes and consistency risk for no active query benefit. Keep price truth inside the existing project mutation and add a new read model only if a measured bounded query cannot use the loaded project data.
+
+## Deployment boundary
+
+This audit changes no Firestore rules, indexes, Storage rules, or Cloud Function source, so it has no Firebase infrastructure deploy step. The app code still requires an approved app release before hosted behavior changes.
+
+This document is not current launch certification. Release approval requires the production-readiness audit, External Certification Runbook evidence, `npm run verify:pricing-integrity-boundary`, `npm run verify:agent-readiness`, `npm run verify:menulist-api-tenant-safety`, authenticated desktop/MobileShell checks, public menu and PDF artifact QA, configured-screen QA, target deploy evidence, and production-host smoke.

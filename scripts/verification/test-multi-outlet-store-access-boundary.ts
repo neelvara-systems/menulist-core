@@ -6,7 +6,7 @@ import {
 import {
     removeCompensatedStoreFromMappings,
     removeCompensatedStoreId,
-} from '../../src/lib/onboarding/compensateFailedOnboarding';
+} from '../../src/lib/onboarding/compensatedStoreMappings';
 
 for (const value of ['user-1', 'oauth_abc123', 42]) {
     assert.equal(normalizeUserStoreAccessDocumentId(value), String(value));

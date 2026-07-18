@@ -1,7 +1,7 @@
 # Answerlattice System Inventory
 
 > **Status:** Codebase-first inventory  
-> **Last Updated:** 2026-07-11
+> **Last Updated:** 2026-07-18
 > **Source of Truth:** Runtime code, routes, constants, data-access modules, Cloud Functions, Firebase rules/indexes, then existing docs  
 > **Product Boundary:** Answerlattice is a separate product. MenuList is one independent client integration and shared codebase neighbor.
 
@@ -79,18 +79,22 @@ Management routes are gated by Answerlattice product scope or platform access. C
 | Install Center | Implemented | `src/app/(answerlattice)/answerlattice/install-center/page.tsx`, `src/components/templates/answerlattice/install/AnswerlatticeInstallCenter.tsx`, `src/lib/answerlattice/installContract/contract.ts`, `/api/answerlattice/widget-config`, `/api/answerlattice/widget-agent-kit` | Widget config/runtime status + optional activation summary | Keeps the AI install packet, current setup snapshot, framework snippets, public docs links, and verification checklist in one dashboard route; setup reads use no-store same-origin manual-redirect browser requests before bounded response parsing. |
 | Context-aware support mounting | Implemented | `src/components/templates/main-app/helpCenter/HeroSearchBar.tsx`, `src/lib/answerlattice/productSurfaceContent.ts`, `src/app/api/helpCenter/search-kb/route.ts`, widget APIs | Safe context payload + product surface summary | Passes page/feature/workflow context into Answerlattice without trusting raw client data as tenant scope. Help Center search rate-limits before parsing a 64KB bounded JSON body and invoking `coreSearch`. |
 | Widget management | Implemented | `src/components/templates/answerlattice/widgetManagement/AnswerlatticeWidgetManagement.tsx`, `src/app/api/answerlattice/widget-config/route.ts`, `src/app/api/answerlattice/widget-key/route.ts`, `src/app/api/answerlattice/widget-activity/route.ts`, `src/lib/answerlattice/widgetConfig.ts` | `stores/{sId}.answerlatticeWidgetConfig`, key hash fields, runtime status, `aiSearchHistory` widget rows | Configure appearance, install snippet, allowed origins, blocked routes, history, mobile visibility, runtime status, and recent widget questions. |
-| Embedded public widget runtime | Implemented | `public/widget/answerlattice-widget.js`, `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/config/route.ts`, `src/app/api/widget/search/route.ts`, `src/app/api/widget/feedback/route.ts` | Store widget config, API key hash, AI search history with `mountContext`, KB/canonical retrieval | Gives client products page-aware support through one embeddable script. |
+| Embedded public widget runtime | Implemented | `public/widget/answerlattice-widget.js`, `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/config/route.ts`, `src/app/api/widget/search/route.ts`, `src/app/api/widget/feedback/route.ts`, `src/app/api/widget/guidance-outcome/route.ts` | Store widget config, API key hash, AI search history with `mountContext`, KB/canonical retrieval, existing signal events | Gives client products page-aware support through one embeddable script and can record a canonical-procedure terminal outcome after public admission. |
 | Help center | Implemented | `src/app/(main)/help-center/`, `src/components/templates/main-app/helpCenter/`, `/answerlattice/help` compatibility route, `/api/answerlattice/public-content` | Cached KB, FAQ, changelog, tickets, search history | Public/customer support home reused by client support surfaces. It is not a primary owner dashboard navigation item; owners manage source content through KB, FAQ, Changelog, Tickets, Support Board, and Widget & Hosted Help. KB categories, article reads, FAQ lists, and changelog pages use tenant/store-tagged public cache with owner-write invalidation. |
 | Feedback, ratings, and feature requests | Implemented | `src/components/templates/main-app/helpCenter/ShareFeedbackView.tsx`, `src/components/templates/main-app/helpCenter/FeatureRequests.tsx`, `src/components/templates/answerlattice/feedback/AnswerlatticeFeedbackReview.tsx`, `src/database/feedback/index.ts`, `src/app/(answerlattice)/answerlattice/feedback/page.tsx`, `src/app/(main)/platform/feedback-admin/page.tsx`, `/answerlattice/help` | `feedback` in Answerlattice Firebase via `answerlatticeRequestBodyComposer`, `answerlattice_signalEvents(type='feedback')`, `answerlattice_supportBoardCards(sourceType='feedback')`, plus `article_feedback/{tId}/{sId}` and `changelog_feedback/{tId}/{sId}` | Customer help surfaces include a Share Feedback tab for ratings, product-area issues, feature requests, and suggestions. Owners review rows at `/answerlattice/feedback`; important feedback can be added directly to Support Board or synced as a signal, then turned into governed answer proposals after entity linking. |
 | Hosted public Help Center | Implemented | `src/app/answerlattice-hosted-help/`, `src/components/templates/answerlattice/hostedHelp/`, `src/app/api/answerlattice/hosted-help-settings/route.ts`, `src/lib/answerlattice/hostedHelpServer.ts` | `stores/{sId}.hostedHelpConfig`, `answerlattice_publicHelpSites/{domain}`, cached KB/FAQ/changelog | Renders anonymous docs, FAQ, changelog, sitemap, and robots on domains such as `help.example.com` without exposing authenticated tickets/chat/user data. |
 | Knowledge Intake | Implemented | `src/components/templates/answerlattice/knowledgeIntake/AnswerlatticeKnowledgeIntake.tsx`, `src/lib/answerlattice/knowledgeIntake.ts`, `src/app/api/answerlattice/knowledge-intake/*` | `answerlattice_knowledgeIntakeJobs`, `answerlattice_knowledgeSources`, `answerlattice_intakeReviewItems`, existing KB/FAQ/product surface/mutation proposal destinations | Imports selected links, files, screenshots/media, pasted content, support macros, and repeated replies into reviewed drafts. Browser intake requests use no-store same-origin manual-redirect policy before bounded acknowledgement parsing. Repeated replies create FAQ/canonical proposal drafts only and add no connector, Storage, scheduler, or AI call. |
 | Knowledge base explorer | Implemented | `src/app/(answerlattice)/answerlattice/docs/page.tsx`, `src/app/(answerlattice)/answerlattice/knowledge-base/page.tsx`, KB templates | `kb_categories`, `kb_articles` | Browse and manage support documentation. Article embedding generation checks safe mode and AI operation limits before a 256KB bounded body parse. |
 | KB generation pipeline | Implemented | `src/app/(answerlattice)/answerlattice/kb-generation/page.tsx`, `src/components/templates/platform/KBGeneration/`, `functions-answerlattice/src/logic/*` | `kb_generation_jobs`, `kb_articles`, `kb_categories`, storage | Upload, generate, review, publish, and embed KB content through start/retry/finalize triggers plus deterministic embedding tasks, typed leases, bounded retry settlement, and article-scoped FAQ IDs. |
+| FAQ management | Implemented | `src/app/(answerlattice)/answerlattice/faqs/page.tsx`, `src/components/templates/answerlattice/faqManagement/AnswerlatticeFaqManagement.tsx`, `src/database/answerlattice/faqs.ts`, `src/lib/answerlattice/faqRetrieval.ts` | `answerlattice_faqs`, linked `kb_articles`, product-surface summaries, FAQ feedback | Gives owners a governed short-answer layer linked to detailed articles, entities, tags, and product surfaces. Published FAQs can serve after canonical miss; article changes move linked FAQs back to review instead of silently retaining stale truth. |
 | Product ontology | Implemented | `src/database/answerlattice/entities.ts`, `src/lib/answerlattice/entityExtraction.ts`, `src/components/templates/answerlattice/governance/EntityManagementDashboard.tsx` | `answerlattice_entities`, `answerlattice_entityRelations`, `answerlattice_entitySearchIndex`, `answerlattice_entityCandidates` | Models product features, plans, roles, workflows, states, integrations, and errors as first-class concepts. Manual entity extraction resolves scope, checks safe mode, rate-limits before permission/body/provider work, and caps JSON bodies at 256KB. Article-save extraction triggers stay non-blocking while using no-store same-origin manual-redirect requests plus bounded acknowledgements. Entity creation marks scheduler tenant-summary discovery state non-blockingly through a no-store same-origin manual-redirect marker that requires bounded `{ success: true }` acknowledgement and logs fixed bounded diagnostics if that marker fails. |
 | Entity candidates | Implemented | `src/database/answerlattice/entityCandidates.ts`, `src/components/templates/answerlattice/EntityCandidateReview.tsx`, `functions-answerlattice/src/answerlattice/onboardingBootstrap.ts` | `answerlattice_entityCandidates` | Stages extracted concepts for human approval before becoming ontology entities. |
 | Canonical answer engine | Implemented | `src/database/answerlattice/canonicalAnswers.ts`, `src/lib/answerlattice/canonicalRetrieval.ts`, `src/lib/answerlattice/governanceServer.ts`, `/api/answerlattice/governance/actions`, `CanonicalAnswerEditor.tsx` | canonical answers, mutation proposals, audit logs, cache/source/bundle versions, entities, releases | Retrieves approved scoped answers before fallback. Plan, role, and state are strict eligibility constraints; review, missing-context, and out-of-scope states stop before FAQ/RAG. Browser create/update is denied; manual creates/edits become proposals and approval applies canonical truth, audit snapshot, and invalidation state in one server transaction. |
-| Guided workflow answer model | Implemented but rollout-gated | `src/lib/answerlattice/procedureValidation.ts`, canonical answer types | `answerlattice_canonicalAnswers.content.procedure` | Adds ordered procedures, prerequisites, warnings, and action metadata to canonical answers. |
+| Answer Tests and release regression | Implemented | `src/app/(answerlattice)/answerlattice/answer-tests/page.tsx`, `src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx`, `src/lib/answerlattice/answerTestServer.ts`, `src/app/api/answerlattice/answer-tests/*` | `platformSummary/answerTests_{tId}_{sId}`, canonical/FAQ/RAG retrieval, releases, source versions, AI operation accounting | Stores up to 100 governed support cases, runs deterministic canonical or capped full-runtime evaluations, checks expected source/citations/reference IDs, compares mutation proposals, and blocks release proof when critical cases regress. Tests never publish or mutate live answers. |
+| First Trusted Answers / product starter pack | Implemented | `src/lib/answerlattice/firstTrustedAnswerPackServer.ts`, `src/lib/answerlattice/answerTestStarterPack.ts`, `src/components/templates/answerlattice/answerTests/AnswerlatticeAnswerTests.tsx` | Existing Answer Tests summary, Knowledge Intake review items, canonical Governance, support-credit accounting | Turns ten priority founder questions into editable tests and review drafts. Product-specific generated answers remain intake drafts and require canonical approval; generic starter questions are prompts, not product truth. External founder recruitment and proof collection remain distribution work, not runtime claims. |
+| Guided workflows and resolution runtime | Implemented; workspace opt-in | `src/lib/answerlattice/procedureValidation.ts`, `src/lib/answerlattice/guidedResolutionContracts.ts`, `public/widget/answerlattice-widget.js`, `src/app/widget/[apiKey]/WidgetClient.tsx`, `src/app/api/widget/guidance-outcome/route.ts` | `answerlattice_canonicalAnswers.content.procedure`, `stores.widgetConfig.guidedResolutionEnabled`, canonical widget search history, existing signal events | Adds approved ordered procedures plus controlled semantic target highlighting and client-verified event advancement. It never clicks controls or changes client product state. |
 | Instant cache + freshness manifest | Implemented | `src/lib/answerlattice/instantCache.ts`, `src/lib/answerlattice/cacheFreshness.ts`, `src/lib/answerlattice/cacheVersion*.ts`, `functions-answerlattice/src/answerlattice/cacheVersionManifest.ts` | Upstash Redis when configured, `answerlattice_cacheVersions` | Caches repeated canonical hits in the `canon:v2` plan/role/state namespace while checking compact source versions. The `rag-v4` Firestore result cache includes canonical source version so older FAQ/RAG responses yield to governed truth changes. |
+| Bounded hybrid evidence retrieval | Implemented but disabled by default | `src/lib/answerlattice/hybridEvidenceRetrieval.ts`, `src/lib/search/searchCore.ts`, `src/config/features.ts` | Tenant-scoped entities and active published entity-linked KB articles | After canonical and approved FAQ miss, eligible technical questions can add one exact-literal/entity-linked KB query and deterministic fusion with the existing vector candidates. It stays off until the required index is deployed/read back and representative Answer Tests prove no citation, abstention, or unsupported-claim regression. |
 | Compiled context distribution | Implemented | `src/lib/answerlattice/contextBundleBuilderServer.ts`, `src/lib/answerlattice/compiledContext.ts`, `src/app/api/answerlattice/bundles/*`, `functions-answerlattice/src/answerlattice/contextBundleBuilder.ts` | `platformSummary/sourceVersions_*`, `platformSummary/bundleManifest_*`, Firebase Storage `answerlattice-context/*` | Compiles approved read-heavy context into immutable public/private JSON bundles for widget, public API, MCP, and scheduler-safe serving. Public proxy reads and private server object reads are size-bounded before JSON parsing. |
 | Centralized scheduler | Implemented | `functions-answerlattice/src/answerlattice/answerlatticeMasterScheduler.ts`, `functions-answerlattice/src/answerlattice/schedulerTime.ts`, `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` | `platformSummary/answerlatticeTenantsSummary`, `platformSummary/answerlatticeSchedulerState`, `platformSummary/answerlatticeNightlyState_*`, `platformSummary/answerlatticeNightlyLock_*` | Keeps one scheduled Answerlattice export while filtering workspaces by local timezone/support-day end time and locking each workspace/date. |
 | Drift governance | Implemented | `src/lib/answerlattice/driftDetection.ts`, `src/lib/answerlattice/governanceServer.ts`, `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts`, `DriftDashboard.tsx` | canonical answers, entities, releases, signals, audit/cache/source/bundle versions | Flags version mismatch, signal anomaly, scope conflict, and deprecated entity drift. Detection only sets drift; clearing requires an explicit server-owned validation event. |
@@ -101,9 +105,17 @@ Management routes are gated by Answerlattice product scope or platform access. C
 | Ticket knowledge loop | Implemented and enabled with caps | `functions-answerlattice/src/answerlattice/resolutionExtractor.ts`, `src/lib/answerlattice/signalEmitter.ts` | resolved tickets, signals, mutation proposals | Extracts reusable knowledge from resolved ticket clusters after 3+ resolved tickets per entity. |
 | Changelog / release notes | Implemented | `src/app/(answerlattice)/answerlattice/changelog/page.tsx`, `src/app/(answerlattice)/answerlattice/release-notes/page.tsx`, `src/database/answerlattice/releases.ts`, shared changelog templates | `answerlattice_releases`, shared changelog collection | Connects release changes to surfaces, tags, entities, and stale-answer review. Advisory drift-evaluation failures during activation use fixed audit failure codes with bounded source-error metadata. |
 | Weekly digest | Implemented | `src/app/(answerlattice)/answerlattice/weekly-digest/page.tsx`, `src/components/templates/answerlattice/weeklyDigest/AnswerlatticeWeeklyDigest.tsx` | summary-backed support/governance data | Gives owners a review queue summary instead of forcing collection scans. |
+| Owner Support Assistant and Founder Daily Brief | Implemented; summary-only | `src/app/(answerlattice)/answerlattice/support-assistant/page.tsx`, `src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx`, `src/lib/answerlattice/ownerSupportAssistant.ts`, `src/app/api/answerlattice/support-assistant/*` | Exactly six compact coverage, trust, Support Board, friction, Knowledge Intake, and Activation summary documents | Gives founders a deterministic private plan for what to review next and links to governed screens. It performs no AI call, transcript write, raw-ticket scan, direct mutation, publication, or ticket reply; optional Support Board prefill remains independently disabled. |
+| Known Issues | Implemented | `src/app/(answerlattice)/answerlattice/known-issues/page.tsx`, `src/components/templates/answerlattice/knownIssues/AnswerlatticeKnownIssues.tsx`, `src/lib/answerlattice/predictiveEngine.ts` | `answerlattice_predictiveTriggers(kind='known_issue')`, predictive trigger summary | Lets owners publish scoped, time-bounded service notices through the existing predictive-help runtime. Notices do not replace canonical answers and do not turn Answerlattice into a public status-page product. |
+| Verified visitor context and bounded evidence links | Implemented | `src/app/api/answerlattice/widget-security/route.ts`, `src/lib/answerlattice/verifiedWidgetContextServer.ts`, `src/app/api/widget/search/route.ts`, `WidgetSecurityControls.tsx` | Store-scoped signing-key metadata and evidence-host allowlist; private widget search activity | Accepts short-lived signed visitor context for plan/role-sensitive support and stores only allowlisted metadata for external evidence links. Invalid signed identity loses signed-only claims rather than falling back to unsigned identity; private evidence URLs are not exposed as public citations. |
+| Support Truth Export | Implemented | `src/app/api/answerlattice/support-truth-export/route.ts`, `src/lib/answerlattice/supportTruthExport.ts`, `AnswerlatticeSupportTruthExport.tsx` | Bounded projections of entities, canonical answers, KB, FAQs, product surfaces, releases, and changelog | Exports governed support truth as a capped private package for portability and review. It excludes tickets, conversations, embeddings, tenant IDs, and unrestricted raw records; this is not full workspace erasure or a complete legal data export. |
 | Founder trust/readiness metrics | Implemented | `src/database/answerlattice/trustMetrics.ts`, `src/components/templates/answerlattice/governance/FounderTrustDashboard.tsx`, `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` | `platformSummary/trustMetrics_{tId}_{sId}` | Summarizes coverage, resolution readiness, drift pressure, escalations, and top failing entities. |
 | Coverage KPI | Implemented | `src/database/answerlattice/coverageKPI.ts`, `src/components/templates/answerlattice/AnswerlatticeCoverageKPI.tsx`, nightly functions | `platformSummary/coverage_{tId}_{sId}` | Tracks canonical coverage without dashboard collection scans. |
 | Product friction intelligence | Implemented and enabled with caps | `functions-answerlattice/src/answerlattice/frictionAggregation.ts`, `frictionInsight.ts`, `src/database/answerlattice/frictionStats.ts`, `FrictionTab.tsx` | `answerlattice_frictionDailyStats`, `platformSummary/friction*` | Aggregates recurring support friction and optional weekly insight generation from bounded nightly queries. |
+| Knowledge graph retrieval | Implemented and enabled with caps | `src/lib/answerlattice/graphTraversal.ts`, `src/lib/answerlattice/canonicalRetrieval.ts`, `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` | Existing entity relations plus compact graph/interaction summaries | Adds deterministic one-hop entity expansion, multi-entity answer scoring, interaction explanations, and related entities without a graph database or per-query collection fanout. |
+| Predictive support | Implemented and enabled with guards | `src/app/api/answerlattice/predictive-help/route.ts`, `src/lib/answerlattice/predictiveEngine.ts`, `src/database/answerlattice/predictiveTriggers.ts`, `functions-answerlattice/src/answerlattice/predictiveTriggerSync.ts` | `answerlattice_predictiveTriggers`, `platformSummary/predictiveTriggers_*`, context/friction/canonical summaries, Redis cooldowns | Serves deterministic, dismissible contextual help for explicit product states and approved triggers. It is capability-gated, origin/key protected, cooldown-backed, and does not continuously stream user behavior. |
+| Workflow integrations | Implemented with tiered rollout | `src/app/api/answerlattice/integrations/*`, `functions-answerlattice/src/integrations/*`, `functions-answerlattice/src/index.ts` | Integration configs, immutable event facts, delivery logs | Emits sanitized governance events to self-service Slack/email integrations; Linear/GitHub adapters remain controlled rollout until tenant-secret lifecycle is certified. Answerlattice remains an event producer, not a workflow automation platform or bidirectional sync engine. |
+| Staff access control | Implemented | `src/app/(answerlattice)/answerlattice/team/*`, `src/lib/answerlattice/staffAccess*.ts`, `/api/answerlattice/staff/*`, `/api/auth/set-claims` | Answerlattice users, workspace memberships, custom roles on `stores/{sId}.answerlatticeRoles`, Answerlattice Auth claims | Provides Answerlattice-specific members, immutable built-in roles, custom permissions, force sign-out, and multi-workspace membership without inheriting MenuList restaurant roles. |
 | Public API v1 | Implemented but rollout-gated | `src/app/api/answerlattice/public/v1/answers`, `/entities`, `/signals`, `src/lib/answerlattice/publicApi.ts` | Public API keys, canonical retrieval, entities, signals | External product integration surface. Feature flag remains off until product rollout is intentional; production answer responses suppress internal debug traces and signal ingestion treats explicit external IDs as idempotency keys. |
 | Email notifications | Implemented and enabled | `src/lib/notifications/`, `src/app/api/answerlattice/notifications/test/route.ts`, ticket DAL notification triggers | Ticket/event data, `answerlattice_notificationLogs` | Ticket-created/reply/status emails are fire-and-forget, rate-limited, logged in Answerlattice Firebase, and testable from Activation. |
 | Widget branding | Implemented | `src/lib/answerlattice/widgetConfig.ts`, `AnswerlatticeWidgetManagement.tsx`, `public/widget/answerlattice-widget.js`, `WidgetClient.tsx` | `stores/{sId}.widgetConfig` | Widget header title, accent color, greeting, launcher, and powered-by visibility are tenant-configurable without extra runtime reads. |
@@ -139,7 +151,7 @@ Management routes are gated by Answerlattice product scope or platform access. C
 
 - `/widget/[apiKey]` hosts the iframe/widget app.
 - `/widget/answerlattice-widget.js` is the public embeddable script.
-- `/api/widget/config`, `/api/widget/search`, `/api/widget/feedback` are public widget runtime endpoints protected by key hash and allowed-origin checks.
+- `/api/widget/config`, `/api/widget/search`, `/api/widget/feedback`, and `/api/widget/guidance-outcome` are public widget runtime endpoints protected by key hash and allowed-origin/runtime-token checks. Guidance outcomes also require owner opt-in and an exact scoped canonical widget search-history record.
 - `/api/answerlattice/widget-activity` is the protected dashboard read for recent widget questions.
 - In separated Firebase mode, `al_` widget/API key validation reads Answerlattice Firestore through `answerlatticeFirestoreAdmin` and fails closed if Answerlattice Admin credentials are missing. Widget runtime endpoints opt out of MenuList `publicApi` fallback, validate active keys through `stores.answerlatticeWidgetApi.keyHashes` with legacy `apiKeyHash` fallback, while MenuList public API endpoints only accept `ml_` keys.
 - `/api/answerlattice/bundles/public/[...path]` proxies public-safe compiled bundle files from opaque Storage paths with cache-miss rate limiting, metadata/download byte guards, and bounded failure diagnostics.
@@ -250,48 +262,87 @@ Dashboard and scheduler flows should prefer summary docs over scanning growing c
 
 ### Enabled in app by default
 
+- `ENABLE_ANSWERLATTICE_INTAKE_PLATFORM_MONITOR`
 - `ENABLE_ANSWERLATTICE_ONTOLOGY`
 - `ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS`
 - `ENABLE_ANSWERLATTICE_DRIFT_DETECTION`
 - `ENABLE_ANSWERLATTICE_SIGNAL_MUTATION`
 - `ENABLE_ANSWERLATTICE_WIDGET`
+- `ENABLE_ANSWERLATTICE_AGENT_INSTALL`
+- `ENABLE_ANSWERLATTICE_HOSTED_HELP_CENTER`
 - `ENABLE_ANSWERLATTICE_ACTIVATION_COMMAND_CENTER`
+- `ENABLE_ANSWERLATTICE_STAFF_ACCESS`
 - `ENABLE_ANSWERLATTICE_WEEKLY_DIGEST`
+- `ENABLE_ANSWERLATTICE_FEEDBACK_REVIEW`
+- `ENABLE_ANSWERLATTICE_SUPPORT_BOARD`
+- `ENABLE_ANSWERLATTICE_ANSWER_TESTS`
+- `ENABLE_ANSWERLATTICE_PRODUCT_STARTER_PACK`
+- `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT`
+- `ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF`
+- `ENABLE_ANSWERLATTICE_KNOWN_ISSUES`
+- `ENABLE_ANSWERLATTICE_VERIFIED_CONTEXT`
+- `ENABLE_ANSWERLATTICE_EXTERNAL_EVIDENCE_LINKS`
+- `ENABLE_ANSWERLATTICE_SUPPORT_TRUTH_EXPORT`
+- `ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE`
+- `ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT`
+- `ENABLE_ANSWERLATTICE_INTAKE_URL_DISCOVERY`
+- `ENABLE_ANSWERLATTICE_INTAKE_MEDIA_EXTRACTION`
+- `ENABLE_ANSWERLATTICE_NOTIFICATIONS`
 - `ENABLE_ANSWERLATTICE_GOVERNANCE_UI`
 - `ENABLE_ANSWERLATTICE_CONTEXT_AWARE`
 - `ENABLE_ANSWERLATTICE_PRODUCT_SURFACES`
+- `ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT`
+- `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`
+- `ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION`
 - `ENABLE_ANSWERLATTICE_INSTANT_CACHE`
-- `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`
-- `ENABLE_ANSWERLATTICE_NOTIFICATIONS`
-- `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`
-- `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
-- `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`
-- `ENABLE_ANSWERLATTICE_TRUST_METRICS`
 - `ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES`
 - `ENABLE_ANSWERLATTICE_BUNDLE_BUILDER`
 - `ENABLE_ANSWERLATTICE_WIDGET_BUNDLE_BOOTSTRAP`
 - `ENABLE_ANSWERLATTICE_PUBLIC_API_BUNDLE_READS`
+- `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`
+- `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`
+- `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`
+- `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS`
+- `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
+- `ENABLE_ANSWERLATTICE_TRUST_METRICS`
+- `ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH`
+- `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT`
 
 ### Disabled / rollout-gated by default
 
 - `ENABLE_ANSWERLATTICE_PUBLIC_API`
+- `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SOURCE_SYNC`
+- `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_NIGHTLY_SUMMARY`
+- `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS`
+- `ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS`
 - `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY`
 - `ENABLE_ANSWERLATTICE_WHITE_LABEL`
 - `ENABLE_ANSWERLATTICE_MULTI_LANGUAGE`
-- `ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS`
+- `ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL`
 - `ENABLE_ANSWERLATTICE_AI_ESCALATION`
 - `ENABLE_ANSWERLATTICE_MCP`
 
 ### Enabled in Cloud Functions by default
 
+- `ENABLE_ANSWERLATTICE_CHAT_ANALYTICS`
 - `ENABLE_ANSWERLATTICE_NIGHTLY`
 - `ENABLE_ANSWERLATTICE_AUTO_KNOWLEDGE`
 - `ENABLE_ANSWERLATTICE_FRICTION_INTELLIGENCE`
-- `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
 - `ENABLE_ANSWERLATTICE_TRUST_METRICS`
 - `ENABLE_ANSWERLATTICE_FOUNDER_ONBOARDING`
+- `ENABLE_ANSWERLATTICE_WORKFLOW_INTEGRATIONS`
+- `ENABLE_ANSWERLATTICE_TICKET_KNOWLEDGE`
+- `ENABLE_ANSWERLATTICE_KNOWLEDGE_GRAPH`
+- `ENABLE_ANSWERLATTICE_PREDICTIVE_SUPPORT`
+- `ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE_SCHEDULER`
 - `ENABLE_ANSWERLATTICE_CONTEXT_BUNDLES`
 - `ENABLE_ANSWERLATTICE_BUNDLE_BUILDER`
+
+### Disabled in Cloud Functions by default
+
+- `ENABLE_ANSWERLATTICE_SUPPORT_BOARD_SYNC`
+
+`ENABLE_ANSWERLATTICE_INTAKE_NATIVE_CONNECTORS` and `ENABLE_ANSWERLATTICE_SIGNAL_QUALITY` have no runtime consumer in the audited source tree. Treat them as reserved placeholders, not implemented capabilities, until code and verification evidence exist. All other disabled flags represent implemented or partially implemented surfaces that still require an explicit rollout decision and their documented gates.
 
 Enabled nightly intelligence loops are capped and summary-backed. Predictive support, workflow notifications, and knowledge graph traversal are active expansion paths and must stay guarded by cooldown storage, event caps, sanitized delivery payloads, and compact `platformSummary` reads.
 
@@ -326,9 +377,9 @@ The website should not claim:
 
 ## Current Product Readiness Verdict
 
-**Production Ready with Controlled Rollout Flags**
+**Source-Verified for Controlled Staging; Production Certification Pending**
 
-Core Answerlattice flows are implemented and documented enough for staging use:
+Core Answerlattice flows are implemented and locally verifiable enough for controlled staging use:
 
 - onboarding
 - activation
@@ -352,13 +403,37 @@ The following remain intentional rollout controls:
 - public API
 - MCP
 - AI escalation
-- guided workflows
+- guided resolution (implemented; per-workspace widget opt-in remains off by default)
 - multi-language
 - advanced cross-surface white-label branding
 - Jira integration
 - native helpdesk connectors
 
 Those features remain behind intentional rollout controls and should stay conservative in website copy unless enabled for a client.
+
+Source implementation is not production evidence. The current production blockers are:
+
+- the Answerlattice CI workflow is source-controlled, but no successful remote workflow run has been verified on this worktree;
+- backup/recovery tooling and the runbook are source-controlled, but no cloud schedule, ready backup, or isolated restore rehearsal has been verified;
+- the root production dependency audit retains 10 high findings in the controlled `next`, `fabric`, and `next-pwa` migration families; it has zero critical findings. `functions-answerlattice` has zero high or critical findings and retains eight moderate findings behind a breaking Firebase Admin migration;
+- QA Firebase deployment and Firebase-console TTL/migration state require cloud IAM and operator verification;
+- browser/device/accessibility, live payment/provider, DNS/OAuth callback, and production telemetry journeys remain externally unverified;
+- full workspace deletion/erasure is not evidenced as an implemented Answerlattice lifecycle;
+- App Check remains an explicit external-client onboarding decision rather than a verified deployed control;
+- the centralized scheduler is designed for the current small-workspace range but is not load-proven for 1,000+ simultaneously due workspaces.
+
+### Hardening Priority Order
+
+| Priority | Area | Current evidence | Required next action |
+| --- | --- | --- | --- |
+| P0 | Dependency and release gate | Safe patch upgrades removed root critical findings and Functions high/critical findings. `.github/workflows/answerlattice-quality.yml` runs freeze, security, recovery, Functions, typecheck, readiness, runtime, rules, and emulator gates. Root highs remain only in three explicit breaking-migration families. | Obtain one successful remote CI run, then handle `next`, `fabric`, and `next-pwa` as tested migrations rather than forced audit upgrades. |
+| P0 | Backup and recovery | Source tool and dedicated runbook enforce QA/prod project mapping, explicit apply confirmation, daily 14-week schedule intent, and new-database-only restores. No deployed schedule or restore evidence exists. | Install/authenticate `gcloud`, configure QA managed backups, rehearse an isolated restore, validate tenant and canonical lineage, reapply TTL, and record measured RPO/RTO plus separate Storage/Auth evidence. |
+| P0 | Deployed-state proof | Source and emulator evidence exist; QA/prod rules, indexes, TTL, Functions, secrets, and migrations are not confirmed here | Restore Firebase access, run the scoped deployment/readback runbook, and verify deployed hashes/state before enabling client traffic. |
+| P1 | Real-client answer evaluation | Answer Tests and quality controls are implemented; representative customer evaluation data is not repository-verifiable | Run a 50-100 question first-client set covering canonical hits, conflicts, abstention, citations, plan/version context, and regression blockers. |
+| P1 | Workspace lifecycle | Support Truth Export covers governed support truth; full account/workspace erasure is not evidenced | Define and implement a reviewed export/closure/deletion workflow with retention, legal hold, billing, Storage, Auth, audit, and recovery rules. |
+| P1 | Browser and integration proof | Deterministic source tests exist; real browser, accessibility, widget-host, payment, email, DNS, OAuth, and provider journeys remain external | Complete controlled QA journeys on desktop/mobile and the first real client product before general availability. |
+| P2 | Scheduler scale | Bounded single-instance scheduler is appropriate for current scale; 1,000+ due-workspace load is unproven | Add load evidence before replacing it with task fan-out; do not redesign early. |
+| P2 | Rollout-gated surfaces | Public API, MCP, hybrid evidence, AI escalation, native connectors, autonomous actions, multilingual, and advanced white label remain off | Keep off until a named ICP workflow, security contract, quality gate, and paying-client evidence justify each rollout. |
 
 ---
 

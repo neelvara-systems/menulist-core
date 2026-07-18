@@ -68,6 +68,7 @@ const ANSWERLATTICE_INTAKE_USAGE_ACTIONS = new Set<string>([
     AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_OCR,
     AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_TRANSCRIPTION,
     AI_ACTIONS_TYPES.ANSWERLATTICE_INTAKE_EMBEDDING,
+    AI_ACTIONS_TYPES.ANSWERLATTICE_PRODUCT_STARTER_PACK,
 ]);
 
 const now = () => Timestamp.now();
@@ -284,6 +285,7 @@ export async function reserveAnswerlatticeIntakeUsage(scope: AnswerlatticeScope,
             sId: storeScope.numericId,
             jobId: cleanText(input.jobId, 160) || null,
             sourceId: cleanText(input.sourceId, 160) || null,
+            subscriptionId: subscriptionRef.id,
             action,
             status: 'reserved',
             provider: cleanText(input.provider, 80) || null,
@@ -389,11 +391,22 @@ export async function finalizeAnswerlatticeIntakeUsage(
 export async function refundAnswerlatticeIntakeUsage(scope: AnswerlatticeScope, ledgerId: string, reason: string) {
     const normalizedLedgerId = normalizeAnswerlatticeIntakeUsageLedgerId(ledgerId);
     if (!normalizedLedgerId) throw new Error('Answerlattice intake usage ledger is not available.');
-    const { storeRef, subscriptionRef } = await resolveSubscriptionRef(scope);
     const tenantScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.tId);
     const storeScope = normalizeAnswerlatticeBillingScopeDocumentId(scope.sId);
     if (!tenantScope || !storeScope) throw new Error('Answerlattice workspace is not available.');
     const ledgerRef = db.collection(DB_COLLECTIONS.ANSWERLATTICE_INTAKE_USAGE_LEDGER).doc(normalizedLedgerId);
+    const ledgerPreview = await ledgerRef.get();
+    if (!ledgerPreview.exists) throw new Error('Answerlattice intake usage ledger is not available.');
+    const previewData = ledgerPreview.data() || {};
+    if (!isAnswerlatticeIntakeLedgerInScope(previewData, { tId: tenantScope.numericId, sId: storeScope.numericId })) {
+        throw new Error('Answerlattice intake usage scope does not match this workspace.');
+    }
+    const storedSubscriptionId = normalizeAnswerlatticeSubscriptionId(previewData.subscriptionId);
+    const fallbackRefs = storedSubscriptionId ? null : await resolveSubscriptionRef(scope);
+    const subscriptionRef = storedSubscriptionId
+        ? db.collection(DB_COLLECTIONS.SUBSCRIPTIONS).doc(storedSubscriptionId)
+        : fallbackRefs!.subscriptionRef;
+    const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeScope.documentId);
     const timestamp = now();
 
     await db.runTransaction(async (transaction) => {

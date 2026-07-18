@@ -1,5 +1,6 @@
-import type { Project } from "@template/main-app/projects/types";
+import type { Project, ProjectSummaryData } from "@template/main-app/projects/types";
 import { sanitizeForFirestore } from "@lib/firestore/sanitizeForFirestore";
+import { resolveProjectImageUrl } from "@lib/image/projectImageDisplay";
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -17,6 +18,26 @@ const mergeDefinedProjectValue = (currentValue: unknown, patchValue: unknown): u
     return merged;
 };
 
+export const mergeDefinedObjectPatch = <T extends object, P extends object>(
+    currentValue: T,
+    patchValue: P,
+): T & P => mergeDefinedProjectValue(currentValue, patchValue) as T & P;
+
+export const preserveExistingProjectImageMetadata = <T extends Partial<ProjectSummaryData>>(
+    patch: T,
+    currentSummary: Partial<ProjectSummaryData>,
+): T | Omit<T, 'projectImage'> => {
+    if (
+        patch.projectImage === undefined
+        || !resolveProjectImageUrl(currentSummary.projectImage)
+    ) {
+        return patch;
+    }
+
+    const { projectImage: _ignoredProjectImage, ...preservedPatch } = patch;
+    return preservedPatch;
+};
+
 /** Project updates use omission semantics for undefined object fields. */
 export const sanitizeProjectPartialUpdate = <T extends Partial<Project>>(patch: T): T => (
     sanitizeForFirestore(patch, { undefinedObjectValue: "omit" }) as T
@@ -32,5 +53,5 @@ export const buildProjectAfterPartialUpdate = (
     patch: Partial<Project>,
 ): Project => {
     const cleanPatch = sanitizeProjectPartialUpdate(patch);
-    return mergeDefinedProjectValue(currentProject, cleanPatch) as Project;
+    return mergeDefinedObjectPatch(currentProject, cleanPatch) as Project;
 };

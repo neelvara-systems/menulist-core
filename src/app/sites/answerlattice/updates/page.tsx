@@ -25,10 +25,28 @@ function getBasePath(): string {
 
 const UPDATES = [
     {
+        date: 'July 16, 2026',
+        title: 'First Trusted Answers turns launch support into one bounded workflow',
+        items: [
+            'Launch Setup now includes ten editable priority-question starters backed by the existing Answer Tests summary and canonical-first checks.',
+            'The widget asks whether an answer solved the issue, while Trust Metrics separates explicit confirmed resolution, same-session recontact, and no-escalation routing.',
+            'A founder launch kit, tool-specific pre-onboarding packages, and a consent-gated proof registry support distribution without inventing customer evidence or adding Firebase work to the public website.',
+        ],
+    },
+    {
+        date: 'July 16, 2026',
+        title: 'Answer Tests now retain evidence and release-proof outcomes',
+        items: [
+            'Owners can mark priority questions as standard or critical, verify required and forbidden wording, and require supporting article references for FAQ or knowledge-fallback answers.',
+            'Each run reports Ready, Review, or Blocked. A critical failure marks only the retained proof result blocked; AnswerLattice does not publish content, change a release, or control deployment automatically.',
+            'The proof loop reuses the existing bounded Answer Tests summary and retrieval references. Deterministic checks add no model call, scheduler, listener, or per-test record.',
+        ],
+    },
+    {
         date: 'July 11, 2026',
         title: 'Founder controls added for releases, incidents, and support portability',
         items: [
-            'Owners can save critical answer tests, run deterministic approved-answer checks, recheck release-linked cases, and prepare rollback proposals without overwriting live answers.',
+            'Owners can save priority answer tests, run deterministic approved-answer checks, recheck release-linked cases, and prepare rollback proposals without overwriting live answers.',
             'Known Issue Mode can show a contextual, expiring widget notice while permanent approved answers remain unchanged, and Support Assistant now includes a read-only Daily Founder Brief from compact summaries.',
             'Optional signed visitor context, exact-host diagnostic links, and bounded support-truth export add trust and portability without accepting browser workspace scope, recording sessions, or exporting private conversations.',
         ],

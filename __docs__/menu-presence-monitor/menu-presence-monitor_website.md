@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Website Content
 
-> **Version:** 1.0
-> **Last Updated:** July 10, 2026
+> **Version:** 1.1
+> **Last Updated:** July 16, 2026
 > **Audience:** Public website visitors
 
 ---
@@ -9,7 +9,7 @@
 ## Hero Section
 
 **Headline:** Know where your menu is visible
-**Subheadline:** A simple checklist shows MenuList-recorded QR/screen/feedback readiness and owner-confirmed external placements for Google, Apple, Bing, Instagram, and WhatsApp.
+**Subheadline:** A simple checklist shows publish-backed QR/feedback readiness, screen setup, and owner-confirmed external placements for Google, Apple, Bing, Instagram, and WhatsApp.
 **CTA:** Upload Your Menu →
 
 ## Feature Benefit Block
@@ -21,7 +21,7 @@
 ## SEO Meta
 
 - **Page Title:** Menu Presence Monitor — See Where Your Menu Is Visible | MenuList
-- **Meta Description:** See MenuList-recorded readiness and owner-confirmed placement status for Google, Apple, Bing, Instagram, WhatsApp, QR, screens, and feedback.
+- **Meta Description:** See publish-backed readiness and owner-confirmed placement status for Google, Apple, Bing, Instagram, WhatsApp, QR, screens, and feedback.
 - **Keywords:** menu visibility, restaurant menu distribution, QR menu deployment
 
 ---

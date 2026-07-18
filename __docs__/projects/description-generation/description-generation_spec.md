@@ -1,300 +1,94 @@
-# Description Generation — Product Specification
+# Description Generation - Product Specification
 
-**Feature:** AI-Powered Menu Item Description Generation  
-**Parent Feature:** Projects (Menu Digitization)  
 **Status:** Implemented source evidence; not current launch certification
-**Last Updated:** January 31, 2026  
-**Version:** 2.0
 
-**Launch boundary:** This spec documents the description-generation feature. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
-
----
-
-## Executive Summary
-
-Description Generation uses Gemini AI to create professional, appetizing menu item descriptions automatically. Restaurant owners and business operators can generate descriptions in multiple sizes, tones, and languages with a single click.
-
-### What It Does
-
-| Capability           | Description                                                |
-| -------------------- | ---------------------------------------------------------- |
-| **Generate Empty**   | Create descriptions for items without any description      |
-| **Rewrite All**      | Regenerate all descriptions (replaces existing)            |
-| **Content Sizes**    | Standard (25-35 words), Detailed (50+ words)               |
-| **Tone**             | Professional (locked internally, not user-selectable)      |
-| **Multi-Language**   | Generate in all project languages simultaneously           |
-| **Batch Processing** | Process multiple files sequentially with progress tracking |
-
-### What It Does NOT Do
-
-| Limitation                   | Reason                                       |
-| ---------------------------- | -------------------------------------------- |
-| ❌ Allergen information      | Legal compliance—must be verified manually   |
-| ❌ Health/medical claims     | Legal liability—no "cures", "prevents", etc. |
-| ❌ Preview before apply      | Complexity—can regenerate if unsatisfied     |
-| ❌ Individual item selection | Simplicity—operates on file or all files     |
-| ❌ Custom prompts            | Consistency—uses tone selection instead      |
-
----
-
-## Goals & Success Metrics
-
-| Goal                     | Success Metric                                  |
-| ------------------------ | ----------------------------------------------- |
-| **Professional quality** | Descriptions suitable for customer-facing menus |
-| **Fast generation**      | < 5 seconds per item on average                 |
-| **Multi-language**       | Same quality and tone across all languages      |
-| **Safety**               | Zero inappropriate or harmful content           |
-| **Customizable**         | Users can select description length             |
-| **Easy to use**          | One-click generation with minimal configuration |
-
----
-
-## Target Users
-
-| User Type              | Use Case                                                    |
-| ---------------------- | ----------------------------------------------------------- |
-| **Restaurant Owner**   | Generate descriptions for 50+ menu items without copywriter |
-| **Spa/Salon Manager**  | Create service descriptions in professional tone            |
-| **Multi-Location**     | Consistent descriptions across all outlets                  |
-| **Non-Native Speaker** | Generate descriptions in local language(s)                  |
-
----
-
-## User Stories
-
-### Story 1: First-Time Description Generation
-
-> "As a restaurant owner who uploaded my menu, I want AI to write appetizing descriptions for all my items without descriptions."
-
-**Acceptance Criteria:**
-
-- Click "Generate Descriptions" in editor
-- Select length (Standard/Detailed)
-- Tone is Professional (internally locked, no selection needed)
-- See count of items needing descriptions
-- Click "Generate" to process
-- Descriptions appear in all project languages
-- Changes auto-saved to database
-
-### Story 2: Rewriting Existing Descriptions
-
-> "As a business owner who wants to change the tone of my descriptions, I want to regenerate all of them with a different style."
-
-**Acceptance Criteria:**
-
-- Click "Generate Descriptions" in editor
-- Select new length if desired (Standard/Detailed)
-- Click "Rewrite All" to regenerate all descriptions
-- All existing descriptions replaced with new ones
-- Changes auto-saved to database
-
-### Story 3: Per-File Generation
-
-> "As a user with multiple menu files, I want to generate descriptions for just one specific file."
-
-**Acceptance Criteria:**
-
-- Click retry/description button on specific file preview
-- Modal opens with that file pre-selected
-- Only items in that file are processed
-- Other files remain unchanged
-
----
-
-## User Flow
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│ ENTRY POINTS                                                         │
-│   1. More Actions → "Generate Descriptions"                          │
-│   2. Keyboard shortcut                                               │
-│   3. Per-file retry button                                           │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ DESCRIPTION GENERATOR MODAL                                          │
-│                                                                      │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ Stats Bar:                                                     │  │
-│  │   "42 items • 15 need description"                            │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                      │
-│  ┌───────────────────────────────────────────────────────────────┐  │
-│  │ Description Length:                                            │  │
-│  │   ┌──────────────────┐ ┌──────────────────┐                    │  │
-│  │   │   Standard       │ │   Detailed       │                    │  │
-│  │   │ One clear        │ │ Rich, expressive │                    │  │
-│  │   │ sentence         │ │ descriptions     │                    │  │
-│  │   └──────────────────┘ └──────────────────┘                    │  │
-│  └───────────────────────────────────────────────────────────────┘  │
-│                                                                      │
-│  (Tone locked to Professional internally — not shown to user)        │
-│                                                                      │
-│  ┌─────────────────────┐  ┌─────────────────────┐                   │
-│  │  ✨ Generate (15)   │  │  🔄 Rewrite All     │                   │
-│  └─────────────────────┘  └─────────────────────┘                   │
-│                                                                      │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ PROCESSING                                                           │
-│   • "Processing file 1 of 3..."                                      │
-│   • Sequential file processing                                       │
-│   • Rate limited (20 req/min)                                        │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│ COMPLETION                                                           │
-│   • "Descriptions generated and saved!"                              │
-│   • Modal closes automatically                                       │
-│   • Editor shows updated descriptions                                │
-│   • Changes already saved to database                                │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Requirements
-
-### Functional Requirements
-
-| ID    | Requirement                            | Priority | Status |
-| ----- | -------------------------------------- | -------- | ------ |
-| FR-01 | Generate description from item name    | P0       | ✅     |
-| FR-02 | Two content sizes (Standard/Detailed)  | P0       | ✅     |
-| FR-03 | Multi-language generation              | P0       | ✅     |
-| FR-04 | Batch generation for all files         | P0       | ✅     |
-| FR-05 | Per-file generation                    | P0       | ✅     |
-| FR-06 | Tone locked to Professional internally | P1       | ✅     |
-| FR-07 | Progress indicator for batch           | P1       | ✅     |
-| FR-08 | Rewrite existing descriptions          | P1       | ✅     |
-| FR-09 | Item count preview                     | P2       | ✅     |
-| FR-10 | Auto-save after generation             | P1       | ✅     |
-
-### Non-Functional Requirements
-
-| ID     | Requirement              | Target                    | Status |
-| ------ | ------------------------ | ------------------------- | ------ |
-| NFR-01 | Generation time per item | < 5 seconds average       | ✅     |
-| NFR-02 | Content safety           | No harmful content        | ✅     |
-| NFR-03 | Legal compliance         | No allergen/health claims | ✅     |
-| NFR-04 | Rate limiting            | 20 requests/minute        | ✅     |
-| NFR-05 | Input sanitization       | Prompt injection blocked  | ✅     |
-
----
-
-## Content Configuration
-
-### Content Sizes
-
-| Size         | Word Count  | Prompt Instruction                           | Use Case                    |
-| ------------ | ----------- | -------------------------------------------- | --------------------------- |
-| **Standard** | 25-35 words | "one or two clear and informative sentences" | Standard menu descriptions  |
-| **Detailed** | 45-60 words | "detailed description, multiple sentences"   | Premium items, storytelling |
-
-### Tone
-
-Tone is **locked to Professional** internally. Not exposed to users. This is a locked decision per doctrine — infrastructure means deterministic, predictable output.
-
-### AI Temperature/TopP Matrix
-
-Fixed deterministic values (no tone adjustment):
-
-| Length   | Temperature | TopP | Rationale                |
-| -------- | ----------- | ---- | ------------------------ |
-| Standard | 0.70        | 0.90 | Focused, concise         |
-| Detailed | 0.75        | 0.92 | Slightly more expressive |
-
----
-
-## Content Safety Rules
-
-### Blocked Content (Legal Compliance)
-
-| Category           | Examples                                   | Reason                              |
-| ------------------ | ------------------------------------------ | ----------------------------------- |
-| **Allergen info**  | "gluten-free", "nut-free", "dairy-free"    | Must be verified manually for legal |
-| **Health claims**  | "cures", "treats", "prevents disease"      | Medical claims require verification |
-| **Medical advice** | "good for diabetics", "lowers cholesterol" | Not a medical source                |
-| **Inappropriate**  | Vulgar, offensive, or explicit language    | Professional content only           |
-
-### Safety Implementation
-
-1. **Gemini Safety Filters** - `BLOCK_MEDIUM_AND_ABOVE` for all harm categories
-2. **System Prompt Rules** - Explicit instructions to never include blocked content
-3. **Input Sanitization** - Dangerous prompt patterns removed before processing
-
----
-
-## Error Messages
-
-| Scenario            | Message                                            |
-| ------------------- | -------------------------------------------------- |
-| Generation failed   | "Description generation failed. Please try again." |
-| Rate limit exceeded | "Too many requests. Please wait X seconds."        |
-| No items to process | (Silent skip - shows success with 0 items)         |
-| API timeout         | "Description generation failed. Please try again." |
-
----
-
-## Out of Scope (Phase 2+)
-
-| Feature                   | Reason               | Alternative                  |
-| ------------------------- | -------------------- | ---------------------------- |
-| Cost tracking per user    | Complexity for MVP   | Global rate limiting         |
-| Preview before apply      | Complexity           | Regenerate if unsatisfied    |
-| Template library          | Scope creep          | Tone selection covers needs  |
-| Custom prompts            | Consistency concerns | Tone locked to Professional  |
-| Individual item selection | UI complexity        | Per-file selection available |
-| Description history       | Storage cost         | Can regenerate               |
-| Cancel mid-generation     | Technical complexity | Wait for completion          |
-
----
-
-## 🔒 Locked Decisions (Non-Negotiable)
-
-These design decisions are **permanently locked** to maintain MenuList's infrastructure positioning and prevent feature drift.
-
-| Decision                              | Rationale                                                            | Status    |
-| ------------------------------------- | -------------------------------------------------------------------- | --------- |
-| **No custom prompts**                 | Consistency—bounded tone selection preserves authority               | 🔒 Locked |
-| **No custom keywords**                | Authority—reintroduces prompting behavior, breaks authority transfer | 🔒 Locked |
-| **No preview/edit loop**              | Simplicity—edit after generation if needed                           | 🔒 Locked |
-| **No description analytics**          | Silence—don't train users to monitor AI output                       | 🔒 Locked |
-| **No per-item regeneration**          | Consistency—batch operations only                                    | 🔒 Locked |
-| **No explanation of wording choices** | Authority—AI decided, no justification needed                        | 🔒 Locked |
-| **No A/B testing of descriptions**    | Stability—one output, no comparison                                  | 🔒 Locked |
-| **No allergen/health claims**         | Legal—manual verification required                                   | 🔒 Locked |
-| **No tone selection UI**              | Authority—system owns tone, internally locked to Professional        | 🔒 Locked |
-
-### Why These Are Locked
-
-MenuList positions itself as **infrastructure**, not a tool. These constraints prevent:
-
-- User doubt ("should I try different settings?")
-- Comparison loops ("which version is better?")
-- Monitoring behavior ("is the AI doing well?")
-
-**Test:** Does adding this feature make the owner feel MORE or LESS responsible?
-
-- More → Don't add it
-- Less → Consider it
-
----
-
-## Related Documents
-
-| Document                                                 | Purpose                          |
-| -------------------------------------------------------- | -------------------------------- |
-| `description-generation_impl.md`                         | Technical implementation details |
-| `description-generation_marketing.md`                    | Sales and marketing copy         |
-| `../assessments/assessment-09-description-generation.md` | Original security assessment     |
-
----
-
-_Document Status: Historical description-generation source evidence - not current launch certification_
-_Follows `IDE_PROMPTS/6. DOCUMENTATION STRUCTURE PROMPT.md` standards._
+**Product:** MenuList
+**Last cross-check:** July 15, 2026
+
+> Launch approval requires the active production-readiness audit, External Certification Runbook evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, authenticated desktop/mobile editor QA, deploy evidence, and production-host smoke.
+
+## Purpose
+
+Help an owner prepare clear menu-item description drafts while preserving owner-written truth, outlet governance, predictable credit behavior, and customer-language consistency.
+
+## Owner outcomes
+
+- Add a first description to eligible named items without consuming content credits.
+- Refresh MenuList-generated descriptions with an explicit confirmation and governed enhancement charge.
+- Keep manual descriptions unchanged during bulk or single-item refresh.
+- Review a single-item result before Save.
+- Save a successful bulk result without a second manual save step.
+- See the action, compact result count, and credit use in owner Transactions.
+
+## Entry paths
+
+| Flow | First description | Existing description | Persistence |
+| --- | --- | --- | --- |
+| Desktop bulk modal | `ADD_DESCRIPTION` | confirmed `REWRITE_DESCRIPTION` | auto-saved after full success |
+| Mobile bulk sheet | `ADD_DESCRIPTION` | confirmed `REWRITE_DESCRIPTION` | auto-saved after full success |
+| Command Center / Repair Menu | adds missing source descriptions after language repair | no bulk rewrite | saved by the parent repair workflow |
+| Desktop item editor | `NEW_ITEM_METADATA` for first description and translations | `REWRITE_DESCRIPTION` | draft until Save |
+| Mobile item editor | `NEW_ITEM_METADATA` for first description and translations | `REWRITE_DESCRIPTION` | draft until Save |
+
+## Functional requirements
+
+| ID | Requirement |
+| --- | --- |
+| DG-01 | Use the canonical project source language and all configured target languages. |
+| DG-02 | Only named, governance-eligible items participate in bulk counts and payloads. |
+| DG-03 | `ADD_DESCRIPTION` includes only empty canonical source copy and never replaces an item carrying any non-empty manual description. |
+| DG-04 | `REWRITE_DESCRIPTION` includes existing generated/legacy canonical source copy and excludes every manual item. |
+| DG-05 | Professional, Friendly, and Premium tones plus Standard and Detailed lengths use project defaults and owner overrides. |
+| DG-06 | The server derives ADD versus REWRITE billing from the submitted existing-description field. |
+| DG-06A | `NEW_ITEM_METADATA` accepts only an empty source description; existing source copy must use `REWRITE_DESCRIPTION`. |
+| DG-06B | First-description metadata prompts sanitize instruction-like owner text and use provider-only item/attribute IDs restored before output normalization. |
+| DG-06C | First-description metadata uses the localized category name, bounded request text, and a generate-only factual prompt based on explicit item context. |
+| DG-07 | Every requested item/language must be present after output normalization; otherwise the request fails before accounting. |
+| DG-08 | Request text fields are bounded to API limits, then files are processed in sequential batches capped at 100 items, approximately 180 KiB of serialized item payload, and 300 item-language output cells. |
+| DG-09 | A failed file/batch stops persistence and success presentation. |
+| DG-10 | Bulk persistence updates project truth and invalidates public menu/OBP cache tags. |
+| DG-11 | Single-item generated multilingual descriptions survive Save; a later owner edit marks the item manual and clears stale translations. |
+| DG-12 | Desktop/mobile direct actions require `canGenerateDescriptions`; server routes require `PERMISSIONS.GENERATE_DESCRIPTIONS`. |
+| DG-13 | Linked outlets follow server-owned description policy and client inheritance filtering. |
+| DG-14 | Refresh actions disclose the exact current description-refresh credit count before provider work. |
+| DG-14A | A multi-request paid refresh sends its total request count on the first request so server capacity admission can refuse an underfunded scope before any provider work; individual requests continue to reserve and settle independently. |
+| DG-14B | Description-capacity refusals use enhancement-pack/Billing guidance across desktop and mobile; they are never presented as translation-credit failures. |
+| DG-15 | Provider prompts use stable server-created item aliases and restore original project IDs before accounting or client response. |
+| DG-16 | Linked-outlet mobile saves compare and persist the full multilingual description map when description overrides are allowed. |
+| DG-17 | Transaction history presents prepared/revised counts and credits without retaining generated copy in accounting-only mode. |
+
+## Billing contract
+
+- `ADD_DESCRIPTION`: 0 units per request; provider cost is platform absorbed.
+- `NEW_ITEM_METADATA`: 0 units per request; used only for first-item metadata/description preparation.
+- `REWRITE_DESCRIPTION`: `CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE` per API request.
+- A bulk file uses one or more requests, each capped at 100 eligible items, approximately 180 KiB of serialized item payload, and 300 item-language output cells. Crossing any boundary creates another request and therefore another rewrite transaction/charge.
+- For a multi-request paid refresh, the first request performs quantity-aware admission for the complete current scope. This is an early capacity guard, not a single reservation for the entire scope; every request keeps the existing reservation, settlement, and refund lifecycle.
+- Positive-unit requests reserve capacity before provider work, settle after complete valid output, and refund an unsettled reservation on terminal failure.
+
+The runtime values are defined at `src/constants/AI/unitCosts.ts:79` and `src/constants/AI/unitCosts.ts:110`.
+
+## Failure and refusal behavior
+
+| Condition | Result |
+| --- | --- |
+| Missing/invalid auth, permission, tenant/store/project scope, or malformed project/file/item ID | generic 4xx response; no provider call |
+| SAFE_MODE or rate limit | bounded refusal; no provider call |
+| Linked-outlet policy denies the action | 403; no provider call |
+| Paid capacity unavailable for the complete multi-request refresh at first admission, or for a later request after concurrent balance use | 402; owner is directed to Billing; no provider call for the refused request |
+| Provider call, parse, shape, or completeness failure | generic failure; no project save and no success toast |
+| Accounting failure | generic failure; no successful response; reservation is recovered/refunded by the accounting boundary |
+| Manual description refresh | item skipped in bulk; single-item control is replaced by a protected-state explanation |
+| Unnamed item | omitted from bulk scope; single-item action asks for the source-language name |
+
+## Mobile impact
+
+Mobile parity is required. The feature remains inside `MobileShell`, uses large actions, blocks dismissal during active work, confirms paid refresh, reuses the shared orchestrator, and uses the same permission/outlet policy. See [mobile support](./description-generation_mobile-support.md).
+
+## Non-goals
+
+- No background job, queue, or new Firestore collection for ordinary description generation.
+- No owner-facing settings beyond existing length/tone defaults.
+- No generated text copied into accounting history.
+- No shared override-schema change solely to persist AI/manual provenance on inherited outlet overrides.
+- No automatic publishing of an unsaved single-item draft.

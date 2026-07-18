@@ -14,7 +14,7 @@ See the smallest useful support plan for today, then ask follow-up questions abo
 
 ## Boundary Copy
 
-The brief is read-only. It does not publish answers, close tickets, or rewrite support truth. It routes owners to the governed screen where review happens.
+The brief is summary-only. It does not publish answers, close tickets, or rewrite support truth. It routes owners to the governed screen where review happens. A disabled-by-default internal rollout can prefill the existing Support Board form for selected launch/release work, but opening the form does not save a card and is not a public product claim.
 
 ## Suggested Placement
 

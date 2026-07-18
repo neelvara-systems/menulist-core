@@ -1,7 +1,7 @@
 # Public Truth Tools - Product Specification
 
-**Status:** Active family; first V0 tools and V1 owner check implemented
-**Last Updated:** July 4, 2026
+**Status:** Active family; V0, V1, and bounded V2 saved-history runtime implemented
+**Last Updated:** July 16, 2026
 **Audience:** CEO, PM, product owner
 
 ---
@@ -34,11 +34,15 @@ Every Public Truth Tool must be assigned to a lane before implementation.
 | V1 | Logged-in MenuList owner check | Existing MenuList owner | Better gaps from actual MenuList store/project truth | Included inside Business Health, Public Discovery, OBP readiness, QR/share readiness |
 | V2 | Paid add-on behavior | Multi-location owner, partner, agency | Recurring checks, saved history, monthly report, multi-location scan, partner/agency report | Paid only when recurrence, history, reporting, or multi-location value exists |
 
-The current Public Truth Tools implementation includes sixteen V0 public tools, five V0 public asset makers, and eighteen V1 read-only owner readiness modules inside Business Health. V2 remains a documented paid add-on lane, not shipped runtime behavior.
+The current Public Truth Tools implementation includes sixteen V0 public tools, five V0 public asset makers, and eighteen V1 read-only owner readiness modules inside Business Health. The bounded V2 paid add-on currently provides entitled manual saved-history refresh and capped reports. Scheduled checks, external adapters, multi-location execution, and partner/agency automation remain disabled.
 
 Current implementation labels include Menu PDF Cleanup Check V0/V1, Google Profile Basics Checklist V0/V1, One Customer Link Preview V0/V1, and Social Bio Link Consistency Check V0/V1.
 
-Owner-entered links in public V0 reports use a shared public HTTPS URL boundary. Local, private, insecure, raw-IP, and credentialed URLs are not counted as ready public customer links. The check remains browser-local and does not open or fetch the destination. Malformed URL parser failures log bounded `public_truth_tool_url_parse_failed` diagnostics with source labels and value/candidate shape metadata only, never raw entered URLs. URL-derived evidence text must disclose the public HTTPS boundary instead of generic URL-format wording.
+Owner-entered links in public V0 reports use a shared public HTTPS URL boundary. Local, private, insecure, raw-IP, raw-IPv6, IPv4-mapped IPv6, empty-label, trailing-dot localhost, and credentialed URLs are not counted as ready public customer links. The check remains browser-local and does not open or fetch the destination. Malformed URL parser failures log bounded `public_truth_tool_url_parse_failed` diagnostics with source labels and value/candidate shape metadata only, never raw entered URLs. URL-derived evidence text must disclose the public HTTPS boundary instead of generic URL-format wording.
+
+Local action destinations share a strict phone boundary. Formatted phone numbers may use digits and normal separators only. `tel:` must contain a valid phone shape, `mailto:` must contain a bounded email shape, and the custom WhatsApp scheme is accepted only as `whatsapp://send` with a valid international phone value.
+
+Shareable hash reports are self-reports, not signed records. Decoding must reject summary/check mismatches, derive setup jobs from visible gaps, require at least one report-limit statement, and reject origin-escaping next-action paths. The static viewer must tell the reader to confirm owner-entered facts.
 
 ---
 

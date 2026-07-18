@@ -1,6 +1,5 @@
 import { BATCH_IMAGE_GENERATION_JOB_STATUS, type BatchImageGenerationJobStatusType } from '@constant/AI';
 import { assertImageBatchJobUpdateSucceeded, updateImageBatchProcessingJob } from '@database/imageBatchProcessing';
-import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import useDeviceType from '@hook/useDeviceType';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
@@ -11,7 +10,6 @@ import {
 } from '@lib/ai/imageBatchProjectSelection';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { BatchImageGenerationJobType, Project } from '@template/main-app/projects/types';
-import { UserUploadedFileType } from '@type/common';
 import { getISOStringDate, toDate, type DateLike } from '@util/dateTime';
 import { useDateFormatters } from '@util/formatters';
 import { Alert, Button, Card, Checkbox, Divider, Flex, Image, message, Modal, Result, Spin, Tag, theme, Typography } from 'antd';
@@ -25,12 +23,7 @@ const IMAGE_BATCH_RESULT_CANCEL_FAILED = 'image_batch_result_cancel_failed';
 const IMAGE_BATCH_RESULT_UPLOAD_FAILED = 'image_batch_result_upload_failed';
 const IMAGE_BATCH_RESULT_DISCARD_FAILED = 'image_batch_result_discard_failed';
 const IMAGE_BATCH_RESULT_RETRY_FAILED = 'image_batch_result_retry_failed';
-const IMAGE_BATCH_RESULT_STORAGE_CLEANUP_FAILED = 'image_batch_result_storage_cleanup_failed';
 const IMAGE_BATCH_JOB_FAILED_OWNER_COPY = 'Image generation could not finish. Try again with fewer items or start a new batch.';
-
-function getImageUrl(image: UserUploadedFileType): string | null {
-    return typeof image.url === 'string' && image.url.trim() ? image.url.trim() : null;
-}
 
 interface BatchImageGenerationResultViewProps {
     activeBatchImageJob: BatchImageGenerationJobType;
@@ -74,7 +67,6 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         }, 0);
     }, [activeJobData]);
 
-    const showUnselectedWarning = totalGeneratedImages > 0 && totalSelectedImages < totalGeneratedImages;
     const getBatchResultLogContext = (
         action: string,
         targetStatus?: BatchImageGenerationJobStatusType,
@@ -128,30 +120,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         });
     };
 
-    const cleanupGeneratedImages = async (
-        images: UserUploadedFileType[],
-        action: string,
-    ): Promise<void> => {
-        const urls = Array.from(new Set(images.map(getImageUrl).filter((url): url is string => Boolean(url))));
-        if (!urls.length) return;
-        const results = await Promise.allSettled(urls.map((url) => deleteFileByUrl(url)));
-        const failedCount = results.filter((result) => (
-            result.status === 'rejected' || result.value.success !== true
-        )).length;
-        if (failedCount > 0) {
-            logRuntimeFailure(
-                IMAGE_BATCH_RESULT_STORAGE_CLEANUP_FAILED,
-                new Error(IMAGE_BATCH_RESULT_STORAGE_CLEANUP_FAILED),
-                {
-                    ...getBatchResultLogContext(action),
-                    cleanupAttemptCount: urls.length,
-                    cleanupFailedCount: failedCount,
-                },
-            );
-        }
-    };
-
-    const uploadImages = async (): Promise<UserUploadedFileType[]> => {
+    const uploadImages = async (): Promise<void> => {
         const rawSelections = (activeJobData?.itemsList || [])
             .map((item) => ({
                 itemId: item.id,
@@ -161,7 +130,6 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         const selections = normalizeImageBatchProjectSelections(rawSelections, projectData.projectId);
         if (!selections) throw new Error('image_batch_result_selected_image_invalid');
         await onBatchImagesPersist(selections);
-        return activeJobData?.itemsList.flatMap(item => item.images?.filter(img => !img.isSelected) || []) || [];
     };
 
     const handleCancelJob = async (action: "cancel" | "upload") => {
@@ -169,12 +137,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         dispatch(startLoader("cancelling batch job"))
         try {
             if (!activeJobData) throw new Error('image_batch_result_job_missing');
-            let imagesToCleanup: UserUploadedFileType[] = [];
             if (Boolean(activeJobData?.itemsList?.length)) {
                 if (action === "upload") {
-                    imagesToCleanup = await uploadImages();
-                } else {
-                    imagesToCleanup = activeJobData.itemsList.flatMap(item => item.images || []);
+                    await uploadImages();
                 }
             }
             const cancelResult = await updateImageBatchProcessingJob({
@@ -196,7 +161,6 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.CANCELLED,
                 'image_batch_result_cancel_update_rejected',
             );
-            await cleanupGeneratedImages(imagesToCleanup, action === 'upload' ? 'cancel_with_upload' : 'cancel');
             message.success('Batch job cancelled successfully');
             onComplete()
         } catch (error) {
@@ -214,7 +178,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
 
         try {
             if (!activeJobData) throw new Error('image_batch_result_job_missing');
-            const imagesToCleanup = await uploadImages();
+            await uploadImages();
             const uploadResult = await updateImageBatchProcessingJob({
                 id: activeJobData.id,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
@@ -234,7 +198,6 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
                 'image_batch_result_upload_update_rejected',
             );
-            await cleanupGeneratedImages(imagesToCleanup, 'upload');
             message.success('Images uploaded successfully');
             onComplete()
         } catch (error: unknown) {
@@ -251,7 +214,6 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
         try {
             dispatch(startLoader("discarding image batch job"))
             if (!activeJobData) throw new Error('image_batch_result_job_missing');
-            const imagesToCleanup = activeJobData.itemsList.flatMap(item => item.images || []);
             const discardResult = await updateImageBatchProcessingJob({
                 id: activeJobData.id,
                 status: BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
@@ -271,8 +233,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
                 'image_batch_result_discard_update_rejected',
             );
-            await cleanupGeneratedImages(imagesToCleanup, 'discard');
-            message.success('Images discarded successfully');
+            message.success('Batch closed without adding images');
             setIsDiscardModalVisible(false);
             onComplete()
         } catch (error: unknown) {
@@ -291,9 +252,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
             dispatch(startLoader("retrying image batch job"))
             if (!activeJobData) throw new Error('image_batch_result_job_missing');
             const hasSelectedImages = activeJobData.itemsList.some((item) => item.images.some((image) => image.isSelected));
-            const imagesToCleanup = hasSelectedImages
-                ? await uploadImages()
-                : activeJobData.itemsList.flatMap((item) => item.images || []);
+            if (hasSelectedImages) await uploadImages();
             const resolvedStatus = hasSelectedImages
                 ? BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED
                 : BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED;
@@ -318,7 +277,6 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 resolvedStatus,
                 'image_batch_result_retry_resolution_rejected',
             );
-            await cleanupGeneratedImages(imagesToCleanup, 'retry');
             retryHandoffStarted = true;
             await onRetry(activeJobData);
         } catch (error: unknown) {
@@ -555,7 +513,7 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                                 <strong>Upload & Cancel</strong> - Save the selected images generated and stop the job
                             </Typography.Text>
                             <Typography.Text>
-                                <strong>Cancel Only</strong> - Discard all generated images and stop the job
+                                <strong>Cancel Only</strong> - Add no images and stop the job
                             </Typography.Text>
                         </Flex>
                     </>}
@@ -564,9 +522,9 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
                 />}
             </Modal>
 
-            {/* UX-26: Single confirmation modal for discard */}
+            {/* Single confirmation modal for closing a batch without adding images. */}
             <Modal
-                title="⚠️ Discard All Images?"
+                title="Discard All Images?"
                 open={isDiscardModalVisible}
                 onCancel={() => setIsDiscardModalVisible(false)}
                 footer={[
@@ -576,14 +534,14 @@ const BatchImageGenerationResultView: FC<BatchImageGenerationResultViewProps> = 
             >
                 <Flex vertical gap={16}>
                     <Alert
-                        message="This will permanently delete:"
+                        message="No images will be added to your menu"
                         description={
                             <Flex vertical gap={4} style={{ marginTop: 8 }}>
-                                <Text><strong style={{ color: '#ff4d4f' }}>{totalGeneratedImages} generated image{totalGeneratedImages !== 1 ? 's' : ''}</strong></Text>
-                                <Text type="secondary">This action cannot be undone.</Text>
+                                <Text><strong>{totalGeneratedImages} generated image{totalGeneratedImages !== 1 ? 's' : ''}</strong> will leave this review.</Text>
+                                <Text type="secondary">Your current menu images will not change.</Text>
                             </Flex>
                         }
-                        type="error"
+                        type="warning"
                         showIcon
                     />
                     {totalSelectedImages > 0 && (

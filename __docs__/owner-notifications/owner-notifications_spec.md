@@ -1,10 +1,10 @@
 # Owner Notifications - Spec
 
 **Status:** Implemented source evidence; not current launch certification
-**Date:** 2026-07-13
+**Date:** 2026-07-16
 **Audience:** Product, engineering, support, platform owner
 
-> **Current release boundary (July 2, 2026):** This specification records owner-notification architecture and source evidence only. It is not current production-launch approval. Current owner-notification release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-notifications-boundary`, scoped provider smoke for SMTP/WhatsApp where enabled, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
+> **Current release boundary (July 16, 2026):** This specification records owner-notification architecture and local source evidence only. It is not current production-launch approval. Current owner-notification release approval requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:owner-notifications-boundary`, scoped provider smoke for SMTP/WhatsApp where enabled, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
 
 > **July 13 internal-recovery boundary:** Platform recovery access now requires the exact current persisted platform user after a fail-closed limiter, not only a signed session claim. Dashboard status metrics are explicitly recent-window counts. This does not change owner recipients, triggers, templates, delivery channels, or public behavior.
 
@@ -85,12 +85,7 @@ Every owner notification must use product/store/workspace preferences:
 - `currencySymbol`
 - default language/locale where available
 
-Current gaps to fix:
-
-- `src/app/api/razorpay/verify-subscription/route.ts:300` formats billing dates with native `toLocaleDateString()`.
-- `src/app/api/razorpay/webhook/route.ts:506` formats next billing dates with native `toLocaleDateString()`.
-- `src/lib/messaging/templates.ts:44` and `functions/src/messaging/templates.ts:88` build money strings as raw `currency amount`.
-- `src/app/api/answerlattice/notifications/test/route.ts:96` formats sent time with native `toLocaleString()`.
+Current source passes raw amount/date inputs into the owner-notification formatter and renders lifecycle templates from the resolved store/workspace context. Route-local native date/money strings are not the owner-notification content contract. App and Functions formatting implementations remain separate runtime modules and are source-gated for the currently used fields.
 
 ## Trigger Classification
 
@@ -137,7 +132,7 @@ These remain WhatsApp-first because the owner initiated the WhatsApp session:
 | `WHATSAPP_RATE_LIMITED` | Abuse/rate guard blocks session | WhatsApp |
 | `WHATSAPP_UPLOAD_HELP_NEEDED` | Upload is non-menu, unclear, unsupported, or password-protected | WhatsApp |
 
-The implementation may continue to use the existing WhatsApp onboarding state machine, but delivery logging and channel health should be aligned with the owner notification system.
+The existing WhatsApp onboarding state machine intentionally keeps its own session/event/delivery-lease telemetry. It is not mirrored into `ownerNotificationDeliveries`; combining those ledgers would duplicate writes and blur conversational intake with account-critical lifecycle notices.
 
 ## Answerlattice Trigger Registry
 
@@ -161,7 +156,7 @@ Existing Answerlattice workflow integrations remain separate. They are governed 
 
 Owner Notifications must use existing settings first. Do not add settings unless required for consent or safe delivery.
 
-Required fields:
+Fields resolved when present:
 
 - `notificationSettings.primaryEmail`
 - `notificationSettings.billingEmail`
@@ -170,6 +165,8 @@ Required fields:
 - `notificationSettings.whatsappConsentedAt`
 - `notificationSettings.preferredChannels`
 - `notificationSettings.quietHoursEnabled`
+
+The current release does not add an owner notification-settings screen or persist new settings. Email delivery uses authoritative existing owner/billing fields. WhatsApp owner-notification delivery remains disabled by default; if enabled later, explicit revoked/denied/inactive/withdrawn status overrides legacy consent booleans. Quiet-hours and preferred-channel registry fields remain policy metadata, not a current scheduling engine.
 
 For MenuList, store locale/currency fields already exist in desktop and mobile settings. For Answerlattice, workspace/store settings need equivalent notification and formatting context.
 

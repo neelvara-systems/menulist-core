@@ -11,6 +11,8 @@
 
 The shared computation is not exported or scheduled, all prerequisite flags are `false`, and no risk state is written. If later activated, risk must remain a pure derivation inside the same bounded trust/loyalty run and the same store update.
 
+Risk adds no independent scheduler, listener, collection, or write. It must remain hidden until both prerequisite inputs are validated; a derived score cannot repair unreliable source counters.
+
 ## Historical Planning Estimate (Not Current Evidence)
 
 | Component | Cost |
@@ -33,4 +35,4 @@ This is negligible — less than the cost of a single cup of chai per month.
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026

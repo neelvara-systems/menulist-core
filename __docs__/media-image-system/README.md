@@ -36,6 +36,7 @@ This system covers:
 - [Firebase Cost](./media-image-system_firebase.md)
 - [Mobile Support](./media-image-system_mobile-support.md)
 - [Test Cases](./media-image-system_test-cases.md)
+- [Global Media And Storage Lifecycle Verification](./global-media-storage-lifecycle_verification.md)
 - [Marketing](./media-image-system_marketing.md)
 - [Website](./media-image-system_website.md)
 - [Help Doc](./media-image-system_helpdoc.md)
@@ -44,3 +45,5 @@ This system covers:
 ## Operating Rule
 
 Images are not generic uploads. Every image saved by MenuList must belong to a known media purpose with a fixed rendering contract.
+
+Current lifecycle verification was refreshed on July 16, 2026. Prepared public media is static, tenant/store-scoped, immutable, and reused on deterministic retry. The preparation contract keeps named variants, while Storage writes only the selected URL that current Firestore/public surfaces persist. Physical deletion requires committed exclusive-reference proof.

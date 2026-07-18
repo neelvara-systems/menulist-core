@@ -96,12 +96,17 @@ Primary human route: `/pre-onboarding`
 | --- | --- |
 | `/pre-onboarding` | Buyer-facing page explaining the pre-onboarding workflow, with a prompt modal for copy and Markdown download. |
 | `/pre-onboarding.md` | Machine-readable master prompt for AI coding agents. |
+| `/pre-onboarding/codex.md` | Codex start wrapper plus the shared master prompt. |
+| `/pre-onboarding/cursor.md` | Cursor start wrapper plus the shared master prompt. |
+| `/pre-onboarding/claude-code.md` | Claude Code start wrapper plus the shared master prompt. |
+| `/pre-onboarding/replit.md` | Replit start wrapper plus the shared master prompt. |
+| `/pre-onboarding/lovable.md` | Lovable start wrapper plus the shared master prompt. |
 | `/pre-onboarding/guide` | Detailed owner and AI-agent runbook, with prompt modal access. |
 | `/pre-onboarding/owner-guide.md` | Machine-readable owner checklist. |
 | `/pre-onboarding/agent-guide.md` | Machine-readable agent operating guide. |
 | `/resources` | Links to pre-onboarding as part of rollout planning. |
 
-The main website should send owners to `/pre-onboarding` first. The guide and markdown routes stay available for deep reading, direct AI-agent access, and downloadable instructions.
+The main website should send owners to `/pre-onboarding` first. Tool wrappers change only the starting instructions; every wrapper embeds the same master safety, source-boundary, validation, and owner-review contract. The guide and markdown routes stay available for deep reading, direct AI-agent access, and downloadable instructions.
 
 ## Internal Files
 

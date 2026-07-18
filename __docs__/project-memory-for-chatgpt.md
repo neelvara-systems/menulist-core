@@ -181,7 +181,7 @@ Observed behavior:
 - Feedback/trust: `reviews`, `reviewsState`, `guestFeedback`
 - Multi-outlet: `masterOperationalState`, `ownerControlUsage`
 - Commerce: `pricingPlans`, `subscriptions`, `subscription_payments`, `payment_transactions`, `topups`
-- Integrations and sync: `integrations`, `posDeliveryQueue`, `integration*` namespaces in extension layers
+- Integrations and sync: disabled GBP `integrations` scaffolding, server-only `posSyncSecrets`, bounded store POS delivery logs, and product-scoped `integration*` namespaces in extension layers
 - AI/ops helper collections: `menulistAiOperations`, plus `AI_OPERATIONS_COLLECTIONS` mapping in same module
 
 ### 6.2 Answerlattice separation

@@ -127,9 +127,9 @@ function TenantDetailsModal({ modalData, closeModal, platformSummary, setStoreMo
 
                     <Flex onClick={() => fileInputRef.current.click()}>
                         <Text style={{ minWidth: 150 }}>Logo</Text>
-                        {selectedFile.url ? <img src={selectedFile.url} style={{ width: "auto", height: 100 }} /> :
+                        {selectedFile.url ? <img alt="Selected tenant logo preview" src={selectedFile.url} style={{ width: "auto", height: 100 }} /> :
                             <>
-                                {tenantData?.logo ? <img src={tenantData?.logo} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <>
+                                {tenantData?.logo ? <img alt={`${tenantData?.name || 'Tenant'} logo`} src={tenantData?.logo} style={{ width: 50, height: 50, borderRadius: 25 }} /> : <>
                                     <Button icon={<LuUpload />}>Upload Logo</Button>
                                 </>}
                             </>}

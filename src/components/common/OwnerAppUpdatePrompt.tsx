@@ -1,8 +1,10 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { LuRefreshCw } from 'react-icons/lu';
+import { LuRefreshCw, LuX } from 'react-icons/lu';
 import { theme } from 'antd';
+import { useFormatter } from 'next-intl';
+import { formatDateTime } from '@util/dateTime';
 import {
     DEPLOYMENT_VERSION_REQUEST_POLICY,
     readDeploymentVersionResponse,
@@ -19,15 +21,25 @@ function isComparableBuildId(value?: string): value is string {
     return Boolean(value && value !== 'unknown' && value !== 'local');
 }
 
-function formatBuildTime(value?: string): string {
+function getDismissedBuildId(): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        return window.sessionStorage.getItem(DISMISSED_BUILD_KEY);
+    } catch {
+        return null;
+    }
+}
+
+function formatBuildTime(value: string | undefined, formatter: ReturnType<typeof useFormatter>): string {
     if (!value || value === 'unknown') return '';
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return '';
-    return parsed.toLocaleString();
+    return formatDateTime(parsed, 'datetime', formatter);
 }
 
 export default function OwnerAppUpdatePrompt() {
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const [serverVersion, setServerVersion] = useState<DeploymentVersionResponse | null>(null);
     const [isDismissed, setIsDismissed] = useState(false);
     const isCheckingRef = useRef(false);
@@ -51,10 +63,7 @@ export default function OwnerAppUpdatePrompt() {
             if (!data) return;
             if (!isComparableBuildId(data.buildId)) return;
 
-            const dismissedBuild =
-                typeof window !== 'undefined'
-                    ? window.sessionStorage.getItem(DISMISSED_BUILD_KEY)
-                    : null;
+            const dismissedBuild = getDismissedBuildId();
             setIsDismissed(dismissedBuild === data.buildId);
             setServerVersion(data);
         } catch {
@@ -87,11 +96,15 @@ export default function OwnerAppUpdatePrompt() {
 
     if (!hasUpdate) return null;
 
-    const buildTime = formatBuildTime(serverVersion?.buildCreatedAt);
+    const buildTime = formatBuildTime(serverVersion?.buildCreatedAt, formatter);
 
     const handleDismiss = () => {
         if (serverBuildId) {
-            window.sessionStorage.setItem(DISMISSED_BUILD_KEY, serverBuildId);
+            try {
+                window.sessionStorage.setItem(DISMISSED_BUILD_KEY, serverBuildId);
+            } catch {
+                // Dismissal remains valid for this render when storage is unavailable.
+            }
         }
         setIsDismissed(true);
     };
@@ -158,7 +171,7 @@ export default function OwnerAppUpdatePrompt() {
                             </div>
                         ) : null}
                     </div>
-                    {/* <button
+                    <button
                         aria-label="Dismiss update prompt"
                         onClick={handleDismiss}
                         style={{
@@ -176,7 +189,7 @@ export default function OwnerAppUpdatePrompt() {
                         type="button"
                     >
                         <LuX size={19} />
-                    </button> */}
+                    </button>
                 </div>
                 <button
                     onClick={handleRefresh}

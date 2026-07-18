@@ -1,5 +1,7 @@
 'use client';
 
+import { FEATURE_FLAGS } from '@config/features';
+import { PERMISSIONS } from '@constant/permissions';
 import {
     applyAiMenuManagerProjectPatch,
     projectContainsAiMenuManagerPatch,
@@ -69,6 +71,7 @@ import {
 } from 'react-icons/lu';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { hasAnyPermission } from '@lib/permissions/permissionRequirements';
 import { ProjectSelectorTrigger, type ProjectSelectorItem } from '../../shared/ProjectSelector';
 import { theme } from 'antd';
 import { Button, Card, Flex, NavBar, Popup, SearchBar, Space, Text, TextArea, Toast } from '../antd';
@@ -97,8 +100,10 @@ export default function MobileAiMenuManagerScreen({
     onBack?: () => void;
 }) {
     const { token } = theme.useToken();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
     const storeId = storeDetails?.storeId;
+    const canAccessDigitalScreens = FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED
+        && hasAnyPermission(userPermissions, [PERMISSIONS.MANAGE_DIGITAL_SCREENS]);
     const {
         isLoading,
         projectsList,
@@ -175,9 +180,11 @@ export default function MobileAiMenuManagerScreen({
     ), [storeDetails]);
     const storePublicContext = useMemo(() => ({
         customDomain: (storeDetails as any)?.customDomain,
-        screenToken: (storeDetails as any)?.screen?.screenToken || (storeDetails as any)?.screenToken,
+        screenToken: canAccessDigitalScreens
+            ? (storeDetails as any)?.screen?.screenToken || (storeDetails as any)?.screenToken
+            : undefined,
         subdomain: (storeDetails as any)?.subdomain,
-    }), [storeDetails]);
+    }), [canAccessDigitalScreens, storeDetails]);
 
     const promptGroups = useMemo(() => getAiMenuManagerProjectPromptGroups(selectedProject), [selectedProject]);
     const attentionSuggestions = useMemo(() => getAiMenuManagerAttentionSuggestions(selectedProject), [selectedProject]);
@@ -475,7 +482,11 @@ export default function MobileAiMenuManagerScreen({
                     storeName,
                     businessType,
                 });
-                const savedProject = await updateProjectWithoutLoader(batch.patchedProject);
+                const savedProject = await updateProjectWithoutLoader(batch.patchedProject, {
+                    ...(batch.directives[0].baseProjectUpdatedAt
+                        ? { expectedModifiedOn: batch.directives[0].baseProjectUpdatedAt }
+                        : {}),
+                });
                 assertProjectUpdateSucceeded(
                     savedProject,
                     batch.patchedProject.projectId,
@@ -681,7 +692,11 @@ export default function MobileAiMenuManagerScreen({
             let patchedProject: Project | null = null;
             try {
                 patchedProject = applyAiMenuManagerProjectPatch(selectedProject, directive);
-                savedProject = await updateProjectWithoutLoader(patchedProject);
+                savedProject = await updateProjectWithoutLoader(patchedProject, {
+                    ...(directive.baseProjectUpdatedAt
+                        ? { expectedModifiedOn: directive.baseProjectUpdatedAt }
+                        : {}),
+                });
                 assertProjectUpdateSucceeded(
                     savedProject,
                     patchedProject.projectId,

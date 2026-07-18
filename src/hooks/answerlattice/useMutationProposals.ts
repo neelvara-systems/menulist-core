@@ -16,6 +16,9 @@ import {
     regenerateMutationProposalDraft,
     rejectMutationProposal,
 } from '@database/answerlattice/mutationProposals';
+import type { AnswerlatticeGovernanceEditedContent } from '@lib/answerlattice/governanceContracts';
+import { checkAnswerlatticeProposalImpact } from '@lib/answerlattice/proposalImpactClient';
+import type { AnswerlatticeProposalImpactResponse } from '@lib/answerlattice/proposalImpactContracts';
 import { AnswerlatticeMutationProposal } from '@type/answerlattice';
 import { message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
@@ -26,15 +29,10 @@ const ANSWERLATTICE_MUTATION_PROPOSAL_REJECT_FAILED = 'Could not reject proposal
 const ANSWERLATTICE_MUTATION_PROPOSAL_IMPLEMENT_FAILED = 'Could not mark proposal as implemented';
 const ANSWERLATTICE_MUTATION_DRAFT_PUBLISH_FAILED = 'Could not publish canonical answer';
 const ANSWERLATTICE_MUTATION_DRAFT_GENERATE_FAILED = 'Could not generate draft';
+const ANSWERLATTICE_MUTATION_PROPOSAL_IMPACT_FAILED = 'Could not check proposed answer';
 const ANSWERLATTICE_WORKSPACE_SCOPE_MISSING = 'Answerlattice workspace scope is missing';
 
-type DraftApprovalContent = {
-    title?: string;
-    structuredSummary?: string;
-    detailedExplanation?: string;
-    edgeCases?: string;
-    constraints?: string;
-};
+type DraftApprovalContent = AnswerlatticeGovernanceEditedContent;
 
 interface UseMutationProposalsReturn {
     proposals: AnswerlatticeMutationProposal[];
@@ -45,6 +43,10 @@ interface UseMutationProposalsReturn {
     implement: (proposalId: string) => Promise<void>;
     approveDraft: (proposalId: string, editedContent: DraftApprovalContent, approvedBy: string) => Promise<void>;
     regenerateDraft: (proposalId: string) => Promise<void>;
+    previewImpact: (
+        proposalId: string,
+        editedContent?: DraftApprovalContent,
+    ) => Promise<AnswerlatticeProposalImpactResponse>;
     refresh: () => Promise<void>;
 }
 
@@ -136,5 +138,28 @@ export function useMutationProposals(tId: number, sId: number): UseMutationPropo
         }
     }, [refresh, sId, tId]);
 
-    return { proposals, loading, error, approve, reject, implement, approveDraft, regenerateDraft, refresh };
+    const previewImpact = useCallback(async (
+        proposalId: string,
+        editedContent?: DraftApprovalContent,
+    ) => {
+        try {
+            return await checkAnswerlatticeProposalImpact(proposalId, editedContent);
+        } catch {
+            message.error(ANSWERLATTICE_MUTATION_PROPOSAL_IMPACT_FAILED);
+            throw new Error(ANSWERLATTICE_MUTATION_PROPOSAL_IMPACT_FAILED);
+        }
+    }, []);
+
+    return {
+        proposals,
+        loading,
+        error,
+        approve,
+        reject,
+        implement,
+        approveDraft,
+        regenerateDraft,
+        previewImpact,
+        refresh,
+    };
 }

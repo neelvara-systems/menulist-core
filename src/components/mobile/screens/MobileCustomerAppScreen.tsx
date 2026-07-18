@@ -19,17 +19,16 @@ import ImageUploadInput from '@atoms/imageUploadInput';
 import { getMenuUrl, normalizeBaseUrl } from '@constant/urls';
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import {
-    assertPWAIconOverrideUpdateSucceeded,
     assertPWASettingsUpdateSucceeded,
+    removePWAIconOverride,
+    replacePWAIconOverride,
     resolvePWASettings,
-    updatePWAIconOverride,
     updatePWASettings,
-    uploadPWAIconOverride,
 } from '@database/pwa';
-import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { preparePWAIconFile } from '@lib/pwa/iconUploadUtils';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { buildBusinessCopyManualOverrideMeta } from '@services/ai/businessCopy/metadata';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import type { UserUploadedFileType } from '@type/common';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
@@ -219,7 +218,11 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                         fieldKeys: ['pwaShortName'],
                     });
                     const metaResult = await updateStore({
-                        businessCopyMeta: nextBusinessCopyMeta,
+                        businessCopyMeta: getStoreDeepDifference(
+                            nextBusinessCopyMeta,
+                            storeDetails?.businessCopyMeta || {},
+                            { detectRemovedRootKeys: true },
+                        ),
                         storeId: storeDetails.storeId,
                     });
                     assertStoreUpdateSucceeded(
@@ -246,31 +249,21 @@ export default function MobileCustomerAppScreen({ onBack }: Props) {
                     selectedIcon?.type || undefined,
                 );
                 const prepared = await preparePWAIconFile(rawFile);
-                const uploadedUrl = await uploadPWAIconOverride({
+                const iconResult = await replacePWAIconOverride({
                     file: prepared.file,
+                    previousUrl: nextIconUrl,
                     tenantId: storeDetails.tenantId,
                     storeId: storeDetails.storeId,
                 });
-                const iconResult = await updatePWAIconOverride(storeDetails.storeId, {
-                    pwaIconOverrideUrl: uploadedUrl,
-                    pwaIconMode: 'override',
-                });
-                assertPWAIconOverrideUpdateSucceeded(iconResult);
                 nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
-                if (nextIconUrl && nextIconUrl !== uploadedUrl && nextIconUrl.includes('firebasestorage.googleapis.com')) {
-                    void deleteFileByUrl(nextIconUrl);
-                }
-                nextIconUrl = uploadedUrl;
+                nextIconUrl = iconResult.url;
             } else if (removeIconOnSave && nextIconUrl) {
-                const iconResult = await updatePWAIconOverride(storeDetails.storeId, {
-                    pwaIconOverrideUrl: null,
-                    pwaIconMode: 'generated',
+                const iconResult = await removePWAIconOverride({
+                    previousUrl: nextIconUrl,
+                    tenantId: storeDetails.tenantId,
+                    storeId: storeDetails.storeId,
                 });
-                assertPWAIconOverrideUpdateSucceeded(iconResult);
                 nextIconUpdatedAt = iconResult.pwaIconUpdatedAt;
-                if (nextIconUrl.includes('firebasestorage.googleapis.com')) {
-                    void deleteFileByUrl(nextIconUrl);
-                }
                 nextIconUrl = '';
             }
             if (hasIconChanges) {

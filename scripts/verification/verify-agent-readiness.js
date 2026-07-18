@@ -802,6 +802,8 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(productionReadinessLocalRunner, "args: ['tsc', '--noEmit'", 'Local readiness runner must not bypass root typecheck script');
   assertIncludes(productionReadinessLocalRunner, "args: ['run', 'lint']", 'Local readiness runner must include root lint');
   assertIncludes(productionReadinessLocalRunner, "args: ['diff', '--check']", 'Local readiness runner must include whitespace diff hygiene');
+  assertIncludes(productionReadinessLocalRunner, 'delete environment.GOOGLE_APPLICATION_CREDENTIALS;', 'Local readiness runner must isolate demo emulator checks from inherited Google credentials');
+  assertIncludes(productionReadinessLocalRunner, 'env: getLocalReadinessEnvironment()', 'Local readiness runner must use the isolated local-check environment');
   assertIncludes(publicBusinessTruthVerifier, 'function verifyStoreUpdatesRequireAcknowledgement()', 'Public business truth verifier generic store-update acknowledgement gate');
   assertIncludes(publicBusinessTruthVerifier, 'Every src updateStore() call must require assertStoreUpdateSucceeded()', 'Public business truth verifier generic store-update failure copy');
   assertIncludes(verificationReadme, 'Explicit local source-gate scope and the browser/cloud/deploy gates it does not prove', 'Verification README recycle-bin source-gate output boundary');
@@ -856,7 +858,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(productionReadinessReadme, '| Gate 4 Razorpay sandbox smoke | Partial only | The maintained read-only preflight passes for payments, orders, plans, and subscriptions plus synthetic raw-body webhook signature validation; full checkout, payment verification, real webhook delivery, compensation, top-up, reseller, state-parity, and no-real-charge smoke remains pending. |', 'Production readiness checklist Razorpay current gate snapshot');
   assertIncludes(productionReadinessReadme, '| Gate 5 WhatsApp provider smoke | Blocked | Checked local/functions dotenv files keep messaging onboarding absent or disabled and contain no WhatsApp provider secrets; non-production Meta app, secrets, deployed webhook, registration, and target enablement remain pending. |', 'Production readiness checklist WhatsApp current gate snapshot');
   assertIncludes(productionReadinessReadme, '| Gate 6 POS webhook provider smoke | Blocked | `npm run verify:pos-sync-boundary` passes, but controlled public HTTPS receiver, receiver-side signature verification, test delivery, publish delivery, failed-endpoint evidence, and secret-rotation proof remain pending. |', 'Production readiness checklist POS current gate snapshot');
-  assertIncludes(productionReadinessReadme, '| Gate 7 Batch image worker | Blocked | Root `.env` has project/location/queue/HTTPS worker URL but lacks `BATCH_IMAGE_GENERATION_WORKER_SECRET`; worker deploy and controlled Cloud Tasks enqueue/worker smoke remain pending. |', 'Production readiness checklist batch worker current gate snapshot');
+  assertIncludes(productionReadinessReadme, '| Gate 7 Batch image worker | Blocked | Root `.env` has project/location/queue/HTTPS worker URL but lacks `BATCH_IMAGE_GENERATION_WORKER_SECRET`; worker deploy, captured queue dispatch/retry/backoff policy, and controlled Cloud Tasks enqueue/worker smoke remain pending. |', 'Production readiness checklist batch worker current gate snapshot');
   assertIncludes(productionReadinessReadme, '| Gate 8 Production host smoke | Blocked | Vercel deploy, production-host smoke, production env verification, custom-domain routing, CDN behavior, and production Firebase access require explicit owner approval and evidence. |', 'Production readiness checklist production host current gate snapshot');
   assertIncludes(productionReadinessReadme, 'Do not convert this table into ✅ status until the corresponding runbook gate has pass evidence recorded in `__docs__/audits/menulist-production-readiness-audit.md`.', 'Production readiness checklist current gate snapshot status guard');
   assertIncludes(productionReadinessReadme, '| 1.55 | July 9, 2026 | Clarified checklist status semantics:', 'Production readiness checklist status semantics version history');
@@ -909,7 +911,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(changelog, 'Local Customer-Worker Offline Contract Evidence', 'Changelog customer PWA local evidence');
   assertIncludes(productionReadinessReadme, 'Firebase Functions deploy evidence captured', 'Production readiness checklist Functions deploy evidence wording');
   assertIncludes(productionReadinessReadme, 'run `npm run verify:functions-deploy-preflight` before the scoped Firebase deploy retry', 'Production readiness checklist scoped Functions deploy preflight');
-  assertIncludes(productionReadinessReadme, 'latest package-local scoped retry `npm --prefix functions run deploy:menulist-qa` targeted the current Gate 1 function set, completed predeploy lint/build', 'Production readiness checklist latest Functions deploy blocker evidence');
+  assertIncludes(productionReadinessReadme, 'latest scheduler-only retry on July 15 used `firebase deploy --project menulist-qa --config firebase.json --only functions:menulistMaintenanceScheduler --non-interactive`, completed predeploy lint/build', 'Production readiness checklist latest Functions deploy blocker evidence');
   assertIncludes(productionReadinessReadme, 'Firebase Storage rules cutover deployed', 'Production readiness checklist Storage deploy evidence wording');
   assertIncludes(productionReadinessReadme, 'Gate 2A in [External Certification Runbook](./external-certification-runbook.md): `npm run verify:storage-paths` passes, but the latest scoped `menulist-qa` deploy failed before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403 project access/availability blocker', 'Production readiness checklist Storage deploy blocker evidence');
   assertIncludes(productionReadinessReadme, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Production readiness checklist scoped QA index deploy command');
@@ -1113,18 +1115,18 @@ function verifyEnvironmentTargets() {
   assertIncludes(b2bViewFirebase, 'API/export security review', 'B2B Firebase API/export launch gate');
   assertIncludes(multiLanguageTranslationReadme, 'public renderer fallback/RTL evidence', 'Multi-language README renderer/RTL launch gate');
   assertIncludes(decisionIntelligenceReadme, '**Launch boundary:** Not current launch certification or deploy approval.', 'Decision Intelligence README top launch/deploy boundary');
-  assertIncludes(decisionIntelligenceReadme, 'This README documents source-gated Decision Blocks behavior only; release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, provider/runtime smoke where relevant, public-cache evidence, and production-host smoke.', 'Decision Intelligence README top current evidence boundary');
+  assertIncludes(decisionIntelligenceReadme, 'scoped scheduler deploy evidence', 'Decision Intelligence README scoped deploy boundary');
+  assertIncludes(decisionIntelligenceReadme, 'browser/mobile customer-menu QA', 'Decision Intelligence README customer QA boundary');
   assertIncludes(decisionIntelligenceSpec, 'scoped scheduler deploy evidence', 'Decision Intelligence spec scheduler deploy launch gate');
   assertIncludes(decisionIntelligenceImpl, '**Launch boundary:** Not current launch certification or deploy approval.', 'Decision Intelligence implementation top launch/deploy boundary');
-  assertIncludes(decisionIntelligenceImpl, 'This implementation document is source-gated runtime evidence only; Decision Intelligence release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, public-cache evidence, provider/runtime smoke where relevant, and production-host smoke.', 'Decision Intelligence implementation top current evidence boundary');
+  assertIncludes(decisionIntelligenceImpl, 'scoped scheduler deploy evidence', 'Decision Intelligence implementation scoped deploy boundary');
+  assertIncludes(decisionIntelligenceImpl, 'browser/mobile customer-menu QA', 'Decision Intelligence implementation customer QA boundary');
   assertIncludes(decisionIntelligenceFirebase, '**Launch boundary:** Not current launch certification or deploy approval.', 'Decision Intelligence Firebase top launch/deploy boundary');
   assertIncludes(decisionIntelligenceFirebase, 'This Firebase cost doc is source-gated scheduler/cost evidence only; Decision Intelligence release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for the scheduler bundle, browser/mobile customer-menu QA, public-cache evidence, provider/runtime smoke where relevant, and production-host smoke.', 'Decision Intelligence Firebase top current evidence boundary');
-  assertIncludes(authCompleteGuide, 'Auth architecture/source evidence; not current launch certification', 'Auth complete guide launch boundary status');
-  assertIncludes(authCompleteGuide, 'npm run verify:auth-security-failure-matrix', 'Auth complete guide auth-security source gate');
-  assertIncludes(authCompleteGuide, 'auth browser/API smoke', 'Auth complete guide browser/API launch gate');
-  assertIncludes(authCompleteGuide, 'Firebase Auth custom-claims/token smoke', 'Auth complete guide custom-claims launch gate');
-  assertIncludes(authCompleteGuide, 'App Check/session-cookie review', 'Auth complete guide App Check/session-cookie launch gate');
-  assertIncludes(authCompleteGuide, 'login/logout/OAuth/password/staff-passcode QA', 'Auth complete guide login-flow launch gate');
+  assertIncludes(authCompleteGuide, 'Historical architecture reference; not current runtime truth or launch certification', 'Auth complete guide historical launch boundary status');
+  assertIncludes(authCompleteGuide, 'old 30-day session contract', 'Auth complete guide historical session warning');
+  assertIncludes(authCompleteGuide, '[Auth and Onboarding](../auth-onboarding/README.md)', 'Auth complete guide current flow handoff');
+  assertIncludes(authCompleteGuide, '[Auth hub](./README.md)', 'Auth complete guide current hub handoff');
   assertIncludes(authReadme, 'Auth documentation hub; not current launch certification', 'Auth README launch boundary status');
   assertIncludes(authReadme, 'npm run verify:auth-security-failure-matrix', 'Auth README auth-security source gate');
   assertIncludes(authReadme, 'auth browser/API smoke', 'Auth README browser/API launch gate');
@@ -1282,8 +1284,9 @@ function verifyEnvironmentTargets() {
   assertIncludes(projectsUtilities, 'Implemented reference; not current launch certification', 'Projects utilities launch boundary status');
   assertIncludes(projectsUtilities, 'It is not production-launch approval.', 'Projects utilities launch approval boundary');
   assertNotIncludes(projectsUtilities, '**Status**: ✅ Production Ready', 'Projects utilities stale production-ready status');
-  assertIncludes(projectsOwnerDashboard, 'Implemented reference with localStorage caching; not current launch certification', 'Projects owner-dashboard launch boundary status');
-  assertIncludes(projectsOwnerDashboard, 'It is not production-launch approval.', 'Projects owner-dashboard launch approval boundary');
+  assertIncludes(projectsOwnerDashboard, 'Implemented reference; not current launch certification', 'Projects owner-dashboard launch boundary status');
+  assertIncludes(projectsOwnerDashboard, 'It is not production approval.', 'Projects owner-dashboard launch approval boundary');
+  assertIncludes(projectsOwnerDashboard, 'scoped SWR + localStorage cache', 'Projects owner-dashboard current cache boundary');
   assertNotIncludes(projectsOwnerDashboard, '**Status:** Production Ready', 'Projects owner-dashboard stale production-ready status');
   assertIncludes(projectsEditorReadme, 'Implemented source documentation; not current launch certification', 'Projects Editor README launch boundary status');
   assertIncludes(projectsEditorReadme, 'browser/mobile editor QA', 'Projects Editor README browser/mobile QA launch gate');
@@ -1445,10 +1448,11 @@ function verifyEnvironmentTargets() {
   assertIncludes(networkStatusHook, "connection.addEventListener('change', updateNetworkStatus);", 'Network status hook connection-change source evidence');
   assertIncludes(networkStatusHook, 'downlink !== undefined && downlink < 1', 'Network status hook slow downlink threshold');
   assertIncludes(networkStatusHook, 'rtt !== undefined && rtt > 500', 'Network status hook slow RTT threshold');
-  assertIncludes(networkStatusProvider, 'closable={false}', 'Network status provider non-closable modal');
-  assertIncludes(networkStatusProvider, 'maskClosable={false}', 'Network status provider non-mask-closable modal');
-  assertIncludes(networkStatusProvider, 'keyboard={false}', 'Network status provider keyboard-close guard');
-  assertIncludes(networkStatusProvider, "fetch('/favicon.ico', { method: 'HEAD', cache: 'no-cache' })", 'Network status provider manual connection check');
+  assertIncludes(networkStatusProvider, 'role="status"', 'Network status provider non-blocking status notice');
+  assertIncludes(networkStatusProvider, 'You can keep reviewing this screen.', 'Network status provider offline continuation boundary');
+  assertIncludes(networkStatusProvider, 'You can keep working.', 'Network status provider slow-network continuation boundary');
+  assertNotIncludes(networkStatusProvider, '<Modal', 'Network status provider must not block owner workflows');
+  assertNotIncludes(networkStatusProvider, "fetch('/favicon.ico'", 'Network status provider must not trust a cacheable favicon probe');
   assertIncludes(layoutWrapper, '<NetworkStatusProvider>', 'MenuList layout mounts network status provider');
   assertIncludes(campaignCueLayout, '<NetworkStatusProvider>', 'CampaignCue layout mounts shared network status provider');
   assertIncludes(clientMenuReadme, 'Implemented customer-facing menu documentation; not current launch certification', 'Client menu README launch boundary status');
@@ -1731,7 +1735,7 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(socialContentLogicVerification, '**Status:** ✅ **DEPLOYABLE**', 'Social content logic verification stale deployable status');
   assertNotIncludes(socialContentLogicVerification, '## FINAL VERDICT: ✅ DEPLOYABLE', 'Social content logic verification stale deployable verdict');
   assertNotIncludes(socialContentLogicVerification, 'Social Content logic verification complete. All 6 flows verified. Zero critical issues.', 'Social content logic verification stale zero-issues certification');
-  assertIncludes(posWebhookSyncImpl, 'Separate scoped addition', 'POS webhook sync WhatsApp separate-scope wording');
+  assertIncludes(posWebhookSyncImpl, 'No unused queue collection or queue type remains in active source', 'POS webhook sync current bounded-delivery scope');
   assertNotIncludes(posWebhookSyncImpl, 'Deferred to post-launch', 'POS webhook sync stale post-launch wording');
   assertIncludes(decisionIntelligenceMarketing, 'not current launch certification', 'Decision Intelligence marketing launch boundary status');
   assertIncludes(decisionIntelligenceMarketing, 'External Certification Runbook', 'Decision Intelligence marketing external certification boundary');
@@ -1851,7 +1855,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(productionCertificationRunbook, 'subscription/top-up sequencing, webhook cheap-fail/idempotency, browser acknowledgement, and entitlement/cache sync guard coverage only', 'Production certification runbook Razorpay preflight boundary');
   assertIncludes(productionCertificationRunbook, 'npm run smoke:razorpay-sandbox-readonly', 'Production certification runbook Razorpay maintained read-only command');
   assertIncludes(productionCertificationRunbook, 'performs four bounded GET-only provider inventory calls', 'Production certification runbook Razorpay read-only provider operation set');
-  assertIncludes(productionCertificationRunbook, 'Current partial evidence refreshed July 11, 2026:', 'Production certification runbook Razorpay current read-only provider evidence');
+  assertIncludes(productionCertificationRunbook, 'Current partial evidence refreshed July 14, 2026 after the final billing cross-check:', 'Production certification runbook Razorpay current read-only provider evidence');
   assertIncludes(productionCertificationRunbook, 'It does not prove the secret matches a deployed Razorpay webhook endpoint, checkout, subscription creation, payment verification, top-up purchase, webhook delivery, provider failure compensation, local/provider state parity, deployed Functions secrets, or no-real-charge behavior.', 'Production certification runbook Razorpay read-only evidence boundary');
   assert(
     rootPackageJson.scripts?.['smoke:razorpay-sandbox-readonly'] === 'node scripts/verification/verify-razorpay-sandbox-readiness.mjs',
@@ -1907,8 +1911,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(changelog, 'POS Gate 6 receiver blocker is current', 'Changelog POS Gate 6 current blocker entry');
   assertIncludes(productionCertificationRunbook, 'npm run verify:agent-readiness', 'Production certification runbook batch worker env setup preflight source gate');
   assertIncludes(productionCertificationRunbook, 'It does not prove Cloud Tasks enqueue, worker invocation, worker secret acceptance, provider image generation, review state, or project persistence.', 'Production certification runbook batch worker external-proof boundary');
-  assertIncludes(productionCertificationRunbook, 'Current blocker refreshed July 9, 2026: local `.env` has `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, and an HTTPS `BATCH_IMAGE_GENERATION_WORKER_URL`, but `BATCH_IMAGE_GENERATION_WORKER_SECRET` is missing.', 'Production certification runbook batch worker current secret blocker');
-  assertIncludes(productionCertificationRunbook, 'Gate 7 remains blocked until the worker secret is configured for the target, the worker target is deployed, and a controlled Cloud Tasks enqueue/worker smoke is run.', 'Production certification runbook batch worker owner-side blocker');
+  assertIncludes(productionCertificationRunbook, 'Current blocker refreshed July 15, 2026: local `.env` has `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, and an HTTPS `BATCH_IMAGE_GENERATION_WORKER_URL`, but `BATCH_IMAGE_GENERATION_WORKER_SECRET` is missing.', 'Production certification runbook batch worker current secret blocker');
+  assertIncludes(productionCertificationRunbook, 'Gate 7 remains blocked until the worker secret is configured for the target, the worker target is deployed, the existing queue policy is captured, and a controlled Cloud Tasks enqueue/worker smoke is run.', 'Production certification runbook batch worker owner-side blocker');
   assertIncludes(productionReadinessAudit, 'External Certification Gate 7 Batch Worker Secret Prerequisite Evidence - July 9, 2026', 'Production readiness audit batch worker secret prerequisite evidence heading');
   assertIncludes(productionReadinessAudit, 'Command or manual path: inline Node presence check for `FIREBASE_PROJECT_ID`, `FIREBASE_PROJECT_LOCATION`, `BATCH_IMAGE_GENERATION_QUEUE_ID`, `BATCH_IMAGE_GENERATION_WORKER_URL`, and `BATCH_IMAGE_GENERATION_WORKER_SECRET`; then a no-enqueue `getImageGenerationTaskConfigStatus()` probe with root `.env` loaded.', 'Production readiness audit batch worker secret prerequisite command boundary');
   assertIncludes(productionReadinessAudit, 'The app helper emitted `cloud_tasks_batch_image_config_missing` and returned `{"ready":false,"hasProjectId":true,"hasQueueLocation":true,"hasQueueId":true,"hasWorkerUrl":true,"hasWorkerSecret":false}`.', 'Production readiness audit batch worker no-enqueue status evidence');
@@ -1953,7 +1957,7 @@ function verifyEnvironmentTargets() {
   assertIncludes(productionReadinessAudit, 'HyperFrames convention filenames are still link-scanned but exempted from active-doc kebab-case naming violations', 'Production readiness audit HyperFrames docs naming exception');
   assertIncludes(productionReadinessAudit, 'Documentation tracked filename casing checkpoint:', 'Production readiness audit docs tracked filename casing checkpoint');
   assertIncludes(productionReadinessAudit, 'Documentation link casing checkpoint:', 'Production readiness audit docs link exact-case checkpoint');
-  assertIncludes(productionReadinessAudit, 'the latest `npm run docs:check-links` run passed with 0 broken links and 0 naming violations', 'Production readiness audit docs link health summary');
+  assertIncludes(productionReadinessAudit, 'The latest `npm run docs:check-links` run scanned 2,451 documentation files and 4,348 internal links, passed with 0 broken links, and reported 27 naming violations', 'Production readiness audit current docs link health summary');
   assertNotIncludes(productionReadinessAudit, 'across 1,995 active docs files', 'Production readiness audit stale docs link file count');
   assertIncludes(productionReadinessAudit, 'AI extraction historical-audit boundary checkpoint', 'Production readiness audit AI extraction historical boundary checkpoint');
   assertIncludes(productionReadinessAudit, 'historical code-readiness evidence, not current MenuList launch certification', 'Production readiness audit AI extraction historical boundary wording');
@@ -1971,7 +1975,10 @@ function verifyEnvironmentTargets() {
   assertIncludes(aiExtractionMobileShell, "'/platform/extraction-monitor': 'extractionMonitor'", 'AI extraction monitoring platform route maps into MobileShell');
   assertIncludes(aiExtractionFirestoreRules, 'match /MENULIST_AI_OPERATIONS/{docId}', 'AI extraction monitoring cost ledger Firestore rule');
   assertIncludes(aiExtractionFirestoreRules, 'match /menuImageProcessingJobs/{jobId}', 'AI extraction monitoring job Firestore rule');
-  assertIncludes(aiExtractionFirestoreRules, '|| isPlatformAdmin()', 'AI extraction monitoring cross-tenant platform rule');
+  assert(
+    /match \/menuImageProcessingJobs\/\{jobId\}[\s\S]{0,500}isPlatformAdmin\(\)[\s\S]{0,500}isMenuProcessingJobOwner\(\)[\s\S]{0,200}isMenuProcessingJobScopeMember\(\)/.test(aiExtractionFirestoreRules),
+    'AI extraction monitoring job rule must retain the platform bypass and owner-plus-current-scope boundary',
+  );
   for (const [label, content] of [
     ['AI extraction monitoring spec', aiExtractionMonitoringSpec],
     ['AI extraction monitoring implementation', aiExtractionMonitoringImpl],
@@ -2033,10 +2040,10 @@ function verifyEnvironmentTargets() {
   assertIncludes(ownerActionItems, '**Launch boundary:** Not current launch certification or deploy approval.', 'Owner action items top launch/deploy boundary');
   assertIncludes(ownerActionItems, 'This tracker lists owner/manual tasks; production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped deploy evidence, provider/browser/device QA, and production-host smoke.', 'Owner action items top current evidence boundary');
   assertIncludes(ownerActionItems, 'menu extraction worker updates, source-file path hardening updates, and the consolidated maintenance scheduler', 'Owner action items current Functions blocker scope');
-  assertIncludes(ownerActionItems, 'Latest package-local scoped `menulist-qa` retry on July 9, 2026 targeted the current Gate 1 function set, completed predeploy lint/build', 'Owner action items latest Functions blocker evidence');
+  assertIncludes(ownerActionItems, 'The latest scoped `menulist-qa` retry on July 16, 2026 (`menulistMaintenanceScheduler,computeDecisionBlocksScores`) completed predeploy lint/build and then failed before upload with Cloud Resource Manager HTTP 403 caller permission', 'Owner action items latest Functions blocker evidence');
   assertIncludes(ownerActionItems, 'Deploy MenuList Storage rules cutover to QA', 'Owner action items Storage deploy task');
   assertIncludes(ownerActionItems, 'Gate 2A requires `npm run verify:storage-paths`, then `firebase deploy --project menulist-qa --config firebase.json --only storage --non-interactive` before production approval', 'Owner action items Storage deploy preflight and command');
-  assertIncludes(ownerActionItems, 'Latest local retry on July 9, 2026 passed `npm run verify:storage-paths`, then was blocked before rules upload while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied', 'Owner action items latest Storage deploy blocker evidence');
+  assertIncludes(ownerActionItems, 'Local Storage emulation passes; prior target attempts were blocked while checking/enabling `firebasestorage.googleapis.com` with Service Usage HTTP 403: project `menulist-qa` not found or permission denied', 'Owner action items latest Storage deploy blocker evidence');
   assertIncludes(ownerActionItems, 'Confirm Vercel Production MenuList env vars point to `menulist`', 'Owner action items current MenuList production target task');
   assertIncludes(ownerActionItems, 'Confirm monitoring feature flag evidence', 'Owner action items monitoring flag evidence task');
   assertIncludes(ownerActionItems, 'Confirm production feature flag evidence before launch', 'Owner action items production flag evidence task');
@@ -2079,9 +2086,11 @@ function verifyEnvironmentTargets() {
   assertIncludes(nightlySchedulerArchitecture, 'production readiness still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, explicit target deploy approval, scoped Functions deploy evidence, scheduler runtime evidence, and production-host smoke where relevant.', 'Nightly scheduler architecture top current evidence boundary');
   assertNotIncludes(nightlySchedulerArchitecture, 'Deploy: `firebase deploy --only functions:computeDecisionBlocksScores`', 'Nightly scheduler architecture broad computeDecisionBlocksScores deploy instruction');
   assertIncludes(continuousMenuIntelligenceReadme, '**Launch boundary:** Not current launch certification or deploy approval.', 'CMI README top launch/deploy boundary');
-  assertIncludes(continuousMenuIntelligenceReadme, 'This README documents source-gated CMI observation, scheduler, and Decision Blocks behavior only; full CMI release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for the scheduler bundle, runtime/provider smoke where relevant, downstream consumer certification, and production-host smoke.', 'CMI README top current evidence boundary');
+  assertIncludes(continuousMenuIntelligenceReadme, 'scoped Functions deploy evidence for the scheduler bundle', 'CMI README scoped deploy boundary');
+  assertIncludes(continuousMenuIntelligenceReadme, 'downstream-consumer certification', 'CMI README downstream certification boundary');
   assertIncludes(continuousMenuIntelligenceImpl, '**Launch boundary:** Not current launch certification or deploy approval.', 'CMI implementation top launch/deploy boundary');
-  assertIncludes(continuousMenuIntelligenceImpl, 'This implementation plan is source-gated runtime evidence only; CMI release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for the scheduler bundle, runtime/provider smoke where relevant, downstream consumer certification, and production-host smoke.', 'CMI implementation top current evidence boundary');
+  assertIncludes(continuousMenuIntelligenceImpl, 'scoped Functions deploy evidence for the scheduler bundle', 'CMI implementation scoped deploy boundary');
+  assertIncludes(continuousMenuIntelligenceImpl, 'downstream-consumer certification', 'CMI implementation downstream certification boundary');
   assertIncludes(continuousMenuIntelligenceFirebase, '**Launch boundary:** Not current launch certification or deploy approval.', 'CMI Firebase top launch/deploy boundary');
   assertIncludes(continuousMenuIntelligenceFirebase, 'This Firebase cost doc is source-gated scheduler/cost evidence only; CMI release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped Functions deploy evidence for `computeDecisionBlocksScores` and related scheduler triggers, runtime/provider smoke where relevant, downstream consumer certification, and production-host smoke.', 'CMI Firebase top current evidence boundary');
   assertIncludes(continuousMenuIntelligenceImpl, 'Current retry evidence must use `npm run verify:functions-deploy-preflight`', 'CMI implementation current retry preflight boundary');
@@ -2151,7 +2160,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(pricingIntegrityWebsite, 'Background PDF regeneration is not active runtime.', 'Pricing website public claim boundary');
   assertIncludes(pricingIntegrityHelpdoc, 'MenuList does not currently run a background PDF regeneration job after every price edit.', 'Pricing helpdoc disabled background PDF boundary');
   assertIncludes(pricingIntegrityMarketing, '`ENABLE_BACKGROUND_PDF_REGEN` is false.', 'Pricing marketing disabled background PDF boundary');
-  assertIncludes(pricingIntegrityValidation, 'Historical Validation Result: Source Evidence Only', 'Pricing Integrity validation historical result heading');
+  assertIncludes(pricingIntegrityValidation, '## Current result', 'Pricing Integrity validation current result heading');
+  assertIncludes(pricingIntegrityValidation, '**Status:** Local source complete, not current launch certification', 'Pricing Integrity validation local source boundary');
   assertIncludes(pricingIntegrityValidation, 'Current release approval still requires the active production-readiness audit', 'Pricing Integrity validation current release boundary');
   assertIncludes(pricingIntegrityValidation, 'authenticated desktop/mobile editor price-change QA', 'Pricing Integrity validation editor/mobile QA boundary');
   assertIncludes(pricingIntegrityValidation, 'public menu and PDF artifact QA', 'Pricing Integrity validation public/PDF QA boundary');
@@ -2159,10 +2169,10 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(pricingIntegrityValidation, '**Status:** ✅ READY FOR TESTING', 'Pricing Integrity validation stale ready-for-testing status');
   assertNotIncludes(pricingIntegrityValidation, '## ✅ FINAL VERDICT: READY FOR TESTING', 'Pricing Integrity validation stale ready-for-testing verdict');
   assertNotIncludes(pricingIntegrityValidation, '**Verdict:** ✅ "Completed enough to lock for 3 years"', 'Pricing Integrity validation stale external-review launch verdict');
-  assertIncludes(hoursHolidayAccuracyValidation, 'Historical Validation Result: Source Evidence Only', 'Hours validation historical result heading');
-  assertIncludes(hoursHolidayAccuracyValidation, 'Current release approval still requires the active production-readiness audit', 'Hours validation current release boundary');
-  assertIncludes(hoursHolidayAccuracyValidation, 'authenticated desktop/mobile working-hours save QA', 'Hours validation desktop/mobile QA boundary');
-  assertIncludes(hoursHolidayAccuracyValidation, 'customer-facing public menu/OBP hours output QA', 'Hours validation public output QA boundary');
+  assertIncludes(hoursHolidayAccuracyValidation, '**Result:** Local source complete', 'Hours validation current result heading');
+  assertIncludes(hoursHolidayAccuracyValidation, '**Release status:** Owner/deployment/browser/device evidence pending', 'Hours validation current release boundary');
+  assertIncludes(hoursHolidayAccuracyValidation, 'Authenticated desktop and MobileShell mutation/rollback smoke.', 'Hours validation desktop/mobile QA boundary');
+  assertIncludes(hoursHolidayAccuracyValidation, 'Real public menu and OBP boundary smoke in multiple timezones.', 'Hours validation public output QA boundary');
   assertNotIncludes(hoursHolidayAccuracyValidation, '**Status:** ✅ READY FOR TESTING', 'Hours validation stale ready-for-testing status');
   assertNotIncludes(hoursHolidayAccuracyValidation, '## ✅ FINAL VERDICT: READY FOR TESTING', 'Hours validation stale ready-for-testing verdict');
   assertNotIncludes(hoursHolidayAccuracyValidation, '**Ready For:** Manual QA Testing', 'Hours validation stale manual-QA readiness line');
@@ -2248,15 +2258,19 @@ function verifyEnvironmentTargets() {
   assertIncludes(securityLoginSourceTracking, 'Source tracking documented - verify current deployment before launch', 'Security login-source tracking footer boundary');
   assertNotIncludes(securityLoginSourceTracking, '**Status:** ✅ Production Ready', 'Security login-source tracking stale production-ready status');
   assertNotIncludes(securityLoginSourceTracking, '**Status:** ✅ Production Active', 'Security login-source tracking stale production-active status');
+  assertIncludes(authOnboardingReadme, 'Local source complete; external certification pending', 'Auth onboarding README source/external boundary status');
+  assertIncludes(authOnboardingReadme, 'External evidence still pending', 'Auth onboarding README external evidence boundary');
+  assertIncludes(authOnboardingReadme, 'Razorpay sandbox checkout', 'Auth onboarding README Razorpay sandbox gate');
+  assertIncludes(authOnboardingReadme, 'Narrow mobile browser and PWA handoff QA', 'Auth onboarding README mobile browser gate');
+  assertIncludes(authOnboardingSpec, 'Implemented source contract', 'Auth onboarding spec source-contract status');
+  assertIncludes(authOnboardingSpec, 'No promise that local source verification certifies providers or deployed production', 'Auth onboarding spec external-certification boundary');
+  assertIncludes(authOnboardingImpl, 'Current source map', 'Auth onboarding implementation source-map status');
+  assertIncludes(authOnboardingImpl, 'Do not replace provider, device, or deployed-host smoke with these source gates', 'Auth onboarding implementation external-smoke boundary');
   for (const [label, content] of [
     ['Auth onboarding README', authOnboardingReadme],
     ['Auth onboarding spec', authOnboardingSpec],
     ['Auth onboarding implementation', authOnboardingImpl],
   ]) {
-    assertIncludes(content, 'Implemented source evidence; not current launch certification', `${label} launch boundary status`);
-    assertIncludes(content, 'External Certification Runbook', `${label} external certification boundary`);
-    assertIncludes(content, 'Razorpay sandbox', `${label} Razorpay sandbox launch gate`);
-    assertIncludes(content, 'mobile browser onboarding/payment QA', `${label} mobile onboarding/payment launch gate`);
     assertNotIncludes(content, '**Status:** ✅ Production Ready', `${label} stale production-ready status`);
     assertNotIncludes(content, '**DOCUMENT STATUS:** ✅ Production Ready', `${label} stale production-ready footer`);
   }
@@ -2266,12 +2280,14 @@ function verifyEnvironmentTargets() {
   assertIncludes(ponrOnboardingSpec, 'Historical January 2026 planning checklist only; not current implementation approval.', 'PONR onboarding spec historical checklist boundary');
   assertNotIncludes(ponrOnboardingSpec, '**Status:** 🔒 **LOCKED — READY FOR IMPLEMENTATION**', 'PONR onboarding spec stale implementation-ready status');
   assertNotIncludes(ponrOnboardingSpec, '**Document Status:** Ready for implementation', 'PONR onboarding spec stale implementation-ready footer');
-  assertIncludes(authOnboardingFirebase, 'Firebase cost evidence; not current launch certification', 'Auth onboarding Firebase launch boundary status');
-  assertIncludes(authOnboardingFirebase, 'Firebase Auth custom-claims/token smoke', 'Auth onboarding Firebase custom-claims launch gate');
-  assertIncludes(authOnboardingFirebase, 'provider-failure compensation evidence', 'Auth onboarding Firebase provider-failure launch gate');
+  assertIncludes(authOnboardingFirebase, 'Current source contract', 'Auth onboarding Firebase source-contract status');
+  assertIncludes(authOnboardingFirebase, 'Firebase Auth operations', 'Auth onboarding Firebase claim/provider operation boundary');
+  assertIncludes(authOnboardingFirebase, 'Provider-failure compensation accepts only a normalized user ID and exact positive numeric tenant/store document IDs', 'Auth onboarding Firebase compensation boundary');
+  assertIncludes(authOnboardingFirebase, 'A Vercel deploy remains pending until explicitly requested', 'Auth onboarding Firebase deploy boundary');
   assertNotIncludes(authOnboardingFirebase, '**Status:** ✅ Production Ready', 'Auth onboarding Firebase stale production-ready status');
-  assertIncludes(authOnboardingMobileSupport, 'Desktop-first does not mean mobile launch evidence is optional.', 'Auth onboarding mobile support launch boundary');
-  assertIncludes(authOnboardingMobileSupport, 'mobile pricing, onboarding modal, Google OAuth return, Razorpay checkout', 'Auth onboarding mobile browser QA gate');
+  assertIncludes(authOnboardingMobileSupport, 'Responsive sign-in and website onboarding surface', 'Auth onboarding mobile support surface status');
+  assertIncludes(authOnboardingMobileSupport, 'These device/provider checks remain pending until run on the target environment', 'Auth onboarding mobile evidence boundary');
+  assertIncludes(authOnboardingMobileSupport, 'Razorpay open, dismissal, return to Pricing, pending recovery, and Billing recovery', 'Auth onboarding mobile browser QA gate');
   assertIncludes(onboardingCentralizationReadme, 'Implemented source evidence; not current launch certification', 'Onboarding centralization launch boundary status');
   assertIncludes(onboardingCentralizationReadme, 'Current Release Boundary (July 2, 2026)', 'Onboarding centralization current release boundary heading');
   assertIncludes(onboardingCentralizationReadme, 'createTenantStoreInTransaction', 'Onboarding centralization source helper reference');
@@ -2316,13 +2332,11 @@ function verifyEnvironmentTargets() {
   assertNotIncludes(authOnboardingSpec, "businessType: 'B2C'", 'Auth onboarding spec stale tenant/store businessType example');
   assertNotIncludes(authOnboardingSpec, "businessIndustry: 'Restaurant'", 'Auth onboarding spec stale tenant businessIndustry example');
   assertNotIncludes(authOnboardingSpec, "businessCategory: 'food_beverage'", 'Auth onboarding spec stale businessCategory example');
-  assertIncludes(authOnboardingSpec, "businessType: 'Restaurant'", 'Auth onboarding spec actual business type example');
-  assertIncludes(authOnboardingSpec, "businessIndustry: 'B2C'", 'Auth onboarding spec plan-type marker example');
-  assertIncludes(authOnboardingSpec, "businessCategory: 'food'", 'Auth onboarding spec canonical business category example');
+  assertIncludes(authOnboardingSpec, 'Tenant/store IDs are server allocated positive numeric document IDs', 'Auth onboarding spec canonical allocation boundary');
+  assertIncludes(authOnboardingSpec, 'Plan, interval, currency, price, and credit allowance come from current server plan data', 'Auth onboarding spec server plan authority');
   assertNotIncludes(authOnboardingImpl, 'businessType: userType', 'Auth onboarding implementation stale userType businessType example');
   assertNotIncludes(authOnboardingImpl, 'getBusinessCategory(userType)', 'Auth onboarding implementation stale category derivation example');
-  assertIncludes(authOnboardingImpl, 'businessType: businessIndustry || FALLBACK_BUSINESS_TYPE', 'Auth onboarding implementation actual business type contract');
-  assertIncludes(authOnboardingImpl, 'businessIndustry: userType', 'Auth onboarding implementation plan-type marker contract');
+  assertIncludes(authOnboardingImpl, 'canonical business type/category fields', 'Auth onboarding implementation canonical business classification contract');
   assertIncludes(onboardingCreateSubscriptionRoute, 'businessType: businessIndustry || FALLBACK_BUSINESS_TYPE,', 'Onboarding route actual business type source gate');
   assertIncludes(onboardingCreateSubscriptionRoute, 'businessIndustry: userType,', 'Onboarding route plan-type marker source gate');
   assertIncludes(onboardingCreateTenantStore, 'businessType: string;', 'Central tenant/store creator actual business type input');
@@ -2401,8 +2415,8 @@ function verifyEnvironmentTargets() {
   assertIncludes(comprehensiveSecurityAudit, '95% source-coverage snapshot', 'Comprehensive security audit historical coverage boundary');
   assertNotIncludes(comprehensiveSecurityAudit, '## ✅ What\'s Production Ready', 'Comprehensive security audit stale production-ready heading');
   assertNotIncludes(comprehensiveSecurityAudit, '**Current Status**: **95% Ready**', 'Comprehensive security audit stale current-ready status');
-  assertIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:indexes --project menulist-qa --config firebase.json', 'Internal feedback validation scoped QA index deploy command');
-  assertIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:rules --project menulist-qa --config firebase.json', 'Internal feedback validation scoped QA rules deploy command');
+  assertIncludes(internalFeedbackValidation, 'Firebase deployment evidence when rules/index/function source changes', 'Internal feedback validation Firebase deploy evidence boundary');
+  assertIncludes(internalFeedbackValidation, 'Vercel deployment and production-host smoke only after explicit deploy approval', 'Internal feedback validation Vercel deploy approval boundary');
   assertNotIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:indexes\n', 'Internal feedback validation broad index deploy command');
   assertNotIncludes(internalFeedbackValidation, 'firebase deploy --only firestore:rules\n', 'Internal feedback validation broad rules deploy command');
   assertIncludes(aiDataExtractionFinalAudit, 'historical code-readiness evidence, not current MenuList launch certification', 'AI data extraction final audit historical launch boundary');

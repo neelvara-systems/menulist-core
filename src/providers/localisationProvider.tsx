@@ -1,5 +1,5 @@
 import { getUserDateFormat, getUserTimeFormat } from '@lib/localization';
-import { APP_TIMEZONE_COOKIES_KEY, defaultTimezone } from '@lib/localization/config';
+import { APP_TIMEZONE_COOKIES_KEY, normalizeTimeZone } from '@lib/localization/config';
 import { Formats } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 import { cookies } from 'next/headers';
@@ -13,7 +13,7 @@ type Props = {
 export default async function LocalisationProvider({ children, locale }: Props) {
     // Providing all messages to the client side is the easiest way to get started
     const messages = await getMessages();
-    const timeZone = cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value || defaultTimezone;
+    const timeZone = normalizeTimeZone(cookies().get(APP_TIMEZONE_COOKIES_KEY)?.value);
 
     const APP_LOCALISATION_FORMATTERS: Formats = {
         dateTime: {
@@ -22,11 +22,6 @@ export default async function LocalisationProvider({ children, locale }: Props) 
             time: await getUserTimeFormat()
         },
         number: {
-            amount: {
-                maximumFractionDigits: 5,
-                style: "currency",// "currency" | "unit" | "decimal" | "percent"
-                currency: 'INR'
-            },
             precise: {
                 maximumFractionDigits: 5
             }

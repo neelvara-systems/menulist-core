@@ -15,11 +15,11 @@ A gentle menu check panel that surfaces actionable improvement signals about the
 
 ## Why It Matters
 
-MCE (Menu Correctness Engine) exists but operates silently — it stamps `_mce` metadata and blocks publishing only on critical errors. Owners never see the quality data. Meanwhile, MenuList already has AI descriptions, AI images, and AI translations — but owners don't know when to use them. Menu Quality Signals bridges the gap: it reads MCE data and surfaces improvement opportunities that connect directly to existing AI features.
+MCE (Menu Correctness Engine) supplies the critical editor validation gate and standalone project stamps. Menu Quality Signals is a separate advisory layer: it computes improvement opportunities directly from the current project and connects them to existing repair and review paths.
 
 ## Architecture Principle
 
-**Pure read layer.** Reads existing `_mce` metadata from the project document + basic item counting. Zero new collections. Zero new API routes. Connects to existing AI features (description generator, image generator) as action buttons.
+**Pure read-and-compute layer.** Reads the current project files, languages, public-content fields, and design visibility already loaded by each surface. It does not read `_mce`. Zero new collections and zero new API routes.
 
 ## Signal Types (v1.2 — 8 signals)
 
@@ -34,13 +34,14 @@ MCE (Menu Correctness Engine) exists but operates silently — it stamps `_mce` 
 | Item translations missing  | Count visible items incomplete in selected languages | "Repair Menu" → opens Command Center repair |
 | Project details missing    | Count project public-content translation gaps        | "Repair Menu" → opens Command Center repair |
 
-## Three Surfaces
+## Four Surfaces
 
 | Surface           | Location                       | Trigger                                                     |
 | ----------------- | ------------------------------ | ----------------------------------------------------------- |
 | Dashboard Panel   | OwnerDashboard overview below hero card | All signals, capped at 4 warnings                           |
 | Editor Banner     | Top of editor view                      | Actionable signals only (desc≥3, img≥3, price≥1, outlier≥1) |
 | Publish Intercept | onContinueClick in Editor.tsx           | Actionable signals, soft modal with "Publish Anyway"        |
+| Mobile Menu Check | `MobileMenuScreen` inside `MobileShell`  | Current project signals with repair and exact review filters |
 
 ## Key Files
 
@@ -85,4 +86,4 @@ Owner-facing UI now says **Menu Check** instead of **Menu Quality**. Dashboard, 
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** June 1, 2026 — v1.2 (dashboard mount + unified action routing)
+**Last Updated:** July 16, 2026 — v1.4 (false-positive and flow audit)

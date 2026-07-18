@@ -94,6 +94,22 @@ const removeUndefinedFields = (data: Record<string, unknown>) => sanitizeForFire
     undefinedObjectValue: "omit",
 });
 
+async function cleanupCreatedResellerLoginAccount(
+    db: admin.firestore.Firestore,
+    uid: string,
+): Promise<void> {
+    const cleanupResults = await Promise.allSettled([
+        db.collection(DB_COLLECTIONS.USERS).doc(uid).delete(),
+        authAdmin.deleteUser(uid),
+    ]);
+    cleanupResults.forEach((result) => {
+        if (result.status !== 'rejected') return;
+        logResellerApiFailure('reseller_manage_auth_cleanup_failed', result.reason, {
+            ...getBoundedResellerApiStringContext('authUserId', uid),
+        });
+    });
+}
+
 async function assertResellerUniqueness(
     db: admin.firestore.Firestore,
     email: string,
@@ -153,19 +169,21 @@ async function findAuthUser(existingProfile: any, email: string) {
 
 async function syncResellerLoginAccount(params: {
     active: boolean;
+    authUserId?: string;
     db: admin.firestore.Firestore;
     email: string;
     name: string;
     password?: string;
-    profileId?: string;
+    resellerProfileId?: string;
     username: string;
 }) {
     const now = admin.firestore.Timestamp.now();
-    const authUser = params.profileId
-        ? await findAuthUser({ authUserId: params.profileId, id: params.profileId }, params.email)
+    const authUser = params.authUserId
+        ? await findAuthUser({ authUserId: params.authUserId, id: params.authUserId }, params.email)
         : null;
 
     let uid = authUser?.uid;
+    let createdAuthUser = false;
     if (uid) {
         const updatePayload: admin.auth.UpdateRequest = {
             disabled: !params.active,
@@ -184,31 +202,38 @@ async function syncResellerLoginAccount(params: {
             password: params.password,
         });
         uid = createdUser.uid;
+        createdAuthUser = true;
     }
 
-    await authAdmin.setCustomUserClaims(uid, {
-        platformRole: 'RESELLER',
-        resellerProfileId: uid,
-        role: '',
-        uId: uid,
-    });
+    try {
+        const resellerProfileId = params.resellerProfileId || uid;
+        await authAdmin.setCustomUserClaims(uid, {
+            platformRole: 'RESELLER',
+            resellerProfileId,
+            role: '',
+            uId: uid,
+        });
 
-    await params.db.collection(DB_COLLECTIONS.USERS).doc(uid).set({
-        active: params.active,
-        email: params.email,
-        isVerified: true,
-        modifiedOn: now,
-        name: params.name,
-        onboardingSource: 'RESELLER_MANAGEMENT',
-        platformRole: 'RESELLER',
-        profileImage: '',
-        resellerProfileId: uid,
-        role: '',
-        storeIds: [],
-        stores: [],
-        username: params.username,
-        ...(params.profileId ? {} : { createdOn: now, createdVia: 'reseller-management' }),
-    }, { merge: true });
+        await params.db.collection(DB_COLLECTIONS.USERS).doc(uid).set({
+            active: params.active,
+            email: params.email,
+            isVerified: true,
+            modifiedOn: now,
+            name: params.name,
+            onboardingSource: 'RESELLER_MANAGEMENT',
+            platformRole: 'RESELLER',
+            profileImage: '',
+            resellerProfileId,
+            role: '',
+            storeIds: [],
+            stores: [],
+            username: params.username,
+            ...(params.authUserId ? {} : { createdOn: now, createdVia: 'reseller-management' }),
+        }, { merge: true });
+    } catch (error) {
+        if (createdAuthUser) await cleanupCreatedResellerLoginAccount(params.db, uid);
+        throw error;
+    }
 
     return uid;
 }
@@ -283,11 +308,12 @@ export const POST = withAuth(async (request, session) => {
 
             const authUserId = await syncResellerLoginAccount({
                 active: updates.active ?? existing.active !== false,
+                authUserId: existingAuthUser?.uid,
                 db,
                 email: nextEmail,
                 name: updates.name || existing.name,
                 password: updates.password,
-                profileId: existingAuthUser?.uid,
+                resellerProfileId: profileId,
                 username: nextUsername,
             });
 
@@ -348,33 +374,38 @@ export const POST = withAuth(async (request, session) => {
             });
 
             const now = admin.firestore.Timestamp.now();
-            await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(authUserId).set(removeUndefinedFields({
-                active: data.active !== undefined ? data.active : true,
-                activatedAt: now,
-                addressLine: data.addressLine,
-                authUserId,
-                city: data.city,
-                country: data.country,
-                createdBy: session.user?.email || 'platform',
-                createdOn: now,
-                currentActiveOfflineStores: 0,
-                email,
-                id: authUserId,
-                maxOfflineActivations: data.maxOfflineActivations || RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER,
-                modifiedOn: now,
-                name: data.name,
-                notes: data.notes,
-                phone: data.phone,
-                passwordSetAt: now,
-                postalCode: data.postalCode,
-                state: data.state,
-                totalOfflineStores: 0,
-                totalOnlineStores: 0,
-                totalRevenueCollectedPaise: 0,
-                totalStoresOnboarded: 0,
-                totalTransactions: 0,
-                username,
-            }));
+            try {
+                await db.collection(DB_COLLECTIONS.RESELLER_PROFILES).doc(authUserId).set(removeUndefinedFields({
+                    active: data.active !== undefined ? data.active : true,
+                    activatedAt: now,
+                    addressLine: data.addressLine,
+                    authUserId,
+                    city: data.city,
+                    country: data.country,
+                    createdBy: session.user?.email || 'platform',
+                    createdOn: now,
+                    currentActiveOfflineStores: 0,
+                    email,
+                    id: authUserId,
+                    maxOfflineActivations: data.maxOfflineActivations || RESELLER_CAPS.MAX_CONCURRENT_OFFLINE_PER_RESELLER,
+                    modifiedOn: now,
+                    name: data.name,
+                    notes: data.notes,
+                    phone: data.phone,
+                    passwordSetAt: now,
+                    postalCode: data.postalCode,
+                    state: data.state,
+                    totalOfflineStores: 0,
+                    totalOnlineStores: 0,
+                    totalRevenueCollectedPaise: 0,
+                    totalStoresOnboarded: 0,
+                    totalTransactions: 0,
+                    username,
+                }));
+            } catch (error) {
+                await cleanupCreatedResellerLoginAccount(db, authUserId);
+                throw error;
+            }
 
             logger.info('Reseller profile created', {
                 endpoint: request.nextUrl.pathname,

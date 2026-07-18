@@ -14,6 +14,10 @@ export const getAnswerlatticeCacheVersionDocId = (
 ) => `${source}_${Number(tId)}_${Number(sId)}`;
 
 export const normalizeCacheVersion = (value: unknown): number | undefined => {
+    if (typeof value === 'number') {
+        return Number.isSafeInteger(value) && value > 0 ? value : undefined;
+    }
+    if (typeof value !== 'string' || !/^[1-9]\d*$/.test(value)) return undefined;
     const version = Number(value);
-    return Number.isFinite(version) && version > 0 ? version : undefined;
+    return Number.isSafeInteger(version) ? version : undefined;
 };

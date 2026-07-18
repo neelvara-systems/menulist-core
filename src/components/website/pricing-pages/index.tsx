@@ -2,7 +2,7 @@
 
 import { BillingInterval, Currency, Plan, PlanType, PurchaseIntent } from '@data/common';
 import PlatformFeaturesList from '@data/PlatformFeaturesList';
-import { CustomePlanForB2B, getB2BPlansList, getB2CPlansList } from '@data/PlatformPlansList';
+import { getB2CPlansList } from '@data/PlatformPlansList';
 import { getBoundedPaymentStringContext, logPaymentFailure } from '@hook/paymentDiagnostics';
 import usePaymentHandler, { isPaymentCheckoutDismissedError } from '@hook/usePaymentHandler';
 import { Switch } from '@shadcncomponents/switch';
@@ -48,7 +48,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
     const t = useTranslations('Website');
     const { toast } = useToast();
     const { data: session, status } = useSession();
-    const [activeBusinessType, setActiveBusinessType] = useState<PlanType>('B2C');
+    const activeBusinessType: PlanType = 'B2C';
     const [billingInterval, setBillingInterval] = useState<BillingInterval>('YEAR');
     const [currency, setCurrency] = useState<Currency>('USD');
     const [isOnboardingModalOpen, setIsOnboardingModalOpen] = useState(false);
@@ -58,7 +58,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         paymentDetails: null,
     });
     const onboardingInProgress = useRef(false);
-    const allPlansList = [...getB2CPlansList(), ...getB2BPlansList()];
+    const allPlansList = getB2CPlansList();
     const [isLoading, setIsLoading] = useState(false);
     const [isComparisonOpen, setIsComparisonOpen] = useState(false);
     const pricingDecisionSteps = [
@@ -82,6 +82,13 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         currency,
         ...metadata,
     });
+    const showPaymentError = () => {
+        toast({
+            variant: 'destructive',
+            title: t('Pricing.paymentErrorTitle'),
+            description: t('Pricing.paymentErrorBody'),
+        });
+    };
 
     const readStoredPurchaseIntent = (flow: string): PurchaseIntent | null => {
         const purchaseIntentString = localStorage.getItem('purchaseIntent');
@@ -170,7 +177,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
         const purchaseIntent = readStoredPurchaseIntent('post_onboarding_start');
         if (!purchaseIntent) {
             descardPaymentFlow();
-            toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
+            showPaymentError();
             return;
         }
         executePostOnboarding(purchaseIntent).then((paymentResponse) => {
@@ -182,7 +189,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 logPaymentFailure('payment_pricing_post_onboarding_failed', error, buildPricingPaymentLogContext('post_onboarding_start', {
                     ...getBoundedPaymentStringContext('planId', purchaseIntent.plan?.planId),
                 }));
-                toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
+                showPaymentError();
             });
     }
 
@@ -203,11 +210,11 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                     logPaymentFailure('payment_pricing_card_click_failed', error, buildPricingPaymentLogContext('payment_card_click', {
                         ...getBoundedPaymentStringContext('planId', plan.planId),
                     }));
-                    toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
+                    showPaymentError();
                 });
         } catch (error) {
             descardPaymentFlow();
-            toast({ variant: 'destructive', title: 'Error', description: 'Payment Processing Failed, If your money gets deducted, please contact support or try again.' });
+            showPaymentError();
             logPaymentFailure('payment_pricing_card_click_failed', error, buildPricingPaymentLogContext('payment_card_click', {
                 ...getBoundedPaymentStringContext('planId', plan.planId),
             }));
@@ -255,34 +262,6 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                 {/* LAYER 3 — Decision + Controls */}
                 <AnimateOnScroll delay={0.12}>
                     <div className="ws-container" style={{ marginTop: 'var(--ws-space-8)' }}>
-                        {/* Plan selector pills */}
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--ws-space-3)', flexWrap: 'wrap', marginBottom: 'var(--ws-space-6)' }}>
-                            {['starter', 'pro', 'premium'].map((planId) => (
-                                <button
-                                    key={planId}
-                                    onClick={() => {
-                                        const element = document.getElementById('subscription-plans');
-                                        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                                    }}
-                                    style={{
-                                        padding: '10px 20px',
-                                        borderRadius: 'var(--ws-radius-md)',
-                                        border: planId === 'pro' ? '2px solid var(--ws-brand-secondary)' : '1px solid var(--ws-border-default)',
-                                        background: planId === 'pro' ? 'var(--ws-brand-secondary)' : 'transparent',
-                                        color: planId === 'pro' ? '#fff' : 'var(--ws-text-primary)',
-                                        fontSize: '0.875rem',
-                                        fontWeight: 600,
-                                        cursor: 'pointer',
-                                        transition: 'all var(--ws-transition-fast)',
-                                    }}
-                                >
-                                    {planId === 'starter' && t('Pricing.planStarter')}
-                                    {planId === 'pro' && t('Pricing.planPro')}
-                                    {planId === 'premium' && t('Pricing.planPremium')}
-                                </button>
-                            ))}
-                        </div>
-
                         {/* Grouped toggles: Currency + Billing */}
                         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 'var(--ws-space-6)', flexWrap: 'wrap' }}>
                             <CurrencySwitcher currency={currency} onCurrencyChange={setCurrency} />
@@ -365,15 +344,6 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                                             />
                                         </AnimateStaggerChild>
                                     ))}
-                                    {activeBusinessType === 'B2B' && (
-                                        <AnimateStaggerChild index={activePlans.length}>
-                                            <PlanCard
-                                                plan={CustomePlanForB2B}
-                                                currency={currency}
-                                                onPurchase={(plan) => handlePaymentCardClick(plan)}
-                                            />
-                                        </AnimateStaggerChild>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -499,6 +469,9 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
                     <AnimateOnScroll>
                         <div style={{ display: 'flex', justifyContent: 'center' }}>
                             <button
+                                type="button"
+                                aria-expanded={isComparisonOpen}
+                                aria-controls="pricing-feature-comparison"
                                 onClick={() => setIsComparisonOpen(!isComparisonOpen)}
                                 style={{
                                     background: 'none',
@@ -519,9 +492,9 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 
                     <AnimateOnScroll delay={0.08}>
                         {isComparisonOpen && (
-                            <div style={{ marginTop: 'var(--ws-space-10)' }}>
+                            <div id="pricing-feature-comparison" style={{ marginTop: 'var(--ws-space-10)' }}>
                                 <FeatureComparisonTable
-                                    allFeaturesList={activeBusinessType === 'B2C' ? PlatformFeaturesList.B2C : PlatformFeaturesList.B2B}
+                                    allFeaturesList={PlatformFeaturesList.B2C}
                                     plans={activePlans}
                                     planType={activeBusinessType}
                                 />
@@ -561,7 +534,7 @@ const PricingPageRenderer: React.FC<{ welcomeTenantName?: string | null, activeS
 const PricingPage: React.FC<{ welcomeTenantName?: string, activeSubscription?: FirestoreSubscriptionDoc }> = ({ welcomeTenantName, activeSubscription }) => {
     const t = useTranslations('Website');
     return (
-        <div id="pricing" className="ws-page">
+        <main id="main-content" className="ws-page">
             <PricingPageRenderer welcomeTenantName={welcomeTenantName} activeSubscription={activeSubscription} />
             <AnimateOnScroll>
                 <PricingFaq />
@@ -594,7 +567,7 @@ const PricingPage: React.FC<{ welcomeTenantName?: string, activeSubscription?: F
                     </div>
                 </AnimateOnScroll>
             </SectionWrapper>
-        </div>
+        </main>
     );
 }
 

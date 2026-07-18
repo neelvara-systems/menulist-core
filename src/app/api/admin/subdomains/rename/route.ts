@@ -41,6 +41,7 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { isReservedSubdomain } from '@constant/reservedSlugs';
 import { normalizeStoreSummaryNumericDocumentId } from '@data/shared/storeSummaryBoundary';
 import { admin } from '@lib/firebase/firebaseAdmin';
+import { runStorePublicTruthPostCommitEffects } from '@lib/cache/storePublicTruthPostCommit';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
 import { logger } from '@lib/monitoring/logger';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
@@ -355,15 +356,26 @@ export const POST = withAuth(
                 };
             });
 
-            revalidateTag(`menu-store-${storeIdStr}`);
-            revalidateTag(`store-${storeIdStr}`);
-            revalidateTag('client-stores');
-            revalidateTag('screen-data');
-            await touchDigitalScreenContentVersionForStoreServer(storeIdStr, 'adminSubdomainRename');
-            await invalidateOwnerBusinessAssistantPacketCache({
-                tId: tenantId,
-                sId: storeIdStr,
+            const postCommit = await runStorePublicTruthPostCommitEffects({
+                chunkSize: 1,
+                storeIds: [storeIdStr],
+                tenantId: String(tenantId),
+                deps: {
+                    invalidateAssistant: (effectStoreId, effectTenantId) => (
+                        invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: effectStoreId })
+                    ),
+                    revalidate: (tag) => revalidateTag(tag),
+                    touchScreen: (effectStoreId) => (
+                        touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'adminSubdomainRename')
+                    ),
+                },
             });
+            if (postCommit.effectsPending) {
+                logSecurityFailure('admin_subdomain_rename_post_commit_effect_failed', postCommit.firstError, {
+                    ...failureContext,
+                    failedEffectCount: postCommit.failedEffectCount,
+                });
+            }
 
             logger.security(
                 'Admin subdomain rename',
@@ -374,14 +386,15 @@ export const POST = withAuth(
                     previousSubdomainPresent: renameResult.previousSubdomain.length > 0,
                     previousSubdomainLength: renameResult.previousSubdomain.length,
                     historyEntryCount: renameResult.historyEntryCount,
-                    cacheInvalidated: true,
-                    screenInvalidated: true,
-                    ownerAssistantPacketInvalidated: true,
+                    derivedEffectsPending: postCommit.effectsPending,
+                    failedEffectCount: postCommit.failedEffectCount,
                 },
                 'high',
             );
 
             return NextResponse.json({
+                effectsPending: postCommit.effectsPending,
+                failedEffectCount: postCommit.failedEffectCount,
                 success: true,
                 storeId: storeIdStr,
                 previousSubdomain: renameResult.previousSubdomain,

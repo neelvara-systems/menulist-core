@@ -17,6 +17,7 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from "@lib/billing/productBillingPlans";
 import { validateTransition } from "@lib/billing/subscriptionStateMachine";
+import { getRazorpayManagedSubscriptionId } from "@lib/billing/subscriptionProviderSync";
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -110,7 +111,7 @@ export const POST = withAuth(async (request, session) => {
         subscriptionForLog = internalSub;
 
         // 🔒 CRITICAL: Verify subscription belongs to user's tenant/store
-        if (internalSub.tenantId !== Number(tenantId) || internalSub.storeId !== Number(storeId)) {
+        if (Number(internalSub.tenantId) !== Number(tenantId) || Number(internalSub.storeId) !== Number(storeId)) {
             logger.security('Unauthorized Subscription Pause Attempt', {
                 ...getBoundedRazorpaySecurityContext(session, request),
                 endpoint: '/api/razorpay/pause-subscription',
@@ -133,6 +134,14 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Subscription cannot be paused in its current state." }, { status: 409 });
         }
 
+        const providerSubscriptionId = getRazorpayManagedSubscriptionId(internalSub);
+        if (!providerSubscriptionId) {
+            return NextResponse.json(
+                { error: "Prepaid subscriptions are managed by your reseller or support." },
+                { status: 409 },
+            );
+        }
+
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_PAUSE_SUBSCRIPTION_FLOW',
@@ -140,7 +149,7 @@ export const POST = withAuth(async (request, session) => {
         });
 
         // Call Razorpay Pause API — pause_at: "now" is the only request param per Razorpay docs
-        await razorpayClient.subscriptions.pause(internalSub.providerSubscriptionId, {
+        await razorpayClient.subscriptions.pause(providerSubscriptionId, {
             pause_at: 'now'
         });
 

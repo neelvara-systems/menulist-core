@@ -1,7 +1,7 @@
 import {
     doc,
     getDoc,
-    setDoc,
+    runTransaction,
 } from "firebase/firestore";
 import {
     deleteObject,
@@ -12,10 +12,21 @@ import {
 } from "firebase/storage";
 import { DB_COLLECTIONS } from "@constant/database";
 import { BUSINESS_CATEGORIES } from "@data/shared/businessTypes";
-import { requestBodyComposer } from "@lib/apiHelper";
+import getActiveSession from "@lib/auth/getActiveSession";
+import { composeRequestBody } from "@lib/apiHelper";
 import { firebaseClient, firebaseStorage } from "@lib/firebase/firebaseClient";
 import { createRandomIdSegment } from "@lib/runtime/randomId";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
+import {
+    matchesCreativeEditorTemplateRecord,
+    removeCreativeEditorTemplateRecord,
+    upsertCreativeEditorTemplateRecord,
+} from "./templateRegistryIndexBoundary";
+import {
+    buildCreativeEditorTemplateFileName,
+    buildCreativeEditorTemplateVersionId,
+    isOwnedCreativeEditorTemplateStoragePath,
+} from "./templateRegistryStorageBoundary";
 import type { CreativeEditorDocument, CreativeEditorTemplateOrigin, CreativeEditorTemplateSummary } from "@/modules/creative-editor/types";
 import {
     creativeEditorTemplateGetQuerySchema,
@@ -73,6 +84,11 @@ const throwTemplateRegistryLocalError = (code: TemplateRegistryLocalErrorCode): 
     throw new TemplateRegistryLocalError(code);
 };
 
+const isTemplateRegistryLocalError = (error: unknown, code?: TemplateRegistryLocalErrorCode): boolean => (
+    error instanceof TemplateRegistryLocalError
+    && (!code || error.code === code)
+);
+
 export type CreativeEditorTemplateScope = {
     sId: string;
     tId: string;
@@ -121,7 +137,9 @@ type TemplateStorageCleanupContext = {
     businessCategory?: string;
     cleanupTarget: "document" | "preview";
     productId?: string;
+    sId?: string;
     sourceSurface?: string;
+    tId?: string;
     templateId?: string;
     templateOrigin: "platform" | "user";
 };
@@ -196,20 +214,6 @@ type CreativeEditorPlatformCatalogRecord = {
     updatedAtMs?: number;
 };
 
-type PlatformCatalogMutationSnapshot = {
-    catalogKey: string;
-    exists: boolean;
-    records: CreativeEditorTemplateRecord[];
-};
-
-type PlatformTemplateMutationTarget = {
-    catalogKeys: string[];
-    sourceCatalogKey: string;
-    sourceRecord: CreativeEditorTemplateRecord;
-    sourceSnapshot: PlatformCatalogMutationSnapshot;
-    templateBusinessCategory: string;
-};
-
 export const resolveCreativeEditorTemplateScope = (input: {
     session?: any;
     storeDetails?: any;
@@ -241,43 +245,6 @@ const getPlatformCatalogKeysForMutation = (businessCategory: string) => (
         : [businessCategory]
 );
 
-const readPlatformCatalogMutationSnapshot = async (
-    catalogKey: string,
-    query: { productId: string; sourceSurface: string },
-): Promise<PlatformCatalogMutationSnapshot> => {
-    const catalogDoc = await getDoc(getPlatformCatalogRef(catalogKey));
-    return {
-        catalogKey,
-        exists: catalogDoc.exists(),
-        records: catalogDoc.exists() ? readIndexRecords(catalogDoc.data(), query) : [],
-    };
-};
-
-const findPlatformTemplateMutationTarget = async (params: {
-    businessCategory: string;
-    query: CreativeEditorTemplateGetQuery;
-    templateId: string;
-}): Promise<PlatformTemplateMutationTarget> => {
-    const sourceCatalogKey = buildPlatformCategoryKey(params.businessCategory);
-    const sourceSnapshot = await readPlatformCatalogMutationSnapshot(sourceCatalogKey, params.query);
-    const sourceRecord = sourceSnapshot.records.find((record) => (
-        record.id === params.templateId
-        && recordMatchesRequest(record, params.query)
-    ));
-    if (!sourceRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
-
-    const templateBusinessCategory = buildPlatformCategoryKey(
-        sourceRecord.businessCategory || sourceCatalogKey,
-    );
-    return {
-        catalogKeys: getPlatformCatalogKeysForMutation(templateBusinessCategory),
-        sourceCatalogKey,
-        sourceRecord,
-        sourceSnapshot,
-        templateBusinessCategory,
-    };
-};
-
 const buildTemplateId = () => {
     const cryptoId = createRandomIdSegment(10);
     return `tpl_${Date.now().toString(36)}_${cryptoId}`;
@@ -301,29 +268,29 @@ const getStoreTemplateIndexRef = (
 
 const buildUserDocumentPath = (
     scope: CreativeEditorTemplateScope,
-    params: { templateId: string },
+    params: { templateId: string; versionId: string },
 ) => [
     STORAGE_ROOT,
     "user",
     safePathPart(scope.tId),
     safePathPart(scope.sId),
     safePathPart(params.templateId),
-    "document.json",
+    buildCreativeEditorTemplateFileName({ target: "document", versionId: params.versionId }),
 ].join("/");
 
 const buildPlatformDocumentPath = (
-    params: { businessCategory?: string; templateId: string },
+    params: { businessCategory?: string; templateId: string; versionId: string },
 ) => [
     STORAGE_ROOT,
     "platform",
     buildPlatformCategoryKey(params.businessCategory),
     safePathPart(params.templateId),
-    "document.json",
+    buildCreativeEditorTemplateFileName({ target: "document", versionId: params.versionId }),
 ].join("/");
 
 const buildUserPreviewPath = (
     scope: CreativeEditorTemplateScope,
-    params: { templateId: string; thumbnailDataUrl?: string },
+    params: { templateId: string; thumbnailDataUrl?: string; versionId: string },
 ) => {
     const contentType = parseDataUrlContentType(params.thumbnailDataUrl);
     const extension = contentType === "image/webp" ? "webp" : contentType === "image/png" ? "png" : "jpg";
@@ -333,12 +300,12 @@ const buildUserPreviewPath = (
         safePathPart(scope.tId),
         safePathPart(scope.sId),
         safePathPart(params.templateId),
-        `preview.${extension}`,
+        buildCreativeEditorTemplateFileName({ extension, target: "preview", versionId: params.versionId }),
     ].join("/");
 };
 
 const buildPlatformPreviewPath = (
-    params: { businessCategory?: string; templateId: string; thumbnailDataUrl?: string },
+    params: { businessCategory?: string; templateId: string; thumbnailDataUrl?: string; versionId: string },
 ) => {
     const contentType = parseDataUrlContentType(params.thumbnailDataUrl);
     const extension = contentType === "image/webp" ? "webp" : contentType === "image/png" ? "png" : "jpg";
@@ -347,7 +314,7 @@ const buildPlatformPreviewPath = (
         "platform",
         buildPlatformCategoryKey(params.businessCategory),
         safePathPart(params.templateId),
-        `preview.${extension}`,
+        buildCreativeEditorTemplateFileName({ extension, target: "preview", versionId: params.versionId }),
     ].join("/");
 };
 
@@ -542,6 +509,23 @@ const logTemplateStorageCleanupFailure = (
 
 async function deleteStoragePath(path: string | null | undefined, context: TemplateStorageCleanupContext) {
     if (!path) return;
+    if (
+        !context.templateId
+        || !isOwnedCreativeEditorTemplateStoragePath(path, {
+            businessCategory: context.businessCategory,
+            sId: context.sId,
+            tId: context.tId,
+            templateId: context.templateId,
+            templateOrigin: context.templateOrigin,
+        }, context.cleanupTarget)
+    ) {
+        logTemplateStorageCleanupFailure(
+            new Error("Template Storage cleanup path ownership mismatch"),
+            path,
+            context,
+        );
+        return;
+    }
     try {
         await deleteObject(ref(firebaseStorage, path));
     } catch (error) {
@@ -549,6 +533,81 @@ async function deleteStoragePath(path: string | null | undefined, context: Templ
         logTemplateStorageCleanupFailure(error, path, context);
     }
 }
+
+const getTemplateStoragePaths = (record: CreativeEditorTemplateRecord): string[] => (
+    [record.documentPath, record.previewPath].filter((path): path is string => Boolean(path))
+);
+
+const getRetainedTemplateStoragePaths = (records: CreativeEditorTemplateRecord[]): Set<string> => (
+    new Set(records.flatMap(getTemplateStoragePaths))
+);
+
+const dedupeTemplateCleanupRecords = (records: CreativeEditorTemplateRecord[]): CreativeEditorTemplateRecord[] => {
+    const seen = new Set<string>();
+    return records.filter((record) => {
+        const key = `${record.id}:${record.documentPath || ""}:${record.previewPath || ""}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
+
+async function cleanupTemplateRecords(params: {
+    records: CreativeEditorTemplateRecord[];
+    retainedPaths?: Set<string>;
+    scope?: CreativeEditorTemplateScope;
+}) {
+    const retainedPaths = params.retainedPaths || new Set<string>();
+    await Promise.all(dedupeTemplateCleanupRecords(params.records).flatMap((record) => {
+        const cleanupContext = {
+            assetTypeId: record.assetTypeId,
+            businessCategory: record.businessCategory,
+            productId: record.productId,
+            sId: params.scope?.sId,
+            sourceSurface: record.sourceSurface,
+            tId: params.scope?.tId,
+            templateId: record.id,
+            templateOrigin: (record.templateType || record.origin || "user") as "platform" | "user",
+        };
+        return [
+            retainedPaths.has(record.documentPath || "")
+                ? Promise.resolve()
+                : deleteStoragePath(record.documentPath, { ...cleanupContext, cleanupTarget: "document" }),
+            retainedPaths.has(record.previewPath || "")
+                ? Promise.resolve()
+                : deleteStoragePath(record.previewPath, { ...cleanupContext, cleanupTarget: "preview" }),
+        ];
+    }));
+}
+
+async function cleanupUploadedTemplateAttempt(params: {
+    businessCategory?: string;
+    paths: string[];
+    scope?: CreativeEditorTemplateScope;
+    templateId: string;
+    templateOrigin: "platform" | "user";
+}) {
+    await Promise.all(params.paths.map((path) => deleteStoragePath(path, {
+        businessCategory: params.businessCategory,
+        cleanupTarget: path.split("/").pop()?.startsWith("document-") ? "document" : "preview",
+        sId: params.scope?.sId,
+        tId: params.scope?.tId,
+        templateId: params.templateId,
+        templateOrigin: params.templateOrigin,
+    })));
+}
+
+const restoreCreationMetadata = <T extends {
+    createdBy?: string;
+    createdOn?: unknown;
+}>(record: T, existing?: Partial<T> | null): T => {
+    if (!existing) return record;
+    return {
+        ...record,
+        ...(existing.createdBy !== undefined ? { createdBy: existing.createdBy } : {}),
+        ...(existing.createdOn !== undefined ? { createdOn: existing.createdOn } : {}),
+    };
+};
 
 function requireStoreScope(scope?: CreativeEditorTemplateScope | null): CreativeEditorTemplateScope {
     if (!scope?.tId || !scope?.sId) {
@@ -737,92 +796,156 @@ async function saveCreativeEditorTemplateRaw(
         throwTemplateRegistryLocalError("TEMPLATE_DOCUMENT_TOO_LARGE");
     }
 
+    const session = await getActiveSession();
     const indexRef = getStoreTemplateIndexRef(scope);
-    const indexDoc = await getDoc(indexRef);
-    const existingIndex = indexDoc.exists() ? (indexDoc.data() as Partial<CreativeEditorStoreTemplateIndexRecord>) : null;
-    const existingRecords = readIndexRecords(existingIndex);
     const now = new Date();
     const nowIso = now.toISOString();
     const nowMs = now.getTime();
-    const documentPath = buildUserDocumentPath(scope, { templateId });
+    const versionId = buildCreativeEditorTemplateVersionId(createRandomIdSegment(16));
+    const documentPath = buildUserDocumentPath(scope, { templateId, versionId });
     const requestMatch = {
         assetTypeId: input.assetTypeId,
         productId: input.productId,
         sourceSurface: input.sourceSurface,
+        templateId,
     };
-    const existingRecord = existingRecords.find((record) => (
-        record.id === templateId
-        && recordMatchesRequest(record, requestMatch)
-    ));
-    await uploadString(ref(firebaseStorage, documentPath), documentJson, "raw", {
-        cacheControl: "private, max-age=31536000, immutable",
-        contentType: "application/json",
-    });
-
-    let previewPath = existingRecord?.previewPath || null;
-    let thumbnailUrl = existingRecord?.thumbnailUrl || null;
+    const uploadedPaths: string[] = [];
+    let uploadedPreviewPath: string | null = null;
+    let uploadedThumbnailUrl: string | null = null;
+    let persistenceAttempted = false;
     const previewContentType = parseDataUrlContentType(input.thumbnailDataUrl);
-    if (input.thumbnailDataUrl && previewContentType) {
-        previewPath = buildUserPreviewPath(scope, { templateId, thumbnailDataUrl: input.thumbnailDataUrl });
-        const previewRef = ref(firebaseStorage, previewPath);
-        await uploadString(previewRef, input.thumbnailDataUrl, "data_url", {
+    try {
+        uploadedPaths.push(documentPath);
+        await uploadString(ref(firebaseStorage, documentPath), documentJson, "raw", {
             cacheControl: "private, max-age=31536000, immutable",
-            contentType: previewContentType,
+            contentType: "application/json",
         });
-        thumbnailUrl = await getDownloadURL(previewRef);
-    }
+        if (input.thumbnailDataUrl && previewContentType) {
+            uploadedPreviewPath = buildUserPreviewPath(scope, {
+                templateId,
+                thumbnailDataUrl: input.thumbnailDataUrl,
+                versionId,
+            });
+            uploadedPaths.push(uploadedPreviewPath);
+            const previewRef = ref(firebaseStorage, uploadedPreviewPath);
+            await uploadString(previewRef, input.thumbnailDataUrl, "data_url", {
+                cacheControl: "private, max-age=31536000, immutable",
+                contentType: previewContentType,
+            });
+            uploadedThumbnailUrl = await getDownloadURL(previewRef);
+        }
 
-    const record = await requestBodyComposer({
-        assetTypeId: input.assetTypeId,
-        createdBy: existingRecord?.createdBy,
-        createdAt: existingRecord?.createdAt || nowIso,
-        createdAtMs: existingRecord?.createdAtMs || nowMs,
-        createdOn: existingRecord?.createdOn,
-        description: existingRecord?.description,
-        documentBytes,
-        documentPath,
-        documentStorage: "storage",
-        elementCount: documentValue.elements.length,
-        height: documentValue.canvas.height,
-        id: templateId,
-        origin: "user",
-        previewPath,
-        previewStorage: previewPath ? "storage" : undefined,
-        productId: input.productId,
-        schemaVersion: 2,
-        sId: scope.sId,
-        sourceSurface: input.sourceSurface,
-        status: "published",
-        templateFamilyId: input.templateFamilyId,
-        templateType: "user",
-        thumbnailUrl,
-        title: input.title,
-        tId: scope.tId,
-        updatedAt: nowIso,
-        updatedAtMs: nowMs,
-        version: (existingRecord?.version || 0) + 1,
-        width: documentValue.canvas.width,
-    }, { isNew: !existingRecord }) as CreativeEditorTemplateRecord;
-    const templates = [
-        record,
-        ...existingRecords.filter((item) => !(
-            item.id === templateId
-            && recordMatchesRequest(item, requestMatch)
-        )),
-    ].slice(0, MAX_INDEX_TEMPLATES);
-    const indexRecord = await requestBodyComposer({
-        createdBy: existingIndex?.createdBy,
-        createdOn: existingIndex?.createdOn,
-        data: templates,
-        id: STORE_TEMPLATE_DOC_ID,
-        schemaVersion: 2,
-        sId: scope.sId,
-        tId: scope.tId,
-        updatedAt: nowIso,
-        updatedAtMs: nowMs,
-    }, { isNew: !existingIndex }) as CreativeEditorStoreTemplateIndexRecord;
-    await setDoc(indexRef, indexRecord);
-    return toSummary(record);
+        persistenceAttempted = true;
+        const committed = await runTransaction(firebaseClient, async (transaction) => {
+            const indexDoc = await transaction.get(indexRef);
+            const existingIndex = indexDoc.exists()
+                ? indexDoc.data() as Partial<CreativeEditorStoreTemplateIndexRecord>
+                : null;
+            const existingRecords = readIndexRecords(existingIndex);
+            const existingRecord = existingRecords.find((record) => (
+                matchesCreativeEditorTemplateRecord(record, requestMatch)
+            ));
+            const previewPath = uploadedPreviewPath || existingRecord?.previewPath || null;
+            const thumbnailUrl = uploadedThumbnailUrl || existingRecord?.thumbnailUrl || null;
+            const composedRecord = composeRequestBody({
+                assetTypeId: input.assetTypeId,
+                createdAt: existingRecord?.createdAt || nowIso,
+                createdAtMs: existingRecord?.createdAtMs || nowMs,
+                description: existingRecord?.description,
+                documentBytes,
+                documentPath,
+                documentStorage: "storage" as const,
+                elementCount: documentValue.elements.length,
+                height: documentValue.canvas.height,
+                id: templateId,
+                origin: "user" as const,
+                previewPath,
+                previewStorage: previewPath ? "storage" as const : undefined,
+                productId: input.productId,
+                schemaVersion: 2,
+                sId: scope.sId,
+                sourceSurface: input.sourceSurface,
+                status: "published" as const,
+                templateFamilyId: input.templateFamilyId,
+                templateType: "user" as const,
+                thumbnailUrl,
+                title: input.title,
+                tId: scope.tId,
+                updatedAt: nowIso,
+                updatedAtMs: nowMs,
+                version: (existingRecord?.version || 0) + 1,
+                width: documentValue.canvas.width,
+            }, session, { isNew: !existingRecord }) as CreativeEditorTemplateRecord;
+            const record = restoreCreationMetadata(composedRecord, existingRecord);
+            const mutation = upsertCreativeEditorTemplateRecord({
+                limit: MAX_INDEX_TEMPLATES,
+                mode: "user",
+                record,
+                records: existingRecords,
+                scope: requestMatch,
+            });
+            const composedIndex = composeRequestBody({
+                data: mutation.records,
+                id: STORE_TEMPLATE_DOC_ID,
+                schemaVersion: 2,
+                sId: scope.sId,
+                tId: scope.tId,
+                updatedAt: nowIso,
+                updatedAtMs: nowMs,
+            }, session, { isNew: !existingIndex }) as CreativeEditorStoreTemplateIndexRecord;
+            const indexRecord = restoreCreationMetadata(composedIndex, existingIndex);
+            transaction.set(indexRef, indexRecord);
+            return {
+                cleanupRecords: [
+                    ...(mutation.replaced ? [mutation.replaced] : []),
+                    ...mutation.evicted,
+                ],
+                record,
+                retainedRecords: mutation.records,
+            };
+        });
+
+        await cleanupTemplateRecords({
+            records: committed.cleanupRecords,
+            retainedPaths: getRetainedTemplateStoragePaths(committed.retainedRecords),
+            scope,
+        });
+        return toSummary(committed.record);
+    } catch (error) {
+        if (!persistenceAttempted) {
+            await cleanupUploadedTemplateAttempt({
+                paths: uploadedPaths,
+                scope,
+                templateId,
+                templateOrigin: "user",
+            });
+            throw error;
+        }
+
+        try {
+            const probe = await getDoc(indexRef);
+            const committedRecord = probe.exists()
+                ? readIndexRecords(probe.data()).find((record) => (
+                    matchesCreativeEditorTemplateRecord(record, requestMatch)
+                    && record.documentPath === documentPath
+                ))
+                : undefined;
+            if (committedRecord) return toSummary(committedRecord);
+            await cleanupUploadedTemplateAttempt({
+                paths: uploadedPaths,
+                scope,
+                templateId,
+                templateOrigin: "user",
+            });
+        } catch (probeError) {
+            logRuntimeFailure("creative_editor_template_ambiguous_user_save_retained", probeError, {
+                ...getBoundedRuntimeStringContext("templateId", templateId),
+                ...getBoundedRuntimeStringContext("tId", scope.tId),
+                ...getBoundedRuntimeStringContext("sId", scope.sId),
+            });
+        }
+        throw error;
+    }
 }
 
 export async function saveCreativeEditorTemplate(
@@ -868,6 +991,7 @@ async function saveCreativeEditorPlatformTemplateRaw(
         throwTemplateRegistryLocalError("TEMPLATE_DOCUMENT_TOO_LARGE");
     }
 
+    const session = await getActiveSession();
     const now = new Date();
     const nowIso = now.toISOString();
     const nowMs = now.getTime();
@@ -875,98 +999,161 @@ async function saveCreativeEditorPlatformTemplateRaw(
         assetTypeId: input.assetTypeId,
         productId: input.productId,
         sourceSurface: input.sourceSurface,
+        templateId,
     };
-    const documentPath = buildPlatformDocumentPath({ businessCategory, templateId });
-
-    await uploadString(ref(firebaseStorage, documentPath), documentJson, "raw", {
-        cacheControl: "private, max-age=31536000, immutable",
-        contentType: "application/json",
-    });
-
+    const versionId = buildCreativeEditorTemplateVersionId(createRandomIdSegment(16));
+    const documentPath = buildPlatformDocumentPath({ businessCategory, templateId, versionId });
+    const uploadedPaths: string[] = [];
     let uploadedPreviewPath: string | null = null;
     let uploadedThumbnailUrl: string | null = null;
+    let persistenceAttempted = false;
     const previewContentType = parseDataUrlContentType(input.thumbnailDataUrl);
-    if (input.thumbnailDataUrl && previewContentType) {
-        uploadedPreviewPath = buildPlatformPreviewPath({ businessCategory, templateId, thumbnailDataUrl: input.thumbnailDataUrl });
-        const previewRef = ref(firebaseStorage, uploadedPreviewPath);
-        await uploadString(previewRef, input.thumbnailDataUrl, "data_url", {
+    const catalogKeys = getPlatformCatalogKeysForMutation(businessCategory);
+    const catalogRefs = catalogKeys.map((catalogKey) => getPlatformCatalogRef(catalogKey));
+    const sourceCatalogIndex = catalogKeys.indexOf(businessCategory);
+
+    try {
+        uploadedPaths.push(documentPath);
+        await uploadString(ref(firebaseStorage, documentPath), documentJson, "raw", {
             cacheControl: "private, max-age=31536000, immutable",
-            contentType: previewContentType,
+            contentType: "application/json",
         });
-        uploadedThumbnailUrl = await getDownloadURL(previewRef);
-    }
-
-    let primaryRecord: CreativeEditorTemplateRecord | null = null;
-    await Promise.all(getPlatformCatalogKeysForMutation(businessCategory).map(async (catalogKey) => {
-        const catalogRef = getPlatformCatalogRef(catalogKey);
-        const catalogDoc = await getDoc(catalogRef);
-        const existingCatalog = catalogDoc.exists() ? catalogDoc.data() as CreativeEditorPlatformCatalogRecord : null;
-        const existingRecords = readIndexRecords(existingCatalog, {
-            productId: input.productId,
-            sourceSurface: input.sourceSurface,
-        });
-        const existingRecord = existingRecords.find((record) => (
-            record.id === templateId
-            && recordMatchesRequest(record, requestMatch)
-        ));
-        const previewPath = uploadedPreviewPath || existingRecord?.previewPath || null;
-        const thumbnailUrl = uploadedThumbnailUrl || existingRecord?.thumbnailUrl || null;
-        const sortIndex = typeof existingRecord?.sortIndex === "number"
-            ? existingRecord.sortIndex
-            : existingRecords.length;
-        const record = await requestBodyComposer({
-            assetTypeId: input.assetTypeId,
-            businessCategory,
-            createdBy: existingRecord?.createdBy,
-            createdAt: existingRecord?.createdAt || nowIso,
-            createdAtMs: existingRecord?.createdAtMs || nowMs,
-            createdOn: existingRecord?.createdOn,
-            description: input.description || existingRecord?.description,
-            documentBytes,
-            documentPath,
-            documentStorage: "storage",
-            elementCount: documentValue.elements.length,
-            height: documentValue.canvas.height,
-            id: templateId,
-            origin: "platform",
-            previewPath,
-            previewStorage: previewPath ? "storage" : undefined,
-            productId: input.productId,
-            schemaVersion: 2,
-            sortIndex,
-            sourceSurface: input.sourceSurface,
-            status: input.status || existingRecord?.status || "draft",
-            templateFamilyId: input.templateFamilyId,
-            templateType: "platform",
-            thumbnailUrl,
-            title: input.title,
-            updatedAt: nowIso,
-            updatedAtMs: nowMs,
-            version: (existingRecord?.version || 0) + 1,
-            width: documentValue.canvas.width,
-        }, { isNew: !existingRecord }) as CreativeEditorTemplateRecord;
-        const templates = sortPlatformRecords([
-            record,
-            ...existingRecords.filter((item) => !(
-                item.id === templateId
-                && recordMatchesRequest(item, requestMatch)
-            )),
-        ]).slice(0, MAX_PLATFORM_INDEX_TEMPLATES);
-
-        await setDoc(catalogRef, {
-            businessCategory: catalogKey,
-            data: templates,
-            schemaVersion: 2,
-            updatedAt: nowIso,
-            updatedAtMs: nowMs,
-        } satisfies CreativeEditorPlatformCatalogRecord);
-        if (catalogKey === businessCategory) {
-            primaryRecord = record;
+        if (input.thumbnailDataUrl && previewContentType) {
+            uploadedPreviewPath = buildPlatformPreviewPath({
+                businessCategory,
+                templateId,
+                thumbnailDataUrl: input.thumbnailDataUrl,
+                versionId,
+            });
+            uploadedPaths.push(uploadedPreviewPath);
+            const previewRef = ref(firebaseStorage, uploadedPreviewPath);
+            await uploadString(previewRef, input.thumbnailDataUrl, "data_url", {
+                cacheControl: "private, max-age=31536000, immutable",
+                contentType: previewContentType,
+            });
+            uploadedThumbnailUrl = await getDownloadURL(previewRef);
         }
-    }));
 
-    if (!primaryRecord) throwTemplateRegistryLocalError("PLATFORM_TEMPLATE_SAVE_FAILED");
-    return toSummary(primaryRecord);
+        persistenceAttempted = true;
+        const committed = await runTransaction(firebaseClient, async (transaction) => {
+            const snapshots = await Promise.all(catalogRefs.map((catalogRef) => transaction.get(catalogRef)));
+            const catalogs = snapshots.map((snapshot) => (
+                snapshot.exists() ? snapshot.data() as CreativeEditorPlatformCatalogRecord : null
+            ));
+            const recordsByCatalog = catalogs.map((catalog) => readIndexRecords(catalog, {
+                productId: input.productId,
+                sourceSurface: input.sourceSurface,
+            }));
+            const sourceRecords = recordsByCatalog[sourceCatalogIndex] || [];
+            const existingRecord = sourceRecords.find((record) => (
+                matchesCreativeEditorTemplateRecord(record, requestMatch)
+            ));
+            const previewPath = uploadedPreviewPath || existingRecord?.previewPath || null;
+            const thumbnailUrl = uploadedThumbnailUrl || existingRecord?.thumbnailUrl || null;
+            const sortIndex = typeof existingRecord?.sortIndex === "number"
+                ? existingRecord.sortIndex
+                : sourceRecords.length;
+            const composedRecord = composeRequestBody({
+                assetTypeId: input.assetTypeId,
+                businessCategory,
+                createdAt: existingRecord?.createdAt || nowIso,
+                createdAtMs: existingRecord?.createdAtMs || nowMs,
+                description: input.description ?? existingRecord?.description,
+                documentBytes,
+                documentPath,
+                documentStorage: "storage" as const,
+                elementCount: documentValue.elements.length,
+                height: documentValue.canvas.height,
+                id: templateId,
+                origin: "platform" as const,
+                previewPath,
+                previewStorage: previewPath ? "storage" as const : undefined,
+                productId: input.productId,
+                schemaVersion: 2,
+                sortIndex,
+                sourceSurface: input.sourceSurface,
+                status: input.status || existingRecord?.status || "draft",
+                templateFamilyId: input.templateFamilyId,
+                templateType: "platform" as const,
+                thumbnailUrl,
+                title: input.title,
+                updatedAt: nowIso,
+                updatedAtMs: nowMs,
+                version: (existingRecord?.version || 0) + 1,
+                width: documentValue.canvas.width,
+            }, session, { isNew: !existingRecord }) as CreativeEditorTemplateRecord;
+            const record = restoreCreationMetadata(composedRecord, existingRecord);
+            const cleanupRecords: CreativeEditorTemplateRecord[] = [];
+            const retainedRecords: CreativeEditorTemplateRecord[] = [];
+
+            recordsByCatalog.forEach((existingRecords, index) => {
+                const mutation = upsertCreativeEditorTemplateRecord({
+                    limit: MAX_PLATFORM_INDEX_TEMPLATES,
+                    mode: "platform",
+                    record,
+                    records: existingRecords,
+                    scope: requestMatch,
+                });
+                if (mutation.replaced) cleanupRecords.push(mutation.replaced);
+                cleanupRecords.push(...mutation.evicted.filter((evicted) => (
+                    businessCategory === PLATFORM_TEMPLATE_GENERIC_CATEGORY
+                    || buildPlatformCategoryKey(evicted.businessCategory) !== PLATFORM_TEMPLATE_GENERIC_CATEGORY
+                )));
+                retainedRecords.push(...mutation.records);
+                transaction.set(catalogRefs[index], {
+                    businessCategory: catalogKeys[index],
+                    data: mutation.records,
+                    schemaVersion: 2,
+                    updatedAt: nowIso,
+                    updatedAtMs: nowMs,
+                } satisfies CreativeEditorPlatformCatalogRecord);
+            });
+
+            return { cleanupRecords, record, retainedRecords };
+        });
+
+        await cleanupTemplateRecords({
+            records: committed.cleanupRecords,
+            retainedPaths: getRetainedTemplateStoragePaths(committed.retainedRecords),
+        });
+        return toSummary(committed.record);
+    } catch (error) {
+        if (!persistenceAttempted) {
+            await cleanupUploadedTemplateAttempt({
+                businessCategory,
+                paths: uploadedPaths,
+                templateId,
+                templateOrigin: "platform",
+            });
+            throw error;
+        }
+
+        try {
+            const probe = await getDoc(getPlatformCatalogRef(businessCategory));
+            const committedRecord = probe.exists()
+                ? readIndexRecords(probe.data(), {
+                    productId: input.productId,
+                    sourceSurface: input.sourceSurface,
+                }).find((record) => (
+                    matchesCreativeEditorTemplateRecord(record, requestMatch)
+                    && record.documentPath === documentPath
+                ))
+                : undefined;
+            if (committedRecord) return toSummary(committedRecord);
+            await cleanupUploadedTemplateAttempt({
+                businessCategory,
+                paths: uploadedPaths,
+                templateId,
+                templateOrigin: "platform",
+            });
+        } catch (probeError) {
+            logRuntimeFailure("creative_editor_template_ambiguous_platform_save_retained", probeError, {
+                ...getBoundedRuntimeStringContext("businessCategory", businessCategory),
+                ...getBoundedRuntimeStringContext("templateId", templateId),
+            });
+        }
+        throw error;
+    }
 }
 
 export async function saveCreativeEditorPlatformTemplate(
@@ -990,65 +1177,109 @@ async function updateCreativeEditorPlatformTemplateMetadataRaw(
         ...params,
         templateType: "platform",
     }) as CreativeEditorTemplateGetQuery;
+    const session = await getActiveSession();
     const businessCategory = buildPlatformCategoryKey(params.businessCategory);
     const now = new Date();
     const nowIso = now.toISOString();
     const nowMs = now.getTime();
-    let primaryRecord: CreativeEditorTemplateRecord | null = null;
-    let anyUpdated = false;
-    const mutationTarget = await findPlatformTemplateMutationTarget({
-        businessCategory,
-        query,
-        templateId: params.templateId,
-    });
-
-    await Promise.all(mutationTarget.catalogKeys.map(async (catalogKey) => {
-        const catalogRef = getPlatformCatalogRef(catalogKey);
-        const snapshot = catalogKey === mutationTarget.sourceCatalogKey
-            ? mutationTarget.sourceSnapshot
-            : await readPlatformCatalogMutationSnapshot(catalogKey, query);
-        const matchingRecord = snapshot.records.find((record) => (
-            record.id === params.templateId
-            && recordMatchesRequest(record, query)
-        ));
-        const baseRecord = matchingRecord || (
-            mutationTarget.templateBusinessCategory === PLATFORM_TEMPLATE_GENERIC_CATEGORY
-                ? mutationTarget.sourceRecord
-                : null
-        );
-        if (!baseRecord) return;
-        const updatedRecord: CreativeEditorTemplateRecord = {
-            ...baseRecord,
-            description: params.description ?? baseRecord.description,
-            status: params.status || baseRecord.status || "draft",
-            templateFamilyId: params.templateFamilyId ?? baseRecord.templateFamilyId,
-            title: params.title || baseRecord.title,
-            updatedAt: nowIso,
-            updatedAtMs: nowMs,
-            version: (baseRecord.version || 0) + 1,
-        };
-        const nextRecords = [
-            updatedRecord,
-            ...snapshot.records.filter((record) => !(
+    const sourceCatalogRef = getPlatformCatalogRef(businessCategory);
+    try {
+        const committed = await runTransaction(firebaseClient, async (transaction) => {
+            const sourceSnapshot = await transaction.get(sourceCatalogRef);
+            const sourceRecords = sourceSnapshot.exists()
+                ? readIndexRecords(sourceSnapshot.data(), query)
+                : [];
+            const sourceRecord = sourceRecords.find((record) => (
                 record.id === params.templateId
                 && recordMatchesRequest(record, query)
-            )),
-        ];
-        anyUpdated = true;
-        await setDoc(catalogRef, {
-            businessCategory: catalogKey,
-            data: sortPlatformRecords(nextRecords).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
-            schemaVersion: 2,
-            updatedAt: nowIso,
-            updatedAtMs: nowMs,
-        } satisfies CreativeEditorPlatformCatalogRecord);
-        if (catalogKey === mutationTarget.sourceCatalogKey) {
-            primaryRecord = updatedRecord;
-        }
-    }));
+            ));
+            if (!sourceRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
 
-    if (!anyUpdated || !primaryRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
-    return toSummary(primaryRecord);
+            const templateBusinessCategory = buildPlatformCategoryKey(
+                sourceRecord.businessCategory || businessCategory,
+            );
+            const catalogKeys = getPlatformCatalogKeysForMutation(templateBusinessCategory);
+            const additionalKeys = catalogKeys.filter((catalogKey) => catalogKey !== businessCategory);
+            const additionalRefs = additionalKeys.map((catalogKey) => getPlatformCatalogRef(catalogKey));
+            const additionalSnapshots = await Promise.all(
+                additionalRefs.map((catalogRef) => transaction.get(catalogRef)),
+            );
+            const recordsByKey = new Map<string, CreativeEditorTemplateRecord[]>([[businessCategory, sourceRecords]]);
+            additionalSnapshots.forEach((snapshot, index) => {
+                recordsByKey.set(
+                    additionalKeys[index],
+                    snapshot.exists() ? readIndexRecords(snapshot.data(), query) : [],
+                );
+            });
+
+            const authoritativeRecord = recordsByKey.get(templateBusinessCategory)?.find((record) => (
+                record.id === params.templateId
+                && recordMatchesRequest(record, query)
+            )) || sourceRecord;
+            const composedRecord = composeRequestBody({
+                ...authoritativeRecord,
+                description: params.description ?? authoritativeRecord.description,
+                status: params.status || authoritativeRecord.status || "draft",
+                templateFamilyId: params.templateFamilyId ?? authoritativeRecord.templateFamilyId,
+                title: params.title ?? authoritativeRecord.title,
+                updatedAt: nowIso,
+                updatedAtMs: nowMs,
+                version: (authoritativeRecord.version || 0) + 1,
+            }, session, { isNew: false }) as CreativeEditorTemplateRecord;
+            const record = restoreCreationMetadata(composedRecord, authoritativeRecord);
+            const recordScope = {
+                assetTypeId: query.assetTypeId,
+                productId: query.productId,
+                sourceSurface: query.sourceSurface,
+                templateId: params.templateId,
+            };
+            const cleanupRecords: CreativeEditorTemplateRecord[] = [];
+            const retainedRecords: CreativeEditorTemplateRecord[] = [];
+            catalogKeys.forEach((catalogKey) => {
+                const mutation = upsertCreativeEditorTemplateRecord({
+                    limit: MAX_PLATFORM_INDEX_TEMPLATES,
+                    mode: "platform",
+                    record,
+                    records: recordsByKey.get(catalogKey) || [],
+                    scope: recordScope,
+                });
+                cleanupRecords.push(...mutation.evicted);
+                retainedRecords.push(...mutation.records);
+                transaction.set(getPlatformCatalogRef(catalogKey), {
+                    businessCategory: catalogKey,
+                    data: mutation.records,
+                    schemaVersion: 2,
+                    updatedAt: nowIso,
+                    updatedAtMs: nowMs,
+                } satisfies CreativeEditorPlatformCatalogRecord);
+            });
+            return { cleanupRecords, record, retainedRecords };
+        });
+        await cleanupTemplateRecords({
+            records: committed.cleanupRecords,
+            retainedPaths: getRetainedTemplateStoragePaths(committed.retainedRecords),
+        });
+        return toSummary(committed.record);
+    } catch (error) {
+        if (isTemplateRegistryLocalError(error, "TEMPLATE_NOT_FOUND")) throw error;
+        try {
+            const probe = await getDoc(sourceCatalogRef);
+            const committedRecord = probe.exists()
+                ? readIndexRecords(probe.data(), query).find((record) => (
+                    record.id === params.templateId
+                    && recordMatchesRequest(record, query)
+                    && record.updatedAtMs === nowMs
+                ))
+                : undefined;
+            if (committedRecord) return toSummary(committedRecord);
+        } catch (probeError) {
+            logRuntimeFailure("creative_editor_template_ambiguous_metadata_update", probeError, {
+                ...getBoundedRuntimeStringContext("businessCategory", businessCategory),
+                ...getBoundedRuntimeStringContext("templateId", params.templateId),
+            });
+        }
+        throw error;
+    }
 }
 
 export async function updateCreativeEditorPlatformTemplateMetadata(
@@ -1067,43 +1298,63 @@ async function deleteCreativeEditorTemplateRaw(params: CreativeEditorTemplateCon
         templateType: "user",
     }) as CreativeEditorTemplateGetQuery;
     const scope = requireStoreScope(params.scope);
+    const session = await getActiveSession();
     const indexRef = getStoreTemplateIndexRef(scope);
-    const indexDoc = await getDoc(indexRef);
-    if (!indexDoc.exists()) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
-    const records = readIndexRecords(indexDoc.data());
-    const record = records.find((item) => item.id === params.templateId && recordMatchesRequest(item, query));
-    if (!record) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
-
-    const remainingTemplates = records.filter((item) => item !== record);
     const now = new Date();
-    const currentIndex = indexDoc.data() as Partial<CreativeEditorStoreTemplateIndexRecord>;
-    const nextIndexRecord = await requestBodyComposer({
-        createdBy: currentIndex.createdBy,
-        createdOn: currentIndex.createdOn,
-        data: remainingTemplates,
-        id: STORE_TEMPLATE_DOC_ID,
-        schemaVersion: 2,
-        sId: scope.sId,
-        tId: scope.tId,
-        updatedAt: now.toISOString(),
-        updatedAtMs: now.getTime(),
-    }, { isNew: false }) as CreativeEditorStoreTemplateIndexRecord;
-    await setDoc(indexRef, nextIndexRecord);
-
-    // Metadata removal is the owner-visible delete. Storage cleanup runs after
-    // the index update so a failed write cannot leave a broken visible template.
-    const cleanupContext = {
-        assetTypeId: record.assetTypeId,
-        businessCategory: record.businessCategory,
-        productId: record.productId,
-        sourceSurface: record.sourceSurface,
-        templateId: record.id,
-        templateOrigin: "user" as const,
+    const nowIso = now.toISOString();
+    const nowMs = now.getTime();
+    const recordScope = {
+        assetTypeId: query.assetTypeId,
+        productId: query.productId,
+        sourceSurface: query.sourceSurface,
+        templateId: params.templateId,
     };
-    await Promise.all([
-        deleteStoragePath(record.documentPath, { ...cleanupContext, cleanupTarget: "document" }),
-        deleteStoragePath(record.previewPath, { ...cleanupContext, cleanupTarget: "preview" }),
-    ]);
+    let candidateRecord: CreativeEditorTemplateRecord | undefined;
+    try {
+        const record = await runTransaction(firebaseClient, async (transaction) => {
+            const indexDoc = await transaction.get(indexRef);
+            if (!indexDoc.exists()) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
+            const currentIndex = indexDoc.data() as Partial<CreativeEditorStoreTemplateIndexRecord>;
+            const mutation = removeCreativeEditorTemplateRecord({
+                records: readIndexRecords(currentIndex),
+                scope: recordScope,
+            });
+            if (!mutation.removed) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
+            candidateRecord = mutation.removed;
+            const composedIndex = composeRequestBody({
+                data: mutation.records,
+                id: STORE_TEMPLATE_DOC_ID,
+                schemaVersion: 2,
+                sId: scope.sId,
+                tId: scope.tId,
+                updatedAt: nowIso,
+                updatedAtMs: nowMs,
+            }, session, { isNew: false }) as CreativeEditorStoreTemplateIndexRecord;
+            transaction.set(indexRef, restoreCreationMetadata(composedIndex, currentIndex));
+            return mutation.removed;
+        });
+        await cleanupTemplateRecords({ records: [record], scope });
+    } catch (error) {
+        if (isTemplateRegistryLocalError(error, "TEMPLATE_NOT_FOUND")) throw error;
+        try {
+            const probe = await getDoc(indexRef);
+            const stillPresent = probe.exists()
+                && readIndexRecords(probe.data()).some((record) => (
+                    matchesCreativeEditorTemplateRecord(record, recordScope)
+                ));
+            if (!stillPresent) {
+                if (candidateRecord) await cleanupTemplateRecords({ records: [candidateRecord], scope });
+                return;
+            }
+        } catch (probeError) {
+            logRuntimeFailure("creative_editor_template_ambiguous_user_delete_retained", probeError, {
+                ...getBoundedRuntimeStringContext("templateId", params.templateId),
+                ...getBoundedRuntimeStringContext("tId", scope.tId),
+                ...getBoundedRuntimeStringContext("sId", scope.sId),
+            });
+        }
+        throw error;
+    }
 }
 
 export async function deleteCreativeEditorTemplate(params: CreativeEditorTemplateContext & { templateId: string }): Promise<void> {
@@ -1121,50 +1372,86 @@ async function deleteCreativeEditorPlatformTemplateRaw(params: CreativeEditorTem
     }) as CreativeEditorTemplateGetQuery;
     const businessCategory = buildPlatformCategoryKey(params.businessCategory);
     const now = new Date();
-    let primaryRecord: CreativeEditorTemplateRecord | null = null;
-    let anyDeleted = false;
-    const mutationTarget = await findPlatformTemplateMutationTarget({
-        businessCategory,
-        query,
+    const nowIso = now.toISOString();
+    const nowMs = now.getTime();
+    const sourceCatalogRef = getPlatformCatalogRef(businessCategory);
+    const recordScope = {
+        assetTypeId: query.assetTypeId,
+        productId: query.productId,
+        sourceSurface: query.sourceSurface,
         templateId: params.templateId,
-    });
-
-    await Promise.all(mutationTarget.catalogKeys.map(async (catalogKey) => {
-        const catalogRef = getPlatformCatalogRef(catalogKey);
-        const snapshot = catalogKey === mutationTarget.sourceCatalogKey
-            ? mutationTarget.sourceSnapshot
-            : await readPlatformCatalogMutationSnapshot(catalogKey, query);
-        if (!snapshot.exists) return;
-        const record = snapshot.records.find((item) => item.id === params.templateId && recordMatchesRequest(item, query));
-        if (!record) return;
-        anyDeleted = true;
-        if (catalogKey === mutationTarget.sourceCatalogKey) {
-            primaryRecord = record;
-        }
-        const remainingTemplates = snapshot.records.filter((item) => item !== record);
-        await setDoc(catalogRef, {
-            businessCategory: catalogKey,
-            data: sortPlatformRecords(remainingTemplates).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
-            schemaVersion: 2,
-            updatedAt: now.toISOString(),
-            updatedAtMs: now.getTime(),
-        } satisfies CreativeEditorPlatformCatalogRecord);
-    }));
-
-    if (!anyDeleted || !primaryRecord) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
-
-    const cleanupContext = {
-        assetTypeId: primaryRecord.assetTypeId,
-        businessCategory: primaryRecord.businessCategory || businessCategory,
-        productId: primaryRecord.productId,
-        sourceSurface: primaryRecord.sourceSurface,
-        templateId: primaryRecord.id,
-        templateOrigin: "platform" as const,
     };
-    await Promise.all([
-        deleteStoragePath(primaryRecord.documentPath, { ...cleanupContext, cleanupTarget: "document" }),
-        deleteStoragePath(primaryRecord.previewPath, { ...cleanupContext, cleanupTarget: "preview" }),
-    ]);
+    let candidateRecords: CreativeEditorTemplateRecord[] = [];
+    try {
+        const removedRecords = await runTransaction(firebaseClient, async (transaction) => {
+            const sourceSnapshot = await transaction.get(sourceCatalogRef);
+            const sourceRecords = sourceSnapshot.exists()
+                ? readIndexRecords(sourceSnapshot.data(), query)
+                : [];
+            const sourceMutation = removeCreativeEditorTemplateRecord({
+                records: sourceRecords,
+                scope: recordScope,
+            });
+            if (!sourceMutation.removed) throwTemplateRegistryLocalError("TEMPLATE_NOT_FOUND");
+            const templateBusinessCategory = buildPlatformCategoryKey(
+                sourceMutation.removed.businessCategory || businessCategory,
+            );
+            const catalogKeys = getPlatformCatalogKeysForMutation(templateBusinessCategory);
+            const additionalKeys = catalogKeys.filter((catalogKey) => catalogKey !== businessCategory);
+            const additionalRefs = additionalKeys.map((catalogKey) => getPlatformCatalogRef(catalogKey));
+            const additionalSnapshots = await Promise.all(
+                additionalRefs.map((catalogRef) => transaction.get(catalogRef)),
+            );
+            const recordsByKey = new Map<string, CreativeEditorTemplateRecord[]>([[businessCategory, sourceRecords]]);
+            additionalSnapshots.forEach((snapshot, index) => {
+                recordsByKey.set(
+                    additionalKeys[index],
+                    snapshot.exists() ? readIndexRecords(snapshot.data(), query) : [],
+                );
+            });
+
+            const removed: CreativeEditorTemplateRecord[] = [];
+            catalogKeys.forEach((catalogKey) => {
+                const mutation = removeCreativeEditorTemplateRecord({
+                    records: recordsByKey.get(catalogKey) || [],
+                    scope: recordScope,
+                });
+                if (!mutation.removed) return;
+                removed.push(mutation.removed);
+                transaction.set(getPlatformCatalogRef(catalogKey), {
+                    businessCategory: catalogKey,
+                    data: sortPlatformRecords(mutation.records).slice(0, MAX_PLATFORM_INDEX_TEMPLATES),
+                    schemaVersion: 2,
+                    updatedAt: nowIso,
+                    updatedAtMs: nowMs,
+                } satisfies CreativeEditorPlatformCatalogRecord);
+            });
+            candidateRecords = removed;
+            return removed;
+        });
+        await cleanupTemplateRecords({ records: removedRecords });
+    } catch (error) {
+        if (isTemplateRegistryLocalError(error, "TEMPLATE_NOT_FOUND")) throw error;
+        try {
+            const probe = await getDoc(sourceCatalogRef);
+            const stillPresent = probe.exists()
+                && readIndexRecords(probe.data(), query).some((record) => (
+                    matchesCreativeEditorTemplateRecord(record, recordScope)
+            ));
+            if (!stillPresent) {
+                if (candidateRecords.length > 0) {
+                    await cleanupTemplateRecords({ records: candidateRecords });
+                }
+                return;
+            }
+        } catch (probeError) {
+            logRuntimeFailure("creative_editor_template_ambiguous_platform_delete_retained", probeError, {
+                ...getBoundedRuntimeStringContext("businessCategory", businessCategory),
+                ...getBoundedRuntimeStringContext("templateId", params.templateId),
+            });
+        }
+        throw error;
+    }
 }
 
 export async function deleteCreativeEditorPlatformTemplate(params: CreativeEditorTemplateContext & { templateId: string }): Promise<void> {

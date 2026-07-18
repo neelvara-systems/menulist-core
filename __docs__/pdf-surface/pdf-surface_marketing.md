@@ -1,15 +1,15 @@
 # PDF Surface — Internal Marketing Collateral
 
 **Feature:** PDF Surface (Enhanced Menu PDF Generation)
-**Version:** 2.1
-**Last Updated:** 2026-03
+**Version:** Compatibility collateral
+**Last Updated:** July 16, 2026
 **Audience:** Internal sales, onboarding, support teams
 
 ---
 
 ## Current Sales/Launch Boundary
 
-This collateral is internal source evidence for the lightweight PDF Surface. It is not current launch certification, visual print artifact approval, or a sales guarantee. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md) evidence, `npm run verify:menu-export`, authenticated desktop/mobile Share screen QA, visual PDF artifact review, target deploy evidence, and production-host smoke.
+PDF Surface is now a compatibility name, not a separate product surface. Current owner and public positioning belongs to [Menu Card Export](../menu-card-export/README.md). This collateral is source evidence only, not launch certification, visual print artifact approval, or a sales guarantee.
 
 Do not use fixed generation-speed, every-item, print-shop-quality, no-review, or stale-artifact freshness claims without release-specific evidence.
 
@@ -17,7 +17,9 @@ Do not use fixed generation-speed, every-item, print-shop-quality, no-review, or
 
 ## One-Line Pitch
 
-Download a versioned menu PDF generated from the current project data, then review the file before printing or sharing it.
+Create a controlled print-menu PDF from current MenuList truth, then review it before printing or sharing it.
+
+Owner guidance must say: review the file before printing or sharing it, and replace old copies after menu changes.
 
 ---
 
@@ -29,7 +31,7 @@ Restaurant owners print menus from their phone or laptop. Without MenuList, this
 - The printed menu has no branding, no structure, no visual hierarchy
 - The owner has no way to know if the PDF they're holding matches current prices
 
-MenuList generates a print-ready PDF on demand, stamped with the current date and a version ID. The file is a generated artifact, so owners should review the PDF and replace older downloads or printed copies after menu changes.
+MenuList generates a print-ready PDF on demand from current project/store context. The file includes generated metadata and a short source reference in its filename. It is still a generated artifact, so owners should review the PDF and replace older downloads or printed copies after menu changes.
 
 ---
 
@@ -41,7 +43,7 @@ Traditional PDF tools give owners a blank canvas and ask them to design. MenuLis
 |---------|--------------------|--------------------|
 | Layout | Owner designs | System-decided |
 | Source freshness | Only if owner remembers to update | Generated from the current project data at download time |
-| Version tracking | Never | Every PDF has a version ID |
+| File identification | Manual naming | Generated date and short source reference in the filename |
 | Print quality | Depends on owner skill | Consistent generated layout for review |
 | Time to print | 15-30 min design time | Requires release-specific timing evidence before quoting |
 
@@ -49,13 +51,13 @@ Traditional PDF tools give owners a blank canvas and ask them to design. MenuLis
 
 ## Key Talking Points (Support / Sales)
 
-1. **"It looks like a real menu card"** — Dark header band, dotted leader lines between items and prices, structured category sections. Not a plain list.
+1. **"It is a controlled print menu"** — Business-type-aware page styling, structured categories, readable prices, optional logo/contact/QR, and no freeform layout risk.
 
-2. **"The version is clear"** — PDF is generated from the current project data at download time. The version ID in the footer lets owners (and customers) verify which menu version they're looking at.
+2. **"The source reference is clear"** — PDF is generated from the current project data at download time and carries generated metadata plus a short source reference in its filename. Print Menu device history shows whether an older export still matches the current source.
 
-3. **"Works from your phone"** — Owner can generate and download a PDF from the Share screen on mobile. No desktop required.
+3. **"Works from your phone"** — Owner can open Print Menu inside MobileShell, preview the file, and download or share it. No desktop required.
 
-4. **"No setup needed"** — Owner does not configure layout, colors, or fonts in the lightweight PDF flow. Review the generated file before printing or sharing.
+4. **"Controlled choices"** — Owner may choose the available job, style, density, and safe content options without entering a freeform designer. Review the generated file before printing or sharing.
 
 ---
 

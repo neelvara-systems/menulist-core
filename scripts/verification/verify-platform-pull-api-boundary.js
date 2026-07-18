@@ -62,6 +62,8 @@ const publicTruthEligibility = read('src/lib/publicTruth/entityEligibility.ts');
 const responseIdentity = read('src/lib/publicApi/responseIdentity.ts');
 const menuListScope = read('src/lib/publicApi/menuListScope.ts');
 const businessProjection = read('src/lib/publicApi/businessProjection.ts');
+const tempStatusBoundary = read('src/lib/tempStatus/statusBoundary.ts');
+const businessAttributes = read('src/lib/obp/businessAttributes.ts');
 const menuProjection = read('src/lib/publicApi/menuProjection.ts');
 const summaryProjectParser = read('src/lib/firestore/parseSummaryProjects.ts');
 const summaryMapParser = read('src/lib/firestore/summaryMapParser.ts');
@@ -316,7 +318,10 @@ forbidToken(menuRoute, 'Number(tenantDocumentId)', 'Public menu pull route unche
   'project.deleted !== true',
   'project.isSpecialMenu !== true',
   'projects.find((project) => project.isDefault === true) || projects[0]',
-  'withAuthoritativeSummaryProjectId(projectDocumentId, data)',
+  'const projectScope = projectDocumentId',
+  'projectScope?.tenantDocumentId === tenantDocumentId',
+  'projectScope.storeDocumentId === storeDocumentId',
+  'withAuthoritativeSummaryProjectId(projectScope.projectId, data)',
   '.collection(DB_COLLECTIONS.PROJECTS)',
   'if (projectData?.active === false || projectData?.deleted === true) return null;',
   "event: 'menu.pull' as const",
@@ -352,13 +357,25 @@ forbidToken(menuRoute, 'projectData as any', 'Public menu pull project cast');
 ].forEach((token) => requireToken(businessRoute, token, 'Public business pull active status boundary'));
 [
   'export function normalizePublicBusinessAttributes(value: unknown)',
+  'const normalized = normalizeBusinessAttributes(value);',
+  "import { getActiveTempStatus, type ActiveTempStatus } from '@lib/tempStatus/statusBoundary';",
+  'export type PublicTempStatus = ActiveTempStatus;',
+  'export function getActivePublicTempStatus(',
+  'return getActiveTempStatus(value, nowMs);',
+].forEach((token) => requireToken(businessProjection, token, 'Public business pull shared projection boundary'));
+[
+  'export function getActiveTempStatus(',
+  'const type = normalizeTempStatusType(status.type);',
+  "typeof status.expiresAt !== 'string'",
+  'const expiresAtMs = Date.parse(status.expiresAt);',
+  'expiresAtMs <= nowMs',
+  'message: normalizeTempStatusMessage(type, status.message)',
+].forEach((token) => requireToken(tempStatusBoundary, token, 'Shared active temporary-status runtime boundary'));
+[
+  'export function normalizeBusinessAttributes(value: unknown)',
   'BUSINESS_ATTRIBUTE_CONFIG.forEach(({ key }) =>',
   "typeof attributes[key] === 'boolean'",
-  'export function getActivePublicTempStatus(',
-  "!PUBLIC_TEMP_STATUS_TYPES.has(status.type as PublicTempStatus['type'])",
-  "typeof status.expiresAt !== 'string'",
-  'expiresAtMs <= nowMs',
-].forEach((token) => requireToken(businessProjection, token, 'Public business pull runtime projection boundary'));
+].forEach((token) => requireToken(businessAttributes, token, 'Shared controlled business-attribute runtime boundary'));
 
 [
   "export const dynamic = 'force-dynamic';",

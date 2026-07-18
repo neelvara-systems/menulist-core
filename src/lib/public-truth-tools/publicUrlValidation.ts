@@ -74,10 +74,11 @@ function isPrivateIpv4(hostname: string): boolean {
 }
 
 export function isPublicHttpsHostname(hostname: string): boolean {
-  const normalized = hostname.toLowerCase();
+  const normalized = hostname.toLowerCase().replace(/\.+$/, '');
   if (!normalized) return false;
+  if (normalized.includes(':') || normalized.includes('[') || normalized.includes(']')) return false;
+  if (normalized.split('.').some((label) => !label)) return false;
   if (normalized === 'localhost' || normalized.endsWith('.localhost') || normalized.endsWith('.local')) return false;
-  if (normalized === '[::1]' || normalized === '::1') return false;
   if (isPrivateIpv4(normalized)) return false;
   if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(normalized)) return false;
   return normalized.includes('.');

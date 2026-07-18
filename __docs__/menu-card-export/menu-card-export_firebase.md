@@ -70,8 +70,7 @@ Sources:
 Evidence:
 
 - Compatibility generator returns a Blob in browser: `src/lib/export/menuPdfGenerator.ts`.
-- Desktop stores download markers in `localStorage`: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx:235`.
-- Mobile stores download markers in `localStorage`: `src/components/mobile/screens/MobileShareScreen.tsx:447`.
+- Desktop and mobile call `src/lib/export/localExportHistory.ts` after a legacy/flag-off PDF delivery. The helper scopes markers by tenant/store/project and treats storage rejection as best-effort.
 - Current docs describe zero generation cost: `__docs__/pdf-surface/pdf-surface_firebase.md:11`.
 
 ---
@@ -115,7 +114,7 @@ Preflight runs inside preview/final export and also does not write. Its warnings
 
 The route uses `getExistingProjectsListWithoutLoader()` instead of the legacy auto-creating project list helper. If a store has no menus, the route shows an empty state and does not create a default project.
 
-`ENABLE_MENU_CARD_EXPORT_HISTORY=false` disables the local history UI and skips browser `localStorage` history writes. The default enabled history path remains device-local only and does not create Firebase cost.
+`ENABLE_MENU_CARD_EXPORT_HISTORY=false` disables the local history UI and skips browser `localStorage` history writes. The default enabled history path remains device-local only and does not create Firebase cost. Its key includes tenant, store, and project scope; project-only legacy keys are not read. Browser quota/privacy rejection is best-effort and cannot overturn an already delivered file.
 
 ### Final Export
 
@@ -152,7 +151,7 @@ Batch is not exposed in the implemented default path.
 Rules:
 
 - Verify every selected store/project before any write.
-- Apply hash reuse per project.
+- Apply hash reuse per tenant/store/project.
 - Cap batch size before launch; proposed default is 10 projects per request.
 - Return per-project status so one failed render does not trigger duplicate reruns for successful projects.
 
@@ -183,8 +182,8 @@ Rules:
 | --- | --- |
 | Preview no-write | Route preview cannot create export docs or Storage objects. |
 | Read-only menu list | The route must use the existing-projects summary helper and must not create a default menu from a print/export surface. |
-| Hash reuse | Same source/template/settings/preset is detected from local history. |
-| History limit | Route lists max 20 local export records per project. |
+| Hash reuse | Same source/template/settings/preset is detected from tenant/store/project-scoped local history. |
+| History limit | Route lists max 20 shaped local export records per tenant/store/project. |
 | Retention | No Storage retention needed until server artifact storage exists. |
 | Thumbnails | Generate only if UI displays them; otherwise store preview model only. |
 | AI advisor | Owner-click only, Pro/Premium only, rate-limited, capacity-gated, and not part of critical export path. |

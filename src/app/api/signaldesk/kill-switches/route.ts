@@ -11,7 +11,11 @@ import {
     requireSignalDeskAccess,
     requireSignalDeskRuntime,
 } from "@lib/signaldesk/apiGuards";
-import { recordSignalDeskMobileActionBlockedServer, setSignalDeskKillSwitchServer } from "@lib/signaldesk/server";
+import {
+    recordSignalDeskMobileActionBlockedServer,
+    setSignalDeskKillSwitchServer,
+    SIGNALDESK_KILL_SWITCH_SCOPE_VALUES,
+} from "@lib/signaldesk/server";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import type { SignalDeskPermission } from "@type/signaldesk";
 import { withAuth } from "@/middleware/auth";
@@ -20,21 +24,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 const KillSwitchSchema = z.object({
+    idempotencyKey: z.string().trim().min(8).max(180),
     mobileConfirmation: z.literal("MOBILE_EMERGENCY_PAUSE").optional(),
     reason: z.string().trim().min(6).max(500),
-    scope: z.enum([
-        "global-outbound",
-        "email",
-        "whatsapp",
-        "instagram",
-        "messenger",
-        "source-provider",
-        "ai-worker",
-        "campaign",
-        "content-distribution",
-        "trust-partner",
-        "menu-list-bridge",
-    ]),
+    scope: z.enum(SIGNALDESK_KILL_SWITCH_SCOPE_VALUES),
     status: z.enum(["active", "inactive"]),
 });
 
@@ -62,6 +55,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const accessResult = await requireSignalDeskAccess(request, session, permission);
     if ("response" in accessResult) return accessResult.response;
 
+    const rateLimit = await applySignalDeskRateLimit({
+        feature: "DATA_WRITE",
+        keyPrefix: "kill-switch",
+        request,
+        session,
+    });
+    if (rateLimit) return rateLimit;
+
     if (isSignalDeskMobileRequest(request) && (validatedInput.status !== "active" || validatedInput.mobileConfirmation !== "MOBILE_EMERGENCY_PAUSE")) {
         await recordSignalDeskMobileActionBlockedServer({
             access: accessResult.access,
@@ -71,17 +72,10 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "MOBILE_READ_ONLY_ACTION_BLOCKED" }, { status: 403 });
     }
 
-    const rateLimit = await applySignalDeskRateLimit({
-        feature: "DATA_WRITE",
-        keyPrefix: "kill-switch",
-        request,
-        session,
-    });
-    if (rateLimit) return rateLimit;
-
     try {
         const killSwitch = await setSignalDeskKillSwitchServer({
             access: accessResult.access,
+            idempotencyKey: validatedInput.idempotencyKey,
             reason: validatedInput.reason,
             scope: validatedInput.scope,
             status: validatedInput.status,
@@ -99,6 +93,9 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 mobileRequest: isSignalDeskMobileRequest(request),
             },
         );
+        if (error instanceof Error && error.message === "KILL_SWITCH_IDEMPOTENCY_CONFLICT") {
+            return NextResponse.json({ error: "SignalDesk pause request conflicts with an earlier request" }, { status: 409 });
+        }
         return NextResponse.json({ error: "Failed to update SignalDesk pause" }, { status: 500 });
     }
 });

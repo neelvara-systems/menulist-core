@@ -2,6 +2,7 @@ import { DB_COLLECTIONS } from "@constant/database";
 import uploadBase64ToStorage from "@database/storage/uploadBase64ToStorage";
 import { collection } from "@firebase/firestore";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import { doc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.FILES;
@@ -26,7 +27,7 @@ const updateLogoImage = async (data) => {
     const docRef = await getDocRef(`${docId}`);
 
     if (imageToUpdate) {
-        if (imageToUpdate?.includes('base64')) {
+        if (isDataUrl(imageToUpdate)) {
             //upload logo image to firebase storage
             logoUrl = await uploadBase64ToStorage({
                 fileId: docId,

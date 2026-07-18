@@ -20,7 +20,7 @@
 
 | Object | Required fields |
 | --- | --- |
-| Kill switch | `switchId`, `scope`, `status`, `reason`, `setBy`, `setAt`, `expiresAt`, `clearedAt` |
+| Kill switch | `killSwitchId`, `pId`, `scope`, `status`, `reason`, `activatedBy`, `activatedAt`, `deactivatedBy`, `deactivatedAt`, `updatedBy`, `updatedAt` |
 | Incident | `incidentId`, `type`, `severity`, `status`, `ownerId`, `openedAt`, `resolvedAt`, `resolutionNote` |
 | Cost summary | `summaryId`, `day`, `aiCostEstimate`, `firestoreReadEstimate`, `firestoreWriteEstimate`, `providerCostEstimate`, `updatedAt` |
 | Health summary | `summaryId`, `scope`, `status`, `metrics`, `staleAfter`, `updatedAt` |
@@ -30,7 +30,7 @@
 | Query | Index |
 | --- | --- |
 | Open incidents | `status`, `severity`, `openedAt desc` |
-| Active kill switches | `status`, `scope`, `setAt desc` |
+| Active kill switches | No composite index; overview point-reads the eleven canonical `scope_{scope}` documents and strictly projects active rows. |
 | Daily costs | `day desc` |
 | Channel health | `channel`, `day desc` |
 | Queue summaries | `scope`, `updatedAt desc` |
@@ -39,7 +39,7 @@
 
 - Control room default load must read one overall summary plus bounded section summaries.
 - Kill-switch checks must be cheap and cacheable where safe.
-- Incident lists must paginate.
+- The overview incident list is capped at 50 and its strict count scans at most 501 matching documents; the 501st row fails visibly instead of producing approximate truth.
 - Cost summaries should be updated by bounded jobs or feature write paths.
 - Raw event drill-down requires explicit admin action.
 
@@ -47,7 +47,7 @@
 
 | Data | Default |
 | --- | --- |
-| Kill switches | Retain historical records for audit. |
+| Kill switches | Scope documents retain current state; append-only audit events retain transition history. |
 | Incidents | Retain resolved incident history. |
 | Daily cost summaries | Retain for trend analysis and budget review. |
 | Health summaries | Retain rolling history; archive older records later. |

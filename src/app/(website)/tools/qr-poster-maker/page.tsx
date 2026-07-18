@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import PrintShareToolPage from '@/components/website/printShareTools/PrintShareToolPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'QR Poster Maker - MenuList | Free Customer Link Poster';
 const description = 'Make a free browser-local QR poster for one current customer link. Download PNG or PDF without logging in.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/qr-poster-maker',
   },
-};
+});
 
 export default function Page() {
   if (

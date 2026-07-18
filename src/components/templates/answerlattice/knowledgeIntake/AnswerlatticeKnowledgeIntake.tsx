@@ -4,12 +4,14 @@ import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_ROUTES } from '@constant/answerlattice/navigations';
 import { useKnowledgeIntake, type KnowledgeIntakeEntityOption } from '@hook/answerlattice/useKnowledgeIntake';
 import { assertAnswerlatticeDocxEntryIsBounded } from '@lib/answerlattice/knowledgeIntakeFileSafety';
+import { AnswerlatticeProcedureSchema } from '@lib/answerlattice/procedureValidation';
 import {
     ANSWERLATTICE_INTAKE_REVIEW_STATUS,
     ANSWERLATTICE_INTAKE_REVIEW_TARGET,
     ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS,
     ANSWERLATTICE_KNOWLEDGE_SOURCE_TYPE,
     type AnswerlatticeIntakeReviewItem,
+    type AnswerlatticeKnowledgeSource,
 } from '@type/answerlattice';
 import {
     Alert,
@@ -201,17 +203,80 @@ function TargetTag({ target }: { target: string }) {
     return <Tag color={meta.color} icon={<Icon />}>{meta.label}</Tag>;
 }
 
+const getReviewItemSourceIds = (item: AnswerlatticeIntakeReviewItem): string[] => (
+    Array.from(new Set(
+        item.launchPack?.sourceIds?.length
+            ? item.launchPack.sourceIds
+            : item.sourceId
+                ? [item.sourceId]
+                : [],
+    )).slice(0, 3)
+);
+
+const getSafeHttpsSourceUrl = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null;
+    try {
+        const parsed = new URL(value);
+        if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return null;
+        return parsed.toString();
+    } catch {
+        return null;
+    }
+};
+
+function ReviewEvidence({ sources }: { sources: AnswerlatticeKnowledgeSource[] }) {
+    const { token } = theme.useToken();
+    if (!sources.length) {
+        return <Text type="secondary">No linked source excerpt is available. Add evidence before approving material support truth.</Text>;
+    }
+
+    return (
+        <Flex vertical gap={8}>
+            <Text strong>Source evidence</Text>
+            {sources.slice(0, 3).map(source => {
+                const excerpt = String(source.contentExcerpt || source.contentText || '')
+                    .replace(/\s+/g, ' ')
+                    .trim()
+                    .slice(0, 320);
+                const safeOriginUrl = getSafeHttpsSourceUrl(source.originUrl);
+                return (
+                    <div
+                        key={source.id}
+                        style={{
+                            borderInlineStart: `3px solid ${token.colorPrimaryBorder}`,
+                            paddingInlineStart: 10,
+                        }}
+                    >
+                        <Space size={[6, 6]} wrap>
+                            <Text strong>{source.title}</Text>
+                            <Tag>{source.type.replace(/_/g, ' ')}</Tag>
+                            {safeOriginUrl ? (
+                                <a href={safeOriginUrl} target="_blank" rel="noreferrer">Open source</a>
+                            ) : null}
+                        </Space>
+                        <Paragraph type="secondary" style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap' }}>
+                            {excerpt || 'The source is linked, but it has no stored excerpt.'}
+                        </Paragraph>
+                    </div>
+                );
+            })}
+        </Flex>
+    );
+}
+
 function ReviewItemCard({
     item,
     onAccept,
     onReject,
     onEdit,
+    evidenceSources,
     saving,
 }: {
     item: AnswerlatticeIntakeReviewItem;
     onAccept: (item: AnswerlatticeIntakeReviewItem) => void;
     onReject: (item: AnswerlatticeIntakeReviewItem) => void;
     onEdit: (item: AnswerlatticeIntakeReviewItem) => void;
+    evidenceSources: AnswerlatticeKnowledgeSource[];
     saving: boolean;
 }) {
     const { token } = theme.useToken();
@@ -219,6 +284,17 @@ function ReviewItemCard({
     const isRejected = item.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.REJECTED;
     const isPublished = item.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.PUBLISHED;
     const isLegacyChangelog = item.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG;
+    const isCanonicalProposal = item.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL;
+    const requiresSafeFallback = isCanonicalProposal
+        && Boolean(item.launchPack)
+        && item.launchPack?.expectedSource !== 'canonical';
+    const needsEntity = isCanonicalProposal && !item.entityIds?.length;
+    const supportedAnswerText = item.launchPack ? item.answer : item.answer || item.body;
+    const needsSupportedAnswer = isCanonicalProposal && String(supportedAnswerText || '').trim().length < 20;
+    const needsEvidenceSource = evidenceSources.length === 0;
+    const applicability = Object.entries(item.launchPack?.applicability || {})
+        .filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1].trim().length > 0)
+        .slice(0, 6);
 
     return (
         <Card size="small" style={{ borderRadius: 8, borderColor: isAccepted ? token.colorSuccessBorder : token.colorBorderSecondary }}>
@@ -228,6 +304,10 @@ function ReviewItemCard({
                         <TargetTag target={item.target} />
                         {item.contextKeys?.slice(0, 3).map(key => <Tag key={key}>{key}</Tag>)}
                         {item.entityIds?.length ? <Tag color="purple">entity linked</Tag> : null}
+                        {item.launchPack ? <Tag color="geekblue">First 10 #{item.launchPack.position}</Tag> : null}
+                        {item.launchPack ? <Tag>{item.launchPack.sourceIds.length} source{item.launchPack.sourceIds.length === 1 ? '' : 's'}</Tag> : null}
+                        {item.launchPack?.riskLevel === 'critical' ? <Tag color="red">Critical</Tag> : null}
+                        {item.answerType === 'procedure' && item.procedure ? <Tag color="green">Guided procedure</Tag> : null}
                     </Space>
                     <Badge
                         status={isPublished ? 'success' : isRejected ? 'default' : isAccepted ? 'processing' : 'warning'}
@@ -239,24 +319,65 @@ function ReviewItemCard({
                 <Paragraph ellipsis={{ rows: 4 }} style={{ color: token.colorTextSecondary, marginBottom: 0, whiteSpace: 'pre-wrap' }}>
                     {item.answer || item.body || item.routePath || 'No body text.'}
                 </Paragraph>
+                {item.answerType === 'procedure' && item.procedure ? (
+                    <Flex vertical gap={4}>
+                        <Text strong>Guided steps</Text>
+                        {item.procedure.steps.slice(0, 4).map(step => (
+                            <Text key={step.stepOrder} type="secondary">
+                                {step.stepOrder}. {step.instruction}
+                            </Text>
+                        ))}
+                    </Flex>
+                ) : null}
                 {item.reason ? <Text type="secondary">{item.reason}</Text> : null}
+                {applicability.length ? (
+                    <Space size={[6, 6]} wrap>
+                        <Text type="secondary">Applies to</Text>
+                        {applicability.map(([key, value]) => <Tag key={key}>{key}: {value}</Tag>)}
+                    </Space>
+                ) : null}
+                <ReviewEvidence sources={evidenceSources} />
+                {item.launchPack?.missingEvidence.length ? (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Evidence still needed"
+                        description={item.launchPack.missingEvidence.join(' ')}
+                    />
+                ) : null}
+                {requiresSafeFallback ? (
+                    <Text type="warning">
+                        This item is intentionally set to {item.launchPack?.expectedSource === 'escalation' ? 'escalation' : 'no answer'}. Add approved source evidence and refresh the product-specific set before turning it into a canonical proposal.
+                    </Text>
+                ) : null}
+                {needsEntity || needsSupportedAnswer || needsEvidenceSource ? (
+                    <Text type="warning">
+                        {[
+                            needsEntity ? 'Link a product entity.' : '',
+                            needsSupportedAnswer ? 'Add a source-supported answer.' : '',
+                            needsEvidenceSource ? 'Recreate this draft from a linked source before accepting it.' : '',
+                        ].filter(Boolean).join(' ')}
+                    </Text>
+                ) : null}
                 <Flex justify="space-between" gap={8} wrap="wrap">
-                    <Button size="small" onClick={() => onEdit(item)}>Edit</Button>
+                    <Button style={{ minHeight: 44 }} onClick={() => onEdit(item)}>
+                        {requiresSafeFallback || needsEntity || needsSupportedAnswer || item.launchPack?.missingEvidence.length ? 'Add evidence' : 'Review details'}
+                    </Button>
                     <Space>
                         <Button
-                            size="small"
                             icon={<LuX />}
                             disabled={saving || isPublished || isRejected}
                             onClick={() => onReject(item)}
+                            style={{ minHeight: 44 }}
                         >
                             Reject
                         </Button>
                         <Button
                             type="primary"
-                            size="small"
                             icon={<LuCheck />}
-                            disabled={saving || isPublished || isAccepted || isLegacyChangelog}
+                            disabled={saving || isPublished || isAccepted || isLegacyChangelog || requiresSafeFallback || needsEntity || needsSupportedAnswer || needsEvidenceSource}
                             onClick={() => onAccept(item)}
+                            style={{ minHeight: 44 }}
                         >
                             Accept
                         </Button>
@@ -276,6 +397,7 @@ export default function AnswerlatticeKnowledgeIntake() {
     const [textForm] = Form.useForm();
     const [urlForm] = Form.useForm();
     const [editForm] = Form.useForm();
+    const editingAnswerType = Form.useWatch('answerType', editForm);
     const [createOpen, setCreateOpen] = useState(false);
     const [editingItem, setEditingItem] = useState<AnswerlatticeIntakeReviewItem | null>(null);
     const [discoveredLinks, setDiscoveredLinks] = useState<Array<{ url: string; title: string; role: string; reason: string }>>([]);
@@ -316,6 +438,17 @@ export default function AnswerlatticeKnowledgeIntake() {
         });
         return Array.from(groups.entries());
     }, [bundle.reviewItems]);
+
+    const sourceById = useMemo(() => (
+        new Map(bundle.sources.map(source => [source.id, source]))
+    ), [bundle.sources]);
+    const editingEvidenceSources = useMemo(() => (
+        editingItem
+            ? getReviewItemSourceIds(editingItem)
+                .map(sourceId => sourceById.get(sourceId))
+                .filter((source): source is AnswerlatticeKnowledgeSource => Boolean(source))
+            : []
+    ), [editingItem, sourceById]);
 
     const repeatedReplyEnabled = FEATURE_FLAGS.ENABLE_ANSWERLATTICE_REPEATED_REPLY_IMPORT === true;
 
@@ -498,14 +631,32 @@ export default function AnswerlatticeKnowledgeIntake() {
     const handleEditSave = async () => {
         if (!editingItem || !activeJobId) return;
         const values = await editForm.validateFields();
-        if (editingItem.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG && values.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG) {
-            delete values.target;
+        const { procedureJson, ...reviewValues } = values;
+        let procedure = null;
+        if (reviewValues.answerType === 'procedure') {
+            let parsedProcedure: unknown;
+            try {
+                parsedProcedure = JSON.parse(String(procedureJson || ''));
+            } catch {
+                message.error('Guided procedure JSON is invalid.');
+                return;
+            }
+            const procedureResult = AnswerlatticeProcedureSchema.safeParse(parsedProcedure);
+            if (!procedureResult.success) {
+                message.error('Complete every guided step with a valid action and instruction.');
+                return;
+            }
+            procedure = procedureResult.data;
+        }
+        if (editingItem.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG && reviewValues.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG) {
+            delete reviewValues.target;
         }
         const ok = await updateReviewItem(activeJobId, editingItem.id, {
-            ...values,
-            tags: splitTags(values.tags),
-            contextKeys: splitTags(values.contextKeys),
-            entityIds: splitTags(values.entityIds),
+            ...reviewValues,
+            procedure,
+            tags: splitTags(reviewValues.tags),
+            contextKeys: splitTags(reviewValues.contextKeys),
+            entityIds: splitTags(reviewValues.entityIds),
         });
         if (ok) setEditingItem(null);
     };
@@ -792,11 +943,16 @@ export default function AnswerlatticeKnowledgeIntake() {
                                                             <Col key={item.id} xs={24} xl={12}>
                                                                 <ReviewItemCard
                                                                     item={item}
+                                                                    evidenceSources={getReviewItemSourceIds(item)
+                                                                        .map(sourceId => sourceById.get(sourceId))
+                                                                        .filter((source): source is AnswerlatticeKnowledgeSource => Boolean(source))}
                                                                     saving={saving}
                                                                     onEdit={(next) => {
                                                                         setEditingItem(next);
                                                                         editForm.setFieldsValue({
                                                                             ...next,
+                                                                            answerType: next.answerType || (next.procedure ? 'procedure' : 'explanation'),
+                                                                            procedureJson: next.procedure ? JSON.stringify(next.procedure, null, 2) : '',
                                                                             tags: next.tags?.join(', '),
                                                                             contextKeys: next.contextKeys?.join(', '),
                                                                             entityIds: next.entityIds?.join(', '),
@@ -873,6 +1029,19 @@ export default function AnswerlatticeKnowledgeIntake() {
                 confirmLoading={saving}
                 width={760}
             >
+                {editingItem ? (
+                    <Flex vertical gap={10} style={{ marginBottom: 16 }}>
+                        {editingItem.launchPack?.missingEvidence.length ? (
+                            <Alert
+                                type="warning"
+                                showIcon
+                                message="Evidence still needed"
+                                description={editingItem.launchPack.missingEvidence.join(' ')}
+                            />
+                        ) : null}
+                        <ReviewEvidence sources={editingEvidenceSources} />
+                    </Flex>
+                ) : null}
                 <Form form={editForm} layout="vertical">
                     <Form.Item name="target" label="Publish as">
                         <Select
@@ -888,6 +1057,25 @@ export default function AnswerlatticeKnowledgeIntake() {
                     <Form.Item name="answer" label="Short answer">
                         <TextArea rows={4} />
                     </Form.Item>
+                    {editingItem?.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL ? (
+                        <Form.Item name="answerType" label="Answer format">
+                            <Select options={[
+                                { label: 'Explanation', value: 'explanation' },
+                                { label: 'Navigation', value: 'navigation' },
+                                { label: 'Guided procedure', value: 'procedure' },
+                            ]} />
+                        </Form.Item>
+                    ) : null}
+                    {editingItem?.target === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL && editingAnswerType === 'procedure' ? (
+                        <Form.Item
+                            name="procedureJson"
+                            label="Guided procedure"
+                            extra="Use semantic target and event IDs registered by the client product. This remains a review draft until governance approval."
+                            rules={[{ required: true, message: 'Add the guided procedure.' }]}
+                        >
+                            <TextArea autoSize={{ minRows: 10, maxRows: 20 }} />
+                        </Form.Item>
+                    ) : null}
                     <Form.Item name="body" label="Article / detail body">
                         <TextArea rows={8} />
                     </Form.Item>

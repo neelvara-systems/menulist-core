@@ -20,12 +20,14 @@ import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clie
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { resolveDomain, type ResolvedDomain } from '@lib/multiTenant/domainResolver';
+import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
 import { getCustomerAppIconVersion } from '@lib/pwa/customerAppAssets';
 import { getStoreManifestStartUrl } from '@lib/pwa/manifestIdentity';
 import { buildManifest } from '@lib/pwa/manifestGenerator';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { buildTelHref } from '@lib/phone/phoneNumber';
+import { normalizePublicProjectSlug } from '@lib/publicRouting/pathSegments';
 import { secureError } from '@lib/security/secureLogger';
 import { unstable_cache } from 'next/cache';
 import { headers } from 'next/headers';
@@ -69,8 +71,8 @@ function logManifestStartUrlLookupFailure(error: unknown, storeId: string | numb
  * customer menu because that alias follows the current default menu without
  * tying app identity to a rename-prone project slug.
  */
-async function getStoreLevelStartUrl(storeId: string | number): Promise<string> {
-    if (!storeId) return '/';
+async function getStoreLevelStartUrl(tenantId: string | number, storeId: string | number): Promise<string> {
+    if (!tenantId || !storeId) return '/';
     try {
         const snap = await firestoreAdmin
             .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -78,10 +80,18 @@ async function getStoreLevelStartUrl(storeId: string | number): Promise<string> 
             .get();
         if (!snap.exists) return '/';
         const projects = parseSummaryProjects(snap.data());
-        const hasCustomerMenu = Object.values(projects).some(
-            (p: any) => p.active !== false && !p.isSpecialMenu,
+        const hasResolvableMenuAlias = Object.entries(projects).some(
+            ([projectId, project]: [string, any]) => {
+                const projectScope = normalizeMultiOutletProjectId(projectId);
+                return projectScope?.tenantDocumentId === String(tenantId)
+                    && projectScope.storeDocumentId === String(storeId)
+                    && project.active !== false
+                    && project.deleted !== true
+                    && project.isSpecialMenu !== true
+                    && (project.isDefault === true || normalizePublicProjectSlug(project.slug) === 'menu');
+            },
         );
-        return getStoreManifestStartUrl(hasCustomerMenu);
+        return getStoreManifestStartUrl(hasResolvableMenuAlias);
     } catch (error) {
         logManifestStartUrlLookupFailure(error, storeId);
         // A transient summary read failure should not make the manifest invalid.
@@ -165,7 +175,7 @@ export async function GET() {
                 tags: [`menu-store-${store.storeId}`, `store-${store.storeId}`, 'client-stores'],
             },
         );
-        const startUrl = await getCachedStoreLevelStartUrl(store.storeId);
+        const startUrl = await getCachedStoreLevelStartUrl(store.tenantId, store.storeId);
 
         const contentLanguage = store.defaultLanguage || store.activeLanguages?.[0] || store.language || 'en';
         const displayName: string = getStoreContextName(store, 'Menu');
@@ -227,7 +237,7 @@ export async function GET() {
             // page is source attribution only; it never changes app identity.
             startUrl,
             shortcutInfo: {
-                menuPath: startUrl,
+                menuPath: startUrl === '/menu' ? startUrl : null,
                 phone: showCall ? phoneForTel || null : null,
                 mapsUrl: showDirections ? mapsUrl : null,
                 whatsappNumber: showWhatsApp ? store.publicPresence?.whatsappNumber || null : null,

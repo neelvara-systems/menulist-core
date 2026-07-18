@@ -212,6 +212,7 @@ function verifyRuntimePolicy() {
 
 function verifySourceBoundaries() {
   const rules = read('firestore.rules');
+  const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
   const clientDal = read('src/database/analytics/index.ts');
   const publicRoute = read('src/app/api/public/analytics/track/route.ts');
   const serverWrite = read('src/lib/analytics/serverWrite.ts');
@@ -235,6 +236,21 @@ function verifySourceBoundaries() {
     rules.indexOf('match /analytics/{docId}'),
     rules.indexOf('match /chatAnalytics/{docId}'),
   );
+
+  const analyticsIndexExemptions = new Set(
+    (firestoreIndexes.fieldOverrides || [])
+      .filter((override) => override.collectionGroup === 'analytics' && Array.isArray(override.indexes) && override.indexes.length === 0)
+      .map((override) => override.fieldPath),
+  );
+  for (const fieldPath of [
+    'hourlyClicksByItem',
+    'itemNames',
+    'searchTerms',
+    'viewsByContent',
+    'zeroResultSearchTerms',
+  ]) {
+    assert(analyticsIndexExemptions.has(fieldPath), `analytics ${fieldPath} must stay exempt from unused single-field indexing`);
+  }
 
   assertIncludes(analyticsRules, 'allow create, update, delete: if false;', 'analytics client mutation rule');
   assertNotIncludes(analyticsRules, 'isTenantStoreCreate(request.resource.data)', 'analytics client create admission');
@@ -336,7 +352,14 @@ function verifySourceBoundaries() {
   assertIncludes(publicRoute, 'tenant?.active === false', 'analytics inactive tenant rejection');
   assertIncludes(publicRoute, 'tenant?.deleted === true', 'analytics deleted tenant rejection');
   assertIncludes(publicRoute, 'filterAnalyticsUpdateData(filterAnalyticsFieldsForPreferences(', 'analytics field policy before Admin write');
+  assertIncludes(publicRoute, "import { normalizeAnalyticsDateKey } from '@lib/analytics/readBoundary';", 'analytics shared calendar-date boundary');
+  assertIncludes(publicRoute, 'if (data.dateString && !normalizeAnalyticsDateKey(data.dateString))', 'analytics invalid calendar date rejection before target reads');
   assertIncludes(publicRoute, 'dateString > currentDate', 'analytics future public date rejection');
+  assert(
+    publicRoute.indexOf('if (data.dateString && !normalizeAnalyticsDateKey(data.dateString))')
+      < publicRoute.indexOf('const validTarget = await validateAnalyticsTarget('),
+    'analytics calendar date must fail before target Firestore reads',
+  );
   assertNotIncludes(publicRoute, 'newestAcceptedDate', 'analytics future accepted date window');
   assertIncludes(serverWrite, 'const policyData = filterAnalyticsUpdateData(updateData);', 'Admin analytics shared field policy');
   assertIncludes(serverWrite, 'date: analyticsDateKey,', 'Admin analytics UI date compatibility field');
@@ -344,7 +367,7 @@ function verifySourceBoundaries() {
   assertIncludes(analyticsHook, 'return `analytics:${type}:${JSON.stringify(parts)}`;', 'analytics collision-safe browser cache key');
   assertNotIncludes(analyticsHook, 'parts.filter(Boolean).join', 'analytics ambiguous browser cache key');
   assert(
-    packageJson.scripts['verify:analytics-write-boundary'] === 'node scripts/verification/verify-analytics-write-boundary.js && npm run test:analytics:browser-boundary && npm run test:analytics:normalizer && npm run test:analytics:admin-write',
+    packageJson.scripts['verify:analytics-write-boundary'] === 'node scripts/verification/verify-analytics-write-boundary.js && npm run test:analytics:browser-boundary && npm run test:analytics:normalizer && npm run test:analytics:admin-write && npm run test:analytics:owner-action-receipts',
     'package.json must expose verify:analytics-write-boundary',
   );
   assert(
@@ -358,6 +381,10 @@ function verifySourceBoundaries() {
   assert(
     packageJson.scripts['test:analytics:admin-write']?.includes('scripts/verification/test-analytics-admin-write-emulator.ts'),
     'package.json must expose test:analytics:admin-write',
+  );
+  assert(
+    packageJson.scripts['test:analytics:owner-action-receipts']?.includes('scripts/verification/test-owner-action-receipt-transaction-emulator.ts'),
+    'package.json must expose test:analytics:owner-action-receipts',
   );
   assert(
     packageJson.scripts['test:analytics:rules']?.includes('scripts/verification/test-analytics-rules.ts'),

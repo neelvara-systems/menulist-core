@@ -1,27 +1,14 @@
-# Physical Surfaces (PDF Generation) — Mobile Support
+# Physical Surfaces — Mobile Compatibility
 
-**Last Updated:** February 16, 2026 (v2 — PDF download added to MobileShareScreen)
-**Decision:** ✅ MOBILE SUPPORTED — Owner can generate and download menu PDF from phone
+**Status:** Legacy read/download compatibility
+**Last Updated:** July 16, 2026
 
----
+Current mobile print workflows stay inside MobileShell:
 
-## Feature Admission Test (Re-evaluated with "no desktop at all" lens)
+- More → **Print Menu** uses `MobileMenuCardExportScreen` and the shared export controller.
+- More → **QR and print assets** uses `MobilePrintAssetsScreen`/`MobileShareScreen` and the same renderers as desktop.
+- Share exposes current menu/OBP/feedback QR and supported downloads according to role and feature flags.
 
-| Gate          | Result        | Reasoning                                         |
-| ------------- | ------------- | ------------------------------------------------- |
-| **Frequency** | ⚠️ OCCASIONAL | PDF generated rarely but BLOCKING without desktop |
-| **Speed**     | ✅ PASS       | jsPDF generates client-side in <2s                |
-| **Touch**     | ✅ PASS       | Single "Download" button                          |
-| **Value**     | ✅ PASS       | Phone-only owner can WhatsApp PDF to print shop   |
+The legacy Today/Hours tent-card and counter-sticker buttons render only when an already-populated `physicalSurfaces` summary entry is eligible. They are read-only downloads and share the desktop generators. Current source has no writer for that summary field, so mobile must not promise automatic creation or fork a mobile-only legacy generator.
 
----
-
-## Mobile Implementation
-
-| Feature                | Mobile Component                                   | Status |
-| ---------------------- | -------------------------------------------------- | ------ |
-| Generate menu PDF      | `MobileShareScreen` → `generateAndDownloadMenuPdf` | ✅     |
-| Download to phone      | `MobileShareScreen` → browser download             | ✅     |
-| Share via WhatsApp/etc | Phone's native share after download                | ✅     |
-
-Uses same `jsPDF`-based `generateAndDownloadMenuPdf` from `@lib/export/menuPdfGenerator` as desktop ShareModal. Fetches project data on-demand via `getProjectsList` + `getProjectData`.
+All owner actions use 44px-or-larger touch targets. Native file-share cancellation stays quiet; unsupported file sharing may fall back to download.

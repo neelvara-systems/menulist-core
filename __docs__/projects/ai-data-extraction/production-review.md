@@ -1,7 +1,14 @@
 # AI Data Extraction - Production Review & Issue Analysis
 
-**Created**: January 23, 2026  
-**Purpose**: Document all identified issues, analysis, and fixes for the AI data extraction flow before production.
+**Created**: January 23, 2026
+
+**Current status**: Historical review snapshot; not current production certification
+
+**Last source-truth cross-check**: July 15, 2026
+
+**Purpose**: Preserve the issues and decisions recorded during the January review.
+
+> **Current authority:** Do not use the issue statuses or proposed code fragments below as the live implementation contract. The codebase and the maintained [Menu Extraction Pipeline](../../menu-extraction-pipeline/README.md), [implementation](../../menu-extraction-pipeline/menu-extraction-pipeline_impl.md), [Firebase contract](../../menu-extraction-pipeline/menu-extraction-pipeline_firebase.md), and [test cases](../../menu-extraction-pipeline/menu-extraction-pipeline_test-cases.md) supersede this snapshot. Current source creates owner jobs through a protected Zod-validated API, keeps browser job creation denied, validates tenant/store/project/destination/source/file/MIME/size boundaries again in the worker, and uses the fixed `image_processing` action. Current launch approval still depends on the External Certification Runbook and active production-readiness audit.
 
 ---
 

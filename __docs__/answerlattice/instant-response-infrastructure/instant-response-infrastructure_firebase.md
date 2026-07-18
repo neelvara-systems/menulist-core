@@ -103,6 +103,8 @@ Same as current pipeline — no additional cost. The entity search index read in
 | `getAnswerlatticeCacheVersionServer()` | `src/lib/answerlattice/cacheVersionServer.ts` | Read source-version manifest | **NEW** |
 | `bumpAnswerlatticeCacheVersion*()` | `src/lib/answerlattice/cacheVersionClient.ts`, `src/lib/answerlattice/cacheVersionAdmin.ts`, `functions-answerlattice/src/answerlattice/cacheVersionManifest.ts` | Write source-version manifest | **NEW** |
 
+Each cache-backed KB/canonical change performs three compact writes: cache version, compiled source version, and bundle-stale manifest. Browser, Admin, and both Functions mirrors now commit those writes through one atomic writer. KB/FAQ browser DALs include the content mutation in the same Firestore transaction, preventing old content from being cached under a new version and preventing committed content from retaining old freshness markers.
+
 ---
 
 ## §5 — Cost Simulation

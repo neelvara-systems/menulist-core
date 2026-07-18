@@ -17,6 +17,7 @@ import {
     type CancellationReasonCode,
 } from '@lib/billing/cancellationReasons';
 import { getAccessibleStoreSummaries } from '@lib/multiOutlet/storeSwitchAccess';
+import { normalizeRazorpaySubscriptionCheckoutUrl } from '@lib/razorpay/checkoutUrl';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime, toDate } from '@util/dateTime';
 import { formatCurrency } from '@util/formatters';
@@ -82,22 +83,28 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
         () => tenantStoresList.find((store: any) => Number(store.storeId) === Number(activeSubscription?.storeId)),
         [activeSubscription?.storeId, tenantStoresList],
     );
+    const loginStore = useMemo(
+        () => tenantStoresList.find((store: any) => Number(store.storeId) === loginStoreId),
+        [loginStoreId, tenantStoresList],
+    );
     const isInheritedBilling = Boolean(activeSubscription && billingStoreId && Number(activeSubscription.storeId) !== billingStoreId);
+    const isSwitchedBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId !== billingStoreId);
+    const isSignedInBillingContext = Boolean(loginStoreId && billingStoreId && loginStoreId === billingStoreId);
+    const canManageSelectedSubscription = isSignedInBillingContext && !isInheritedBilling;
+    const canBuyEnhancementPacks = isSignedInBillingContext;
 
     const currency: Currency = activeSubscription?.currency || (storeDetails?.currencyCode as Currency) || 'INR';
 
     const sub = activeSubscription;
+    const subscriptionCheckoutUrl = normalizeRazorpaySubscriptionCheckoutUrl(sub?.shortUrl);
     const isManualBilling = sub?.billingMode === 'manual';
     const isPaymentPending = sub?.status === 'pending';
     const activeStoreCount = tenantStoresList.filter((store: any) => store?.active !== false).length || 1;
     const paidLocationCount = Math.max(1, Number(sub?.quantity || 1));
     const nextPaidLocationCount = Math.max(paidLocationCount + 1, activeStoreCount + 1);
     const monthlyCredits = sub?.monthlyCredits || 0;
-    const monthlyCreditsAllowance = sub?.monthlyCreditsAllowance || 0;
-    const monthlyCreditsUsed = Math.max(0, monthlyCreditsAllowance - monthlyCredits);
     const topUpCredits = sub?.topUpCredits || 0;
     const totalCredits = monthlyCredits + topUpCredits;
-    const isLowOnEnhancements = Boolean(sub && totalCredits <= Math.max(10, monthlyCreditsAllowance * 0.2));
     const canPauseSubscriptions = isFeatureEnabled('ENABLE_SUBSCRIPTION_PAUSE');
     const buildMobileBillingPaymentLogContext = (flow: string, metadata: Record<string, unknown> = {}) => ({
         surface: 'mobile_billing',
@@ -180,6 +187,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     const getPastDueGracePeriodDisplay = () => getGracePeriodDisplayInfo(sub?.pastDueSinceAt);
 
     const handleUpgrade = async (plan: Plan) => {
+        if (!canManageSelectedSubscription) {
+            Toast.show({ content: `Return to ${loginStore?.name || 'your signed-in store'} to change a subscription.`, duration: 2600 });
+            return;
+        }
         if (isManualBilling && sub?.status === 'active') {
             Toast.show({ content: 'This client is on a prepaid offline plan. Renew or change it through the reseller flow.', duration: 3000 });
             return;
@@ -206,6 +217,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleAddPaidLocation = async () => {
+        if (!canManageSelectedSubscription) {
+            Toast.show({ content: `Return to ${loginStore?.name || 'your signed-in store'} to change paid locations.`, duration: 2600 });
+            return;
+        }
         if (!sub || !currentSubscriptionPlan) {
             Toast.show({ content: 'Current plan details are not available.', duration: 2200 });
             return;
@@ -233,6 +248,10 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
     };
 
     const handleBuyCredits = async (packId: string) => {
+        if (!canBuyEnhancementPacks) {
+            Toast.show({ content: `Return to ${loginStore?.name || 'your signed-in store'} to buy an enhancement pack.`, duration: 2600 });
+            return;
+        }
         setShowCredits(false);
         setIsLoading(true);
         try {
@@ -435,10 +454,16 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                     </Card>
                 ) : null}
 
-                {isInheritedBilling ? (
+                {isSwitchedBillingContext ? (
                     <Card>
                         <Text type="secondary">
-                            This outlet uses the HQ subscription. Plan changes, payment retries, and enhancement packs apply to {subscriptionStore?.name || 'the HQ store'}.
+                            This billing view is read-only. Return to {loginStore?.name || 'your signed-in store'} before changing a plan, adding paid locations, or buying an enhancement pack.
+                        </Text>
+                    </Card>
+                ) : isInheritedBilling ? (
+                    <Card>
+                        <Text type="secondary">
+                            This outlet uses the HQ subscription. Plan controls stay with {subscriptionStore?.name || 'the HQ store'}, and enhancement packs are added to that shared balance.
                         </Text>
                     </Card>
                 ) : null}
@@ -488,16 +513,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         extra={<Text>{sub.quantity || 1}</Text>}
                                     />
                                     <List.Item
-                                        title={<Text>Enhancement balance remaining</Text>}
-                                        extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits}</Tag>}
-                                    />
-                                    <List.Item
-                                        title={<Text>Plan balance</Text>}
-                                        extra={<Text>{monthlyCredits} of {monthlyCreditsAllowance}</Text>}
-                                    />
-                                    <List.Item
-                                        title={<Text>Used this cycle</Text>}
-                                        extra={<Text>{monthlyCreditsUsed}</Text>}
+                                        title={<Text>Enhancement access</Text>}
+                                        extra={<Tag color={totalCredits > 0 ? 'success' : 'warning'}>{totalCredits > 0 ? 'Available' : 'Paused'}</Tag>}
                                     />
                                     <List.Item
                                         title={<Text>Pack balance</Text>}
@@ -506,7 +523,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 </List>
                             </Card>
 
-                            {sub.status === 'active' && !isManualBilling && !isInheritedBilling ? (
+                            {sub.status === 'active' && canManageSelectedSubscription && !isManualBilling && !isInheritedBilling ? (
                                 <Card size="small" style={{ backgroundColor: token.colorFillQuaternary }}>
                                     <Flex gap={8} vertical>
                                         <Flex align="center" gap={8}>
@@ -540,8 +557,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         <Text type="secondary">
                                             {getPastDueGracePeriodDisplay().summary}
                                         </Text>
-                                        {sub.shortUrl ? (
-                                            <Button color="warning" onClick={() => handleOpenExternalBillingLink(sub.shortUrl, 'retry_payment')} size="small">
+                                        {subscriptionCheckoutUrl ? (
+                                            <Button color="warning" onClick={() => handleOpenExternalBillingLink(subscriptionCheckoutUrl, 'retry_payment')} size="small">
                                                 {t('retryPayment')}
                                             </Button>
                                         ) : null}
@@ -553,8 +570,8 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 <Card size="small" style={{ backgroundColor: token.colorPrimaryBg }}>
                                     <Flex gap={8} vertical>
                                         <Text>Payment is pending. Complete the Razorpay checkout to activate this store.</Text>
-                                        {sub.shortUrl ? (
-                                            <Button color="primary" onClick={() => handleOpenExternalBillingLink(sub.shortUrl, 'pending_payment')} size="small">
+                                        {subscriptionCheckoutUrl ? (
+                                            <Button color="primary" onClick={() => handleOpenExternalBillingLink(subscriptionCheckoutUrl, 'pending_payment')} size="small">
                                                 Pay Now
                                             </Button>
                                         ) : null}
@@ -585,7 +602,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                             <Flex gap={8} wrap>
                                 {sub.status === 'active' ? (
                                     <>
-                                        {!isManualBilling && sub.planId !== 'premium' ? (
+                                        {canManageSelectedSubscription && !isManualBilling && sub.planId !== 'premium' ? (
                                             <Button color="primary" onClick={() => setShowPlans(true)} size="small">
                                                 <Flex align="center" gap={6}>
                                                     <LuZap size={14} />
@@ -593,7 +610,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                                 </Flex>
                                             </Button>
                                         ) : null}
-                                        {!isManualBilling ? (
+                                        {canManageSelectedSubscription && !isManualBilling ? (
                                             <>
                                                 {canPauseSubscriptions ? (
                                                     <Button fill="outline" onClick={handlePause} size="small">
@@ -619,12 +636,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         </Button>
                                     </>
                                 ) : null}
-                                {isPaymentPending && sub.shortUrl ? (
-                                    <Button color="primary" onClick={() => handleOpenExternalBillingLink(sub.shortUrl, 'pending_payment')} size="small">
+                                {canManageSelectedSubscription && isPaymentPending && subscriptionCheckoutUrl ? (
+                                    <Button color="primary" onClick={() => handleOpenExternalBillingLink(subscriptionCheckoutUrl, 'pending_payment')} size="small">
                                         Pay Now
                                     </Button>
                                 ) : null}
-                                {sub.status === 'paused' ? (
+                                {canManageSelectedSubscription && sub.status === 'paused' ? (
                                     <>
                                         {canPauseSubscriptions ? (
                                             <Button color="primary" onClick={handleResume} size="small">
@@ -649,7 +666,7 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                         </Button>
                                     </>
                                 ) : null}
-                                {(sub.status === 'cancelled' || sub.status === 'expired') ? (
+                                {canManageSelectedSubscription && (sub.status === 'cancelled' || sub.status === 'expired') ? (
                                     <Button color="primary" onClick={() => setShowPlans(true)} size="small">
                                         {t('chooseNewPlan')}
                                     </Button>
@@ -662,12 +679,14 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         <Flex align="center" gap={12} vertical>
                             <LuCreditCard color={token.colorTextTertiary} size={36} />
                             <Text type="secondary">{t('noActiveSubscription2')}</Text>
-                            <Button color="primary" onClick={() => setShowPlans(true)} size="large">
-                                <Flex align="center" gap={6}>
-                                    <LuZap size={14} />
-                                    <Text>{t('chooseAPlan')}</Text>
-                                </Flex>
-                            </Button>
+                            {canManageSelectedSubscription ? (
+                                <Button color="primary" onClick={() => setShowPlans(true)} size="large">
+                                    <Flex align="center" gap={6}>
+                                        <LuZap size={14} />
+                                        <Text>{t('chooseAPlan')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
                         </Flex>
                     </Card>
                 ) : null}
@@ -685,29 +704,24 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                                 </Tag>
                             </Flex>
                             <Text type="secondary">{t('aiIncludesDesc')}</Text>
-                            <Card size="small" style={{ backgroundColor: isLowOnEnhancements ? token.colorWarningBg : token.colorFillQuaternary }}>
+                            <Card size="small" style={{ backgroundColor: token.colorFillQuaternary }}>
                                 <Flex align="center" justify="space-between">
-                                    <Flex gap={2} vertical>
-                                        <Text strong>{totalCredits}</Text>
-                                        <Text type="secondary">enhancements left</Text>
-                                    </Flex>
-                                    <Flex gap={2} style={{ textAlign: 'right' }} vertical>
-                                        <Text>{monthlyCredits} plan</Text>
-                                        <Text type="secondary">{topUpCredits} pack</Text>
-                                    </Flex>
+                                    <Text type="secondary">Plan enhancements</Text>
+                                    <Text strong>{totalCredits > 0 ? 'Available' : 'Paused'}</Text>
                                 </Flex>
-                                {isLowOnEnhancements ? (
-                                    <Text type="secondary" style={{ display: 'block', marginTop: 8 }}>
-                                        Running low. Add a pack before generation pauses.
-                                    </Text>
-                                ) : null}
+                                <Flex align="center" justify="space-between" style={{ marginTop: 8 }}>
+                                    <Text type="secondary">Pack balance</Text>
+                                    <Text strong>{topUpCredits} credits</Text>
+                                </Flex>
                             </Card>
-                            <Button block color="primary" fill="outline" onClick={() => setShowCredits(true)} size="large">
-                                <Flex align="center" gap={6} justify="center">
-                                    <LuZap size={14} />
-                                    <Text>{totalCredits > 0 ? t('getAiEnhancements') : t('getMoreAiEnhancements')}</Text>
-                                </Flex>
-                            </Button>
+                            {canBuyEnhancementPacks ? (
+                                <Button block color="primary" fill="outline" onClick={() => setShowCredits(true)} size="large">
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuZap size={14} />
+                                        <Text>{totalCredits > 0 ? t('getAiEnhancements') : t('getMoreAiEnhancements')}</Text>
+                                    </Flex>
+                                </Button>
+                            ) : null}
                         </Flex>
                     </Card>
                 ) : null}
@@ -806,13 +820,12 @@ export default function MobileBillingScreen({ onBack }: MobileBillingScreenProps
                         <Flex gap={12} vertical>
                             {plans.filter((plan) => plan.planId !== sub?.planId).map((plan) => {
                                 const price = (plan as any)[`price${currency}`]?.price;
-                                const credits = (plan as any)[`price${currency}`]?.monthlyCredits;
                                 return (
                                     <Card key={plan.planId} onClick={() => handleUpgrade(plan)}>
                                         <Flex align="center" justify="space-between">
                                             <Flex gap={4} vertical>
                                                 <Text strong>{`${plan.planId} Plan`}</Text>
-                                                <Text type="secondary">{`${credits} credits/mo · ${plan.description}`}</Text>
+                                                <Text type="secondary">{plan.description}</Text>
                                             </Flex>
                                             <Flex gap={2} vertical>
                                                 <Text>{price ? formatCurrency(price, currency) : t('contactUs')}</Text>

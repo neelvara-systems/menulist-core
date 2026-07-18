@@ -1,6 +1,6 @@
 # Owner Support Assistant - Website and Content Impact
 
-> **Status:** READ-ONLY PUBLIC COPY ALIGNED
+> **Status:** SUMMARY-ONLY PUBLIC COPY ALIGNED; optional form-prefill action is not a public claim
 > **Created:** 2026-06-07
 > **Public website status:** Product and Support Control pages describe only the shipped summary-only runtime.
 
@@ -17,7 +17,7 @@ The public site may say that it:
 - links the owner to the relevant governed screen
 - stores no transcript and performs no mutation
 
-The public site must not claim detail reads, AI-generated advice, ticket replies/status changes, draft creation, card/note creation, answer tests, exports, or any other action execution through the assistant.
+The public site must not claim detail reads, AI-generated advice, ticket replies/status changes, automatic draft/card/note creation, answer tests, exports, or direct action execution through the assistant. The disabled-by-default Support Board form-prefill handoff remains an internal controlled-rollout behavior until operational validation justifies public copy.
 
 ---
 

@@ -44,10 +44,17 @@
         { "fieldPath": "sId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "active", "order": "ASCENDING" },
-        {
-          "fieldPath": "embeddingV2",
-          "vectorConfig": { "dimension": 768, "flat": {} }
-        }
+        { "fieldPath": "entityIds", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "kb_articles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "entityIds", "arrayConfig": "CONTAINS" }
       ]
     },
     {
@@ -56,6 +63,16 @@
       "fields": [
         { "fieldPath": "pId", "order": "ASCENDING" },
         { "fieldPath": "cacheKey", "order": "ASCENDING" },
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "createdOn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aiSearchHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
         { "fieldPath": "createdOn", "order": "DESCENDING" }
@@ -252,6 +269,20 @@
       ]
     },
     {
+      "collectionGroup": "landingPageEnquiries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "sourceKind",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "subscriptionPayments",
       "queryScope": "COLLECTION",
       "fields": [
@@ -280,6 +311,34 @@
         {
           "fieldPath": "renewsOn",
           "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "onboardingSource",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "resellerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdOn",
+          "order": "DESCENDING"
         }
       ]
     },
@@ -322,6 +381,20 @@
         {
           "fieldPath": "createdAt",
           "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "cycleEndDate",
+          "order": "ASCENDING"
         }
       ]
     },
@@ -1098,15 +1171,15 @@
       ]
     },
     {
-      "collectionGroup": "menuImageProcessingJobs",
+      "collectionGroup": "systemAlerts",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "status",
+          "fieldPath": "metadata.subsystem",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "createdAt",
+          "fieldPath": "timestamp",
           "order": "DESCENDING"
         }
       ]
@@ -2020,15 +2093,27 @@
       ]
     },
     {
-      "collectionGroup": "publicMenuDrafts",
+      "collectionGroup": "menuImageProcessingJobs",
       "queryScope": "COLLECTION",
       "fields": [
         {
-          "fieldPath": "claimed",
+          "fieldPath": "tId",
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "expiresAt",
+          "fieldPath": "sId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "projectId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "uId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ]
@@ -2112,62 +2197,6 @@
         {
           "fieldPath": "createdAt",
           "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "menuImageProcessingJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "updatedAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "menuImageProcessingJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "completedAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "menuImageProcessingJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timeoutAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "menuImageProcessingJobs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "expiresAt",
-          "order": "ASCENDING"
         }
       ]
     },
@@ -2484,16 +2513,6 @@
       ]
     },
     {
-      "collectionGroup": "chatSessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "pId", "order": "ASCENDING" },
-        { "fieldPath": "tId", "order": "ASCENDING" },
-        { "fieldPath": "sId", "order": "ASCENDING" },
-        { "fieldPath": "createdOn", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "chatAnalytics",
       "queryScope": "COLLECTION",
       "fields": [
@@ -2579,6 +2598,33 @@
         { "fieldPath": "sId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "modifiedOn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "billingCheckoutLeases",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "razorpayWebhookEvents",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "processingExpiresAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aiMenuManagerSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "hasPendingOperations", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
       ]
     }
   ],
@@ -2704,6 +2750,178 @@
       "collectionGroup": "aiSearchHistory",
       "fieldPath": "expiresAt",
       "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "aiMenuManagerSessions",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "aiMenuManagerProposals",
+      "fieldPath": "expiresAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "analytics",
+      "fieldPath": "hourlyClicksByItem",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "analytics",
+      "fieldPath": "itemNames",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "analytics",
+      "fieldPath": "searchTerms",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "analytics",
+      "fieldPath": "viewsByContent",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "analytics",
+      "fieldPath": "zeroResultSearchTerms",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "menuIntelligence",
+      "fieldPath": "itemConfidence",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "menuIntelligence",
+      "fieldPath": "itemPriority",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "menuIntelligence",
+      "fieldPath": "previousItemRanks",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "menuIntelligence",
+      "fieldPath": "suppressionWindows",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "menuIntelligence",
+      "fieldPath": "timeEligibility",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "menuIntelligence",
+      "fieldPath": "recentAuditLog",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "publicPresence",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "businessCopyMeta",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "businessAttributes",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "workingHours",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "timeSlotPresets",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "tempStatus",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "starterActivationSignals",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "menuPresence",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "stores",
+      "fieldPath": "healthSignals",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "publicMenuDrafts",
+      "fieldPath": "extractedData",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "publicMenuDrafts",
+      "fieldPath": "extractedBusinessProfile",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "publicMenuDrafts",
+      "fieldPath": "sourceMetadata",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "publicMenuDrafts",
+      "fieldPath": "growthAcquisition",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "messages",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "statuses",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "documents",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "logs",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "stores",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "platformSummary",
+      "fieldPath": "projects",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "landingPageEnquiries",
+      "fieldPath": "message",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "landingPageEnquiries",
+      "fieldPath": "sourceContext",
       "indexes": []
     }
   ]

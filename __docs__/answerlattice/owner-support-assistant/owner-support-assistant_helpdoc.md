@@ -1,6 +1,6 @@
 # Owner Support Assistant - Helpdoc Draft
 
-> **Status:** INTERNAL DRAFT - read-only runtime live
+> **Status:** INTERNAL DRAFT - summary-only runtime live; optional Support Board prefill disabled by default
 > **Created:** 2026-06-07
 > **Audience:** Answerlattice owners and staff
 > **Publication status:** Keep internal until authenticated browser/device QA and release approval; do not describe deferred actions as available.
@@ -32,13 +32,15 @@ Owner Support Assistant will not:
 - approve answers for you
 - publish FAQs or articles
 - close or reply to tickets
-- create Support Board cards, drafts, notes, or known issues
+- automatically create Support Board cards, drafts, notes, or known issues
 - run answer tests or exports
 - change widget settings
 - show secrets or widget keys
 - replace human review
 
 If you ask for one of those actions, it will explain that the action must happen in the correct review screen.
+
+When the separately controlled action flag is intentionally enabled, selected launch or release review items can open the existing Support Board form with a bounded title, description, priority, and due date already filled. This does not create a card. Review the form and use its normal Create action if the work should be saved.
 
 ---
 

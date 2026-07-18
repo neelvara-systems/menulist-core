@@ -11,6 +11,9 @@
  *
  * Runtime boundary: retained for compatibility, but not currently exported or
  * scheduled. Keep dormant until exact visitor counters and an activation gate exist.
+ * Summed daily unique counts are not weekly distinct visitors, and views divided
+ * by unique counts do not prove that a customer returned. The current heuristics
+ * must not become owner-facing loyalty/trust truth.
  *
  * @see __docs__/trust-health-signal/trust-health-signal_impl.md
  * @see __docs__/loyalty-health-signal/loyalty-health-signal_impl.md
@@ -58,6 +61,10 @@ interface DailyAnalyticsSummary {
     uniqueVisitors: number;
     directVisits: number;
     totalActions: number;
+}
+
+function rejectDormantHealthSignalExecution(): void {
+    throw new Error('HEALTH_SIGNALS_DORMANT_UNVALIDATED_COUNTERS');
 }
 
 // ================================================================
@@ -446,6 +453,8 @@ export async function processHealthSignalsForAllStores(): Promise<{
     updated: number;
     errors: number;
 }> {
+    rejectDormantHealthSignalExecution();
+
     const result = { processed: 0, updated: 0, errors: 0 };
 
     try {

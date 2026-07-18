@@ -2,6 +2,7 @@
 
 import { assertStoreUpdateSucceeded, updateStore } from '@database/stores';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
+import { getStoreDeepDifference } from '@lib/store/storeNestedUpdateProjection';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useState } from 'react';
@@ -191,7 +192,10 @@ export default function MobileAdvancedSettingsScreen({ onBack, mode = 'all' }: M
         if (!storeDetails?.storeId) return false;
         setIsSaving(true);
         try {
-            const writeResult = await updateStore({ storeId: storeDetails.storeId, ...updates });
+            const writeResult = await updateStore({
+                ...getStoreDeepDifference(updates, storeDetails),
+                storeId: storeDetails.storeId,
+            });
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,

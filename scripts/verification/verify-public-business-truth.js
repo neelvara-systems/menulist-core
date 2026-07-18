@@ -553,6 +553,7 @@ function verifyHoursDoNotInventOpenState() {
 function verifyTimedCategoriesUseStoreTruth() {
   const menuPage = read('src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx');
   const decisionBlocks = read('src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx');
+  const timedCategories = read('src/hooks/useTimedCategories.ts');
   const readme = read('__docs__/client-menu/README.md');
   const firebaseDoc = read('__docs__/client-menu/client-menu_firebase.md');
   const audit = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -561,12 +562,13 @@ function verifyTimedCategoriesUseStoreTruth() {
   assertIncludes(menuPage, 'activeItemCategoryIds.has(cat.id)', 'Public menu category visibility');
   assertIncludes(menuPage, 'isCategoryVisibleByTime(cat, storeDetails?.timeZone)', 'Public menu category timezone');
   assertIncludes(menuPage, 'item.active !== false && typeof item.category', 'Public menu item visibility');
-  assertIncludes(decisionBlocks, 'public_menu_decision_blocks_timezone_failed', 'Decision Blocks timezone diagnostics');
-  assertIncludes(decisionBlocks, 'logDecisionBlocksTimezoneFailure', 'Decision Blocks bounded timezone logger');
-  assertIncludes(decisionBlocks, 'reportedDecisionBlocksTimezoneFailure', 'Decision Blocks one-per-session timezone guard');
-  assertIncludes(decisionBlocks, "getBoundedRuntimeStringContext('timeZone', timeZone)", 'Decision Blocks bounded timezone context');
-  assertIncludes(decisionBlocks, "new Error('invalid_decision_block_time_parts')", 'Decision Blocks invalid time-part diagnostic');
-  assertNotIncludes(decisionBlocks, '} catch {\n            // Fall back to browser time if the store timezone is invalid.\n        }', 'Decision Blocks timezone fallback must not be silent');
+  assertIncludes(decisionBlocks, 'return isWithinTimeSlot(category.timeSlots, storeTimeZone);', 'Decision Blocks shared timed-category evaluator');
+  assertIncludes(timedCategories, 'public_menu_decision_blocks_timezone_failed', 'Decision Blocks timezone diagnostics');
+  assertIncludes(timedCategories, 'logTimedCategoryTimezoneFailure', 'Decision Blocks bounded timezone logger');
+  assertIncludes(timedCategories, 'reportedTimedCategoryTimezoneFailures', 'Decision Blocks one-per-shape timezone guard');
+  assertIncludes(timedCategories, "getBoundedRuntimeStringContext('timeZone', timeZone)", 'Decision Blocks bounded timezone context');
+  assertIncludes(timedCategories, "new Error('invalid_timed_category_time_parts')", 'Decision Blocks invalid time-part diagnostic');
+  assertNotIncludes(timedCategories, '} catch {\n            // Fall back to browser time if the store timezone is invalid.\n        }', 'Decision Blocks timezone fallback must not be silent');
   assertNotIncludes(decisionBlocks, 'console.error', 'Decision Blocks direct error logging');
   assertNotIncludes(decisionBlocks, 'console.warn', 'Decision Blocks direct warn logging');
   assertIncludes(readme, 'Decision Blocks timezone diagnostics', 'Client menu README Decision Blocks timezone diagnostics');
@@ -707,8 +709,10 @@ function verifyClaimAccountStoreEmailInvalidatesPublicCache() {
   assertIncludes(route, 'transaction.update(storeRef, { email: lowerEmail, modifiedOn: now });', 'Claim account email-password store email write');
   assertIncludes(route, 'transaction.update(storeRef, { email: googleEmail, modifiedOn: now });', 'Claim account Google store email write');
 
-  const invalidationCalls = route.match(/await revalidateMenuCache\(claimScope\.storeId,\s*\{\s*tId: claimScope\.tenantId\s*\}\);/g) || [];
-  assert(invalidationCalls.length >= 2, 'Claim account store email writes must invalidate public menu and OBP cache');
+  assertIncludes(route, 'revalidate: (storeId, tenantId) => revalidateMenuCache(storeId, { tId: tenantId })', 'Claim account cache helper uses normalized public cache scope');
+  const invalidationCalls = route.match(/await revalidateClaimAccountPublicCache\(claimScope, request\);/g) || [];
+  assert(invalidationCalls.length >= 2, 'Claim account store email writes must request public menu and OBP cache invalidation in both modes');
+  assertIncludes(route, 'claim_account_cache_revalidation_failed', 'Claim account cache failures remain observable after the durable claim commits');
 }
 
 function verifyTenantHeaderLoggingIsBounded() {
@@ -857,6 +861,11 @@ function verifyFunctionsPublicCacheRevalidationLoggingIsBounded() {
   assertIncludes(helper, 'getPublicCacheRequestContext', 'Functions public cache bounded request metadata');
   assertIncludes(helper, 'getPublicCacheTargetContext', 'Functions public cache bounded target rejection metadata');
   assertIncludes(helper, 'touchDigitalScreenContentVersionForStore', 'Functions public cache screen version touch helper');
+  assertIncludes(helper, 'cacheRevalidated: boolean;', 'Functions public cache reports cache refresh acknowledgement');
+  assertIncludes(helper, 'screenTouchAttempted: boolean;', 'Functions public cache reports screen touch attempt');
+  assertIncludes(helper, 'screenTouchSucceeded: boolean;', 'Functions public cache reports screen touch acknowledgement');
+  assertIncludes(helper, 'cacheRevalidated = true;', 'Functions public cache records successful refresh response');
+  assertOrder(helper, "if (!appBaseUrl || !revalidationSecret) {", "if (options.touchDigitalScreen === true) {", 'Functions screen touch remains independent of cache configuration');
   assertIncludes(helper, 'storeIdLength: normalizedStoreId.length', 'Functions public cache bounded store context');
   assertIncludes(helper, 'contextLength: context.length', 'Functions public cache bounded context metadata');
   assertIncludes(helper, 'sourceErrorName: error instanceof Error ? (error.name ||', 'Functions public cache source error name');
@@ -871,7 +880,8 @@ function verifyFunctionsPublicCacheRevalidationLoggingIsBounded() {
   assertIncludes(helper, 'await firestoreAdmin.runTransaction(async (transaction) => {', 'Functions public cache screen touch transaction boundary');
   assertIncludes(helper, "'screen.contentVersion': nextContentVersion", 'Functions public cache screen content-version exact transaction-local bump');
   assertIncludes(helper, '}, { merge: false });', 'Functions public cache public screen mirror replacement');
-  assertIncludes(helper, 'screenToken: screen.screenToken', 'Functions public cache public screen token mirror');
+  assertIncludes(helper, 'storeId: normalizedStoreId', 'Functions public cache public screen store projection');
+  assertNotIncludes(helper, 'screenToken: screen.screenToken', 'Functions public cache must not mirror the bearer screen token');
   assertIncludes(scheduler, 'await revalidatePublicClientCacheForStore(', 'Scheduled special-menu lifecycle cache revalidation');
   assertIncludes(scheduler, '`specialMenuSwitching:${result.outcome}`', 'Scheduled special-menu lifecycle outcome cache context');
   assertIncludes(scheduler, "if (result.outcome === 'activated') smResult.activated++;", 'Scheduled special-menu activation accounting after cache revalidation');
@@ -946,6 +956,8 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   const messagingPublish = read('src/lib/messaging-onboarding/publish.ts');
   const clientScreenInvalidation = read('src/lib/screen/screenInvalidation.ts');
   const serverScreenInvalidation = read('src/lib/screen/serverScreenInvalidation.ts');
+  const storePublicTruthPostCommit = read('src/lib/cache/storePublicTruthPostCommit.ts');
+  const outletPolicyRoute = read('src/app/api/outlets/policy/route.ts');
 
   assertIncludes(screenPage, "tags: ['screen-data']", 'Digital screen SSR data cache tag');
   assertIncludes(clientScreenInvalidation, 'type PendingScreenContentTouch', 'Browser screen invalidation pending entry contract');
@@ -966,26 +978,41 @@ function verifyPublicTruthWritesInvalidateScreenData() {
   assertIncludes(serverScreenInvalidation, '"screen.contentVersion": nextContentVersion', 'Server screen invalidation exact transaction-local content-version bump');
   assertIncludes(serverScreenInvalidation, '}, { merge: false });', 'Server screen invalidation public mirror replacement');
   assertIncludes(serverScreenInvalidation, 'SERVER_SCREEN_TOUCH_FAILED_CODE', 'Server screen invalidation bounded diagnostics');
-  assertIncludes(messagingPublish, 'revalidateTag("screen-data")', 'Messaging onboarding publish must refresh digital screen SSR data');
-  assertIncludes(messagingPublish, 'touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish")', 'Messaging onboarding publish must wake live digital screens');
+  assertIncludes(messagingPublish, 'runStorePublicTruthPostCommitEffects({', 'Messaging onboarding publish must independently settle public-truth effects');
+  assertIncludes(messagingPublish, 'revalidate: revalidateTag', 'Messaging onboarding publish must delegate every cache tag to the shared effect runner');
+  assertIncludes(messagingPublish, '"messagingOnboardingPublish",', 'Messaging onboarding publish must identify its live-screen touch');
   assertIncludes(messagingPublish, 'tagCount: 4', 'Messaging onboarding publish cache diagnostic tag count');
+  assertIncludes(messagingPublish, 'failedEffectCount: postCommit.failedEffectCount', 'Messaging onboarding publish must report aggregate post-commit failures');
 
+  const tempStatusRoute = read('src/app/api/store/temp-status/route.ts');
+  assertIncludes(tempStatusRoute, 'runStorePublicTruthPostCommitEffects({', 'Temporary Status must isolate public-truth effects after commit');
+  assertIncludes(tempStatusRoute, "touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus')", 'Temporary Status must wake live digital screens after public truth writes');
   [
-    ['src/lib/billing/subscriptionEntitlementSync.ts', "revalidateTag('screen-data')", 'touchDigitalScreenContentVersionForStoreServer(syncResult.storeId, \'subscriptionEntitlementSync\')'],
-    ['src/app/api/store/temp-status/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(storeId, 'storeTempStatus')"],
-    ['src/app/api/admin/subdomains/rename/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(storeIdStr, 'adminSubdomainRename')"],
-    ['src/app/api/outlets/policy/route.ts', 'revalidateTag("screen-data")', 'touchDigitalScreenContentVersionForStoreServer(storeDocumentId, "outletPolicy")'],
-    ['src/app/api/outlets/create/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(result.newStoreId, 'outletCreate')"],
-    ['src/app/api/outlets/rename/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(outletStoreIdStr, 'outletRename')"],
-    ['src/app/api/outlets/deactivate/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(outletStoreDocumentId, 'outletDeactivate')"],
-    ['src/app/api/projects/outlet-save/route.ts', 'revalidateTag("screen-data")', 'touchDigitalScreenContentVersionForStoreServer(outletStoreId, "linkedOutletSave")'],
     ['src/app/api/public/create-menu/claim/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(result.storeId, 'publicCreateMenuClaim')"],
-    ['src/app/api/platform/entity-blocks/route.ts', "revalidateTag('screen-data')", "touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')"],
   ].forEach(([relativePath, cacheNeedle, screenTouchNeedle]) => {
     const source = read(relativePath);
     assertIncludes(source, cacheNeedle, `${relativePath} must refresh digital screen SSR data after public truth writes`);
     assertIncludes(source, screenTouchNeedle, `${relativePath} must wake live digital screens after public truth writes`);
   });
+  assertIncludes(outletPolicyRoute, 'runStorePublicTruthPostCommitEffects({', 'Outlet policy must isolate public-truth effects after commit');
+  assertIncludes(outletPolicyRoute, 'touchDigitalScreenContentVersionForStoreServer(storeId, "outletPolicy")', 'Outlet policy must wake live digital screens after public truth writes');
+  assertIncludes(storePublicTruthPostCommit, "params.deps.revalidate('screen-data')", 'Shared store public-truth effects must refresh digital screen SSR data by default');
+  [
+    ['src/app/api/outlets/create/route.ts', "touchDigitalScreenContentVersionForStoreServer(\n                    effectStoreId,"],
+    ['src/app/api/outlets/rename/route.ts', "touchDigitalScreenContentVersionForStoreServer(storeId, 'outletRename')"],
+    ['src/app/api/outlets/deactivate/route.ts', "touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'outletDeactivate')"],
+    ['src/app/api/admin/subdomains/rename/route.ts', "touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'adminSubdomainRename')"],
+    ['src/app/api/subdomain/check/route.ts', "touchDigitalScreenContentVersionForStoreServer(storeId, 'subdomainAssign')"],
+    ['src/app/api/platform/entity-blocks/route.ts', "touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')"],
+    ['src/app/api/projects/outlet-save/route.ts', 'touchDigitalScreenContentVersionForStoreServer(storeId, reason)'],
+    ['src/lib/billing/subscriptionEntitlementSync.ts', "'subscriptionEntitlementSync'"],
+  ].forEach(([relativePath, screenTouchNeedle]) => {
+    const source = read(relativePath);
+    assertIncludes(source, 'runStorePublicTruthPostCommitEffects({', `${relativePath} must isolate public-truth effects after commit`);
+    assertIncludes(source, screenTouchNeedle, `${relativePath} must wake live digital screens after public truth writes`);
+  });
+  const linkedOutletSaveRoute = read('src/app/api/projects/outlet-save/route.ts');
+  assertIncludes(linkedOutletSaveRoute, 'reason: "linkedOutletSave"', 'Linked outlet save must identify its post-commit screen touch');
 
   const platformEntityBlocksClient = read('src/database/platformEntityBlocks/index.ts');
   assertIncludes(platformEntityBlocksClient, 'PLATFORM_ENTITY_BLOCK_REQUEST_POLICY', 'Platform entity block browser request policy');
@@ -1450,6 +1477,7 @@ function verifyPublicMenuFooterFreshnessLoggingIsBounded() {
 
 function verifyOBPCustomerQuickAnswersAreVisibleAndBounded() {
   const obpSurface = read('src/app/client/obp/OBPResolvedSurface.tsx');
+  const businessAttributes = read('src/lib/obp/businessAttributes.ts');
   const obpStyles = read('src/app/client/obp/obp.module.scss');
   const enUS = read('public/locales/menulist.ai/en-US.json');
   const hiIN = read('public/locales/menulist.ai/hi-IN.json');
@@ -1462,6 +1490,9 @@ function verifyOBPCustomerQuickAnswersAreVisibleAndBounded() {
   assertIncludes(obpSurface, "t('publicCustomerAnswerWhatsAppAnswer')", 'OBP customer quick answers WhatsApp answer');
   assertIncludes(obpSurface, "t('publicCustomerAnswerDirectionsAnswer')", 'OBP customer quick answers directions answer');
   assertIncludes(obpSurface, 'customerQuickAnswers.length > 0 && !isPermanentlyClosed', 'OBP customer quick answers closure guard');
+  assertIncludes(obpSurface, '.filter((attribute) => attribute.active !== false)', 'OBP disabled custom business-attribute filter');
+  assertIncludes(businessAttributes, 'export const MAX_CUSTOM_BUSINESS_ATTRIBUTES = 6;', 'Custom business-attribute runtime cap');
+  assertIncludes(businessAttributes, 'seenIds.has(id)', 'Custom business-attribute duplicate identity guard');
   assertIncludes(obpStyles, '.customerAnswers', 'OBP customer quick answers style');
   assertIncludes(obpStyles, '.customerAnswerQuestion', 'OBP customer quick answers question style');
   assertIncludes(enUS, '"publicCustomerAnswersTitle"', 'en-US OBP customer quick answers locale');
@@ -2001,7 +2032,9 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
   assertIncludes(multiOutletWebsite, 'Customer menus can take up to 60 seconds to refresh', 'Multi-outlet website cache window copy');
   assertIncludes(multiOutletWebsite, 'saved master updates', 'Multi-outlet website saved-update boundary copy');
   assertIncludes(multiOutletHelpdoc, 'Outlet sync and customer menu cache refresh can take up to 60 seconds', 'Multi-outlet helpdoc cache window copy');
-  assertIncludes(posWebhookWebsite, 'configured POS sync receives the owner-approved update through the integration path', 'POS webhook integration-path copy');
+  assertIncludes(posWebhookWebsite, 'MenuList can send it a signed full-menu snapshot after approved project saves', 'POS webhook bounded delivery copy');
+  assertIncludes(posWebhookWebsite, 'the receiving team remains responsible for applying it', 'POS webhook receiver-application boundary copy');
+  assertNotIncludes(posWebhookWebsite, 'configured POS sync receives the owner-approved update through the integration path', 'POS webhook stale guaranteed-receipt copy');
   assertIncludes(behaviorEngineeringReadme, 'This doc is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering README source gate');
   assertIncludes(behaviorEngineeringSpec, 'This spec is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering spec source gate');
   assertIncludes(behaviorEngineeringImpl, 'This implementation doc is source-gated by `npm run verify:public-business-truth`', 'Behavior Engineering implementation source gate');
@@ -2104,13 +2137,19 @@ function verifyPublicMenuGoLiveCopyMatchesPublishBoundary() {
 
   assertIncludes(projectDal, '// INVARIANT: All customer-facing truth must pass through updateProject().', 'Project DAL public truth invariant');
   assertIncludes(projectDal, 'await revalidatePublicClientCacheForProject(data.projectId as string, "updateProject");', 'Project DAL save cache revalidation');
-  assertIncludes(projectDal, 'export const publishProject = async (data: Partial<Project>) => {', 'Project DAL explicit publish path');
-  assertIncludes(projectDal, 'await revalidatePublicClientCacheForProject(data.projectId, "publishProject");', 'Project DAL publish cache revalidation');
+  assertIncludes(projectDal, 'export const publishProject = async (', 'Project DAL explicit publish path');
+  assertIncludes(projectDal, 'const requestedModifiedOn = options.expectedModifiedOn', 'Project DAL publish caller-version precondition');
+  assertIncludes(projectDal, '(data as Partial<Project> & { modifiedOn?: unknown }).modifiedOn;', 'Project DAL persisted modification-version projection');
+  assertIncludes(projectDal, '...(expectedModifiedOnMillis !== null ? { expectedModifiedOnMillis } : {}),', 'Linked outlet publish transaction version precondition');
+  assertIncludes(projectDal, "throw new Error('Project publish state changed');", 'Project DAL stale publish rejection');
+  assertIncludes(projectDal, 'await revalidatePublicClientCacheForProject(operationProjectId, "publishProject");', 'Project DAL publish cache revalidation');
   assertIncludes(projectDal, 'const publishedAt = Timestamp.now();', 'Project DAL publish timestamp source');
-  assertIncludes(projectDal, 'menuVersion: increment(1),', 'Project DAL publish menu version bump');
+  assertIncludes(projectDal, 'const nextMenuVersion = nextProjectMenuVersion(freshProject.menuVersion);', 'Project DAL publish menu version authority');
+  assertIncludes(projectDal, 'menuVersion: nextMenuVersion,', 'Project DAL publish menu version bump');
   assertIncludes(projectDal, 'lastPublishedAt: publishedAt,', 'Project DAL publish timestamp');
   assertIncludes(desktopProjectHeader, '"No changes to publish"', 'Desktop project header explicit publish state');
-  assertIncludes(mobileDesignEditor, 'const updated = await publishProject(normalizedDraft);', 'Mobile design editor explicit publish path');
+  assertIncludes(mobileDesignEditor, 'const updated = await publishProject(normalizedDraft, {', 'Mobile design editor explicit publish path');
+  assertIncludes(mobileDesignEditor, 'expectedModifiedOn: normalizedDraft.modifiedOn,', 'Mobile design editor stale publish precondition');
   assertIncludes(mobileDesignEditor, 'void verifyMenuPublish({', 'Mobile design editor publish verification');
   assertIncludes(mobileUploadSheet, 'draft for review before anything is published', 'Mobile menu upload review-before-publish copy');
   assertIncludes(clientMenuPage, 'hasPublishedMenu: Boolean', 'Client menu page published-menu metadata boundary');
@@ -2270,6 +2309,20 @@ function verifyMenuEditorDiagnosticsAreBounded() {
   assertIncludes(editCategoryModal, 'assertTimeSlotPresetUpdateSucceeded(writeResult);', 'Menu editor time-slot preset creation must require explicit store-write acknowledgement');
   assertIncludes(uploadedImagesList, 'menu_editor_item_image_delete_failed', 'Menu editor item image deletion diagnostics');
   assertIncludes(uploadedImagesList, 'menu_editor_item_image_delete_project_update_rejected', 'Menu editor item image deletion project acknowledgement code');
+  assertIncludes(uploadedImagesList, 'menu_editor_item_image_cleanup_deferred_shared_reference', 'Menu editor item image shared-reference retention diagnostic');
+  assertNotIncludes(uploadedImagesList, 'deleteFileByUrl(imageToDelete.url)', 'Menu editor must not delete a persisted image using one-project reference truth');
+  assertOrder(
+    uploadedImagesList,
+    'await onProjectDataUpdate({ ...updatedProjectData, projectId: activeProject.projectId });',
+    "logMenuEditorDiagnostic('menu_editor_item_image_cleanup_deferred_shared_reference'",
+    'Menu editor item image parent persistence before deferred cleanup acknowledgement',
+  );
+  assertOrder(
+    uploadedImagesList,
+    'setActiveProject(removeObjRef(savedProject));',
+    "logMenuEditorDiagnostic('menu_editor_item_image_cleanup_deferred_shared_reference'",
+    'Menu editor item image direct persistence before deferred cleanup acknowledgement',
+  );
   assertIncludes(descriptionGeneration, 'menu_editor_description_generation_project_update_rejected', 'Menu editor description generation project acknowledgement code');
   assertIncludes(descriptionGeneration, 'menu_editor_description_generation_returned_error_message', 'Menu editor description generation returned-error diagnostic');
   assertIncludes(descriptionGeneration, "getBoundedMenuEditorStringContext('resultMessage'", 'Menu editor description generation returned-error message is bounded');
@@ -2282,8 +2335,8 @@ function verifyMenuEditorDiagnosticsAreBounded() {
   assertIncludes(projectDal, 'normalizeImageBatchProjectSelections(rawSelections, projectId, expectedBucket)', 'Standalone batch image persistence validates the exact configured bucket');
   assertIncludes(linkedOutletSaveRoute, 'const expectedBucket = storageAdmin.bucket().name;', 'Linked batch image persistence resolves the Admin Storage bucket');
   assertIncludes(linkedOutletSaveRoute, 'expectedBucket,', 'Linked batch image persistence validates the exact Admin Storage bucket');
-  assertIncludes(projectDal, 'logMCEValidationResult(result)', 'MCE save hook bounded validation result logging');
-  assertIncludes(projectDal, 'logMCEValidationFailure(e', 'MCE save hook bounded validation failure logging');
+  assertIncludes(projectDal, 'logMCEValidationResult(transactionResult.mceResult)', 'MCE save hook bounded validation result logging');
+  assertIncludes(projectDal, 'logMCEValidationFailure(transactionResult.mceError', 'MCE save hook bounded validation failure logging');
   assertIncludes(mceDiagnostics, 'secureLog', 'MCE diagnostics secure result logging');
   assertIncludes(mceDiagnostics, 'secureError', 'MCE diagnostics secure failure logging');
   assertIncludes(mceDiagnostics, "new Error('mce_validation_failed')", 'MCE diagnostics normalized failure code');
@@ -2337,8 +2390,8 @@ function verifyMenuCorrectnessEngineDocsMatchRuntime() {
   const changelog = read('__docs__/changelog.md');
 
   assertIncludes(features, 'ENABLE_MCE: true', 'MCE runtime feature flag');
-  assertIncludes(projectDal, 'if (FEATURE_FLAGS.ENABLE_MCE && data.projectId)', 'MCE updateProject runtime hook');
-  assertIncludes(projectDal, '(data as any)._mce = toMCEMetadata(result);', 'MCE metadata same-write hook');
+  assertIncludes(projectDal, 'if (FEATURE_FLAGS.ENABLE_MCE)', 'MCE updateProject runtime hook');
+  assertIncludes(projectDal, 'persistedUpdateData._mce = mceRuntime.toMCEMetadata(mceResult);', 'MCE metadata same-transaction hook');
   assertIncludes(readme, '| `ENABLE_MCE` | `true` | Enable Menu Correctness Engine |', 'MCE README runtime flag');
   assertIncludes(readme, '**Menu data is validated at save time before supported publishing flows continue.**', 'MCE README supported publishing-flow claim boundary');
   assertIncludes(readme, 'Supported surfaces read from the same Firestore project document through their existing refresh, download, device, or provider paths.', 'MCE README supported surface path boundary');
@@ -2850,7 +2903,8 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   assertIncludes(diagnostics, 'getBoundedProjectPersistenceStringContext', 'Project persistence diagnostics bounded string context');
   assertIncludes(diagnostics, 'logProjectPersistenceFailure', 'Project persistence diagnostics normalized failure logger');
   assertIncludes(diagnostics, 'logProjectPersistenceInfo', 'Project persistence diagnostics bounded info logger');
-  assertIncludes(projectDal, 'project_current_state_load_failed', 'Project current-state load diagnostics');
+  assertIncludes(projectDal, "throw new Error('Project update identity mismatch');", 'Project current-state load must fail closed');
+  assertNotIncludes(projectDal, 'project_current_state_load_failed', 'Project current-state load must not continue after a failed read');
   assertIncludes(projectDal, 'project_change_detection_failed', 'Project change detection diagnostics');
   assertIncludes(projectDal, 'export function assertProjectUpdateSucceeded', 'Project update acknowledgement guard');
   assertIncludes(projectDal, 'export function assertProjectDeleteSucceeded', 'Project delete acknowledgement guard');
@@ -2876,7 +2930,8 @@ function verifyProjectPersistenceDiagnosticsAreBounded() {
   assertIncludes(projectDal, 'const projectImage: string | null | undefined', 'Project DAL summary reader must narrow project image before exposing summary data');
   assertIncludes(projectDal, 'buildSummaryProjectDeletePayload(projectId, deleteField())', 'Project DAL summary deletions use canonical safe delete payload');
   assertIncludes(specialMenuLifecycle, 'buildSummaryProjectFieldPayload(', 'Project lifecycle special-menu summary status uses canonical field payload');
-  assertIncludes(specialMenuLifecycle, "'specialMenuStatus',\n                nextStatus,", 'Project lifecycle persists the resolved special-menu status through canonical field payload');
+  assertIncludes(specialMenuLifecycle, "'specialMenuStatus',\n                status,", 'Project lifecycle summary helper persists its resolved special-menu status through canonical field payload');
+  assertIncludes(specialMenuLifecycle, 'buildSummaryUpdate(nextMetadata, nextStatus)', 'Project lifecycle writes the resolved next status through the canonical summary helper');
   assertIncludes(specialMenuLifecycle, "nextStatus = 'active';", 'Project lifecycle resolves active status');
   assertIncludes(specialMenuLifecycle, "nextStatus = 'expired';", 'Project lifecycle resolves expired status');
   assertIncludes(specialMenuLifecycle, "nextStatus = 'cancelled';", 'Project lifecycle resolves cancelled status');
@@ -3059,6 +3114,8 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   const diagnostics = read('src/components/templates/main-app/projects/utils/projectPageDiagnostics.ts');
   const useSpecialMenus = read('src/hooks/useSpecialMenus.ts');
   const projectDal = read('src/database/projects/index.ts');
+  const storeDal = read('src/database/stores/index.tsx');
+  const businessAttributeDefaults = read('src/data/shared/businessAttributeDefaults.ts');
   const mobileSpecialMenuScreen = read('src/components/mobile/screens/MobileSpecialMenuScreen.tsx');
   const specialMenuMobileSupportDoc = read('__docs__/special-menu-switching/special-menu-switching_mobile-support.md');
   const specialMenuReadme = read('__docs__/special-menu-switching/README.md');
@@ -3090,6 +3147,15 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   assertIncludes(projectsPage, 'projects_page_upload_new_menu_create_failed', 'Projects page upload new-menu diagnostics');
   assertIncludes(projectsPage, 'projects_page_menu_link_import_failed', 'Projects page menu-link import diagnostics');
   assertIncludes(projectsPage, 'assertStoreUpdateSucceeded(', 'Projects page business-attribute default store acknowledgement guard');
+  assertIncludes(projectsPage, 'applyStoreBusinessAttributeDefaults({', 'Projects page transaction-current business-attribute default write');
+  assertIncludes(projectsPage, 'businessAttributes: writeResult.businessAttributes', 'Projects page authoritative business-attribute acknowledgement projection');
+  assertNotIncludes(projectsPage, 'updateStore({\n                id: storeDetails.storeId,\n                storeId: storeDetails.storeId,\n                tenantId: storeDetails.tenantId,\n                businessAttributes: nextBusinessAttributes', 'Projects page retired stale business-attribute map write');
+  assertIncludes(storeDal, 'export const applyStoreBusinessAttributeDefaults = async', 'Store DAL business-attribute default boundary');
+  assertIncludes(storeDal, 'const storeSnapshot = await transaction.get(storeRef);', 'Store DAL transaction-current business-attribute read');
+  assertIncludes(storeDal, 'mergeMissingBusinessAttributeDefaults(', 'Store DAL current business-attribute default merge');
+  assertIncludes(storeDal, "await revalidatePublicClientCache(storeId, 'applyStoreBusinessAttributeDefaults');", 'Store DAL business-attribute public cache invalidation');
+  assertIncludes(businessAttributeDefaults, 'export function mergeMissingBusinessAttributeDefaults(', 'Shared business-attribute current-state merge');
+  assertIncludes(businessAttributeDefaults, 'typeof current[key] === "boolean"', 'Shared business-attribute explicit owner-value preservation');
   assertIncludes(projectsPage, 'menu_upload_business_attributes_store_update_rejected', 'Projects page business-attribute default store rejected acknowledgement code');
   assertIncludes(projectsPage, 'assertProjectUpdateSucceeded(', 'Projects page extracted profile project-default acknowledgement guard');
   assertOccurrenceAtLeast(projectsPage, 'assertProjectDeleteSucceeded(', 2, 'Projects page project delete acknowledgement guard');
@@ -3110,8 +3176,12 @@ function verifyProjectsPageDiagnosticsAreBounded() {
   });
   assertIncludes(projectImageGeneration, 'assertProjectUpdateSucceeded(', 'Project image generation summary/metadata acknowledgement guard');
   assertIncludes(projectImageGeneration, 'project_image_generation_metadata_update_rejected', 'Project image generation metadata rejected acknowledgement code');
-  assertIncludes(projectImageGeneration, 'await updateProjectMetadata(projectId, { projectImage: imageUrl })', 'Project image generation transactional metadata-only write');
-  assertIncludes(projectImageGeneration, 'await deleteFileByUrl(imageUrl);', 'Project image failed-persistence Storage cleanup');
+  assertIncludes(projectImageGeneration, 'const metadataResult = await updateProjectMetadata(', 'Project image generation transactional metadata-only write');
+  assertIncludes(projectImageGeneration, '{ preserveExistingProjectImage: true }', 'Project image generation current-owner-image preservation request');
+  assertIncludes(projectImageGeneration, 'if (metadataResult.projectImage !== imageUrl) {', 'Project image generation authoritative acknowledgement comparison');
+  assertIncludes(projectDal, 'preserveExistingProjectImageMetadata(data, freshCurrentSummary)', 'Project image generation transaction-current preservation');
+  assertNotIncludes(projectImageGeneration, 'await updateProjectMetadata(projectId, { projectImage: imageUrl })', 'Project image generation retired unconditional metadata write');
+  assertNotIncludes(projectImageGeneration, 'deleteFileByUrl(imageUrl)', 'Project image generation must not delete shared deterministic media after failed persistence');
   assertNotIncludes(projectImageGeneration, 'buildSummaryImageUpdate(', 'Project image stale full-summary reconstruction');
   assertIncludes(createSpecialMenuModal, 'projects_page_special_menu_name_translation_failed', 'Special menu translation diagnostics');
   assertIncludes(mobileSpecialMenuScreen, 'mobile_special_menu_name_translation_failed', 'Mobile special menu name translation diagnostics');
@@ -3333,11 +3403,25 @@ function verifyMultiOutletDiagnosticsAreBounded() {
   assertIncludes(molEvents, 'multi_outlet_mol_event_log_failed', 'Multi-outlet MOL event log diagnostics');
   assertIncludes(molEvents, 'multi_outlet_mol_event_prepare_failed', 'Multi-outlet MOL event prepare diagnostics');
   assertIncludes(propagation, 'multi_outlet_project_propagation_failed', 'Multi-outlet project propagation diagnostics');
+  assertIncludes(propagation, 'const plan = normalizeProjectPropagationPlan(', 'Project propagation must derive targets from a fail-closed master-store plan');
+  assertIncludes(propagation, 'sourceStoreSnap.exists() ? sourceStoreSnap.data() : null', 'Project propagation must use canonical master-store authority');
+  assertIncludes(propagation, 'masterProject.projectType === "localOnly"', 'Project propagation must reject master-local-only projects');
+  assertIncludes(propagation, 'masterProject.projectId !== masterProjectId', 'Project propagation must require exact source project identity');
+  assertIncludes(propagation, 'multi_outlet_project_propagation_source_project_invalid', 'Project propagation must observe rejected source project authority');
+  assertIncludes(propagation, 'outletProjectId = await runTransaction(firebaseClient', 'Each propagated outlet project and summary must share one transaction');
+  assertIncludes(propagation, 'transaction.get(summaryRef)', 'Project propagation must read existing summary links before choosing retry identity');
+  assertIncludes(propagation, 'project_propagation_target_scope_changed', 'Project propagation must revalidate each target store transactionally');
+  assertIncludes(propagation, 'existingProject.masterProjectId !== masterProjectId', 'Project propagation must reject an existing project identity conflict');
+  assertIncludes(propagation, 'transaction.set(outletProjectRef', 'Project propagation transaction must create the outlet project');
+  assertIncludes(propagation, 'transaction.set(summaryRef', 'Project propagation transaction must write the coupled summary');
+  assertNotIncludes(propagation, 'Date.now().toString(36)', 'Project propagation must not generate a new identity on retry');
+  assertNotIncludes(propagation, 'await setDoc(outletProjectRef', 'Project propagation must not commit the project before its summary');
   assertIncludes(brandPropagation, 'multi_outlet_brand_propagation_failed', 'Multi-outlet brand propagation fatal diagnostics');
   assertIncludes(brandPropagationRoute, 'multi_outlet_brand_propagation_failed', 'Multi-outlet brand propagation server diagnostics');
   assertIncludes(brandPropagationBoundary, 'hasDigitalScreenBrandPropagationFields', 'Multi-outlet screen-output change guard');
-  assertIncludes(brandPropagationRoute, 'for (const outletId of propagationResult.targetOutletIds)', 'Multi-outlet propagated screen refresh uses committed target outlets');
-  assertIncludes(brandPropagationRoute, "await touchDigitalScreenContentVersionForStoreServer(outletId, 'brandPropagation');", 'Multi-outlet propagated screen refresh');
+  assertIncludes(brandPropagationRoute, 'storeIds: [masterStoreScope.documentId, ...propagationResult.targetOutletIds]', 'Multi-outlet propagated screen refresh uses committed target outlets');
+  assertIncludes(brandPropagationRoute, 'includeScreenDataTag: refreshScreens', 'Multi-outlet propagated screen refresh keeps field-sensitive global invalidation');
+  assertIncludes(brandPropagationRoute, "touchDigitalScreenContentVersionForStoreServer(storeId, 'brandPropagation')", 'Multi-outlet propagated screen refresh');
   assertIncludes(mobileMenu, 'mobile_menu_linked_outlet_resolve_failed', 'Mobile linked outlet resolve diagnostics');
   [
     'mobile_location_deactivate_failed',
@@ -3386,9 +3470,10 @@ function verifyMultiOutletDiagnosticsAreBounded() {
   assertIncludes(linkedOutletSaveRoute, 'linked_outlet_save_route_failed', 'Linked outlet save route diagnostics');
   assertIncludes(linkedOutletSaveRoute, 'getMultiOutletProjectLogContext(body?.project?.projectId, body?.project?.masterProjectId)', 'Linked outlet save bounded project context');
   assertIncludes(linkedOutletSaveRoute, 'active: z.boolean().optional()', 'Linked outlet save active project field type guard');
-  assertIncludes(linkedOutletSaveRoute, 'buildSummaryProjectFieldPayload(standardProject.projectId, "active", standardProject.active)', 'Linked outlet save active summary projection');
-  assertIncludes(linkedOutletSaveRoute, 'const writeBatch = db.batch();', 'Linked outlet save project and summary atomic batch');
-  assertIncludes(linkedOutletSaveRoute, 'await writeBatch.commit();', 'Linked outlet save batch commit');
+  assertIncludes(linkedOutletSaveRoute, 'buildSummaryProjectFieldPayload(effectiveStandardProject.projectId, "active", effectiveStandardProject.active)', 'Linked outlet save transaction-current effective active summary projection');
+  assertNotIncludes(linkedOutletSaveRoute, 'buildSummaryProjectFieldPayload(standardProject.projectId, "active", standardProject.active)', 'Linked outlet save retired pre-preservation active summary projection');
+  assertIncludes(linkedOutletSaveRoute, 'savedProject = await db.runTransaction(async (transaction) => {', 'Linked outlet save project and summary transaction');
+  assertIncludes(linkedOutletSaveRoute, 'transaction.set(latestOutletSnap.ref, safeProject, { merge: true });', 'Linked outlet save transaction project write');
   assertIncludes(publicMenuPage, 'if (projectData.active === false || projectData.deleted === true) return null;', 'Public menu route must fail closed on stale active/deleted project docs');
   assertIncludes(linkedOutletResponseHelper, 'readJsonResponseWithLimit<unknown>', 'Linked outlet project save bounded response parser');
   assertIncludes(linkedOutletResponseHelper, 'LINKED_OUTLET_SAVE_RESPONSE_JSON_MAX_BYTES = 2 * 1024 * 1024', 'Linked outlet project save response byte cap');
@@ -3402,7 +3487,7 @@ function verifyMultiOutletDiagnosticsAreBounded() {
   assertIncludes(projectsDal, 'project_linked_outlet_response_parse_failed', 'Linked outlet project save response parse diagnostics');
   assertIncludes(projectsDal, 'project_linked_outlet_save_response_invalid', 'Linked outlet project save invalid response diagnostics');
   assertIncludes(projectsDal, 'project_linked_outlet_publish_response_invalid', 'Linked outlet project publish invalid response diagnostics');
-  assertIncludes(projectsDal, 'isLinkedOutletSaveResponse(result, data.projectId, data.masterProjectId)', 'Linked outlet project save shape guard');
+  assertIncludes(projectsDal, 'isLinkedOutletSaveResponse(result, data.projectId, storedMasterProjectId)', 'Linked outlet project save shape guard');
   assertIncludes(projectsDal, 'linked_outlet_save_response_parse_failed', 'Linked outlet save fixed parse failure code');
   assertIncludes(projectsDal, 'linked_outlet_publish_response_parse_failed', 'Linked outlet publish fixed parse failure code');
   assertIncludes(projectsDal, 'const updateData = result.project;', 'Linked outlet save must use guarded returned project');
@@ -3457,6 +3542,7 @@ function verifyMultiOutletDiagnosticsAreBounded() {
 
 function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const storesDal = read('src/database/stores/index.tsx');
+  const storeNestedUpdateProjection = read('src/lib/store/storeNestedUpdateProjection.ts');
   const tenantsDal = read('src/database/tenants/index.tsx');
   const usersDal = read('src/database/users/index.ts');
   const diagnostics = read('src/database/stores/storeDiagnostics.ts');
@@ -3465,16 +3551,25 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   const mobileBasicSettings = read('src/components/mobile/screens/MobileBasicSettingsScreen.tsx');
   const mobileBusinessAttributes = read('src/components/mobile/screens/MobileBusinessAttributesScreen.tsx');
   const mobileBusinessCopySetup = read('src/components/mobile/screens/MobileBusinessCopySetupScreen.tsx');
+  const mobileCustomerApp = read('src/components/mobile/screens/MobileCustomerAppScreen.tsx');
   const mobileLocaleSettings = read('src/components/mobile/screens/MobileLocaleSettingsScreen.tsx');
+  const mobileOfficialPage = read('src/components/mobile/screens/MobileOfficialPageScreen.tsx');
   const mobileSeoAnalytics = read('src/components/mobile/screens/MobileSeoAnalyticsScreen.tsx');
   const mobileDomainSettings = read('src/components/mobile/screens/MobileDomainSettingsScreen.tsx');
   const mobilePosSync = read('src/components/mobile/screens/MobilePosSyncScreen.tsx');
+  const mobileWorkingHours = read('src/components/mobile/screens/MobileWorkingHoursEditScreen.tsx');
   const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
+  const extractionApply = read('src/lib/extraction/applyChanges.ts');
+  const businessAttributes = read('src/lib/obp/businessAttributes.ts');
   const productionReadinessAudit = read('__docs__/audits/menulist-production-readiness-audit.md');
   const changelog = read('__docs__/changelog.md');
   const domainRoute = read('src/app/api/domain/route.ts');
   const desktopDomainSettings = read('src/components/templates/main-app/businessSettings/tabs/DomainSettingsTab.tsx');
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
+  const desktopCustomerApp = read('src/components/templates/main-app/businessSettings/tabs/CustomerAppTab.tsx');
+  const dashboardDateRange = read('src/components/templates/main-app/dashboard/googleAnalytics/DateRangeSelector.tsx');
+  const dashboardGoogleListing = read('src/components/templates/main-app/dashboard/OwnerDashboard/GoogleListingCard.tsx');
+  const projectsB2c = read('src/components/templates/main-app/projects/b2cView/index.tsx');
   const desktopCustomDomain = read('src/components/templates/main-app/businessSettings/tabs/CustomDomainTab.tsx');
   const updateStoreBlock = storesDal.slice(storesDal.indexOf('export const updateStore'));
   const updateStoreSummaryIndex = updateStoreBlock.indexOf('transaction.set(summaryRef, {');
@@ -3488,6 +3583,41 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   assertNotIncludes(storesDal, 'store_subdomain_block_analytics_signal_failed', 'Store subdomain block dead browser-analytics diagnostics');
   assertIncludes(storesDal, "throw new Error('store_summary_scope_invalid');", 'Store summary invalid scope fails closed');
   assertIncludes(storesDal, 'export function assertStoreUpdateSucceeded', 'Store update acknowledgement guard');
+  assertIncludes(storesDal, 'projectStoreNestedUpdateEntries(\n                        transactionLogicalUpdate,', 'Store transaction changed-leaf Firestore projection');
+  assertIncludes(storesDal, 'mergeStoreNestedUpdateWithCurrent(freshStore, transactionLogicalUpdate)', 'Store summary transaction-current nested merge');
+  assertIncludes(storesDal, 'projectStoreNestedUpdateEntries(\n                    composedDirectStoreUpdate,', 'Store direct changed-leaf Firestore projection');
+  assertIncludes(storesDal, 'const materializeStoreNestedEntry = (entry: StoreNestedUpdateEntry)', 'Store nested deletion materialization boundary');
+  assertIncludes(storesDal, 'isStoreNestedDelete(entry.value) ? deleteField() : entry.value', 'Store nested Firestore deletion sentinel conversion');
+  assertIncludes(storesDal, 'new FieldPath(...entry.path)', 'Store nested literal dynamic-key FieldPath projection');
+  assertIncludes(storeNestedUpdateProjection, "'publicPresence'", 'Store nested public-presence patch field');
+  assertIncludes(storeNestedUpdateProjection, "'workingHours'", 'Store nested working-hours patch field');
+  assertIncludes(storeNestedUpdateProjection, 'assertSafeFieldSegment(key);', 'Store nested Firestore field-path admission');
+  assertIncludes(storeNestedUpdateProjection, 'export function getStoreDeepDifference(', 'Store nested changed-leaf difference boundary');
+  assertIncludes(storeNestedUpdateProjection, 'const keys = new Set(detectRemovedKeys', 'Store nested removal detection is mode-aware');
+  assertIncludes(storeNestedUpdateProjection, '? [...Object.keys(original), ...Object.keys(updated)]', 'Store complete-map removed-field difference boundary');
+  assertIncludes(storeNestedUpdateProjection, ': Object.keys(updated));', 'Store partial-root difference preserves omitted fields');
+  assertIncludes(storeNestedUpdateProjection, 'difference[key] = STORE_NESTED_DELETE;', 'Store nested deletion marker');
+  assertIncludes(storeNestedUpdateProjection, 'assertSafeFieldPath(field);', 'Store pre-projected field-path admission');
+  assertOccurrenceAtLeast(desktopBusinessSettings, 'getStoreDeepDifference(nextStoreUpdate, storeDetails)', 2, 'Desktop business-copy changed-leaf writes');
+  assertIncludes(desktopBusinessSettings, 'nextStoreDetails.publicPresence', 'Desktop photo retention uses merged public-presence truth');
+  assertIncludes(mobileBusinessCopySetup, 'getStoreDeepDifference(nextStoreUpdate, storeDetails)', 'Mobile business-copy changed-leaf writes');
+  assertIncludes(mobileOfficialPage, 'getStoreDeepDifference(payload, storeDetails)', 'Mobile official-page changed-leaf write');
+  assertIncludes(extractionApply, 'const storeResult = await applyStoreBusinessAttributeDefaults({', 'Extraction review transaction-current business-attribute default write');
+  assertNotIncludes(extractionApply, 'await updateDoc(storeRef, { businessAttributes: nextBusinessAttributes });', 'Extraction review stale business-attribute replacement');
+  assertIncludes(projectsB2c, 'getStoreDeepDifference(storeUpdate, storeDetails || {})', 'Projects official-page changed-leaf write');
+  assertIncludes(mobileAdvancedSettings, 'getStoreDeepDifference(updates, storeDetails)', 'Mobile advanced settings changed-leaf write');
+  assertIncludes(mobilePosSync, 'getStoreDeepDifference(nextPosSync, currentPosSync, {', 'Mobile POS sync complete-map changed-leaf write');
+  assertIncludes(mobileWorkingHours, 'getStoreDeepDifference(workingHours, storeDetails.workingHours || {}, {', 'Mobile working-hours complete-map changed-day write');
+  assertIncludes(mobileSeoAnalytics, 'analytics: getStoreDeepDifference(nextAnalytics, storeDetails.analytics || {}, {', 'Mobile analytics complete-map changed-leaf write');
+  assertIncludes(storeNestedUpdateProjection, 'options.detectRemovedRootKeys === true', 'Store complete-map root deletion must be explicit');
+  assertIncludes(mobileCustomerApp, 'businessCopyMeta: getStoreDeepDifference(', 'Mobile customer-app metadata changed-leaf write');
+  assertIncludes(desktopCustomerApp, 'businessCopyMeta: getStoreDeepDifference(', 'Desktop customer-app metadata changed-leaf write');
+  assertIncludes(dashboardDateRange, 'dashboardPreferences: {', 'Dashboard date-range exact nested patch');
+  assertNotIncludes(dashboardDateRange, '...storeDetails.analytics', 'Dashboard date-range stale analytics spread');
+  assertIncludes(dashboardGoogleListing, 'publicPresence: {\n                    googleLinkUpdated: true,', 'Dashboard Google listing exact nested patch');
+  assertNotIncludes(mobileLocaleSettings, '...storeDetails,\n            activeLanguages:', 'Mobile locale full-store write');
+  assertNotIncludes(mobileSeoAnalytics, 'update.analytics = { ...storeDetails.analytics', 'Mobile analytics stale full-map write');
+  assertNotIncludes(mobileOfficialPage, 'updateStore(payload as any)', 'Mobile official-page stale full-map write');
   assertIncludes(storesDal, "throw new Error(rejectionCode);", 'Store update rejected acknowledgement code');
   assertIncludes(tenantsDal, 'export function assertTenantUpdateSucceeded', 'Tenant update acknowledgement guard');
   assertIncludes(tenantsDal, "throw new Error(rejectionCode);", 'Tenant update rejected acknowledgement code');
@@ -3549,8 +3679,13 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   );
   assertIncludes(
     mobileBasicSettings,
-    'updates.geo = { latitude, longitude };',
-    'Mobile Basic Settings coordinate update',
+    'normalizeGeoCoordinateDraft(formData.latitude, formData.longitude)',
+    'Mobile Basic Settings coordinate validation',
+  );
+  assertIncludes(
+    mobileBasicSettings,
+    'if (normalizedGeo.geo || storeDetails.geo) updates.geo = normalizedGeo.geo;',
+    'Mobile Basic Settings coordinate update and clear',
   );
   assertIncludes(
     mobileBasicSettings,
@@ -3689,8 +3824,44 @@ function verifyStoreAndUserDalDiagnosticsAreBounded() {
   );
   assertIncludes(
     mobileBusinessAttributes,
-    'customAttributeCount: payload.publicPresence.customAttributes.length',
+    'customAttributeCount: normalizedCustomAttributes.length',
     'Mobile Business Attributes bounded custom count context',
+  );
+  assertIncludes(
+    mobileBusinessAttributes,
+    'businessAttributes: getStoreDeepDifference(attributes, originalAttributes, {',
+    'Mobile Business Attributes changed-leaf mutation projection',
+  );
+  assertIncludes(
+    mobileBusinessAttributes,
+    'customAttributes: normalizedCustomAttributes',
+    'Mobile Business Attributes exact custom-attribute patch',
+  );
+  assertNotIncludes(
+    mobileBusinessAttributes,
+    '...(storeDetails.publicPresence || {})',
+    'Mobile Business Attributes stale public-presence spread',
+  );
+  assertIncludes(
+    desktopBusinessSettings,
+    'const updatedChanges: any = getStoreDeepDifference(',
+    'Desktop Business Settings changed-leaf mutation projection',
+  );
+  assertOccurrenceAtLeast(
+    mobileBusinessAttributes,
+    'normalizeBusinessAttributes(storeDetails?.businessAttributes)',
+    2,
+    'Mobile Business Attributes runtime-normalized current/original state',
+  );
+  assertIncludes(
+    desktopBusinessSettings,
+    'businessAttributes: normalizeBusinessAttributes(storeDetails?.businessAttributes)',
+    'Desktop Business Settings runtime-normalized controlled attributes',
+  );
+  assertIncludes(
+    businessAttributes,
+    'export function normalizeBusinessAttributes(value: unknown)',
+    'Shared owner/public controlled business-attribute runtime boundary',
   );
   assertIncludes(
     mobileBusinessCopySetup,
@@ -3945,6 +4116,9 @@ function verifyMobileMenuDiagnosticsAreBounded() {
   assertIncludes(mobileMenu, 'mobile_menu_project_image_auto_generation_failed', 'Mobile project image diagnostics');
   assertIncludes(mobileMenu, 'mobile_menu_business_attributes_default_apply_failed', 'Mobile business attributes diagnostics');
   assertIncludes(mobileMenu, 'assertStoreUpdateSucceeded(', 'Mobile menu business-attribute default store acknowledgement guard');
+  assertIncludes(mobileMenu, 'applyStoreBusinessAttributeDefaults({', 'Mobile menu transaction-current business-attribute default write');
+  assertIncludes(mobileMenu, 'businessAttributes: writeResult.businessAttributes', 'Mobile menu authoritative business-attribute acknowledgement projection');
+  assertNotIncludes(mobileMenu, 'updateStore({\n                id: storeDetails.storeId,\n                storeId: storeDetails.storeId,\n                tenantId: storeDetails.tenantId,\n                businessAttributes: nextBusinessAttributes', 'Mobile menu retired stale business-attribute map write');
   assertIncludes(mobileMenu, 'mobile_menu_business_attributes_default_store_update_rejected', 'Mobile menu business-attribute default store rejected acknowledgement code');
   assertIncludes(mobileMenu, 'mobile_menu_project_profile_defaults_apply_failed', 'Mobile project profile defaults diagnostics');
   assertIncludes(mobileMenu, 'assertProjectUpdateSucceeded(', 'Mobile menu project-profile defaults acknowledgement guard');
@@ -4039,8 +4213,8 @@ function verifyMobileProjectDiagnosticsAreBounded() {
   assertIncludes(mobileDesignEditor, 'storeDetails?.customDomain', 'Mobile design publish verification supports custom domain tenant URLs');
   assertIncludes(mobileDesignEditor, 'Boolean(updatedCopy?.isDefault ?? normalizedDraft.isDefault)', 'Mobile design publish verification preserves default-project URL semantics');
   assertIncludes(mobileDesignEditor, 'void verifyMenuPublish({', 'Mobile design publish verification remains fire-and-forget');
+  assertIncludes(mobileDesignEditor, "}).catch((error) => {\n                        logMobileProjectFailure('mobile_design_publish_verification_failed'", 'Mobile design verification promise rejection is observed');
   assertIncludes(mobileDesignEditor, "getBoundedMobileProjectStringContext('publicMenuUrl', verificationPublicMenuUrl)", 'Mobile design verification setup logs bounded URL metadata');
-  assertNotIncludes(mobileDesignEditor, "}).catch((error) => {\n                        logMobileProjectFailure('mobile_design_publish_verification_failed'", 'Mobile design verification must not duplicate callable/provider failure logging');
   assertIncludes(mobileDesignEditor, 'assertProjectUpdateSucceeded(', 'Mobile design publish project acknowledgement guard');
   assertIncludes(mobileDesignEditor, 'mobile_design_publish_project_update_rejected', 'Mobile design publish project rejected acknowledgement code');
   assertIncludes(mobileDesignEditor, 'buildMobileDesignLogContext', 'Mobile design editor bounded context helper');
@@ -4171,10 +4345,12 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
 	  assertNotIncludes(mobileFeedback, "if (hasMobileFeedbackClipboardWrite()) {\n        await navigator.clipboard.writeText(feedbackUrl);\n        return;\n    }", 'Mobile feedback Clipboard API rejection must not skip acknowledged fallback');
 	  assertNotIncludes(mobileFeedback, "document.execCommand('copy');\n        Toast.show", 'Mobile feedback textarea copy must not assume success');
 	  assertIncludes(mobileFeedbackDetail, 'mobile_feedback_status_update_failed', 'Mobile feedback detail status diagnostics');
-  assertIncludes(mobileFeedbackDetail, 'mobile_feedback_reply_save_failed', 'Mobile feedback detail reply diagnostics');
+  assertIncludes(mobileFeedbackDetail, 'mobile_feedback_reply_copy_failed', 'Mobile feedback detail reply copy diagnostics');
   assertIncludes(mobileFeedbackDetail, 'assertFeedbackStatusUpdateSucceeded(', 'Mobile feedback detail status acknowledgement usage');
   assertIncludes(mobileFeedbackDetail, 'mobile_feedback_status_update_rejected', 'Mobile feedback detail rejected status acknowledgement code');
-  assertIncludes(mobileFeedbackDetail, 'mobile_feedback_reply_save_rejected', 'Mobile feedback detail rejected reply acknowledgement code');
+  assertIncludes(mobileFeedbackDetail, 'copyRuntimeTextToClipboard', 'Mobile feedback detail manual reply copy');
+  assertIncludes(mobileFeedbackDetail, 'generateWhatsAppLink', 'Mobile feedback detail manual WhatsApp handoff');
+  assertNotIncludes(mobileFeedbackDetail, "updateFeedbackStatus(feedback.id, 'resolved', trimmedReply)", 'Mobile feedback detail false provider send/persist path');
   assert(
     mobileFeedbackDetail.indexOf("const updated = await updateFeedbackStatus(feedback.id, 'resolved');") < mobileFeedbackDetail.indexOf("assertFeedbackStatusUpdateSucceeded(\n                updated,\n                feedback.id,\n                'resolved',\n                'mobile_feedback_status_update_rejected',\n            );")
     && mobileFeedbackDetail.indexOf("assertFeedbackStatusUpdateSucceeded(\n                updated,\n                feedback.id,\n                'resolved',\n                'mobile_feedback_status_update_rejected',\n            );") < mobileFeedbackDetail.indexOf("onStatusUpdate(feedback.id, 'resolved');"),
@@ -4182,7 +4358,7 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   );
   assertIncludes(mobileFeedbackDetail, "getBoundedMobileOwnerStringContext('feedbackId', feedback.id)", 'Mobile feedback detail bounded feedback ID context');
   assertIncludes(mobileFeedbackDetail, "getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId)", 'Mobile feedback detail bounded store context');
-  assertIncludes(mobileFeedbackDetail, "getFeedbackWriteLogContext('resolved', trimmedReply.length)", 'Mobile feedback detail bounded reply length context');
+  assertIncludes(mobileFeedbackDetail, 'getFeedbackWriteLogContext(feedback.status, trimmedReply.length)', 'Mobile feedback detail bounded reply length context');
   assertIncludes(mobileFeedbackDetail, 'hasReplyText: replyLength > 0', 'Mobile feedback detail reply text presence context');
   [
     'mobile_qr_sheet_generate_failed',
@@ -4339,9 +4515,10 @@ function verifyMobileOwnerDiagnosticsAreBounded() {
   assertIncludes(mobilePosSync, 'response.ok && isSuccessfulPosSyncTestResponse(data)', 'Mobile POS Sync success requires HTTP and shaped acknowledgement');
   assertIncludes(mobilePosSync, "getBoundedMobileOwnerStringContext('status', nextPosSync.status)", 'Mobile POS Sync status bounded context');
   assertIncludes(mobilePosSync, 'webhookUrlLength: String(nextPosSync.webhookUrl || \'\').length', 'Mobile POS Sync webhook URL bounded length context');
-  assertIncludes(mobilePosSync, 'webhookSecretLength: String(nextPosSync.webhookSecret || \'\').length', 'Mobile POS Sync webhook secret bounded length context');
-  assertIncludes(mobilePosSync, 'pendingSecretRotation: Boolean(pendingSecretRotationAudit)', 'Mobile POS Sync pending secret rotation context');
+  assertIncludes(mobilePosSync, 'hasWebhookSecret: Boolean(webhookSecret)', 'Mobile POS Sync protected secret presence context');
   assertIncludes(mobilePosSync, 'webhookSecretLength: webhookSecret.length', 'Mobile POS Sync secret-copy bounded secret length context');
+  assertNotIncludes(mobilePosSync, 'nextPosSync.webhookSecret', 'Mobile POS Sync must not persist or diagnose a store-document secret');
+  assertNotIncludes(mobilePosSync, 'pendingSecretRotationAudit', 'Mobile POS Sync rotation must be server-acknowledged immediately');
   assertNotIncludes(mobileFeedback, 'console.error(', 'Mobile feedback direct error logging');
   assertNotIncludes(mobileFeedback, 'console.warn(', 'Mobile feedback direct warn logging');
   assertNotIncludes(mobileFeedback, 'console.log(', 'Mobile feedback direct log logging');
@@ -4395,7 +4572,9 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   const obpLinkCard = read('src/components/templates/main-app/businessSettings/OBPLinkCard.tsx');
   const googleListingGuide = read('src/components/templates/main-app/businessSettings/tabs/GoogleListingGuide.tsx');
   const googleListingCard = read('src/components/templates/main-app/dashboard/OwnerDashboard/GoogleListingCard.tsx');
-  const behaviorNudgeCard = read('src/components/templates/main-app/dashboard/OwnerDashboard/BehaviorNudgeCard.tsx');
+  const ownerDashboard = read('src/components/templates/main-app/dashboard/OwnerDashboard/index.tsx');
+  const projectShareModal = read('src/components/templates/main-app/projects/b2cView/shareModal/index.tsx');
+  const mobileShareScreen = read('src/components/mobile/screens/MobileShareScreen.tsx');
 
   [
     'obp_link_card_default_project_load_failed',
@@ -4482,23 +4661,11 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertIncludes(googleListingCard, "window.open('https://business.google.com/', '_blank', 'noopener,noreferrer')", 'Owner dashboard Google listing safe Google open');
   assertIncludes(googleListingCard, "throw new Error('owner_dashboard_google_listing_open_blocked')", 'Owner dashboard Google listing blocked-open diagnostic');
 
-  [
-    'owner_dashboard_behavior_nudge_dismiss_load_failed',
-    'owner_dashboard_behavior_nudge_dismiss_save_failed',
-    'owner_dashboard_behavior_nudge_copy_failed',
-  ].forEach((failureCode) => {
-    assertIncludes(behaviorNudgeCard, failureCode, 'Owner dashboard behavior nudge diagnostics');
-  });
-  assertIncludes(behaviorNudgeCard, 'buildBehaviorNudgeLogContext', 'Owner dashboard behavior nudge bounded context helper');
-  assertIncludes(behaviorNudgeCard, "getBoundedStoreStringContext('obpUrl', obpUrl)", 'Owner dashboard behavior nudge bounded OBP URL context');
-  assertIncludes(behaviorNudgeCard, "getBoundedStoreStringContext('dismissKey', dismissKey)", 'Owner dashboard behavior nudge bounded dismiss-key context');
-  assertIncludes(behaviorNudgeCard, 'copyBehaviorNudgeLink', 'Owner dashboard behavior nudge copy acknowledgement helper');
-  assertIncludes(behaviorNudgeCard, 'BEHAVIOR_NUDGE_COPY_UNAVAILABLE', 'Owner dashboard behavior nudge copy unavailable clipboard code');
-  assertIncludes(behaviorNudgeCard, 'BEHAVIOR_NUDGE_COPY_FALLBACK_FAILED', 'Owner dashboard behavior nudge copy fallback failure code');
-  assertIncludes(behaviorNudgeCard, 'hasClipboardWrite', 'Owner dashboard behavior nudge clipboard support metadata');
-  assertIncludes(behaviorNudgeCard, 'hasCopyFallback', 'Owner dashboard behavior nudge fallback support metadata');
-  assertIncludes(behaviorNudgeCard, "const copied = document.execCommand('copy');", 'Owner dashboard behavior nudge textarea copy acknowledgement');
-  assertIncludes(behaviorNudgeCard, 'setDismissed(Boolean(localStorage.getItem(dismissKey)))', 'Owner dashboard behavior nudge dismissal must reset per active store.');
+  assertIncludes(ownerDashboard, 'Official customer source is active', 'Owner Dashboard official-source behavior framing');
+  assertIncludes(ownerDashboard, 'Your customer link is ready.', 'Owner Dashboard customer-link adoption guidance');
+  assertIncludes(projectShareModal, 'FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES', 'Desktop share behavior-copy gate');
+  assertIncludes(mobileShareScreen, 'FEATURE_FLAGS.ENABLE_BEHAVIOR_NUDGES', 'Mobile share behavior-copy gate');
+  assert(!fs.existsSync(path.join(ROOT, 'src/components/templates/main-app/dashboard/OwnerDashboard/BehaviorNudgeCard.tsx')), 'Retired duplicate dashboard behavior nudge card must stay absent');
   assertNotIncludes(businessSettings, "} catch {\n                screenToken = null;", 'Business Settings embedded presence silent screen-link catch');
   assertNotIncludes(businessSettings, "} catch {\n                    message.error(`Could not copy ${label.toLowerCase()}`);", 'Business Settings embedded presence silent copy catch');
 
@@ -4506,7 +4673,6 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
     ['OBPLinkCard', obpLinkCard],
     ['GoogleListingGuide', googleListingGuide],
     ['Owner dashboard Google listing card', googleListingCard],
-    ['Owner dashboard behavior nudge card', behaviorNudgeCard],
   ].forEach(([label, content]) => {
     assertNotIncludes(content, 'catch {', `${label} silent catch`);
     assertNotIncludes(content, 'console.error(', `${label} direct error logging`);
@@ -4520,10 +4686,8 @@ function verifyOfficialBusinessPageOwnerDiagnosticsAreBounded() {
   assertNotIncludes(obpLinkCard, "document.execCommand('copy');\n            message.success", 'OBPLinkCard textarea fallback must not assume message-copy success');
   assertNotIncludes(googleListingGuide, 'await navigator.clipboard.writeText(obpUrl);\n            setCopied(true);', 'GoogleListingGuide copy must not use unguarded Clipboard API success');
   assertNotIncludes(googleListingCard, 'await navigator.clipboard.writeText(obpUrl);\n            setCopied(true);', 'Owner dashboard Google listing copy must not use unguarded Clipboard API success');
-  assertNotIncludes(behaviorNudgeCard, 'await navigator.clipboard.writeText(obpUrl);\n            setCopied(true);', 'Owner dashboard behavior nudge copy must not use unguarded Clipboard API success');
   assertNotIncludes(googleListingGuide, "document.execCommand('copy');\n            setCopied(true);", 'GoogleListingGuide textarea fallback must not assume copy success');
   assertNotIncludes(googleListingCard, "document.execCommand('copy');\n            setCopied(true);", 'Owner dashboard Google listing textarea fallback must not assume copy success');
-  assertNotIncludes(behaviorNudgeCard, "document.execCommand('copy');\n            setCopied(true);", 'Owner dashboard behavior nudge textarea fallback must not assume copy success');
 }
 
 function verifyUseMenuListOutputDiagnosticsAreBounded() {
@@ -5037,10 +5201,10 @@ function verifyHelpChatDiagnosticsAreBounded() {
   assertNotIncludes(chatHandlers, 'navigator.clipboard.writeText(textToCopy)\n                .then', 'HelpChat message copy direct clipboard promise chain');
   assertIncludes(messageBubble, 'help_chat_related_article_open_failed', 'HelpChat related article open diagnostics');
   assertIncludes(messageBubble, 'help_chat_related_article_open_blocked', 'HelpChat related article blocked-open code');
-  assertIncludes(messageBubble, "const opened = window.open(articleUrl, '_blank', 'noopener,noreferrer')", 'HelpChat related article safe open');
+  assertIncludes(messageBubble, "const opened = window.open(helpCenterArticleRouting(articleId), '_blank', 'noopener,noreferrer')", 'HelpChat related article safe internal route open');
   assertIncludes(messageBubble, "getBoundedHelpChatStringContext('messageId', message.id)", 'HelpChat related article bounded message context');
   assertIncludes(messageBubble, "getBoundedHelpChatStringContext('articleId', article?.id)", 'HelpChat related article bounded article context');
-  assertIncludes(messageBubble, "getBoundedHelpChatStringContext('articleUrl', articleUrl)", 'HelpChat related article bounded URL context');
+  assertIncludes(messageBubble, 'articleRoutePresent: true', 'HelpChat related article route-presence context');
   assertIncludes(articleView, 'article_view_link_copy_failed', 'ArticleView link copy diagnostics');
   assertIncludes(articleView, 'logArticleViewFailure', 'ArticleView bounded failure logger');
   assertIncludes(articleView, "getBoundedArticleViewStringContext('articleUrl', url)", 'ArticleView bounded link URL context');
@@ -5116,7 +5280,7 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(diagnostics, 'sourceStatusCode: getBusinessSettingsErrorStatus(error)', 'Business settings diagnostics source error status');
   assertIncludes(complianceRenderer, 'function normalizePublicComplianceStoreDocumentId(value: unknown): string | null', 'Public compliance store document ID normalizer');
   assertIncludes(complianceRenderer, 'const complianceStoreDocumentId = normalizePublicComplianceStoreDocumentId(sId);', 'Public compliance normalizes store document ID before override read');
-  assertIncludes(complianceRenderer, '.doc(complianceStoreDocumentId)', 'Public compliance uses normalized override document ID');
+  assertIncludes(complianceRenderer, 'getCachedComplianceOverridesServer(complianceStoreDocumentId)', 'Public compliance uses normalized cached override document ID');
   assertIncludes(complianceRenderer, 'public_compliance_invalid_store_scope', 'Public compliance invalid store scope diagnostic');
   assertIncludes(complianceRenderer, 'public_compliance_override_read_failed', 'Public compliance override read diagnostics');
   assertIncludes(complianceRenderer, "getBoundedRuntimeStringContext('storeId', context.storeId)", 'Public compliance bounded store context');
@@ -5282,16 +5446,14 @@ function verifyBusinessSettingsDiagnosticsAreBounded() {
   assertIncludes(posSyncTab, 'res.ok && isSuccessfulPosSyncTestResponse(data)', 'Desktop POS Sync success requires HTTP and shaped acknowledgement');
   assertIncludes(posSyncTab, 'buildPosSyncLogContext', 'Desktop POS Sync bounded context helper');
   assertIncludes(posSyncTab, "getBoundedBusinessSettingsStringContext('tenantId', tenantId)", 'Desktop POS Sync bounded tenant context');
-  assertIncludes(posSyncTab, "throw createPosSyncStatusError('desktop_pos_sync_secret_rotation_missing_store_update_handler')", 'Desktop POS Sync missing update handler diagnostic');
   assertIncludes(posSyncTab, "throw createPosSyncStatusError('desktop_pos_sync_settings_missing_store_update_handler')", 'Desktop POS Sync settings missing update handler diagnostic');
   assertIncludes(posSyncTab, 'await Promise.resolve(onStoreUpdate(updates));', 'Desktop POS Sync toggle waits for store persistence');
   assertIncludes(posSyncTab, "'posSync.webhookUrl': validation.normalizedUrl,\n                'posSync.status': enabled ? 'healthy' : 'disabled',", 'Desktop POS Sync URL save waits for store persistence and clears stale connection status');
-  assertIncludes(posSyncTab, 'await Promise.resolve(onStoreUpdate({', 'Desktop POS Sync secret rotation waits for store persistence');
-  assertIncludes(posSyncTab, 'setWebhookSecret(previousSecret);', 'Desktop POS Sync secret rotation rollback on save failure');
+  assertIncludes(posSyncTab, "requestPosSyncSecret({ action: 'rotate', storeId, tenantId })", 'Desktop POS Sync rotation waits for protected server persistence');
+  assertIncludes(posSyncTab, "'posSync.secretVersion': result.version", 'Desktop POS Sync rotation projects the acknowledged secret version');
   assertIncludes(posSyncTab, 'confirmLoading={regeneratingSecret}', 'Desktop POS Sync secret rotation modal save loading state');
-  assertIncludes(posSyncTab, 'previousWebhookSecretLength: previousSecret.length', 'Desktop POS Sync bounded previous secret length context');
-  assertIncludes(posSyncTab, 'nextWebhookSecretLength: newSecret.length', 'Desktop POS Sync bounded next secret length context');
-  assertIncludes(posSyncTab, 'hasStoreUpdateHandler: Boolean(onStoreUpdate)', 'Desktop POS Sync bounded update handler context');
+  assertIncludes(posSyncTab, 'previousWebhookSecretLength: webhookSecret.length', 'Desktop POS Sync bounded previous secret length context');
+  assertNotIncludes(posSyncTab, 'generateWebhookSecret()', 'Desktop POS Sync must not generate signing secrets in the browser');
   assertIncludes(posSyncTab, 'webhookSecretLength: webhookSecret.length', 'Desktop POS Sync bounded secret length context');
   assertIncludes(posSyncTab, 'technicalSummaryLength: technicalSummary.length', 'Desktop POS Sync bounded technical summary length context');
   assertIncludes(posSyncTab, 'sampleJsonLength: sampleJson.length', 'Desktop POS Sync bounded sample payload length context');
@@ -5673,9 +5835,10 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
   assertIncludes(desktopOnboarding, 'RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024', 'Desktop reseller onboarding response byte cap');
   assertIncludes(desktopOnboarding, 'desktop_reseller_onboard_response_parse_failed', 'Desktop reseller onboarding response parse diagnostics');
   assertIncludes(desktopOnboarding, 'desktop_reseller_onboard_response_invalid', 'Desktop reseller onboarding invalid response diagnostics');
-  assertIncludes(desktopOnboarding, 'isValidOnboardResult(data)', 'Desktop reseller onboarding shape guard');
+  assertIncludes(desktopOnboarding, 'isValidOnboardResult(data, operationId)', 'Desktop reseller onboarding shape guard');
   assertIncludes(desktopOnboarding, 'typeof data.subscriptionId === \'string\'', 'Desktop reseller onboarding subscription guard');
   assertIncludes(desktopOnboarding, 'typeof data.status === \'string\'', 'Desktop reseller onboarding status guard');
+  assertIncludes(desktopOnboarding, 'data.transactionId === expectedOperationId', 'Desktop reseller onboarding operation acknowledgement guard');
   assertNotIncludes(desktopOnboarding, 'response.json().catch(() => ({}))', 'Desktop reseller onboarding silent JSON fallback');
   assertNotIncludes(desktopOnboarding, 'const data = await response.json()', 'Desktop reseller onboarding unbounded success JSON parsing');
 
@@ -5684,9 +5847,10 @@ function verifyResellerDashboardResponseDiagnosticsAreBounded() {
   assertIncludes(mobileOnboarding, 'MOBILE_RESELLER_ONBOARD_RESPONSE_JSON_MAX_BYTES = 16 * 1024', 'Mobile reseller onboarding response byte cap');
   assertIncludes(mobileOnboarding, 'mobile_reseller_onboard_response_parse_failed', 'Mobile reseller onboarding response parse diagnostics');
   assertIncludes(mobileOnboarding, 'mobile_reseller_onboard_response_invalid', 'Mobile reseller onboarding invalid response diagnostics');
-  assertIncludes(mobileOnboarding, 'isValidMobileOnboardResult(data)', 'Mobile reseller onboarding shape guard');
+  assertIncludes(mobileOnboarding, 'isValidMobileOnboardResult(data, operationId)', 'Mobile reseller onboarding shape guard');
   assertIncludes(mobileOnboarding, 'typeof data.subscriptionId === \'string\'', 'Mobile reseller onboarding subscription guard');
   assertIncludes(mobileOnboarding, 'typeof data.status === \'string\'', 'Mobile reseller onboarding status guard');
+  assertIncludes(mobileOnboarding, 'data.transactionId === expectedOperationId', 'Mobile reseller onboarding operation acknowledgement guard');
   assertNotIncludes(mobileOnboarding, 'response.json().catch(() => ({}))', 'Mobile reseller onboarding silent JSON fallback');
   assertNotIncludes(mobileOnboarding, 'const data = await response.json()', 'Mobile reseller onboarding unbounded success JSON parsing');
 

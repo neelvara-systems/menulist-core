@@ -11,11 +11,13 @@ const { Text } = Typography;
 type EditorActionsPopoverProps = {
     onActionClick: (action: EditorAction) => void;
     isMasterLinked?: boolean; // True if this is an outlet store linked to master
+    canGenerateDescriptions?: boolean;
 };
 
 export default function EditorActionsPopover({
     onActionClick,
-    isMasterLinked = false
+    isMasterLinked = false,
+    canGenerateDescriptions = false,
 }: EditorActionsPopoverProps) {
     const { token } = theme.useToken();
     const [open, setOpen] = useState(false);
@@ -32,9 +34,15 @@ export default function EditorActionsPopover({
             if (action.key === 'commandCenter') {
                 return FEATURE_FLAGS.ENABLE_MENU_COMMAND_CENTER;
             }
+            if (action.key === 'description') {
+                return canGenerateDescriptions;
+            }
+            if (action.key === 'decisionBlocks') {
+                return FEATURE_FLAGS.ENABLE_DECISION_BLOCKS;
+            }
             return true;
         });
-    }, [isMasterLinked, labels]);
+    }, [canGenerateDescriptions, isMasterLinked, labels]);
 
     const content = (
         <Flex vertical gap={12} style={{ width: "100%" }}>

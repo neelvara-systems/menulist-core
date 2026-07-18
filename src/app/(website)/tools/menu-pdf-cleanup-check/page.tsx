@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import MenuPdfCleanupCheckPage from '@/components/website/menuPdfCleanupCheck/MenuPdfCleanupCheckPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Menu PDF Cleanup Check - MenuList | Check Old PDF Menu Readiness';
 const description = 'Check whether an old menu, service, catalog, package, or rate-card PDF is still clear enough for customers or should be replaced with one current customer link.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/menu-pdf-cleanup-check',
   },
-};
+});
 
 export default function Page() {
   if (

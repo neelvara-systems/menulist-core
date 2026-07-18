@@ -1,4 +1,4 @@
-import { secureError } from '@lib/security/secureLogger';
+import { secureError, secureLog } from '@lib/security/secureLogger';
 
 export type MenuEditorLogContext = Record<string, boolean | number | string | null | undefined>;
 
@@ -51,5 +51,15 @@ export const logMenuEditorFailure = (
         sourceErrorName: getMenuEditorErrorName(error),
         sourceErrorCode: getMenuEditorErrorCode(error),
         sourceStatusCode: getMenuEditorErrorStatus(error),
+    });
+};
+
+export const logMenuEditorDiagnostic = (
+    diagnosticCode: string,
+    context: MenuEditorLogContext = {},
+): void => {
+    secureLog('[Menu Editor] Diagnostic', {
+        diagnosticCode,
+        ...context,
     });
 };

@@ -1,8 +1,32 @@
 # AI Menu Manager - Firebase Cost Tracking
 
-**Status:** Initial implementation validated - cost model active for implemented foundation
+**Status:** Source-validated compact runtime; not current launch certification
 **Cost posture:** Firestore cost is the top constraint
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026
+
+---
+
+## July 16, 2026 - Bounded Pending Recovery And Session Size Guard
+
+Canonical compact-session writes now maintain `hasPendingOperations` and `pendingCount`. If the current selected-project daily document is absent, the authenticated inbox performs one server-side compound query scoped by exact `tId`, `sId`, and `projectId`, filters `hasPendingOperations == true`, orders by newest `updatedAt`, and reads at most one session. The recovered document and every referenced proposal are normalized and bound to the recovered session ID before they are returned. Client collection listing remains denied.
+
+This is intentionally not a historical scan or a new active-inbox collection. Normal current-session loads remain one direct document read. On rollover/no-current-session recovery, the browser has already performed that missing-document read; the protected API then performs its permission check, one exact requested-session read, and one indexed query returning zero or one session, followed only by the already-bounded unique server-proposal detail reads when such summaries exist. No extra write, listener, scheduler, Function, Storage operation, or provider call was added.
+
+All direct and Admin compact-session mutation paths now pass through a 700 KB application write budget. Expendable artifact references, older receipts, and oldest messages are trimmed before a new write is rejected. Pending cards are never silently discarded. The guard leaves headroom below Firestore's 1 MiB document limit and allows an oversized retained document to complete/cancel only when the next payload is smaller.
+
+The compound recovery index and the existing TTL declarations are source-complete but remain hosted-deployment work because `firestore.indexes.json` contains unrelated pending changes in the shared worktree.
+
+If Firestore returns `failed-precondition` while that compound index is absent or building, the server logs a fixed warning and falls back to the existing current/empty inbox result. It does not suppress permission, availability, or other database failures. Deploying the app before index readiness therefore cannot break the existing owner flow; prior-day recovery simply remains inactive until the index is ready.
+
+---
+
+## July 15, 2026 - Transaction-Current Approval And Native TTL
+
+Desktop/mobile AMM saves now pass the prepared project's canonical modification version into the existing standard or linked-outlet project transaction. The transaction compares that version with its existing fresh project read and rejects a stale approval before writing. This adds no Firestore operation, collection, index query, listener, Storage operation, Function, scheduler, or provider call; non-AMM project saves remain unchanged because the precondition is optional.
+
+Compound approval now rejects incomplete, duplicate, mixed-session, mixed-tenant, mixed-store, or mixed-project groups before the single project save. Server-backed fallback command/approval/completion writes preserve all ten existing compact counters while updating their own counts.
+
+The runtime already assigns `expiresAt` at 35 days for compact sessions and 45 days for server-backed proposals. Native Firestore TTL is now declared for both collections in `firestore.indexes.json`, so no cleanup Function or scheduler is needed. Hosted deletion remains pending until the shared index target is safely deployed.
 
 ---
 
@@ -54,6 +78,8 @@ These requirements are part of the implementation contract, not optional improve
 
 AMM compact documents must have explicit caps so a busy owner session cannot grow toward Firestore document-size limits.
 
+In addition to field-count caps, the full compact write has a 700 KB application budget.
+
 | Field | Required cap |
 | --- | --- |
 | `compactMessages` | Keep only recent compact message summaries, target max 20. Store full transcript/debug text in Storage only when needed. |
@@ -66,12 +92,12 @@ If implementation needs a different cap, the cap must be named in code and the c
 
 ### Active Inbox Pattern
 
-Opening AMM must not query older daily sessions to find unresolved cards.
+Opening AMM must not scan older daily sessions to find unresolved cards.
 
 Required pattern:
 
 - current day/session doc contains the fast owner timeline.
-- active pending cards are available from the current session summary or a deterministic active-inbox summary.
+- when the current day document is absent, active pending cards are recovered by one exact-scope indexed latest-pending query with `limit(1)`.
 - proposal detail docs load only for server-backed cards or when a compact summary explicitly points to durable proposal detail.
 - historical sessions load only from paginated history.
 
@@ -126,7 +152,7 @@ The normal deterministic AMM path stays client-DAL-first. Server fallback routes
 - AMM server DAL ID boundary: `src/database/aiMenuManager/server.ts` repeats the same session/proposal/project ID admission before building session, proposal, scoped project, or legacy project document refs, and it filters stored pending-card proposal IDs before inbox proposal hydration.
 - AMM scope document-ID admission: `src/lib/ai-menu-manager/routeIds.ts`, `src/lib/ai-menu-manager/apiGuards.ts`, and `src/database/aiMenuManager/server.ts` require exact positive safe-integer MenuList tenant/store document IDs before selected-store authorization, tenant access fallback checks, limiter scope material, scoped project reads, session/proposal scope comparisons, or AMM proposal/session writes.
 - `POST /api/ai-menu-manager/command`: `DATA_WRITE` rate limit, then 64KB bounded JSON, then selected-store scope and project/proposal reads.
-- `POST /api/ai-menu-manager/plan`: AI-operation rate limit, then one SAFE_MODE read when cost protection is enabled, then a 48KB bounded body, selected-store permission, free-capacity admission, and one bounded provider call. It does not read or write selected project/session/proposal truth; a valid provider result records one existing AI operation log document.
+- `POST /api/ai-menu-manager/plan`: AI-operation rate limit, 48KB bounded body and schema admission, selected-store permission, executable-action admission, SAFE_MODE, free-capacity admission, then one bounded provider call. It does not read or write selected project/session/proposal truth; a valid provider result records one existing AI operation log document.
 - `POST /api/ai-menu-manager/proposals/{proposalId}/actions`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
 - `POST /api/ai-menu-manager/proposals/{proposalId}/complete`: `DATA_WRITE` rate limit, then 16KB bounded JSON, then selected-store scope and proposal/project checks.
 
@@ -191,11 +217,12 @@ Every executable adapter must mirror the cost class declared in [ai-menu-manager
 | --- | --- | --- | --- | --- |
 | Sync Firebase Auth claims | existing auth sync | Route/bootstrap before direct DAL access | existing auth-sync cost only when claims are missing/stale | Required before top-level compact-session reads/writes; reuse existing `/api/auth/set-claims` behavior instead of adding AMM-specific auth routes. |
 | Load current session summary | `aiMenuManagerSessions` | AMM route open | 1 | Contains compact messages, full pending operation cards, receipts. |
+| Recover unresolved prior-day session | `aiMenuManagerSessions` | Current selected-project session is absent | Browser missing-doc read already occurred; protected API performs one exact session read plus one indexed query returning 0-1 docs, in addition to its existing permission check | No historical scan or client list access. The actual recovered session ID/date is returned and reused until pending work clears. |
 | Load active pending proposal cards | `aiMenuManagerProposals` | Server-backed adapters only | 0 by default; one read per unique compact proposal pointer when present | Deterministic selected-project cards do not read proposal docs. Normalized pointers are deduplicated before `getAll()` and every hydrated proposal/card scope must exactly match the requested compact session. |
 | Load menu context packet | `projects` or cache | Command only when cache miss | 0-1 | Prefer cached packet keyed by project update marker. |
-| Permission fallback inbox | `aiMenuManagerSessions` and `aiMenuManagerProposals` | Only after direct session read returns Firestore `permission-denied` | bounded server read | Authenticated API enforces `MANAGE_MENU` without widening client rules. The fallback must not scan historical sessions. |
+| Permission fallback inbox | `aiMenuManagerSessions` and `aiMenuManagerProposals` | Direct session read is denied, or current-day session is absent and rollover recovery is needed | bounded server read/query | Authenticated API enforces `MANAGE_MENU` without widening client rules. The fallback never scans historical sessions. |
 
-Cost rule: opening AMM should not query all proposals, all messages, all menu items, and all past receipts. The normal screen open reads the current selected-project daily session doc only; proposal docs are reserved for server-backed adapters.
+Cost rule: opening AMM should not query all proposals, messages, menu items, or past receipts. The normal screen open reads the current selected-project daily session doc only. The no-current-session rollover case uses one bounded latest-pending query; proposal docs remain reserved for server-backed adapters.
 
 Cost rule: unresolved cards must not require scanning previous daily sessions.
 
@@ -357,14 +384,13 @@ Do not store sensitive raw provider responses in browser local storage.
 
 | Artifact | Default retention |
 | --- | --- |
-| Compact session doc | 30-90 days, configurable |
-| Resolved low-risk proposal | 30 days |
-| High-risk approved proposal/receipt | 180 days or product decision |
-| Generated image draft not applied | 7-14 days |
-| Debug prompt/response artifact | 14 days only when debug flag is enabled |
-| Manual task/export artifact | 30-90 days depending use |
+| Compact session doc | 35 days from the most recent command; native `expiresAt` TTL declared |
+| Server-backed proposal | 45 days from creation; native `expiresAt` TTL declared |
+| Generated image/import artifact | Owned by the existing image/import flow and its retention policy; AMM stores references only when needed |
+| Debug prompt/response artifact | Not persisted while `ENABLE_AI_MENU_MANAGER_DEBUG_ARTIFACTS=false` |
+| Browser-local copy/download/QR output | Not stored by AMM |
 
-Use `expiresAt` where cleanup/TTL exists. If TTL is not configured, docs must not claim automatic deletion.
+The index configuration is source truth, but automatic hosted deletion begins only after the target index/TTL configuration is deployed. Firestore TTL deletion is asynchronous and must not be used as an exact-time workflow transition.
 
 ---
 
@@ -396,7 +422,7 @@ The table below is the family-level cost rule. Exact per-action cost classes are
 - Firestore document per non-action chat message.
 - Unbounded listener on all sessions or all proposals.
 - Scanning all historical sessions on screen load.
-- Querying old daily sessions to find active cards.
+- Scanning or paginating old daily sessions to find active cards instead of the exact-scope `limit(1)` pending query.
 - Re-reading full project data for every card render.
 - Storing base64 generated images inside Firestore.
 - New scheduled function for AMM outside consolidated scheduler discipline.
@@ -408,7 +434,7 @@ The table below is the family-level cost rule. Exact per-action cost classes are
 
 Before implementation can be accepted:
 
-- [ ] Opening AMM reads no more than one session summary plus bounded active card details.
+- [ ] Normal opening reads one session summary; no-current-session recovery uses only the documented protected exact read plus `limit(1)` pending query and bounded active card details.
 - [ ] Active pending cards are found without scanning historical daily sessions.
 - [ ] Command submit reads no more than one project/store packet on cache miss.
 - [ ] No raw provider payload is stored in Firestore.

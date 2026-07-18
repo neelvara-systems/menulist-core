@@ -3,7 +3,12 @@
 import assert from 'node:assert/strict';
 import { buildDailySessionId } from '../../src/lib/ai-menu-manager/idempotency';
 import { buildAiMenuManagerReceipt } from '../../src/lib/ai-menu-manager/receiptBuilder';
-import { normalizeAiMenuManagerSessionSnapshot } from '../../src/lib/ai-menu-manager/sessionIntegrity';
+import {
+    AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES,
+    estimateAiMenuManagerSessionBytes,
+    normalizeAiMenuManagerSessionSnapshot,
+    prepareAiMenuManagerSessionWrite,
+} from '../../src/lib/ai-menu-manager/sessionIntegrity';
 
 const tId = '821';
 const sId = '822';
@@ -99,10 +104,18 @@ assert.ok(normalized);
 assert.equal(normalized.tId, tId);
 assert.equal(normalized.sId, sId);
 assert.equal(normalized.pendingOperations?.length, 1);
+assert.equal(normalized.hasPendingOperations, true);
+assert.equal(normalized.pendingCount, 1);
 assert.equal(normalized.pendingOperations?.[0].commandGroupSize, undefined);
 assert.equal(normalized.counters.commands, 4);
 assert.equal(normalized.counters.compoundCommands, 0);
 assert.equal('injected' in normalized, false, 'unknown top-level fields must not survive normalization');
+
+assert.equal(normalizeAiMenuManagerSessionSnapshot({
+    ...validSession(),
+    hasPendingOperations: false,
+    pendingCount: 0,
+}), null, 'persisted pending-state metadata must agree with canonical pending operations');
 
 const malformedCard = validSession();
 delete malformedCard.pendingOperations[0].card.actions;
@@ -212,5 +225,28 @@ assert.throws(() => buildAiMenuManagerReceipt({
     title: 'Title',
     message: 'Message',
 }), /Invalid proposal ID/);
+
+const oversizedHistory = {
+    ...normalized,
+    compactMessages: Array.from({ length: 20 }, (_, index) => ({
+        messageId: `large-${index}`,
+        role: 'owner' as const,
+        text: 'x'.repeat(50_000),
+        createdAt,
+    })),
+};
+const compacted = prepareAiMenuManagerSessionWrite(oversizedHistory);
+assert.ok(estimateAiMenuManagerSessionBytes(compacted) <= AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES);
+assert.equal(compacted.pendingOperations?.length, 1, 'size compaction must never remove pending work');
+assert.ok(compacted.compactMessages.length < oversizedHistory.compactMessages.length);
+
+assert.throws(() => prepareAiMenuManagerSessionWrite({
+    ...normalized,
+    compactMessages: [],
+    recentReceiptSummaries: [],
+    artifactRefs: [],
+    pendingCardSummaries: [{ proposalId: 'oversized-pending' } as any],
+    pendingOperations: [{ operationId: 'oversized-pending', payload: 'x'.repeat(AI_MENU_MANAGER_COMPACT_SESSION_MAX_BYTES) } as any],
+}), /Finish or cancel an existing Menu Manager card/);
 
 process.stdout.write('AI Menu Manager compact-session integrity tests passed.\n');

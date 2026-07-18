@@ -4,7 +4,7 @@
 > **Family:** MenuList Public Truth Tools
 > **Route:** `/tools/whatsapp-reply-pack`
 > **Status:** Implemented V0 public browser-local tool and V1 owner readiness module
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -39,6 +39,8 @@ The tool exists because many small businesses answer the same customer questions
 ## Boundary
 
 V0 uses owner-entered fields only. It does not send a WhatsApp message, call WhatsApp APIs, verify a phone number, open WhatsApp, fetch customer links, update external platforms, store reports, call AI/search providers, or promise ranking/citations.
+
+The local phone shape permits digits and normal separators only and requires a likely international country code. A `wa.me` preview is generated only after that validation; text containing enough digits plus arbitrary letters is not normalized into a customer link.
 
 The only network write is the optional consented follow-up through the existing `/api/public/contact` route.
 

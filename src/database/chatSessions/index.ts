@@ -1,7 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
-import uploadBase64ToStorage from '@database/storage/uploadBase64ToStorage';
+import uploadBase64ToStorage, { type SupportedFileType } from '@database/storage/uploadBase64ToStorage';
 import { answerlatticeRequestBodyComposer } from '@lib/answerlattice/documentComposer';
 import {
     ANSWERLATTICE_CHAT_SESSION_BATCH_UPDATE_LIMIT,
@@ -21,6 +21,11 @@ import {
     normalizeAnswerlatticeChatImageMimeType,
     stripDataUrlPrefix,
 } from '@lib/answerlattice/chatImagePolicy';
+import {
+    collectAnswerlatticeChatImageUrls,
+    filterUnreferencedAnswerlatticeChatImageUrls,
+    isAnswerlatticeChatImageStoragePath,
+} from '@lib/answerlattice/chatMediaReferences';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { apiCallComposerClientWithoutLoader } from '@lib/apiHelper/apiCallComposerClientWithoutLoader';
 import getActiveSession from '@lib/auth/getActiveSession';
@@ -28,11 +33,15 @@ import { answerlatticeFirebaseClient, answerlatticeStorage } from '@lib/firebase
 import { normalizeAnswerlatticeSearchHistoryId } from '@lib/answerlattice/searchHistoryIdBoundary';
 import { normalizeAnswerlatticeScopeDocumentId, resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
 import { createRandomIdSegment } from '@lib/runtime/randomId';
+import { logRuntimeDiagnostic, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { isDataUrl } from '@lib/media/mediaStorage';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
+import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
 import { ChatSession } from '@type/chatSession';
 import { UserUploadedFileType } from '@type/common';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, runTransaction, startAfter, Timestamp, where, writeBatch } from 'firebase/firestore';
+import { ref } from 'firebase/storage';
 
 const COLLECTION = DB_COLLECTIONS.CHAT_SESSIONS;
 const SEARCH_HISTORY_COLLECTION = DB_COLLECTIONS.AI_SEARCH_HISTORY;
@@ -213,15 +222,35 @@ export function assertChatSessionDeleteSucceeded(
     }
 }
 
-const collectChatImageUrls = (session?: ChatSession | null): string[] => {
-    const urls = new Set<string>();
-    (session?.messages || []).forEach((message) => {
-        const url = message.image?.url || message.image?.source;
-        if (typeof url === 'string' && url && !url.includes('base64')) {
-            urls.add(url);
-        }
+const cleanupChatImageUrls = async (
+    urls: readonly string[],
+    operation: 'append_compaction' | 'branch_replace' | 'session_delete' | 'search_failure',
+) => {
+    const uniqueUrls = Array.from(new Set(urls));
+    const results = await Promise.allSettled(
+        uniqueUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
+    );
+    const summary = summarizeStorageCleanupResults(results);
+    if (summary.failed > 0) {
+        logRuntimeFailure('answerlattice_chat_image_storage_cleanup_failed', new Error('storage_cleanup_failed'), {
+            operation,
+            attemptedCleanupCount: summary.attempted,
+            failedCleanupCount: summary.failed,
+        });
+    }
+    return summary;
+};
+
+const deferPersistedChatImageCleanup = (
+    urls: readonly string[],
+    operation: 'append_compaction' | 'branch_replace' | 'session_delete',
+): void => {
+    const retainedCount = new Set(urls.filter(Boolean)).size;
+    if (retainedCount === 0) return;
+    logRuntimeDiagnostic('answerlattice_chat_image_cleanup_deferred_shared_reference', {
+        operation,
+        retainedCount,
     });
-    return Array.from(urls);
 };
 
 const getDocRef = (docId: string) => doc(answerlatticeFirebaseClient, `${COLLECTION}`, docId);
@@ -274,9 +303,33 @@ const requirePersistedChatSession = (
     scope: AnswerlatticeChatSessionScope,
 ): ChatSession => {
     const session = parseAnswerlatticeChatSessionDocument({ id, value, scope });
-    if (!session) throw new Error('answerlattice_chat_scope_or_schema_invalid');
+    if (!session || !chatSessionImagesBelongToScope(session, scope)) {
+        throw new Error('answerlattice_chat_scope_or_schema_invalid');
+    }
     return session;
 };
+
+const isOwnedChatImageUrl = (value: unknown, scope: AnswerlatticeChatSessionScope): value is string => {
+    if (typeof value !== 'string' || !value) return false;
+    try {
+        const imageRef = ref(answerlatticeStorage, value);
+        const rootRef = ref(answerlatticeStorage);
+        return imageRef.bucket === rootRef.bucket
+            && isAnswerlatticeChatImageStoragePath(imageRef.fullPath, scope, COLLECTION);
+    } catch {
+        return false;
+    }
+};
+
+const chatSessionImagesBelongToScope = (
+    session: Pick<ChatSession, 'messages'>,
+    scope: AnswerlatticeChatSessionScope,
+): boolean => collectAnswerlatticeChatImageUrls(session).every((url) => isOwnedChatImageUrl(url, scope));
+
+const collectOwnedChatImageUrls = (
+    session: Pick<ChatSession, 'messages'>,
+    scope: AnswerlatticeChatSessionScope,
+): string[] => collectAnswerlatticeChatImageUrls(session).filter((url) => isOwnedChatImageUrl(url, scope));
 
 /**
  * Upload chat image to Firebase Storage with tenant/store isolation
@@ -298,27 +351,29 @@ export const uploadChatImage = async (
 ): Promise<UserUploadedFileType> => {
     return await apiCallComposer(
         async () => {
-            // Check if image contains base64 data
-            if (image.url?.includes('base64') || image.source?.includes('base64')) {
-                const context = await getRequiredChatReadContext();
-                const scopedSession = {
-                    ...context.session,
-                    tId: context.scope.tId,
-                    sId: context.scope.sId,
-                };
+            // New chat images must cross the validated data-URL upload boundary.
+            if (!isDataUrl(image.url) && !isDataUrl(image.source)) {
+                throw new Error('answerlattice_chat_image_data_url_required');
+            }
+            const context = await getRequiredChatReadContext();
+            const scopedSession = {
+                ...context.session,
+                tId: context.scope.tId,
+                sId: context.scope.sId,
+            };
 
-                const imageType = normalizeAnswerlatticeChatImageMimeType(image.type);
-                if (!isAllowedAnswerlatticeChatImageMimeType(imageType)) {
-                    throw new Error('Unsupported chat image type');
-                }
+            const imageType = normalizeAnswerlatticeChatImageMimeType(image.type);
+            if (!isAllowedAnswerlatticeChatImageMimeType(imageType)) {
+                throw new Error('Unsupported chat image type');
+            }
 
-                const randomId = createRandomIdSegment(16);
-                const imageId = `${Date.now()}-${randomId}`;
-                const base64String = image.url || image.source;
-                if (!base64String || base64String.length > ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH) {
-                    throw new Error('Chat image size exceeds the supported limit');
-                }
-                const dataUrlMatch = /^data:([^;,]+);base64,/i.exec(base64String);
+            const randomId = createRandomIdSegment(16);
+            const imageId = `${Date.now()}-${randomId}`;
+            const base64String = [image.url, image.source].find(isDataUrl);
+            if (!base64String || base64String.length > ANSWERLATTICE_CHAT_IMAGE_MAX_BASE64_LENGTH) {
+                throw new Error('Chat image size exceeds the supported limit');
+            }
+            const dataUrlMatch = /^data:([^;,]+);base64,/i.exec(base64String);
                 const declaredMimeType = normalizeAnswerlatticeChatImageMimeType(dataUrlMatch?.[1]);
                 if (!dataUrlMatch || declaredMimeType !== imageType) {
                     throw new Error('Chat image data does not match its declared type');
@@ -333,16 +388,16 @@ export const uploadChatImage = async (
                     throw new Error('Chat image size exceeds the supported limit');
                 }
 
-                // Generate tenant/store-scoped path for multi-tenancy isolation
-                const path = generateStoragePath({
+            // Generate tenant/store-scoped path for multi-tenancy isolation
+            const path = generateStoragePath({
                     collection: COLLECTION,
                     fileType: 'chatimages',
                     session: scopedSession,
                     fileId: imageId,
                 });
 
-                // Upload to Firebase Storage
-                const uploadedUrl = await uploadBase64ToStorage({
+            // Upload to Firebase Storage
+            const uploadedUrl = await uploadBase64ToStorage({
                     cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
                     customMetadata: {
                         product: 'answerlattice',
@@ -354,25 +409,30 @@ export const uploadChatImage = async (
                     storage: answerlatticeStorage,
                     url: base64String!,
                     path,
-                    type: imageType as any
-                }) as string;
+                    type: imageType as SupportedFileType
+            });
 
-                // Return image with storage URL
-                return {
+            // Return image with storage URL
+            return {
                     ...image,
                     url: uploadedUrl,
                     source: uploadedUrl, // Update source as well for preview
                     type: imageType,
                     size: decodedBytes,
-                };
-            }
-
-            // Return original if not base64
-            return image;
+            };
         },
         image,
         'uploadChatImage'
     );
+};
+
+export const discardUnpersistedChatImage = async (image: UserUploadedFileType | undefined): Promise<boolean> => {
+    if (!image) return false;
+    const context = await getRequiredChatReadContext();
+    const url = [image.url, image.source].find((candidate) => isOwnedChatImageUrl(candidate, context.scope));
+    if (!url) return false;
+    const summary = await cleanupChatImageUrls([url], 'search_failure');
+    return summary.failed === 0;
 };
 
 /**
@@ -388,6 +448,9 @@ export const saveChatSession = async (data: Omit<ChatSession, 'id'>) => {
             }
             const messages = normalizeAnswerlatticeChatMessagesForStorage(data.messages);
             if (messages.length === 0) throw new Error('answerlattice_chat_session_empty');
+            if (!chatSessionImagesBelongToScope({ messages }, context.scope)) {
+                throw new Error('answerlattice_chat_image_scope_invalid');
+            }
             const submitData = await answerlatticeRequestBodyComposer({
                 ...data,
                 pId: PRODUCT_IDS.ANSWERLATTICE,
@@ -400,33 +463,25 @@ export const saveChatSession = async (data: Omit<ChatSession, 'id'>) => {
             const sessionId = normalizeAnswerlatticeChatSessionId(messages[0]?.id);
             if (!sessionId) throw new Error('answerlattice_chat_session_request_id_invalid');
             let created: ChatSession | null = null;
-            try {
-                await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
-                    const sessionRef = getDocRef(sessionId);
-                    const existing = await transaction.get(sessionRef);
-                    if (existing.exists()) {
-                        const persisted = requirePersistedChatSession(sessionId, existing.data(), context.scope);
-                        if (
-                            persisted.uId !== context.userId
-                            || persisted.messages[0]?.id !== messages[0]?.id
-                        ) throw new Error('answerlattice_chat_session_request_id_conflict');
-                        created = persisted;
-                        return;
-                    }
-                    transaction.set(sessionRef, submitData);
-                    created = parseAnswerlatticeChatSessionDocument({
-                        id: sessionId,
-                        value: submitData,
-                        scope: context.scope,
-                    });
+            await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
+                const sessionRef = getDocRef(sessionId);
+                const existing = await transaction.get(sessionRef);
+                if (existing.exists()) {
+                    const persisted = requirePersistedChatSession(sessionId, existing.data(), context.scope);
+                    if (
+                        persisted.uId !== context.userId
+                        || persisted.messages[0]?.id !== messages[0]?.id
+                    ) throw new Error('answerlattice_chat_session_request_id_conflict');
+                    created = persisted;
+                    return;
+                }
+                transaction.set(sessionRef, submitData);
+                created = parseAnswerlatticeChatSessionDocument({
+                    id: sessionId,
+                    value: submitData,
+                    scope: context.scope,
                 });
-            } catch (createError) {
-                await Promise.allSettled(
-                    collectChatImageUrls({ ...data, messages } as ChatSession)
-                        .map((url) => deleteFileByUrl(url, answerlatticeStorage)),
-                );
-                throw createError;
-            }
+            });
             if (!created) throw new Error('answerlattice_chat_session_create_response_invalid');
             return created;
         },
@@ -553,6 +608,9 @@ export const appendChatSessionMessages = async (
             }
             const incomingMessages = messages.map(normalizeAnswerlatticeChatMessageForStorage);
             const context = await getRequiredChatMutationContext();
+            if (!chatSessionImagesBelongToScope({ messages: incomingMessages }, context.scope)) {
+                throw new Error('answerlattice_chat_image_scope_invalid');
+            }
             let wrote = false;
             let removedImageUrls: string[] = [];
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
@@ -583,9 +641,9 @@ export const appendChatSessionMessages = async (
                 ];
                 const nextMessages = normalizeAnswerlatticeChatMessagesForStorage(candidateMessages);
                 const retainedIds = new Set(nextMessages.map((message) => message.id));
-                removedImageUrls = collectChatImageUrls({
+                removedImageUrls = filterUnreferencedAnswerlatticeChatImageUrls(collectAnswerlatticeChatImageUrls({
                     messages: candidateMessages.filter((message) => !retainedIds.has(message.id)),
-                } as ChatSession);
+                }), { messages: nextMessages });
                 transaction.update(sessionRef, {
                     messages: nextMessages,
                     mode: nextMode,
@@ -597,11 +655,7 @@ export const appendChatSessionMessages = async (
                 });
                 wrote = true;
             });
-            if (wrote && removedImageUrls.length > 0) {
-                await Promise.allSettled(
-                    removedImageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
-                );
-            }
+            if (wrote) deferPersistedChatImageCleanup(removedImageUrls, 'append_compaction');
             return {
                 sessionId: normalizedSessionId,
                 success: true,
@@ -627,6 +681,9 @@ export const replaceChatSessionMessageBranch = async (
             }
             const replacement = normalizeAnswerlatticeChatMessageForStorage(replacementMessage);
             const context = await getRequiredChatMutationContext();
+            if (!chatSessionImagesBelongToScope({ messages: [replacement] }, context.scope)) {
+                throw new Error('answerlattice_chat_image_scope_invalid');
+            }
             let removedImageUrls: string[] = [];
             await runTransaction(answerlatticeFirebaseClient, async (transaction) => {
                 const sessionRef = getDocRef(normalizedSessionId);
@@ -635,15 +692,17 @@ export const replaceChatSessionMessageBranch = async (
                 const current = requirePersistedChatSession(normalizedSessionId, sessionSnapshot.data(), context.scope);
                 const replacedIndex = current.messages.findIndex((message) => message.id === normalizedReplacedMessageId);
                 if (replacedIndex < 0) throw new Error('answerlattice_chat_replaced_message_not_found');
-                removedImageUrls = collectChatImageUrls({
+                const removedCandidates = collectOwnedChatImageUrls({
                     messages: current.messages.slice(replacedIndex),
-                } as ChatSession).filter((url) => (
-                    url !== replacement.image?.url && url !== replacement.image?.source
-                ));
+                }, context.scope);
                 const nextMessages = normalizeAnswerlatticeChatMessagesForStorage([
                     ...current.messages.slice(0, replacedIndex),
                     replacement,
                 ]);
+                removedImageUrls = filterUnreferencedAnswerlatticeChatImageUrls(
+                    removedCandidates,
+                    { messages: nextMessages },
+                );
                 transaction.update(sessionRef, {
                     messages: nextMessages,
                     pId: PRODUCT_IDS.ANSWERLATTICE,
@@ -653,11 +712,7 @@ export const replaceChatSessionMessageBranch = async (
                     modifiedOn: Timestamp.now(),
                 });
             });
-            if (removedImageUrls.length > 0) {
-                await Promise.allSettled(
-                    removedImageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
-                );
-            }
+            deferPersistedChatImageCleanup(removedImageUrls, 'branch_replace');
             return {
                 sessionId: normalizedSessionId,
                 success: true,
@@ -685,17 +740,15 @@ export const deleteChatSession = async (sessionId: string) => {
                 const sessionDoc = await transaction.get(sessionRef);
                 if (!sessionDoc.exists()) throw new Error('answerlattice_chat_session_not_found');
                 const current = requirePersistedChatSession(normalizedSessionId, sessionDoc.data(), context.scope);
-                imageUrls = collectChatImageUrls(current);
+                imageUrls = collectOwnedChatImageUrls(current, context.scope);
                 transaction.delete(sessionRef);
             });
-            const cleanupResults = await Promise.allSettled(
-                imageUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
-            );
+            deferPersistedChatImageCleanup(imageUrls, 'session_delete');
             return {
                 sessionId: normalizedSessionId,
                 success: true,
                 deleted: true,
-                storageFilesDeleted: cleanupResults.filter((result) => result.status === 'fulfilled').length,
+                storageFilesDeleted: 0,
             } satisfies ChatSessionDeleteResult;
         },
         { sessionId },
@@ -722,12 +775,12 @@ export const getUserChatSessions = async (session: any) => {
             );
             const querySnapshot = await getDocs(q);
             return querySnapshot.docs.flatMap((sessionDoc) => {
-                const parsed = parseAnswerlatticeChatSessionDocument({
-                    id: sessionDoc.id,
-                    value: sessionDoc.data(),
-                    scope: context.scope,
-                });
-                return parsed && parsed.uId === context.userId ? [parsed] : [];
+                try {
+                    const parsed = requirePersistedChatSession(sessionDoc.id, sessionDoc.data(), context.scope);
+                    return parsed.uId === context.userId ? [parsed] : [];
+                } catch {
+                    return [];
+                }
             });
         },
         session,

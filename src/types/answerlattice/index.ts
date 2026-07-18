@@ -322,6 +322,7 @@ export const ANSWERLATTICE_SIGNAL_TYPE = {
     CHAT_NEGATIVE: 'chat_negative',
     ESCALATION: 'escalation',
     FEEDBACK: 'feedback',
+    GUIDED_RESOLUTION: 'guided_resolution',
     // Predictive Support (Expansion Item #12) — suggestion interaction signals
     SUGGESTION_SHOWN: 'suggestion_shown',
     SUGGESTION_CLICKED: 'suggestion_clicked',
@@ -688,7 +689,8 @@ export interface AnswerlatticeProcedureStep {
     stepOrder: number;                     // 1-based integer
     action: AnswerlatticeProcedureAction;       // From approved vocabulary
     instruction: string;                   // ≤80 chars, human-readable
-    target?: string;                       // UI element identifier (optional)
+    target?: string;                       // Semantic data-answerlattice-target value (optional)
+    expectedEvent?: string;                // Allowlisted host event that can advance this step
     expectedResult?: string;               // What should happen (optional, ≤120 chars)
     troubleshootingHint?: string;          // Fallback if step fails (optional, ≤200 chars)
 }
@@ -715,6 +717,8 @@ export const ANSWERLATTICE_PROCEDURE_CONSTRAINTS = {
     MAX_STEPS: 12,
     MIN_STEPS: 1,
     MAX_INSTRUCTION_LENGTH: 80,
+    MAX_TARGET_LENGTH: 120,
+    MAX_EXPECTED_EVENT_LENGTH: 120,
     MAX_EXPECTED_RESULT_LENGTH: 120,
     MAX_TROUBLESHOOTING_HINT_LENGTH: 200,
     MAX_WARNING_MESSAGE_LENGTH: 200,
@@ -917,6 +921,15 @@ export interface AnswerlatticeLaunchProofSummary {
     items: AnswerlatticeLaunchProofItem[];
 }
 
+export interface AnswerlatticeActivationAnswerTestSummary {
+    activeCaseCount: number;
+    firstTenCount: number;
+    latestProofStatus: 'ready' | 'review' | 'blocked' | null;
+    latestCriticalFailureCount: number;
+    latestProofStale: boolean;
+    lastRunAt: string | null;
+}
+
 export type AnswerlatticeSurfaceReadinessStatus = 'ready' | 'needs_mapping' | 'needs_articles' | 'open_signals';
 
 export interface AnswerlatticeSurfaceReadinessItem {
@@ -976,6 +989,7 @@ export interface AnswerlatticeActivationSummary {
         canonicalCoverageTotal?: number | null;
         trustScore?: number | null;
     };
+    answerTests: AnswerlatticeActivationAnswerTestSummary;
     compiledContext?: AnswerlatticeCompiledContextReadiness | null;
     launchProof: AnswerlatticeLaunchProofSummary;
     steps: AnswerlatticeActivationStep[];
@@ -1292,11 +1306,22 @@ export interface AnswerlatticeTrustMetrics {
     };
 
     resolution: {
-        rate: number;                // 0-100 (percentage)
-        resolved: number;            // Queries without escalation
+        rate: number;                // 0-100 (percentage without escalation)
+        resolved: number;            // Queries without escalation, not explicit resolution proof
         escalated: number;           // Queries with escalation signal
         total: number;
         previousRate: number;        // Yesterday's rate (for trend)
+    };
+
+    confirmedResolution?: {
+        rate: number;                // Explicit resolved / all explicit outcomes
+        confirmedResolved: number;
+        confirmedNotResolved: number;
+        explicitOutcomeTotal: number;
+        recontactEligible: number;
+        recontactedSameSession: number;
+        previousRate: number;
+        observationWindowHours: number;
     };
 
     drift: {
@@ -1802,6 +1827,17 @@ export interface AnswerlatticeKnowledgeIntakeJob extends AnswerlatticeDocumentId
         completedAt?: Timestamp | null;
         createdCount?: number;
     };
+    launchPackRun?: {
+        id: string;
+        sourceHash: string;
+        status: 'processing' | 'completed' | 'failed';
+        startedAt: Timestamp;
+        leaseExpiresAt: Timestamp;
+        completedAt?: Timestamp | null;
+        reviewItemIds?: string[];
+        createdCount?: number;
+        usageLedgerId?: string | null;
+    };
     publishRun?: {
         id: string;
         status: 'processing' | 'completed' | 'failed';
@@ -1868,6 +1904,8 @@ export interface AnswerlatticeIntakeReviewItem extends AnswerlatticeDocumentIden
     body?: string;
     question?: string;
     answer?: string;
+    answerType?: AnswerlatticeAnswerType;
+    procedure?: AnswerlatticeProcedure;
     routePath?: string | null;
     versionLabel?: string | null;
     tags?: string[];
@@ -1875,6 +1913,24 @@ export interface AnswerlatticeIntakeReviewItem extends AnswerlatticeDocumentIden
     entityIds?: string[];
     confidenceScore?: number;
     reason?: string;
+    launchPack?: {
+        version: 1;
+        sourceHash: string;
+        sourceIds: string[];
+        missingEvidence: string[];
+        expectedSource: 'canonical' | 'escalation' | 'no_answer';
+        riskLevel: 'standard' | 'critical';
+        requiresEscalation: boolean;
+        position: number;
+        applicability?: {
+            path?: string;
+            feature?: string;
+            workflow?: string;
+            plan?: string;
+            role?: string;
+            version?: string;
+        };
+    };
     publishTargetId?: string | null;
     publishedOn?: Timestamp | null;
     sortOrder?: number;

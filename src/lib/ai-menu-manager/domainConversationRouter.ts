@@ -5,6 +5,9 @@ import type {
     AiMenuManagerExecutionMode,
     AiMenuManagerSuggestedReply,
 } from '@type/aiMenuManager';
+import { FEATURE_FLAGS } from '@config/features';
+import { parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { getAiMenuManagerActionDefinition } from './actionRegistry';
 import type { AiMenuManagerContextPacket } from './contextPacket';
 import { findAiMenuManagerCategoryByName, findAiMenuManagerItemByName } from './contextPacket';
@@ -55,8 +58,8 @@ function listNames(entries: Array<{ name: string }>, limit = 4) {
 }
 
 function parsePrice(value?: string) {
-    const numeric = Number(String(value || '').replace(/[^0-9.]/g, ''));
-    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+    const numeric = parseSingleMenuPrice(value);
+    return numeric !== null && numeric > 0 ? numeric : null;
 }
 
 function nextSuggestedPrice(value?: string) {
@@ -92,7 +95,11 @@ function buildResult(params: {
 }
 
 function missingPriceItems(context: AiMenuManagerContextPacket) {
-    return activeItems(context).filter((item) => !parsePrice(item.price));
+    return activeItems(context).filter((item) => {
+        if (typeof item.hasDisplayPrice === 'boolean') return !item.hasDisplayPrice;
+        const result = normalizeOptionalMenuPrice(item.price);
+        return !result.success || !result.data;
+    });
 }
 
 function unavailableItems(context: AiMenuManagerContextPacket) {
@@ -163,7 +170,9 @@ function buildMenuIssues(context: AiMenuManagerContextPacket): MenuContextIssue[
             count: imageItems.length,
             examples: listNames(imageItems),
             label: 'Items without photos',
-            prompt: `Generate image for ${imageItems[0].name}`,
+            prompt: FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION
+                ? `Generate image for ${imageItems[0].name}`
+                : undefined,
             severity: 50,
         } : null,
         descriptionItems.length ? {
@@ -531,11 +540,13 @@ function resolvePhotoGapQuestion(text: string, context: AiMenuManagerContextPack
             projectRef(context),
             ...items.slice(0, 5).map((item) => ({ kind: 'menu_item' as const, id: item.id, label: item.name })),
         ],
-        suggestedReplies: items.slice(0, 3).map((item) => ({
-            label: `Generate ${item.name}`,
-            prompt: `Generate image for ${item.name}`,
-            helper: 'Prepare image draft',
-        })),
+        suggestedReplies: FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION
+            ? items.slice(0, 3).map((item) => ({
+                label: `Generate ${item.name}`,
+                prompt: `Generate image for ${item.name}`,
+                helper: 'Prepare image draft',
+            }))
+            : undefined,
     });
 }
 

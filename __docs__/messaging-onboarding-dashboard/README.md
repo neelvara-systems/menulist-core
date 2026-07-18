@@ -3,7 +3,7 @@
 **Feature:** Internal founder-facing dashboard for monitoring the messaging onboarding pipeline
 **Status:** IMPLEMENTED — Lean v1 using existing runtime telemetry
 **Route:** `/ops/messaging-onboarding`
-**Access:** `platformRole === "PLATFORM"` through protected API route
+**Access:** signed `platformRole === "PLATFORM"`, fail-closed DATA_READ limit, then exact current persisted platform-user authorization
 **Feature Flag:** `ENABLE_MESSAGING_ONBOARDING_DASHBOARD`
 **Last Updated:** June 29, 2026
 
@@ -64,7 +64,7 @@ The dashboard intentionally does not add OpenWA, `whatsapp-web.js`, QR-scanned s
 
 1. **Official provider only** — WhatsApp Cloud API remains the provider. WhatsApp Web automation is not adopted.
 2. **No new aggregation collection** — Lean v1 reuses `systemHealth`, `systemAlerts`, `messagingOnboardingEvents`, `messagingOnboardingInboundMessages`, and `messagingOnboardingSessions`.
-3. **Server-only reads** — The dashboard calls `/api/ops/messaging-onboarding`, protected with `withAuth({ requiredPlatformRole: "PLATFORM" })`.
+3. **Server-only reads** — The dashboard calls `/api/ops/messaging-onboarding`, protected with signed PLATFORM admission, a fail-closed limiter and `getCurrentPlatformUser()` before Admin reads.
 4. **No owner API-key model** — OpenWA's API-key idea maps to our existing platform role gate. Messaging provider credentials stay in Firebase Secret Manager.
 5. **Webhook observability from existing events** — Invalid HMAC, queue, processing, provider media, and send failures are surfaced from the existing event log.
 6. **Manual refresh only** — No realtime listeners and no polling loop.

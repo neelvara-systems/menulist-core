@@ -6,6 +6,14 @@
 
 ---
 
+## Saving business identity safely
+
+Street address and postal code are the customer-facing values shown from your saved business profile. If you add map coordinates, enter both latitude and longitude; MenuList stops the save if either value is missing or outside the valid map range. Maps, review, reservation, and order links must be valid secure links. If one is not valid, the page stays unchanged and the owner screen asks you to correct it rather than reporting a false success.
+
+Photo uploads are prepared immediately, but an uploaded photo becomes public truth only after the related save or publish succeeds. Resetting or leaving without saving removes abandoned uploads in the background; a cleanup failure does not undo a successful business-profile save.
+
+---
+
 ## Quick Summary
 
 Your official business page is a single link you can share with anyone. When customers open it, they see your business name, photos, Google rating, whether you're open, and a button to view your full menu. They can also call you, message you on WhatsApp, get directions, reserve a table, or place an order — all from one page.

@@ -13,15 +13,25 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { requestBodyComposer } from '@lib/apiHelper';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { revalidatePublicClientCache } from '@lib/cache/publicClientCache';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
+import { firebaseStorage } from '@lib/firebase/firebaseClient';
 import { uploadFile } from '@lib/firebase/storage';
+import getActiveSession from '@lib/auth/getActiveSession';
+import { normalizeStoreSwitchStoreId } from '@lib/multiOutlet/storeSwitchAccess';
+import { assertPreparedPWAIconFile, isPWAIconStoragePath } from '@lib/pwa/pwaIconStorageBoundary';
+import { readCommittedPWAIconOverride } from '@lib/pwa/pwaIconCommitBoundary';
+import { createRuntimeId } from '@lib/runtime/randomId';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
+import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
 import { getLocalizedText, getPrimaryLocalizedLanguage, isLocalizedText, LocalizedTextValue } from '@lib/localization/text';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, getDocFromServer, updateDoc } from 'firebase/firestore';
+import { ref } from 'firebase/storage';
 
 const COLLECTION = DB_COLLECTIONS.STORES;
 
@@ -64,6 +74,8 @@ export interface PWAIconUploadInput {
     onProgress?: (progress: number) => void;
 }
 
+export type PWAIconCleanupOperation = 'remove' | 'replace';
+
 export type PWASettingsUpdateResult = {
     success: true;
     updated: string[];
@@ -74,6 +86,10 @@ export type PWASettingsUpdateResult = {
 export type PWAIconOverrideUpdateResult = {
     success: true;
     pwaIconUpdatedAt: string;
+};
+
+export type PWAIconReplacementResult = PWAIconOverrideUpdateResult & {
+    url: string;
 };
 
 export const isPWASettingsUpdateResult = (result: unknown): result is PWASettingsUpdateResult => {
@@ -106,6 +122,41 @@ export function assertPWAIconOverrideUpdateSucceeded(result: unknown): asserts r
 // Mutations
 // ─────────────────────────────────────────────────────────────
 
+type PWAIconScope = { tenantId: number; storeId: number };
+
+const getRequiredPWAScope = async (
+    storeId: unknown,
+    tenantId?: unknown,
+): Promise<PWAIconScope> => {
+    const session = await getActiveSession();
+    const sessionTenantId = normalizeStoreSwitchStoreId(session?.tId);
+    const sessionStoreId = normalizeStoreSwitchStoreId(session?.sId);
+    const requestedStoreId = normalizeStoreSwitchStoreId(storeId);
+    const requestedTenantId = tenantId === undefined
+        ? sessionTenantId
+        : normalizeStoreSwitchStoreId(tenantId);
+    if (
+        !sessionTenantId
+        || !sessionStoreId
+        || !requestedTenantId
+        || !requestedStoreId
+        || requestedTenantId !== sessionTenantId
+        || requestedStoreId !== sessionStoreId
+    ) throw new Error('pwa_store_scope_invalid');
+    return { tenantId: requestedTenantId, storeId: requestedStoreId };
+};
+
+const isOwnedPWAIconUrl = (value: unknown, scope: PWAIconScope): value is string => {
+    if (typeof value !== 'string' || !value) return false;
+    try {
+        const iconRef = ref(firebaseStorage, value);
+        return iconRef.bucket === ref(firebaseStorage).bucket
+            && isPWAIconStoragePath(iconRef.fullPath, scope);
+    } catch {
+        return false;
+    }
+};
+
 /**
  * Update PWA behavior settings on a store. Merges only the provided fields;
  * all other store fields are untouched.
@@ -116,6 +167,7 @@ export const updatePWASettings = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            await getRequiredPWAScope(storeId);
             // Build a nested-key update payload so we only touch pwaSettings.*
             // Firestore dot-notation updates merge into existing map fields.
             const update: Record<string, any> = {};
@@ -156,6 +208,11 @@ export const updatePWAIconOverride = async (
 ) => {
     return await apiCallComposer(
         async () => {
+            const scope = await getRequiredPWAScope(storeId);
+            if (
+                (override.pwaIconMode === 'generated' && override.pwaIconOverrideUrl !== null)
+                || (override.pwaIconMode === 'override' && !isOwnedPWAIconUrl(override.pwaIconOverrideUrl, scope))
+            ) throw new Error('pwa_icon_override_invalid');
             const pwaIconUpdatedAt = new Date().toISOString();
             const update: Record<string, any> = {
                 'publicPresence.pwaIconMode': override.pwaIconMode,
@@ -181,21 +238,148 @@ export const uploadPWAIconOverride = async ({
     storeId,
     onProgress,
 }: PWAIconUploadInput): Promise<string> => {
-    const extFromType = file.type.split('/')[1] || 'png';
-    const safeExt = extFromType.toLowerCase().replace(/[^a-z0-9]/g, '') || 'png';
-    const fileId = `${Date.now()}-pwa-icon.${safeExt}`;
+    const scope = await getRequiredPWAScope(storeId, tenantId);
+    assertPreparedPWAIconFile(file);
+    const fileId = `${createRuntimeId('pwa_icon')}.png`;
     const storagePath = generateStoragePath({
         collection: 'stores',
         fileType: 'pwa-icons',
-        session: { tId: tenantId, sId: storeId },
+        session: { tId: scope.tenantId, sId: scope.storeId },
         fileId,
     });
 
     const result = await uploadFile(storagePath, file, onProgress || (() => { }), null, {
         cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
         contentType: file.type || 'image/png',
+    }, {
+        cleanupOnDownloadUrlFailure: true,
     });
     return result.downloadURL;
+};
+
+export const cleanupPWAIconOverrideUrls = async (
+    urls: readonly string[],
+    operation: PWAIconCleanupOperation,
+    scope: PWAIconScope,
+) => {
+    const uniqueUrls = Array.from(new Set(
+        urls.map((url) => url.trim()).filter((url) => isOwnedPWAIconUrl(url, scope)),
+    ));
+    const results = await Promise.allSettled(uniqueUrls.map((url) => deleteFileByUrl(url)));
+    const summary = summarizeStorageCleanupResults(results);
+    if (summary.failed > 0) {
+        logRuntimeFailure('pwa_icon_storage_cleanup_failed', new Error('storage_cleanup_failed'), {
+            operation,
+            attemptedCleanupCount: summary.attempted,
+            failedCleanupCount: summary.failed,
+        });
+    }
+    return summary;
+};
+
+const readCurrentPWAIconStore = async (scope: PWAIconScope): Promise<Record<string, unknown>> => {
+    const snapshot = await getDocFromServer(getDocRef(scope.storeId));
+    const data = snapshot.exists() ? snapshot.data() : null;
+    if (
+        !data
+        || String(data.storeId) !== String(scope.storeId)
+        || String(data.tenantId) !== String(scope.tenantId)
+    ) {
+        throw new Error('pwa_icon_current_store_scope_invalid');
+    }
+    return data;
+};
+
+const cleanupSupersededPWAIconUrl = async (
+    previousUrl: string,
+    operation: PWAIconCleanupOperation,
+    scope: PWAIconScope,
+): Promise<void> => {
+    try {
+        const currentStore = await readCurrentPWAIconStore(scope);
+        const publicPresence = currentStore.publicPresence;
+        if (
+            publicPresence
+            && typeof publicPresence === 'object'
+            && !Array.isArray(publicPresence)
+            && (publicPresence as Record<string, unknown>).pwaIconOverrideUrl === previousUrl
+        ) {
+            return;
+        }
+    } catch (error) {
+        logRuntimeFailure('pwa_icon_superseded_cleanup_guard_failed', error, {
+            operation,
+            previousUrlPresent: Boolean(previousUrl),
+        });
+        return;
+    }
+    await cleanupPWAIconOverrideUrls([previousUrl], operation, scope);
+};
+
+export const replacePWAIconOverride = async ({
+    file,
+    onProgress,
+    previousUrl,
+    storeId,
+    tenantId,
+}: PWAIconUploadInput & { previousUrl?: string | null }): Promise<PWAIconReplacementResult> => {
+    const scope = await getRequiredPWAScope(storeId, tenantId);
+    const uploadedUrl = await uploadPWAIconOverride({ file, onProgress, storeId, tenantId });
+    let result: PWAIconOverrideUpdateResult;
+    try {
+        result = await updatePWAIconOverride(storeId, {
+            pwaIconMode: 'override',
+            pwaIconOverrideUrl: uploadedUrl,
+        });
+        assertPWAIconOverrideUpdateSucceeded(result);
+    } catch (error) {
+        let committedOverride: ReturnType<typeof readCommittedPWAIconOverride> = null;
+        try {
+            committedOverride = readCommittedPWAIconOverride(
+                await readCurrentPWAIconStore(scope),
+                scope,
+                uploadedUrl,
+            );
+        } catch (readBackError) {
+            logRuntimeFailure('pwa_icon_override_write_outcome_ambiguous', readBackError, {
+                operation: 'replace',
+                uploadedUrlPresent: Boolean(uploadedUrl),
+            });
+            throw error;
+        }
+        if (committedOverride) {
+            result = {
+                success: true,
+                pwaIconUpdatedAt: committedOverride.pwaIconUpdatedAt,
+            };
+        } else {
+            await cleanupPWAIconOverrideUrls([uploadedUrl], 'replace', scope);
+            throw error;
+        }
+    }
+    if (previousUrl && previousUrl !== uploadedUrl) {
+        await cleanupSupersededPWAIconUrl(previousUrl, 'replace', scope);
+    }
+    return { ...result, url: uploadedUrl };
+};
+
+export const removePWAIconOverride = async ({
+    previousUrl,
+    storeId,
+    tenantId,
+}: {
+    previousUrl?: string | null;
+    storeId: string | number;
+    tenantId: string | number;
+}): Promise<PWAIconOverrideUpdateResult> => {
+    const scope = await getRequiredPWAScope(storeId, tenantId);
+    const result = await updatePWAIconOverride(storeId, {
+        pwaIconMode: 'generated',
+        pwaIconOverrideUrl: null,
+    });
+    assertPWAIconOverrideUpdateSucceeded(result);
+    if (previousUrl) await cleanupSupersededPWAIconUrl(previousUrl, 'remove', scope);
+    return result;
 };
 
 // ─────────────────────────────────────────────────────────────

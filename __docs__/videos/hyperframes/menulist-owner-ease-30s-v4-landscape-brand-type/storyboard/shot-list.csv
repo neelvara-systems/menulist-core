@@ -1,0 +1,11 @@
+frame_id,start_s,end_s,sample_s,slug,on_screen_copy,voiceover_cue,motion_audio
+01,0.0,2.0,0.0,brand-lockup,"MenuList | One approved customer link","MenuList is built for busy owners...","Poster-safe two-column lockup; one logo cycle; music audible"
+02,2.0,4.0,3.8,owner-relief-hook,"Do not type your menu again.","...not technical setup.","Lockup overlaps into owner-relief proof"
+03,4.0,7.0,4.8,upload-options,"Upload photos. Preview appears.","Take photos of the menu you already have, or upload a PDF.","Source cards lift in as a clean grid"
+04,7.0,10.0,8.2,preview-prepared,"Upload photos. Preview appears.","MenuList turns it into a private customer preview.","Upload state and restrained cursor cue"
+05,10.0,13.0,11.2,private-preview,"Review first. Then publish.","You do not type the full menu again.","Private preview enters with NOT PUBLIC state"
+06,13.0,16.0,14.4,review-and-approve,"Review first. Then publish.","You review the items, prices, and business details. Nothing goes public until you approve.","Review rows settle; cursor lands on approval action"
+07,16.0,20.0,18.8,approved-link-hub,"One link goes everywhere.","Once approved, one customer link powers...","Approved customer link becomes the hub"
+08,20.0,23.0,22.4,supported-surfaces,"One link goes everywhere.","...your QR, page, print files, WhatsApp sharing, and customer actions.","Supported surfaces finish around the approved source"
+09,23.0,27.0,25.4,ready-for-customers,"Put one approved customer link online.","MenuList. Upload what you have.","Three-step approved summary; music lifts"
+10,27.0,30.0,29.5,final-lockup,"MenuList | One approved customer link","Put one approved customer link online.","Founder-final lockup; approval sting; nonblank hold"

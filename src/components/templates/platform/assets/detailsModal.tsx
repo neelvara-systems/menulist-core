@@ -149,7 +149,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
                 if (activeDetails.name !== modalData.data.name) changedData.name = activeDetails.name;
                 if (activeDetails.tags !== modalData.data.tags) changedData.tags = activeDetails.tags;
                 if (selectedFile.src) {
-                    changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
+                    changedData.newPreview = selectedFile.src;
                     changedData.preview = activeDetails.preview
                     changedData.previewType = normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType)
                 };
@@ -159,7 +159,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
             } else {
                 const addResult = await addAssetsCategory(activeAssetsType, {
                     ...activeDetails,
-                    newPreview: isSvg() ? selectedFile.textContent : selectedFile.src,
+                    newPreview: selectedFile.src,
                     previewType: normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType),
                 })
                 onSubmit(addResult)
@@ -183,7 +183,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
 
             const changedData: any = activeDetails;
             if (selectedFile.src) {
-                changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
+                changedData.newPreview = selectedFile.src;
                 changedData.preview = activeDetails.preview
                 changedData.previewType = normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType)
             };
@@ -220,7 +220,7 @@ function DetailsModal({ activeAssetsType, modalData, onClose, onSubmit, activeCa
         dispatch(startLoader("onSaveItem"))
         try {
             if (selectedFile.src) {
-                changedData.newPreview = isSvg() ? selectedFile.textContent : selectedFile.src;
+                changedData.newPreview = selectedFile.src;
                 changedData.preview = activeDetails.preview
             changedData.previewType = normalizeSelectedAssetPreviewType(selectedFile.type, activeDetails.previewType)
             };

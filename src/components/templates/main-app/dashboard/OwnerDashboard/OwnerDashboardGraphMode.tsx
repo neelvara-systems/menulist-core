@@ -14,6 +14,8 @@ import type {
     SourceQuality,
     TopItem,
 } from '@template/main-app/projects/types';
+import { formatInUserTimezone } from '@util/dateTime';
+import { formatNumber } from '@util/formatters';
 import { Card, Empty, Flex, Segmented, Tag, Typography, theme } from 'antd';
 import React, { useMemo, useState } from 'react';
 import { LuActivity, LuMinus, LuMoveDown, LuMoveUp } from 'react-icons/lu';
@@ -69,7 +71,7 @@ const ACTION_KEYS: Array<keyof MenuActionBreakdown> = ['call', 'whatsapp', 'dire
 const ACTION_LABELS: Record<keyof MenuActionBreakdown, string> = {
     call: 'Calls',
     whatsapp: 'WhatsApp',
-    directions: 'Directions',
+    directions: 'Get directions',
     reserve: 'Reserve',
     order: 'Order',
 };
@@ -87,13 +89,16 @@ const TREND_SIGNAL_METRICS: OwnerDashboardTrendMetric[] = ['menu_activity', 'cus
 function formatDateLabel(dateKey: string): string {
     const date = new Date(`${dateKey}T00:00:00`);
     if (Number.isNaN(date.getTime())) return dateKey;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatInUserTimezone(date, { day: 'numeric', month: 'short' }, 'UTC');
 }
 
 function compactNumber(value: number): string {
     if (!Number.isFinite(value)) return '0';
-    if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(1)}k`;
-    return Math.round(value).toLocaleString('en-US');
+    return formatNumber(Math.round(value), {
+        compactDisplay: 'short',
+        maximumFractionDigits: 1,
+        notation: Math.abs(value) >= 1000 ? 'compact' : 'standard',
+    });
 }
 
 function addDaysToDateKey(dateKey: string, days: number): string {

@@ -37,10 +37,9 @@ const { Title, Text, Paragraph } = Typography;
 
 interface BackfillResult {
     date: string;
-    chats?: number;
-    status: 'success' | 'skipped' | 'error';
-    error?: string;
-    reason?: 'exists' | 'no_data';
+    chats: number;
+    status: 'success' | 'skipped';
+    partial: boolean;
 }
 
 export default function AnalyticsBackfill() {
@@ -189,22 +188,17 @@ export default function AnalyticsBackfill() {
             // Calculate summary
             const successCount = result.results.filter(r => r.status === 'success').length;
             const skippedCount = result.results.filter(r => r.status === 'skipped').length;
-            const errorCount = result.results.filter(r => r.status === 'error').length;
 
             setSummary({
                 total: result.results.length,
                 success: successCount,
                 skipped: skippedCount,
-                errors: errorCount,
+                errors: 0,
             });
 
             setProgress(100);
 
-            if (errorCount === 0) {
-                message.success(`Successfully created reports for ${successCount} days, skipped ${skippedCount} days (already had reports)`, 8);
-            } else {
-                message.warning(`Completed with some errors: ${successCount} succeeded, ${skippedCount} skipped, ${errorCount} failed`, 8);
-            }
+            message.success(`Successfully created reports for ${successCount} days, skipped ${skippedCount} unchanged days`, 8);
 
         } catch (error: any) {
             logRuntimeFailure('platform_analytics_backfill_failed', error, {
@@ -236,7 +230,6 @@ export default function AnalyticsBackfill() {
                 const config = {
                     success: { color: 'success', icon: <LuCheckCircle />, text: 'Success' },
                     skipped: { color: 'default', icon: <LuSkipForward />, text: 'Skipped' },
-                    error: { color: 'error', icon: <LuXCircle />, text: 'Error' },
                 };
                 const cfg = config[status as keyof typeof config];
                 return (
@@ -248,7 +241,6 @@ export default function AnalyticsBackfill() {
             filters: [
                 { text: 'Success', value: 'success' },
                 { text: 'Skipped', value: 'skipped' },
-                { text: 'Error', value: 'error' },
             ],
             onFilter: (value: any, record: BackfillResult) => record.status === value,
         },
@@ -262,18 +254,13 @@ export default function AnalyticsBackfill() {
         },
         {
             title: 'Details',
-            dataIndex: 'error',
-            key: 'error',
-            render: (error?: string, record?: BackfillResult) => {
-                if (error) {
-                    return <Text type="danger" style={{ fontSize: '12px' }}>{error}</Text>;
+            key: 'details',
+            render: (_: unknown, record?: BackfillResult) => {
+                if (record?.partial) {
+                    return <Text type="warning" style={{ fontSize: '12px' }}>Source limit reached; report is partial</Text>;
                 }
                 if (record?.status === 'skipped') {
-                    if (record?.reason === 'exists') {
-                        return <Text type="secondary" style={{ fontSize: '12px' }}>Already exists</Text>;
-                    } else {
-                        return <Text type="secondary" style={{ fontSize: '12px' }}>No chat data for this day</Text>;
-                    }
+                    return <Text type="secondary" style={{ fontSize: '12px' }}>No changes or no chat data</Text>;
                 }
                 return <Text type="success" style={{ fontSize: '12px' }}>Generated successfully</Text>;
             },

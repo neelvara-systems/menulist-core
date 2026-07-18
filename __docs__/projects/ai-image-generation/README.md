@@ -1,9 +1,9 @@
 # AI Image Generation — Documentation Hub
 
 > **Feature:** Menu Image Generation & Editing
-> **Status:** Controlled owner testing ready after July 2026 worker/auth/logging/preference diagnostics hardening
-> **Last Updated:** July 9, 2026
-> **Version:** 2.6
+> **Status:** Source-gate verified; target deployment, provider smoke, and authenticated owner QA remain release evidence
+> **Last Updated:** July 15, 2026
+> **Version:** 2.8
 
 ---
 
@@ -14,22 +14,28 @@
 | **CEO / PM**   | [\_spec.md](./ai-image-generation_spec.md)                 | Business requirements, user flows           |
 | **Developers** | [\_impl.md](./ai-image-generation_impl.md)                 | Technical blueprint, APIs, database schema  |
 | **Sales**      | [\_marketing.md](./ai-image-generation_marketing.md)       | Pitch deck, messaging, sales talking points |
+| **Website**    | [\_website.md](./ai-image-generation_website.md)           | Governed public-copy boundary               |
+| **Support**    | [\_helpdoc.md](./ai-image-generation_helpdoc.md)           | Owner instructions and recovery             |
+| **Firebase**   | [\_firebase.md](./ai-image-generation_firebase.md)         | Reads, writes, Storage, and retention costs |
+| **Mobile**     | [\_mobile-support.md](./ai-image-generation_mobile-support.md) | Mobile shell behavior and parity         |
 | **QA**         | [\_verification.md](./ai-image-generation_verification.md) | Verification report, findings, improvements |
 
 ---
 
 ## What Is This Feature?
 
-**One-liner:** Owner-reviewed image generation and editing system that prepares menu item images using Gemini 2.5 Flash Image.
+**One-liner:** A review-first image preparation system for menu items, menu covers, and Official Business Page covers using the shared Gemini image model.
 
-**Problem Solved:** Restaurant and business owners often lack professional photography for their menu items. Hiring photographers is expensive, time-consuming, and creates consistency issues across menu updates. Many businesses end up with no images or low-quality photos that hurt customer perception.
+**Problem Solved:** Owners may have missing, outdated, or inconsistent images and need a bounded way to prepare replacement drafts without publishing unchecked output.
 
-**Solution:** MenuList AI Image Generation provides two modes:
+**Solution:** MenuList provides these code-backed paths:
 
-1. **Single Image Generation** — Real-time AI generation for individual items with style customization
-2. **Bulk Image Generation** — Asynchronous batch processing for multiple items using Google Cloud Tasks
+1. **Single item generation** — synchronous preview generation with optional reference image and visual settings.
+2. **Batch item generation** — asynchronous processing for 1–50 selected items using Cloud Tasks.
+3. **Image editing** — owner-invoked edits of an existing item image, returned as drafts.
+4. **Menu and business covers** — manual draft generation for project/Official Business Page covers; a missing project cover may also be prepared after an accepted extraction result.
 
-Plus **AI Image Editing** to enhance, modify backgrounds, and apply professional effects to existing images.
+Generated item previews are not added to project truth until the owner accepts them. Cover generation uses the same guarded route/accounting path; generated public cover writes use the existing media preparation, authority, and cache-invalidation contracts.
 
 ---
 
@@ -74,6 +80,9 @@ Plus **AI Image Editing** to enhance, modify backgrounds, and apply professional
 | **Cloud Task Client**     | `src/lib/google/cloudTask/index.ts`                                                                                              |
 | **Batch Job Listener**    | `src/hooks/useImageBatchJobListener.ts`                                                                                          |
 | **Batch Job DAL**         | `src/database/imageBatchProcessing/index.tsx`                                                                                    |
+| **Project/Business Covers** | `src/lib/image/projectImageGeneration.ts`                                                                                       |
+| **Mobile Owner Surface**  | `src/components/mobile/screens/MobileMenuScreen.tsx`                                                                             |
+| **Retention Cleanup**     | `functions/src/schedulers/imageBatchRetentionBoundary.ts`, `functions/src/schedulers/menulistMaintenanceScheduler.ts`            |
 | **Preference Persistence** | `src/lib/imageGenPreferences.ts`                                                                                                 |
 | **Types**                 | `src/components/templates/main-app/projects/types/imageGeneration.types.ts`                                                      |
 | **Batch Job Types**       | `src/components/templates/main-app/projects/types/batchJob.types.ts`                                                             |
@@ -84,11 +93,11 @@ Plus **AI Image Editing** to enhance, modify backgrounds, and apply professional
 ## Feature Flag
 
 ```typescript
-// src/config/features.ts:526
+// src/config/features.ts
 ENABLE_AI_IMAGE_GENERATION: true; // Implementation complete - enabled
 ```
 
-Toggle to disable AI image generation without code changes.
+The flag is enforced by the single, edit, batch-trigger, and authenticated batch-worker routes; item, project-cover, business-cover, desktop, and mobile owner entry points; and AI Menu Manager image actions/suggestions. Changing this source flag requires the normal app deployment. When disabled, already-created batch jobs remain visible; worker requests return a retryable `503` without provider, accounting, Storage, or job-state work.
 
 ---
 
@@ -106,6 +115,8 @@ Toggle to disable AI image generation without code changes.
 
 | Version | Date         | Changes                                                                                                                                                       |
 | ------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2.8     | Jul 15, 2026 | Rotated the daily retention scan across every active store, distributed prompt-cache cleanup hourly with bounded backlog evidence, and capped Cloud Task creation at eight concurrent requests without changing batch results or accounting |
+| 2.7     | Jul 14, 2026 | Enforced the master flag across every provider/UI entry, capped batch selection at 50 before request admission, corrected mobile generation routing, added project-reference-protected orphan cleanup, refreshed mobile/docs/verification truth |
 | 2.6     | Jul 9, 2026  | Removed the deprecated Imagen branch from active generation code, route accounting, verifier expectations, and model documentation                             |
 | 2.5     | Jul 5, 2026  | Removed redundant single-image and edit-image normal-path debug breadcrumbs while preserving bounded local summaries and failure diagnostics                   |
 | 2.4     | Jul 5, 2026  | Added bounded local request, response, and transaction summaries plus validation, batch-trigger, and AI accounting input summaries for image generation/editing paths instead of full transaction objects, raw IDs, raw item/config payloads, or redundant batch-worker debug breadcrumbs |

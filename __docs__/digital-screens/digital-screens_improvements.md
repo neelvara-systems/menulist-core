@@ -3,7 +3,12 @@
 **Created:** February 8, 2026  
 **Source:** End-to-end codebase analysis (every file, every import)  
 **Goal:** Reduce Firebase cost without losing scale or performance  
-**Status:** 🔒 **ALL FINDINGS RESOLVED** — Findings 1,2,5,6,7,8,9 IMPLEMENTED | Findings 3,4 accepted as-is | Feature LOCKED v2.2
+**Status:** 🔒 **ALL FINDINGS RESOLVED** — Finding 3 is now implemented with shared rate limiting; Finding 4 remains an intentional reliability cost | Feature LOCKED
+**Last Updated:** July 16, 2026
+
+## Source Gate
+
+Treat the code paths and `npm run verify:digital-screens-boundary` as authority. This file records resolved findings; it is not permission to reintroduce screen management, token-bearing public documents, per-screen analytics, or decorative scope.
 
 ---
 
@@ -111,11 +116,11 @@ During the daily campaign sync (which already runs), compute top 3 menu items an
 
 ## FINDING 3: In-Memory Rate Limit on `/api/screen/seen` Doesn't Work on Serverless
 
-**Severity:** LOW  
-**Impact:** Potential for slightly more writes than expected (not a cost bomb)  
-**File:** `src/app/api/screen/seen/route.ts:22-23`
+**Severity:** MEDIUM | **Status:** ✅ IMPLEMENTED July 2026
+**Impact:** Prevent anonymous random-token read loops and repeated liveness writes across serverless instances
+**Files:** `src/app/api/screen/seen/route.ts`, `src/lib/rateLimit/configs.ts`
 
-### Current Implementation
+### Historical Implementation
 
 ```typescript
 const seenRequests = new Map<string, number>(); // Module-level in-memory map
@@ -123,27 +128,16 @@ const seenRequests = new Map<string, number>(); // Module-level in-memory map
 
 On Vercel serverless, each function instance has its own `Map`. The rate limit (1 per hour) only works within a single instance. If the function cold-starts or runs on a different instance, the Map is empty.
 
-### Why It's LOW Severity
+### Current Implementation
 
-The **client-side** localStorage check in `ScreenDisplay.tsx:131-146` is the primary rate limiter:
+The route now uses the shared Upstash-backed limiter twice:
 
-```typescript
-const todayKey = `screen_seen_${token}_${new Date().toISOString().slice(0, 10)}`;
-if (!localStorage.getItem(todayKey)) { ... }
-```
+- `SCREEN_SEEN_SIGNAL` limits hashed IPs before JSON parsing or Firestore lookup.
+- A hashed token/store key allows one useful lookup per hour across serverless instances.
+- The persisted UTC date guard skips a write if that screen was already recorded today.
+- Client localStorage remains a cost-saving first line, but is no longer the server security boundary.
 
-This reliably limits to 1 request per day per screen. The server-side Map is just a safety net. Worst case (localStorage cleared): a few extra writes per day, costing fractions of a cent.
-
-### Recommended Fix
-
-Either:
-
-1. **Accept it** — client-side check is sufficient. Document the limitation.
-2. **Replace with date check** — instead of Map, compare `screenLastSeenAt` timestamp. If < 1 hour ago, skip write. Adds 1 read but removes the Map entirely.
-
-### Recommendation
-
-**Accept it.** The client-side check works. The extra cost from the rare localStorage-clear scenario is negligible. Don't add complexity for a non-problem.
+Unexpected route failures return `503`; the display stays usable and does not cache the daily marker, so a later page load can retry.
 
 ---
 
@@ -262,7 +256,7 @@ const checkHealth = async () => {
 | --- | ---------------------------------------------- | -------- | ---------- | -------------------------------------------------------- |
 | 1   | Seen endpoint uses query instead of doc lookup | MEDIUM   | ✅ DONE    | Sends storeId, direct doc lookup with token verification |
 | 2   | Layer 3 (Evergreen) missing — dead code        | MEDIUM   | ✅ DONE    | Option A: fetch items in page.tsx, use slideGenerator.ts |
-| 3   | In-memory rate limit on serverless             | LOW      | — Accepted | Client-side localStorage check is sufficient             |
+| 3   | In-memory rate limit on serverless             | MEDIUM   | ✅ DONE    | Shared hashed IP + token/store rate limits and persisted daily guard |
 | 4   | 6-hour refresh causes extra SSR reads          | LOW      | — Accepted | Reliability > cost ($0.11/month at 1K)                   |
 | 5   | screenRenderer.ts dead code                    | VERY LOW | ✅ PARTIAL | page.tsx now imports SCREEN_CONFIG; unused helpers kept  |
 | 6   | No price display on slides                     | HIGH     | ✅ DONE    | Price added to ScreenSlide, rendered in both modes       |
@@ -445,8 +439,40 @@ const checkHealth = async () => {
 - `/screen/[token]` uses the projection only when `baseProjectId`, base menu slug context, `activeSpecialMenuId`, and `contentVersion` match current screen data.
 - Missing, stale, special-menu, or failed projection states fall back to the existing project-document reconstruction path.
 - Shared the screen menu extraction helper between client/server fallback paths and projection generation to avoid divergent menu output.
+- The summary and selected-project rebuild reads now use the same Firestore transaction as the content-version/mirror writes. Concurrent menu updates therefore retry the projection refresh instead of allowing stale items to carry the new version.
 
-**Firebase cost impact:** No new collection, index, function, scheduler, Storage path, or rule. A valid projection reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits by avoiding both the project summary lookup and project document fallback. Stores with initialized screens can spend up to 2 extra owner-side reads during public cache invalidation to refresh the projection.
+**Firebase cost impact:** No new operation, collection, index, function, scheduler, Storage path, or rule. The same existing projection reads are now transaction-bound. A valid projection reduces the typical cold public screen render from 4 reads to 2 reads before edge cache hits by avoiding both the project summary lookup and project document fallback. Stores with initialized screens can spend up to 2 extra owner-side reads during public cache invalidation to refresh the projection.
+
+---
+
+## FINDING 13: Public Listener Mirror Exposed The Bearer Screen Token
+
+**Severity:** CRITICAL (screen URL authorization) | **Status:** ✅ SOURCE FIXED July 16, 2026; ordered deployment pending
+
+The predictable `platformSummary/screen_{storeId}` document previously included `screenToken` and allowed anonymous reads. This defeated the token's high entropy because anyone who knew or guessed a store ID could recover the bearer URL token.
+
+**Fix:**
+
+- Remove `screenToken` from every app and Functions public-mirror writer.
+- Restrict anonymous Firestore access to exact-document `get`; public collection listing is denied.
+- Keep enabled state, store ID, content version, and timestamps only.
+- Add a dry-run-by-default, explicit-project backfill for existing mirrors.
+- Enforce rollout order: safe writers → backfill → tightened rule.
+
+**Cost:** One tiny replacement write per initialized screen during migration; steady-state read/write count is unchanged.
+
+## FINDING 14: Lifecycle, Kill-Switch, Permission, And Cache Parity Gaps
+
+**Severity:** HIGH | **Status:** ✅ IMPLEMENTED July 16, 2026
+
+- Expired slides were hidden from Highlights but still consumed the three-slide cap. Shared DAL reads now hide them and the next mutation prunes their Firestore references.
+- Mobile duplicated the `3` / `14` configuration and omitted owner-control tracking; it now uses shared flags and the desktop tracking contract.
+- Mobile Share, Mobile More, desktop Output Center, Business Settings, and both settings components now require the feature flag and `canManageDigitalScreens` before loading or exposing bearer links. Desktop/mobile Menu Manager omit the link unless the same permission is present, and their URL helper rejects malformed tokens.
+- The public display and seen route now respect the feature kill switch.
+- Highlights no longer overwrites a valid local fallback with an empty server payload, and it clamps the active index when a refreshed rotation shrinks.
+- Unexpected seen-route failures return a retryable response instead of being cached as a successful daily signal.
+
+**Cost:** No new steady-state Firebase operations. Expired reference pruning is folded into an existing mutation write.
 
 ---
 
@@ -467,3 +493,5 @@ const checkHealth = async () => {
 | 11.0    | 2026-06-02 | Codex   | **Content trust hardening:** Shared content normalization, safer price/category/tag parsing, factual labels, evergreen category variety, custom-slide artwork rendering, and caption safety.                                                                                                |
 | 12.0    | 2026-06-06 | Codex   | **Public read hardening:** Added generated available-item `screen.menuProjection` inside existing screen summary state with current-version/base-menu guards and project-read fallback.                                                                                                    |
 | 13.0    | 2026-07-01 | Codex   | **Seen-signal eligibility hardening:** Current cost baseline now includes the possible cached public store eligibility read before daily liveness writes. |
+| 14.0    | 2026-07-16 | Codex   | **End-to-end hardening:** Token-free get-only public mirror and migration guard; shared rate-limit truth; feature/permission/mobile parity; expired-slide capacity recovery; cache/index safety; retryable seen failures. |
+| 14.1    | 2026-07-16 | Codex   | **Projection consistency:** Moved summary/project projection rebuild reads into the existing invalidation transaction so concurrent menu saves retry without changing operation counts. |

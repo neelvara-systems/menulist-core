@@ -2,12 +2,14 @@
 
 import { assertFeedbackStatusUpdateSucceeded, updateFeedbackStatus } from '@database/guestFeedback';
 import { buildFeedbackReplyTemplates } from '@lib/feedback/feedbackReplyTemplates';
+import { copyRuntimeTextToClipboard } from '@lib/runtime/runtimeDiagnostics';
+import { generateWhatsAppLink, isValidWhatsAppNumber } from '@lib/utils/whatsappLink';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { formatDateTime } from '@util/dateTime';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
-import { LuCheck, LuMail, LuPhone, LuStar } from 'react-icons/lu';
+import { LuCheck, LuCopy, LuMail, LuMessageCircle, LuPhone, LuStar } from 'react-icons/lu';
 import { Button, Card, Flex, NavBar, Tag, Text, TextArea, Title, Toast } from '../antd';
 import type { MobileFeedbackItemType } from '../types';
 import {
@@ -28,12 +30,14 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
     const format = useFormatter();
     const { storeDetails } = useContext(PlatformGlobalDataContext);
     const [replyText, setReplyText] = useState('');
-    const [isSending, setIsSending] = useState(false);
+    const [isCopying, setIsCopying] = useState(false);
+    const [isResolving, setIsResolving] = useState(false);
     const replyTemplates = useMemo(() => buildFeedbackReplyTemplates({
         customerName: feedback.customerName,
         rating: feedback.rating,
         storeName: storeDetails?.name,
     }), [feedback.customerName, feedback.rating, storeDetails?.name]);
+    const canOpenWhatsApp = Boolean(feedback.phone && isValidWhatsAppNumber(feedback.phone));
 
     const getFeedbackWriteLogContext = (nextStatus: 'new' | 'resolved', replyLength?: number) => ({
         ...getMobileOwnerStoreLogContext(storeDetails?.storeId, storeDetails?.tenantId),
@@ -53,6 +57,8 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
         : <Tag color={feedback.needsAttention ? 'warning' : 'primary'}>{feedback.needsAttention ? t('needsAttention') : t('statusNew')}</Tag>;
 
     const handleResolve = async () => {
+        if (isResolving) return;
+        setIsResolving(true);
         try {
             const updated = await updateFeedbackStatus(feedback.id, 'resolved');
             assertFeedbackStatusUpdateSucceeded(
@@ -66,29 +72,23 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
         } catch (error) {
             logMobileOwnerFailure('mobile_feedback_status_update_failed', error, getFeedbackWriteLogContext('resolved'));
             Toast.show({ content: t('failedToUpdate'), duration: 2000 });
+        } finally {
+            setIsResolving(false);
         }
     };
 
-    const handleSendReply = async () => {
+    const handleCopyReply = async () => {
         const trimmedReply = replyText.trim();
         if (!trimmedReply) return;
-        setIsSending(true);
+        setIsCopying(true);
         try {
-            const updated = await updateFeedbackStatus(feedback.id, 'resolved', trimmedReply);
-            assertFeedbackStatusUpdateSucceeded(
-                updated,
-                feedback.id,
-                'resolved',
-                'mobile_feedback_reply_save_rejected',
-            );
-            onStatusUpdate(feedback.id, 'resolved');
-            Toast.show({ content: t('replySavedResolved'), duration: 1500 });
-            setReplyText('');
+            await copyRuntimeTextToClipboard(trimmedReply);
+            Toast.show({ content: t('replyCopied'), duration: 1500 });
         } catch (error) {
-            logMobileOwnerFailure('mobile_feedback_reply_save_failed', error, getFeedbackWriteLogContext('resolved', trimmedReply.length));
-            Toast.show({ content: t('failedToSend'), duration: 2000 });
+            logMobileOwnerFailure('mobile_feedback_reply_copy_failed', error, getFeedbackWriteLogContext(feedback.status, trimmedReply.length));
+            Toast.show({ content: t('failedToCopy'), duration: 2000 });
         } finally {
-            setIsSending(false);
+            setIsCopying(false);
         }
     };
 
@@ -205,16 +205,34 @@ export default function MobileFeedbackDetail({ feedback, onBack, onStatusUpdate 
                                 value={replyText}
                             />
                             <Flex gap={8}>
-                                <Button block disabled={!replyText.trim()} loading={isSending} onClick={() => void handleSendReply()}>
-                                    {t('sendReply')}
+                                <Button block disabled={!replyText.trim() || isResolving} loading={isCopying} onClick={() => void handleCopyReply()}>
+                                    <Flex align="center" gap={6} justify="center">
+                                        <LuCopy size={16} />
+                                        <Text>{t('copyReply')}</Text>
+                                    </Flex>
                                 </Button>
-                                <Button block fill="outline" onClick={() => void handleResolve()} style={{ borderColor: token.colorSuccess, color: token.colorSuccess }}>
+                                {canOpenWhatsApp && feedback.phone ? (
+                                    <Button
+                                        block
+                                        disabled={!replyText.trim() || isResolving}
+                                        fill="outline"
+                                        onClick={() => {
+                                            window.location.href = generateWhatsAppLink(feedback.phone!, replyText.trim());
+                                        }}
+                                    >
+                                        <Flex align="center" gap={6} justify="center">
+                                            <LuMessageCircle size={16} />
+                                            <Text>{t('openWhatsApp')}</Text>
+                                        </Flex>
+                                    </Button>
+                                ) : null}
+                            </Flex>
+                            <Button block disabled={isCopying} fill="outline" loading={isResolving} onClick={() => void handleResolve()} style={{ borderColor: token.colorSuccess, color: token.colorSuccess }}>
                                     <Flex align="center" gap={6} justify="center">
                                         <LuCheck size={16} />
                                         <Text style={{ color: token.colorSuccess }}>{t('resolve')}</Text>
                                     </Flex>
-                                </Button>
-                            </Flex>
+                            </Button>
                         </Flex>
                     </Card>
                 ) : (

@@ -3,10 +3,14 @@
 > **Feature:** Messaging Onboarding — Zero-Friction SMB Acquisition Engine
 > **Architecture:** Provider-Agnostic core with WhatsApp as the only active registered provider; Telegram/LINE/Viber remain reserved extension candidates
 > **Status:** Source-implemented, provider-disabled — not a current launch or deploy certification
-> **Last Updated:** July 13, 2026
-> **Version:** 3.19
+> **Last Updated:** July 16, 2026
+> **Version:** 3.21
 
 > **Launch boundary:** Not current launch certification or deploy approval. Current source registers WhatsApp only, while checked-in Functions environments keep provider processing disabled. `/whatsapp` is informational and routes its actions to the signed-in `/create-menu` photo or public-link intake. Production use still requires current production-readiness audit and External Certification Runbook evidence, `npm run verify:production-readiness-local`, a final owned provider account, real Meta secrets, webhook registration, explicit target enablement and scoped deploy evidence, provider smoke, browser/device QA, and production-host smoke.
+
+> **July 13 ops read-model audit:** `/api/ops/messaging-onboarding` remains a platform-only, no-store, manually refreshed monitor. Persisted health, event, session, and alert documents now pass through `src/lib/ops/messagingOnboardingOpsBoundary.ts`; stored objects are projected field by field, health alerts and table rows are capped, timestamps and nonnegative counters are validated, owner/provider identifiers are re-masked, and browser responses must match the same canonical contract. The 24-hour event window is closed at one generated-at timestamp, current refreshes abort superseded requests, and a failed current refresh clears stale monitor state. Messaging alerts use an indexed `metadata.subsystem == messaging_onboarding` query capped at eight rows instead of reading 30 cross-subsystem rows and filtering in memory.
+
+> **July 16 provider-network boundary:** Every authenticated WhatsApp Graph lookup, media download, text send, and interactive send refuses redirects and has a bounded abort timeout. This prevents bearer credentials from following a provider redirect to another target and prevents a stalled upstream call from occupying a worker indefinitely. The provider remains disabled in checked-in Functions environments; real-account smoke and target enablement remain external certification work.
 
 ---
 
@@ -21,8 +25,9 @@
 | **Help Center**  | [\_helpdoc.md](./messaging-onboarding_helpdoc.md)               | Customer help documentation                                                                     |
 | **Cost Control** | [\_firebase.md](./messaging-onboarding_firebase.md)             | Firebase reads/writes/deletes, cost estimates                                                   |
 | **Mobile**       | [\_mobile-support.md](./messaging-onboarding_mobile-support.md) | Mobile admission test results                                                                   |
-| **QA**           | [\_test-cases.md](./messaging-onboarding_test-cases.md)         | 185 test cases across 21 categories (incl. multi-provider, publish identity, internal tracking, failure recovery, production hardening) |
+| **QA**           | [\_test-cases.md](./messaging-onboarding_test-cases.md)         | 187 test cases across 21 categories (incl. multi-provider, publish identity, provider-network safety, failure recovery, production hardening) |
 | **Ops**          | [\_runbook.md](./messaging-onboarding_runbook.md)               | Provider credentials, dashboard usage, triage, and safe operational actions                     |
+| **Verification** | [Item 6 verification](../owner-notifications/owner-notifications-messaging-onboarding_verification.md) | End-to-end owner-notification/messaging boundary, corrections, gates, and pending external evidence |
 
 ---
 
@@ -79,7 +84,7 @@ Messaging tunnel CLOSED permanently
 | Publish executor       | `src/lib/messaging-onboarding/publish.ts`                                                   |
 | Legacy publish copy    | `functions/src/messagingOnboarding/publishPipeline.ts`                                      |
 | Health/cost monitor    | `functions/src/messagingOnboarding/healthMonitor.ts`                                        |
-| Ops monitor            | `src/app/(main)/ops/messaging-onboarding/page.tsx` + `src/app/api/ops/messaging-onboarding/route.ts` |
+| Ops monitor            | `src/app/(main)/ops/messaging-onboarding/page.tsx` + `src/app/api/ops/messaging-onboarding/route.ts` + `src/lib/ops/messagingOnboardingOpsBoundary.ts` |
 | Session types          | `functions/src/types/messagingOnboarding.types.ts`                                          |
 | Preview page           | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx`                                   |
 | Extraction watcher     | `functions/src/messagingOnboarding/extractionWatcher.ts`                                    |
@@ -135,6 +140,7 @@ process.env.ENABLE_MESSAGING_ONBOARDING_TRACKING // defaults true
 
 | Version | Date         | Changes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3.21    | July 16, 2026 | **PROVIDER REDIRECT AND TIMEOUT CLOSURE.** Authenticated WhatsApp Graph lookup/download/send calls now refuse redirects and use bounded abort timeouts; source tests and the extraction verifier preserve the boundary. |
 | 3.19    | July 13, 2026 | **TERMINAL CLEANUP POISON-ROW CLOSURE.** An invalid `EXPIRED`/`COOLDOWN` document beyond retention is precondition-deleted by its queried document reference without trusting or deleting any embedded Storage target. Corrupt terminal rows therefore cannot recycle through the bounded query or mutate another session; the deliberately untouched unsafe orphan is surfaced in bounded logs. |
 | 3.18    | July 13, 2026 | **ORPHAN-CLEANUP FAILURE CONVERGENCE.** Transient cleanup reads/completion transactions now preserve durable retry state instead of escaping after publish, fix, or full-resend commits; concurrent drainers count each removed pointer once; and terminal cooldown sessions enter the same safe 48-hour retention cleanup as expired sessions. |
 | 3.17    | July 13, 2026 | **CLEANUP POISON-ROW QUARANTINE.** Invalid durable upload-cleanup rows retain every raw Storage pointer for investigation or later safe recovery, but transactionally clear only their retry selector so a bounded daily query cannot be permanently occupied or starve later valid deletion work. |

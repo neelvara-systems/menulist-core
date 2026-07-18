@@ -134,8 +134,9 @@
       ]
     },
     {
-      "id": "menulist-one-link-motion-v2",
-      "name": "MenuList One Link Motion",
+    "id": "menulist-one-link-motion-v2",
+    "name": "MenuList One Link Motion",
+    "selectionStatus": "primary-default",
       "purpose": "Launch cuts, one-link reels, and paid social",
       "targetDurationSeconds": 30,
       "seed": 260719,
@@ -192,8 +193,9 @@
       ]
     },
     {
-      "id": "menulist-outlet-control-v2",
-      "name": "MenuList Outlet Control",
+    "id": "menulist-outlet-control-v2",
+    "name": "MenuList Outlet Control",
+    "selectionStatus": "approved-operational-alternate",
       "purpose": "Multi-location and premium-plan explainers",
       "targetDurationSeconds": 60,
       "seed": 260721,

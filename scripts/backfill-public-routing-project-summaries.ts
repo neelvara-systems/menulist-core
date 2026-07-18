@@ -7,6 +7,7 @@
  * - skips stores with no canonical project docs instead of creating menus
  * - writes only lightweight summary/routing data, never menu body data
  * - uses the canonical summary writer helper so the storage shape stays aligned
+ * - carries valid historical publish truth into both project summary and store
  *
  * Usage:
  *   FIREBASE_PROJECT_ID=menulist-qa npx ts-node --compiler-options '{"module":"CommonJS"}' scripts/backfill-public-routing-project-summaries.ts
@@ -97,6 +98,33 @@ function resolveText(value: unknown, fallback: string): string {
     return fallback;
 }
 
+function normalizeTimestamp(value: unknown): FirebaseFirestore.Timestamp | null {
+    if (!value) return null;
+    try {
+        let millis: number | null = null;
+        if (value instanceof Date) {
+            millis = value.getTime();
+        } else if (typeof value === 'string') {
+            millis = Date.parse(value);
+        } else if (typeof value === 'number') {
+            millis = value;
+        } else if (typeof value === 'object') {
+            const timestamp = value as {
+                _seconds?: number;
+                seconds?: number;
+                toMillis?: () => number;
+            };
+            if (typeof timestamp.toMillis === 'function') millis = timestamp.toMillis();
+            else if (typeof timestamp.seconds === 'number') millis = timestamp.seconds * 1000;
+            else if (typeof timestamp._seconds === 'number') millis = timestamp._seconds * 1000;
+        }
+        if (millis === null || !Number.isFinite(millis) || millis <= 0) return null;
+        return admin.firestore.Timestamp.fromMillis(millis);
+    } catch {
+        return null;
+    }
+}
+
 function makeSlug(projectId: string, data: Record<string, any>): string {
     const existing = typeof data.slug === 'string' ? data.slug.trim().toLowerCase() : '';
     if (existing) return existing;
@@ -111,12 +139,14 @@ function buildSummary(projectId: string, data: Record<string, any>, markDefault:
     const name = data.name || { en: projectId.includes('-default-') ? 'Menu' : resolveText(data.name, 'Menu') };
     const description = data.description;
     const specialMenu = data._specialMenu && typeof data._specialMenu === 'object' ? data._specialMenu : null;
+    const lastPublishedAt = normalizeTimestamp(data.lastPublishedAt);
     return Object.fromEntries(Object.entries({
         name,
         ...(description !== undefined ? { description } : {}),
         ...(data.projectImage !== undefined ? { projectImage: data.projectImage } : {}),
         ...(data.businessCategory !== undefined ? { businessCategory: data.businessCategory } : {}),
         ...(data.businessType !== undefined ? { businessType: data.businessType } : {}),
+        ...(lastPublishedAt ? { lastPublishedAt } : {}),
         active: data.active !== false,
         isDefault: data.isDefault === true || markDefault,
         slug: makeSlug(projectId, data),
@@ -204,10 +234,18 @@ async function main() {
         const hasExplicitDefault = projectDocs.some((doc) => doc.data()?.isDefault === true);
         const fallbackDefaultId = activeRegular[0]?.id || projectDocs[0]?.id || '';
         const summaries: Record<string, Record<string, any>> = {};
+        let latestPublishedAt: FirebaseFirestore.Timestamp | null = null;
         for (const projectDoc of projectDocs) {
+            const projectData = projectDoc.data() || {};
+            const projectPublishedAt = projectData.active === false
+                ? null
+                : normalizeTimestamp(projectData.lastPublishedAt);
+            if (projectPublishedAt && (!latestPublishedAt || projectPublishedAt.toMillis() > latestPublishedAt.toMillis())) {
+                latestPublishedAt = projectPublishedAt;
+            }
             summaries[projectDoc.id] = buildSummary(
                 projectDoc.id,
-                projectDoc.data() || {},
+                projectData,
                 !hasExplicitDefault && projectDoc.id === fallbackDefaultId,
             );
         }
@@ -219,7 +257,14 @@ async function main() {
         const projectIds = Object.keys(summaries).join(', ');
         console.log(`${write ? '[write]' : '[dry]'} store=${storeId} tenant=${tenantId}: ${projectDocs.length} project(s) -> ${projectIds}`);
         if (write) {
-            await summaryRef.set(payload, { merge: true });
+            const batch = db.batch();
+            batch.set(summaryRef, payload, { merge: true });
+            if (latestPublishedAt) {
+                batch.set(storeDoc.ref, {
+                    lastPublishedAt: latestPublishedAt,
+                }, { merge: true });
+            }
+            await batch.commit();
             writtenStores += 1;
         }
     }

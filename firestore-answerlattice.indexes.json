@@ -44,10 +44,17 @@
         { "fieldPath": "sId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" },
         { "fieldPath": "active", "order": "ASCENDING" },
-        {
-          "fieldPath": "embeddingV2",
-          "vectorConfig": { "dimension": 768, "flat": {} }
-        }
+        { "fieldPath": "entityIds", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "kb_articles",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "entityIds", "arrayConfig": "CONTAINS" }
       ]
     },
     {
@@ -65,6 +72,16 @@
       "fields": [
         { "fieldPath": "pId", "order": "ASCENDING" },
         { "fieldPath": "cacheKey", "order": "ASCENDING" },
+        { "fieldPath": "tId", "order": "ASCENDING" },
+        { "fieldPath": "sId", "order": "ASCENDING" },
+        { "fieldPath": "createdOn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "aiSearchHistory",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "pId", "order": "ASCENDING" },
         { "fieldPath": "tId", "order": "ASCENDING" },
         { "fieldPath": "sId", "order": "ASCENDING" },
         { "fieldPath": "createdOn", "order": "DESCENDING" }
@@ -1740,16 +1757,6 @@
       ]
     },
     {
-      "collectionGroup": "chatSessions",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "pId", "order": "ASCENDING" },
-        { "fieldPath": "tId", "order": "ASCENDING" },
-        { "fieldPath": "sId", "order": "ASCENDING" },
-        { "fieldPath": "createdOn", "order": "DESCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "chatAnalytics",
       "queryScope": "COLLECTION",
       "fields": [
@@ -1845,6 +1852,26 @@
       "collectionGroup": "answerlattice_changelogEntryIndex",
       "fieldPath": "expiresAt",
       "ttl": true,
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "messages",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "statuses",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "documents",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "supportTickets",
+      "fieldPath": "logs",
       "indexes": []
     }
   ]

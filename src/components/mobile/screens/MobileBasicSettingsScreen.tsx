@@ -10,6 +10,7 @@ import MediaImageCard from '@/components/shared/media/MediaImageCard';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage, toPreparedUploadName, type MediaImageCropIntent } from '@lib/media/prepareMediaImage';
 import { DEFAULT_PHONE_COUNTRY_CODE, getDialCodeForCountry, getUniquePhoneCountries, normalizePhoneNumberForStorage } from '@lib/phone/phoneNumber';
+import { normalizeGeoCoordinateDraft } from '@lib/businessIdentity/geoCoordinates';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useCallback, useContext, useEffect, useState } from 'react';
@@ -39,7 +40,7 @@ const BUSINESS_TYPE_OPTIONS = BUSINESS_TYPES.map((businessType) => ({
 
 function getInitialFormData(storeDetails: any, tenantDetails?: any) {
     return {
-        addressLine: storeDetails?.addressLine || '',
+        addressLine: storeDetails?.addressLine || storeDetails?.address || '',
         area: storeDetails?.area || '',
         businessType: storeDetails?.businessType || '',
         city: storeDetails?.city || '',
@@ -52,12 +53,12 @@ function getInitialFormData(storeDetails: any, tenantDetails?: any) {
         district: storeDetails?.district || '',
         email: storeDetails?.email || '',
         gstn: storeDetails?.gstn || '',
-        latitude: storeDetails?.geo?.latitude ? String(storeDetails.geo.latitude) : '',
-        longitude: storeDetails?.geo?.longitude ? String(storeDetails.geo.longitude) : '',
+        latitude: storeDetails?.geo?.latitude !== undefined && storeDetails?.geo?.latitude !== null ? String(storeDetails.geo.latitude) : '',
+        longitude: storeDetails?.geo?.longitude !== undefined && storeDetails?.geo?.longitude !== null ? String(storeDetails.geo.longitude) : '',
         name: storeDetails?.name || '',
         tenantName: storeDetails?.tenantName || tenantDetails?.name || '',
         phoneNumber: storeDetails?.phoneNumber || '',
-        postalCode: storeDetails?.postalCode || '',
+        postalCode: storeDetails?.postalCode || storeDetails?.pincode || '',
         state: storeDetails?.state || '',
     };
 }
@@ -103,8 +104,11 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             return;
         }
 
-        const latitude = formData.latitude.trim() ? Number(formData.latitude) : undefined;
-        const longitude = formData.longitude.trim() ? Number(formData.longitude) : undefined;
+        const normalizedGeo = normalizeGeoCoordinateDraft(formData.latitude, formData.longitude);
+        if (!normalizedGeo.ok) {
+            Toast.show({ content: 'Enter both latitude and longitude using valid map coordinates.', duration: 1800 });
+            return;
+        }
         const businessCategory = resolveStoreBusinessCategory(formData.businessType, storeDetails.businessCategory);
         const normalizedPhone = normalizePhoneNumberForStorage({
             countryCode: formData.countryCode,
@@ -134,9 +138,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
             state: formData.state,
             tenantId: storeDetails.tenantId, // Required for the atomic canonical-store/summary scope check
         };
-        if (latitude !== undefined && longitude !== undefined) {
-            updates.geo = { latitude, longitude };
-        }
+        if (normalizedGeo.geo || storeDetails.geo) updates.geo = normalizedGeo.geo;
         if (selectedLogo?.url && selectedLogo.url !== storeDetails.logo) {
             updates.imageToUpdate = selectedLogo.url;
             updates.imageType = selectedLogo.type || 'image/png';
@@ -212,6 +214,8 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 contactPersonName: storeDetails.contactPersonName,
                 contactPersonNumber: storeDetails.contactPersonNumber,
                 country: storeDetails.country,
+                countryCode: storeDetails.countryCode,
+                dialCode: storeDetails.dialCode,
                 email: storeDetails.email,
                 district: storeDetails.district,
                 geo: storeDetails.geo,
@@ -219,6 +223,7 @@ export default function MobileBasicSettingsScreen({ onBack }: MobileBasicSetting
                 name: storeDetails.name,
                 tenantName: storeDetails.tenantName,
                 postalCode: storeDetails.postalCode,
+                phone: (storeDetails as any).phone,
                 phoneNumber: storeDetails.phoneNumber,
                 state: storeDetails.state,
             }));

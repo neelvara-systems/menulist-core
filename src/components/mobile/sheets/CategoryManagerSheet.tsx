@@ -2,6 +2,7 @@
 
 import CategoryIcon from '@atoms/CategoryIcon';
 import { getOwnerLabels } from '@config/businessLabels';
+import { getPublicItemListPriceLabel, hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import type { TimeSlotPreset } from '@type/platform/store';
 import { closestCenter, DndContext, DragEndEvent, DragOverlay, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -31,7 +32,11 @@ export type MobileCategoryReorderItem = {
     name: string;
     active: boolean;
     hiddenByCategory?: boolean;
-    price?: number;
+    price?: string | number;
+    attributes?: Array<{
+        active?: boolean;
+        price?: string | number;
+    }>;
     hasImage?: boolean;
     hasDescription?: boolean;
 };
@@ -42,6 +47,7 @@ interface CategoryManagerSheetProps {
     categoryIconsEnabled?: boolean;
     categories: MobileCategoryItem[];
     categoryItems: Record<string, MobileCategoryReorderItem[]>;
+    currencySymbol?: string;
     initialCategoryId?: string | null;
     initialMode?: 'manage' | 'reorder';
     presets: TimeSlotPreset[];
@@ -141,6 +147,7 @@ export default function CategoryManagerSheet({
     categoryIconsEnabled = true,
     categories,
     categoryItems,
+    currencySymbol = '₹',
     initialCategoryId = null,
     initialMode = 'manage',
     presets,
@@ -292,7 +299,7 @@ export default function CategoryManagerSheet({
         const hasUnavailable = draftItems.some((item) => item.available === false);
         const hasMissingPhoto = draftItems.some((item) => item.hasImage === false);
         const hasMissingDescription = draftItems.some((item) => item.hasDescription === false);
-        const hasMissingPrice = draftItems.some((item) => !(item.price && item.price > 0));
+        const hasMissingPrice = draftItems.some((item) => !hasPublicItemDisplayPrice(item));
 
         return [
             hasInactive ? renderStatusBadge(t('inactive'), STATUS_COLORS.inactive) : null,
@@ -679,11 +686,12 @@ export default function CategoryManagerSheet({
                                                         if (item.available === false) statusDots.push(renderStatusDot(STATUS_COLORS.soldOut, `${item.id}-unavailable`));
                                                         if (item.hasImage === false) statusDots.push(renderStatusDot(STATUS_COLORS.missingPhoto, `${item.id}-image`));
                                                         if (item.hasDescription === false) statusDots.push(renderStatusDot(STATUS_COLORS.missingDescription, `${item.id}-description`));
-                                                        if (!(item.price && item.price > 0)) statusDots.push(renderStatusDot(STATUS_COLORS.missingPrice, `${item.id}-price`));
+                                                        const priceLabel = getPublicItemListPriceLabel(item, currencySymbol);
+                                                        if (!priceLabel) statusDots.push(renderStatusDot(STATUS_COLORS.missingPrice, `${item.id}-price`));
 
                                                         return (
                                                             <SortableReorderRow
-                                                                accessory={item.price && item.price > 0 ? <Tag>${item.price}</Tag> : undefined}
+                                                                accessory={priceLabel ? <Tag>{priceLabel}</Tag> : undefined}
                                                                 description={statusDots.length > 0 ? (
                                                                     <Flex align="center" gap={6} wrap="wrap">
                                                                         {statusDots}

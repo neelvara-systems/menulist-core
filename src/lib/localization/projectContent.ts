@@ -4,7 +4,7 @@ import {
     getPreferredDefaultLanguage,
     normalizeProjectLanguages,
 } from './languagePolicy';
-import { getLocalizedDraftText, getLocalizedText, getPrimaryLocalizedLanguage, toLocalizedText, updateLocalizedText } from './text';
+import { getLocalizedDraftText, getPrimaryLocalizedLanguage, toLocalizedText, updateLocalizedText } from './text';
 
 export type ProjectPublicContentFieldKey = 'name' | 'description' | 'specialMenuDisplayName' | 'specialNote';
 
@@ -122,12 +122,7 @@ export function getMissingProjectPublicContentGaps(
 
     return PROJECT_PUBLIC_CONTENT_READERS.flatMap((field) => {
         const currentValue = field.readValue(projectDetails);
-        const sourceValue = getLocalizedText(
-            currentValue as any,
-            CANONICAL_SOURCE_LANGUAGE,
-            getPrimaryLocalizedLanguage(currentValue as any, CANONICAL_SOURCE_LANGUAGE),
-            '',
-        );
+        const sourceValue = getExactLocalizedProjectValue(currentValue, CANONICAL_SOURCE_LANGUAGE);
 
         if (!sourceValue) return [];
 
@@ -160,12 +155,7 @@ const draftFieldHasMissingTargets = (
     draftsByLanguage: Record<string, string>,
     targetLanguages: string[],
 ): boolean => {
-    const sourceValue = getLocalizedText(
-        draftsByLanguage,
-        CANONICAL_SOURCE_LANGUAGE,
-        getPrimaryLocalizedLanguage(draftsByLanguage, CANONICAL_SOURCE_LANGUAGE),
-        '',
-    );
+    const sourceValue = getExactLocalizedProjectValue(draftsByLanguage, CANONICAL_SOURCE_LANGUAGE);
 
     if (!sourceValue) return false;
 

@@ -148,7 +148,6 @@ export interface SignalDeskKillSwitch {
     activatedBy?: string | null;
     deactivatedAt?: string | null;
     deactivatedBy?: string | null;
-    expiresAt?: string | null;
     killSwitchId: string;
     reason: string;
     scope: SignalDeskKillSwitchScope;
@@ -327,11 +326,12 @@ export interface SignalDeskSourcePolicy {
     allowedUse: {
         contact: boolean;
         evidence: boolean;
-        import?: boolean;
+        import: boolean;
         personalization: boolean;
-        providerRun?: boolean;
-        storage?: boolean;
+        providerRun: boolean;
+        storage: boolean;
     };
+    allowedContactChannels: Array<"email" | "whatsapp" | "instagram" | "messenger" | "manual">;
     retentionDays: number;
     accessMethod?: "owner-supplied" | "permissioned-referral" | "licensed-api" | "open-data" | "manual-public-research" | "other" | null;
     allowedFields?: string[];
@@ -373,7 +373,24 @@ export interface SignalDeskEvidencePacketSummary {
     allowedUse: string[];
     rejectedFacts: string[];
     summary: string;
+    currentMenuPresence?: SignalDeskCurrentMenuPresenceDiagnostic;
     updatedAt?: string | null;
+}
+
+export interface SignalDeskCurrentMenuPresenceDiagnostic {
+    diagnosticVersion: "current-menu-presence-v1";
+    assessedAt: string;
+    sourceSnapshotAt?: string | null;
+    truthGap: SignalDeskOpportunity;
+    observedFormat: "web-link" | "pdf" | "social-only" | "missing" | "unknown";
+    currentListUrlState: "observed" | "missing" | "unverified";
+    websiteState: "observed" | "missing" | "unverified";
+    ownerControlState: "verified" | "unverified" | "not-owner-controlled";
+    mobileAccessState: "accessible" | "difficult" | "unverified";
+    contradictionState: "none-recorded" | "review-required";
+    contradictions: string[];
+    sourceRefs: string[];
+    twoSurfaceFeasibility: "ready" | "review-required" | "blocked";
 }
 
 export interface SignalDeskAiScoreSummary {
@@ -438,6 +455,8 @@ export interface SignalDeskAiVolumeRunSummary {
     childRunIds: string[];
     failureCodes: string[];
     idempotencyKeyHash?: string;
+    requestFingerprintHash?: string;
+    workerClaimId?: string;
     instruction?: string | null;
     lockExpiresAt?: string | null;
     createdAt?: string | null;
@@ -469,6 +488,9 @@ export interface SignalDeskDraftSummary {
     evidencePacketId?: string | null;
     approvalId?: string | null;
     ctaId?: string | null;
+    ctaFingerprintHash?: string | null;
+    senderDomainId?: string | null;
+    senderDomainFingerprintHash?: string | null;
     personalizationEvidenceIds?: string[];
     unsupportedClaims?: string[];
     updatedAt?: string | null;
@@ -666,6 +688,24 @@ export interface SignalDeskApprovalPacketSummary {
     riskSummary: string;
     recommendedAction: "approve" | "hold" | "reject" | "pause" | "redirect";
     ctaId?: string | null;
+    ctaFingerprintHash?: string | null;
+    actionVersion?: "signaldesk-action-packet-v1";
+    actionFingerprintHash?: string | null;
+    allowedRoute?: SignalDeskAllowedRoute;
+    allowedRouteReason?: string | null;
+    channel?: SignalDeskOutboundChannel | null;
+    currentMenuPresence?: SignalDeskCurrentMenuPresenceDiagnostic | null;
+    draftId?: string | null;
+    evidenceSummary?: string | null;
+    evidenceRejectedFacts?: string[];
+    expectedOutcome?: string | null;
+    messageBody?: string | null;
+    messageSubject?: string | null;
+    senderDomainId?: string | null;
+    senderDomainFingerprintHash?: string | null;
+    sourcePolicyExpiresAt?: string | null;
+    sourcePolicyState?: NonNullable<SignalDeskSourcePolicy["policyState"]>;
+    unsupportedClaims?: string[];
     updatedAt?: string | null;
 }
 
@@ -708,9 +748,12 @@ export interface SignalDeskSequencerHandoffSummary {
     provider: SignalDeskSequencerProvider;
     status: "blocked" | "ready" | "queued" | "exported" | "sent" | "stopped" | "failed";
     approvalId?: string | null;
+    ctaId?: string | null;
+    ctaFingerprintHash?: string | null;
     targetId?: string | null;
     targetName?: string | null;
     senderDomainId?: string | null;
+    senderDomainFingerprintHash?: string | null;
     blockedReason?: string | null;
     currentStep?: number | null;
     nextSendAt?: string | null;
@@ -725,8 +768,11 @@ export interface SignalDeskSequencerStepSummary {
     approvalId?: string | null;
     bodyPreview: string;
     channel: Extract<SignalDeskOutboundChannel, "email">;
+    ctaId?: string | null;
+    ctaFingerprintHash?: string | null;
     draftId?: string | null;
     scheduledAt?: string | null;
+    senderDomainId?: string | null;
     sentAt?: string | null;
     sequencerHandoffId: string;
     sequenceStepId: string;
@@ -809,11 +855,13 @@ export interface SignalDeskStrategistMemoSummary {
 }
 
 export interface SignalDeskProviderEvaluationSummary {
+    accountingMonth: string;
     blockedRate: number;
     costPerUsefulResultUsd: number;
     evidenceQualityScore: number;
     provider: SignalDeskProviderId;
     providerEvaluationId: string;
+    populationTruncated: boolean;
     recommendation: "approve" | "hold" | "reject" | "test-more";
     replyOutcomeScore: number;
     sampleSize: number;
@@ -865,6 +913,11 @@ export interface SignalDeskTrustPartnerNicheTestSummary {
 export interface SignalDeskTrustPartnerDealSummary {
     approvalStatus: "pending" | "approved" | "rejected" | "blocked";
     budgetPolicyId?: string | null;
+    budgetReservationAccountingDay?: string | null;
+    budgetReservationAccountingMonth?: string | null;
+    budgetReservationAmountUsd?: number | null;
+    budgetReservationAt?: string | null;
+    budgetReservationState?: "reserved" | "legacy-assumed-reserved" | null;
     dealId: string;
     deliverableCount: number;
     dueDate?: string | null;
@@ -882,6 +935,7 @@ export interface SignalDeskTrustPartnerBriefSummary {
     bannedClaims: string[];
     briefId: string;
     ctaId?: string | null;
+    ctaFingerprintHash?: string | null;
     dealId?: string | null;
     disclosureRequired: boolean;
     disclosureText: string;
@@ -929,6 +983,7 @@ export interface SignalDeskTrustPartnerRenewalDecisionSummary {
 
 export interface SignalDeskContentSourceSummary {
     contentSourceId: string;
+    createdAt?: string | null;
     defaultAudience: "restaurant-owner" | "agency-partner" | "trust-partner" | "local-operator" | "general";
     defaultMarketPodId?: string | null;
     lastAssetAt?: string | null;
@@ -943,6 +998,7 @@ export interface SignalDeskContentSourceSummary {
 export interface SignalDeskContentAssetSummary {
     canonicalMessage: string;
     contentAssetId: string;
+    createdAt?: string | null;
     ctaId?: string | null;
     marketPodId?: string | null;
     primaryAudience: SignalDeskContentSourceSummary["defaultAudience"];
@@ -989,11 +1045,15 @@ export interface SignalDeskContentDistributionDraftSummary {
     channel: SignalDeskContentChannel;
     contentAssetId: string;
     contentDraftId: string;
+    createdAt?: string | null;
     ctaId?: string | null;
+    ctaFingerprintHash?: string | null;
     hook: string;
+    revision: number;
     reviewReason?: string | null;
     scheduledFor?: string | null;
     status: "draft" | "queued" | "approved" | "rejected" | "published" | "hold";
+    supersedesContentDraftId?: string | null;
     title: string;
     updatedAt?: string | null;
 }
@@ -1003,6 +1063,8 @@ export interface SignalDeskContentCalendarItemSummary {
     contentAssetId: string;
     contentCalendarItemId: string;
     contentDraftId: string;
+    createdAt?: string | null;
+    publicationUrl?: string | null;
     publishedAt?: string | null;
     scheduledFor: string;
     status: "planned" | "queued" | "approved" | "published" | "held" | "missed";
@@ -1020,6 +1082,8 @@ export interface SignalDeskContentPerformanceSummary {
     currentListSubmissions: number;
     engagementQuality: SignalDeskConfidence;
     ownerLeads: number;
+    publicationUrl?: string | null;
+    publishedAt?: string | null;
     views: number;
 }
 
@@ -1051,6 +1115,20 @@ export interface SignalDeskGrowthMissionSummary {
     updatedAt?: string | null;
 }
 
+export interface SignalDeskExperimentReadbackWindow {
+    endAt: string;
+    startAt: string;
+}
+
+export interface SignalDeskExperimentReadbackPlan {
+    baselineWindow: SignalDeskExperimentReadbackWindow;
+    candidateWindow: SignalDeskExperimentReadbackWindow;
+    confounders: string[];
+    nextReadbackAt: string;
+    primaryMetric: string;
+    version: "signaldesk-experiment-readback-v1";
+}
+
 export interface SignalDeskExperimentCardSummary {
     channel: "email" | "manual" | "content" | "partner" | "referral" | "other";
     contentAssetId?: string | null;
@@ -1061,6 +1139,7 @@ export interface SignalDeskExperimentCardSummary {
     marketPodId?: string | null;
     ownerDecision: SignalDeskExperimentDecision;
     proofAssetSummary?: string | null;
+    readbackPlan: SignalDeskExperimentReadbackPlan | null;
     resultSummary?: string | null;
     sourcePolicyId?: string | null;
     status: "planned" | "active" | "paused" | "completed" | "stopped";
@@ -1239,7 +1318,7 @@ export interface SignalDeskResearchRunSummary {
     researchType: "business-prospect" | "market-map" | "partner-list";
     sourcePolicyId?: string | null;
     sourceTransparency: string[];
-    status: "queued" | "running" | "completed" | "blocked" | "duplicate";
+    status: "queued" | "running" | "completed" | "blocked";
     tableRowCount: number;
     unsureCount: number;
     updatedAt?: string | null;
@@ -1290,6 +1369,9 @@ export interface SignalDeskSelfServiceCtaSummary {
     ctaType: "preview" | "route-draft" | "menu-health" | "qr-public-menu" | "claim-start" | "two-surface-proof";
     status: SignalDeskControlStatus;
     copy: string;
+    identityMigrationResolvedAt?: string | null;
+    identityMigrationResolvedBy?: string | null;
+    identityMigrationState?: "migrated" | "operator-review-required" | null;
     updatedAt?: string | null;
 }
 

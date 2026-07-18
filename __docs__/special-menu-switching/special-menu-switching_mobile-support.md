@@ -3,7 +3,7 @@
 **Status:** ✅ IMPLEMENTED — Active behind `ENABLE_SPECIAL_MENU_SWITCHING`; expansion remains governed by `__docs__/constitution/14-feature-lifecycle-doctrine.md`
 **Author:** Cascade (Lead Architect)
 **Date:** February 20, 2026
-**Last Updated:** June 29, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Internal (mobile development)
 
 ---
@@ -99,6 +99,7 @@ Mobile does NOT get:
 - The screen uses `useSpecialMenus()` for create, update, activate, deactivate, and cancel actions. The hook requires explicit DAL acknowledgement guards before mutating SWR state or returning success, so `apiCallComposer()` fallback values cannot show false create/update/end/cancel success. Lifecycle actions must return the requested project id and expected resulting status (`active`, `expired`, or `cancelled`) before mobile shows success. The hook owns bounded `special_menu_*_failed` diagnostics and cache updates.
 - Mobile translation actions log `mobile_special_menu_name_translation_failed` and `mobile_special_menu_project_public_content_translation_failed` with bounded store, tenant, project, language, and draft-length metadata. Project public-content translation writes require `assertProjectUpdateSucceeded()` before draft baselines or success copy update.
 - Owner-facing failures use fixed copy. Raw hook errors, project IDs, localized text, provider messages, and exception text must not be shown or logged directly.
+- The alternate Mobile Project Selector edit sheet routes special-menu name/description/schedule changes through `updateSpecialMenuProject()`. It does not expose generic active/reset controls for special menus, and delete is shown only after the menu is expired or cancelled. DAL guards enforce the same boundary if an older UI calls a generic action.
 
 ---
 
@@ -120,9 +121,5 @@ Mobile does NOT get:
 | `_specialMenu.status`      | `'scheduled' \| 'active' \| 'expired' \| 'cancelled'` | Same          | ✅     |
 | `_specialMenu.startsAt`    | ISO 8601 string                                       | Same          | ✅     |
 | `_specialMenu.endsAt`      | ISO 8601 string                                       | Same          | ✅     |
-| `_specialMenu.displayName` | string                                                | Same          | ✅     |
+| `_specialMenu.displayName` | string or localized-text map                          | Same          | ✅     |
 | `_specialMenu.mode`        | `'replace' \| 'overlay'`                              | Same          | ✅     |
-
----
-
-**Last Updated:** February 21, 2026

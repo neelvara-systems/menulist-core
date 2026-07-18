@@ -2,7 +2,7 @@
 
 > **Feature:** Public Truth Check
 > **Status:** Implemented - public self-report route, owner readiness modules, and logged-in owner fix list
-> **Last Updated:** July 4, 2026
+> **Last Updated:** July 16, 2026
 > **Version:** 0.8
 
 ---
@@ -60,7 +60,7 @@ Public Truth Check should grow through three lanes, not by becoming a separate p
 | --- | --- | --- | --- | --- | --- | --- |
 | V0 | Public free tool / lead magnet | Prospect, owner, agency | Business URL, menu link, Google profile link, pasted text, and owner-marked visible facts | Basic public truth gap report, copy/download checklist, MenuList setup handoff, optional consented follow-up | Browser-local self-report; URLs are references only and are not fetched; no AI/provider call; optional follow-up reuses `/api/public/contact` | Implemented |
 | V1 | Logged-in MenuList owner check | Existing MenuList owner | Existing MenuList store/project truth | Better gaps inside Business Health, Public Discovery, and OBP readiness | Reuses owner store context, project summary DAL, selected/default project DAL, public truth index gate, and Business Health desktop/mobile surfaces; no report API route, no writes, no external scan | Implemented |
-| V2 | Paid add-on behavior | Multi-location owner, partner, agency | Owner-approved store set, schedule, and report scope | Saved history, recurring checks, monthly report, multi-location scan, and partner/agency reports | Paid entitlement, capped report history, source policy, rate limits, audit logs, and explicit cost approval | Planned |
+| V2 | Paid add-on behavior | Entitled owner today; multi-location/partner later | Current store and manual refresh | Saved capped history and downloadable report now; recurring/multi-location later | Paid entitlement, atomic capped report history, rate limits; scheduler/external adapters remain off | Partially implemented |
 
 The tool list can grow over time, but every new check should be assigned to V0, V1, or V2 before implementation.
 
@@ -91,6 +91,8 @@ Current implemented route:
 | Verifier | `scripts/verification/verify-public-truth-check.js` |
 
 Implemented public route behavior is browser-local `self_report`. It does not fetch external URLs, inspect Google profiles, store uploaded files, or call AI/search providers. Each report row includes explicit evidence text that states what was checked. The optional follow-up form submits to the existing bounded MenuList public contact route only after explicit consent.
+
+URL text is never treated as page evidence. Words in a hostname/path such as `hours`, `prices`, `contact`, `order`, or a city name do not mark those facts present; only pasted source text and explicit owner selections can do that.
 
 Implemented owner behavior is `menulist_owner`. It appears inside Business Health on desktop and mobile, reads MenuList store/project truth through existing owner context and client DAL, reuses `evaluatePublicTruthIndexability`, and writes no report state.
 

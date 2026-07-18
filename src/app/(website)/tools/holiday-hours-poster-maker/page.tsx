@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import PrintShareToolPage from '@/components/website/printShareTools/PrintShareToolPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Holiday Hours Poster Maker - MenuList | Free Hours Poster';
 const description = 'Make a free browser-local holiday hours poster with a QR code to one current customer link.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/holiday-hours-poster-maker',
   },
-};
+});
 
 export default function Page() {
   if (

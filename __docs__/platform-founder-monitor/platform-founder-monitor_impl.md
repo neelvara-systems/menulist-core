@@ -1,5 +1,7 @@
 # Platform Founder Monitor Implementation
 
+July 16 authorization follow-up: `/api/platform/founder-monitor` keeps signed platform admission, then applies a fail-closed DATA_READ limiter and re-reads the exact current persisted platform user before any Founder summary, daily revenue, growth or movement read. Provider outage returns 503 and stale/downgraded/revoked authority returns 403.
+
 ## Architecture
 
 The implementation follows the internal platform monitor pattern:

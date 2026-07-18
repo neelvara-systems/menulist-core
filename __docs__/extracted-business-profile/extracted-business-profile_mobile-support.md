@@ -37,6 +37,8 @@ Mobile basic settings keep the same identity boundary as desktop:
 - Brand name is required and writes tenant identity.
 - Location name writes the current store/outlet name.
 - Brand changes update the local tenant/store state after the shared tenant/store write path completes.
+- Customer-facing address and postal data use canonical `addressLine` and `postalCode`, with legacy keys used only to hydrate old records.
+- Latitude and longitude use the shared paired/range validator; a valid empty pair clears geo, zero remains valid, and partial or invalid coordinates stop before persistence.
 
 ## PWA Shell
 
@@ -50,4 +52,5 @@ Desktop and mobile share:
 - the same job result profile contract
 - the same no-overwrite rule for owner-set visual defaults
 - the same menu-derived business-attribute default behavior
+- the same transaction-current merge for business-attribute defaults, with explicit owner `true` or `false` values preserved and acknowledged merged truth installed locally
 - the same brand-versus-location identity boundary

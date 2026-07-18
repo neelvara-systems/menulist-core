@@ -21,7 +21,15 @@ const websiteReadme = read('__docs__/main-website/README.md');
 const websiteImpl = read('__docs__/main-website/main-website_impl.md');
 const securityGuide = read('__docs__/security/secure-logging-guide.md');
 const changelog = read('__docs__/changelog.md');
+const firestoreIndexes = JSON.parse(read('firestore.indexes.json'));
 const legacyEnquiriesDalPath = path.join(ROOT, 'src/database/landingPage/enquiries.ts');
+
+const hasIndexExemption = (collectionGroup, fieldPath) => firestoreIndexes.fieldOverrides?.some(
+  (override) => override.collectionGroup === collectionGroup
+    && override.fieldPath === fieldPath
+    && Array.isArray(override.indexes)
+    && override.indexes.length === 0,
+);
 
 assert(
   !fs.existsSync(legacyEnquiriesDalPath),
@@ -43,10 +51,22 @@ requireTokens(route, [
 ], 'MenuList public contact route');
 assert(!route.includes('sourceContext?.primaryNumber || null'), 'MenuList public contact route must preserve a valid zero count');
 assert(!route.includes("referrer: clean(request.headers.get('referer')"), 'MenuList public contact route must not persist raw referrer query strings');
+assert(
+  hasIndexExemption('landingPageEnquiries', 'message'),
+  'landingPageEnquiries.message must remain exempt from unused automatic indexing',
+);
+assert(
+  hasIndexExemption('landingPageEnquiries', 'sourceContext'),
+  'landingPageEnquiries.sourceContext must remain exempt from unused automatic indexing',
+);
 
 requireTokens(boundary, [
   'normalizePublicContactSourcePath',
-  "!sourcePath.startsWith('/') || sourcePath.startsWith('//')",
+  "!sourcePath.startsWith('/')",
+  "sourcePath.startsWith('//')",
+  "sourcePath.includes('\\\\')",
+  '/%5c/i.test(sourcePath)',
+  "parsed.origin !== 'https://menulist.invalid'",
   'return parsed.pathname.slice(0, PUBLIC_CONTACT_SOURCE_PATH_MAX_LENGTH)',
   'normalizePublicContactReferrer',
   "parsed.protocol !== 'https:' && parsed.protocol !== 'http:'",
@@ -82,6 +102,15 @@ requireTokens(packageJson, [
   '8-second',
   'query',
 ], `public contact docs (${label})`));
+[
+  [websiteReadme, 'main website README'],
+  [websiteImpl, 'main website implementation'],
+  [changelog, 'changelog'],
+].forEach(([source, label]) => requireTokens(source, [
+  '`landingPageEnquiries.message`',
+  '`landingPageEnquiries.sourceContext`',
+  'automatic indexing',
+], `public contact Firebase cost docs (${label})`));
 requireTokens(changelog, [
   'Public Contact Admission and Persistence Boundary',
   'retired client-side enquiry DAL',
@@ -93,4 +122,4 @@ if (failures.length) {
   process.exit(1);
 }
 process.stdout.write('PASS verify-public-contact-boundary\n');
-process.stdout.write('Validated fail-closed contact limiting, bounded Turnstile delivery, query-free attribution, and zero-count preservation.\n');
+process.stdout.write('Validated fail-closed contact limiting, bounded Turnstile delivery, query-free attribution, zero-count preservation, and enquiry payload index exemptions.\n');

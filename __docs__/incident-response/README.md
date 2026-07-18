@@ -41,8 +41,8 @@ When a system failure occurs and an alert fires, this document defines **exactly
 
 | Action               | When to Use            | How                                                                                           |
 | -------------------- | ---------------------- | --------------------------------------------------------------------------------------------- |
-| **Force republish**  | Publish didn't reflect | Re-trigger publish from dashboard editor                                                      |
-| **Reset CDN cache**  | Stale cached version   | Vercel dashboard → Redeploy or `revalidateTag()`                                              |
+| **Force republish**  | Canonical menu truth is correct but public output is stale | Use the platform Ops recovery action. It marks current active project scope, requires `/api/revalidate/menu` acknowledgement, touches an initialized Digital Screen version, then verifies the canonical public URL. |
+| **Owner republish**  | The project data/design itself must change | Open the owner editor, review current truth, and publish the intended change. Do not use incident recovery to overwrite data. |
 | **Check Firestore**  | Data missing/corrupt   | Firebase Console → verify project doc exists                                                  |
 | **Enable SAFE_MODE** | Cost spike / abuse     | Ops dashboard → Enable SAFE_MODE (or Firestore Console: `ops_config/system.SAFE_MODE = true`) |
 
@@ -120,12 +120,12 @@ Log the issue. Fix during normal work hours. No urgency.
 
 ---
 
-## Recovery Tools (When Built)
+## Recovery Tools
 
 | Tool             | What It Does                     | Location                            |
 | ---------------- | -------------------------------- | ----------------------------------- |
-| Force Republish  | Re-trigger publish for a store   | Ops dashboard or admin API          |
-| Cache Reset      | Invalidate CDN cache for a store | `revalidateTag('menu-store-{sId}')` |
+| Force Republish  | Refresh already-correct public output, touch initialized screen version, then verify the canonical public URL; fails closed if cache refresh is not acknowledged | Ops dashboard → selected store |
+| Cache Reset      | Internal implementation detail of the guarded recovery/cache routes; do not redeploy Vercel merely to clear one store | `/api/revalidate/menu` / server revalidation helpers |
 | SAFE_MODE Toggle | Disable expensive operations     | Ops dashboard or Firestore Console  |
 | Alert Mute       | Suppress alerts during deploy    | Ops dashboard                       |
 

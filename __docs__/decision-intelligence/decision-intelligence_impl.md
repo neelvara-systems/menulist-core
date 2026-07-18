@@ -1,141 +1,23 @@
-# Decision Intelligence - Implementation Document
+# Decision Intelligence — Implementation
 
-**Created:** January 11, 2026  
-**Status:** Controlled owner testing ready in audited slice; full MenuList certification pending
-**Source:** Codebase (Single Source of Truth)  
-**Applies:** 3-Year Architecture Freeze Rule
-**Last Verified:** June 11, 2026
+**Last verified:** July 16, 2026
+**Authority:** Current codebase.
 
-> **Launch boundary:** Not current launch certification or deploy approval. This implementation document is source-gated runtime evidence only; Decision Intelligence release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, public-cache evidence, provider/runtime smoke where relevant, and production-host smoke.
+**Launch boundary:** Not current launch certification or deploy approval. This implementation is local source evidence only; release still requires current production-readiness audit and External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:agent-readiness`, scoped scheduler deploy evidence, browser/mobile customer-menu QA, public-cache evidence, and production-host smoke.
 
----
+## Components
 
-## Architecture Overview
+| Layer | Source | Responsibility |
+| --- | --- | --- |
+| Shared config | `src/data/shared/decisionBlockConfig.ts` and byte-mirrored Functions copy | Duration defaults, Quick thresholds, enabled blocks, default category |
+| Analytics input | `functions/src/intelligence/shared/analyticsAggregator.ts` | One compact 7-day snapshot read; missing/stale fails empty |
+| Item boundary | `functions/src/intelligence/shared/itemExtractor.ts` | Current active catalog only; alias continuity; normalized bounded fields |
+| Scoring | `functions/src/decisionBlocksScoring.ts` | Eligible candidates, TTL, project projection, manual recovery |
+| Owner settings | `decisionBlocks.shared.ts` | One desktop/mobile settings shape and pin normalization |
+| Public runtime | `DecisionBlocks.tsx` | TTL/data/availability/time-slot/duplicate/price/minimum-block gates |
+| Public route | `src/app/client/[[...slug]]/page.tsx` | Embedded projection load through tagged public cache |
 
-### 2-Layer System
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│ LAYER 1: CLOUD FUNCTION (hourly :30, timezone-aware)       │
-│                                                             │
-│  computeDecisionBlocksScores (onSchedule)                  │
-│  ├── Fetch storesSummary (1 read, cost-optimized)          │
-│  ├── Process only stores whose business-day settlement is due│
-│  ├── For each active store:                                 │
-│  │     └── For each active project:                         │
-│  │           ├── Read project at projects/{tId}/{sId}/{id} │
-│  │           ├── Read 7-day intelligence analytics snapshot │
-│  │           ├── Extract items from project.files           │
-│  │           ├── Calculate scores per block type            │
-│  │           ├── Store top 3 candidates per block           │
-│  │           └── Set TTL (48 hours)                         │
-│  └── Write: project.publicDecisionBlocks                   │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│ LAYER 2: RUNTIME FILTER (Client-side)                       │
-│                                                             │
-│  DecisionBlocks.tsx                                         │
-│  ├── Read owner controls from project.menuSettings          │
-│  ├── Check: isPrecomputedValid() (TTL check)               │
-│  ├── If valid: computeFromPrecomputed()                    │
-│  │     └── selectAvailableCandidate()                      │
-│  │           ├── Check: item.active === true               │
-│  │           ├── Check: item.available === true            │
-│  │           ├── Check: Category time slot valid           │
-│  │           │          (store timezone, browser fallback) │
-│  │           └── Return first available                     │
-│  ├── If valid but activation gate fails: pinned-only       │
-│  └── If missing/expired: computeBlocksFallback()           │
-│        └── Show owner-pinned only (no client ranking)      │
-└─────────────────────────────────────────────────────────────┘
-```
-
----
-
-## File Structure
-
-```
-src/
-├── config/
-│   └── decisionBlocks.ts              # Block config, labels, duration, reason keys
-├── data/
-│   └── decisionBlockTranslations.ts   # i18n EN/HI translations
-├── components/templates/main-app/projects/
-│   ├── b2cView/output/
-│   │   └── DecisionBlocks.tsx         # Customer-facing UI (576 lines)
-│   ├── editorView/
-│   │   └── DecisionBlocksSettingsModal.tsx  # Owner settings (429 lines)
-│   └── types/
-│       └── decisionBlocks.types.ts    # Client types (DecisionBlockEntry, PrecomputedDecisionBlocks)
-
-functions/
-└── src/
-    ├── decisionBlocksScoring.ts       # Timezone-aware scheduler + manual trigger
-    ├── constants/
-    │   └── database.ts                # Collection names + helpers
-    └── intelligence/
-        └── shared/
-            ├── scoreNormalizer.ts      # WEIGHTS, THRESHOLDS, DURATIONS, normalize() — single source of truth
-            ├── analyticsAggregator.ts  # 7-day analytics fetch (shared with CMI)
-            └── itemExtractor.ts       # Item extraction from project files (shared with CMI)
-```
-
-## Runtime Entry Points
-
-| Surface | File | Responsibility |
-| ------- | ---- | -------------- |
-| Scheduled generation | `functions/src/decisionBlocksScoring.ts` | Hourly scheduler that processes stores whose local settlement window is due. |
-| Manual recovery | `triggerDecisionBlocksScoring` in `functions/src/decisionBlocksScoring.ts` | Platform-only callable used by Scheduler Monitor to recompute Decision Blocks through the same compact analytics snapshot path as the scheduler. |
-| Public precomputed read | `src/app/client/[[...slug]]/page.tsx` | Uses `project.publicDecisionBlocks` from the already-loaded project document. |
-| Customer rendering | `src/components/templates/main-app/projects/b2cView/output/DecisionBlocks.tsx` | Applies TTL, lifecycle, owner controls, availability, and time-slot filters. |
-| Desktop owner editing | `DecisionBlocksSettingsModal.tsx` | Saves pins/toggles into `project.menuSettings.decisionBlocks`. |
-| Mobile owner editing | `SmartRecommendationsSheet.tsx` | Same settings model as desktop, saved through the project DAL. |
-
----
-
-## Database Schema
-
-### Project Field: `publicDecisionBlocks`
-
-**Path:** `projects/{tId}/{sId}/{projectId}.publicDecisionBlocks`
-
-```typescript
-interface DecisionBlocksDocument {
-  tId: string;
-  sId: string;
-  projectId: string;
-
-  // Top 3 candidates per block (sorted by score desc)
-  popular: ScoredItem[];
-  quickPick: ScoredItem[];
-  bestValue: ScoredItem[];
-
-  computedAt: Timestamp;
-  validUntil: Date; // TTL (48 hours from computation)
-
-  statsUsed: {
-    totalItems: number;
-    itemsWithViews: number;
-    itemsWithDuration: number;
-  };
-}
-
-interface ScoredItem {
-  itemId: string;
-  itemName: string;
-  category: string;
-  score: number;
-  reason: string; // i18n key
-  reasonParams?: Record<string, any>; // { minutes: 5 }
-  price?: number;
-  duration?: number;
-}
-```
-
-### Project Menu Settings
-
-Owner controls are stored with the project, not in `decisionBlocks`.
+## Stored contracts
 
 ```typescript
 project.menuSettings.decisionBlocks = {
@@ -146,358 +28,91 @@ project.menuSettings.decisionBlocks = {
   pinnedQuickPick?: string;
   pinnedBestValue?: string;
 };
-```
 
-Generated ranking data is stored as the customer-safe `project.publicDecisionBlocks` projection so the public menu can reuse the already-loaded project document and avoid one extra Firestore read. Owner-authored controls remain separate in `project.menuSettings.decisionBlocks`, and owner-side `updateProject()` saves strip `publicDecisionBlocks` so generated scorer output is not overwritten by dashboard/mobile edit payloads.
-
-Owner pin values are normalized by the shared owner helper before desktop/mobile display and save. The helper accepts the canonical string item id, tolerates legacy picker payloads such as arrays or `{ value }` objects, and resolves `extractionIdAliases` back to the current item id after re-extraction or outlet resolution. The public renderer applies the same alias lookup before runtime availability checks so owner UI and customer output stay aligned.
-
-Owner pins are evaluated before automatic candidate ranking gates in the public renderer. A pin can render even when a block lacks enough analytics coverage, precomputed timestamps are stale, or the scheduler produced no candidate for that block, but it still must pass runtime safety checks: item exists, item is active, item is available, category time slot is active in the store timezone, the block is enabled for the business type, and Best Value is hidden when prices are hidden.
-
-### Collection: `analytics`
-
-**Primary scoring input:** `{tId}_{sId}_{projectId}_intelligence_7d`
-
-**Daily source documents:** `{tId}_{sId}_{projectId}_daily_{YYYY-MM-DD}` are settled into the compact intelligence snapshot by the nightly analytics aggregation step.
-
-Used data:
-
-- `viewsByItem: Record<string, number>`
-- `clicksByItem: Record<string, number>`
-- `recommendationClicksByItem: Record<string, number>`
-- `itemNames: Record<string, string>`
-- `daysWithData: number`
-
----
-
-## Scoring Implementation
-
-### Popular Right Now
-
-```typescript
-function calculatePopularScore(item, maxViews, maxClicks, maxOrders) {
-  const viewScore = normalize(item.views, maxViews) * 0.4;
-  const clickScore = normalize(item.clicks, maxClicks) * 0.3;
-  const orderScore = normalize(item.orders, maxOrders) * 0.2;
-  const boostScore = ((item.ownerBoost + 20) / 40) * 100 * 0.1;
-  const bestSellerBonus = item.isBestSeller ? 10 : 0;
-
-  return viewScore + clickScore + orderScore + boostScore + bestSellerBonus;
-}
-```
-
-### Quick Pick
-
-```typescript
-function calculateQuickPickScore(item, businessCategory, maxPopularity) {
-  const threshold = QUICK_PICK_THRESHOLDS[businessCategory];
-  const duration = item.duration || DEFAULT_DURATIONS[businessCategory];
-
-  // Ineligible if too slow
-  if (duration > threshold * 2) return -1;
-
-  const durationScore = Math.max(0, 100 - (duration / threshold) * 50) * 0.6;
-  const popularityScore = normalize(popularity, maxPopularity) * 0.3;
-  const boostScore = ((item.ownerBoost + 20) / 40) * 100 * 0.1;
-
-  return durationScore + popularityScore + boostScore;
-}
-```
-
-### Best Value
-
-```typescript
-function calculateBestValueScore(item, maxPopularity, avgPrice) {
-  if (!item.price || item.price <= 0) return -1;
-
-  const valueRatio = popularity / item.price;
-  const maxValueRatio = maxPopularity / (avgPrice * 0.5);
-  const valueScore = normalize(valueRatio, maxValueRatio) * 0.7;
-  const popularityScore = normalize(popularity, maxPopularity) * 0.2;
-  const boostScore = ((item.ownerBoost + 20) / 40) * 100 * 0.1;
-
-  return valueScore + popularityScore + boostScore;
-}
-```
-
----
-
-## Runtime Availability Filter
-
-```typescript
-function selectAvailableCandidate(
-  candidates,
-  items,
-  categoryMap,
-  usedItemIds,
-  pinnedId,
-) {
-  const itemMap = new Map(items.map((item) => [item.id, item]));
-
-  const isAvailable = (itemId) => {
-    const item = itemMap.get(itemId);
-    if (!item) return false;
-    if (item.active === false) return false; // Permanently disabled
-    if (item.available === false) return false; // Sold out
-    if (!isCategoryWithinTimeSlot(categoryMap.get(item.category), currentStoreMinutes)) return false;
-    if (usedItemIds.has(itemId)) return false; // Already used in another block
-    return true;
-  };
-
-  // Try owner-pinned first
-  if (pinnedId && isAvailable(pinnedId)) {
-    usedItemIds.add(pinnedId);
-    return { item: itemMap.get(pinnedId), reason: "decision.pinned.ownerPick" };
-  }
-
-  // Find first available from precomputed automatic candidates
-  for (const candidate of candidates) {
-    if (isAvailable(candidate.itemId)) {
-      usedItemIds.add(candidate.itemId);
-      return { item: itemMap.get(candidate.itemId), reason: candidate.reason };
-    }
-  }
-
-  return undefined; // Block will be hidden
-}
-```
-
----
-
-## i18n Implementation
-
-### Translations File
-
-```typescript
-// src/data/decisionBlockTranslations.ts
-export const DECISION_BLOCK_TRANSLATIONS = {
-  en: {
-    "decision.popular.food.favorite": "Customer favorite",
-    "decision.quickPick.food.readyIn": "Ready in {minutes} min",
-    "decision.bestValue.food.greatValue": "Great value",
-    "decision.pinned.ownerPick": "Owner's choice",
-    // ... more keys
-  },
-  hi: {
-    "decision.popular.food.favorite": "ग्राहकों की पसंद",
-    "decision.quickPick.food.readyIn": "{minutes} मिनट में तैयार",
-    // ... more keys
-  },
+project.publicDecisionBlocks = {
+  tId: string;
+  sId: string;
+  projectId: string;
+  popular: ScoredItem[];
+  quickPick: ScoredItem[];
+  bestValue: ScoredItem[];
+  computedAt: Timestamp;
+  validUntil: Date;
+  statsUsed: { /* bounded eligibility metadata */ };
 };
 ```
 
-### Runtime Translation
+The generated projection is not accepted from owner project mutation payloads.
 
-```typescript
-const translateReason = (reason, params) => {
-  if (!reason.startsWith("decision.")) return reason;
+## Catalog-first extraction
 
-  let translation = getDecisionBlockTranslation(reason, activeLanguage);
+`extractActiveItems()` walks `project.files[].extractedData.data.items` first. It ignores `active: false`, requires a current ID, merges analytics across `id` plus `extractionIdAliases`, and normalizes:
 
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      translation = translation.replace(`{${key}}`, String(value));
-    });
-  }
+- localized item name;
+- numeric positive price;
+- explicit non-negative duration, including `0`;
+- owner boost clamped to `-20..20`;
+- current owner-authored bestseller flag; and
+- hourly/recommendation click maps.
 
-  return translation;
-};
-```
+An analytics map entry cannot create an item by itself.
 
----
+## Scoring
 
-## Analytics Integration
+Popular scoring uses views, weighted behavioral clicks, the currently unused zero order field, bounded owner boost, and the current bestseller bonus. Candidate admission separately requires at least three behavioral clicks on the item. Public reason text is always the neutral `decision.popular.default.popular` for automatic candidates.
 
-### Events
+Quick scoring:
 
-```typescript
-// Render tracking (once per session)
-trackDecisionBlocksRendered(["popular", "quickPick", "bestValue"]);
+- runs only for categories whose shared configuration enables Quick choice;
+- rejects missing duration;
+- accepts `duration <= shared threshold`;
+- uses the explicit duration for public reason text; and
+- never substitutes a default for `0` or an unknown duration.
 
-// Click tracking
-trackDecisionBlockClick(
-  blockType, // 'popular' | 'quickPick' | 'bestValue'
-  itemId,
-  itemName,
-  category,
-  price,
-);
-```
+Value scoring:
 
-### CTR Calculation
+- rejects missing/zero price;
+- computes the average from priced items only; and
+- admits only candidates at or below that average before popularity/value scoring.
 
-```
-CTR = DECISION_BLOCK_CLICK / DECISION_BLOCKS_RENDERED
-```
+Each enabled block stores at most three candidates. Runtime owns final selection.
 
----
+## Scheduler and cache
 
-## Security
+`computeDecisionBlocksScores` runs at `30 * * * *` and filters stores by their store-local settlement window. A valid `platformSummary/projects_{sId}` with zero active projects returns empty without scanning the nested project collection. A missing or malformed summary can use the compatibility query fallback.
 
-| Check                  | Implementation                               |
-| ---------------------- | -------------------------------------------- |
-| Cloud Function auth    | Scheduler-triggered (not public)             |
-| Manual recovery auth   | Callable requires authenticated `PLATFORM` role |
-| Multi-tenant isolation | `{tId}_{sId}_{projectId}` document keys      |
-| No sensitive data      | Only item IDs + scores stored                |
-| Owner controls         | Via `menuSettings.decisionBlocks` in project |
-| Public precomputed read | Server-side Admin SDK read, not a client Firestore rules dependency |
+After one or more project projections change, the scheduler calls `revalidatePublicClientCacheForStore()` once for that store. Manual project/store scoring does the same. The revalidation endpoint clears `menu-store-{storeId}`, `store-{storeId}`, and `client-stores` through the existing public cache contract.
 
----
+## Runtime behavior
 
-## Performance
+`DecisionBlocks.tsx`:
 
-| Metric               | Value    | Rationale                 |
-| -------------------- | -------- | ------------------------- |
-| Scheduler timeout    | 540s     | Process 1000+ projects    |
-| TTL                  | 48 hours | Buffer if scheduler fails |
-| Candidates per block | 3        | Fallback for unavailable  |
-| storesSummary read   | 1        | Cost optimization         |
+1. verifies projection timestamps and hard-stale age;
+2. evaluates global and block-specific data gates;
+3. applies owner block toggles and selections;
+4. resolves current IDs and aliases;
+5. rejects inactive, unavailable, out-of-time, duplicate, or hidden-price Value candidates; and
+6. renders at least two automatic blocks, or a valid explicit owner-selected block.
 
----
+If automatic data is absent, expired, or insufficient, no client-side ranking occurs.
 
-## Feature Flag
+## Manual callables
 
-```typescript
-// src/config/features.ts
-export const FEATURE_FLAGS = {
-  ENABLE_DECISION_BLOCKS: true,
-};
-```
+- `triggerDecisionBlocksScoring`: one project or store; current active platform owner; current store/project scope; bounded response; no platform-wide fan-out.
+- `triggerStoreNightlyScheduler`: one store; runs analytics settlement, Decision Blocks, CMI, and the other store scheduler tasks through the shared store path.
 
----
+Both re-read the current platform user document instead of relying only on potentially stale custom claims.
 
-## Owner Settings UI
+## Feature gates
 
-```typescript
-// DecisionBlocksSettingsModal.tsx
-interface DecisionBlocksSettings {
-  enablePopular?: boolean; // Default: true
-  enableQuickPick?: boolean; // Default: true
-  enableBestValue?: boolean; // Default: true
-  pinnedPopular?: string; // itemId
-  pinnedQuickPick?: string; // itemId
-  pinnedBestValue?: string; // itemId
-}
-```
+- `FEATURE_FLAGS.ENABLE_DECISION_BLOCKS`: owner UI and public renderer.
+- `FUNCTION_FLAGS.ENABLE_DECISION_BLOCKS_SCORING`: generated projection writes.
 
----
+## Verification
 
-## CMI Integration
+- `npm run test:decision-intelligence-boundary`
+- `node scripts/verification/verify-decision-intelligence-boundary.js`
+- `npm --prefix functions run build`
+- focused root typecheck/lint/public/menu/mobile gates listed in `decision-intelligence_verification-2026-07-16.md`
 
-Decision Blocks scheduler also computes Menu Intelligence:
-
-```typescript
-// After Decision Blocks computed (line 604-629)
-const analytics = await fetch7DayAnalytics(db, tId, sId, projectId);
-const items = extractActiveItems(projectData, analytics);
-const intelligence = computeIntelligenceState(
-  items,
-  analytics,
-  currentIntelligence,
-);
-await db
-  .collection(DB_COLLECTIONS.MENU_INTELLIGENCE)
-  .doc(miDocId)
-  .set(intelligence);
-```
-
----
-
-## Scheduler Monitor Dashboard
-
-### Overview
-
-A dedicated monitoring page at `/ops/scheduler` provides real-time visibility into nightly scheduler health, run history, per-task breakdown, and error inspection.
-
-### Access
-
-- **Route:** `/ops/scheduler`
-- **Access:** `platformRole === 'PLATFORM'` only (superadmin)
-- **Navigation:** Ops Control Room → "Scheduler Monitor" button, or direct URL
-
-### Dashboard Sections
-
-| Section               | What It Shows                                                                        |
-| --------------------- | ------------------------------------------------------------------------------------ |
-| **Health Badge**      | Overall status: Healthy (green) / Warning (orange) / Critical (red) / No Data (grey) |
-| **Last Run Summary**  | Timestamp, duration, stores/projects processed, runs in last 7 days, avg duration    |
-| **Task Breakdown**    | Per-task status for all 8 sub-tasks with timing and details                          |
-| **Error Details**     | Expandable error list with tId, sId, projectId, and error message                    |
-| **Run History Table** | Filterable by status (success/partial/failed) and trigger (scheduled/manual)         |
-| **Manual Trigger**    | "Run Scheduler Now" button — calls `triggerDecisionBlocksScoring` callable CF        |
-| **Quick Reference**   | Schedule, timeout, task list, TTL, dead man's switch info                            |
-
-### Health Status Logic
-
-| Status       | Condition                                                                        |
-| ------------ | -------------------------------------------------------------------------------- |
-| **Healthy**  | Last run succeeded and is within 26 hours                                        |
-| **Warning**  | Last run had errors (partial), or 1-2 consecutive failures, or last run >26h ago |
-| **Critical** | 3+ consecutive failures                                                          |
-| **No Data**  | No scheduler runs found in Firestore                                             |
-
-### Data Model
-
-**Collection:** `schedulerRunLogs`
-
-```typescript
-interface SchedulerRunLog {
-  trigger: "scheduled" | "manual";
-  triggeredBy: string; // 'system' or userId
-  startedAt: Timestamp;
-  completedAt: Timestamp;
-  expiresAt: Timestamp;
-  durationMs: number;
-  status: "success" | "partial" | "failed";
-  totalStores: number;
-  totalProjects: number;
-  successCount: number;
-  failedCount: number;
-  skippedCount: number;
-  intelligenceSuccess: number;
-  intelligenceFailed: number;
-  tasks: SchedulerTaskResult[];
-  errors: Array<{ tId; sId; projectId?; error }>;
-}
-```
-
-### File Structure
-
-```
-src/
-├── app/(main)/ops/scheduler/page.tsx               # Page route
-├── components/templates/main-app/platform/
-│   └── schedulerMonitor/index.tsx                   # Dashboard UI (~350 lines)
-├── database/ops/scheduler.ts                        # DAL (read-only, ~3 reads/load)
-└── lib/ops/schedulerTypes.ts                        # Shared types
-
-functions/
-└── src/decisionBlocksScoring.ts                     # CF writes run log after each run
-```
-
-### Firestore Indexes Required
-
-```
-schedulerRunLogs: status ASC + startedAt DESC
-schedulerRunLogs: trigger ASC + startedAt DESC
-```
-
-### Firebase Cost
-
-~3 reads per dashboard load. At 2-3 loads/day = ~270 reads/month = ~₹0.08/month.
-
----
-
-## Document History
-
-| Date       | Version | Change                                                                                                                                                                                                                                                                                                                                                       |
-| ---------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-01-11 | v1.0    | Initial implementation document from codebase                                                                                                                                                                                                                                                                                                                |
-| 2026-02-09 | v1.1    | Refactor: decisionBlocksScoring.ts now imports WEIGHTS/THRESHOLDS/DURATIONS/normalize from shared scoreNormalizer.ts (eliminates duplication). Removed dead types (SCORING_WEIGHTS, DisplayBlock, MenuItemStatsDaily, MenuItemStatsAggregated) from decisionBlocks.types.ts. Updated file structure to include shared intelligence modules. Status → LOCKED. |
-| 2026-02-20 | v1.2    | Added Scheduler Monitor Dashboard: operational run logs (`schedulerRunLogs` collection), per-task tracking (8 tasks), health badge, error inspection, manual trigger, Firestore indexes. CF writes detailed run results for the configured retention window.                                                                                                           |
-| 2026-06-11 | v1.3    | Production-readiness audit slice: customer runtime now uses store-local time for category time-slot filtering, malformed precomputed timestamps are stale, and manual recovery uses the same compact 7-day analytics snapshot path as scheduled scoring. |
-
----
-
-_Status: Controlled owner testing ready in audited slice; full MenuList certification pending_
+Historical implementation document: `_archive/pre-2026-07-16/decision-intelligence_impl.md`.

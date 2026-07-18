@@ -76,6 +76,10 @@ service firebase.storage {
       return request.resource.contentType.matches('image/(jpeg|png|webp|gif)');
     }
 
+    function isValidStaticImageType() {
+      return request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
     function isValidSvgType() {
       return request.resource.contentType == 'image/svg+xml';
     }
@@ -107,8 +111,30 @@ service firebase.storage {
       return isValidImageType() && isValidSize();
     }
 
+    function isValidStaticImageUpload() {
+      return isValidStaticImageType() && isValidSize();
+    }
+
     function isValidImageOrDocumentUpload() {
       return (isValidImageType() || isValidDocumentType()) && isValidSize();
+    }
+
+    function isValidProjectUpload(fileType) {
+      return (
+               fileType == 'files'
+               && (
+                 (isValidImageType() && request.resource.size <= 10 * 1024 * 1024)
+                 || (
+                   request.resource.contentType == 'application/pdf'
+                   && request.resource.size <= 50 * 1024 * 1024
+                 )
+               )
+             )
+             || (
+               fileType.matches('^(assets|itemImages|project-images|custom|generated|edited)$')
+               && isValidImageType()
+               && request.resource.size <= 10 * 1024 * 1024
+             );
     }
 
     function isValidPlatformAssetUpload() {
@@ -123,11 +149,17 @@ service firebase.storage {
       return request.resource.size <= 750 * 1024
              && (
                (
-                 fileName == 'document.json'
+                 (
+                   fileName == 'document.json'
+                   || fileName.matches('^document-[a-zA-Z0-9_-]{8,64}\\.json$')
+                 )
                  && request.resource.contentType == 'application/json'
                )
                || (
-                 fileName.matches('^preview\\.(png|jpg|jpeg|webp)$')
+                 (
+                   fileName.matches('^preview\\.(png|jpg|jpeg|webp)$')
+                   || fileName.matches('^preview-[a-zA-Z0-9_-]{8,64}\\.(png|jpg|jpeg|webp)$')
+                 )
                  && isValidImageType()
                )
              );
@@ -192,7 +224,10 @@ service firebase.storage {
      */
     match /media/{profile}/{tId}/{sId}/{entityId}/{fileId} {
       allow read: if true;
-      allow write: if belongsToStore(tId, sId) && isValidImageUpload() && isValidMediaProfile(profile);
+      allow write: if resource == null
+                   && belongsToStore(tId, sId)
+                   && isValidStaticImageUpload()
+                   && isValidMediaProfile(profile);
       allow delete: if belongsToStore(tId, sId);
     }
 
@@ -226,7 +261,7 @@ service firebase.storage {
       allow read: if belongsToStore(tId, sId);
       allow write: if belongsToStore(tId, sId)
                    && fileType.matches('^(files|assets|itemImages|project-images|custom|generated|edited)$')
-                   && isValidImageOrDocumentUpload();
+                   && isValidProjectUpload(fileType);
       allow delete: if belongsToStore(tId, sId);
     }
 
@@ -290,6 +325,12 @@ service firebase.storage {
       allow delete: if isPlatformAdmin();
     }
 
+    match /blogs/profileImages/{fileId} {
+      allow read: if true;
+      allow write: if isPlatformAdmin() && isValidImageUpload();
+      allow delete: if isPlatformAdmin();
+    }
+
     match /users/{fileType}/{fileId} {
       allow read: if isAuthenticated();
       allow write: if isAuthenticated()
@@ -347,13 +388,9 @@ service firebase.storage {
     /**
      * Customer App (PWA) — Icon Overrides
      *
-     * Day-one: Customer App icons are either GENERATED on-the-fly by the
-     * /api/app-icons/{storeId}/{size} route (no storage involved) or redirect
-     * to the existing store.logo URL (already covered by logo upload rules).
-     *
-     * When owner-uploaded PWA icon overrides ship (Phase 7B), they will reuse
-     * the existing `MenuListAi/project/custom/` path via the same upload flow
-     * used for item images — no new storage rule required.
+     * Generated icons remain route-backed. Owner overrides use the scoped
+     * `stores/pwa-icons/{tId}/{sId}/{fileId}` rule above with unique immutable
+     * object names. Legacy project paths remain read-only.
      *
      * @see __docs__/customer-app/customer-app_firebase.md §Storage
      */

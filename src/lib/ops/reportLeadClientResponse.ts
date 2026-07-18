@@ -89,6 +89,7 @@ function isReportLeadOpsSnapshot(value: unknown): value is ReportLeadOpsSnapshot
     && value.feature.dashboardEnabled === true
     && value.feature.accessModel === 'platform_role'
     && value.feature.realtimeListeners === false
+    && typeof value.feature.scanMayBeIncomplete === 'boolean'
     && isRecord(value.filters)
     && isReportStatusFilter(value.filters.reportStatus)
     && typeof value.filters.toolId === 'string'

@@ -138,7 +138,9 @@ export function useEntities(tId: number, sId: number): UseEntitiesReturn {
         try {
             const result = await mergeEntities(survivorId, mergedId, tId, sId);
             if (result?.success) {
-                const transferred = Number(result.transferredAnswers || 0) + Number(result.transferredRelations || 0);
+                const transferred = Number(result.transferredAnswers || 0)
+                    + Number(result.transferredArticles || 0)
+                    + Number(result.transferredRelations || 0);
                 message.success(`Entities merged. ${transferred} reference(s) transferred.`);
                 await refresh();
             }

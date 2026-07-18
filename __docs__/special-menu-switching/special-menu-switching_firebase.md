@@ -28,14 +28,17 @@
 | List special menus            | project summary + `stores/{sId}` | Dashboard/mobile cache miss         | Owner usage                | 2 in parallel; SWR dedupes for 30 seconds   | N/A      |
 | Resolver check                | `stores/{sId}`                   | Every public page view             | Per page view              | 0 (store data already fetched + cached 60s) | N/A      |
 | Resolver load special project | `projects/{tId}/{sId}`           | When special menu is active        | Per page view (cached 60s) | 1 (cached via `unstable_cache`)             | Yes      |
-| Nightly lifecycle check       | `platformSummary/projects_{sId}` | Hourly scheduler, per-store nightly window | Up to 1/day per eligible active store | 1 compact summary; each due transition then uses 2 transaction reads | N/A      |
+| Precise lifecycle query       | `platformSummary` | Existing maintenance scheduler, every 2 minutes | 720 indexed queries/day | Reads only due summary docs, bounded to 50/run; an empty query may carry a minimum read charge | Single-field automatic index |
+| Nightly recovery/backfill     | `platformSummary/projects_{sId}` | Existing per-store nightly window | Up to 1/day per eligible active store | 1 compact summary; repairs missing/stale marker and replays missed transitions | N/A |
 
 ### Cost-Critical Notes
 
 - **Resolver adds ZERO extra reads when no special menu is active** — checks `store.activeSpecialMenuId` field which is already loaded
 - **When active, adds 1 cached read** — project is cached via `unstable_cache` with 60s TTL and `menu-store-{sId}` tag
-- **The global `storesSummary` read is reused** by the existing hourly scheduler. The per-store project-summary read is incremental and currently bounded to at most one per eligible store/nightly window; a future summary marker may skip stores with no live special-menu schedule after a migration/backfill contract exists.
+- **`specialMenuNextTransitionAt` is the due-work index.** Client create/edit/lifecycle/delete paths and Admin transitions recompute it from fresh summary truth. The precise scheduler does not scan every store or project.
+- **The existing global `storesSummary` read remains the recovery path.** Its per-store nightly summary read backfills missing markers for schedules created before the marker contract and catches missed transitions.
 - **Transactions preserve correctness under contention** — baseline counts below can increase when Firestore retries, but failed attempts do not publish partial project/store/summary state.
+- **A different active pointer costs one exact read only on that exceptional path.** A live scoped active project still blocks; a missing, malformed, inactive, cancelled, expired, or ended target is repaired in the same activation transaction. Normal activation keeps its existing read count.
 
 ---
 
@@ -52,7 +55,8 @@
 | Deactivate (store)          | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | Clear `activeSpecialMenuId`                         | `setDoc` merge + `deleteField()` |
 | Deactivate (temp status)    | `stores/{sId}`                   | Scheduler/DAL         | ~2/store/month | Delete only the banner owned by this menu           | Same atomic store write          |
 | Edit special menu           | `projects/{tId}/{sId}`           | Owner edits in editor | ~4/store/month | Same as regular project edit                        | `setDoc` merge                   |
-| Connected screen touch      | `platformSummary/campaigns_{sId}`, `platformSummary/screen_{sId}` | Scheduler activation/deactivation after public cache revalidation | Only when a screen token exists | `screen.contentVersion`, `screen.lastContentChangeAt`, public-safe mirror fields | Existing Functions public-cache helper |
+| Connected screen touch      | `platformSummary/campaigns_{sId}`, `platformSummary/screen_{sId}` | Scheduler activation/deactivation/repair after public cache revalidation attempt | Only when a screen token exists | `screen.contentVersion`, `screen.lastContentChangeAt`, public-safe mirror fields | Existing Functions public-cache helper; requested touch still runs when cache configuration is missing |
+| Due marker update           | `platformSummary/projects_{sId}` | Create/edit/lifecycle/delete/Admin transition | Same transaction as the owning summary mutation | `specialMenuNextTransitionAt` ISO string or field delete | Merge |
 
 ---
 
@@ -82,9 +86,10 @@ Uses existing storage paths. No new storage buckets or patterns.
 
 | Function                   | Trigger                                | Duration                             | Memory       |
 | -------------------------- | -------------------------------------- | ------------------------------------ | ------------ |
-| Nightly special menu check | `pubsub.schedule` (existing scheduler) | +2-5s per store with scheduled menus; optional initialized-screen version touch after cache revalidation | Same (256MB) |
+| Precise special-menu task | Task inside existing `menulistMaintenanceScheduler` | Indexed due query plus bounded due transitions | Existing scheduler allocation |
+| Nightly recovery | Existing `computeDecisionBlocksScores` store pass | Marker backfill and missed-transition recovery | Existing scheduler allocation |
 
-No new Cloud Functions. Extends existing nightly scheduler in `decisionBlocksScoring.ts` and reuses the shared Functions public-cache helper for screen freshness.
+No standalone Cloud Function or scheduler job is added. The precise task is registered inside the existing consolidated maintenance scheduler; the nightly function remains recovery only. Both reuse the shared Functions public-cache helper for screen freshness.
 
 ---
 
@@ -97,9 +102,9 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 | ---------------------------- | -------------------------------- | ------------------------- |
 | `createSpecialMenuProject()` | `src/database/projects/index.ts` | scheduled: 2R + 2W; immediate: 3R + 3W transaction |
 | `updateSpecialMenuProject()` | `src/database/projects/index.ts` | 3R + 2-3W transaction     |
-| `activateSpecialMenu()`      | `src/database/projects/index.ts` | 2R + 2-3W transaction     |
-| `deactivateSpecialMenu()`    | `src/database/projects/index.ts` | 2R + 2-3W transaction     |
-| `cancelSpecialMenu()`        | `src/database/projects/index.ts` | 1R + 2W transaction       |
+| `activateSpecialMenu()`      | `src/database/projects/index.ts` | 3R + 2-3W transaction; +1 exact read only for a different-pointer check |
+| `deactivateSpecialMenu()`    | `src/database/projects/index.ts` | 3R + 2-3W transaction     |
+| `cancelSpecialMenu()`        | `src/database/projects/index.ts` | 3-4R + 2-3W including best-effort store preflight/repair |
 | `getSpecialMenus()`          | `src/database/projects/index.ts` | 2R in parallel            |
 
 `useSpecialMenus()` must require explicit create/update/lifecycle acknowledgements before returning success to desktop or mobile callers. Lifecycle acknowledgements include the requested project id and resulting status (`active`, `expired`, or `cancelled`) so local UI state cannot advance on a generic `{ success: true }` fallback. This adds no Firestore reads/writes/deletes; it only prevents client-side `apiCallComposer()` fallback values from being treated as confirmed special-menu writes.
@@ -110,13 +115,13 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 
 | Category        | Operations                                        | Cost                              |
 | --------------- | ------------------------------------------------- | --------------------------------- |
-| Reads           | Up to ~30,000 per-store nightly summary reads, plus owner lifecycle/list reads and transaction retries | Region/pricing/free-tier dependent |
+| Reads           | 720 indexed due queries/day (often empty), due summary reads, up to ~30,000 nightly recovery reads at 1,000 eligible stores, owner reads, and transaction retries | Region/pricing/free-tier dependent |
 | Writes          | Lifecycle baseline is 2-3 atomic document writes per action, plus initialized-screen writes after scheduled transitions | Region/pricing/free-tier dependent |
-| Storage         | Same as regular projects (~0 incremental)         | ~₹0.00                            |
-| Cloud Functions | +5s on existing scheduler                         | ~₹0.00                            |
+| Storage         | Replace mode copies the current project payload; overlay mode starts without cloned base rows | Measure stored bytes and uploaded assets |
+| Cloud Functions | Existing consolidated maintenance and nightly functions; incremental duration depends on due volume | Measure after QA deployment |
 | **Total**       | Use current Firebase pricing and observed usage; do not rely on the historical fixed-rupee estimate | Measured after deployment |
 
-**Extremely cost-efficient.** Reusing project infrastructure means near-zero incremental cost.
+The design avoids per-store high-frequency scans and new collections. Measure query minimum charges, due volume, retries, and screen touches in QA before publishing a fixed cost claim.
 
 ---
 
@@ -126,7 +131,7 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 | ---------------------------------------------------------------- | --------------------------------- | ---------------------------------------------------- |
 | Querying all projects for active special menu on every page view | Could be 5-10 reads per page view | Use `store.activeSpecialMenuId` cached field instead |
 | Separate `specialMenus` collection                               | Doubles storage, requires sync    | Reuse projects collection                            |
-| Real-time activation (Cloud Function trigger)                    | Always-on cost                    | Nightly scheduler + API route hybrid                 |
+| One scheduled function or Cloud Task per special menu            | Operational and IAM sprawl        | One task inside the existing scheduler + indexed summary marker |
 | Storing full overlay merge result                                | Doubles project storage           | Compute overlay at render time                       |
 | Cloning base rows into every new overlay                          | Duplicates document bytes and IDs | Persist empty overlay rows; retain only editor file/language context |
 
@@ -135,10 +140,11 @@ Same pattern as `duplicateProject`, `updateStore`, etc.
 ## Optimization Opportunities
 
 1. **Implemented: atomic lifecycle transactions** — project, compact summary, store pointer, and owned temp banner commit together.
-2. **Candidate after migration design: stores-summary schedule marker** — skip per-store project-summary reads when no scheduled/active special menu exists. Do not add the marker until client writes, scheduler backfill, parser, rules, and stale-marker repair are one contract.
+2. **Implemented: summary due marker** — `specialMenuNextTransitionAt` is maintained by client and Admin transactions, queried by the consolidated scheduler, and backfilled/repaired by the nightly path.
 3. **Implemented: lazy cleanup** — expired/cancelled projects remain as audit history; no cleanup collection or scheduled delete job.
 4. **Implemented: storage-light overlays** — new overlays do not duplicate base category/item rows, and runtime namespacing requires no mapping document or extra read/write.
+5. **Implemented: bounded stale-pointer recovery** — activation validates only the exact different pointer target, avoiding both a collection scan and permanent retries against dead state.
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026

@@ -2,7 +2,7 @@
 
 **Feature:** AI Enhancement Packs
 **Status:** Help/source evidence; not current launch certification
-**Last Updated:** July 11, 2026
+**Last Updated:** July 14, 2026
 **Audience:** Customers (restaurant owners, non-technical)
 **Tone:** Calm, simple, no jargon. Maximum 2-second comprehension per sentence.
 
@@ -120,8 +120,8 @@ Contact MenuList support. We're here to help with any questions about your menu.
 
 | Check                                       | Status |
 | ------------------------------------------- | ------ |
-| No credits, tokens, or units mentioned      | ✅     |
-| No usage meters or balance references       | ✅     |
+| Pack credits are shown only where useful    | ✅     |
+| Monthly included capacity remains private   | ✅     |
 | No "AI-powered" or "Smart" language         | ✅     |
 | No monitoring or tracking invitations       | ✅     |
 | Every sentence under 2-second comprehension | ✅     |
@@ -130,4 +130,4 @@ Contact MenuList support. We're here to help with any questions about your menu.
 ---
 
 **Document Signature:** Lead Architect (Cascade)
-**Last Updated:** February 9, 2026
+**Last Updated:** July 14, 2026

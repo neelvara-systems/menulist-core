@@ -15,6 +15,7 @@ import { getOwnerBusinessHealthFreshnessNote } from '@lib/ownerBusinessAssistant
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { type OwnerDashboardViewMode } from '@template/main-app/projects/types';
 import { formatDateKey, formatDateTime, type IntlFormatter } from '@util/dateTime';
+import { formatNumber } from '@util/formatters';
 import { theme } from 'antd';
 import { useFormatter, useTranslations } from 'next-intl';
 import dynamic from 'next/dynamic';
@@ -363,18 +364,18 @@ export default function MobileDashboardScreen({
 
     const renderMetricsCards = (metrics?: any) => (
         <Flex gap={12} wrap>
-            {renderMetricTile(labels.scansLabel, (metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={14} />)}
-            {renderMetricTile(t('itemTaps'), (metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={14} />)}
+            {renderMetricTile(labels.scansLabel, formatNumber(metrics?.menuVisits || 0), <LuEye color={token.colorPrimary} size={14} />)}
+            {renderMetricTile(t('itemTaps'), formatNumber(metrics?.itemClicks || 0), <LuFlame color={token.colorWarning} size={14} />)}
             {renderMetricTile(t('engagedSessions'), `${metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
             {renderMetricTile(t('actionRate'), `${metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={14} />)}
-            {renderMetricTile(t('customerActions'), (metrics?.menuActionClicks || 0).toLocaleString(), <LuHeart color={token.colorSuccess} size={14} />)}
-            {renderMetricTile(t('searches'), (metrics?.searches || 0).toLocaleString(), <LuBarChart3 color={token.colorInfo} size={14} />)}
-            {renderMetricTile(t('noResultSearches'), (metrics?.zeroResultSearches || 0).toLocaleString(), <LuTrendingDown color={token.colorWarning} size={14} />)}
-            {renderMetricTile(t('unavailableInterest'), (metrics?.unavailableItemTaps || 0).toLocaleString(), <LuShield color={token.colorWarning} size={14} />)}
+            {renderMetricTile(t('customerActions'), formatNumber(metrics?.menuActionClicks || 0), <LuHeart color={token.colorSuccess} size={14} />)}
+            {renderMetricTile(t('searches'), formatNumber(metrics?.searches || 0), <LuBarChart3 color={token.colorInfo} size={14} />)}
+            {renderMetricTile(t('noResultSearches'), formatNumber(metrics?.zeroResultSearches || 0), <LuTrendingDown color={token.colorWarning} size={14} />)}
+            {renderMetricTile(t('unavailableInterest'), formatNumber(metrics?.unavailableItemTaps || 0), <LuShield color={token.colorWarning} size={14} />)}
             {metrics?.smartPicksRendered > 0 ? (
                 <>
-                    {renderMetricTile(t('smartPicks'), metrics.smartPicksRendered.toLocaleString(), <LuZap color={token.colorInfo} size={14} />)}
-                    {renderMetricTile(t('spClicks'), (metrics.smartPicksClicks || 0).toLocaleString(), <LuZap color={token.colorSuccess} size={14} />)}
+                    {renderMetricTile(t('smartPicks'), formatNumber(metrics.smartPicksRendered), <LuZap color={token.colorInfo} size={14} />)}
+                    {renderMetricTile(t('spClicks'), formatNumber(metrics.smartPicksClicks || 0), <LuZap color={token.colorSuccess} size={14} />)}
                 </>
             ) : null}
         </Flex>
@@ -616,8 +617,9 @@ export default function MobileDashboardScreen({
                         <Text strong>{t('menu')}</Text>
                         <Popover content={todayInfoContent} placement="bottom" trigger="click">
                             <Button
+                                aria-label={t('menu')}
                                 fill="none"
-                                style={{ minHeight: 'auto', padding: 4 }}
+                                style={{ padding: 4 }}
                             >
                                 <LuInfo color={token.colorTextSecondary} size={16} />
                             </Button>
@@ -688,14 +690,14 @@ export default function MobileDashboardScreen({
             {overall?.lifetimeMetrics ? (
                 <Card size="small" title={<Text strong>{t('allTime')}</Text>}>
                     <Flex gap={12} wrap>
-                        {renderMetricTile(t('totalScans'), overall.lifetimeMetrics.totalViews?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile(t('totalClicks'), overall.lifetimeMetrics.totalClicks?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile(t('totalScans'), formatNumber(overall.lifetimeMetrics.totalViews || 0), undefined, 4)}
+                        {renderMetricTile(t('totalClicks'), formatNumber(overall.lifetimeMetrics.totalClicks || 0), undefined, 4)}
                         {renderMetricTile(t('engagedSessions'), `${overall.lifetimeMetrics.engagedSessionRate || 0}%`, undefined, 4)}
                         {renderMetricTile(t('actionRate'), `${overall.lifetimeMetrics.actionRate || 0}%`, undefined, 4)}
-                        {renderMetricTile(t('customerActions'), overall.lifetimeMetrics.totalMenuActionClicks?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile(t('searches'), overall.lifetimeMetrics.totalSearches?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile(t('noResultSearches'), overall.lifetimeMetrics.totalZeroResultSearches?.toLocaleString() || '0', undefined, 4)}
-                        {renderMetricTile(t('unavailableInterest'), overall.lifetimeMetrics.totalUnavailableItemTaps?.toLocaleString() || '0', undefined, 4)}
+                        {renderMetricTile(t('customerActions'), formatNumber(overall.lifetimeMetrics.totalMenuActionClicks || 0), undefined, 4)}
+                        {renderMetricTile(t('searches'), formatNumber(overall.lifetimeMetrics.totalSearches || 0), undefined, 4)}
+                        {renderMetricTile(t('noResultSearches'), formatNumber(overall.lifetimeMetrics.totalZeroResultSearches || 0), undefined, 4)}
+                        {renderMetricTile(t('unavailableInterest'), formatNumber(overall.lifetimeMetrics.totalUnavailableItemTaps || 0), undefined, 4)}
                     </Flex>
                     {overall.firstDataDate ? (
                         <Text type="secondary">
@@ -783,7 +785,7 @@ export default function MobileDashboardScreen({
                         {viewMode === 'today' ? t('todaySoFar') : viewModeLabel}
                     </Title>
                     {viewMode === 'today' ? (
-                        <Button fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
+                        <Button aria-label={t('refreshHint')} fill="none" onClick={handleRefresh} style={{ paddingInline: 8 }}>
                             <LuRefreshCw size={18} color={token.colorTextTertiary} />
                         </Button>
                     ) : dailyHeaderLabel ? (
@@ -937,7 +939,7 @@ export default function MobileDashboardScreen({
                                                         }} />
                                                     </div>
                                                     <Text style={{ fontSize: 12, minWidth: 32, textAlign: 'right', fontWeight: week.isCurrentWeek ? 600 : 400 }}>
-                                                        {(week.metrics?.menuVisits || 0).toLocaleString()}
+                                                        {formatNumber(week.metrics?.menuVisits || 0)}
                                                     </Text>
                                                     {week.isCurrentWeek ? (
                                                         <Tag
@@ -969,8 +971,8 @@ export default function MobileDashboardScreen({
                                 </Flex>
                             }>
                                 <Flex gap={12} wrap>
-                                    {renderMetricTile(labels.scansLabel, (mtd.metrics?.menuVisits || 0).toLocaleString(), <LuEye color={token.colorPrimary} size={12} />, 4)}
-                                    {renderMetricTile(t('itemTaps'), (mtd.metrics?.itemClicks || 0).toLocaleString(), <LuFlame color={token.colorWarning} size={12} />, 4)}
+                                    {renderMetricTile(labels.scansLabel, formatNumber(mtd.metrics?.menuVisits || 0), <LuEye color={token.colorPrimary} size={12} />, 4)}
+                                    {renderMetricTile(t('itemTaps'), formatNumber(mtd.metrics?.itemClicks || 0), <LuFlame color={token.colorWarning} size={12} />, 4)}
                                     {renderMetricTile(t('engagedSessions'), `${mtd.metrics?.engagedSessionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
                                     {renderMetricTile(t('actionRate'), `${mtd.metrics?.actionRate || 0}%`, <LuTrendingUp color={token.colorSuccess} size={12} />, 4)}
                                 </Flex>

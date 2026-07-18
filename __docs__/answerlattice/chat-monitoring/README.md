@@ -56,6 +56,8 @@ Chat Monitoring is Answerlattice's operator dashboard for reviewing support conv
 - `functions-answerlattice/src/answerlattice/chatAnalyticsAggregation.ts` — bounded, resumable daily summary aggregation
 - `functions-answerlattice/src/answerlattice/chatIntelligence.ts` — deterministic feedback and weekly insight projection
 - `functions-answerlattice/src/answerlattice/answerlatticeNightly.ts` — existing tenant scheduler orchestration
+- `functions-answerlattice/src/index.ts::backfillChatAnalytics` — platform-only, scope-validated historical repair with a scoped lease
+- `src/services/chatAnalytics/index.ts` — dedicated Answerlattice callable client plus strict response admission; no MenuList Firebase fallback
 
 ### Types
 - `src/types/chatSession.ts` — ConversationFilters, ADMIN_STATUS/PRIORITY/TAG/QUALITY_OPTIONS

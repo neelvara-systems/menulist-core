@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import type { Metadata } from 'next';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
@@ -9,7 +10,7 @@ import '@/styles/website.css';
 
 const industry = getWebsiteIndustryPage('local-service-businesses')!;
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
     title: industry.metaTitle,
     description: industry.metaDescription,
     alternates: { canonical: industry.canonicalPath },
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
         description: industry.metaDescription,
         url: industry.canonicalPath,
     },
-};
+});
 
 export default function Page() {
     return (

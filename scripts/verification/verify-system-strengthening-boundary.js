@@ -353,27 +353,30 @@ function verifySystemAuditDeployEvidenceBoundary() {
 function verifyPresetCascadeBatching() {
   const route = 'src/database/projects/index.ts';
   const source = read(route);
-  const cascade = sliceBetween(source, 'export const removePresetFromAllCategories', 'export type ProjectPresetCascadeUpdateResult', route);
+  const cascade = sliceBetween(source, 'const PROJECT_PRESET_CASCADE_PAGE_SIZE', 'export type ProjectPresetCascadeUpdateResult', route);
   [
-    'writeBatch(firebaseClient)',
-    'PROJECT_PRESET_CASCADE_BATCH_LIMIT = 450',
-    'commitPendingProjectPresetWrites',
-    'batch.set(docSnap.ref, project, { merge: true })',
-    'await commitPendingProjectPresetWrites();',
-    'revalidatePublicClientCacheForProject(projectId, "removePresetFromAllCategories")',
+    'PROJECT_PRESET_CASCADE_PAGE_SIZE = 100',
+    'PROJECT_PRESET_CASCADE_CONCURRENCY = 4',
+    'orderBy(documentId())',
+    'const currentDoc = await transaction.get(projectDoc.ref);',
+    'projectDocumentMatchesScope(currentProject, { ...scope, projectId: projectDoc.id })',
+    'const projection = projectTimeSlotPresetReferences(currentProject, mutation);',
+    'files: projection.files,',
+    'await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);',
   ].forEach((token) => {
-    assertIncludes(cascade, token, `${route} must retain batched preset cascade token ${token}`);
+    assertIncludes(cascade, token, `${route} must retain safe preset cascade token ${token}`);
   });
   assertOrder(
     cascade,
     route,
     [
-      'batch.set(docSnap.ref, project, { merge: true })',
-      'await commitPendingProjectPresetWrites();',
-      'await Promise.all(',
+      'const currentDoc = await transaction.get(projectDoc.ref);',
+      'transaction.set(projectDoc.ref, {',
+      'await revalidatePublicClientCacheForProject(projectDoc.id, cacheContext);',
     ],
-    'preset cascade writes must commit before cache revalidation',
+    'preset cascade transaction must commit before cache revalidation',
   );
+  assertNotIncludes(cascade, 'batch.set(docSnap.ref, project, { merge: true })', `${route} must not restore stale full-project batch writes`);
 }
 
 function verifyNoApiOrDatabaseConsoleCalls() {

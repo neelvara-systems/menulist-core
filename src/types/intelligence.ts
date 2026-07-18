@@ -108,6 +108,7 @@ export interface MenuIntelligenceState {
     validUntil: Date;
     runCount: number;
     daysSinceCreation: number;
+    lastAnalyticsDate?: string;
     recentAuditLog: AuditLogEntry[];
     stabilityMode: boolean;
     stabilityModeReason?: string;

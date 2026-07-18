@@ -2,22 +2,26 @@
 
 **Feature:** AI Enhancement Packs (Outcome-Based AI Pricing & Usage Tracking)
 **Status:** Implemented and hardened
-**Last Updated:** July 13, 2026
+**Last Updated:** July 15, 2026
 **Audience:** Developers only
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation document records source-gated AI Enhancement Pack and accounting behavior only. Current approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:billing-entitlement-boundary`, `npm run verify:ai-accounting`, Razorpay sandbox subscription/top-up/reseller/webhook smoke, desktop/mobile Billing browser QA, target deploy evidence, and production-host smoke.
 
 > **July 11 credit transparency amendment:** The Content Credit Pack now shows `250 credits` and concrete generated-image/description-rewrite examples on website pricing, desktop Billing, and mobile Billing. Referral rewards show 100/50 credits with matching examples. `src/data/shared/contentCreditPolicy.ts` is the public-safe rate source; `src/constants/AI/unitCosts.ts` consumes those rates. Monthly included capacity, provider costs, margins, tax valuation, and overdraft remain private. Older outcome-only notes below are implementation history where they conflict with this amendment.
 
+## July 15, 2026 Client Capacity Error Contract
+
+`AICapacityError` restores its prototype explicitly after `Error` construction. This is required by the root ES5 TypeScript target so `instanceof AICapacityError` remains reliable in description, metadata, translation, image, and design-advisor clients. A valid 402 capacity response therefore reaches the existing Billing/enhancement guidance instead of being collapsed into a generic provider failure. `test:description-output-boundary` exercises the shared error through a real mocked 402 response.
+
 ## June 2, 2026 Accounting Hardening Contract
 
-Billable AI route accounting is centralized in `src/lib/ai/accounting.ts` and `src/lib/ai/capacityCheck.ts`. Paid routes reserve exact positive-integer units transactionally before provider work, using the final operation ID as the idempotency key. Successful provider calls settle that hidden reservation through `finalizeAiOperationAccounting()`; terminal provider or route failure refunds the exact recurring/top-up buckets once. A paid non-idempotent finalization without a reservation fails closed instead of returning usable output for free. Zero-unit platform-absorbed actions remain unreserved.
+Billable AI route accounting is centralized in `src/lib/ai/accounting.ts` and `src/lib/ai/capacityCheck.ts`. Paid routes reserve exact positive-integer units transactionally before provider work, using the final operation ID as the idempotency key. The operation stays in the selected outlet ledger while `accountingBillingStoreId` records the effective subscription store that was debited; this is required when an outlet inherits its HQ subscription. Successful provider calls settle that hidden reservation through `finalizeAiOperationAccounting()`; terminal provider or route failure refunds the exact recurring/top-up buckets once against that same effective subscription. A paid non-idempotent finalization without a reservation fails closed instead of returning usable output for free. Zero-unit platform-absorbed actions remain unreserved.
 
-Browser/client access to full `menulistAiOperations/{tId}/{sId}` documents is disabled for owners. The old `addAiOperation()` client helper now throws immediately, Firestore rules deny all client writes, and full document reads are platform-only. Desktop and mobile owner transaction screens read through `GET /api/ai-operations`, which returns an owner-visible allowlisted activity shape; platform-role sessions can receive the full transaction payload for support/debug.
+Browser/client access to full `menulistAiOperations/{tId}/{sId}` documents is disabled for owners. The old `addAiOperation()` client helper now throws immediately, Firestore rules deny all client writes, and direct full-document client reads are platform-only. Desktop and mobile owner transaction screens read through `GET /api/ai-operations`, which requires current persisted `canAccessBilling` permission and returns an owner-visible allowlisted activity shape. Platform-role API responses use a separate bounded accounting allowlist; raw provider/generation payloads, tenant/store/user IDs, and full transaction JSON do not cross this browser route.
 
 `AI_UNIT_COSTS` and `GEMINI_COST_USD` are now fail-closed. Every `AI_ACTIONS_TYPES` value must have an explicit unit-cost and real-cost entry; unknown AI actions throw instead of silently defaulting to a free operation. This protects future AI features from accidentally bypassing credits or internal margin tracking.
 
-Dashboard visibility is split by audience. Owner-facing desktop/mobile Transactions show operation date, action, project/menu when available, processing time, owner credits used, no-credit setup actions, and the owner-relevant generated/extracted output summary. They do not receive raw token counts, provider cost, model names, provider payloads, generation config, tenant/store IDs, file IDs, or margin fields. Desktop pagination is cursor-based with Previous/Next controls because exact totals are not read from Firestore. The transaction API is protected by the shared `DATA_READ` rate limit before Firestore reads, and the desktop owner page only loads the read-only projects summary when the current page has project IDs; it does not use the project-list helper that can create a default menu. Platform-role users get a gated debug section with the full AI transaction object, token counts, model, provider cost, owner-charge fields, margin, and IDs for support investigation.
+Dashboard visibility is split by audience. Owner-facing desktop/mobile Transactions show operation date, action, project/menu when available, processing time, owner credits used, no-credit setup actions, and the owner-relevant generated/extracted output summary. They do not receive raw token counts, provider cost, model names, provider payloads, generation config, tenant/store IDs, file IDs, or margin fields. Desktop pagination is cursor-based with Previous/Next controls because exact totals are not read from Firestore. The transaction API applies the shared `DATA_READ` limit, validates query/date shape, and requires current persisted `canAccessBilling` permission before operation-ledger reads. The desktop owner page only loads the read-only projects summary when the current page has project IDs; it does not use the project-list helper that can create a default menu. Platform-role users get a gated debug section with bounded token, model, provider-cost, owner-charge, margin, project/file, and transaction identity fields; full transaction JSON and raw provider payloads remain server-side.
 
 Regression command:
 
@@ -50,15 +54,17 @@ Owner-facing AI routes require the existing store-role permission before capacit
 
 AI enhancement accounting is now enabled end to end for owner-billable AI operations and auditable for free/internal AI operations.
 
-Billable owner actions call `checkAICapacity()` before Gemini, finalize accounting through `finalizeAiOperationAccounting()` after a successful provider call, and deduct `monthlyCredits` first and `topUpCredits` second. API responses return `remainingBalance`, and desktop/mobile frontend services sync that balance through `syncBalanceFromResponse()` without an extra subscription read.
+Billable owner actions call `checkAICapacity()` and transactionally reserve exact units before Gemini, deducting `monthlyCredits` first and `topUpCredits` second. Valid output settles the same hidden operation shell through `finalizeAiOperationAccounting()` without a second debit; terminal failure refunds the exact buckets once. API responses return `remainingBalance` with the effective `billingStoreId`, and desktop/mobile frontend services sync that balance only to the matching active subscription without an extra read.
 
 Free, public, and internal AI calls also write operation events for cost visibility, but set `unitsConsumed = 0` and do not drain owner packs. Current non-billable audit paths include menu intake identity, public create-menu extraction, weekly analytics narrative, Help Center search, public Answerlattice widget search, Help Center article embedding, and Answerlattice translation.
 
 Help Center and widget search are conditional audit paths. The shared search core marks provider-backed work through `aiProviderUsed` and `aiProviderOperations`; wrappers write operation records only when the request actually reached Gemini for image query generation, embedding generation, or answer generation. Canonical hits, instant-cache hits, and ordinary cached answers are not AI operations and do not create `menulistAiOperations` writes.
 
-Owner visibility is exposed in desktop and mobile Billing through total enhancements left, plan balance, used-this-cycle count, and pack balance. Desktop and mobile Transactions show credits used and normalized operation dates so owners can trace activity without exposing internal token/cost details; platform-role debug surfaces retain raw tokens, model, cost, IDs, and full transaction payloads for support.
+Owner visibility is exposed in desktop and mobile Billing through the exact purchased Pack balance plus a generic available/paused plan-enhancement state. MenuList does not show monthly included allowance, monthly remaining, used-this-cycle counts, provider cost, or margin. Desktop and mobile Transactions show Pack credits used, no-credit operations, and normalized operation dates so owners can trace activity without exposing internal token/cost details. Menu extraction writes its platform audit row and, for authenticated owner-scoped work, a compact no-credit row to the selected outlet history in one Firestore batch. Platform-role debug surfaces retain bounded token, model, cost, and project/file/transaction identifiers without full transaction payloads.
 
 May 20 hardening: Transactions render `createdOn` through the shared date normalization utility so live Firestore `Timestamp`, serialized `{ seconds, nanoseconds }`, ISO string, and `Date` values display consistently on desktop, mobile, and the transaction details modal. Billing mutation failure paths now report through the monitored logger instead of browser `console.error`.
+
+> **Historical planning record:** Sections below preserve the original implementation sequence and superseded UI sketches. Where they show monthly owner meters, multi-pack variants, client operation writes, post-provider debit, or the old `aiOperations` path, the current June/July contracts above and the July 14 credit-transparency/accounting rules take precedence.
 
 ---
 
@@ -234,7 +240,9 @@ AI Service (e.g. generateImageViaApi)
     → fetch('/api/image-generation')
     → Backend: checkAICapacity (1 Firestore READ)
     → Backend: Gemini API call
-    → Backend: consumeAICapacity (1 Firestore WRITE) → returns { monthlyCredits, topUpCredits }
+    → Backend: reserveAiCapacity (transactional debit + hidden shell) before Gemini
+    → Backend: finalizeAiOperationAccounting settles the same shell after valid output
+    → Returns { billingStoreId, monthlyCredits, topUpCredits }
     → Backend: response includes remainingBalance
     ↓
 Frontend service: syncBalanceFromResponse(responseJson)
@@ -249,7 +257,7 @@ SessionProvider: event listener
 
 - `src/services/ai/balanceSync.ts` — dispatches CustomEvent
 - `src/providers/sessionProvider.tsx` — listens for event, updates state
-- `src/lib/ai/capacityCheck.ts` — `consumeAICapacity()` returns `RemainingBalance`
+- `src/lib/ai/capacityCheck.ts` — reservation/settlement returns billing-store-scoped `RemainingBalance`
 - Billable AI API routes — include `remainingBalance` in JSON response when credits are consumed
 - Frontend AI services — call `syncBalanceFromResponse()` after parsing responses that include `remainingBalance`
 
@@ -265,7 +273,7 @@ July 12 billing-integrity note: description and translation actions are not trus
 
 **Layer 1 — Webhook (monthly plans):** `subscription.charged` event in `api/razorpay/webhook/route.ts` resets credits when Razorpay charges the next cycle.
 
-**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current UTC billing period (YYYYMM key based on subscription anchor day, NOT calendar month). If different, it re-reads the subscription in a Firestore transaction, resets credits, and writes to Firestore (1 read + 1 write, first AI call of the billing month only). Anchor day is capped to days-in-month for month-end edge cases (e.g. anchor=31 in February becomes the last day). `consumeAICapacity()` repeats period/balance validation inside its debit transaction and rechecks the configured overdraft ceiling against the current balance, so concurrent provider completions cannot clamp multiple unearned debits to zero. Malformed periods or balances fail closed rather than writing `NaN` or inventing a reset.
+**Layer 2 — Lazy reset (yearly plans + safety net):** `checkAICapacity()` in `src/lib/ai/capacityCheck.ts` checks `creditsLastResetMonth` against the current UTC billing period (YYYYMM key based on subscription anchor day, NOT calendar month). `reserveAiCapacity()` re-reads the subscription in its transaction, applies a due reset, validates period/balance and overdraft against transaction-current truth, debits exact units, and writes the hidden shell before provider work. Anchor day is capped to days-in-month for month-end edge cases. Malformed periods or balances fail closed rather than writing `NaN` or inventing a reset.
 
 Subscription document refs use `src/lib/billing/subscriptionDocumentIdBoundary.ts` before lazy reset and consumption. Malformed subscription IDs cannot reach Firestore refs; paid consumption fails closed through the shared AI accounting finalizer.
 
@@ -409,7 +417,7 @@ Changes from showing credit math to simple reassurance:
 | `src/lib/ai/accounting.ts`                                       | Server-side accounting finalizer                                | Shared finalization for billable AI operation logs and credit consumption                     |
 | `src/lib/ai/operationLog.ts`                                     | Admin SDK operation logger                                      | Server-only `menulistAiOperations/{tId}/{sId}` writes                                        |
 | `src/database/aiOperations/index.tsx`                            | Client transaction-history reader                               | Read scoped operation history only; `addAiOperation()` is disabled                           |
-| Billable AI API routes                                           | Successful AI provider calls                                    | Call `finalizeAiOperationAccounting()` after provider success                                |
+| Billable AI API routes                                           | Paid provider work                                               | Reserve before provider, then call `finalizeAiOperationAccounting()` after valid output       |
 | `src/lib/rateLimit/configs.ts:148-152`                           | `PAYMENT_TOPUP` rate limit (10/hr)                              | No changes needed                                                                             |
 | `src/data/PlatformPlansList.ts:109-134`                          | Credit packs list                                               | Rename to `aiEnhancementPacksList`, update interface                                          |
 | `src/data/common.ts:63-70`                                       | `CreditPack` interface                                          | Rename to `AIEnhancementPack` interface                                                       |
@@ -578,7 +586,7 @@ export function getUnitCost(actionType: string): number {
 
 #### Task 1.2: Server-Side Accounting Finalization
 
-Current billable AI routes call `reserveAiCapacity()` before provider work and pass that exact reservation to `finalizeAiOperationAccounting()` after a usable provider result. Finalization atomically replaces the hidden `reserved` shell with the normal `consumed` operation row. The route refunds an unsettled reservation in `finally`; durable batch workers retain it only while deterministic staged work can retry.
+Current billable AI routes call `reserveAiCapacity()` before provider work and pass that exact reservation to `finalizeAiOperationAccounting()` after a usable provider result. Finalization atomically replaces the hidden `reserved` shell with the normal `consumed` operation row. The route refunds an unsettled reservation in `finally`; durable batch workers retain it only while transaction-current staged work can retry. Failure settlement also reports that staged-media ownership explicitly, so an ambiguous stage acknowledgement cannot cause route-local Storage cleanup to delete the authoritative retry payload.
 
 ```typescript
 let capacityReservation = await reserveAiCapacity({
@@ -620,37 +628,13 @@ For Cloud Task workers without a browser session, reserve with explicit validate
 
 **File:** `src/database/aiOperations/index.tsx`
 
-The browser DAL remains for paginated transaction-history reads. `addAiOperation()` is intentionally disabled and Firestore rules deny client writes to `menulistAiOperations/{tId}/{sId}`. New AI routes must use the server accounting finalizer instead.
-
-**Optional improvement:** Add TypeScript interface for transaction data:
-
-```typescript
-interface AIOperationData {
-  action: string;
-  projectId: string;
-  fileId: string;
-  model: string;
-  promptTokenCount: number;
-  candidatesTokenCount: number;
-  totalTokenCount: number;
-  processingTime: number;
-  tokenPerCredit: number;
-  chargePerCredit: number;
-  totalCredits: number;
-  totalCharge: number;
-  unitsConsumed: number; // NEW: internal AI units consumed
-  transactionId?: string;
-  clientResponse?: any;
-  geminiResponse?: string;
-  generationConfig?: any;
-}
-```
+The browser DAL remains for paginated transaction-history reads. `addAiOperation()` is intentionally disabled and Firestore rules deny client writes to `menulistAiOperations/{tId}/{sId}`. New AI routes must use the server accounting finalizer instead. `src/lib/ai/operationHistoryClientContract.ts` now supplies the runtime-validated `AiOperationHistoryRow`/page DTO used by desktop, mobile, and Answerlattice consumers; it replaces the former optional untyped interface idea. The MenuList DAL applies no-store/same-origin/manual-redirect policy and exposes only the maintained paginated reader.
 
 **Validation:**
 
-- [ ] `requestBodyComposer` auto-adds `sId`, `tId`, `uId`, timestamps
-- [ ] `apiCallComposer` provides error handling and logging
-- [ ] Data writes to `menulistAiOperations/{tId}/{sId}` path
+- [x] Browser history responses are bounded and runtime-projected before state
+- [x] Browser request policy is no-store, same-origin, and manual-redirect
+- [x] Client writes remain disabled; server finalization owns `menulistAiOperations/{tId}/{sId}` writes
 
 ---
 
@@ -913,7 +897,7 @@ Each paid AI route gets the same enforcement pattern:
 **Validation:**
 
 - [ ] All paid routes check capacity before Gemini call
-- [ ] All paid routes consume capacity after successful Gemini call
+- [x] Current paid routes reserve capacity before Gemini and settle/refund the exact reservation
 - [ ] Free actions (`IMAGE_PROCESSING`, `ADD_DESCRIPTION`, `NEW_ITEM_METADATA`) return `unitsRequired: 0` and do not require subscription balance
 - [ ] Batch operations multiply by quantity
 - [ ] 402 response triggers upsell CTA on client (not error message)
@@ -1384,7 +1368,7 @@ Monthly: total_ai_cost / total_subscription_revenue
 - Each AI operation doc has: `realCostPaise`, `ourChargePaise`, `marginPaise`
 - Subscription docs have: `amount`, `currency`
 - Feature flag: `AI_ADMIN_DASHBOARD: false` (ready to enable)
-- Query: `aiOperations/{tId}/{sId}` → `sum(realCostPaise)` vs subscription revenue
+- Query: `menulistAiOperations/{tId}/{sId}` → `sum(realCostPaise)` vs subscription revenue
 
 **Implementation:** Simple Firestore aggregation query on admin page. No new schema needed.
 

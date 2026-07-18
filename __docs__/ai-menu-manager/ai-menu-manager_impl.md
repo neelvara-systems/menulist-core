@@ -2,7 +2,31 @@
 
 **Status:** Initial implementation validated - enabled behind AMM feature flags in current config
 **Audience:** Engineering / implementation maintainers
-**Last Updated:** July 13, 2026
+**Last Updated:** July 16, 2026
+
+---
+
+## July 16, 2026 - Pending Recovery And Compact Payload Boundary
+
+Daily compact sessions remain the only normal deterministic state model. Each canonical write now derives `hasPendingOperations` and `pendingCount` from the union of direct pending operations and server-backed proposal summaries. When today's selected-project session does not exist, the protected inbox performs one exact tenant/store/project query for `hasPendingOperations == true`, ordered by `updatedAt desc` and limited to one result. The recovered session is revalidated against its own deterministic ID/date/scope before direct operations or server-backed proposal cards are returned. Desktop and MobileShell remember that actual session ID and continue writing to it until pending work clears; the next command then resumes the normal current-day session.
+
+`prepareAiMenuManagerSessionWrite()` is the single compact-write size boundary for browser and Admin mutation paths. It applies a conservative 700 KB JSON estimate before Firestore's 1 MiB document limit, trimming expendable artifact references, older receipt summaries, and oldest compact messages in that order. Pending operations and pending proposal summaries are never trimmed. A new write that remains oversized fails with fixed owner-safe guidance; an already oversized retained document may only write when the mutation reduces its size, which keeps completion/cancel recovery possible.
+
+The recovery path adds no collection, scheduler, listener, pointer document, or extra write. It requires the declared compound index on `tId`, `sId`, `projectId`, `hasPendingOperations`, and descending `updatedAt`. Firestore client rules still deny collection listing; only the authenticated, permission-checked server inbox runs the bounded query.
+
+Deployment ordering is fail-safe: while Firestore reports `failed-precondition` because the new compound index is absent or still building, the server records one bounded warning and returns the existing current/empty inbox behavior. Other query errors still propagate. Prior-day recovery becomes active when the index is ready; an index rollout cannot make the existing inbox unavailable.
+
+---
+
+## July 15, 2026 - Approval Concurrency And Retention Boundary
+
+Desktop and MobileShell approvals now carry the card's canonical `baseProjectUpdatedAt` into the existing `updateProjectWithoutLoader()` save. The standard project transaction compares that version with its already-required fresh project read before writing. Linked-outlet saves pass the same version as `expectedModifiedOnMillis` and compare it inside the existing guarded outlet transaction. A concurrent project change therefore rejects the AMM save before menu truth changes, with no additional Firestore read or write and no change for callers that do not supply the optional precondition.
+
+Browser and Admin Firestore timestamp shapes now normalize to the same ISO project-version string before AMM base hashing and execution directives. Existing cards created with a non-canonical timestamp may fail closed as stale and must be prepared again; they are never silently applied.
+
+Grouped approval now verifies distinct operation IDs, the declared group size, and identical session/tenant/store/project scope before building any patched project. Server-fallback session mutations preserve existing deterministic/planner/compound/clarification counters instead of replacing the counter map with only the four legacy keys.
+
+`firestore.indexes.json` now enables native `expiresAt` TTL for `aiMenuManagerSessions` and `aiMenuManagerProposals`, matching the existing 35-day and 45-day runtime expiries. The shared index file requires an authorized target deploy before hosted TTL deletion is active.
 
 ---
 
@@ -66,10 +90,10 @@ Server-backed AMM browser calls use `AI_MENU_MANAGER_REQUEST_POLICY`: same-origi
 
 Evidence:
 
-- `updateProject()` invariant: `src/database/projects/index.ts:945`
+- `updateProject()` invariant: `src/database/projects/index.ts:1626`, `src/database/projects/index.ts:1970`
 - Mobile project selector context: `src/components/mobile/screens/MobileProjectSelectorSheet.tsx:464`
 - MobileShell route/context boundary: `src/components/mobile/MobileShell.tsx:424`
-- Public cache revalidation: `src/lib/cache/publicClientCache.ts:77`
+- Public cache revalidation: `src/lib/cache/publicClientCache.ts:58`
 - Menu data shape: `src/components/templates/main-app/projects/types/extractedData.types.ts:149`
 - Project config shape: `src/components/templates/main-app/projects/types/project.types.ts:337`
 - Theme config shape: `src/components/templates/main-app/projects/types/theme.types.ts:16`
@@ -390,7 +414,7 @@ Direct-DAL permission fallback:
 - Desktop and mobile first try the compact client DAL path.
 - If the compact session read/write fails with Firestore `permission-denied`, the screen may call the authenticated AMM API routes instead of widening Firestore rules.
 - The fallback exists for users whose NextAuth session has `MANAGE_MENU` but whose Firebase Auth token cannot write the compact session directly.
-- The fallback request must send only API-safe command fields: selected `storeId`, `projectId`, `inputType`, owner text/upload refs, structured `composerContext`, `clientContextVersion`, `replaceOperationId`, `idempotencyKey`, and `sessionId`.
+- The fallback request must send only API-safe command fields: selected `storeId`, `projectId`, `inputType`, owner text/upload refs, structured `composerContext`, `clientContextVersion`, `replaceOperationId`, `idempotencyKey`, `sessionId`, and its validated `sessionDate` when continuing recovered pending work.
 - The fallback must not send the full selected project JSON, full compact session JSON, staff data, billing data, secrets, or unrelated store history.
 - Fallback cards are rendered as server-backed operations in the same owner UI. They still use proposal action and completion routes, approval policy, patch hash, base hash, and existing `updateProject()` execution.
 - Clarification and short follow-up replacement must preserve `replaceOperationId` so the server-backed fallback removes the previous clarification/pending card instead of duplicating cards.
@@ -584,8 +608,8 @@ Compact session/day doc.
 ```ts
 {
   sessionId: string;
-  tId: number;
-  sId: number;
+  tId: string;
+  sId: string;
   projectId: string; // selected project; inbox reads reject mismatched sessions
   sessionDate: "YYYY-MM-DD";
   storageMode: "daily_compact" | "detailed";
@@ -593,6 +617,8 @@ Compact session/day doc.
   compactMessages: Array<CompactMessage & { kind?: "reply" | "receipt" | "status" }>;
   pendingCardSummaries: CardSummary[];
   pendingOperations: PendingOperation[]; // full current cards plus approved patch metadata, capped
+  hasPendingOperations: boolean;
+  pendingCount: number;
   recentReceiptSummaries: ReceiptSummary[];
   counters: {
     commands: number;
@@ -614,6 +640,7 @@ Required caps:
 - `pendingOperations` max target: 25 active cards with exact patch/hash/base-project metadata.
 - `recentReceiptSummaries` max target: 20 recent receipts.
 - `artifactRefs` max target: 20 current pointers.
+- full compact write budget: 700 KB before Firestore's 1 MiB document limit.
 - larger transcripts, manifests, and debug payloads move to Storage.
 
 Use a deterministic session id where safe, derived from tenant, store, project, and `sessionDate`, so retrying command submit does not create duplicate session docs.
@@ -840,7 +867,7 @@ Implementation must preserve these controls:
 - no new scheduled function outside existing scheduler discipline.
 - explicit array caps on compact session and proposal docs.
 - deterministic IDs or idempotency keys for retry-safe compact session operations and server-backed proposal creation.
-- active pending cards available without scanning old daily sessions.
+- active pending cards available without scanning old daily sessions; no-current-session recovery uses one protected exact-scope indexed `limit(1)` query.
 - safe approve-all flows merge related project patches into one `updateProject()` call.
 - active job polling backs off and stops when hidden, backgrounded, or terminal.
 - deterministic answers and exact commands never pay planner cost.

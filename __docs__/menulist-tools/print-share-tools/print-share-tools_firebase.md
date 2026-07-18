@@ -1,6 +1,6 @@
 # Print & Share Tools - Firebase & Cost Posture
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -31,6 +31,8 @@ The output is generated on the client:
 - print window
 - text report
 - shareable report URL hash
+
+The shared public HTTPS parser and expanded raw-IPv6/hostname rejection remain browser-local and add zero Firebase, Storage, Function, provider, DNS, or network operations.
 
 No generated asset, uploaded file, or report payload is persisted by V0.
 

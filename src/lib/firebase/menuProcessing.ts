@@ -12,12 +12,14 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { AI_ACTIONS_TYPES } from '@constant/common';
 import type {
     MenuExtractionDestinationType,
     MenuExtractionJobDestination,
 } from '@data/shared/menuExtractionJob';
 import type { ExtractedBusinessProfile } from '@data/shared/extractedBusinessProfile';
 import getActiveSession from '@lib/auth/getActiveSession';
+import { MENU_PROCESSING_JOB_START_REJECTED_CODE } from '@lib/menu-extraction/jobStartFailure';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { Timestamp, collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
@@ -60,6 +62,80 @@ export interface TargetLanguage {
     name: string;
 }
 
+export interface MenuProcessingLocalizedText {
+    [languageCode: string]: string;
+}
+
+export interface MenuProcessingFileMessage {
+    sourceFileIndex: number;
+    status: 'error' | 'warning';
+    type: string;
+    message: string;
+    details?: {
+        omittedItems?: Array<{ position?: string; partialName?: string; reason: string }>;
+        affectedFields?: Array<{ itemId?: number; itemName?: string; field: string; reason: string }>;
+        omittedCount?: number;
+        extractedCount?: number;
+    };
+}
+
+export interface MenuProcessingCombinedData {
+    categories: Array<{
+        id: string;
+        sourceFileIndex: number;
+        name: MenuProcessingLocalizedText;
+        active?: boolean;
+        icon?: string;
+    }>;
+    items: Array<{
+        id: string;
+        sourceFileIndex: number;
+        name: MenuProcessingLocalizedText;
+        category: string;
+        categoryId: string;
+        categoryName: string;
+        description?: MenuProcessingLocalizedText;
+        price?: string;
+        attributes?: Array<{
+            id: string;
+            name: MenuProcessingLocalizedText;
+            price?: string;
+            active?: boolean;
+        }>;
+        tags?: string[];
+        dietaryTags?: string[];
+        spiceLevel?: 'none' | 'mild' | 'medium' | 'hot' | 'very-hot';
+        duration?: number;
+        active?: boolean;
+    }>;
+    languages: Array<{
+        name: string;
+        code: string;
+        isPrimary?: boolean;
+    }>;
+    businessAttributeSuggestions?: Array<{
+        key: string;
+        value: true;
+        confidence?: 'high' | 'medium' | 'low';
+        evidence?: string;
+        sourceFileIndex?: number;
+    }>;
+    extractedBusinessProfile?: ExtractedBusinessProfile;
+    fileMessages?: MenuProcessingFileMessage[];
+}
+
+export interface MenuProcessingQualityDetails {
+    categoryQuality: number;
+    itemQuality: number;
+    priceQuality: number;
+    descriptionQuality: number;
+}
+
+export interface MenuProcessingJobSummary {
+    categoriesCount?: number;
+    itemsCount?: number;
+}
+
 export interface CreateJobParams {
     projectId: string;
     files: MenuFileToProcess[];
@@ -92,12 +168,12 @@ export interface MenuProcessingJobStatus {
     status: 'pending' | 'processing' | 'preview_ready' | 'cancelling' | 'cancelled' | 'completed' | 'failed';
     progress: number;
     currentStep: string;
-    createdAt: any;
-    updatedAt: any;
+    createdAt: unknown;
+    updatedAt: unknown;
     /** Whether this was first extraction (auto-save) vs re-extraction (needs review) */
     isFirstExtraction?: boolean;
     /** TTL for unapproved preview_ready jobs */
-    expiresAt?: any;
+    expiresAt?: unknown;
     forceReview?: boolean;
     source?: string;
     sourceFingerprint?: string;
@@ -108,12 +184,12 @@ export interface MenuProcessingJobStatus {
     sourceMetadata?: Record<string, unknown>;
     timings?: Record<string, unknown>;
     result?: {
-        combinedData?: any;
-        summary?: Record<string, unknown>;
-        dataPrunedAt?: any;
+        combinedData?: MenuProcessingCombinedData;
+        summary?: MenuProcessingJobSummary;
+        dataPrunedAt?: unknown;
         dataPrunedReason?: string;
         qualityScore: number;
-        qualityDetails: any;
+        qualityDetails: MenuProcessingQualityDetails;
         processingTime: number;
         batchResults?: Array<{ batchIndex: number; success: boolean; filesProcessed: number }>;
         confidenceSummary?: {
@@ -137,18 +213,7 @@ export interface MenuProcessingJobStatus {
         [fileUid: string]: {
             categoriesCount: number;
             itemsCount: number;
-            processingMessages?: Array<{
-                sourceFileIndex: number;
-                status: "error" | "warning";
-                type: string;
-                message: string;
-                details?: {
-                    omittedItems?: Array<{ position?: string; partialName?: string; reason: string }>;
-                    affectedFields?: Array<{ itemId?: number; itemName?: string; field: string; reason: string }>;
-                    omittedCount?: number;
-                    extractedCount?: number;
-                };
-            }>;
+            processingMessages?: MenuProcessingFileMessage[];
         };
     };
 }
@@ -227,7 +292,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         projectId,
         files,
         targetLanguages,
-        action = "IMAGE_PROCESSING",
+        action = AI_ACTIONS_TYPES.IMAGE_PROCESSING,
         businessCategory,
         businessType,
         jobMode = "SINGLE_STORE",
@@ -288,7 +353,7 @@ export async function createMenuProcessingJob(params: CreateJobParams): Promise<
         jobStartLogContext,
     );
     if (!response.ok) {
-        throw createMenuProcessingJobStartError('menu_processing_job_start_rejected', response.status);
+        throw createMenuProcessingJobStartError(MENU_PROCESSING_JOB_START_REJECTED_CODE, response.status);
     }
 
     if (parseFailed) {
@@ -431,6 +496,8 @@ export async function checkExistingActiveJob(projectId: string, ignoreJobIds: st
 
     const q = query(
         collection(firebaseClient, COLLECTION),
+        where('tId', '==', String(session.tId ?? '')),
+        where('sId', '==', String(session.sId ?? '')),
         where('projectId', '==', projectId),
         where('uId', '==', session.uId),
         where('status', 'in', ['pending', 'processing', 'preview_ready'])

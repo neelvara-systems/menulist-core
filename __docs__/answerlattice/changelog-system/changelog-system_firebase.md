@@ -155,6 +155,8 @@ Separate Answerlattice Firebase mode must allow this nested path in `firestore-a
 
 ## 7. Document Growth Risk
 
+Opening the founder release entry with `?create=1` adds 0 Firestore reads, 0 writes, 0 listeners, and no provider call beyond the changelog screen's existing paginated load. Existing save costs apply only after the owner submits the form.
+
 ### Page Documents
 
 | Entries Per Page | Est. Size | Status |

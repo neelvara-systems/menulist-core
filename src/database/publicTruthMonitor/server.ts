@@ -152,18 +152,31 @@ export async function readPublicTruthMonitorSummaryServer(
     return snap.exists ? snap.data() as PublicTruthMonitorSummaryDocument : null;
 }
 
-export async function writePublicTruthMonitorSummaryServer(params: {
+export async function updatePublicTruthMonitorSummaryServer(params: {
     storeId: string | number;
-    summary: PublicTruthMonitorSummaryDocument;
-}): Promise<void> {
+    buildSummary: (
+        current: PublicTruthMonitorSummaryDocument | null,
+    ) => PublicTruthMonitorSummaryDocument;
+}): Promise<PublicTruthMonitorSummaryDocument> {
     const storeDocumentId = normalizePublicTruthMonitorScopeDocumentId(params.storeId);
     if (!storeDocumentId) throw new Error("Invalid Public Truth Monitor store ID");
 
-    await firestoreAdmin
+    const summaryRef = firestoreAdmin
         .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
-        .doc(buildPublicTruthMonitorSummaryDocId(storeDocumentId))
-        .set(sanitizeForAdminFirestore({
-            ...params.summary,
+        .doc(buildPublicTruthMonitorSummaryDocId(storeDocumentId));
+
+    return firestoreAdmin.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(summaryRef);
+        const current = snapshot.exists
+            ? snapshot.data() as PublicTruthMonitorSummaryDocument
+            : null;
+        const summary = params.buildSummary(current);
+
+        transaction.set(summaryRef, sanitizeForAdminFirestore({
+            ...summary,
             updatedAt: admin.firestore.Timestamp.now(),
         }), { merge: true });
+
+        return summary;
+    });
 }

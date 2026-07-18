@@ -2,8 +2,8 @@
 
 **Feature:** PDF Surface (Enhanced Menu PDF Generation)
 **Version:** 2.2 — Professional Bistro Layout with Michelin Typography
-**Status:** Active, `ENABLE_PDF_SURFACE: true`
-**Last Updated:** 2026-03
+**Status:** Compatibility bridge, `ENABLE_PDF_SURFACE: true`
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -21,9 +21,13 @@
 
 ---
 
-## Quick Reference
+## Current Runtime Boundary
 
-**Entry point:** Share Modal → Download PDF button
+`ENABLE_PDF_SURFACE` keeps legacy/flag-off PDF entry points available, but it no longer owns an independent output renderer. `src/lib/export/menuPdfGenerator.ts` adapts the legacy input into Menu Card Export's deterministic print source and renderer.
+
+When `ENABLE_MENU_CARD_EXPORT` is on, the normal owner action opens `/use-menulist/menu-card-export`. Older or flag-off callers may still call `generateMenuPdf()`, but the resulting file uses the same Menu Card Export rendering contract.
+
+**Compatibility entry points:**
 
 - Desktop: `src/components/templates/main-app/projects/b2cView/shareModal/index.tsx`
 - Mobile: `src/components/mobile/screens/MobileShareScreen.tsx`
@@ -34,43 +38,26 @@
 
 ---
 
-## Successor Planning
+## Successor Decision
 
-PDF Surface remains the active lightweight PDF path. It is not the long-term product surface for print.
-
-The planned successor is [Menu Card Export](../menu-card-export/README.md), a routed Print Menu workflow under `/use-menulist/menu-card-export`. It adds job presets, preflight warnings, controlled styles, export history, print-shop packet support, QR scan checks, and freshness detection.
+The successor is implemented: [Menu Card Export](../menu-card-export/README.md) is the canonical routed Print Menu workflow under `/use-menulist/menu-card-export`. It owns job presets, preflight warnings, controlled styles, store-scoped local export history, print-shop packet support, QR scan checks, and freshness detection.
 
 Migration rule:
 
-- Keep PDF Surface available while Menu Card Export is flagged off or still proving parity.
+- Keep PDF Surface only as the compatibility bridge while legacy or flag-off callers remain.
 - New print workflow decisions belong in `__docs__/menu-card-export/`.
 - Do not expand PDF Surface into a full route, print-shop packet system, or design editor.
 
 ---
 
-## v2.1 Design Summary (Bistro Style)
+## Current Output Ownership
 
-```
-┌─────────────────────────────────────────────────────┐
-│               STORE NAME IN WHITE                   │  ← charcoal band (#2d2d2d)
-│         address · contact (if provided)             │
-└─────────────────────────────────────────────────────┘
-
-▌ STARTERS                                             ← 3mm accent bar + uppercase
-──────────────────────────────────────────────────────
-
-  Bruschetta                            ₹ 180.00      ← clean alignment (standard density)
-    Toasted bread, tomatoes, basil                      ← italic, indented, gray
-    · Large  ₹220                                       ← attribute variant
-
-──────────────────────────────────────────────────────
-m-x9af2  │  Page 1 of 2  │  Menu Updated: Mar 1, 2026  ← footer
-View online: joespizza.menulist.ai                         ← URL (page 1 only)
-```
+The compatibility adapter does not specify a separate bistro layout. Current visual rules, business-type profiles, page styling, logo/color behavior, currency formatting, live-menu QR, attribution, metadata, filenames, and source references come from `src/lib/menu-card-export/`. Historical v2.2 standalone layout material is retained under `_archive/` only.
 
 ---
 
 ## Related Docs
 
 - `__docs__/pricing-integrity-system/` — FR-7.3 (PDF Updated On requirement)
-- `__docs__/physical-surfaces/` — Tent cards and counter stickers (separate feature)
+- `__docs__/physical-surfaces/` — legacy campaign-card compatibility boundary
+- `__docs__/print-menu-surfaces/` — supported scan-first table/counter print layouts

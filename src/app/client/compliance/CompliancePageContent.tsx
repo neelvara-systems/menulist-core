@@ -7,11 +7,10 @@
  * @see __docs__/compliance-pages/compliance-pages_impl.md §6
  */
 
-import { DB_COLLECTIONS } from "@constant/database";
 import PublicMenuListAttribution from "@/components/customer/PublicMenuListAttribution";
+import { getCachedComplianceOverridesServer } from "@database/compliance/server";
 import { getBrandName } from "@lib/businessIdentity/names";
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from "@lib/compliance/templates";
-import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import {
     getStoreByCustomDomain,
@@ -122,21 +121,19 @@ export default async function CompliancePageContent({ type, backHref = '/' }: Co
         });
     } else {
         try {
-            const docSnap = await firestoreAdmin
-                .collection(DB_COLLECTIONS.COMPLIANCE_PAGES)
-                .doc(complianceStoreDocumentId)
-                .get();
-
-            if (docSnap.exists) {
-                const data = docSnap.data();
+            const data = await getCachedComplianceOverridesServer(complianceStoreDocumentId);
+            if (data) {
                 const overrideFieldMap: Record<string, string> = {
                     privacy: 'privacyOverride',
                     terms: 'termsOverride',
                     refund: 'refundOverride',
                 };
                 const overrideField = overrideFieldMap[type];
-                if (overrideField && data[overrideField]) {
-                    content = composeComplianceContent(systemContent, data[overrideField]);
+                const customContent = overrideField
+                    ? data[overrideField as keyof typeof data]
+                    : null;
+                if (typeof customContent === 'string' && customContent) {
+                    content = composeComplianceContent(systemContent, customContent);
                 }
             }
         } catch (error) {

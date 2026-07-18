@@ -5,12 +5,14 @@ import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import { assertProjectUpdateSucceeded, updateProjectMetadata } from '@database/projects';
 import GlobalLanguagesList from '@data/languages';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
+import { canAddLanguage, getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet } from '@lib/localization/languageResolver';
+import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { getProjectPreferredLanguage } from '@lib/localization/projectContent';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
 import { removeObjRef } from '@util/utils';
+import type { InheritanceState } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useMemo, useState } from 'react';
@@ -25,12 +27,22 @@ import {
     getMobileProjectStoreLogContext,
     logMobileProjectFailure,
 } from '../utils/mobileProjectDiagnostics';
-import { getProjectLanguageIssues, repairLanguageProject } from '../utils/languageRepair';
+import {
+    getLanguageRepairFailureCause,
+    getLanguageRepairPartialProject,
+    getProjectLanguageIssues,
+    repairLanguageProject,
+} from '../utils/languageRepair';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 const DISTINCT_SCRIPT_LANGUAGE_CODES = new Set(['ar', 'bn', 'hi', 'mr', 'ta', 'te', 'zh']);
 
 interface ManageLanguagesSheetProps {
+    canTranslate: boolean;
+    categoryStates?: Record<string, InheritanceState>;
+    isMasterLinked?: boolean;
+    itemStates?: Record<string, InheritanceState>;
+    persistProject: (updatedProject: Project) => Promise<Project | void>;
     projectData: Project;
     visible: boolean;
     onClose: () => void;
@@ -48,8 +60,7 @@ const getUniqueLanguageCodes = (languages: unknown, fallback = 'en'): string[] =
             .filter(Boolean)
         : [];
 
-    const uniqueCodes = Array.from(new Set(codes));
-    return uniqueCodes.length ? uniqueCodes : [fallback];
+    return normalizeProjectLanguages(codes.length ? codes : [fallback]);
 };
 
 const getLanguageName = (code: string): string => (
@@ -91,6 +102,11 @@ const syncProjectPrimaryLanguage = (project: Project, requestedPrimaryCode: stri
 };
 
 export default function ManageLanguagesSheet({
+    canTranslate,
+    categoryStates,
+    isMasterLinked,
+    itemStates,
+    persistProject,
     projectData,
     visible,
     onClose,
@@ -112,21 +128,26 @@ export default function ManageLanguagesSheet({
         () => getUniqueLanguageCodes(projectData.languages),
         [projectData.languages]
     );
-    const primaryLanguageCode = useMemo(() => {
+    const preferredLanguageCode = useMemo(() => {
         const preferredLanguage = getProjectPreferredLanguage(projectData, storeDetails);
         return projectLanguages.includes(preferredLanguage)
             ? preferredLanguage
             : projectLanguages[0] || 'en';
     }, [projectData, projectLanguages, storeDetails]);
-    const sourceLangCode = primaryLanguageCode;
-    const sourceLang = GlobalLanguagesList.find((lang) => lang.code === sourceLangCode) || GlobalLanguagesList[0];
+    const sourceLangCode = getCanonicalProjectSourceLanguage(projectLanguages);
+    const sourceLang = GlobalLanguagesList.find((lang) => lang.code === sourceLangCode)
+        || { code: 'en', name: 'English', nativeName: 'English', direction: 'ltr' as const };
+    const translationGovernance = useMemo(
+        () => isMasterLinked ? { categoryStates, itemStates } : undefined,
+        [categoryStates, isMasterLinked, itemStates],
+    );
 
     const orderedProjectLanguages = useMemo(
         () => [
-            primaryLanguageCode,
-            ...projectLanguages.filter((code) => code !== primaryLanguageCode),
+            preferredLanguageCode,
+            ...projectLanguages.filter((code) => code !== preferredLanguageCode),
         ],
-        [primaryLanguageCode, projectLanguages]
+        [preferredLanguageCode, projectLanguages]
     );
 
     const currentLanguages = useMemo(
@@ -137,8 +158,8 @@ export default function ManageLanguagesSheet({
     );
 
     const languageIssues = useMemo(
-        () => getProjectLanguageIssues(projectData, sourceLangCode),
-        [projectData, sourceLangCode]
+        () => getProjectLanguageIssues(projectData, sourceLangCode, translationGovernance),
+        [projectData, sourceLangCode, translationGovernance]
     );
 
     const languageIssuesByCode = useMemo(
@@ -188,6 +209,10 @@ export default function ManageLanguagesSheet({
     }, [projectLanguages, storeDetails?.activeLanguages]);
 
     const handleRemove = async (languageCode: string) => {
+        if (languageCode === sourceLangCode || languageCode === preferredLanguageCode) {
+            Toast.show({ content: t('languageUpdateFailed'), duration: 1500 });
+            return;
+        }
         if (projectLanguages.length <= 1) {
             Toast.show({ content: t('atLeastOneLanguageRequired'), duration: 1500 });
             return;
@@ -208,7 +233,7 @@ export default function ManageLanguagesSheet({
                     updated.languages = nextLanguages;
                     syncProjectPrimaryLanguage(
                         updated,
-                        primaryLanguageCode === languageCode ? nextLanguages[0] || 'en' : primaryLanguageCode,
+                        preferredLanguageCode,
                     );
                     onSaved(updated);
                     Toast.show({ content: t('languageRemoved'), duration: 1200 });
@@ -216,7 +241,7 @@ export default function ManageLanguagesSheet({
                     logMobileProjectFailure('mobile_manage_languages_remove_failed', error, buildMobileLanguageLogContext('remove_language', {
                         ...getBoundedMobileProjectStringContext('targetLanguage', languageCode),
                         nextLanguageCount: Math.max(projectLanguages.length - 1, 0),
-                        wasPrimaryLanguage: primaryLanguageCode === languageCode,
+                        wasPrimaryLanguage: preferredLanguageCode === languageCode,
                     }));
                     Toast.show({ content: t('languageUpdateFailed'), duration: 2000 });
                 } finally {
@@ -228,16 +253,18 @@ export default function ManageLanguagesSheet({
     };
 
     const handleAdd = async () => {
+        if (!canTranslate || !canAddLanguage(projectLanguages)) return;
         const targetLang = GlobalLanguagesList.find((lang) => lang.code === pendingLanguageCode);
         if (!targetLang) return;
 
         setIsSaving(true);
         setSavingDetail(`Adding ${targetLang.nativeName || targetLang.name}`);
+        let updated = removeObjRef(projectData);
+        let completedTranslationRequest = false;
         try {
-            let updated = removeObjRef(projectData);
             updated.languages = [...projectLanguages, targetLang.code];
-            updated.defaultLanguage = primaryLanguageCode;
-            syncProjectPrimaryLanguage(updated, primaryLanguageCode);
+            updated.defaultLanguage = preferredLanguageCode;
+            syncProjectPrimaryLanguage(updated, preferredLanguageCode);
 
             const filesToTranslate = updated.files?.filter((file) => file.extractedData?.data) || [];
             let hadTranslationError = false;
@@ -262,7 +289,8 @@ export default function ManageLanguagesSheet({
                     file,
                     targetLang,
                     sourceLang,
-                    AI_ACTIONS_TYPES.LANGUAGE_ADDITION
+                    AI_ACTIONS_TYPES.LANGUAGE_ADDITION,
+                    translationGovernance,
                 );
 
                 if (result.messageType === 'error') {
@@ -270,6 +298,9 @@ export default function ManageLanguagesSheet({
                     break;
                 }
 
+                if (result.messageType === 'success') {
+                    completedTranslationRequest = true;
+                }
                 updated = result.updatedProject;
             }
 
@@ -277,7 +308,7 @@ export default function ManageLanguagesSheet({
                 throw new Error('Language translation failed.');
             }
 
-            syncProjectPrimaryLanguage(updated, primaryLanguageCode);
+            syncProjectPrimaryLanguage(updated, preferredLanguageCode);
 
             const translatedProjectContent = await translateProjectPublicContent({
                 projectDetails: updated,
@@ -288,6 +319,8 @@ export default function ManageLanguagesSheet({
             const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
 
             if (translatedProjectContent) {
+                completedTranslationRequest = translatedProjectContent.translatedFieldCount > 0
+                    || completedTranslationRequest;
                 if (translatedProjectContent.name) {
                     updated.name = translatedProjectContent.name as any;
                     projectMetadataTranslationUpdate.name = translatedProjectContent.name;
@@ -312,6 +345,8 @@ export default function ManageLanguagesSheet({
                 }
             }
 
+            const persistedProject = await persistProject(removeObjRef(updated));
+
             if (Object.keys(projectMetadataTranslationUpdate).length > 0) {
                 const metadataTranslationResult = await updateProjectMetadata(updated.projectId, projectMetadataTranslationUpdate);
                 assertProjectUpdateSucceeded(
@@ -320,7 +355,7 @@ export default function ManageLanguagesSheet({
                     'mobile_manage_languages_project_metadata_translation_update_rejected',
                 );
             }
-            onSaved(updated);
+            onSaved(removeObjRef(persistedProject || updated));
             setPendingLanguageCode('');
             Toast.show({ content: t('languageAdded', { language: targetLang.name }), duration: 1200 });
         } catch (error) {
@@ -328,6 +363,20 @@ export default function ManageLanguagesSheet({
                 ...getBoundedMobileProjectStringContext('targetLanguage', targetLang.code),
                 nextLanguageCount: projectLanguages.includes(targetLang.code) ? projectLanguages.length : projectLanguages.length + 1,
             }));
+            if (completedTranslationRequest) {
+                try {
+                    syncProjectPrimaryLanguage(updated, preferredLanguageCode);
+                    const persistedProject = await persistProject(removeObjRef(updated));
+                    onSaved(removeObjRef(persistedProject || updated));
+                    setPendingLanguageCode('');
+                    Toast.show({ content: 'Translation stopped. Completed translations were saved.', duration: 2400 });
+                    return;
+                } catch (partialSaveError) {
+                    logMobileProjectFailure('mobile_manage_languages_add_partial_save_failed', partialSaveError, buildMobileLanguageLogContext('add_language_partial_save', {
+                        ...getBoundedMobileProjectStringContext('targetLanguage', targetLang.code),
+                    }));
+                }
+            }
             if (error instanceof AICapacityError) {
                 Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
             } else {
@@ -340,6 +389,7 @@ export default function ManageLanguagesSheet({
     };
 
     const handleRepairLanguage = async (languageCode: string) => {
+        if (!canTranslate) return;
         const language = GlobalLanguagesList.find((item) => item.code === languageCode);
         const issue = languageIssuesByCode[languageCode];
         if (!language || !issue || issue.total === 0) return;
@@ -347,13 +397,20 @@ export default function ManageLanguagesSheet({
         void Dialog.confirm({
             cancelText: t('keep'),
             confirmText: 'Repair',
-            content: `This will rebuild ${language.nativeName || language.name} from the primary language, refill missing translations, and replace text that looks like it belongs to the wrong language.`,
+            content: `This will rebuild ${language.nativeName || language.name} from English, refill missing translations, and replace text that looks like it belongs to the wrong language.`,
             onConfirm: async () => {
                 setIsSaving(true);
                 setSavingDetail(`Repairing ${language.nativeName || language.name}`);
                 try {
-                    const updated = await repairLanguageProject(projectData, languageCode, sourceLang.code);
-                    onSaved(syncProjectPrimaryLanguage(updated, sourceLang.code));
+                    const updated = await repairLanguageProject(
+                        projectData,
+                        languageCode,
+                        sourceLang.code,
+                        translationGovernance,
+                    );
+                    syncProjectPrimaryLanguage(updated, preferredLanguageCode);
+                    const persistedProject = await persistProject(removeObjRef(updated));
+                    onSaved(removeObjRef(persistedProject || updated));
                     Toast.show({ content: `${language.name} repaired`, duration: 1400 });
                 } catch (error) {
                     logMobileProjectFailure('mobile_manage_languages_repair_failed', error, buildMobileLanguageLogContext('repair_language', {
@@ -362,7 +419,21 @@ export default function ManageLanguagesSheet({
                         repairMismatchedCount: issue.mismatched,
                         repairTotalCount: issue.total,
                     }));
-                    if (error instanceof AICapacityError) {
+                    const partialProject = getLanguageRepairPartialProject(error);
+                    if (partialProject) {
+                        try {
+                            syncProjectPrimaryLanguage(partialProject, preferredLanguageCode);
+                            const persistedProject = await persistProject(removeObjRef(partialProject));
+                            onSaved(removeObjRef(persistedProject || partialProject));
+                            Toast.show({ content: 'Repair stopped. Completed translations were saved.', duration: 2400 });
+                            return;
+                        } catch (partialSaveError) {
+                            logMobileProjectFailure('mobile_manage_languages_repair_partial_save_failed', partialSaveError, buildMobileLanguageLogContext('repair_language_partial_save', {
+                                ...getBoundedMobileProjectStringContext('targetLanguage', languageCode),
+                            }));
+                        }
+                    }
+                    if (getLanguageRepairFailureCause(error) instanceof AICapacityError) {
                         Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
                     } else {
                         Toast.show({ content: 'Language repair failed', duration: 2000 });
@@ -377,29 +448,50 @@ export default function ManageLanguagesSheet({
     };
 
     const handleRepairAll = async () => {
-        if (languagesNeedingRepair.length === 0) return;
+        if (!canTranslate || languagesNeedingRepair.length === 0) return;
 
         void Dialog.confirm({
             cancelText: t('keep'),
             confirmText: 'Repair all',
-            content: 'This will rebuild every language that has missing or likely wrong text using the primary language as the source.',
+            content: 'This will rebuild every language that has missing or likely wrong text using English as the source.',
             onConfirm: async () => {
                 setIsSaving(true);
                 setSavingDetail('Repairing all languages');
+                let updated = removeObjRef(projectData);
+                let completedLanguageRepairs = 0;
                 try {
-                    let updated = removeObjRef(projectData);
                     for (const issue of languagesNeedingRepair) {
-                        updated = await repairLanguageProject(updated, issue.code, sourceLang.code);
+                        updated = await repairLanguageProject(
+                            updated,
+                            issue.code,
+                            sourceLang.code,
+                            translationGovernance,
+                        );
+                        completedLanguageRepairs += 1;
                     }
-                    syncProjectPrimaryLanguage(updated, sourceLang.code);
-                    onSaved(updated);
+                    syncProjectPrimaryLanguage(updated, preferredLanguageCode);
+                    const persistedProject = await persistProject(removeObjRef(updated));
+                    onSaved(removeObjRef(persistedProject || updated));
                     Toast.show({ content: 'All language issues repaired', duration: 1500 });
                 } catch (error) {
                     logMobileProjectFailure('mobile_manage_languages_repair_all_failed', error, buildMobileLanguageLogContext('repair_all_languages', {
                         repairMissingCount: languagesNeedingRepair.reduce((total, issue) => total + issue.missing, 0),
                         repairMismatchedCount: languagesNeedingRepair.reduce((total, issue) => total + issue.mismatched, 0),
                     }));
-                    if (error instanceof AICapacityError) {
+                    const partialProject = getLanguageRepairPartialProject(error);
+                    if (partialProject) updated = partialProject;
+                    if (partialProject || completedLanguageRepairs > 0) {
+                        try {
+                            syncProjectPrimaryLanguage(updated, preferredLanguageCode);
+                            const persistedProject = await persistProject(removeObjRef(updated));
+                            onSaved(removeObjRef(persistedProject || updated));
+                            Toast.show({ content: 'Repair stopped. Completed translations were saved.', duration: 2400 });
+                            return;
+                        } catch (partialSaveError) {
+                            logMobileProjectFailure('mobile_manage_languages_repair_all_partial_save_failed', partialSaveError, buildMobileLanguageLogContext('repair_all_languages_partial_save'));
+                        }
+                    }
+                    if (getLanguageRepairFailureCause(error) instanceof AICapacityError) {
                         Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
                     } else {
                         Toast.show({ content: 'Language repair failed', duration: 2000 });
@@ -414,7 +506,7 @@ export default function ManageLanguagesSheet({
     };
 
     const handleMakePrimary = async (languageCode: string) => {
-        if (!projectLanguages.includes(languageCode) || primaryLanguageCode === languageCode) {
+        if (!projectLanguages.includes(languageCode) || preferredLanguageCode === languageCode) {
             return;
         }
 
@@ -494,7 +586,7 @@ export default function ManageLanguagesSheet({
                                                 <LuSparkles size={16} />
                                                 <Text strong>Language issues</Text>
                                             </Flex>
-                                            {languagesNeedingRepair.length > 1 ? (
+                                            {canTranslate && languagesNeedingRepair.length > 1 ? (
                                                 <Button fill="outline" onClick={() => void handleRepairAll()} size="small">
                                                     Repair all
                                                 </Button>
@@ -528,6 +620,8 @@ export default function ManageLanguagesSheet({
                                                 <Text type="secondary">
                                                     {index === 0
                                                         ? t('primaryLanguage')
+                                                        : language!.code === sourceLangCode
+                                                            ? 'English source for translations'
                                                         : (() => {
                                                             const issue = languageIssuesByCode[language!.code];
                                                             if (!issue || issue.total === 0) {
@@ -552,7 +646,9 @@ export default function ManageLanguagesSheet({
                                                 </Flex>
                                             ) : (
                                                 <Flex align="center" gap={6}>
-                                                    {(languageIssuesByCode[language!.code]?.total || 0) > 0 ? (
+                                                    {canTranslate
+                                                    && language!.code !== sourceLangCode
+                                                    && (languageIssuesByCode[language!.code]?.total || 0) > 0 ? (
                                                         <Button
                                                             fill="outline"
                                                             onClick={() => void handleRepairLanguage(language!.code)}
@@ -568,14 +664,18 @@ export default function ManageLanguagesSheet({
                                                     >
                                                         {t('primary')}
                                                     </Button>
-                                                    <Button
-                                                        color="danger"
-                                                        fill="none"
-                                                        onClick={() => void handleRemove(language!.code)}
-                                                        size="small"
-                                                    >
-                                                        <LuTrash2 size={16} />
-                                                    </Button>
+                                                    {language!.code === sourceLangCode ? (
+                                                        <Text type="secondary">Source</Text>
+                                                    ) : (
+                                                        <Button
+                                                            color="danger"
+                                                            fill="none"
+                                                            onClick={() => void handleRemove(language!.code)}
+                                                            size="small"
+                                                        >
+                                                            <LuTrash2 size={16} />
+                                                        </Button>
+                                                    )}
                                                 </Flex>
                                             )}
                                         </Flex>
@@ -592,6 +692,7 @@ export default function ManageLanguagesSheet({
                                         </Text>
                                     </Flex>
                                     <Select
+                                        disabled={!canTranslate || !canAddLanguage(projectLanguages)}
                                         onChange={setPendingLanguageCode}
                                         options={addableLanguages.map((language) => ({
                                             label: language.nativeName !== language.name ? `${language.name} (${language.nativeName})` : language.name,
@@ -600,10 +701,13 @@ export default function ManageLanguagesSheet({
                                         placeholder={t('chooseLanguage')}
                                         value={pendingLanguageCode || undefined}
                                     />
+                                    {!canTranslate ? (
+                                        <Text type="secondary">Translation access is required to add or repair languages.</Text>
+                                    ) : null}
                                     <Button
                                         block
                                         color="primary"
-                                        disabled={!pendingLanguageCode}
+                                        disabled={!canTranslate || !canAddLanguage(projectLanguages) || !pendingLanguageCode}
                                         onClick={() => void handleAdd()}
                                         size="large"
                                     >

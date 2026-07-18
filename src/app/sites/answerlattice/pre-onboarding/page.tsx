@@ -158,6 +158,33 @@ export default function AnswerlatticePreOnboardingPage() {
                     </div>
                 </section>
 
+                <section className="border-b border-white/[0.06] px-4 py-12 sm:px-6">
+                    <div className="mx-auto max-w-7xl">
+                        <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-widest text-teal-200">Choose your builder</p>
+                                <h2 className="mt-3 text-2xl font-bold text-white">Start with a tool-specific wrapper.</h2>
+                                <p className="mt-3 text-sm leading-relaxed text-[#a0a0c0]">
+                                    Every package contains the same master safety and review rules. The wrapper only explains how to begin in that environment.
+                                </p>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                                {[
+                                    ['Codex', '/pre-onboarding/codex.md'],
+                                    ['Cursor', '/pre-onboarding/cursor.md'],
+                                    ['Claude Code', '/pre-onboarding/claude-code.md'],
+                                    ['Replit', '/pre-onboarding/replit.md'],
+                                    ['Lovable', '/pre-onboarding/lovable.md'],
+                                ].map(([label, href]) => (
+                                    <AnswerlatticeLink key={href} basePath={basePath} href={href} className="rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 text-center text-sm font-semibold text-[#d6d6ef] transition hover:border-teal-300/25 hover:text-white">
+                                        {label}
+                                    </AnswerlatticeLink>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <section className="border-b border-white/[0.06] px-4 py-20 sm:px-6">
                     <div className="mx-auto max-w-7xl">
                         <SectionHeader

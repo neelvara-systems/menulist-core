@@ -3,7 +3,7 @@
  * ═══════════════════════════════════════════════════════════════
  * 
  * Computes menu intelligence state for a project based on 7-day analytics.
- * Runs nightly as part of the Decision Blocks scheduler (2:30 AM UTC).
+ * Runs from the store-local hourly scheduler after analytics settlement.
  * 
  * Key Concepts:
  * - Confidence: 0-1 score representing system trust in an item
@@ -136,6 +136,7 @@ export interface MenuIntelligenceState {
     validUntil: Date;
     runCount: number;
     daysSinceCreation: number;
+    lastAnalyticsDate?: string;
     recentAuditLog: AuditLogEntry[];
     stabilityMode: boolean;
     stabilityModeReason?: string;
@@ -183,7 +184,6 @@ const CMI = {
     RECENCY_BOOST_MAX: 0.05,
     RECENCY_MIN_7D: 10,
     LOW_DATA_VIEWS: 100,
-    TIME_OFF_PEAK_WEIGHT: 0.7,
     FATIGUE_WEIGHT: 0.6,
     MAX_SHIFT: 2,
     MAX_CHANGED_RATIO: 0.3,
@@ -204,7 +204,8 @@ const CMI = {
 function calculateConfidence(
     item: ExtractedItem,
     analytics: AggregatedAnalytics,
-    previousConfidence?: ConfidenceData
+    previousConfidence: ConfidenceData | undefined,
+    advanceAnalyticsDay: boolean,
 ): ConfidenceData {
     const views = item.views;
     const clicks = item.clicks;
@@ -240,6 +241,18 @@ function calculateConfidence(
         score = Math.min(1, score + 0.1);
     }
 
+    // Manual recovery can recompute the same settled snapshot. It must not
+    // mature confidence or stable-day counters more than once for that date.
+    if (previousConfidence && !advanceAnalyticsDay) {
+        return {
+            ...previousConfidence,
+            lastUpdated: Timestamp.now(),
+            views7d: views,
+            clicks7d: clicks,
+            engagementRate,
+        };
+    }
+
     // Apply slow build / fast break
     if (previousConfidence) {
         const delta = score - previousConfidence.score;
@@ -261,7 +274,9 @@ function calculateConfidence(
 
     // Track stable days
     const stableDays = trend === 'stable'
-        ? (previousConfidence?.stableDays || 0) + 1
+        ? previousConfidence
+            ? previousConfidence.stableDays + 1
+            : advanceAnalyticsDay ? 1 : 0
         : 0;
 
     return {
@@ -318,10 +333,10 @@ function calculateTimeEligibility(item: ExtractedItem): TimeEligibility {
     const threshold = totalClicks * 0.1;
 
     return {
-        breakfast: slotClicks.breakfast >= threshold || slotClicks.breakfast > 0,
-        lunch: slotClicks.lunch >= threshold || slotClicks.lunch > 0,
-        dinner: slotClicks.dinner >= threshold || slotClicks.dinner > 0,
-        lateNight: slotClicks.lateNight >= threshold || slotClicks.lateNight > 0
+        breakfast: slotClicks.breakfast >= threshold,
+        lunch: slotClicks.lunch >= threshold,
+        dinner: slotClicks.dinner >= threshold,
+        lateNight: slotClicks.lateNight >= threshold
     };
 }
 
@@ -334,7 +349,8 @@ function calculateSuppressionWindows(
     currentState: MenuIntelligenceState | null,
     newConfidence: Record<string, ConfidenceData>,
     analytics: AggregatedAnalytics,
-    newAuditLog: AuditLogEntry[]
+    newAuditLog: AuditLogEntry[],
+    advanceAnalyticsDay: boolean,
 ): Record<string, SuppressionWindow> {
     const newSuppressionWindows: Record<string, SuppressionWindow> = {};
     const now = new Date();
@@ -356,9 +372,14 @@ function calculateSuppressionWindows(
             }
         }
 
-        // Check for fatigue: high exposure (stable days >= threshold) with declining trend
+        if (!advanceAnalyticsDay) continue;
+
+        // A falling trend resets the newly computed stable-day counter. Use
+        // the preceding settled-day streak to decide whether the decline is
+        // fatigue after sustained exposure.
+        const priorStableDays = currentState?.itemConfidence?.[item.itemId]?.stableDays || 0;
         if (confidence &&
-            confidence.stableDays >= FATIGUE_THRESHOLD_DAYS &&
+            priorStableDays >= FATIGUE_THRESHOLD_DAYS &&
             confidence.trend === 'falling') {
 
             const suppressUntil = new Date();
@@ -374,13 +395,13 @@ function calculateSuppressionWindows(
                 action: 'AUTO_SUPPRESS',
                 itemId: item.itemId,
                 itemName: item.itemName,
-                previousValue: { stableDays: confidence.stableDays },
+                previousValue: { stableDays: priorStableDays },
                 newValue: { suppressedFor: SUPPRESSION_DURATION_DAYS },
                 timestamp: Timestamp.now(),
                 reversible: true,
                 reversed: false,
                 reason: {
-                    primary: `Item fatigue detected after ${confidence.stableDays} stable days with falling trend`,
+                    primary: `Item fatigue detected after ${priorStableDays} stable days with falling trend`,
                     factors: {
                         clicks7d: item.clicks,
                         pageViews7d: analytics.totalViews,
@@ -388,7 +409,7 @@ function calculateSuppressionWindows(
                         decisionBlockClicks7d: item.decisionBlockClicks,
                         ownerBoost: item.ownerBoost || 0,
                         isBestSeller: item.isBestSeller || false,
-                        stableDays: confidence.stableDays
+                        stableDays: priorStableDays
                     },
                     threshold: `Fatigue: ${FATIGUE_THRESHOLD_DAYS}+ stable days with falling trend`
                 }
@@ -396,7 +417,11 @@ function calculateSuppressionWindows(
         }
 
         // Check for low confidence suppression
-        if (confidence && confidence.score < CONFIDENCE_THRESHOLDS.CAUTIOUS) {
+        if (
+            !newSuppressionWindows[item.itemId]
+            && confidence
+            && confidence.score < CONFIDENCE_THRESHOLDS.CAUTIOUS
+        ) {
             const suppressUntil = new Date();
             suppressUntil.setDate(suppressUntil.getDate() + 1); // Suppress for 1 day
 
@@ -416,17 +441,16 @@ function calculateSuppressionWindows(
  */
 function checkCalibrationLock(
     currentState: MenuIntelligenceState | null,
-    newConfidence: Record<string, ConfidenceData>
+    newConfidence: Record<string, ConfidenceData>,
+    processedAnalyticsDays: number,
 ): ProjectCalibration {
-    const daysSinceCreation = currentState?.daysSinceCreation || 0;
-
     // Already locked
     if (currentState?.projectCalibration?.locked) {
         return currentState.projectCalibration;
     }
 
     // Check for lock at day 21
-    if (daysSinceCreation >= CALIBRATION_LOCK_DAY) {
+    if (processedAnalyticsDays >= CALIBRATION_LOCK_DAY) {
         // Calculate baseline from average confidence
         const scores = Object.values(newConfidence).map(c => c.score);
         const avgScore = scores.length > 0
@@ -457,22 +481,20 @@ function generateCorrelationId(): string {
     return `run_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
 }
 
-// Module-level run context for audit log enrichment
-let currentRunContext: {
+export interface AuditLogRunContext {
     correlationId: string;
     runNumber: number;
     source: 'nightly_job' | 'manual_trigger' | 'real_time' | 'owner_action';
-} | null = null;
+}
 
 /**
- * Set run context for audit log enrichment
- * Called at start of each intelligence computation
+ * Create request-local run context for audit log enrichment.
  */
-export function setAuditLogRunContext(
+export function createAuditLogRunContext(
     runNumber: number,
     source: 'nightly_job' | 'manual_trigger' | 'real_time' | 'owner_action' = 'nightly_job'
-): void {
-    currentRunContext = {
+): AuditLogRunContext {
+    return {
         correlationId: generateCorrelationId(),
         runNumber,
         source,
@@ -489,7 +511,8 @@ function createAuditLogEntry(
     analytics: AggregatedAnalytics,
     previousScore: number | undefined,
     newScore: number,
-    primaryReason: string
+    primaryReason: string,
+    runContext?: AuditLogRunContext,
 ): AuditLogEntry {
     return {
         action,
@@ -515,9 +538,9 @@ function createAuditLogEntry(
             }
         },
         // Enriched debugging fields
-        source: currentRunContext?.source || 'nightly_job',
-        correlationId: currentRunContext?.correlationId,
-        runNumber: currentRunContext?.runNumber,
+        source: runContext?.source || 'nightly_job',
+        correlationId: runContext?.correlationId,
+        runNumber: runContext?.runNumber,
         surfaceAffected: 'all',
         confidenceAtAction: newScore,
         analyticsSnapshot: {
@@ -545,11 +568,11 @@ function computeItemPriority(
     analytics: AggregatedAnalytics,
     confidence: Record<string, ConfidenceData>,
     suppressionWindows: Record<string, SuppressionWindow>,
-    timeEligibility: Record<string, TimeEligibility>,
     currentState: MenuIntelligenceState | null,
     stabilityMode: boolean
 ): Record<string, number> {
     const result: Record<string, number> = {};
+    const activeItemClicks = items.reduce((sum, item) => sum + item.clicks, 0);
 
     // In stability mode or low data, flatten all priorities
     if (stabilityMode || analytics.totalViews < CMI.LOW_DATA_VIEWS) {
@@ -573,10 +596,10 @@ function computeItemPriority(
         }
 
         // Recency boost (reacts to short-term trends, capped)
-        const clicks7d = analytics.clicksByItem[item.itemId] || 0;
+        const clicks7d = item.clicks;
         if (clicks7d >= CMI.RECENCY_MIN_7D) {
             // Use engagement rate relative to average as recency signal
-            const avgClicks = analytics.totalClicks / Math.max(items.length, 1);
+            const avgClicks = activeItemClicks / Math.max(items.length, 1);
             const recencyRatio = avgClicks > 0 ? clicks7d / avgClicks : 0;
             const recencyBoost = Math.min(CMI.RECENCY_BOOST_MAX, (recencyRatio - 1) * 0.03);
             if (recencyBoost > 0) {
@@ -592,20 +615,6 @@ function computeItemPriority(
                 : (suppression.suppressUntil as any).toDate?.() || new Date(0);
             if (new Date() < suppressUntil) {
                 rawPriority *= CMI.FATIGUE_WEIGHT;
-            }
-        }
-
-        // Soft influence from time eligibility (reduce, never hide)
-        const elig = timeEligibility[item.itemId];
-        if (elig) {
-            const hour = new Date().getHours();
-            let isCurrentSlot = true;
-            if (hour >= 6 && hour < 10) isCurrentSlot = elig.breakfast;
-            else if (hour >= 11 && hour < 14) isCurrentSlot = elig.lunch;
-            else if (hour >= 18 && hour < 22) isCurrentSlot = elig.dinner;
-            else if (hour >= 22 || hour < 2) isCurrentSlot = elig.lateNight;
-            if (!isCurrentSlot) {
-                rawPriority *= CMI.TIME_OFF_PEAK_WEIGHT;
             }
         }
 
@@ -649,7 +658,8 @@ function computeHealthSummary(
     newRanks: Record<string, number>,
     currentState: MenuIntelligenceState | null,
     totalItems: number,
-    lowDataMode: boolean
+    lowDataMode: boolean,
+    advanceAnalyticsDay: boolean,
 ): HealthSummary {
     const prevRanks = currentState?.previousItemRanks || {};
     const prevHealth = currentState?.healthSummary;
@@ -677,9 +687,11 @@ function computeHealthSummary(
     const topItemId = Object.entries(newRanks)
         .find(([, rank]) => rank === 1)?.[0];
     const prevTopItemId = prevHealth?.topItemId;
-    const topItemDays = (topItemId && topItemId === prevTopItemId)
-        ? (prevHealth?.topItemDays || 0) + 1
-        : 1;
+    const topItemDays = !advanceAnalyticsDay && prevHealth
+        ? prevHealth.topItemDays
+        : (topItemId && topItemId === prevTopItemId)
+            ? (prevHealth?.topItemDays || 0) + 1
+            : 1;
 
     // Determine health status
     let status: 'healthy' | 'warning' | 'critical' = 'healthy';
@@ -717,23 +729,30 @@ export function computeIntelligenceState(
     items: ExtractedItem[],
     analytics: AggregatedAnalytics,
     currentState: MenuIntelligenceState | null,
-    identity: { tId: string; sId: string; projectId: string }
+    identity: { tId: string; sId: string; projectId: string },
+    runContext?: AuditLogRunContext,
 ): MenuIntelligenceState {
     const newConfidence: Record<string, ConfidenceData> = {};
     const newTimeEligibility: Record<string, TimeEligibility> = {};
     const newAuditLog: AuditLogEntry[] = [...(currentState?.recentAuditLog || [])];
+    const analyticsDate = analytics.lastSettledLocalDate;
+    const advanceAnalyticsDay = Boolean(
+        analyticsDate && analyticsDate !== currentState?.lastAnalyticsDate
+    );
+    const processedAnalyticsDays = (currentState?.daysSinceCreation || 0)
+        + (advanceAnalyticsDay ? 1 : 0);
 
     // Calculate confidence and time eligibility for each item
     for (const item of items) {
         const previousConf = currentState?.itemConfidence?.[item.itemId];
-        const confidence = calculateConfidence(item, analytics, previousConf);
+        const confidence = calculateConfidence(item, analytics, previousConf, advanceAnalyticsDay);
         newConfidence[item.itemId] = confidence;
 
         // Calculate time eligibility
         newTimeEligibility[item.itemId] = calculateTimeEligibility(item);
 
         // Check for auto-actions (only if calibration allows)
-        if (currentState?.projectCalibration?.autoActionsEnabled !== false) {
+        if (advanceAnalyticsDay && currentState?.projectCalibration?.autoActionsEnabled !== false) {
             // Auto-promote: high confidence + stable
             if (
                 confidence.score >= CONFIDENCE_THRESHOLDS.CONFIDENT &&
@@ -747,7 +766,8 @@ export function computeIntelligenceState(
                     analytics,
                     previousConf?.score,
                     confidence.score,
-                    `High engagement (${rate}%) for ${confidence.stableDays}+ stable days`
+                    `High engagement (${rate}%) for ${confidence.stableDays}+ stable days`,
+                    runContext,
                 ));
             }
 
@@ -763,14 +783,15 @@ export function computeIntelligenceState(
                     analytics,
                     previousConf?.score,
                     confidence.score,
-                    `Low engagement (${rate}%) - below ${CONFIDENCE_THRESHOLDS.CAUTIOUS * 100}% threshold`
+                    `Low engagement (${rate}%) - below ${CONFIDENCE_THRESHOLDS.CAUTIOUS * 100}% threshold`,
+                    runContext,
                 ));
             }
         }
     }
 
     // Check calibration lock
-    const newCalibration = checkCalibrationLock(currentState, newConfidence);
+    const newCalibration = checkCalibrationLock(currentState, newConfidence, processedAnalyticsDays);
 
     // Log calibration lock if just happened
     if (newCalibration.locked && !currentState?.projectCalibration?.locked) {
@@ -801,7 +822,8 @@ export function computeIntelligenceState(
         currentState,
         newConfidence,
         analytics,
-        newAuditLog
+        newAuditLog,
+        advanceAnalyticsDay,
     );
 
     // Check for stability mode (low data)
@@ -864,7 +886,7 @@ export function computeIntelligenceState(
     // "MenuList can annotate truth, but not withhold truth."
     // ═══════════════════════════════════════════════════════════════
     const newItemPriority = computeItemPriority(
-        items, analytics, newConfidence, newSuppressionWindows, newTimeEligibility,
+        items, analytics, newConfidence, newSuppressionWindows,
         currentState, stabilityMode
     );
 
@@ -874,7 +896,7 @@ export function computeIntelligenceState(
     // Compute health summary (internal monitoring only)
     const healthSummary = computeHealthSummary(
         newItemPriority, newPreviousRanks,
-        currentState, items.length, stabilityMode
+        currentState, items.length, stabilityMode, advanceAnalyticsDay
     );
 
     return {
@@ -890,7 +912,8 @@ export function computeIntelligenceState(
         computedAt: FieldValue.serverTimestamp(),
         validUntil,
         runCount: (currentState?.runCount || 0) + 1,
-        daysSinceCreation: (currentState?.daysSinceCreation || 0) + 1,
+        daysSinceCreation: processedAnalyticsDays,
+        lastAnalyticsDate: analyticsDate || currentState?.lastAnalyticsDate,
         recentAuditLog: trimmedAuditLog,
         stabilityMode,
         stabilityModeReason: stabilityMode ? 'Insufficient analytics data' : undefined,

@@ -1,42 +1,29 @@
-# Temporary Status Layer — Help Documentation
+# Temporary Status - Owner Help
 
-**Date:** February 19, 2026  
-**Audience:** Existing Customers (PUBLIC)
+**Last reviewed:** July 16, 2026
 
----
+Use Temporary Status for a short change such as closing today, opening late, closing early, closing the kitchen, or showing a special-menu notice. Use Working Hours for your normal weekly schedule.
 
-## Quick Summary
+## Set a Status
 
-Set a temporary notice on your official page and digital menu — like "Closed today" or "Opening late" — that removes itself automatically after the time you set.
+1. On desktop, open Business Settings and find Temporary Status. On mobile, open More > Temporary Status or use the Today/Hours controls.
+2. Choose the notice type.
+3. For Custom, enter a short customer-facing message.
+4. Choose a future end date and time.
+5. Confirm the change.
 
----
+MenuList confirms after the status is saved. If customer pages need more time to refresh, the confirmation says so.
 
-## How To Set a Temporary Status
+## Clear It Early
 
-1. Open **Business Settings** (desktop) or **Temporary Status** (mobile)
-2. Choose a status type: Closed Today, Opening Late, Special Menu, or Custom
-3. For custom: type your message (max 100 characters)
-4. Set when the notice should expire (e.g., tomorrow morning)
-5. Tap **Set Status**
-6. Your page now shows the notice to customers
+Open the same control, choose Clear Status, and confirm. If the save fails, MenuList restores the previous status on your screen.
 
-## How To Remove a Status Early
+## What Customers See
 
-1. Open Business Settings or Temporary Status on mobile
-2. Tap **Clear Status**
-3. Notice disappears immediately
+Supported MenuList pages show the notice while it is active. It disappears when its expiry passes, even if the old field has not yet been removed from the store record. External profiles are not updated by this action.
 
-## FAQ
+“Kitchen Closed” is a customer notice; it does not mark the whole business closed in search structured data. Use “Closed Today” only when the complete business is closed.
 
-**Q: What do customers see?**  
-A: A yellow banner at the top of your page with your message. Example: "Closed for a private event today."
+## If It Looks Delayed
 
-**Q: Do I need to remove it manually?**  
-A: No, it disappears automatically at the time you set.
-
-**Q: Can I set it from my phone?**  
-A: Yes, go to More → Temporary Status on mobile.
-
----
-
-**Last Updated:** February 19, 2026
+Refresh the customer page after a short moment. If the owner screen says the status could not be saved, retry when connected. Do not change recurring Working Hours to work around a one-day notice.

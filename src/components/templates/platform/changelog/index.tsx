@@ -6,6 +6,7 @@ import { useChangelogCache } from '@hook/useChangelogCache';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { Button, Divider, Flex, Grid, Layout, Modal, Steps, Typography, message } from 'antd';
 import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { LuBookOpen, LuDot, LuEye, LuPencil, LuPlus, LuTrash2 } from 'react-icons/lu';
 import InfiniteScroll from 'react-infinite-scroll-component';
 import AddEditChangelog from './addEditChangelog';
@@ -20,6 +21,9 @@ import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { ChangelogEntry, ChangelogPage } from '@type/changelog';
 
 function ChangelogTemplate() {
+    const pathname = usePathname();
+    const router = useRouter();
+    const searchParams = useSearchParams();
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [editingEntry, setEditingEntry] = useState<ChangelogEntry | null>(null);
     const [previewingEntry, setPreviewingEntry] = useState<ChangelogEntry | null>(null);
@@ -31,6 +35,17 @@ function ChangelogTemplate() {
     const screens = Grid.useBreakpoint();
     const isMobile = screens.md !== true;
     const dispatch = useAppDispatch();
+
+    useEffect(() => {
+        if (searchParams.get('create') !== '1') return;
+
+        setEditingEntry(null);
+        setIsModalVisible(true);
+        const nextParams = new URLSearchParams(searchParams.toString());
+        nextParams.delete('create');
+        const nextQuery = nextParams.toString();
+        router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, { scroll: false });
+    }, [pathname, router, searchParams]);
 
     const sortEntries = (entriesToSort: any[]) => {
         return entriesToSort.sort((a, b) => {

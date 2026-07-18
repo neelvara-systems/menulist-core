@@ -27,6 +27,15 @@ import { onTaskDispatched } from 'firebase-functions/v2/tasks';
 import * as logger from 'firebase-functions/logger';
 import { runAnswerlatticeMasterScheduler } from './answerlattice/answerlatticeMasterScheduler';
 import {
+    acquireChatAnalyticsBackfillLease,
+    backfillChatAnalyticsDays,
+    releaseChatAnalyticsBackfillLease,
+} from './answerlattice/chatAnalyticsAggregation';
+import {
+    isAnswerlatticeChatAnalyticsStoreScope,
+    parseAnswerlatticeChatAnalyticsBackfillInput,
+} from './answerlattice/chatAnalyticsBackfillBoundary';
+import {
     isAnswerlatticeManualSchedulerAuthorized,
     parseAnswerlatticeManualSchedulerRequest,
 } from './answerlattice/manualSchedulerBoundary';
@@ -74,6 +83,64 @@ const ANSWERLATTICE_EMBED_TASK_OPTIONS = {
         maxDispatchesPerSecond: 3,
     },
 };
+
+export const backfillChatAnalytics = onCall(
+    {
+        region: 'us-central1',
+        timeoutSeconds: 540,
+        memory: '1GiB',
+        maxInstances: 1,
+    },
+    async (request) => {
+        assertAnswerlatticePlatformCallable(request, 'backfillChatAnalytics');
+        let input: ReturnType<typeof parseAnswerlatticeChatAnalyticsBackfillInput>;
+        try {
+            input = parseAnswerlatticeChatAnalyticsBackfillInput(request.data);
+        } catch {
+            throw new HttpsError('invalid-argument', 'Invalid chat analytics backfill request.');
+        }
+        const storeSnapshot = await firestoreAdmin.collection(DB_COLLECTIONS.STORES).doc(String(input.sId)).get();
+        if (!storeSnapshot.exists || !isAnswerlatticeChatAnalyticsStoreScope(storeSnapshot.data(), input.tId, input.sId)) {
+            logger.warn('[Answerlattice Chat Analytics] Backfill store scope rejected', {
+                tIdPresent: input.tId > 0,
+                sIdPresent: input.sId > 0,
+            });
+            throw new HttpsError('permission-denied', 'Chat analytics backfill is not available for this workspace.');
+        }
+        const leaseId = await acquireChatAnalyticsBackfillLease(input.tId, input.sId);
+        if (!leaseId) {
+            throw new HttpsError('resource-exhausted', 'A recent chat analytics backfill is already running.');
+        }
+        let result: Awaited<ReturnType<typeof backfillChatAnalyticsDays>>;
+        try {
+            result = await backfillChatAnalyticsDays(input.tId, input.sId, input.days);
+        } catch (error) {
+            logger.error('[Answerlattice Chat Analytics] Backfill failed', {
+                failureCode: 'answerlattice_chat_backfill_failed',
+                days: input.days,
+                sourceErrorName: error instanceof Error ? error.name : typeof error,
+            });
+            try {
+                await releaseChatAnalyticsBackfillLease(input.tId, input.sId, leaseId);
+            } catch (releaseError) {
+                logger.error('[Answerlattice Chat Analytics] Failed to release backfill lease after aggregation failure', {
+                    failureCode: 'answerlattice_chat_backfill_failure_lease_release_failed',
+                    sourceErrorName: releaseError instanceof Error ? releaseError.name : typeof releaseError,
+                });
+            }
+            throw new HttpsError('internal', 'Chat analytics backfill failed.');
+        }
+        try {
+            await releaseChatAnalyticsBackfillLease(input.tId, input.sId, leaseId);
+        } catch (error) {
+            logger.error('[Answerlattice Chat Analytics] Failed to release completed backfill lease', {
+                failureCode: 'answerlattice_chat_backfill_success_lease_release_failed',
+                sourceErrorName: error instanceof Error ? error.name : typeof error,
+            });
+        }
+        return result;
+    },
+);
 
 function assertFirestoreDocumentId(value: unknown, fieldName: string): string {
     const id = typeof value === 'string' ? value.trim() : '';

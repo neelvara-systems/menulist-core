@@ -145,7 +145,7 @@ export default async function syncMissingBusinessCopyTranslations({
                 }
                 : {}),
         },
-        projectId: projectId || String(storeDetails?.storeId || 'business-copy'),
+        projectId,
         sourceLang: sourceLanguageDef,
         targetLang: targetLanguages,
     });

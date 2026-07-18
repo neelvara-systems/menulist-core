@@ -58,7 +58,7 @@ Step 3: Script loads → launcher button appears (configurable position/shape)
 Step 4: End-user clicks launcher → iframe popup opens (lazy loaded)
 Step 5: End-user types question → widget sends query + context to Answerlattice API
 Step 6: Answer displayed with canonical badge + references + follow-up suggestions
-Step 7: User can rate answer (thumbs up/down) → feeds signal pipeline
+Step 7: User explicitly selects Solved or Still need help -> stores outcome; unresolved feedback feeds the signal pipeline
 Step 8: User can ask follow-up → conversation context maintained in session
 ```
 
@@ -191,7 +191,7 @@ Supported runtime methods: `setContext()`, `page()`, `open()`, `close()`, `clear
 | First answer latency (RAG)       | < 3s                                   |
 | Canonical hit rate with context  | 15-25% higher than without context     |
 | Widget adoption                  | 1+ SaaS founder embedding within beta  |
-| Feedback signal rate             | 10%+ of answers receive thumbs up/down |
+| Explicit outcome coverage        | Percentage of answers with a Solved or Still need help response |
 
 ---
 
@@ -221,7 +221,7 @@ Aligned with Answerlattice Non-Goals Charter (doctrine/02):
 | Query telemetry collection             | ALREADY EXISTS             | `coreSearch()` already writes to `aiSearchHistory`. Widget queries automatically logged via unified pipeline.                                                                                                                                                                                                                                        |
 | Conversation context / session memory  | ACCEPTED                   | v2 adds in-memory session (last 5 messages), assistant mode.                                                                                                                                                                                                                                                                                         |
 | Reference deep linking                 | ACCEPTED                   | v2 returns article ID. Deep linking to section is future scope.                                                                                                                                                                                                                                                                                      |
-| Feedback signals (thumbs up/down)      | ACCEPTED                   | v2 adds feedback → feeds Answerlattice signal mutation pipeline.                                                                                                                                                                                                                                                                                          |
+| Explicit resolution feedback           | ACCEPTED                   | Widget stores Solved/Still need help on the existing search record; unresolved outcomes feed the signal mutation pipeline.                                                                                                                                                                                                                                |
 | Automatic DOM context extraction       | REJECTED                   | Too fragile, privacy risk, breaks across SPA frameworks. Explicit browser-contract context is more reliable and matches ICP (developers).                                                                                                                                                                                                             |
 | Screenshot processing via vision model | PARTIALLY ACCEPTED         | ChatGPT proposed automatic DOM capture + vision interpretation (REJECTED — too complex, privacy risk). BUT user-initiated image upload ACCEPTED — `coreSearch()` supports bounded visual context extraction and text-only answer context. Zero new backend work. Widget sends base64 inline (no Firebase Storage needed). |
 | Product Entity Registry                | ALREADY EXISTS             | Answerlattice ontology layer (entities.ts, entityCandidates.ts, entity search index). ChatGPT unaware of existing implementation.                                                                                                                                                                                                                         |

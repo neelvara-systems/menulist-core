@@ -259,7 +259,7 @@ export function FileList({ files, onRemove, onClearAll, fileProcessingId }: File
             >
                 <Alert
                     message="This action cannot be undone"
-                    description="This file has already been processed and credits have been used. Deleting it means you'll need to re-upload and process it again if needed."
+                    description="This file has already been processed. Re-uploading it later will repeat menu processing."
                     type="warning"
                     showIcon
                     style={{ marginBottom: 16 }}

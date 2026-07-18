@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 
+import { resolveNextSpecialMenuTransitionAt } from "../../src/data/shared/specialMenuSchedule";
 import {
     createSpecialMenuOverlayFiles,
     mergeSpecialMenuOverlayProjects,
@@ -116,5 +117,45 @@ assert.equal(overlayFiles[0]?.extractedData?.data.items.length, 0);
 assert.equal(overlayFiles[0]?.extractedData?.data.languages[0]?.code, "en");
 assert.equal(overlayFiles[0]?.name, "menu.pdf", "editor file context must be retained");
 assert.equal(JSON.stringify(baseProject), baseBefore, "overlay initialization must not mutate the base project");
+
+assert.equal(
+    resolveNextSpecialMenuTransitionAt({
+        scheduled: {
+            active: true,
+            isSpecialMenu: true,
+            specialMenuStatus: 'scheduled',
+            specialMenuStartsAt: '2026-07-20T09:00:00.000Z',
+            specialMenuEndsAt: '2026-07-20T12:00:00.000Z',
+        },
+        active: {
+            active: true,
+            isSpecialMenu: true,
+            specialMenuStatus: 'active',
+            specialMenuStartsAt: '2026-07-19T09:00:00.000Z',
+            specialMenuEndsAt: '2026-07-20T10:00:00.000Z',
+        },
+        cancelled: {
+            active: true,
+            isSpecialMenu: true,
+            specialMenuStatus: 'cancelled',
+            specialMenuStartsAt: '2026-07-18T09:00:00.000Z',
+            specialMenuEndsAt: '2026-07-18T10:00:00.000Z',
+        },
+    }),
+    '2026-07-20T09:00:00.000Z',
+    'the due marker must select the earliest live start or end boundary',
+);
+assert.equal(
+    resolveNextSpecialMenuTransitionAt({
+        ended: {
+            active: true,
+            isSpecialMenu: true,
+            specialMenuStatus: 'expired',
+            specialMenuEndsAt: '2026-07-18T10:00:00.000Z',
+        },
+    }),
+    null,
+    'terminal special menus must not keep a due-work marker',
+);
 
 console.log("Special menu overlay projection tests passed.");

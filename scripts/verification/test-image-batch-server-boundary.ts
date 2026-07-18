@@ -48,6 +48,22 @@ assert.equal(normalized.modifiedOn, '2023-11-14T22:13:21.000Z');
 assert.equal(normalized.statusHistory[0].createdOn, '2025-01-02T03:04:05.000Z');
 assert.equal('privateUnexpectedField' in normalized, false, 'Unexpected persisted fields must not cross the server boundary.');
 
+const normalizedDiscarded = normalizePersistedImageBatchJob({
+    ...validJob,
+    selectedImagesPersisted: false,
+    status: BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+    statusHistory: [{
+        createdOn: new Date('2025-01-02T03:04:05.000Z'),
+        status: BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+    }],
+}, jobId, { requireRequestedItems: true });
+assert.ok(normalizedDiscarded);
+assert.equal(
+    normalizedDiscarded.selectedImagesPersisted,
+    false,
+    'An explicit false terminal selection outcome must survive server normalization.',
+);
+
 const legacy = { ...validJob } as Record<string, unknown>;
 delete legacy.statusHistory;
 assert.deepEqual(

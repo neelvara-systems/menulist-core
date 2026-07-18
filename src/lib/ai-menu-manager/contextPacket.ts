@@ -1,4 +1,6 @@
 import type { Project } from '@template/main-app/projects/types';
+import { projectMutationVersionIso } from '@lib/menu/projectMutationVersion';
+import { hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import {
     buildAiMenuManagerCustomerAppInstallUrl,
     buildAiMenuManagerDigitalScreenUrl,
@@ -20,6 +22,7 @@ export interface AiMenuManagerContextItem {
     active: boolean;
     hasImage: boolean;
     hasDescription: boolean;
+    hasDisplayPrice?: boolean;
     isBestSeller?: boolean;
     duration?: number;
     orderIndex?: number;
@@ -192,6 +195,7 @@ export function buildAiMenuManagerContextPacket(params: {
                 active: item.active !== false,
                 hasImage: Boolean(item.images?.length),
                 hasDescription: Boolean(description),
+                hasDisplayPrice: hasPublicItemDisplayPrice(item),
                 isBestSeller: item.isBestSeller === true,
                 duration: item.duration,
                 orderIndex: item.orderIndex,
@@ -223,7 +227,7 @@ export function buildAiMenuManagerContextPacket(params: {
 
     return {
         projectId,
-        projectUpdatedAt: String((project as any).modifiedOn || (project as any).updatedAt || ''),
+        projectUpdatedAt: projectMutationVersionIso((project as any).modifiedOn || (project as any).updatedAt),
         defaultLanguage,
         projectName,
         storeName: params.storeName,
@@ -391,6 +395,7 @@ export function buildAiMenuManagerContextBaseHash(context: AiMenuManagerContextP
                 active: item.active,
                 hasImage: item.hasImage,
                 hasDescription: item.hasDescription,
+                hasDisplayPrice: item.hasDisplayPrice,
             }))
             .sort((a, b) => a.id.localeCompare(b.id)),
         categories: context.categories

@@ -5,9 +5,10 @@ import { PlatformGlobalDataContext } from '@providers/platformProviders/platform
 import { StoreDataType } from '@type/platform/store';
 import { UserDataType } from '@type/platform/user';
 import { removeObjRef } from '@util/utils';
-import { Button, Card, Empty, Flex, Select, Tag, Typography, theme } from 'antd';
+import { Alert, Button, Card, Empty, Flex, Select, Tag, Typography, theme } from 'antd';
 import { Fragment, useContext } from 'react';
 import { LuTrash } from 'react-icons/lu';
+import { hasOperationalOwnerAccess, OWNER_ACCESS_NOT_TRANSFER_COPY } from '@lib/staffManagement/ownershipTransferBoundary';
 const { Text } = Typography;
 
 function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, onChangeValue }) {
@@ -57,6 +58,9 @@ function StoresMapping({ canAssignRoles = true, staffStores = [], userDetails, o
 
     return (
         <Flex vertical gap={10}>
+            {hasOperationalOwnerAccess(userDetails?.stores) ? (
+                <Alert message={OWNER_ACCESS_NOT_TRANSFER_COPY} showIcon type="warning" />
+            ) : null}
 
             {userDetails?.stores?.length > 1 && <Text style={{ minWidth: 150 }}>Store access
                 {Boolean(userDetails?.stores?.length) && <Tag color='blue'>{userDetails?.stores?.length}</Tag>}

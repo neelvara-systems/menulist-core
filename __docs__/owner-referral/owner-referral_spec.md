@@ -4,7 +4,7 @@
 **Owner-facing label:** Invite a business owner you know
 **Status:** Implemented and locally verified behind disabled flags; pilot not enabled
 **Decision owner:** Founder
-**Last updated:** July 11, 2026
+**Last updated:** July 16, 2026
 **Audience:** Founder, product, engineering, operations, support, finance
 
 ---
@@ -163,7 +163,7 @@ MenuList does not import contacts, choose a recipient, or store who received the
 7. The owner may create a new business or continue with an existing unpaid MenuList business.
 8. The shared server attribution helper binds the referral before the business's first paid subscription.
 
-The normal non-referral setup path remains available and does not call the capture endpoint.
+The normal non-referral setup path remains available. Selecting it explicitly declines the displayed invitation, clears any older referral cookie on the canonical host through the same bounded endpoint, and only then continues to `/create-menu`. It never captures the displayed token.
 
 ### Flow C: Payment and Immediate Settlement
 
@@ -202,7 +202,7 @@ The token may be used by multiple invited businesses until expiry. Each referred
 
 ### FR-3: Consent-Bound Capture
 
-Page load never sets the cookie. Only the explicit CTA calls the same-origin capture endpoint. The invite page, sign-in/setup continuation, and payment-start request remain on the canonical public MenuList host so the host-only cookie is not lost across `www`, dashboard, tenant, or custom-domain hosts. The cookie is host-only, HttpOnly, Secure outside local development, SameSite=Lax, Path `/`, and valid for 30 days.
+Page load never sets the cookie. Only the explicit referral CTA captures a token through the same-origin endpoint. The normal setup CTA sends an explicit decline through that endpoint so a previously saved invitation cannot leak into an unrelated setup journey. The invite page, sign-in/setup continuation, and payment-start request remain on the canonical public MenuList host so the host-only cookie is not lost across `www`, dashboard, tenant, or custom-domain hosts. The cookie is host-only, HttpOnly, Secure outside local development, SameSite=Lax, Path `/`, and valid for 30 days.
 
 ### FR-4: Pre-Payment Attribution
 
@@ -225,8 +225,11 @@ One Firestore transaction must:
 
 - read the referral record;
 - read both current MenuList subscription wallet documents;
+- read both canonical MenuList store documents;
+- verify the referral program, status, tenant/store scopes, and both store lifecycle/block states;
 - verify both paid entitlements;
 - verify that the reward has not already issued;
+- reject malformed, negative, non-integer, or overflow-prone Pack balances;
 - add 100 to referrer `topUpCredits`;
 - add 50 to referred `topUpCredits`;
 - leave monthly credit fields unchanged;
@@ -237,7 +240,7 @@ Any failed read or write leaves both balances unchanged.
 
 ### FR-7: Event-Driven Pending Repair
 
-If one side is not paid at the first settlement attempt, record `payment_pending`. A later verified subscription activation checks pending referrals associated with that store and retries settlement. No daily qualification scheduler is added.
+If one side is not paid at the first settlement attempt, record `payment_pending`. A later verified subscription activation checks one bounded batch of pending referrals associated with that store and retries settlement. Each invocation processes at most 25 candidates, reads one extra row only to detect remaining work, and emits bounded operational evidence when more candidates remain. No cursor loop or daily qualification scheduler is added.
 
 ### FR-8: Private Status
 
@@ -267,12 +270,12 @@ Terms and invite copy must state:
 | --- | --- |
 | Security | Auth, tenant/store scope, token encryption, CTA-only capture, payment signatures, rate limits, bounded bodies, secure logs, server-only writes. |
 | Privacy | Pre-capture business-name/status disclosure; no contact or financial details in status or analytics. |
-| Reliability | Callback, webhook, activation retry, and concurrent settlement issue exactly one atomic reward pair. |
+| Reliability | Callback, webhook, activation retry, and concurrent settlement issue exactly one atomic reward pair; invalid store/referral/wallet state fails without partial mutation. |
 | Cost | No view/share writes, no qualification scheduler, no project-summary reads, no distribution-signal writes, bounded status and pending-settlement queries. |
 | Performance | Invite and share UI load lazily; payment settlement is non-blocking to successful subscription activation. |
 | Accessibility | 44px controls, keyboard support, visible focus, screen-reader labels, status not communicated by color alone. |
 | Localization | English and Hindi owner/public strings ship together. |
-| Feature control | Acquisition and settlement flags default off; pilot allowlist defaults empty. |
+| Feature control | Acquisition and settlement flags default off; pilot allowlist defaults empty and therefore fails closed. |
 
 ---
 
@@ -321,6 +324,9 @@ No owner ranking, threshold, or reward limit is derived from these metrics.
 | One side not paid | Keep `payment_pending` without expiry and retry from verified subscription activation. |
 | Referrer sees private information | Pre-capture disclosure and coarse status with no payment, plan, contact, or activity details. |
 | Token leakage | Fragment transport, authenticated encryption, immediate fragment removal, host-only cookie, no token logging. |
+| Stale or invalid business scope | Both canonical stores are re-read in the reward transaction; inactive, deleted, tenant-blocked, or store-blocked scopes remain pending without credits. |
+| Malformed or overflowing Pack balance | Safe-integer validation rejects the transaction; neither wallet, ledger, nor referral state changes. |
+| Large pending backlog | One paid event processes at most 25 rows with one-row lookahead and records bounded operational evidence when more work remains. |
 | Post-issue refund or cancellation | No pooled-wallet clawback; existing payment/account policy remains separate. |
 
 ---
@@ -342,9 +348,12 @@ No owner ranking, threshold, or reward limit is derived from these metrics.
 - [x] Monthly credit fields remain unchanged.
 - [x] Callback, webhook, activation retry, and concurrent attempts cannot issue twice.
 - [x] Pending referrals have no expiry and settle when both subscriptions become paid.
+- [x] Normal non-referral continuation clears any older referral cookie before setup and never captures the displayed token.
+- [x] Invalid referral/store state and unsafe Pack balances fail without a partial reward issue.
+- [x] Pending repair is a bounded single batch with backlog evidence rather than an unbounded cursor loop.
 - [x] Status reveals no cross-business financial or contact information.
 - [x] Credit examples are derived from `src/data/shared/contentCreditPolicy.ts` and match the charged operation rates.
-- [x] Acquisition and settlement controls default off and the pilot allowlist defaults empty.
+- [x] Acquisition and settlement controls default off; an empty or invalid pilot allowlist fails closed.
 - [x] English/Hindi runtime copy, legal source copy, help source, website, desktop, and mobile are aligned.
 
 ---

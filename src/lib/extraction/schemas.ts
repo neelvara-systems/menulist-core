@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary';
 import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
+import { priceStringSchema } from '@lib/validation/pricing.schema';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // COMMON SCHEMAS
@@ -20,15 +21,10 @@ import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectId
 export const MultilingualNameSchema = z.record(z.string(), z.string());
 
 /**
- * Price string validation
- * - Must contain at least one digit
- * - Max 20 characters
- * - No HTML tags
+ * Shared persisted menu-price validation: numeric, text, multilingual, currency,
+ * or range values up to the canonical limit, without markup/control/emoji input.
  */
-export const PriceSchema = z.string()
-    .max(20, 'Price too long')
-    .refine(val => /[0-9]/.test(val), 'Price must contain at least one digit')
-    .refine(val => !/<[^>]*>/.test(val), 'Price cannot contain HTML');
+export const PriceSchema = priceStringSchema;
 
 /**
  * Optional price (can be empty string or undefined)
@@ -52,7 +48,7 @@ export const ItemOverrideSchema = z.object({
     active: z.boolean().optional(),
     orderIndex: z.number().optional(),
     isBestSeller: z.boolean().optional(),
-});
+}).strict();
 
 /**
  * Category override schema (for outlet projects)
@@ -60,7 +56,7 @@ export const ItemOverrideSchema = z.object({
 export const CategoryOverrideSchema = z.object({
     orderIndex: z.number().optional(),
     active: z.boolean().optional(),
-});
+}).strict();
 
 /**
  * New item schema
@@ -74,13 +70,16 @@ export const NewItemSchema = z.object({
     active: z.boolean().default(true),
     available: z.boolean().default(true),
     tags: z.array(z.string()).optional(),
+    dietaryTags: z.array(z.string()).optional(),
+    spiceLevel: z.enum(['none', 'mild', 'medium', 'hot', 'very-hot']).optional(),
+    duration: z.number().min(0).max(1_440).optional(),
     attributes: z.array(z.object({
         id: z.string(),
         name: MultilingualNameSchema,
         price: OptionalPriceSchema,
         active: z.boolean().optional(),
     })).optional(),
-});
+}).strict();
 
 /**
  * New category schema
@@ -90,7 +89,35 @@ export const NewCategorySchema = z.object({
     name: MultilingualNameSchema,
     orderIndex: z.number().optional(),
     active: z.boolean().default(true),
-});
+}).strict();
+
+const CategoryPatchSchema = z.object({
+    name: MultilingualNameSchema.optional(),
+    orderIndex: z.number().optional(),
+}).strict();
+
+const ItemPatchSchema = z.object({
+    name: MultilingualNameSchema.optional(),
+    price: OptionalPriceSchema,
+    description: MultilingualNameSchema.optional(),
+}).strict();
+
+const LocalItemPatchSchema = ItemPatchSchema.extend({
+    id: z.string().min(1),
+}).strict();
+
+const StableIdAliasesSchema = z.object({
+    categoryAliases: z.array(z.object({
+        categoryId: z.string().min(1),
+        extractedCategoryId: z.string().min(1),
+        targetFileUid: z.string(),
+    }).strict()),
+    itemAliases: z.array(z.object({
+        itemId: z.string().min(1),
+        extractedItemId: z.string().min(1),
+        targetFileUid: z.string(),
+    }).strict()),
+}).strict();
 
 // ═══════════════════════════════════════════════════════════════════════════
 // APPLY CHANGES SCHEMAS
@@ -126,21 +153,22 @@ export const SaveExtractionReviewSchema = z.object({
         upsertCategories: z.array(z.object({
             categoryId: z.string().optional(),
             newCategory: NewCategorySchema.optional(),
-            patch: z.record(z.string(), z.unknown()).optional(),
+            patch: CategoryPatchSchema.optional(),
             targetFileUid: z.string(),
         })),
         upsertItems: z.array(z.object({
             itemId: z.string().optional(),
             newItem: NewItemSchema.optional(),
-            patch: z.record(z.string(), z.unknown()).optional(),
+            patch: ItemPatchSchema.optional(),
             targetFileUid: z.string(),
         })),
+        stableIdAliases: StableIdAliasesSchema.optional(),
     }).optional(),
 
     // For OUTLET_LINKED
     outletMutations: z.object({
         upsertLocalCategories: z.array(NewCategorySchema),
-        upsertLocalItems: z.array(NewItemSchema),
+        upsertLocalItems: z.array(z.union([NewItemSchema, LocalItemPatchSchema])),
         applyOverrides: z.array(z.object({
             masterItemId: z.string(),
             patch: ItemOverrideSchema,
@@ -149,7 +177,16 @@ export const SaveExtractionReviewSchema = z.object({
             masterCategoryId: z.string(),
             patch: CategoryOverrideSchema,
         })).optional(),
+        stableIdAliases: StableIdAliasesSchema.optional(),
     }).optional(),
+}).strict().superRefine((value, context) => {
+    const isOutlet = value.mode === 'OUTLET_LINKED';
+    if (isOutlet !== Boolean(value.outletMutations) || isOutlet === Boolean(value.projectMutations)) {
+        context.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Mutation payload does not match comparison mode',
+        });
+    }
 });
 
 // ═══════════════════════════════════════════════════════════════════════════

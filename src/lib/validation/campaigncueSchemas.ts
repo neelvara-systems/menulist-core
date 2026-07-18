@@ -1,6 +1,7 @@
 import { CAMPAIGNCUE_CHANNELS } from "@constant/campaigncue/channels";
 import { CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES } from "@constant/campaigncue/database";
 import { CAMPAIGNCUE_EXPORT_ACTIONS } from "@constant/campaigncue/delivery";
+import { CAMPAIGNCUE_OUTPUT_PICKER_ITEM_IDS } from "@constant/campaigncue/outputPicker";
 import {
     CAMPAIGNCUE_PATTERN_CUE_MAX_NOTES_LENGTH,
     CAMPAIGNCUE_PATTERN_CUE_MAX_TAKEAWAY_LENGTH,
@@ -122,7 +123,17 @@ export const CampaignCueCreateCampaignSchema = z.object({
     title: z.string().trim().min(3).max(120).optional(),
     brief: z.string().trim().max(1200).optional(),
     channels: z.array(CampaignCueChannelSchema).min(1).max(7).optional(),
+    sourceTemplateId: CampaignCueIdSchema.optional(),
+    outputIntentId: z.enum(CAMPAIGNCUE_OUTPUT_PICKER_ITEM_IDS).optional(),
     idempotencyKey: z.string().trim().regex(idPattern).min(8).max(120).optional(),
+}).strict().superRefine((value, ctx) => {
+    if (value.reuseCampaignId && (value.outputIntentId || value.sourceTemplateId)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Campaign reuse cannot be combined with a template or output-intent request",
+            path: ["reuseCampaignId"],
+        });
+    }
 });
 
 export const CampaignCueCampaignActionSchema = z.object({
@@ -182,12 +193,19 @@ export const CampaignCueAssetSchema = z.object({
         .default("unknown"),
     tags: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
     storagePath: z.string().trim().regex(/^[a-zA-Z0-9/_:.-]+$/).max(500).optional(),
-    downloadUrl: z.string().trim().url().max(1000).optional(),
     mimeType: z.string().trim().max(120).optional(),
     sizeBytes: z.number().int().min(0).max(CAMPAIGNCUE_MAX_ASSET_SIZE_BYTES).optional(),
     campaignId: CampaignCueIdSchema.optional(),
     outputId: CampaignCueIdSchema.optional(),
     channel: CampaignCueChannelSchema.optional(),
+}).strict().superRefine((value, ctx) => {
+    if (!value.campaignId && (value.outputId || value.channel)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Campaign asset output and channel references require a campaign",
+            path: [value.outputId ? "outputId" : "channel"],
+        });
+    }
 });
 
 export const CampaignCueBusinessPatchSchema = z.object({

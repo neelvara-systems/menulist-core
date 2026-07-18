@@ -1,5 +1,5 @@
+import { FEATURE_FLAGS } from '@config/features';
 import { assertProjectUpdateSucceeded, updateProjectMetadata, uploadFile } from '@database/projects';
-import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { resolveBusinessCategory } from '@data/shared/businessTypes';
 import { getLocalizedText, getPrimaryLocalizedLanguage } from '@lib/localization/text';
 import { getMediaImageProfile } from '@lib/media/imageProfiles';
@@ -67,7 +67,7 @@ export type GeneratedProjectImageCandidate = {
 
 type GenerateAndSaveProjectImageResult = {
     imageUrl?: string;
-    skippedReason?: 'existing-image' | 'not-enough-data' | 'generation-failed' | 'upload-failed' | 'missing-project-id';
+    skippedReason?: 'existing-image' | 'feature-disabled' | 'not-enough-data' | 'generation-failed' | 'upload-failed' | 'missing-project-id';
 };
 
 type BusinessImageViewType = {
@@ -470,6 +470,8 @@ export function getProjectImageDataFromComparisonPreview(comparisonResult: Compa
 export async function generateProjectImageCandidate(
     params: ProjectImageCandidateParams,
 ): Promise<GeneratedProjectImageCandidate | null> {
+    if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) return null;
+
     const description = buildProjectImageDescription(params);
     if (!description) return null;
 
@@ -516,6 +518,8 @@ export async function generateProjectImageCandidate(
 export async function generateBusinessCoverCandidate(
     params: BusinessCoverCandidateParams,
 ): Promise<GeneratedProjectImageCandidate | null> {
+    if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) return null;
+
     const description = buildBusinessCoverDescription(params);
     const generatedImages = await generateImageViaApi({
         businessType: params.businessType || params.store.businessType || params.businessCategory || params.store.businessCategory || 'business',
@@ -559,6 +563,8 @@ export async function generateBusinessCoverCandidate(
 export async function generateAndSaveProjectImageIfMissing(
     params: GenerateAndSaveProjectImageParams,
 ): Promise<GenerateAndSaveProjectImageResult> {
+    if (!FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION) return { skippedReason: 'feature-disabled' };
+
     const projectId = params.project.projectId;
     if (!projectId) return { skippedReason: 'missing-project-id' };
     if (params.project.projectImage || params.summaryData?.projectImage) {
@@ -596,16 +602,18 @@ export async function generateAndSaveProjectImageIfMissing(
         return { skippedReason: 'upload-failed' };
     }
 
-    try {
-        const metadataResult = await updateProjectMetadata(projectId, { projectImage: imageUrl });
-        assertProjectUpdateSucceeded(
-            metadataResult,
-            projectId,
-            'project_image_generation_metadata_update_rejected',
-        );
-    } catch (error) {
-        await deleteFileByUrl(imageUrl);
-        throw error;
+    const metadataResult = await updateProjectMetadata(
+        projectId,
+        { projectImage: imageUrl },
+        { preserveExistingProjectImage: true },
+    );
+    assertProjectUpdateSucceeded(
+        metadataResult,
+        projectId,
+        'project_image_generation_metadata_update_rejected',
+    );
+    if (metadataResult.projectImage !== imageUrl) {
+        return { skippedReason: 'existing-image' };
     }
 
     return { imageUrl };

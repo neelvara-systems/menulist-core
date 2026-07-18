@@ -25,7 +25,7 @@ import type {
     ExtractionHealthMetrics,
     ExtractionJobSummary,
 } from '@lib/ops/extractionTypes';
-import { Button, Card, Empty, notification, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
+import { Alert, Button, Card, Empty, notification, Spin, Statistic, Table, Tag, Tooltip, Typography, theme } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useSession } from 'next-auth/react';
 import { useCallback, useEffect, useState } from 'react';
@@ -311,7 +311,19 @@ export default function ExtractionMonitor() {
                 </Button>
             </div>
 
-            {loading && !health ? (
+            {loadError ? (
+                <Alert
+                    message="Extraction state unavailable"
+                    description={snapshot
+                        ? 'Showing the previous successful snapshot. Refresh to verify current pipeline state.'
+                        : 'No current extraction snapshot could be verified.'}
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="error"
+                />
+            ) : null}
+
+            {loadError && !snapshot ? null : loading && !health ? (
                 <div style={{ textAlign: 'center', padding: 80 }}>
                     <Spin size="large" />
                 </div>

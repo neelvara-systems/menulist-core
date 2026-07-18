@@ -181,7 +181,9 @@ assertIncludes(refreshRoute, 'parsePublicTruthMonitorJsonBody', 'refresh route b
 assertIncludes(refreshRoute, 'verifyTenantAccess', 'refresh route tenant check');
 assertIncludes(refreshRoute, 'requireAnyStorePermissionForStoreData', 'refresh route store permission check');
 assertIncludes(refreshRoute, 'PERMISSIONS.VIEW_ANALYTICS', 'refresh route Business Health permission');
-assertIncludes(refreshRoute, 'writePublicTruthMonitorSummaryServer', 'refresh route summary write');
+assertIncludes(refreshRoute, 'updatePublicTruthMonitorSummaryServer', 'refresh route atomic summary write');
+assertIncludes(refreshRoute, 'buildSummary: (current) => buildPublicTruthMonitorSummary({', 'refresh route atomic current-summary merge');
+assertIncludes(refreshRoute, 'failClosedOnProviderError: process.env.NODE_ENV === "production"', 'refresh route production fail-closed rate limit');
 assertIncludes(refreshRoute, 'buildOwnerPublicTruthReadinessReport', 'refresh route owner readiness reuse');
 assertIncludes(refreshRoute, 'getPublicTruthMonitorSessionScope', 'refresh route session scope normalizer');
 assertIncludes(refreshRoute, 'const sessionScope = getPublicTruthMonitorSessionScope(session);', 'refresh route normalized session scope');
@@ -192,6 +194,11 @@ assertIncludes(refreshRoute, 'tId: sessionScope.tenantScope.documentId', 'refres
 assertIncludes(refreshRoute, 'storeId: sessionScope.storeScope.documentId', 'refresh route normalized summary write scope');
 assertNotIncludes(refreshRoute, 'Number(session.sId)', 'refresh route must not loose-coerce store scope');
 assertNotIncludes(refreshRoute, 'Number(session.tId)', 'refresh route must not loose-coerce tenant scope');
+assertIncludes(summaryRoute, 'failClosedOnProviderError: process.env.NODE_ENV === "production"', 'summary route production fail-closed rate limit');
+assertIncludes(serverDal, 'export async function updatePublicTruthMonitorSummaryServer(', 'server DAL atomic summary updater');
+assertIncludes(serverDal, 'firestoreAdmin.runTransaction', 'server DAL transaction boundary');
+assertIncludes(serverDal, 'const snapshot = await transaction.get(summaryRef);', 'server DAL reads current summary inside transaction');
+assertIncludes(serverDal, 'transaction.set(summaryRef', 'server DAL writes summary inside transaction');
 
 assertIncludes(clientDal, '/api/public-truth-monitor/summary', 'client summary endpoint');
 assertIncludes(clientDal, '/api/public-truth-monitor/refresh', 'client refresh endpoint');

@@ -27,12 +27,18 @@
  * @see __docs__/discovery-infrastructure/deep-architecture-audit.md — freshness
  */
 
+import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getStoreByCustomDomain, getStoreBySubdomain } from '@lib/firestore/clientStoreLookup';
 import { parseSummaryProjects } from '@lib/firestore/parseSummaryProjects';
-import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
+import { normalizeMultiOutletProjectId } from '@lib/multiOutlet/projectIdBoundary';
 import { getTenantFromHeaders } from '@lib/multiTenant/getTenantFromHeaders';
 import { normalizePublicOutletSlug, normalizePublicProjectSlug } from '@lib/publicRouting/pathSegments';
+import {
+    isMenuListPublicEntityEligible,
+    normalizeMenuListPublicEntityIdentityAliases,
+} from '@lib/publicTruth/entityEligibility';
 import { evaluatePublicTruthIndexability } from '@lib/seo/publicTruthIndexing';
 import { secureError } from '@lib/security/secureLogger';
 import { MetadataRoute } from 'next';
@@ -41,7 +47,7 @@ import { unstable_cache } from 'next/cache';
 type StoreSitemapSeed = {
     storeId: string;
     isMaster: boolean;
-    tenantId: number | null;
+    tenantId: number;
     modifiedOn: Date;
     publicStore: Record<string, any>;
 };
@@ -68,6 +74,7 @@ type TenantSitemapFailureType =
     | 'projects_lookup_failed';
 
 const MAX_TENANT_SITEMAP_DIAGNOSTICS = 25;
+const MAX_TENANT_SITEMAP_STORES = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1;
 const reportedTenantSitemapFailures = new Set<string>();
 
 const TENANT_SITEMAP_FAILURE_CODES: Record<TenantSitemapFailureType, string> = {
@@ -200,28 +207,38 @@ const buildSitemapPublicStore = (storeId: string, data: Record<string, any>): Re
 const getMasterStoreSeed = unstable_cache(
     async (subdomain: string, customDomain: string | null): Promise<StoreSitemapSeed | null> => {
         try {
-            const storesRef = firestoreAdmin.collection(DB_COLLECTIONS.STORES);
-            const q = customDomain
-                ? storesRef
-                    .where('customDomain', '==', customDomain.toLowerCase())
-                    .where('domainVerified', '==', true)
-                    .where('active', '==', true)
-                    .limit(1)
-                : storesRef
-                    .where('subdomain', '==', subdomain.toLowerCase())
-                    .where('active', '==', true)
-                    .limit(1);
-            const snapshot = await q.get();
-            if (snapshot.empty) return null;
-            const storeDoc = snapshot.docs[0];
-            const data = storeDoc.data() as Record<string, any>;
-            if (isPlatformEntityBlocked(data)) return null;
+            const data = customDomain
+                ? await getStoreByCustomDomain(customDomain)
+                : await getStoreBySubdomain(subdomain);
+            if (!data) return null;
+            if (
+                !customDomain
+                && (
+                    typeof data.subdomain !== 'string'
+                    || data.subdomain.toLowerCase() !== subdomain.toLowerCase()
+                )
+            ) {
+                // A previous-subdomain lookup exists only so page requests can
+                // 301 to the current host. Never publish a sitemap containing
+                // legacy-host URLs while that redirect window is active.
+                return null;
+            }
+            const storeScope = normalizeMenuListPublicEntityIdentityAliases([
+                data.id,
+                data.storeId,
+                data.sId,
+            ]);
+            const tenantScope = normalizeMenuListPublicEntityIdentityAliases([
+                data.tenantId,
+                data.tId,
+            ]);
+            if (!storeScope || !tenantScope) return null;
             return {
-                storeId: storeDoc.id,
+                storeId: storeScope.documentId,
                 isMaster: data?.isMaster !== false, // default true when missing (single-store)
-                tenantId: typeof data?.tenantId === 'number' ? data.tenantId : null,
+                tenantId: tenantScope.numericId,
                 modifiedOn: readModifiedOn(data?.modifiedOn),
-                publicStore: buildSitemapPublicStore(storeDoc.id, data),
+                publicStore: buildSitemapPublicStore(storeScope.documentId, data),
             };
         } catch (error) {
             logTenantSitemapFailure('master_store_lookup_failed', error, {
@@ -235,8 +252,9 @@ const getMasterStoreSeed = unstable_cache(
     { revalidate: 300, tags: ['client-stores'] },
 );
 
-const getProjectsForSitemap = unstable_cache(
-    async (storeId: string): Promise<ProjectSitemapEntry[]> => {
+async function getProjectsForSitemap(tenantId: number, storeId: string): Promise<ProjectSitemapEntry[]> {
+    const getCachedProjects = unstable_cache(
+        async (): Promise<ProjectSitemapEntry[]> => {
         try {
             const snap = await firestoreAdmin
                 .collection(DB_COLLECTIONS.PLATFORM_SUMMARY)
@@ -245,7 +263,12 @@ const getProjectsForSitemap = unstable_cache(
             if (!snap.exists) return [];
             const projects = parseSummaryProjects(snap.data());
             const entries: ProjectSitemapEntry[] = [];
-            for (const project of Object.values(projects)) {
+            for (const [projectId, project] of Object.entries(projects)) {
+                const projectScope = normalizeMultiOutletProjectId(projectId);
+                if (
+                    projectScope?.tenantDocumentId !== String(tenantId)
+                    || projectScope.storeDocumentId !== storeId
+                ) continue;
                 const p = project as Record<string, any>;
                 if (p?.active === false) continue;
                 if (p?.deleted === true) continue;
@@ -268,10 +291,15 @@ const getProjectsForSitemap = unstable_cache(
             });
             return [];
         }
-    },
-    ['sitemap-projects-for-store'],
-    { revalidate: 300, tags: ['client-stores', 'projects-summary'] },
-);
+        },
+        ['sitemap-projects-for-store', String(tenantId), storeId],
+        {
+            revalidate: 300,
+            tags: ['client-stores', `menu-store-${storeId}`, `store-${storeId}`],
+        },
+    );
+    return getCachedProjects();
+}
 
 const getOutletsForSitemap = unstable_cache(
     async (tenantId: number, masterStoreId: string): Promise<OutletSitemapEntry[]> => {
@@ -284,12 +312,32 @@ const getOutletsForSitemap = unstable_cache(
                 .collection(DB_COLLECTIONS.STORES)
                 .where('tenantId', '==', tenantId)
                 .where('active', '==', true)
+                .limit(MAX_TENANT_SITEMAP_STORES + 1)
                 .get();
+            if (snapshot.size > MAX_TENANT_SITEMAP_STORES) {
+                throw new Error('tenant_sitemap_store_limit_exceeded');
+            }
             const outlets: OutletSitemapEntry[] = [];
             for (const d of snapshot.docs) {
                 if (d.id === masterStoreId) continue;
                 const data = d.data() as Record<string, any>;
-                if (isPlatformEntityBlocked(data)) continue;
+                const documentScope = normalizeMenuListPublicEntityIdentityAliases([d.id]);
+                const storedStoreScope = normalizeMenuListPublicEntityIdentityAliases([
+                    data.storeId,
+                    data.sId,
+                ]);
+                const storedTenantScope = normalizeMenuListPublicEntityIdentityAliases([
+                    data.tenantId,
+                    data.tId,
+                ]);
+                if (
+                    !isMenuListPublicEntityEligible(data)
+                    || !documentScope
+                    || !storedStoreScope
+                    || !storedTenantScope
+                    || documentScope.documentId !== storedStoreScope.documentId
+                    || storedTenantScope.numericId !== tenantId
+                ) continue;
                 const outletSlug = normalizePublicOutletSlug(data?.outletSlug);
                 // A-08 + G-12: outlets missing a safe slug are not routable; skip.
                 if (!outletSlug) continue;
@@ -341,7 +389,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     // Rule 2 + 3: master-store projects at their canonical slug URLs.
-    const masterProjects = await getProjectsForSitemap(seed.storeId);
+    const masterProjects = await getProjectsForSitemap(seed.tenantId, seed.storeId);
     for (const project of masterProjects) {
         const indexDecision = evaluatePublicTruthIndexability(seed.publicStore, {
             surface: 'menu',
@@ -360,34 +408,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Non-master stores (themselves an outlet) never enumerate siblings.
     if (seed.isMaster && seed.tenantId != null) {
         const outlets = await getOutletsForSitemap(seed.tenantId, seed.storeId);
-        for (const outlet of outlets) {
+        const outletEntries = await Promise.all(outlets.map(async (outlet) => {
+            const scopedEntries: MetadataRoute.Sitemap = [];
             const outletRootDecision = evaluatePublicTruthIndexability(outlet.publicStore, {
                 surface: 'outlet_obp',
                 hasPublishedMenu: Boolean(outlet.publicStore.lastPublishedAt || outlet.publicStore.primaryProjectId),
             });
             if (outletRootDecision.includeInSitemap) {
-                entries.push({
+                scopedEntries.push({
                     url: `${baseUrl}/${outlet.outletSlug}`,
                     lastModified: outlet.modifiedOn,
                     changeFrequency: 'weekly',
                     priority: 0.8,
                 });
             }
-            const outletProjects = await getProjectsForSitemap(outlet.storeId);
+            const outletProjects = await getProjectsForSitemap(seed.tenantId, outlet.storeId);
             for (const project of outletProjects) {
                 const outletProjectDecision = evaluatePublicTruthIndexability(outlet.publicStore, {
                     surface: 'menu',
                     projectSummary: project,
                 });
                 if (!outletProjectDecision.includeInSitemap) continue;
-                entries.push({
+                scopedEntries.push({
                     url: `${baseUrl}/${outlet.outletSlug}/${project.slug}`,
                     lastModified: outlet.modifiedOn,
                     changeFrequency: 'daily',
                     priority: project.isDefault ? 0.7 : 0.6,
                 });
             }
-        }
+            return scopedEntries;
+        }));
+        entries.push(...outletEntries.flat());
     }
 
     return entries;

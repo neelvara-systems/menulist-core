@@ -9,6 +9,7 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { FEATURE_FLAGS } from '@config/features';
 import { apiCallComposer } from '@lib/apiHelper/apiCallComposer';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import {
@@ -98,6 +99,7 @@ export async function getMenuIntelligence(
     sId: string | number,
     projectId: string
 ): Promise<MenuIntelligenceState | null> {
+    if (!FEATURE_FLAGS.ENABLE_CONTINUOUS_MENU_INTELLIGENCE) return null;
     return await apiCallComposer(
         async () => {
             const docRef = getDocRef(tId, sId, projectId);
@@ -155,7 +157,7 @@ export async function getItemPresentation(
     const state = await getMenuIntelligence(tId, sId, projectId);
 
     // No intelligence data → neutral presentation
-    if (!state) {
+    if (!state || new Date(state.validUntil).getTime() <= Date.now()) {
         return {
             visible: true,
             priority: 0.5,
@@ -195,7 +197,7 @@ export async function getItemsByPriority(
 ): Promise<Array<{ itemId: string; priority: number; confidence: ConfidenceData | null; presentation: ItemPresentation }>> {
     const state = await getMenuIntelligence(tId, sId, projectId);
 
-    if (!state) {
+    if (!state || new Date(state.validUntil).getTime() <= Date.now()) {
         return [];
     }
 

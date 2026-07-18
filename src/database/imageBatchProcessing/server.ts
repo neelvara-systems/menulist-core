@@ -497,7 +497,13 @@ export async function markImageBatchItemAttemptFailedAdmin({
     projectId: string;
     reason: string;
     retryable?: boolean;
-}): Promise<{ cleanupStoragePaths: string[]; shouldRetry: boolean; stale: boolean; terminal: boolean }> {
+}): Promise<{
+    cleanupStoragePaths: string[];
+    retainsStagedResult: boolean;
+    shouldRetry: boolean;
+    stale: boolean;
+    terminal: boolean;
+}> {
     const projectScope = requireImageBatchProjectScope(projectId);
     const imageBatchJobId = requireImageBatchJobId(jobId);
     const jobRef = getScopedJobRef(imageBatchJobId, projectScope.tId, projectScope.sId);
@@ -506,11 +512,11 @@ export async function markImageBatchItemAttemptFailedAdmin({
         const job = requirePersistedJob(snap, { requireRequestedItems: true });
         assertJobProject(job, projectScope.projectId);
         if (IMAGE_BATCH_TERMINAL_JOB_STATUS_VALUES.has(job.status)) {
-            return { cleanupStoragePaths: [], shouldRetry: false, stale: false, terminal: true };
+            return { cleanupStoragePaths: [], retainsStagedResult: true, shouldRetry: false, stale: false, terminal: true };
         }
         const { execution, key } = getExecution(job, itemId);
         if (!execution || execution.claimToken !== claimToken || !['processing', 'staged'].includes(execution.status)) {
-            return { cleanupStoragePaths: [], shouldRetry: false, stale: true, terminal: false };
+            return { cleanupStoragePaths: [], retainsStagedResult: true, shouldRetry: false, stale: true, terminal: false };
         }
         if (preserveForRetry && (!execution.stagedItem || !execution.stagedAccountingInput)) {
             throw new Error('Image batch finalization retry requires a staged result.');
@@ -566,7 +572,13 @@ export async function markImageBatchItemAttemptFailedAdmin({
             statusHistory,
             ...getImageBatchRetentionFields(nextStatus),
         });
-        return { cleanupStoragePaths, shouldRetry, stale: false, terminal: false };
+        return {
+            cleanupStoragePaths,
+            retainsStagedResult: shouldRetry && Boolean(execution.stagedItem && execution.stagedAccountingInput),
+            shouldRetry,
+            stale: false,
+            terminal: false,
+        };
     });
 }
 

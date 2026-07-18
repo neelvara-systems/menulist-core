@@ -1,8 +1,8 @@
 # Roles & Permissions — Product Specification
 
 **Feature:** Role-Based Access Control (RBAC)  
-**Status:** ✅ Staff CRUD + permissions wired end-to-end
-**Date:** May 19, 2026
+**Status:** Local source flow verified; hosted release evidence pending
+**Date:** July 16, 2026
 
 > **Scope:** Staff-level permissions (Layer 1). For chain-level outlet restrictions (Layer 2: OutletPolicy), see [Multi-Chain Permissions Spec](../multi-chain-permissions/multi-chain-permissions_spec.md).
 
@@ -122,6 +122,8 @@ SO THAT they can help with operations without accessing billing
 - Owner can select from available roles
 - Staff role has pre-configured limited permissions
 - Invited user sees only permitted features
+- Managers with **Manage Users** can manage ordinary staff, but only an actor with **Assign Roles** can change any account that holds Owner access
+- An email collision in Firebase Auth is not treated as a successful invitation or verification unless the server created and committed the matching UID binding itself
 
 ### 3.3 Custom Role
 
@@ -171,9 +173,12 @@ store.roles = [
 - Owners reset staff access by creating a new temporary passcode shown once. The reset also signs out already-open staff sessions. Staff self-service reset remains email-based.
 - Owners can sign out a staff member without deactivating them. The staff member is logged out on the next dashboard access check and can sign in again with current credentials.
 - Existing same-tenant staff can be mapped to another store.
+- Existing unverified platform placeholders are verified only through the explicit `existing_user_auth_bound` acknowledgement after Firebase Auth creation and a transactional same-user UID/mapping update. An orphan Auth email collision fails closed.
 - Staff updates use `PATCH /api/staff` with server-side role/store validation. Active/deactivated state is mirrored to Firebase Auth disabled state.
 - Removing staff uses `DELETE /api/staff` and removes only the selected store mapping; if no mappings remain, the user is deactivated, soft-deleted, signed out, and disabled in Firebase Auth.
 - Staff accounts are tenant-scoped. When a person leaves business A and joins business B, business A removes/deactivates the old account and business B creates a new staff account. Same personal email reuse across tenants remains blocked until a platform-managed transfer flow exists.
+- Owner-target actions are separately protected. A Manager cannot edit, reset, force-sign-out, deactivate, remove, or reassign an Owner account even though the default Manager role has `canManageUsers`.
+- Access checks invalidate a dashboard session if the user, tenant, or store becomes inactive/deleted, blocked, or session-revoked.
 
 ### 4.3 Permission Resolution ✅ FIXED
 
@@ -205,7 +210,8 @@ store.roles = [
 | File                                      | Purpose                                        |
 | ----------------------------------------- | ---------------------------------------------- |
 | `src/types/platform/roles.ts`             | Permission types (feature-flag style)          |
-| `src/data/defaultRoles.ts`                | Default role definitions (Owner/Manager/Staff) |
+| `src/data/shared/defaultRoles.ts`         | Default role definitions (Owner/Manager/Staff) |
+| `functions/src/sharedData/defaultRoles.ts` | Byte-identical Functions mirror               |
 | `src/data/rolesPermissionsInitialData.ts` | Permission labels & categories for UI          |
 | `src/lib/permissions/hasPermission.ts`    | Permission check and normalization utility     |
 | `src/lib/permissions/permissionRequirements.ts` | Desktop route and mobile screen permission requirements |
@@ -268,6 +274,10 @@ const { userPermissions } = useContext(PlatformGlobalDataContext);
 | Desktop route guard for role permissions  | ✅ Done |
 | Mobile tab/screen permission filtering    | ✅ Done |
 | Protected analytics/domain/POS APIs       | ✅ Done |
+| Manager cannot mutate Owner accounts      | ✅ Done |
+| Rejected transaction has no token-revocation side effect | ✅ Done |
+| Placeholder verification requires committed Auth UID binding | ✅ Done |
+| Inactive/deleted tenant and store sessions fail closed | ✅ Done |
 
 ## 7. Permission Set Decision
 

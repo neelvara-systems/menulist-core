@@ -7,18 +7,15 @@ service firebase.storage {
     }
 
     match /signaldesk/imports/{fileName} {
-      allow read: if canReadSignalDesk();
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
 
     match /signaldesk/evidence/{allPaths=**} {
-      allow read: if canReadSignalDesk();
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
 
     match /signaldesk/exports/{allPaths=**} {
-      allow read: if canReadSignalDesk();
-      allow write, delete: if false;
+      allow read, write, delete: if false;
     }
 
     match /signaldesk/incidents/{allPaths=**} {
@@ -35,14 +32,5 @@ service firebase.storage {
         && request.auth.token.platformRole == 'PLATFORM';
     }
 
-    function isSignedInSignalDeskMember() {
-      return isAuthenticated()
-        && firestore.exists(/databases/(default)/documents/signaldeskTeamMembers/$(request.auth.uid))
-        && firestore.get(/databases/(default)/documents/signaldeskTeamMembers/$(request.auth.uid)).data.active == true;
-    }
-
-    function canReadSignalDesk() {
-      return isSignalDeskPlatformAdmin() || isSignedInSignalDeskMember();
-    }
   }
 }

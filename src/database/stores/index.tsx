@@ -1,4 +1,6 @@
 import { getDefaultTimeSlotPresets } from "@config/defaultTimeSlotPresets";
+import { getAllowedBusinessAttributeKeysForCategory } from "@data/shared/businessAttributeInference";
+import { mergeMissingBusinessAttributeDefaults } from "@data/shared/businessAttributeDefaults";
 import { resolveStoreBusinessCategory } from "@data/shared/businessTypes";
 import { DB_COLLECTIONS } from "@constant/database";
 import { createDefaultRoles } from "@data/defaultRoles";
@@ -14,8 +16,9 @@ import {
     type StoreSummaryData,
 } from "@database/platformSummary";
 import { uploadPreparedMediaImage } from "@database/storage/uploadPreparedMediaImage";
-import { collection, getDocs, limit, query, where } from "@firebase/firestore";
+import { collection, getDocs, query, where } from "@firebase/firestore";
 import { resolveBusinessDayEndTime } from "@lib/analytics/businessDay";
+import { normalizeWorkingHoursValue, WORKING_HOURS_DAY_KEYS } from "@lib/hours/hoursEngine";
 import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
@@ -25,13 +28,26 @@ import { firebaseClient } from "@lib/firebase/firebaseClient";
 import { normalizeStoreLanguagePolicy } from "@lib/localization/languagePolicy";
 import { isDataUrl } from "@lib/media/mediaStorage";
 import { normalizeTimeSlotPresets } from "@lib/menu/timeSlotPresetBoundary";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import { touchDigitalScreenContentVersion } from "@lib/screen/screenInvalidation";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
-import { isStarterActivationSignal, type StarterActivationSignal } from "@lib/onboarding/starterActivation";
+import {
+    isStoreNestedDelete,
+    mergeStoreNestedUpdateWithCurrent,
+    projectStoreNestedUpdateEntries,
+    type StoreNestedUpdateEntry,
+} from "@lib/store/storeNestedUpdateProjection";
+import {
+    STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE,
+    isStarterActivationSignal,
+    normalizeStarterActivationTimestamp,
+    shouldRecordStarterActivationSignal,
+    type StarterActivationSignal,
+} from "@lib/onboarding/starterActivation";
 import { generateOwnCustomUid } from "@lib/utils/generateOwnCustomUid";
 import { computeSchedulerHour } from "@lib/utils/schedulerHour";
 import { StoreDataType, TimeSlotPreset } from "@type/platform/store";
-import { deleteField, doc, getDoc, runTransaction, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { deleteField, doc, FieldPath, getDoc, runTransaction, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.STORES;
 const DIGITAL_SCREEN_STORE_OUTPUT_FIELDS = [
@@ -50,6 +66,34 @@ const DIGITAL_SCREEN_STORE_OUTPUT_FIELDS = [
     'tenantName',
 ] as const;
 const SUBDOMAIN_ASSIGN_RESPONSE_MAX_BYTES = 8 * 1024;
+const CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES = 8 * 1024;
+
+const normalizeWorkingHoursUpdate = (value: unknown, allowDeleteMarkers: boolean): unknown => {
+    if (value === null) return null;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        throw new Error('store_working_hours_invalid');
+    }
+
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length > WORKING_HOURS_DAY_KEYS.length) {
+        throw new Error('store_working_hours_invalid');
+    }
+
+    return Object.fromEntries(entries.map(([day, hours]) => {
+        if (!WORKING_HOURS_DAY_KEYS.includes(day as (typeof WORKING_HOURS_DAY_KEYS)[number])) {
+            throw new Error('store_working_hours_day_invalid');
+        }
+        if (allowDeleteMarkers && isStoreNestedDelete(hours)) return [day, hours];
+        const normalized = normalizeWorkingHoursValue(hours);
+        if (normalized === null) throw new Error('store_working_hours_range_invalid');
+        return [day, normalized];
+    }));
+};
+
+const materializeStoreNestedEntry = (entry: StoreNestedUpdateEntry) => ({
+    fieldPath: new FieldPath(...entry.path),
+    value: isStoreNestedDelete(entry.value) ? deleteField() : entry.value,
+});
 
 const buildSummaryDataFromStore = (store: Record<string, any>): StoreSummaryData => ({
     tId: store.tenantId,
@@ -223,39 +267,30 @@ export const checkCustomDomainAvailability = async (
     return await apiCallComposer(
         async () => {
             const normalizedDomain = domain.toLowerCase().trim();
-            const domainRegex = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
-
-            if (!normalizedDomain || normalizedDomain.length < 4 || normalizedDomain.length > 253 || !domainRegex.test(normalizedDomain)) {
-                return {
-                    available: false,
-                    normalized: normalizedDomain,
-                    reason: "Invalid domain format. Example: yourbusiness.com",
-                };
-            }
-
-            const storesRef = collection(firebaseClient, COLLECTION);
-            const q = query(
-                storesRef,
-                where('customDomain', '==', normalizedDomain),
-                where('active', '==', true),
-                limit(1)
+            const response = await fetch(
+                `/api/domain?candidate=${encodeURIComponent(normalizedDomain)}`,
+                AUTH_BROWSER_REQUEST_POLICY,
             );
-            const snapshot = await getDocs(q);
-
-            if (!snapshot.empty) {
-                const existingStoreId = snapshot.docs[0].data()?.storeId;
-                if (existingStoreId !== currentStoreId) {
-                    return {
-                        available: false,
-                        normalized: normalizedDomain,
-                        reason: "This domain is already linked to another store",
-                    };
-                }
+            const payload = await readJsonResponseWithLimit<unknown>(
+                response,
+                CUSTOM_DOMAIN_AVAILABILITY_RESPONSE_MAX_BYTES,
+            );
+            if (
+                !payload
+                || typeof payload !== 'object'
+                || Array.isArray(payload)
+                || typeof (payload as { available?: unknown }).available !== 'boolean'
+            ) {
+                throw new Error('custom_domain_availability_response_invalid');
             }
 
+            const result = payload as { available: boolean; normalized?: unknown; reason?: unknown };
             return {
-                available: true,
-                normalized: normalizedDomain,
+                available: result.available,
+                normalized: typeof result.normalized === 'string'
+                    ? result.normalized
+                    : normalizedDomain,
+                reason: typeof result.reason === 'string' ? result.reason : undefined,
             };
         },
         { currentStoreId, domain },
@@ -304,6 +339,9 @@ export const addStore = async (data: any, from: string = "") => {
                 const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(data);
                 data.activeLanguages = normalizedLanguagePolicy.activeLanguages;
                 data.defaultLanguage = normalizedLanguagePolicy.defaultLanguage;
+            }
+            if (data.workingHours !== undefined) {
+                data.workingHours = normalizeWorkingHoursUpdate(data.workingHours, false);
             }
 
             data.id = data.storeId
@@ -394,6 +432,10 @@ export const updateStore = async (data: any) => {
                 const normalizedLanguagePolicy = normalizeStoreLanguagePolicy(data);
                 data.activeLanguages = normalizedLanguagePolicy.activeLanguages;
                 data.defaultLanguage = normalizedLanguagePolicy.defaultLanguage;
+            }
+
+            if (data.workingHours !== undefined) {
+                data.workingHours = normalizeWorkingHoursUpdate(data.workingHours, true);
             }
 
             data.id = data.storeId
@@ -580,17 +622,17 @@ export const updateStore = async (data: any) => {
                         throw new Error('store_update_tenant_missing');
                     }
 
-                    const transactionUpdate = { ...composedDirectStoreUpdate };
+                    const transactionLogicalUpdate = { ...composedDirectStoreUpdate };
                     const transactionBusinessType = requestedBusinessType ?? freshStore.businessType;
                     const transactionBusinessCategory = resolveStoreBusinessCategory(
                         transactionBusinessType || '',
                         requestedBusinessCategory ?? freshStore.businessCategory,
                     );
                     if (needsBusinessCategoryResolution) {
-                        transactionUpdate.businessCategory = transactionBusinessCategory;
+                        transactionLogicalUpdate.businessCategory = transactionBusinessCategory;
                     }
                     if (requestedBusinessDayEndTime !== undefined) {
-                        transactionUpdate.businessDayEndTime = resolveBusinessDayEndTime(
+                        transactionLogicalUpdate.businessDayEndTime = resolveBusinessDayEndTime(
                             transactionBusinessType,
                             requestedBusinessDayEndTime,
                             transactionBusinessCategory,
@@ -599,18 +641,27 @@ export const updateStore = async (data: any) => {
                     if (needsSchedulerRecompute) {
                         const transactionBusinessDayEndTime = resolveBusinessDayEndTime(
                             transactionBusinessType,
-                            transactionUpdate.businessDayEndTime ?? freshStore.businessDayEndTime,
+                            transactionLogicalUpdate.businessDayEndTime ?? freshStore.businessDayEndTime,
                             transactionBusinessCategory,
                         );
-                        transactionUpdate.businessDayEndTime = transactionBusinessDayEndTime;
-                        transactionUpdate.schedulerHour = requestedSchedulerHour ?? computeSchedulerHour(
+                        transactionLogicalUpdate.businessDayEndTime = transactionBusinessDayEndTime;
+                        transactionLogicalUpdate.schedulerHour = requestedSchedulerHour ?? computeSchedulerHour(
                             requestedTimeZone ?? freshStore.timeZone,
                             transactionBusinessDayEndTime,
                         );
                     }
 
-                    const nextStore = { ...freshStore, ...transactionUpdate };
-                    transaction.update(storeRef, transactionUpdate);
+                    const [firstTransactionEntry, ...remainingTransactionEntries] = projectStoreNestedUpdateEntries(
+                        transactionLogicalUpdate,
+                    ).map(materializeStoreNestedEntry);
+                    const nextStore = mergeStoreNestedUpdateWithCurrent(freshStore, transactionLogicalUpdate);
+                    if (!firstTransactionEntry) throw new Error('store_update_empty');
+                    transaction.update(
+                        storeRef,
+                        firstTransactionEntry.fieldPath,
+                        firstTransactionEntry.value,
+                        ...remainingTransactionEntries.flatMap((entry) => [entry.fieldPath, entry.value]),
+                    );
                     transaction.set(summaryRef, {
                         lastUpdated: serverTimestamp(),
                         stores: { [String(storeId)]: buildStoreSummaryEntry(buildSummaryDataFromStore(nextStore)) },
@@ -622,7 +673,16 @@ export const updateStore = async (data: any) => {
                     }
                 });
             } else {
-                await updateDoc(getDocRef(data.id), composedDirectStoreUpdate);
+                const [firstDirectEntry, ...remainingDirectEntries] = projectStoreNestedUpdateEntries(
+                    composedDirectStoreUpdate,
+                ).map(materializeStoreNestedEntry);
+                if (!firstDirectEntry) throw new Error('store_update_empty');
+                await updateDoc(
+                    getDocRef(data.id),
+                    firstDirectEntry.fieldPath,
+                    firstDirectEntry.value,
+                    ...remainingDirectEntries.flatMap((entry) => [entry.fieldPath, entry.value]),
+                );
             }
 
             // Public OBP/menu/screen store lookup uses shared Data Cache tags.
@@ -641,6 +701,80 @@ export const updateStore = async (data: any) => {
         "updateStore"
     );
 }
+
+export const applyStoreBusinessAttributeDefaults = async (data: {
+    businessAttributes: Record<string, unknown>;
+    storeId: string | number;
+    tenantId: string | number;
+}) => {
+    return await apiCallComposer(
+        async () => {
+            const storeId = Number(data.storeId);
+            const tenantId = Number(data.tenantId);
+            const session = await getActiveSession();
+            if (
+                !Number.isSafeInteger(storeId)
+                || storeId <= 0
+                || !Number.isSafeInteger(tenantId)
+                || tenantId <= 0
+                || String(session?.sId) !== String(storeId)
+                || String(session?.tId) !== String(tenantId)
+            ) {
+                throw new Error('store_business_attribute_defaults_scope_invalid');
+            }
+
+            const storeRef = getDocRef(storeId);
+            const composedUpdate = await requestBodyComposer({
+                id: storeId,
+                storeId,
+                tenantId,
+                businessAttributes: data.businessAttributes,
+            }, { isNew: false });
+            const transactionResult = await runTransaction(firebaseClient, async (transaction) => {
+                const storeSnapshot = await transaction.get(storeRef);
+                if (!storeSnapshot.exists()) throw new Error('store_business_attribute_defaults_target_missing');
+                const currentStore = storeSnapshot.data();
+                if (
+                    String(currentStore.storeId) !== String(storeId)
+                    || String(currentStore.tenantId) !== String(tenantId)
+                ) {
+                    throw new Error('store_business_attribute_defaults_scope_changed');
+                }
+
+                const businessCategory = resolveStoreBusinessCategory(
+                    currentStore.businessType || '',
+                    currentStore.businessCategory,
+                );
+                const result = mergeMissingBusinessAttributeDefaults(
+                    currentStore.businessAttributes,
+                    data.businessAttributes,
+                    getAllowedBusinessAttributeKeysForCategory(businessCategory),
+                );
+                if (result.changed) {
+                    transaction.update(storeRef, {
+                        ...composedUpdate,
+                        businessAttributes: result.businessAttributes,
+                    });
+                }
+
+                return {
+                    applied: result.changed,
+                    businessAttributes: result.businessAttributes,
+                    id: storeId,
+                    storeId,
+                    tenantId,
+                };
+            });
+
+            if (transactionResult.applied) {
+                await revalidatePublicClientCache(storeId, 'applyStoreBusinessAttributeDefaults');
+            }
+            return transactionResult;
+        },
+        data,
+        'applyStoreBusinessAttributeDefaults',
+    );
+};
 
 export function assertStoreUpdateSucceeded(
     result: unknown,
@@ -731,7 +865,15 @@ export type MenuPresenceUpdateResult = {
     storeId: number;
     surface: MenuPresenceSurface;
     confirmed: boolean;
+    recordedAt: string;
     starterSignal?: StarterActivationSignal;
+};
+
+export type StarterActivationSignalUpdateResult = {
+    success: true;
+    storeId: number;
+    signal: StarterActivationSignal;
+    recordedAt: string;
 };
 
 const assertActiveSessionStore = async (
@@ -760,12 +902,32 @@ export const recordStarterActivationSignal = async (
                 [`starterActivationSignals.actions.${signal}`]: now,
                 'starterActivationSignals.lastSignalAt': now,
             });
-            return { signal };
+            return { success: true, storeId, signal, recordedAt: now } satisfies StarterActivationSignalUpdateResult;
         },
         { storeId, signal },
         "recordStarterActivationSignal"
     );
 };
+
+export function assertStarterActivationSignalUpdateSucceeded(
+    result: unknown,
+    expectedStoreId: string | number,
+    expectedSignal: StarterActivationSignal,
+    rejectionCode = 'starter_activation_signal_update_rejected',
+): asserts result is StarterActivationSignalUpdateResult {
+    if (!result || typeof result !== 'object' || Array.isArray(result)) {
+        throw new Error(rejectionCode);
+    }
+    const updateResult = result as Partial<StarterActivationSignalUpdateResult>;
+    if (
+        updateResult.success !== true
+        || String(updateResult.storeId) !== String(expectedStoreId)
+        || updateResult.signal !== expectedSignal
+        || !normalizeStarterActivationTimestamp(updateResult.recordedAt)
+    ) {
+        throw new Error(rejectionCode);
+    }
+}
 
 /**
  * Update a manual presence confirmation for a specific surface.
@@ -781,12 +943,16 @@ export const updateMenuPresence = async (
     return await apiCallComposer(
         async () => {
             const session = await assertActiveSessionStore(storeId, 'menu_presence_store_scope_mismatch');
+            const canonicalStarterSignal = STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface];
             if (
                 !Number.isSafeInteger(storeId)
                 || storeId <= 0
                 || !MENU_PRESENCE_SURFACES.has(surface)
                 || typeof confirmed !== 'boolean'
-                || (options?.starterSignal !== undefined && !isStarterActivationSignal(options.starterSignal))
+                || (options?.starterSignal !== undefined && (
+                    !isStarterActivationSignal(options.starterSignal)
+                    || options.starterSignal !== canonicalStarterSignal
+                ))
             ) {
                 throw new Error('menu_presence_input_invalid');
             }
@@ -798,7 +964,9 @@ export const updateMenuPresence = async (
             const storeRef = getDocRef(`${storeId}`);
             const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, 'storesSummary');
             const now = new Date().toISOString();
+            let appliedStarterSignal: StarterActivationSignal | undefined;
             await runTransaction(firebaseClient, async (transaction) => {
+                appliedStarterSignal = undefined;
                 const storeSnapshot = await transaction.get(storeRef);
                 if (!storeSnapshot.exists()) throw new Error('menu_presence_store_missing');
                 const store = storeSnapshot.data();
@@ -808,6 +976,9 @@ export const updateMenuPresence = async (
                 ) {
                     throw new Error('menu_presence_store_scope_changed');
                 }
+                if (store.active === false || store.deleted === true || isPlatformEntityBlocked(store)) {
+                    throw new Error('menu_presence_store_unavailable');
+                }
 
                 const storeUpdate: Record<string, unknown> = confirmed
                     ? {
@@ -816,9 +987,13 @@ export const updateMenuPresence = async (
                     : {
                         [`menuPresence.${surface}`]: deleteField(),
                     };
-                if (confirmed && options?.starterSignal) {
-                    storeUpdate[`starterActivationSignals.actions.${options.starterSignal}`] = now;
+                if (confirmed && shouldRecordStarterActivationSignal(store as StoreDataType)) {
+                    appliedStarterSignal = canonicalStarterSignal;
+                    storeUpdate[`starterActivationSignals.actions.${canonicalStarterSignal}`] = now;
                     storeUpdate['starterActivationSignals.lastSignalAt'] = now;
+                } else if (!confirmed) {
+                    appliedStarterSignal = canonicalStarterSignal;
+                    storeUpdate[`starterActivationSignals.actions.${canonicalStarterSignal}`] = deleteField();
                 }
                 transaction.update(storeRef, storeUpdate);
                 transaction.set(summaryRef, {
@@ -832,13 +1007,13 @@ export const updateMenuPresence = async (
                     },
                 }, { merge: true });
             });
-            await revalidatePublicClientCache(storeId, 'updateMenuPresence');
             return {
                 success: true,
                 storeId,
                 surface,
                 confirmed,
-                ...(options?.starterSignal ? { starterSignal: options.starterSignal } : {}),
+                recordedAt: now,
+                ...(appliedStarterSignal ? { starterSignal: appliedStarterSignal } : {}),
             } satisfies MenuPresenceUpdateResult;
         },
         { storeId, surface, confirmed, starterSignal: options?.starterSignal },
@@ -863,6 +1038,7 @@ export function assertMenuPresenceUpdateSucceeded(
         || String(updateResult.storeId) !== String(expectedStoreId)
         || updateResult.surface !== expectedSurface
         || updateResult.confirmed !== expectedConfirmed
+        || !normalizeStarterActivationTimestamp(updateResult.recordedAt)
     ) {
         throw new Error(rejectionCode);
     }

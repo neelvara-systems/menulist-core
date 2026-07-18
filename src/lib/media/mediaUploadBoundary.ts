@@ -28,6 +28,41 @@ export function normalizeMediaUploadMimeType(value: unknown): string {
     return normalized === 'image/jpg' ? 'image/jpeg' : normalized;
 }
 
+export function resolvePreparedMediaIdentity({
+    blobFingerprint,
+    mediaChecksum,
+    mediaId,
+    preparedChecksum,
+    preparedMediaId,
+    profile,
+}: {
+    blobFingerprint: string;
+    mediaChecksum?: string;
+    mediaId?: string;
+    preparedChecksum?: string;
+    preparedMediaId?: string;
+    profile: MediaImageType;
+}): { checksum: string; mediaId: string } {
+    const normalizedFingerprint = blobFingerprint.trim();
+    const normalizedPreparedChecksum = preparedChecksum?.trim() || '';
+    const normalizedProvidedChecksum = mediaChecksum?.trim() || '';
+    const checksum = normalizedPreparedChecksum || normalizedFingerprint;
+    if (!/^[a-f0-9]{8,128}$/i.test(checksum)) throw new Error('prepared_media_checksum_invalid');
+    if (normalizedProvidedChecksum && normalizedProvidedChecksum !== checksum) {
+        throw new Error('prepared_media_checksum_mismatch');
+    }
+
+    const expectedMediaId = `${profile}_${checksum.slice(0, 16)}`;
+    const normalizedPreparedMediaId = preparedMediaId?.trim() || '';
+    const normalizedProvidedMediaId = mediaId?.trim() || '';
+    if (normalizedPreparedMediaId && normalizedProvidedMediaId && normalizedProvidedMediaId !== normalizedPreparedMediaId) {
+        throw new Error('prepared_media_identity_mismatch');
+    }
+    const resolvedMediaId = normalizedPreparedMediaId || normalizedProvidedMediaId || expectedMediaId;
+    if (resolvedMediaId !== expectedMediaId) throw new Error('prepared_media_identity_mismatch');
+    return { checksum, mediaId: resolvedMediaId };
+}
+
 export function assertMediaUploadBlobCandidate({
     blob,
     mimeType,

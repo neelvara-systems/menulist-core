@@ -7,11 +7,69 @@ import { requestBodyComposer } from "@lib/apiHelper";
 import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import { AUTH_BROWSER_REQUEST_POLICY } from "@lib/auth/browserRequestPolicy";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
+import { isDataUrl } from "@lib/media/mediaStorage";
+import { createRuntimeId } from "@lib/runtime/randomId";
+import { logRuntimeDiagnostic, logRuntimeFailure } from "@lib/runtime/runtimeDiagnostics";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
+import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
+import { getStorageReplacementCleanupTargets, type StorageReplacementCommitState } from "@lib/storage/replacementUploadBoundary";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 
 const COLLECTION = DB_COLLECTIONS.TENANTS;
 const TENANT_NAME_RESPONSE_MAX_BYTES = 32 * 1024;
+
+const cleanupTenantLogoReplacement = async ({
+    commitState,
+    previousUrl,
+    tenantId,
+    uploadedUrl,
+}: {
+    commitState: StorageReplacementCommitState;
+    previousUrl?: unknown;
+    tenantId: unknown;
+    uploadedUrl?: unknown;
+}): Promise<void> => {
+    if (commitState === 'committed') {
+        if (previousUrl && uploadedUrl && previousUrl !== uploadedUrl) {
+            logRuntimeDiagnostic('tenant_logo_persisted_cleanup_deferred_shared_reference', {
+                tenantId: String(tenantId || '').slice(0, 120),
+            });
+        }
+        return;
+    }
+    const targets = getStorageReplacementCleanupTargets({ commitState, previousUrl, uploadedUrl });
+    if (commitState === 'ambiguous' && uploadedUrl) {
+        logRuntimeFailure('tenant_logo_ambiguous_persistence_media_retained', new Error('persistence_outcome_ambiguous'), {
+            tenantId: String(tenantId || '').slice(0, 120),
+        });
+    }
+    if (!targets.length) return;
+    const results = await Promise.all(targets.map((url) => deleteFileByUrl(url)));
+    const failedCount = results.filter((result) => !result.success).length;
+    if (failedCount > 0) {
+        logRuntimeFailure('tenant_logo_replacement_cleanup_failed', new Error('storage_cleanup_failed'), {
+            commitState,
+            failedCount,
+            tenantId: String(tenantId || '').slice(0, 120),
+        });
+    }
+};
+
+const uploadTenantLogo = async ({
+    imageToUpdate,
+    tenantId,
+}: {
+    imageToUpdate: string;
+    tenantId: unknown;
+}): Promise<string> => {
+    const objectId = createRuntimeId(`tenant_${String(tenantId)}_logo`);
+    return uploadBase64ToStorage({
+        cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
+        fileId: objectId,
+        path: `${COLLECTION}/logos/${objectId}`,
+        url: imageToUpdate,
+    });
+};
 
 const updateTenantNameAtomically = async (params: {
     name: string;
@@ -93,9 +151,8 @@ export const addTenant = async (data: any, from: string = "") => {
     return await apiCallComposer(
         async () => {
 
-            let logoUrl: any = '';
-            let imageType: any = data.imageType;
-            let imageToUpdate: any = data.imageToUpdate;
+            let uploadedLogoUrl = '';
+            const imageToUpdate: unknown = data.imageToUpdate;
 
             delete data.imageToUpdate;
             delete data.imageType;
@@ -104,22 +161,28 @@ export const addTenant = async (data: any, from: string = "") => {
             }
             const docId = data.tenantId//which is tenantId
             const docRef = await getDocRef(`${docId}`);
+            let persistenceAttempted = false;
 
-            if (imageToUpdate) {
-                if (imageToUpdate?.includes('base64')) {
-                    //upload logo image to firebase storage
-                    logoUrl = await uploadBase64ToStorage({
-                        fileId: docId,
-                        url: imageToUpdate,
-                        path: `${COLLECTION}/logos/${docId}`,
-                        type: imageType
-                    })
+            try {
+                if (isDataUrl(imageToUpdate)) {
+                    uploadedLogoUrl = await uploadTenantLogo({ imageToUpdate, tenantId: docId });
+                    data.logo = uploadedLogoUrl;
+                } else if (typeof imageToUpdate === 'string' && imageToUpdate.trim()) {
+                    data.logo = imageToUpdate.trim();
                 }
-                data.logo = logoUrl;
+                data.storesList = [];
+                const composedData = await requestBodyComposer(data, { isNew: true });
+                persistenceAttempted = true;
+                await setDoc(docRef, composedData);
+                return ({ ...data, id: docId })
+            } catch (error) {
+                await cleanupTenantLogoReplacement({
+                    commitState: persistenceAttempted ? 'ambiguous' : 'not_persisted',
+                    tenantId: docId,
+                    uploadedUrl: uploadedLogoUrl,
+                });
+                throw error;
             }
-            data.storesList = [];
-            await setDoc(docRef, await requestBodyComposer(data, { isNew: true }));
-            return ({ ...data, id: docId })
         },
         data,
         "addTenant"
@@ -131,61 +194,70 @@ export const updateTenant = async (data: any) => {
         async () => {
             const docId = data.tenantId//which is tenantId
             const nextTenantName = typeof data.name === 'string' ? data.name.trim() : '';
+            const imageToUpdate: unknown = data.imageToUpdate;
+            const hasLogoUpload = isDataUrl(imageToUpdate);
+            delete data.imageToUpdate;
+            delete data.imageType;
             let shouldPropagateTenantName = false;
             let currentTenantData: any = null;
-            if (data.imageToUpdate) {
-
-                let logoUrl: any = data.logo;
-
-                let imageType: any = data.imageType;
-                let imageToUpdate: any = data.imageToUpdate;
-                delete data.imageToUpdate;
-                delete data.imageType;
-
-                if (imageToUpdate?.includes('base64')) {
-                    if (data.logo) {
-                        await deleteFileByUrl(data.logo);
-                    }
-                    //upload logo image to firebase storage
-                    logoUrl = await uploadBase64ToStorage({
-                        fileId: docId,
-                        url: imageToUpdate,
-                        path: `${COLLECTION}/logos/${docId}`,
-                        type: imageType
-                    })
-                }
-                data.logo = logoUrl;
-            }
+            let uploadedLogoUrl = '';
+            let previousLogoUrl: unknown;
+            let logoPersistenceAttempted = false;
             const collectionDocRef = doc(firebaseClient, `${COLLECTION}`, `${docId}`);
-            if (nextTenantName) {
+            if (nextTenantName || hasLogoUpload) {
                 const currentTenantSnap = await getDoc(collectionDocRef);
                 currentTenantData = currentTenantSnap.exists() ? currentTenantSnap.data() : null;
+                if (!currentTenantData) throw new Error('tenant_update_target_missing');
+                previousLogoUrl = currentTenantData.logo;
                 const currentTenantName = currentTenantSnap.exists()
                     ? typeof currentTenantSnap.data()?.name === 'string'
                         ? currentTenantSnap.data()?.name.trim()
                         : ''
                     : '';
-                shouldPropagateTenantName = currentTenantName !== nextTenantName;
+                shouldPropagateTenantName = Boolean(nextTenantName) && currentTenantName !== nextTenantName;
             }
-            if (shouldPropagateTenantName) {
-                const sourceStoresList = Array.isArray(data.storesList)
-                    ? data.storesList
-                    : currentTenantData?.storesList;
-                await updateTenantNameAtomically({
-                    name: nextTenantName,
-                    storesList: Array.isArray(sourceStoresList) ? sourceStoresList : undefined,
+            try {
+                if (hasLogoUpload) {
+                    uploadedLogoUrl = await uploadTenantLogo({
+                        imageToUpdate,
+                        tenantId: docId,
+                    });
+                    data.logo = uploadedLogoUrl;
+                }
+                if (shouldPropagateTenantName) {
+                    const sourceStoresList = Array.isArray(data.storesList)
+                        ? data.storesList
+                        : currentTenantData?.storesList;
+                    await updateTenantNameAtomically({
+                        name: nextTenantName,
+                        storesList: Array.isArray(sourceStoresList) ? sourceStoresList : undefined,
+                        tenantId: docId,
+                    });
+                }
+                const directTenantUpdate = { ...data };
+                if (shouldPropagateTenantName) {
+                    delete directTenantUpdate.name;
+                    delete directTenantUpdate.storesList;
+                }
+                if (Object.keys(directTenantUpdate).length > 0) {
+                    const composedData = await requestBodyComposer(directTenantUpdate, { isNew: false });
+                    logoPersistenceAttempted = Boolean(uploadedLogoUrl);
+                    await updateDoc(collectionDocRef, composedData);
+                }
+            } catch (error) {
+                await cleanupTenantLogoReplacement({
+                    commitState: logoPersistenceAttempted ? 'ambiguous' : 'not_persisted',
                     tenantId: docId,
+                    uploadedUrl: uploadedLogoUrl,
                 });
+                throw error;
             }
-            const directTenantUpdate = { ...data };
-            if (shouldPropagateTenantName) {
-                delete directTenantUpdate.name;
-                delete directTenantUpdate.storesList;
-            }
-            if (Object.keys(directTenantUpdate).length > 0) {
-                const composedData = await requestBodyComposer(directTenantUpdate, { isNew: false });
-                await updateDoc(collectionDocRef, composedData);
-            }
+            await cleanupTenantLogoReplacement({
+                commitState: 'committed',
+                previousUrl: previousLogoUrl,
+                tenantId: docId,
+                uploadedUrl: uploadedLogoUrl,
+            });
             return data;
         },
         data,

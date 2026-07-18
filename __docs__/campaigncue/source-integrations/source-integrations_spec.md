@@ -19,7 +19,7 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 | MenuList | Official restaurant/store/menu/photos/public-link source snapshots. |
 | Google Business Profile | Manual Google-ready drafts; connected publish context is reserved for a separate future layer. |
 | WhatsApp Business | Manual message download/export; direct-send and template status are reserved for a separate future layer. |
-| Meta social/ads | Manual social/ad handoff packs; no ad-account or social-account mutation in the active runtime. |
+| Meta social/ads | Manual social/ad handoff packs. Meta Ads MCP reporting/diagnostics is a disabled read-first candidate; no account connection, metric import, or mutation exists in the active runtime. |
 | Booking/POS/order | Owner-entered links and outcomes now; imports only after a future connector contract exists. |
 
 ## Integration Posture
@@ -30,7 +30,7 @@ The active runtime uses the signed-in MenuList store profile as a read-only boot
 | Website/public pages | Low-confidence extraction with owner review. | Public content can be stale, partial, or legally unsuitable for marketing claims. |
 | Google Business Profile | Manual Google-ready export now; capability-detected connection only in a separate future layer. | API access, quotas, location eligibility, and post type support vary. |
 | WhatsApp Business | Consent/template/preference-aware connection only. | Marketing messages require opt-in, pricing, policy, and preference handling. |
-| Meta/Instagram/TikTok/YouTube | Export-first until app review and provider rules are satisfied. | Posting APIs require account eligibility, scopes, quotas, domain rules, and platform-specific UX. |
+| Meta/Instagram/TikTok/YouTube | Export-first until app review and provider rules are satisfied. | Posting APIs require account eligibility, scopes, quotas, domain rules, and platform-specific UX. Meta Ads MCP additionally requires a verified tool allowlist, response validation, tenant/ad-account mapping, and proof that read tools can remain isolated from mutation tools. |
 | POS/booking/order systems | Outcome import only until write-back contract exists. | Avoid accidental changes to operational systems. |
 | Email/SMS/contact lists | Not default campaign channels. | Direct marketing needs explicit consent, opt-out, and jurisdiction-specific compliance. |
 

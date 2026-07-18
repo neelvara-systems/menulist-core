@@ -6,15 +6,15 @@
  * Validates extracted data before applying to project.
  */
 
+import { normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
+
 /**
  * Validate price format
  * 
  * Rules:
  * - Must be a non-empty string
- * - Max 20 characters
- * - No HTML tags
- * - Must contain at least one digit
- * - No emojis
+ * - Uses the shared persisted menu-price text boundary
+ * - Supports numeric, text, currency, and range prices
  * 
  * @param price - Price string to validate
  * @returns true if valid price format
@@ -27,14 +27,8 @@
  * isValidPrice("Free 🎉") → false
  */
 export function isValidPrice(price: string | undefined | null): boolean {
-    if (!price) return false;
-    if (typeof price !== 'string') return false;
-    if (price.length > 20) return false;
-    if (/<[^>]*>/.test(price)) return false;           // No HTML tags
-    if (!/[0-9]/.test(price)) return false;            // Must contain digit
-    if (/[\uD83C-\uDBFF][\uDC00-\uDFFF]/.test(price)) return false; // No emojis (surrogate pairs)
-
-    return true;
+    const result = normalizeOptionalMenuPrice(price);
+    return result.success && Boolean(result.data);
 }
 
 /**
@@ -92,8 +86,8 @@ export function isValidItemName(
  * @returns Sanitized price or empty string if invalid
  */
 export function sanitizePrice(price: string | undefined | null): string {
-    if (!isValidPrice(price)) return '';
-    return price!.trim();
+    const result = normalizeOptionalMenuPrice(price);
+    return result.success ? result.data || '' : '';
 }
 
 /**

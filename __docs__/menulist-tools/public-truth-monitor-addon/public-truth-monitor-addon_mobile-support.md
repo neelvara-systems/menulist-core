@@ -1,6 +1,6 @@
 # Public Truth Monitor Add-On - Mobile Support
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Status:** Runtime implemented
 
 ---

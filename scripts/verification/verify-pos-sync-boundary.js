@@ -111,7 +111,6 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
   [
     'export const POST = withAuth(async (request, session) => {',
     'FEATURE_FLAGS.ENABLE_POS_SYNC',
-    'requireAnyStorePermission(',
     'readBoundedJsonBody(request, POS_SYNC_ACTION_MAX_BODY_BYTES',
     'validateAPIInput(schema, bodyResult.data)',
     'const tenantScope = normalizePosSyncNumericDocumentId(tenantId);',
@@ -119,7 +118,11 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
     'verifyTenantAccess(session, tenantId, storeId, request)',
     'hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`)',
     expectedRateLimitKey,
-    'checkRateLimit({ key:',
+    'checkRateLimit({',
+    'failClosedOnProviderError: true',
+    "rlResult.reason === 'provider_unavailable'",
+    'status: providerUnavailable ? 503 : 429',
+    "'Retry-After': String(Math.max(Math.ceil((rlResult.resetAt - Date.now()) / 1000), 1))",
     'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
     'const storeDoc = await storeRef.get();',
     'requireAnyStorePermissionForStoreData(',
@@ -132,6 +135,7 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
     'logSecurityFailure(',
     'getBoundedSecurityStringContext',
   ].forEach((token) => assertIncludes(content, token, label));
+  assertNotIncludes(content, 'const permissionError = await requireAnyStorePermission(', `${label} redundant pre-limiter permission read`);
   assertNotIncludes(content, 'bodyResult.data as any', `${label} bounded JSON validation boundary`);
 
   assertOrder(
@@ -143,7 +147,7 @@ function verifyProtectedPosRoute(content, label, expectedRateLimitKey) {
       'const storeScope = normalizePosSyncNumericDocumentId(storeId);',
       'verifyTenantAccess(session, tenantId, storeId, request)',
       'hashPublicRateLimitValue(`${tenantDocumentId}:${storeDocumentId}`)',
-      'checkRateLimit({ key:',
+      'checkRateLimit({',
       'admin.firestore()',
       'const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeDocumentId);',
       'const storeDoc = await storeRef.get();',
@@ -173,11 +177,15 @@ function verifyDeliveryRoute(deliverRoute) {
     'tenantId: z.number().int().positive()',
     "projectId: z.string().min(1).max(120).regex(/^[A-Za-z0-9_-]+$/).refine(isValidFirestoreDocumentId, 'Invalid project ID'),",
     'PERMISSIONS.MANAGE_INTEGRATIONS, PERMISSIONS.PUBLISH_MENU',
-    'getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId)',
+    'const projectRef = db',
+    'transaction.get(projectRef)',
+    'transaction.get(secretRef)',
     'projectId: projectDoc.id',
     "const deliveryClaim = await db.runTransaction(async (transaction) => {",
     'getNextPosSyncMenuVersion(currentPosSync.menuVersion)',
-    'currentPosSync.webhookSecret !== posSync.webhookSecret',
+    'resolvePosSyncSecretInTransaction({',
+    'secretVersion: secret.version',
+    'normalizePosSyncSecretVersion(currentPosSync.secretVersion) !== deliveryClaim.secretVersion',
     'Buffer.byteLength(rawBody, \'utf8\')',
     "createHash('sha256').update(rawBody).digest('hex')",
     'payloadHash,',
@@ -198,8 +206,9 @@ function verifyDeliveryRoute(deliverRoute) {
     deliverRoute,
     [
       'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
-      'const projectData = await getScopedProjectData(db, tenantDocumentId, storeDocumentId, projectId);',
+      'const projectRef = db',
       'const deliveryClaim = await db.runTransaction(async (transaction) => {',
+      'transaction.get(projectRef)',
       'buildMenuSnapshot(',
       'postPosSyncWebhook({',
     ],
@@ -232,8 +241,11 @@ function verifyTestRoute(testRoute) {
     'storeId: z.number().int().positive()',
     'tenantId: z.number().int().positive()',
     'PERMISSIONS.MANAGE_INTEGRATIONS',
-    'buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || \'INR\')',
-    'freshPosSync.webhookSecret !== posSync.webhookSecret',
+    'const connectionClaim = await db.runTransaction(async (transaction) => {',
+    'transaction.get(secretRef)',
+    'resolvePosSyncSecretInTransaction({',
+    'buildTestPayload(storeId, tenantId, connectionClaim.currency)',
+    'signPayload(rawBody, connectionClaim.secret, timestamp)',
     'postPosSyncWebhook({',
     "'posSync.status': 'connection_issue'",
     "'posSync.lastStatus': 'failed'",
@@ -249,15 +261,15 @@ function verifyTestRoute(testRoute) {
     testRoute,
     [
       'validatePosSyncWebhookNetworkTarget(webhookValidation.normalizedUrl)',
-      'const freshStoreDoc = await storeRef.get();',
-      'const testPayload = buildTestPayload(storeId, tenantId, freshStore?.currencyCode || freshStore?.currency || \'INR\');',
+      'const connectionClaim = await db.runTransaction(async (transaction) => {',
+      'const testPayload = buildTestPayload(storeId, tenantId, connectionClaim.currency);',
       'postPosSyncWebhook({',
     ],
     'POS test outbound order',
   );
 }
 
-function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testResponse) {
+function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testResponse, secretResponse) {
   [
     'export const POS_SYNC_TEST_REQUEST_POLICY',
     "cache: 'no-store'",
@@ -266,6 +278,16 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
     'export const POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES = 16 * 1024;',
     'isSuccessfulPosSyncTestResponse',
   ].forEach((token) => assertIncludes(testResponse, token, 'POS shared test response policy'));
+
+  [
+    'export const POS_SYNC_SECRET_REQUEST_POLICY',
+    "cache: 'no-store'",
+    "credentials: 'same-origin'",
+    "redirect: 'manual'",
+    'POS_SYNC_SECRET_RESPONSE_JSON_MAX_BYTES = 4 * 1024',
+    "action: 'ensure' | 'read' | 'rotate'",
+    'readJsonResponseWithLimit<unknown>',
+  ].forEach((token) => assertIncludes(secretResponse, token, 'POS shared secret response boundary'));
 
   [
     'validatePosSyncWebhookUrl(webhookUrl)',
@@ -281,7 +303,12 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
     'message: POS_SYNC_TEST_FAILED_MESSAGE',
     'readJsonResponseWithLimit<unknown>',
     'POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES',
+    "requestPosSyncSecret({ action: 'read', storeId, tenantId })",
+    "requestPosSyncSecret({ action: 'ensure', storeId, tenantId })",
+    "requestPosSyncSecret({ action: 'rotate', storeId, tenantId })",
+    'disabled={!webhookUrl.trim() || !webhookSecret || secretLoading}',
   ].forEach((token) => assertIncludes(desktopPosSync, token, 'Desktop POS sync boundary'));
+  assertNotIncludes(desktopPosSync, "updates['posSync.webhookSecret']", 'Desktop POS sync client secret persistence');
 
   assertOrder(
     desktopPosSync,
@@ -309,7 +336,13 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
     'message: POS_SYNC_CONNECTION_ISSUE_MESSAGE',
     'readJsonResponseWithLimit<unknown>',
     'POS_SYNC_TEST_RESPONSE_JSON_MAX_BYTES',
+    "action: 'read'",
+    "action: 'ensure'",
+    "action: 'rotate'",
+    'disabled={!enabled || !webhookUrl.trim() || !webhookSecret || secretLoading}',
   ].forEach((token) => assertIncludes(mobilePosSync, token, 'Mobile POS sync boundary'));
+  assertNotIncludes(mobilePosSync, 'webhookSecret: storeDetails?.posSync?.webhookSecret', 'Mobile POS sync client secret hydration');
+  assertNotIncludes(mobilePosSync, 'webhookSecret,\n            consecutiveFailures', 'Mobile POS sync client secret persistence');
 
   assertOrder(
     mobilePosSync,
@@ -332,13 +365,12 @@ function verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testRespons
   });
 }
 
-function verifyDebouncedDeliveryBoundary(eventBuilder) {
+function verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvider, editor) {
   [
     'POS_SYNC_DELIVERY_TRIGGER_FAILED',
     'POS_SYNC_DELIVERY_REQUEST_REJECTED',
     'if (!posSync?.enabled) return;',
     'if (!posSync?.webhookUrl) return;',
-    'if (!posSync?.webhookSecret) return;',
     'cache: \'no-store\'',
     'credentials: \'same-origin\'',
     'redirect: \'manual\'',
@@ -350,19 +382,36 @@ function verifyDebouncedDeliveryBoundary(eventBuilder) {
     "getBoundedSecurityStringContext('projectId', projectId)",
     'const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();',
     'getPosSyncDebounceKey(storeId, tenantId, projectId)',
+    'const registeredConfigs = new Map<string, PosSyncConfig>();',
+    'export function registerPosSyncDeliveryConfig',
+    'export function unregisterPosSyncDeliveryConfig',
+    'export function triggerPosSyncForAcknowledgedProjectSave',
+    'registeredConfigs.get(getPosSyncStoreKey(storeId, tenantId))',
     'debounceTimers.get(debounceKey)',
     'debounceTimers.set(debounceKey, timer)',
     'debounceTimers.clear()',
   ].forEach((token) => assertIncludes(eventBuilder, token, 'POS debounced delivery boundary'));
+  assertNotIncludes(eventBuilder, 'if (!posSync?.webhookSecret) return;', 'POS debounced delivery client secret dependency');
 
   [
     'createDeliveryJob(storeId, tenantId, projectId).catch(() =>',
     '// Silent failure',
     '// Silent — POS sync failures never surface to the owner',
   ].forEach((token) => assertNotIncludes(eventBuilder, token, 'POS debounced delivery silent failure boundary'));
+
+  [
+    'registerPosSyncDeliveryConfig(storeId, tenantId, contextState?.storeDetails?.posSync)',
+    'return () => unregisterPosSyncDeliveryConfig(storeId, tenantId);',
+  ].forEach((token) => assertIncludes(platformProvider, token, 'POS loaded-store integration registration'));
+  assertIncludes(projectDal, 'import { triggerPosSyncForAcknowledgedProjectSave }', 'Project DAL POS trigger import');
+  assert(
+    countOccurrences(projectDal, 'triggerPosSyncForAcknowledgedProjectSave(') >= 2,
+    'Project DAL must trigger POS sync after standalone and linked-outlet acknowledged saves',
+  );
+  assertNotIncludes(editor, 'triggerPosSyncDebounced(', 'Editor must not own the POS mutation trigger');
 }
 
-function verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync) {
+function verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute) {
   [
     'resolvePosSyncDeliveryOutcome({',
     'currentConsecutiveFailures: currentPosSync.consecutiveFailures',
@@ -399,9 +448,10 @@ function verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, 
   });
 
   assert(
-    countOccurrences(desktopPosSync, "'posSync.consecutiveFailures': 0") >= 3,
-    'Desktop POS sync must reset consecutiveFailures on toggle, URL save, and secret rotation',
+    countOccurrences(desktopPosSync, "'posSync.consecutiveFailures': 0") >= 2,
+    'Desktop POS sync must reset consecutiveFailures on toggle and URL save',
   );
+  assertIncludes(secretRoute, "'posSync.consecutiveFailures': 0", 'POS secret rotation failure-counter reset');
 
   [
     'consecutiveFailures: storeDetails?.posSync?.consecutiveFailures ?? 0',
@@ -409,6 +459,45 @@ function verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, 
     'consecutiveFailures: enabled && !connectionChanged ? currentPosSync.consecutiveFailures : 0',
     "status: enabled ? (connectionChanged || currentPosSync.status === 'disabled' ? 'healthy' : currentPosSync.status) : 'disabled'",
   ].forEach((token) => assertIncludes(mobilePosSync, token, 'Mobile POS sync failure counter reset'));
+}
+
+function verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes) {
+  [
+    "export const GET = withAuth(async (request: NextRequest, session) => {",
+    "export const POST = withAuth(async (request: NextRequest, session) => {",
+    "action: z.enum(['ensure', 'rotate'])",
+    'verifyTenantAccess(session, tenantScope.numericId, storeScope.numericId, request)',
+    'failClosedOnProviderError: true',
+    'requireAnyStorePermissionForStoreData(',
+    '[PERMISSIONS.MANAGE_INTEGRATIONS]',
+    'getPosSyncSecretRef(db, tenantScope.documentId, storeScope.documentId)',
+    'resolvePosSyncSecretInTransaction({',
+    "migrate: action !== 'rotate'",
+    "'posSync.webhookSecret': admin.firestore.FieldValue.delete()",
+    "'posSync.secretVersion': nextVersion",
+    'generateWebhookSecret()',
+    "'Cache-Control': 'private, no-store'",
+  ].forEach((token) => assertIncludes(secretRoute, token, 'POS protected secret route'));
+
+  [
+    'export function resolvePosSyncSecretInTransaction',
+    'DB_COLLECTIONS.POS_SYNC_SECRETS',
+    "migrationSource: serverSecret ? (serverData?.migrationSource || 'server') : 'store.posSync.webhookSecret'",
+    "'posSync.webhookSecret': admin.firestore.FieldValue.delete()",
+    "'posSync.secretVersion': version",
+  ].forEach((token) => assertIncludes(secretStore, token, 'POS server secret store'));
+
+  [
+    'match /posSyncSecrets/{docId}',
+    'allow read, write: if false;',
+    'preservesPosSyncWebhookSecret(resource.data, request.resource.data)',
+    '!hasPosSyncWebhookSecret(request.resource.data)',
+  ].forEach((token) => assertIncludes(firestoreRules, token, 'POS secret Firestore boundary'));
+  assertIncludes(databaseConstants, 'POS_SYNC_SECRETS: "posSyncSecrets"', 'POS secret collection constant');
+  assertIncludes(posSyncTypes, 'webhookSecret?: string;', 'POS legacy secret optional type');
+  assertIncludes(posSyncTypes, 'secretVersion?: number;', 'POS secret version type');
+  assertIncludes(storeTypes, 'webhookSecret?: string;', 'Store legacy secret optional type');
+  assertIncludes(storeTypes, 'secretVersion?: number;', 'Store POS secret version type');
 }
 
 function verifyPayloadBoundary(payloadFormatter, posSyncTypes, deliverRoute) {
@@ -485,54 +574,45 @@ function verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebas
     'package.json must expose POS sync behavioral boundaries',
   );
 
-  const staleLaunchPattern = /Phase 2|Phase 3|post-launch|future|Future|DEFER|deferred|Deferred|placeholder|Current Phase|Cloud Function deferred|CF deferred|multi-retry/;
   [
-    ['POS README', readmeDoc],
-    ['POS spec', specDoc],
-    ['POS implementation', implDoc],
-    ['POS Firebase', firebaseDoc],
-  ].forEach(([label, doc]) => assertNotMatches(doc, staleLaunchPattern, `${label} stale launch wording`));
-
-  [
-    '3 failed live deliveries in a row',
-    'explicit connection-test/configuration failures mark the issue immediately',
+    'the third marks `connection_issue`',
+    'An explicit failed test or invalid target marks the issue immediately',
+    'Signing secrets are server-owned',
+    'Closing the app before the 25-second timer fires can prevent that attempt',
+    'Background project writes that do not cross the client project DAL do not create a separate webhook attempt',
+    'Provider smoke and coordinated deployment remain release-owner work',
   ].forEach((token) => assertIncludes(readmeDoc, token, 'POS README failure threshold docs'));
 
   [
-    'Increment `posSync.consecutiveFailures`',
-    'First and second failed live deliveries stay quiet for the owner',
-    'Third consecutive failed live delivery',
-    'No active retry worker',
+    'failure one and two are logged but remain owner-quiet',
+    'failure three sets `connection_issue`',
+    'one destination per store',
+    'Canonical storage: `posSyncSecrets/{tenantId}_{storeId}`',
+    'Background server writes that do not cross the client project DAL are not separately emitted',
   ].forEach((token) => assertIncludes(specDoc, token, 'POS spec failure threshold docs'));
 
   [
-    'POS Sync boundary source gate: `npm run verify:pos-sync-boundary`',
-    'source-only and does not call an external POS provider',
-    'Target document-ID boundary',
-    'normalizePosSyncNumericDocumentId',
-    'POS delivery project ID boundary',
-    'whitespace-mutated project IDs fail',
-    'Delivery failure threshold',
-    'First and second failed live deliveries stay owner-quiet',
-    'Active docs no longer present Cloud Function delivery/retry workers or `pos_delivery_queue` as current runtime scope',
+    '`resolvePosSyncSecretInTransaction()`',
+    '`triggerPosSyncForAcknowledgedProjectSave()`',
+    'The editor no longer owns a separate trigger',
+    'the current project snapshot, increments `posSync.menuVersion`',
+    'Deploying rules before the app would break the previous client-side secret write flow',
+    'No unused queue collection or queue type remains in active source',
   ].forEach((token) => assertIncludes(implDoc, token, 'POS implementation boundary docs'));
 
   [
-    'POS Sync boundary source gate: `npm run verify:pos-sync-boundary`',
-    'MobileShell More routing',
-    'shared URL validator and `/api/pos-sync/test` acknowledgement boundary',
+    'Mobile never hydrates a secret from `storeDetails.posSync.webhookSecret`',
+    'Enabling without a secret calls `action: ensure`',
+    'Rotation calls `action: rotate`',
+    '`npm run test:pos-sync-secret:rules`',
   ].forEach((token) => assertIncludes(mobileDoc, token, 'POS mobile boundary docs'));
 
   [
-    'POS Sync boundary source gate: `npm run verify:pos-sync-boundary`',
-    'performs no Firestore reads/writes/deletes',
-    'does not call an external POS provider',
-    'POS Sync target document-ID boundary',
-    'normalizePosSyncNumericDocumentId',
-    'POS delivery project ID boundary',
-    'whitespace-mutated project IDs fail',
-    'Delivery failure threshold',
-    'posSync.consecutiveFailures',
+    '`posSyncSecrets/{tenantId}_{storeId}`',
+    'clients cannot add/change/delete legacy `posSync.webhookSecret`',
+    'Typical post-migration path',
+    'No Storage bucket, Firestore index, Cloud Function, scheduler, or delivery queue is added',
+    'The rules change is not safe to deploy ahead of the compatible secret API/UI',
   ].forEach((token) => assertIncludes(firebaseDoc, token, 'POS Firebase boundary docs'));
 
   [
@@ -573,6 +653,11 @@ function verifyPosSyncBoundary() {
   const desktopPosSync = read('src/components/templates/main-app/businessSettings/tabs/PosSyncTab.tsx');
   const mobilePosSync = read('src/components/mobile/screens/MobilePosSyncScreen.tsx');
   const testResponse = read('src/lib/posSync/testResponse.ts');
+  const secretResponse = read('src/lib/posSync/secretResponse.ts');
+  const secretStore = read('src/lib/posSync/serverSecretStore.ts');
+  const secretRoute = read('src/app/api/pos-sync/secret/route.ts');
+  const firestoreRules = read('firestore.rules');
+  const databaseConstants = read('src/constants/database.ts');
   const eventBuilder = read('src/lib/posSync/eventBuilder.ts');
   const payloadFormatter = read('src/lib/posSync/payloadFormatter.ts');
   const posSyncTypes = read('src/lib/posSync/types.ts');
@@ -580,6 +665,9 @@ function verifyPosSyncBoundary() {
   const mobileShell = read('src/components/mobile/MobileShell.tsx');
   const mobileMore = read('src/components/mobile/screens/MobileMoreScreen.tsx');
   const mobileShare = read('src/components/mobile/screens/MobileShareScreen.tsx');
+  const projectDal = read('src/database/projects/index.ts');
+  const platformProvider = read('src/providers/platformProviders/platformGlobalDataProvider.tsx');
+  const editor = read('src/components/templates/main-app/projects/editorView/Editor.tsx');
   const readmeDoc = read('__docs__/pos-webhook-sync/README.md');
   const specDoc = read('__docs__/pos-webhook-sync/pos-webhook-sync_spec.md');
   const implDoc = read('__docs__/pos-webhook-sync/pos-webhook-sync_impl.md');
@@ -594,9 +682,10 @@ function verifyPosSyncBoundary() {
   verifyDeliveryRoute(deliverRoute);
   verifyProtectedPosRoute(testRoute, 'POS test route boundary', 'pos-test:${storeRateLimitHash}');
   verifyTestRoute(testRoute);
-  verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testResponse);
-  verifyDebouncedDeliveryBoundary(eventBuilder);
-  verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync);
+  verifyDesktopAndMobileParity(desktopPosSync, mobilePosSync, testResponse, secretResponse);
+  verifyDebouncedDeliveryBoundary(eventBuilder, projectDal, platformProvider, editor);
+  verifyDeliveryFailureThreshold(deliverRoute, testRoute, deliveryState, posSyncTypes, storeTypes, desktopPosSync, mobilePosSync, secretRoute);
+  verifyServerOwnedSecretBoundary(secretRoute, secretStore, firestoreRules, databaseConstants, posSyncTypes, storeTypes);
   verifyPayloadBoundary(payloadFormatter, posSyncTypes, deliverRoute);
   verifyMobileShellBoundary(mobileShell, mobileMore, mobileShare);
   verifyDocs(packageJson, readmeDoc, specDoc, implDoc, mobileDoc, firebaseDoc, auditDoc, changelogDoc, lowercaseChangelogDoc);

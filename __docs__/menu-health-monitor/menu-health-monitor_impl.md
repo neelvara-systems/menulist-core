@@ -1,8 +1,8 @@
-# Menu Health Monitor — Implementation Blueprint
+# Menu Health Monitor — Implementation
 
 **Status:** ✅ IMPLEMENTED — Feature flag OFF by default  
 **Created:** February 20, 2026  
-**Last Updated:** June 29, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Developers
 
 ---
@@ -10,14 +10,16 @@
 ## Architecture Overview
 
 ```
-Publish Pipeline (existing)
-  └─→ onDocumentUpdated trigger on project doc
-      └─→ verifyPublish()
-          ├─ Validate public menu URL target (HTTPS + DNS public target)
-          ├─ Fetch validated public menu URL (HTTP GET)
-          ├─ Check HTTP 200 + non-empty body
-          ├─ Update store.health field
-          └─ If FAILED → call createAlert() from monitoring/alerts.ts
+Desktop/Mobile Design publish
+  └─→ acknowledged publishProject() + public cache invalidation
+      └─→ verifyMenuPublish callable (fire-and-forget from owner UI)
+          └─→ verifyPublish()
+              ├─ Validate tenant/store/user/public-host authority
+              ├─ Validate public menu URL target (HTTPS + public DNS target)
+              ├─ Fetch validated public menu URL (HTTP GET)
+              ├─ Check HTTP 200 + bounded non-empty body
+              ├─ Transactionally update stores/{storeId}.health
+              └─ Deliver bounded lifecycle success/failure message best-effort
 ```
 
 ## Database Schema
@@ -37,17 +39,17 @@ health: {
 }
 ```
 
-**Cost impact:** 0 new reads. 1 additional field update on existing store doc per publish.
+**Cost impact:** admitted calls perform the scope reads documented in `menu-health-monitor_firebase.md` and one merge on the existing store document. No new collection is created.
 
 ## API Contracts
 
-No new API routes. This is a Cloud Functions-only system.
+No new Next.js API route is used. The browser calls the authenticated `verifyMenuPublish` Firebase callable after an acknowledged design publish.
 
 ## Client Publish Handoff Diagnostics
 
-Desktop B2C publish success remains non-blocking with respect to menu-health verification. `src/components/templates/main-app/projects/b2cView/index.tsx` attempts to prepare the existing `verifyMenuPublish` callable handoff after publish using the routed public project/menu URL from `generateProjectUrl()` rather than the tenant root. If that setup/import/path generation fails, it logs `projects_b2c_publish_verification_setup_failed` with bounded project/store/store-slug/custom-domain/public-url metadata. Callable/provider failures after setup stay inside the existing `verifyMenuPublish` wrapper diagnostics.
+Desktop B2C publish success remains non-blocking with respect to menu-health verification. `src/components/templates/main-app/projects/b2cView/index.tsx` attempts to prepare the existing `verifyMenuPublish` callable handoff after publish using the routed public project/menu URL from `generateProjectUrl()` rather than the tenant root. If setup/import/path generation fails, it logs `projects_b2c_publish_verification_setup_failed`. Normal callable/provider failures stay inside the shared wrapper; an unexpected rejected fire-and-forget promise is observed through `projects_b2c_publish_verification_failed`. Both diagnostics use bounded project/store/public-URL metadata and do not change publish success.
 
-Mobile Design publish uses the same routed project/menu URL contract. `src/components/mobile/screens/MobileDesignEditorScreen.tsx` prepares the `verifyMenuPublish` handoff after the acknowledged `publishProject()` result, preserves default-project URL semantics, supports custom domains, logs only `mobile_design_publish_verification_setup_failed` for setup failures, and leaves callable/provider failures to the shared wrapper so the owner-facing publish success remains non-blocking.
+Mobile Design publish uses the same routed project/menu URL contract. `src/components/mobile/screens/MobileDesignEditorScreen.tsx` prepares the handoff after the acknowledged `publishProject()` result, preserves default-project URL semantics, supports custom domains, logs `mobile_design_publish_verification_setup_failed` for setup failures, and observes an unexpected rejected promise through `mobile_design_publish_verification_failed`. Normal callable/provider failures remain handled by the shared wrapper, so owner-facing publish success stays non-blocking.
 
 The browser handoff remains intentionally non-blocking, but the invoked Cloud Function is not allowed to abandon its own server side effects. After the health result is persisted, `verifyMenuPublish` awaits the best-effort lifecycle delivery branch before returning its callable response; delivery exceptions remain bounded and do not convert a successful menu-health check into an owner-facing publish failure.
 
@@ -61,19 +63,21 @@ functions/src/
 │   ├── alerts.ts                    # EXISTS — Alert framework
 │   ├── errorTracking.ts             # EXISTS — Error tracking
 │   ├── healthCheck.ts               # EXISTS — Per-store chat health (keep separate)
-│   └── publishVerification.ts       # NEW — Post-publish menu verification
+│   └── publishVerification.ts       # Public verification, scoped health write, recovery claim
 ├── utils/
 │   └── networkTarget.ts             # Shared HTTPS + DNS public target validator
-└── index.ts                         # MODIFY — Add onDocumentUpdated trigger
+├── triggers/operations.ts           # verifyMenuPublish + forceRepublish callables
+├── logic/publicCacheRevalidation.ts # acknowledged cache refresh used by recovery
+└── index.ts                         # exports the callables
 ```
 
-### New File: `functions/src/monitoring/publishVerification.ts`
+### Runtime: `functions/src/monitoring/publishVerification.ts`
 
 ```typescript
 /**
  * Post-Publish Menu Health Verification
  *
- * Runs after every project publish (onDocumentUpdated).
+ * Invoked by the authenticated callable after an acknowledged owner publish.
  * Verifies the public menu URL is accessible and has content.
  * Updates store.health field and triggers alert on failure.
  *
@@ -285,7 +289,7 @@ exports.verifyMenuPublish = onDocumentUpdated(
 | ----------------------------- | ------------------------------------------------- | ----------------------------------------- |
 | Create publishVerification.ts | `functions/src/monitoring/publishVerification.ts` | `verifyPublish()` + `updateStoreHealth()` |
 | Add health field type         | Store type definition                             | Add `health` interface                    |
-| Wire trigger                  | `functions/src/index.ts`                          | onDocumentUpdated for project publish     |
+| Wire callable                | `functions/src/triggers/operations.ts`, `functions/src/index.ts` | Authenticated post-publish callable |
 | Add feature flag              | `src/config/features.ts`                          | `ENABLE_MENU_HEALTH_MONITOR: false`       |
 
 ### Phase 2: Integration (est. 1 hour)
@@ -330,5 +334,5 @@ exports.verifyMenuPublish = onDocumentUpdated(
 - Menu health monitoring is integrated into the Ops Control Room (`src/components/templates/main-app/platform/opsControlRoom/index.tsx`)
 - SAFE_MODE toggle provides emergency cost protection for AI operations
 - Alert system delivers operational notifications via Telegram
-- Publish verification happens through existing MCE validation layer (Publish-Gate)
-- No separate health monitor needed — covered by existing infrastructure (MCE + Ops Control Room + SAFE_MODE)
+- Publish verification is a dedicated authenticated callable invoked after desktop/mobile design publish; MCE publish validation is a separate correctness gate.
+- `forceRepublish` is the platform-only recovery path. It claims current active project scope, requires an acknowledged public cache refresh (and requests a Digital Screen version touch), then verifies the canonical public URL and writes health. It fails with fixed `unavailable` copy when cache refresh is not acknowledged instead of checking stale output.

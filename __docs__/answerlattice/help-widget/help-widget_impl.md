@@ -272,8 +272,8 @@ POST /api/widget/feedback
 Headers: X-API-Key: {apiKey}
 Body: {
   "searchHistoryId": "...",
-  "messageId": "...",
-  "isGood": true/false
+  "isGood": true/false,
+  "resolutionOutcome": "resolved" | "not_resolved"
 }
 ```
 
@@ -285,6 +285,8 @@ Implementation:
 - Rejects invalid API-key workspace context before reading request body
 - Verifies the `aiSearchHistory` document belongs to the same `tId/sId` resolved from the API key
 - Writes feedback to the tenant-scoped `aiSearchHistory` document
+- New widget clients send an explicit resolution outcome. Legacy callers may omit it; legacy helpful feedback does not count as confirmed resolution.
+- Rejects inconsistent pairs such as `isGood: false` with `resolutionOutcome: "resolved"`
 - If `isGood === false`, emits Answerlattice signal via `emitAnswerlatticeSignal({ type: 'chat_negative' })` (feeds mutation pipeline)
 - Rate limited: prevent feedback spam
 
@@ -522,7 +524,7 @@ Per image query: 1 additional bounded visual-context model call before normal re
 
 ### Phase 4 — Feedback Signals
 
-- Add thumbs up/down UI to WidgetClient (after each AI answer)
+- Add explicit Solved/Still need help UI to WidgetClient after each answer
 - Create `POST /api/widget/feedback` route
 - Feedback writes to `aiSearchHistory` + emits Answerlattice signal
 - Signal feeds mutation pipeline (ENABLE_ANSWERLATTICE_SIGNAL_MUTATION)

@@ -95,7 +95,9 @@ export async function applyOwnerBusinessAssistantRateLimit(params: {
   const userRateLimitHash = hashPublicRateLimitValue(userId || 'unknown');
   const tenantRateLimitHash = hashPublicRateLimitValue(tId || '_');
   const storeRateLimitHash = hashPublicRateLimitValue(sId || '_');
+  const failClosedOnProviderError = params.feature === 'AI_OPERATION';
   const rateLimit = await checkRateLimit({
+    failClosedOnProviderError,
     key: `${params.keyPrefix}:${userRateLimitHash}:${tenantRateLimitHash}:${storeRateLimitHash}`,
     ...rateLimitConfig,
   });
@@ -103,7 +105,8 @@ export async function applyOwnerBusinessAssistantRateLimit(params: {
   if (rateLimit.allowed) return null;
 
   const waitSeconds = Math.max(1, Math.ceil((rateLimit.resetAt - Date.now()) / 1000));
-  logger.security('Rate Limit Exceeded', {
+  const providerUnavailable = rateLimit.reason === 'provider_unavailable';
+  logger.security(providerUnavailable ? 'Rate Limit Provider Unavailable' : 'Rate Limit Exceeded', {
     ...getBoundedSecurityRouteContext(params.session, params.request),
     endpoint: params.request.nextUrl.pathname,
     feature: params.feature,
@@ -117,12 +120,14 @@ export async function applyOwnerBusinessAssistantRateLimit(params: {
 
   return NextResponse.json(
     {
-      error: `Too many requests. Please wait ${waitSeconds} seconds.`,
+      error: providerUnavailable
+        ? 'This operation is temporarily unavailable. Please try again shortly.'
+        : `Too many requests. Please wait ${waitSeconds} seconds.`,
       retryAfter: waitSeconds,
       resetAt: rateLimit.resetAt,
     },
     {
-      status: 429,
+      status: providerUnavailable ? 503 : 429,
       headers: {
         'Retry-After': String(waitSeconds),
         'X-RateLimit-Limit': String(rateLimitConfig.limit),

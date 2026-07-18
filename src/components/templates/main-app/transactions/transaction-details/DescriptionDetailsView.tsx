@@ -1,4 +1,5 @@
 import { AI_ACTIONS_TYPES } from '@constant/common';
+import { formatAiOperationHistoryLanguage, getAiOperationHistoryJsonObject } from '@lib/ai/operationHistoryClientContract';
 import { Descriptions, Divider, Table, Tag, Typography } from 'antd';
 import { useTranslations } from 'next-intl';
 import React from 'react';
@@ -12,7 +13,10 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
     const t = useTranslations('Transactions');
     const { clientResponse, action, itemsList, sourceLang, targetLang, contentLength } = transaction;
 
-    if (!clientResponse) return <Typography.Text>{t('noDescriptionsAvailable')}</Typography.Text>;
+    const response = getAiOperationHistoryJsonObject(clientResponse);
+    if (!response || typeof response.responseSummaryKind === 'string') {
+        return <Typography.Text>{t('noDescriptionsRecorded')}</Typography.Text>;
+    }
 
     // For rewrite action, we need to show before and after
     const isRewrite = action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION;
@@ -27,9 +31,11 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
     }> = [];
 
     // Process the response which has format: {itemId: {langCode: description}}
-    Object.entries(clientResponse).forEach(([itemId, langDescriptions]: [string, any]) => {
-        if (typeof langDescriptions === 'object' && langDescriptions !== null) {
-            Object.entries(langDescriptions).forEach(([langCode, description]: [string, any]) => {
+    Object.entries(response).forEach(([itemId, langDescriptions]) => {
+        const descriptions = getAiOperationHistoryJsonObject(langDescriptions);
+        if (descriptions) {
+            Object.entries(descriptions).forEach(([langCode, description]) => {
+                if (typeof description !== 'string') return;
                 // Find original description and item name if available
                 let originalDescription;
                 let itemName = t('unknown');
@@ -51,12 +57,16 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
                     itemId,
                     itemName,
                     language: langCode,
-                    description: description as string,
+                    description,
                     originalDescription
                 });
             });
         }
     });
+
+    if (descriptionEntries.length === 0) {
+        return <Typography.Text>{t('noDescriptionsRecorded')}</Typography.Text>;
+    }
 
     const actionLabel = isRewrite ? t('rewritten') : t('generated');
 
@@ -79,9 +89,7 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
             <Descriptions title={t('descriptionInformation')} column={1}>
                 {/* Source Language */}
                 <Descriptions.Item label={t('sourceLanguage')}>
-                    {sourceLang &&
-                        `${sourceLang.name} (${sourceLang.code})`
-                    }
+                    {formatAiOperationHistoryLanguage(sourceLang)}
                 </Descriptions.Item>
 
                 {/* Target Languages */}
@@ -89,7 +97,7 @@ const DescriptionDetailsView: React.FC<DescriptionDetailsViewProps> = ({ transac
                     {/* For description operations, targetLang is an array */}
                     {Array.isArray(targetLang) &&
                         targetLang.map((lang) => (
-                            <Tag key={lang.code}>{lang.name} ({lang.code})</Tag>
+                            <Tag key={formatAiOperationHistoryLanguage(lang)}>{formatAiOperationHistoryLanguage(lang)}</Tag>
                         ))
                     }
                 </Descriptions.Item>

@@ -5,6 +5,7 @@ import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_USER_ROLE } from '@constant/user';
 import { admin } from '@lib/firebase/firebaseAdmin';
 import { getOutletSessionScope } from '@lib/multiOutlet/outletSessionScope';
+import { runTenantNamePostCommitEffects } from '@lib/multiTenant/tenantNamePostCommit';
 import { invalidateOwnerBusinessAssistantPacketCache } from '@lib/ownerBusinessAssistant/server/contextPacketCache';
 import { requireAnyStorePermissionForStoreData } from '@lib/permissions/server';
 import { isPlatformEntityBlocked } from '@lib/platform/entityBlock';
@@ -159,20 +160,34 @@ export const POST = withAuth(async (request, session) => {
         });
         committed = true;
 
-        for (let offset = 0; offset < result.storeIds.length; offset += TENANT_NAME_EFFECT_CHUNK_SIZE) {
-            const storeIds = result.storeIds.slice(offset, offset + TENANT_NAME_EFFECT_CHUNK_SIZE);
-            storeIds.forEach((storeId) => {
-                revalidateTag(`menu-store-${storeId}`);
-                revalidateTag(`store-${storeId}`);
+        const postCommit = await runTenantNamePostCommitEffects({
+            chunkSize: TENANT_NAME_EFFECT_CHUNK_SIZE,
+            storeIds: result.storeIds,
+            tenantId: tenantDocumentId,
+            deps: {
+                invalidateAssistant: (storeId, tenantId) => (
+                    invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })
+                ),
+                revalidate: (tag) => revalidateTag(tag),
+                touchScreen: (storeId) => touchDigitalScreenContentVersionForStoreServer(storeId, 'tenantName'),
+            },
+        });
+        if (postCommit.effectsPending) {
+            logSecurityFailure('tenant_name_post_commit_effect_failed', postCommit.firstError, {
+                route: '/api/tenants/name',
+                committed: true,
+                failedEffectCount: postCommit.failedEffectCount,
+                storeCount: result.storeIds.length,
             });
-            await Promise.all(storeIds.flatMap((storeId) => [
-                touchDigitalScreenContentVersionForStoreServer(storeId, 'tenantName'),
-                invalidateOwnerBusinessAssistantPacketCache({ tId: tenantDocumentId, sId: storeId }),
-            ]));
         }
-        revalidateTag('client-stores');
-        revalidateTag('screen-data');
-        return NextResponse.json({ name: validation.data.name, storeIds: result.storeIds, success: true, tenantId: tenantDocumentId });
+        return NextResponse.json({
+            effectsPending: postCommit.effectsPending,
+            failedEffectCount: postCommit.failedEffectCount,
+            name: validation.data.name,
+            storeIds: result.storeIds,
+            success: true,
+            tenantId: tenantDocumentId,
+        });
     } catch (error) {
         logSecurityFailure('tenant_name_update_failed', error, {
             route: '/api/tenants/name',

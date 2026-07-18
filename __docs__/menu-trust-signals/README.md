@@ -1,8 +1,8 @@
 # Menu Trust Signals
 
-> **Status:** ✅ IMPLEMENTED — Feature Flag Available
+> **Status:** ✅ IMPLEMENTED — Feature flag ON
 > **Feature Flag:** `ENABLE_MENU_TRUST_SIGNALS`
-> **Location:** Customer-facing client menu (`src/app/_client/`)
+> **Location:** Customer-facing menu renderer (`menuPageNew.tsx`)
 > **Source:** ChatGPT Owner Features Session (March 15, 2026) → Cascade Review
 
 ## What It Is
@@ -26,8 +26,8 @@ Most QR menu tools show bare item lists. MenuList can answer these questions thr
 | Signal                   | Status    | Location                                    |
 | ------------------------ | --------- | ------------------------------------------- |
 | Restaurant name + logo   | ✅ EXISTS | OBP header, menu header                     |
-| Menu version number      | ✅ EXISTS | `MenuFooter.tsx` — shows `v{menuVersion}`   |
-| Last published timestamp | ✅ EXISTS | `MenuFooter.tsx` — shows relative date      |
+| Menu version number      | Stored    | Available as `project.menuVersion`; current footer hides the numeric version |
+| Last published timestamp | ✅ EXISTS | `TrustSignals.tsx` shows a bounded exact date |
 | "Powered by MenuList"    | ✅ EXISTS | OBP footer, Menu Kit assets                 |
 | Sold out badges          | ✅ EXISTS | Item cards show "Sold Out" when unavailable |
 | Category navigation      | ✅ EXISTS | Sticky tabs on all device sizes             |
@@ -43,14 +43,14 @@ Most QR menu tools show bare item lists. MenuList can answer these questions thr
 
 ## Architecture Principle
 
-**Pure SSR component.** Reads existing store data + project data already loaded by the client menu page. Zero new reads. Zero new API routes. Zero Firebase cost. Zero client JS.
+**Pure render computation inside the existing client menu bundle.** It uses store/project data already supplied to the renderer, so it adds zero reads, API routes, or Firebase operations.
 
 ## Key Files
 
 | File                                    | Purpose                                |
 | --------------------------------------- | -------------------------------------- |
-| `src/components/atoms/TrustSignals.tsx` | Trust signal component (SSR, zero JS)  |
-| `src/app/_client/[[...slug]]/page.tsx`  | Modified — embed trust signals         |
+| `src/components/atoms/TrustSignals.tsx` | Trust signal component and freshness boundary |
+| `src/components/templates/main-app/projects/b2cView/menuPage/menuPageNew.tsx` | Current customer-menu placement |
 | `src/config/features.ts`                | `ENABLE_MENU_TRUST_SIGNALS` flag added |
 
 ## Documents
@@ -69,12 +69,12 @@ Most QR menu tools show bare item lists. MenuList can answer these questions thr
 
 | System         | File                                | Reused For               |
 | -------------- | ----------------------------------- | ------------------------ |
-| Menu version   | `project.menuVersion`               | Freshness computation    |
+| Menu version   | `project.menuVersion`               | Stored publish identity; not rendered by this component |
 | Last published | `project.lastPublishedAt`           | Exact freshness date     |
 | Store data     | Store document in page.tsx          | Restaurant name, logo    |
-| MenuFooter     | `src/components/.../MenuFooter.tsx` | Existing version display |
+| MenuFooter     | `src/components/.../MenuFooter.tsx` | Business identity/footer; update metadata disabled in current placement |
 
 ---
 
 **Created:** March 15, 2026
-**Last Updated:** June 3, 2026
+**Last Updated:** July 16, 2026

@@ -1,7 +1,7 @@
 # Menu Trust Signals — Mobile Support Assessment
 
-> **Version:** 1.0
-> **Last Updated:** June 3, 2026
+> **Version:** 1.1
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -23,8 +23,8 @@ Not applicable — this is not an owner-side operational feature. It's a custome
 
 ## Technical Notes
 
-- Renders server-side (SSR) — no client-side JavaScript needed
-- Responsive via CSS/Tailwind breakpoints
+- Computes inside the existing customer-menu client renderer with no extra network work
+- Responsive through the shared inline flex/wrap layout
 - Same component for all device sizes (responsive, not separate mobile component)
 
 ---

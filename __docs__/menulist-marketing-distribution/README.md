@@ -31,6 +31,7 @@ This follows the existing MenuList marketing strategy: transformation must be vi
 
 | Document | Purpose |
 | --- | --- |
+| [menulist-marketing-distribution_external-insight-ledger.md](./menulist-marketing-distribution_external-insight-ledger.md) | Maintained intake and retrieval ledger for useful external posts, articles, videos, expert feedback, market observations, and deferred ideas |
 | [menulist-marketing-distribution_source-review.md](./menulist-marketing-distribution_source-review.md) | Point-by-point review of the captured ChatGPT conversation, with MenuList decisions |
 | [menulist-marketing-distribution_research.md](./menulist-marketing-distribution_research.md) | Current market, channel, launch, SEO, messaging, and compliance research |
 | [menulist-marketing-distribution_strategy.md](./menulist-marketing-distribution_strategy.md) | Consultant-level strategy, positioning, funnel, channels, assets, and metrics |
@@ -147,6 +148,7 @@ That means MenuList can serve restaurants, cafes, salons, spas, clinics, studios
 
 Every future MenuList marketing/distribution session must update at least one of:
 
+- external insight ledger, when the founder shares a useful external source or idea
 - action register
 - consultant log
 - execution plan
@@ -155,3 +157,15 @@ Every future MenuList marketing/distribution session must update at least one of
 - strategy doc
 
 No important marketing decision should remain only in chat.
+
+When the founder shares an external post, article, video, expert opinion, AI
+response, competitor example, or market observation:
+
+1. validate it against current primary sources and repo truth;
+2. record it in the external insight ledger with a decision and retrieval tags;
+3. distinguish immediate work from deferred reference;
+4. name the trigger that would make a deferred insight relevant;
+5. revalidate time-sensitive claims before future use.
+
+Logging an insight does not authorize implementation, public claims, provider
+spend, paid media, dependency changes, or deployment.

@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 /**
  * Public Menu Entry — Upload Page
  * 
@@ -19,7 +20,7 @@ import { Metadata } from 'next';
 import { useTranslations } from 'next-intl';
 import CreateMenuClient from './CreateMenuClient';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
     title: 'Create Your Official Customer Link - MenuList',
     description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
     alternates: {
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
         description: 'Sign in, add a menu, catalogue, price-list, or service-list photo or owned public list link, and review the prepared official customer link before anything goes public.',
         url: '/create-menu',
     },
-};
+});
 
 export default function CreateMenuPage({
     searchParams,

@@ -89,7 +89,9 @@ export const useTicketCache = () => {
                     maxAge,
                     cachedTicketCount: cachedTickets?.tickets?.length || 0,
                 });
-                return [];
+                // Preserve last-known ticket truth instead of presenting a
+                // failed refresh as a confirmed empty inbox.
+                return cachedTickets?.tickets || [];
             }
         }
 

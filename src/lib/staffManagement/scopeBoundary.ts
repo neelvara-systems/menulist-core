@@ -1,4 +1,5 @@
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import { DEFAULT_ROLE_IDS } from '@data/shared/defaultRoles';
 import type { UserStoreMappingType } from '@type/platform/user';
 
 export type StaffStoreScopeDocumentId = {
@@ -38,4 +39,23 @@ export const normalizePersistedStaffStoreMappings = (value: unknown): UserStoreM
             }];
         })
         : []
+);
+
+export const staffTargetHasOwnerAccess = (value: unknown): boolean => {
+    if (!isStaffUnknownRecord(value)) return false;
+    if (value.ownerProtected === true) return true;
+    return normalizePersistedStaffStoreMappings(value.stores)
+        .some((mapping) => mapping.role === DEFAULT_ROLE_IDS.OWNER);
+};
+
+export const canManageStaffTarget = ({
+    canAssignRoles,
+    canManageUsers,
+    target,
+}: {
+    canAssignRoles: boolean;
+    canManageUsers: boolean;
+    target: unknown;
+}): boolean => (
+    canManageUsers && (canAssignRoles || !staffTargetHasOwnerAccess(target))
 );

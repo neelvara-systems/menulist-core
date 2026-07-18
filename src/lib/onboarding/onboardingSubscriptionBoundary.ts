@@ -49,6 +49,27 @@ export function findOnboardingProviderSubscriptionForAttempt(params: {
     return null;
 }
 
+export function isMatchingPersistedOnboardingSubscription(params: {
+    planId: string;
+    providerSubscriptionId: string;
+    storeId: number;
+    subscription: unknown;
+    tenantId: number;
+    userId: string;
+}): boolean {
+    if (!params.subscription || typeof params.subscription !== 'object' || Array.isArray(params.subscription)) {
+        return false;
+    }
+    const record = params.subscription as Record<string, unknown>;
+    return exactProviderNote(record.id) === params.providerSubscriptionId
+        && exactProviderNote(record.providerSubscriptionId) === params.providerSubscriptionId
+        && exactProviderNote(record.paymentProvider) === 'razorpay'
+        && exactProviderNote(record.userId ?? record.uId) === params.userId
+        && exactProviderNote(record.tenantId ?? record.tId) === String(params.tenantId)
+        && exactProviderNote(record.storeId ?? record.sId) === String(params.storeId)
+        && exactProviderNote(record.planId) === params.planId;
+}
+
 export const resolveOnboardingPlanPrice = (value: unknown): {
     monthlyCredits: number;
     price: number;

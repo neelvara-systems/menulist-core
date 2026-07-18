@@ -95,8 +95,10 @@ export async function recoverAiCapacityReservationsInCollectionRef(params: {
                 const subscriptionSnap = await transaction.get(subscriptionRef);
                 if (!subscriptionSnap.exists) throw new Error('AI capacity reservation subscription is unavailable.');
                 const subscription = subscriptionSnap.data() || {};
+                const billingStoreId = String(operation.accountingBillingStoreId || operation.sId || '');
                 if (String(subscription.tenantId ?? subscription.tId) !== params.tId
-                    || String(subscription.storeId ?? subscription.sId) !== params.sId) {
+                    || !billingStoreId
+                    || String(subscription.storeId ?? subscription.sId) !== billingStoreId) {
                     throw new Error('AI capacity reservation subscription scope mismatch.');
                 }
 

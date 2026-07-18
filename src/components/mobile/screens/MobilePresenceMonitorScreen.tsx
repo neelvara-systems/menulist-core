@@ -2,6 +2,10 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import { generateOBPUrl } from '@lib/obp/generateOBPUrl';
+import {
+    hasFeedbackPresenceReadiness,
+    hasPublishedMenuProject,
+} from '@lib/menuPresence/presenceReadiness';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { useContext, useMemo } from 'react';
 import { Flex } from '../antd';
@@ -21,7 +25,7 @@ export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMo
         return generateOBPUrl(storeDetails.subdomain || '', storeDetails.customDomain);
     }, [storeDetails]);
     const hasPublishedMenu = useMemo(
-        () => projectsList.some((project: any) => project.deleted !== true && project.active !== false),
+        () => hasPublishedMenuProject(projectsList),
         [projectsList],
     );
 
@@ -36,7 +40,10 @@ export default function MobilePresenceMonitorScreen({ onBack }: MobilePresenceMo
             />
             <Flex gap={12} style={{ padding: 16 }} vertical>
                 <MobilePresenceMonitor
-                    hasFeedbackEnabled={storeDetails.feedbackEnabled !== false}
+                    hasFeedbackEnabled={hasFeedbackPresenceReadiness({
+                        feedbackEnabled: storeDetails.feedbackEnabled,
+                        hasPublishedMenu,
+                    })}
                     hidePageSummary
                     hasPublishedMenu={hasPublishedMenu}
                     obpLink={obpLink}

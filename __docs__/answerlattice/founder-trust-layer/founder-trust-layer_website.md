@@ -75,9 +75,9 @@ No configuration. No thresholds to set. No dashboards to build. The Trust Dashbo
 
 ```html
 <title>AI Trust Dashboard — Answerlattice</title>
-<meta name="description" content="Know if your AI support answers are working. Four metrics, five seconds, complete confidence. Coverage, resolution, drift, and health — all in one view." />
+<meta name="description" content="Review approved-answer coverage, explicit resolution, no-escalation routing, drift, recontact, and entity health from bounded support summaries." />
 <meta property="og:title" content="AI Trust Dashboard — Answerlattice" />
-<meta property="og:description" content="Four numbers that tell you if your AI answers are correct. No charts. No complexity. Just trust." />
+<meta property="og:description" content="Separate explicit customer outcomes from routing, coverage, drift, and support-health signals." />
 ```
 
 ---

@@ -2,18 +2,17 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { LuArrowRight, LuCamera, LuCheck, LuClock3, LuLink, LuShieldCheck, LuType } from 'react-icons/lu';
+import { LuArrowRight, LuCamera, LuCheck, LuClock3, LuLink, LuShieldCheck } from 'react-icons/lu';
 import AnimateOnScroll from '../shared/AnimateOnScroll';
 import SectionHeading from '../shared/SectionHeading';
 import SectionWrapper from '../shared/SectionWrapper';
 import WebsiteButton from '../shared/WebsiteButton';
 
-type SourceKey = 'photo' | 'link' | 'typed';
+type SourceKey = 'photo' | 'link';
 
 const sourceCards = [
   { key: 'photo', Icon: LuCamera },
   { key: 'link', Icon: LuLink },
-  { key: 'typed', Icon: LuType },
 ] as const;
 
 const previewSteps = ['previewStep0', 'previewStep1', 'previewStep2'];

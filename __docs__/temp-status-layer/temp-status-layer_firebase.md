@@ -1,52 +1,61 @@
-# Temporary Status Layer — Firebase Cost Tracking
+# Temporary Status Layer - Firebase and Scale
 
-**Date:** June 26, 2026
-**Last Source Gate Update:** July 6, 2026
-
----
+**Status:** Source-gated cost evidence; not deployment approval
+**Last reviewed:** July 17, 2026
 
 ## Source Gate
 
-This Firebase/cost boundary is source-gated by `npm run verify:temporary-status-boundary`.
+Run `npm run verify:temporary-status-boundary` for the current cost boundary.
 
-The current runtime uses one existing store document field, a dynamic authenticated API route, a 4KB bounded JSON request body, an 8KB bounded browser response parser, and no dedicated cleanup collection or Cloud Function. Public rendering and the public pull API return `null`/no banner for expired temporary statuses, so stale customer-facing output is suppressed without a scheduled cleanup worker.
+```bash
+npm run verify:temporary-status-boundary
+```
 
-## Cost Summary
+## Data Shape
 
-**Monthly Cost (100 stores): negligible**
+Temporary Status adds no collection. It reuses one optional field on `stores/{storeId}`:
 
-Extremely lightweight — single field on existing store document.
+```ts
+interface StoreTemporaryStatus {
+  type: 'closed_today' | 'opening_late' | 'closing_early' | 'kitchen_closed' | 'special_menu' | 'custom';
+  message: string;
+  expiresAt: string;
+  createdAt?: string;
+  createdBy?: string | null;
+  sourceProjectId?: string;
+}
+```
 
-| Operation | Per Event | Monthly (100 stores, ~200 events) |
-|-----------|----------|----------------------------------|
-| Write temp status | 1 write | ~₹0.10 |
-| Read (already loaded) | 0 extra reads | ₹0 |
-| Cleanup worker | Not shipped | ₹0 |
-| **Total** | | **~₹0.10/month plus existing store reads** |
+The owner route validates session tenant/store IDs through the shared Firestore document-ID guard, normalizes the optional actor, runs a fail-closed hashed limiter, admits a 4KB bounded JSON request, and only then performs the existing permission check and mutation.
 
-No new collections. `tempStatus` is a field on existing store document.
+## Operation Budget
 
-Admission guard: `POST /api/store/temp-status` checks `ENABLE_TEMP_STATUS`, validates session tenant/store IDs through the shared Firestore document-ID guard with an exact raw-value check and a 160-character ceiling, normalizes the optional session actor ID before limiter material or `tempStatus.createdBy`, applies the existing store permission helper, uses the `DATA_WRITE` limiter with hashed owner/store key segments, and applies a 4KB bounded JSON cap before validating or writing. Rejected disabled, invalid-session, oversized, or rate-limited requests add no Firestore writes.
+| Path | Firestore work |
+| --- | --- |
+| Manual set | One existing store-document update after admission. |
+| Manual clear | One existing store-document update deleting the field. |
+| Public rendering | No Temporary Status-only read; status is projected from the store data already loaded by that surface. |
+| Public pull API | No extra Temporary Status read beyond the route's canonical store read. |
+| Expiry | Zero write/delete; public pull API returns `null` for expired temporary statuses and browser/public projections omit them. |
+| Cleanup | No scheduler, scan, queue, collection, or listener. |
+| Special Menu | Status is included in its existing store lifecycle transaction; no standalone Temporary Status operation. |
 
-Failure diagnostics use the shared runtime diagnostics helper with stable `store_temp_status_update_failed` code, action/type/message-presence metadata, bounded tenant/store/user/expiry presence-length metadata, and source error name/code/status only. The owner response remains generic and public cache invalidation behavior is unchanged.
+The shared owner response parser is capped at 8KB and has no Firebase cost.
 
-Browser response parsing is Firebase-cost neutral. `src/lib/tempStatus/clientResponse.ts` caps `/api/store/temp-status` responses at 8KB and requires `{ success: true }` before desktop/mobile optimistic state remains. Malformed or oversized responses log `temp_status_response_parse_failed`; invalid successful envelopes log `temp_status_response_invalid`. This adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, provider calls, API routes, cache tags, rules, indexes, schema changes, Firebase deploy requirement, or Vercel deploy action.
+## Post-Commit Effects
 
-Browser request-boundary hardening is Firebase-cost neutral. Desktop Business Settings, mobile Temporary Status, and mobile Today/Hours temporary-status calls now use the shared `AUTH_BROWSER_REQUEST_POLICY`, which keeps existing status set/clear requests uncached, same-origin, and manual-redirect before the shared bounded response parser. This changes no Firestore reads/writes/deletes beyond existing valid status set/clear requests, no Storage operations, no Cloud Functions, no API routes, no rules, no indexes, no schema fields, and no owner-facing settings.
+The one committed store write is followed by existing non-authoritative refresh effects: `menu-store-{storeId}`, `store-{storeId}`, `client-stores`, `screen-data`, the Digital Screens content version, and the Owner Business Assistant packet cache. The helper runs these effects concurrently and reports partial failure as `effectsPending`.
 
-June 30 shared request-policy consolidation is Firebase-cost neutral. Replacing inline `/api/store/temp-status` request option blocks with the shared authenticated browser request policy changes only client-side fetch construction and source verifier coverage; it adds no Firestore reads/writes/deletes, Storage operations, Cloud Functions, API routes, cache invalidations, rules, indexes, schema fields, public output rendering, or owner-facing settings.
+No retry collection or second write was added. This keeps write amplification fixed while avoiding a false mutation failure after Firestore has committed.
 
-## Cache Invalidation
+## Scale Decision
 
-`POST /api/store/temp-status` revalidates the public cache tags that can display store status:
+No TTL policy or cleanup worker is justified. Expired values are small, bounded fields on existing store documents, and correctness is enforced at every public/browser projection. A scheduled cleanup would introduce scans or index/TTL operations without improving customer correctness.
 
-- `menu-store-{storeId}`
-- `store-{storeId}`
-- `client-stores`
-- `screen-data`
+The only growth dimension is the existing store count; there is no per-status history. Message and response sizes are bounded. This remains simpler and more scalable than an event collection.
 
-The same successful write touches the Digital Screens content version with `storeTempStatus` and invalidates the Owner Business Assistant packet cache for the store. The public pull API returns `null` for expired temporary statuses. This adds no Firestore reads, indexes, listeners, Storage operations, or Cloud Functions beyond the existing valid set/clear store write.
+`stores.tempStatus` is never used as a Firestore filter or ordering field. Its small nested map is exempt from automatic single-field indexing, reducing set/clear index fanout without changing the exact store write, expiry projection, special-menu ownership, or public cache behavior.
 
----
+## Infrastructure Boundary
 
-**Last Updated:** July 6, 2026
+This pass changes the Firestore index configuration and docs only. It does not modify Firestore rules, Storage rules, Firebase Functions source, collections, provider calls, or runtime mutation behavior. The scoped index deployment is required before the cost reduction is live; write/read/cache observation remains pending release evidence.

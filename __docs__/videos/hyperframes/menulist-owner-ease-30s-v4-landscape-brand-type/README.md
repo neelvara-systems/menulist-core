@@ -1,6 +1,7 @@
 # MenuList Owner Ease 30s V4 Landscape
 
 **Status:** Current founder-review source project with MenuList-generated Lyria audio  
+**Founder-review pass:** `v1.0`
 **Format:** 16:9, 1920 x 1080, 30fps  
 **Updated:** July 13, 2026  
 **Current deliverable:** `deliverables/menulist-owner-ease-30s-lyria-midnight-lofi-v1.mp4`  
@@ -44,6 +45,8 @@ MenuList remains public-business-truth infrastructure, not a QR-only app or gene
 The reusable bed, retained generated source, preset metadata, approval sting, hashes, and publication boundary live in [brand-audio](../../brand-audio/README.md).
 
 The background-music decision is closed for this named video. Later edits may change visuals, captions, aspect-ratio composition, or export settings, but must keep `owner-ease-30s-lyria-midnight-lofi-v1-master.wav` unless the founder explicitly reopens this video's audio selection.
+
+This project is the frozen `v1.0` founder-review baseline in the [video version ledger](../../videos_version-ledger.md). Do not overwrite its accepted deliverable when producing later passes.
 
 ## Working Output
 

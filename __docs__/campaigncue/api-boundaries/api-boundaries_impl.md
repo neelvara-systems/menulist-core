@@ -9,7 +9,7 @@ CampaignCue API code should live under CampaignCue-scoped modules and route grou
 | Family | Purpose |
 | --- | --- |
 | Internal app APIs | Campaign, generation, trust, export/download, schedule, analytics actions. |
-| Provider adapters | Separate future layer for Google, Meta, WhatsApp, generation, video, billing, and email/webhook providers. |
+| Provider adapters | Separate future layer for Google, Meta, WhatsApp, generation, video, billing, and email/webhook providers. Meta Ads MCP is recorded as a disabled read-first adapter candidate; no MCP client or provider call is active. |
 | Webhooks | Provider callbacks for publish status, replies, metrics, billing, and opt-out events. |
 | Export APIs | Download/export package creation. |
 | Partner APIs | Future agency/client integrations, disabled unless explicitly enabled. |
@@ -45,11 +45,11 @@ Use product-scoped paths such as:
 | `/api/campaigncue/campaigns` | `POST` | Create deterministic structured export/download-first campaign pack with trust report, cue evidence, bounded source context, and atomic idempotency key support. |
 | `/api/campaigncue/campaigns/[campaignId]/actions` | `POST` | Record download, pack export, schedule, approval, manual-use, or owner-reported outcome action with atomic idempotency. Direct publish/send actions are not part of the accepted schema. |
 | `/api/campaigncue/assets` | `GET` | Bounded asset metadata list through a direct workspace-only collection read. |
-| `/api/campaigncue/assets` | `POST` | Register asset metadata, rights status, consent type, rights note, tags, and usage refs. |
+| `/api/campaigncue/assets` | `POST` | Strictly register asset metadata, rights, deduplicated tags, optional workspace Storage identity, and server-verified campaign usage refs; external/download URLs are not accepted. |
 | `/api/campaigncue/analytics` | `GET` | Read one workspace doc, one dashboard summary doc, provider posture, and cost model. |
 | `/api/campaigncue/sources` | `GET` | Bounded owner source input list through a direct workspace-only collection read. |
 | `/api/campaigncue/sources` | `POST` | Save owner source input with optional expiry, derive source facts, and refresh source snapshot. |
-| `/api/campaigncue/integrations` | `GET` | Read-only future provider posture. The active runtime does not read provider connection records or write setup requests. |
+| `/api/campaigncue/integrations` | `GET` | Read-only future provider posture. The active runtime does not read provider connection records, call Meta Ads MCP, import provider metrics, or write setup requests. |
 | `/api/campaigncue/locations` | `GET` | Bounded location list through a direct workspace-only collection read. |
 | `/api/campaigncue/locations` | `POST` | Add active/draft location record. |
 

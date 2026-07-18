@@ -3,7 +3,7 @@
 **Feature:** Centralized AI Infrastructure for MenuList
 **Status:** Source-implemented and hardened — not current launch or deploy certification
 **Source:** ChatGPT extraction hardening session (Mar 2026) → Cascade codebase validation
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document records source-gated AI System Layer evidence only. Current MenuList approval still requires the active production-readiness audit, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:ai-accounting`, `npm run verify:functions-deploy-preflight`, `npm run verify:menu-extraction-pipeline`, scoped Firebase deploy evidence for affected MenuList Functions, target Vercel deploy evidence for affected app routes, provider smoke with target-specific key/model/quota configuration, SAFE_MODE/rate-limit/accounting/provider-health smoke, authenticated browser/device QA for affected owner/platform surfaces, and production-host smoke. Answerlattice retains separate doctrine, credentials, Firebase target, billing/cost evidence, deploy approval, and release certification; this document cannot authorize an Answerlattice deploy or release.
 
@@ -21,7 +21,7 @@ Production rule: API keys are failover and rotation credentials, not a quota sca
 
 | Workload | Active source | Stable candidate | Current action |
 | --- | --- | --- | --- |
-| Answerlattice query/article embeddings | `gemini-embedding-2` on `embeddingV2` | Active | Complete source migration; Firebase deploy/live corpus proof blocked by project IAM and tracked in the Knowledge Base validation doc |
+| Answerlattice query/article embeddings | `gemini-embedding-2` on `embedding` | Active source contract | Pre-launch single-vector contract; no legacy model, dual-write, migration task, or corpus backfill |
 | Deterministic extraction, translation, summaries, structured JSON | Gemini 2.5 Flash / Flash-Lite by existing operation | `gemini-3.1-flash-lite` | Benchmark exact prompts, schema validity, latency, token use, retries, and effective cost before any operation mapping changes |
 | Complex reasoning and KB generation | Gemini 2.5 Flash / Pro by existing operation | `gemini-3.5-flash` | Selective benchmark only; no blanket model replacement |
 | High-volume image generation/editing | `gemini-2.5-flash-image` | `gemini-3.1-flash-lite-image` | Use the shared generator adapter and benchmark 1K output quality, edit fidelity, latency, failures, and per-image effective cost |
@@ -124,7 +124,7 @@ Gemini API (via @google/genai SDK)
 | Production key policy | Separate restricted keys per environment | Limits blast radius; keys are not exposed client-side       |
 | Quota policy          | Per Google project/model tier    | Extra keys are for failover/rotation, not unlimited quota   |
 | Model names           | Stable names only for production | No `latest`, preview, or experimental aliases in active prod paths |
-| Answerlattice embeddings | `gemini-embedding-2` on versioned `embeddingV2` | Registry-locked query/document formatting, versioned query cache, bounded backfill, and legacy `embedding` rollback field prevent vector-space mixing |
+| Answerlattice embeddings | `gemini-embedding-2` on `embedding` | Registry-locked query/document formatting and cache key `gemini-embedding-2:768:v1`; the pre-launch codebase has no alternate vector space or backfill path |
 | Answerlattice Functions provider | `@google/genai` API-key gateway | Same SDK/gateway pattern as MenuList while preserving Answerlattice credential and billing isolation |
 | Provider health       | Daily scheduler checks           | Detect key, model, or quota failures before owners report them |
 | Universal task queue  | Not current runtime              | Extraction already has a job queue; other paths use route guards or schedulers |

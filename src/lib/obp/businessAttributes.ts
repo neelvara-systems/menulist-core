@@ -22,6 +22,8 @@ export interface CustomBusinessAttribute {
     active?: boolean;
 }
 
+export const MAX_CUSTOM_BUSINESS_ATTRIBUTES = 6;
+
 export const BUSINESS_ATTRIBUTE_GROUP_LABELS: Record<BusinessAttributeGroup, string> = {
     dietary: 'dietaryOptions',
     amenity: 'amenities',
@@ -48,6 +50,18 @@ export const BUSINESS_ATTRIBUTE_CONFIG: BusinessAttributeConfig[] = [
     { key: 'acceptsUPI', labelKey: 'attrAcceptsUPI', publicLabelKey: 'publicAttributes.acceptsUPI', group: 'payment', icon: 'UPI' },
     { key: 'acceptsCash', labelKey: 'attrAcceptsCash', publicLabelKey: 'publicAttributes.acceptsCash', group: 'payment', icon: 'Cash' },
 ];
+
+export function normalizeBusinessAttributes(value: unknown): Record<string, boolean> {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const attributes = value as Record<string, unknown>;
+    const normalized: Record<string, boolean> = Object.create(null);
+
+    BUSINESS_ATTRIBUTE_CONFIG.forEach(({ key }) => {
+        if (typeof attributes[key] === 'boolean') normalized[key] = attributes[key];
+    });
+
+    return { ...normalized };
+}
 
 function getBusinessKind(businessType?: string, businessCategory?: string): BusinessAttributeKind {
     const category = resolveBusinessCategory(businessType, businessCategory) || 'food';
@@ -90,18 +104,26 @@ function normalizeCustomBusinessAttributeIcon(value: unknown): string | undefine
 
 export function normalizeCustomBusinessAttributes(value: unknown): CustomBusinessAttribute[] {
     if (!Array.isArray(value)) return [];
-    return value
-        .map((entry, index) => {
-            const raw = entry && typeof entry === 'object' ? entry as Record<string, any> : {};
-            const label = String(raw.label || '').trim().slice(0, 32);
-            if (!label) return null;
-            const id = String(raw.id || `custom-${index}-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`).slice(0, 64);
-            return {
-                id,
-                label,
-                icon: normalizeCustomBusinessAttributeIcon(raw.icon),
-                active: raw.active !== false,
-            };
-        })
-        .filter(Boolean) as CustomBusinessAttribute[];
+    const normalized: CustomBusinessAttribute[] = [];
+    const seenIds = new Set<string>();
+
+    for (let index = 0; index < value.length && normalized.length < MAX_CUSTOM_BUSINESS_ATTRIBUTES; index += 1) {
+        const entry = value[index];
+        const raw = entry && typeof entry === 'object' && !Array.isArray(entry)
+            ? entry as Record<string, unknown>
+            : {};
+        const label = String(raw.label || '').trim().slice(0, 32);
+        if (!label) continue;
+        const id = String(raw.id || `custom-${index}-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`).slice(0, 64);
+        if (!id || seenIds.has(id)) continue;
+        seenIds.add(id);
+        normalized.push({
+            id,
+            label,
+            icon: normalizeCustomBusinessAttributeIcon(raw.icon),
+            active: raw.active === undefined ? true : raw.active === true,
+        });
+    }
+
+    return normalized;
 }

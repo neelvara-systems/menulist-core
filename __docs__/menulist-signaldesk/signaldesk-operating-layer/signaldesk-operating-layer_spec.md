@@ -1,7 +1,8 @@
 # SignalDesk Operating Layer - Spec
 
-**Status:** Implementation-ready
+**Status:** Implemented
 **Created:** June 24, 2026
+**Last Updated:** July 16, 2026
 
 ## Goal
 
@@ -15,7 +16,7 @@ The operating layer exists to prove one narrow acquisition loop before SignalDes
 - 7-day operating trial support.
 - Offer and CTA records.
 - Reply-to-conversion playbooks.
-- Lightweight experiment cards.
+- Lightweight experiment cards with baseline and candidate windows, one primary metric, known confounders, and a scheduled readback.
 - Source-quality learning snapshots.
 - Research Agent Table for prompt-to-table provider discovery, enrichment columns, pass/fail/unsure scoring, and source-transparent market mapping.
 - Dashboard lead batch for up to 30 prepared leads with validated/needs-evidence state, recommended action, contact path, and share message.
@@ -29,6 +30,7 @@ The operating layer exists to prove one narrow acquisition loop before SignalDes
 - Provider send.
 - Social auto-publish.
 - Paid campaign automation.
+- Automatic winner promotion, automatic rollback, or provider-fed metric decisions.
 - New Apollo, Hunter, ZeroBounce, Firecrawl, Tavily, Exa, or sequencer adapters.
 - Direct writes into MenuList store, project, menu, billing, onboarding, or public output truth.
 
@@ -40,9 +42,10 @@ The operating layer exists to prove one narrow acquisition loop before SignalDes
 4. Open Mission for the deeper Research Agent Table, Daily Growth Mission, and experiment controls.
 5. Review no more than five ranked mission actions.
 6. Approve, hold, pause, redirect, or manually complete an action.
-7. Use experiment cards to keep one pod test bounded.
-8. Use source-quality snapshots to decide whether to continue, narrow, refresh, or stop a source.
-9. Use reply playbooks to convert replies without inventing claims.
+7. Define the baseline window, candidate window, primary metric, known confounders, and next readback before creating an experiment card.
+8. Record a fresh 2-1000 character result summary and make the founder decision: repeat, narrow, hold, stop, or complete.
+9. Use source-quality snapshots to decide whether to continue, narrow, refresh, or stop a source.
+10. Use reply playbooks to convert replies without inventing claims.
 
 ## Acceptance
 
@@ -57,7 +60,11 @@ The operating layer exists to prove one narrow acquisition loop before SignalDes
 - Mission action list is capped at five actions.
 - Mission generation does not call paid providers.
 - Mission generation does not send messages.
-- Experiment cards store hypothesis, pod, source, CTA, proof asset, stop rule, result, and decision.
+- New experiment cards store hypothesis, pod, source, CTA, proof asset, stop rule, result, decision, baseline/candidate windows, primary metric, confounders, and next readback.
+- Experiment windows cannot overlap; each window must end after it starts; the next readback cannot precede the candidate-window end.
+- Every repeat, narrow, hold, stop, or complete decision requires a fresh bounded result summary; `pending` is stored state, not a review action.
+- Legacy experiment cards remain visible with an explicit `readbackPlan: null` state rather than being hidden or backfilled with invented evidence.
+- Readback data informs the existing founder decision only; it cannot send, publish, spend, promote a winner, or roll back an experiment automatically.
 - Offer/CTA records keep approved owner asks and blocked claims.
 - Reply playbooks map common reply intents to approved next copy and routes.
 - Source-quality snapshots measure activation-oriented source quality, not raw lead volume.

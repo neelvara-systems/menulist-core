@@ -97,3 +97,10 @@ Removed:
 - Public copy remains calm and proof-based.
 
 Validation record: [owner-business-assistant_validation.md](./owner-business-assistant_validation.md).
+
+## July 16, 2026 Cross-Check
+
+- Desktop `/dashboard` and `/business-health` remain protected by the shared `VIEW_ANALYTICS` route requirement before their page children mount.
+- `MobileShell` now enforces the same permission for dashboard hashes, direct `/business-health` mapping, and the Business Health opener before either analytics screen mounts. Mobile More keeps its existing internal gate.
+- The answer route applies its limiter before bounded parsing and performs SAFE_MODE reads only after body, selected-store, and permission admission. `AI_OPERATION` limiter-provider failures fail closed with a retryable 503; deterministic `DATA_READ` answers preserve their existing fail-open limiter posture.
+- Provider-backed answer generation remains disabled and isolated; no provider integration, AI transaction, new document, setting, or scheduler was added.

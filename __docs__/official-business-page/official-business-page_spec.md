@@ -207,12 +207,12 @@
 | URL                               | What Shows                     | Condition                           |
 | --------------------------------- | ------------------------------ | ----------------------------------- |
 | `joespizza.menulist.ai/`          | OBP                            | `ENABLE_OBP = true`                 |
-| `joespizza.menulist.ai/`          | Digital Menu                   | `ENABLE_OBP = false` (current)      |
-| `joespizza.menulist.ai/menu`      | Digital Menu (default project) | Always (reserved slug)              |
+| `joespizza.menulist.ai/`          | Digital Menu                   | `ENABLE_OBP = false` emergency rollback only |
+| `joespizza.menulist.ai/menu`      | Owner-claimed Menu project or explicit default alias | When either target exists; otherwise recovery ladder |
 | `joespizza.menulist.ai/food-menu` | Specific project               | Existing slug system                |
 | `joespizza.com/`                  | OBP                            | Custom domain + `ENABLE_OBP = true` |
 
-**"menu" becomes a reserved slug** — cannot be used as a project name. System auto-routes it to the default project.
+**`menu` is claimable.** A project may own `/menu`; otherwise the route aliases only the explicit default project and never chooses the first project implicitly.
 
 ---
 

@@ -56,6 +56,9 @@ function verifyRoute(route) {
     "getRateLimitForFeature('DATA_READ')",
     'const userRateLimitHash = hashPublicRateLimitValue(userId);',
     'key: `platform-founder-monitor:${userRateLimitHash}`',
+    'failClosedOnProviderError: true',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
+    "Authorization Failed - Founder Monitor Current Role",
     "logger.security('Rate Limit Exceeded - Platform Founder Monitor'",
     "'Retry-After': String(waitSeconds)",
     "readPlatformSummaryDoc('founder-monitor-snapshot', 'Founder Monitor snapshot', 'founderMonitorSnapshot')",
@@ -90,6 +93,7 @@ function verifyRoute(route) {
     'QuerySchema.safeParse(Object.fromEntries(request.nextUrl.searchParams.entries()))',
     "getRateLimitForFeature('DATA_READ')",
     'const rateLimit = await checkRateLimit({',
+    'const currentPlatformUser = await getCurrentPlatformUser(session);',
     'const [',
     'return NextResponse.json({ data });',
   ], 'Founder Monitor API admission/read order');

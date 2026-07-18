@@ -350,6 +350,8 @@ export interface AiMenuManagerSessionDoc {
     compactMessages: AiMenuManagerCompactMessage[];
     pendingCardSummaries: AiMenuManagerCardSummary[];
     pendingOperations?: AiMenuManagerPendingOperation[];
+    hasPendingOperations?: boolean;
+    pendingCount?: number;
     recentReceiptSummaries: AiMenuManagerReceipt[];
     counters: {
         commands: number;
@@ -441,6 +443,7 @@ export interface AiMenuManagerCommandContextSelection {
 
 export interface AiMenuManagerCommandRequest {
     sessionId?: string;
+    sessionDate?: string;
     storeId: string;
     projectId: string;
     inputType: AiMenuManagerInputType;

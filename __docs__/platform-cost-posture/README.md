@@ -7,13 +7,15 @@ This feature exists because Firebase and AI cost needs one platform-owned place 
 ## Current Scope
 
 - Route: `/platform/cost-posture`
-- Audience: platform users only
+- Audience: current persisted MenuList platform users only; a signed role claim alone is insufficient
 - Data access: server-side Admin SDK through `/api/platform/cost-posture`
 - Refresh model: manual fetch-on-open and manual refresh
 - Write behavior: read-only
 - Public/owner exposure: none
 
-Source gate: `npm run verify:platform-cost-posture-boundary` locks platform-only API admission, bounded Admin SDK source reads, the 256KB browser response guard, fixed failure copy, desktop navigation, the platform-only mobile wrapper, timestamp parser diagnostics, and docs parity. The verifier does not run Firestore reads/writes, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+Source gate: `npm run verify:platform-cost-posture-boundary` locks platform-only API admission, bounded Admin SDK source reads, strict period/cost aggregation, the 256KB browser response guard, fixed failure copy, stale-request cancellation, desktop navigation, the platform-only mobile wrapper, timestamp parser diagnostics, and docs parity. The verifier includes pure aggregation and browser-contract regression tests. It does not run Firestore reads/writes, provider calls, browser smoke, Firebase deploy, or Vercel deploy.
+
+The API applies a fail-closed DATA_READ limit and re-reads the exact current platform user before any cost/config/alert source read. Limiter provider outage returns 503; role/lifecycle/identity/revocation drift returns 403.
 
 ## Signals Included
 
@@ -22,6 +24,8 @@ Source gate: `npm run verify:platform-cost-posture-boundary` locks platform-only
 - Menu extraction cost samples from `MENULIST_AI_OPERATIONS`
 - Business Health answer cost samples from `ownerBusinessAssistantAnswerEvents`
 - Billing-export readiness from the production launch prerequisite docs
+
+Only rows with a valid timestamp inside the requested start/end window contribute to totals. Provider cost uses `realCostPaise` only; legacy `totalCharge` can supply owner charge but must never be relabeled as provider cost. Invalid, negative, non-finite, coercible-string, and overflowing numeric fields are omitted from the affected metric.
 
 ## Existing Platform Screens
 

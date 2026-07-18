@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import ScrollToTopButton from '@/components/website/shared/ScrollToTopButton';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'WhatsApp Action Link Check - MenuList | Check Your Customer Message Path';
 const description = 'Check whether customers can tap once to message, order, book, or ask through WhatsApp with a clear customer link, message prompt, hours expectation, and fallback action.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/whatsapp-action-link-check',
   },
-};
+});
 
 export default function Page() {
   if (

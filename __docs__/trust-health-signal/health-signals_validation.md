@@ -1,6 +1,6 @@
 # Health Signals (Pillars 4-6) — Validation Report
 
-**Date:** July 13, 2026
+**Date:** July 17, 2026
 **Feature Flags:** `ENABLE_TRUST_HEALTH_SIGNAL`, `ENABLE_LOYALTY_HEALTH_SIGNAL`, `ENABLE_RISK_DECLINE_DETECTION`  
 **Status:** Dormant; all flags are `false`, with no scheduler/export/UI consumer
 **Type Check:** Exact-current validation is recorded in the data-flow audit; the February table below is historical and not release evidence.
@@ -18,6 +18,9 @@
 | Persisted truth | Dormant computation now requires exact project-scoped daily identity and exact unique/direct counters; it may not invent percentages |
 | Retry/freshness | Same-week risk retries are idempotent and aged prior signals are not reused |
 | Cost | Zero current runtime operations; activation cost must be measured from bounded project-scoped reads |
+| Accidental execution | `processHealthSignalsForAllStores()` rejects with `HEALTH_SIGNALS_DORMANT_UNVALIDATED_COUNTERS` before store discovery or analytics reads |
+| Counter validity | Daily unique totals are not weekly distinct visitors; page-view ratios are not returning-customer or trust evidence |
+| Index cost | `stores.healthSignals` is exempt from automatic indexing because no query uses the dormant map |
 
 Activation is not approved by this document. It requires an explicit Functions feature flag, consolidated scheduler task with lease/cadence, emulator-backed persistence test, index/cost proof, mounted desktop and MobileShell surfaces, freshness behavior, Firebase QA deployment, and real-traffic threshold evidence.
 
@@ -93,4 +96,4 @@ Activation is not approved by this document. It requires an explicit Functions f
 ---
 
 **Historical validation result:** The February checklist claimed complete wiring that is not present in the current repository. It is retained only as implementation history.
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026

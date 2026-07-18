@@ -1,6 +1,6 @@
 # Public Truth Monitor Add-On - Marketing
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Status:** Internal positioning only
 
 ---

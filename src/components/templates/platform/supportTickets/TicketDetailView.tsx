@@ -2,12 +2,15 @@
 
 import DateTimeDisplay from '@atoms/DateTimeDisplay';
 import { FEATURE_FLAGS } from '@config/features';
+import { DB_COLLECTIONS } from '@constant/database';
 import { ANSWERLATTICE_GOVERNANCE_TABS, getAnswerlatticeGovernanceRoute, toAnswerlatticeDashboardRoute } from '@constant/answerlattice/navigations';
 import { rebuildProductSurfaceContentSummaryWithDiagnostics } from '@database/answerlattice/productSurfaces';
 import { assertSupportTicketUpdateSucceeded, updateTicket } from '@database/tickets';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getBoundedAnswerlatticeStringContext } from '@lib/answerlattice/diagnostics';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { getSupportTicketAttachmentDownloadUrl } from '@lib/answerlattice/supportTicketAttachmentBoundary';
+import { answerlatticeApp } from '@lib/firebase/answerlatticeFirebaseClient';
 import { sanitizeFeedbackComment } from '@lib/sanitization';
 import SupportTicketCategory from '@organisms/SupportTicket/SupportTicketCategory';
 import SupportTicketPriority from '@organisms/SupportTicket/SupportTicketPriority';
@@ -46,7 +49,17 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
 
     const handleAttachmentOpen = (item: { url?: string; name?: string; type?: string; size?: number }) => {
         try {
-            const opened = window.open(item.url, '_blank', 'noopener,noreferrer');
+            const trustedUrl = getSupportTicketAttachmentDownloadUrl({
+                bucket: answerlatticeApp?.options.storageBucket,
+                collection: DB_COLLECTIONS.SUPPORT_TICKETS,
+                sId: ticket?.sId || 0,
+                tId: ticket?.tId || 0,
+                url: item.url,
+            });
+            if (!trustedUrl) {
+                throw new Error('answerlattice_ticket_attachment_url_invalid');
+            }
+            const opened = window.open(trustedUrl, '_blank', 'noopener,noreferrer');
             if (!opened) {
                 throw new Error('answerlattice_ticket_attachment_open_blocked');
             }
@@ -55,9 +68,9 @@ function TicketDetailView({ activeTicket, onUpdate, setSelectedTicket, from }: T
                 surface: 'ticket_detail_view',
                 ...getBoundedRuntimeStringContext('ticketId', ticket?.id),
                 ...getBoundedRuntimeStringContext('ticketDisplayId', ticket?.displayId),
-                ...getBoundedRuntimeStringContext('attachmentUrl', item.url),
                 ...getBoundedRuntimeStringContext('attachmentName', item.name),
                 ...getBoundedRuntimeStringContext('attachmentType', item.type),
+                attachmentUrlPresent: typeof item.url === 'string' && item.url.length > 0,
                 attachmentSizePresent: typeof item.size === 'number',
             });
             message.error('Unable to open attachment');

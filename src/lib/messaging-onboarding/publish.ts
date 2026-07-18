@@ -10,6 +10,7 @@ import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { getSuggestionValue } from "@data/shared/extractedBusinessProfile";
 import { getPhoneLookupCandidates } from "@lib/auth/loginIdentifiers";
+import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import {
   getMessagingOwnerDocumentId,
   MessagingOwnerClaimConflictError,
@@ -459,49 +460,32 @@ export async function executeMessagingOnboardingPublish(
     );
   }
 
-  try {
-    revalidateTag(`menu-store-${result.storeId}`);
-    revalidateTag(`store-${result.storeId}`);
-    revalidateTag("client-stores");
-    revalidateTag("screen-data");
-  } catch (cacheError) {
-    logRuntimeFailure("messaging_onboarding_publish_cache_revalidation_failed", cacheError, {
+  const postCommit = await runStorePublicTruthPostCommitEffects({
+    chunkSize: 1,
+    deps: {
+      invalidateAssistant: () => invalidateOwnerBusinessAssistantPacketCache({
+        tId: result.tenantId,
+        sId: result.storeId,
+        projectId: result.projectId,
+      }),
+      revalidate: revalidateTag,
+      touchScreen: () => touchDigitalScreenContentVersionForStoreServer(
+        result.storeId,
+        "messagingOnboardingPublish",
+      ),
+    },
+    storeIds: [String(result.storeId)],
+    tenantId: String(result.tenantId),
+  });
+  if (postCommit.effectsPending) {
+    logRuntimeFailure("messaging_onboarding_publish_cache_revalidation_failed", postCommit.firstError, {
       ...getBoundedRuntimeStringContext("tenantId", result.tenantId),
       ...getBoundedRuntimeStringContext("storeId", result.storeId),
       ...getBoundedRuntimeStringContext("projectId", result.projectId),
       ...getBoundedRuntimeStringContext("userId", result.userId),
-      operation: "next_cache_tags",
+      failedEffectCount: postCommit.failedEffectCount,
+      operation: "post_commit_effects",
       tagCount: 4,
-    });
-  }
-
-  try {
-    await touchDigitalScreenContentVersionForStoreServer(result.storeId, "messagingOnboardingPublish");
-  } catch (cacheError) {
-    logRuntimeFailure("messaging_onboarding_publish_cache_revalidation_failed", cacheError, {
-      ...getBoundedRuntimeStringContext("tenantId", result.tenantId),
-      ...getBoundedRuntimeStringContext("storeId", result.storeId),
-      ...getBoundedRuntimeStringContext("projectId", result.projectId),
-      ...getBoundedRuntimeStringContext("userId", result.userId),
-      operation: "digital_screen_content_version",
-      tagCount: 0,
-    });
-  }
-
-  try {
-    await invalidateOwnerBusinessAssistantPacketCache({
-      tId: result.tenantId,
-      sId: result.storeId,
-      projectId: result.projectId,
-    });
-  } catch (cacheError) {
-    logRuntimeFailure("messaging_onboarding_publish_cache_revalidation_failed", cacheError, {
-      ...getBoundedRuntimeStringContext("tenantId", result.tenantId),
-      ...getBoundedRuntimeStringContext("storeId", result.storeId),
-      ...getBoundedRuntimeStringContext("projectId", result.projectId),
-      ...getBoundedRuntimeStringContext("userId", result.userId),
-      operation: "owner_business_assistant_packet",
-      tagCount: 0,
     });
   }
 

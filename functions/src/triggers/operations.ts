@@ -25,6 +25,7 @@ import {
     verifyPublish,
 } from '../monitoring/publishVerification';
 import { activateSafeMode } from '../monitoring/safeMode';
+import { revalidatePublicClientCacheForStore } from '../logic/publicCacheRevalidation';
 import {
     normalizeOwnerNotificationDocumentId,
     normalizeOwnerNotificationNumericScopeDocumentId,
@@ -82,12 +83,14 @@ const OPERATIONS_BUDGET_ALERT_WEBHOOK_FAILED = 'OPERATIONS_BUDGET_ALERT_WEBHOOK_
 const OPERATIONS_FORCE_REPUBLISH_NO_ACTIVE_PROJECT = 'OPERATIONS_FORCE_REPUBLISH_NO_ACTIVE_PROJECT';
 const OPERATIONS_FORCE_REPUBLISH_PROJECT_LIMIT_EXCEEDED = 'OPERATIONS_FORCE_REPUBLISH_PROJECT_LIMIT_EXCEEDED';
 const OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE = 'OPERATIONS_FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE';
+const OPERATIONS_FORCE_REPUBLISH_CACHE_REVALIDATION_FAILED = 'OPERATIONS_FORCE_REPUBLISH_CACHE_REVALIDATION_FAILED';
 const OPERATIONS_FORCE_REPUBLISH_FAILED = 'OPERATIONS_FORCE_REPUBLISH_FAILED';
 const OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED = 'OPERATIONS_BACKFILL_STORES_SUMMARY_FAILED';
 const OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_SUCCESS_MESSAGE_FAILED';
 const OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED = 'OPERATIONS_VERIFY_MENU_PUBLISH_FAILURE_MESSAGE_FAILED';
 const VERIFY_MENU_PUBLISH_FAILED_MESSAGE = 'Menu publish verification could not be completed.';
 const FORCE_REPUBLISH_PUBLIC_URL_UNAVAILABLE_MESSAGE = 'Public menu URL is not configured for force republish verification.';
+const FORCE_REPUBLISH_CACHE_REVALIDATION_FAILED_MESSAGE = 'Public menu refresh is temporarily unavailable. Please try again.';
 const FORCE_REPUBLISH_FAILED_MESSAGE = 'Force republish could not be completed.';
 const BACKFILL_STORES_SUMMARY_FAILED_MESSAGE = 'Stores summary backfill could not be completed.';
 const STORES_SUMMARY_BACKFILL_MAX_STORES = 1_500;
@@ -256,7 +259,7 @@ export const verifyMenuPublish = onCall(
                     await sendLifecycleMessage({
                         storeId, tenantId,
                         eventType: 'MENU_PUBLISH_FAILED',
-                        referenceId: `menu-publish-failed-${storeId}-${Date.now()}`,
+                        referenceId: `menu-publish-failed-${storeId}-${new Date().toISOString().slice(0, 10)}`,
                         metadata: {
                             publicUrl: publicMenuUrl,
                             failureReason: result.failureReason || result.status || 'The public menu check failed.',
@@ -481,7 +484,26 @@ export const forceRepublish = onCall(
             }
             const { projectIds, publicMenuUrl } = republishClaim;
 
-            // Verify after republish
+            const refreshResult = await revalidatePublicClientCacheForStore(
+                storeId,
+                'forceRepublish',
+                { touchDigitalScreen: true },
+            );
+            if (!refreshResult.cacheRevalidated) {
+                logger.error('[forceRepublish] Public cache refresh failed', {
+                    failureCode: OPERATIONS_FORCE_REPUBLISH_CACHE_REVALIDATION_FAILED,
+                    ...getOperationsCallLogContext({
+                        requesterUid: request.auth?.uid,
+                        storeId,
+                        tenantId,
+                    }),
+                    screenTouchAttempted: refreshResult.screenTouchAttempted,
+                    screenTouchSucceeded: refreshResult.screenTouchSucceeded,
+                });
+                throw new HttpsError('unavailable', FORCE_REPUBLISH_CACHE_REVALIDATION_FAILED_MESSAGE);
+            }
+
+            // Verify only after the public cache has accepted the refresh request.
             const result = await verifyPublish(publicMenuUrl);
             await updateStoreHealth(storeId, tenantId, userId, result, {
                 publicMenuUrl,
@@ -512,6 +534,9 @@ export const forceRepublish = onCall(
                 throw error;
             }
             if (error instanceof HttpsError && error.code === 'resource-exhausted') {
+                throw error;
+            }
+            if (error instanceof HttpsError && error.code === 'unavailable') {
                 throw error;
             }
 

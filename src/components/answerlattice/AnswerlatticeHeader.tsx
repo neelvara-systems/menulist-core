@@ -85,7 +85,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
         return FEATURE_FLAGS[nav.featureFlag as keyof typeof FEATURE_FLAGS] === true;
     }, [access?.isPlatformAdmin, access?.permissions, canUseManagementSurfaces]);
 
-    const visibleNav = useMemo(() => (
+    const authorizedNav = useMemo(() => (
         ANSWERLATTICE_SIDEBAR_NAV
             .map((nav: AnswerlatticeNavItem) => ({
                 ...nav,
@@ -112,7 +112,7 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
         if (activeTeamTab) return getAnswerlatticeTeamRoute(activeTeamTab);
         if (normalizedPathname === ANSWERLATTICE_ROUTES.TEAM) return getAnswerlatticeTeamRoute(ANSWERLATTICE_DEFAULT_TEAM_TAB);
 
-        const flatNav = visibleNav.flatMap((nav) => [nav, ...(nav.subNav || [])]);
+        const flatNav = authorizedNav.flatMap((nav) => [nav, ...(nav.subNav || [])]);
         const exact = flatNav.find(n => normalizedPathname === n.route);
         if (exact) return exact.route;
 
@@ -121,11 +121,11 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
             .sort((a, b) => b.route.length - a.route.length)
             .find(n => normalizedPathname.startsWith(`${n.route}/`));
 
-        return prefix?.route || visibleNav[0]?.route || '';
-    }, [normalizedPathname, searchParams, visibleNav]);
+        return prefix?.route || authorizedNav[0]?.route || '';
+    }, [authorizedNav, normalizedPathname, searchParams]);
 
     const activeBreadcrumb = useMemo(() => {
-        const activeParent = visibleNav.find((nav) => (
+        const activeParent = authorizedNav.find((nav) => (
             nav.route === selectedRoute ||
             nav.subNav?.some((subItem) => subItem.route === selectedRoute) ||
             normalizedPathname === nav.route ||
@@ -135,12 +135,16 @@ export default function AnswerlatticeHeader({ showMenuButton = false, onMenuClic
         if (!activeParent) return null;
 
         const activeSubNav = activeParent.subNav?.find((subItem) => subItem.route === selectedRoute) || null;
+        const primarySubNav = activeParent.subNav?.filter(subItem => subItem.advanced !== true) || [];
+        const breadcrumbSubNav = activeSubNav?.advanced
+            ? [...primarySubNav, activeSubNav]
+            : primarySubNav;
         return {
             parent: activeParent,
-            subNav: activeParent.subNav || [],
+            subNav: breadcrumbSubNav,
             activeSubNav,
         };
-    }, [normalizedPathname, selectedRoute, visibleNav]);
+    }, [authorizedNav, normalizedPathname, selectedRoute]);
 
     const pageTitle = activeBreadcrumb?.activeSubNav?.label || activeBreadcrumb?.parent.label || 'Dashboard';
 

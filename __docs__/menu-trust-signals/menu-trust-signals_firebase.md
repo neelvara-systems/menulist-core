@@ -1,7 +1,7 @@
 # Menu Trust Signals — Firebase Cost Tracking
 
-> **Version:** 1.0
-> **Last Updated:** March 15, 2026
+> **Version:** 1.1
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -17,7 +17,7 @@ None. Zero new reads, zero new writes.
 
 ## Why Zero Cost
 
-Trust signals are rendered server-side from data already fetched by the client menu page SSR. The `lastPublishedAt` and `menuVersion` fields are already on the project document. The store name, logo, and businessType are already on the store document. Both documents are fetched in the existing `page.tsx` data loader. No additional Firestore operations.
+Trust signals compute from the store/project payload already supplied to the customer-menu renderer. `lastPublishedAt` is already on the project document; area, city, business type, working hours, timezone, and hours freshness are already in the store payload. No additional Firestore operation is issued.
 
 ## New Fields
 

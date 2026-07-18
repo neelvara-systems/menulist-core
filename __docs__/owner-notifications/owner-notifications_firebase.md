@@ -1,7 +1,7 @@
 # Owner Notifications - Firebase And Cost Plan
 
-**Status:** Implemented for current owner-notification rollout
-**Date:** 2026-07-13
+**Status:** Local source complete; current target deploy and provider certification pending
+**Date:** 2026-07-16
 **Audience:** Engineering, platform owner
 
 > **Launch boundary:** Not current launch certification or deploy approval. This Firebase/cost plan is source-gated owner-notification runtime and cost evidence only; owner-notification release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:owner-notifications-boundary`, SMTP/WhatsApp provider smoke where enabled, authenticated owner settings/status QA for the target owner surface, platform recovery monitor browser QA, target Firebase deploy evidence where Functions logic changes, target Vercel deploy evidence where app routes change, and production-host smoke.
@@ -13,6 +13,8 @@ The retry/digest correction adds two required composite indexes: `ownerNotificat
 App and Functions recipient reads now require tenant-consistent scope. MenuList canonical `stores/{storeId}` must identify the event tenant; the legacy nested fallback cannot contradict its parent tenant. Answerlattice `stores/{workspaceId}` in the separate project must identify the event tenant. A missing or mismatched scope writes the stable local event error `scope_not_found_or_mismatch` and makes zero provider calls. Ordinary recipient hints no longer bypass those reads. The legacy `messageLogs` fallback adds one deterministic transaction claim (one direct read and one conditional create) before SMTP and finalizes that same document after the provider result. No rules were loosened and no cache/public-output path is affected.
 
 The shared boundary is mirrored byte-for-byte and behavior-tested. Live effect still requires the normal Next.js release path for app code and a scoped MenuList Functions deploy for Functions code. Provider smoke, recovery-monitor QA, and deploy evidence are not supplied by source tests.
+
+July 16 source correction adds no collection, index, rule, scheduler, or owner setting. Event JSON is capped at 128KB before creation. Explicit revoked/denied/inactive/withdrawn WhatsApp status overrides old consent booleans. App and Functions WhatsApp calls reject redirects and abort after 15 seconds; SMTP connection, greeting, and socket waits are bounded. Provider message IDs are normalized/capped before delivery persistence. Repeated publish-verification failures now share one store/day event reference. These changes require the approved app and scoped Functions release paths before live effect.
 
 July 10 deploy evidence: the Node 22 MenuList QA index command read the updated index/rules files and failed at `https://firebaserules.googleapis.com/v1/projects/menulist-qa:test` with HTTP 403 caller permission. The scoped Functions command targeted `verifyMenuPublish`, `computeDecisionBlocksScores`, `triggerDecisionBlocksScoring`, and `triggerStoreNightlyScheduler`; configured predeploy lint/build passed, then Cloud Resource Manager project lookup returned HTTP 403 caller permission. No target was uploaded. Exact commands are preserved in `__docs__/audits/data-flow-pipeline-deep-audit.md` and `__docs__/audits/menulist-production-readiness-audit.md`.
 
@@ -47,7 +49,7 @@ June 30, 2026 legacy notification trigger browser request hardening is cost-neut
 | `dedupeKey` | string | Deterministic direct lookup key |
 | `recipientRole` | string | Resolver input |
 | `requestedChannels` | array | Optional channel override |
-| `metadata` | map | Snapshot only; max size required |
+| `metadata` | map | Snapshot only; the complete event JSON must remain at or below 128KB |
 | `priority` | string | Delivery policy |
 | `status` | string | pending/processing/delivered/partial/failed/skipped |
 | `source` | map | Runtime and path |
@@ -57,7 +59,7 @@ June 30, 2026 legacy notification trigger browser request hardening is cost-neut
 
 ### `ownerNotificationDeliveries`
 
-One document per channel attempt.
+One deterministic document per event/channel/destination. Retries preserve the first `createdAt`, update `lastAttemptAt`, and replace the latest attempt/status fields instead of growing an unbounded attempt subcollection.
 
 | Field | Type | Cost note |
 | --- | --- | --- |
@@ -70,7 +72,7 @@ One document per channel attempt.
 | `status` | string | sent/failed/skipped/rate_limited |
 | `templateKey` | string | Template registry key |
 | `templateVersion` | string | Migration/debug |
-| `providerMessageId` | string | Provider result |
+| `providerMessageId` | string | Optional normalized provider result, maximum 200 characters |
 | `attempt` | number | Retry count |
 | `error` | string | Sanitized local error code only |
 | `createdAt` | Timestamp | History |

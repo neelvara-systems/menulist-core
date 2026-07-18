@@ -327,8 +327,8 @@ export const FEATURE_FLAGS = {
      *
      * ⭐ POPULAR RIGHT NOW:
      *    - Most viewed/ordered items
-     *    - Based on views, clicks, and owner boost
-     *    - "Customer favorite right now"
+     *    - Based on bounded recent customer interactions and owner signals
+     *    - Uses neutral customer-facing popularity wording
      *
      * ⚡ QUICK PICK:
      *    - Fastest to prepare/deliver
@@ -717,6 +717,7 @@ export const FEATURE_FLAGS = {
     OWNER_NOTIFICATION_RETENTION_DAYS: 30,
     FEEDBACK_EVENT_RETENTION_DAYS: 180,
     SCHEDULER_RUN_LOG_RETENTION_DAYS: 90,
+    SYSTEM_ALERT_RETENTION_DAYS: 90,
 
     // ═══════════════════════════════════════════════════════════════
     // AI IMAGE GENERATION (Feature)
@@ -763,12 +764,12 @@ export const FEATURE_FLAGS = {
      * Continuous Menu Intelligence Master Toggle
      *
      * true: CMI is enabled (nightly computation runs, state is used)
-     * false: Feature is disabled (nightly job still runs but state is ignored)
+     * false: Client consumers ignore the private intelligence projection
      *
      * Per spec: CMI runs silently - no UI, no owner visibility
      * Affects: Campaign engine, slide generator, decision blocks
      */
-    MENU_INTELLIGENCE_ENABLED: true,
+    ENABLE_CONTINUOUS_MENU_INTELLIGENCE: true,
 
     /**
      * CMI Confidence Thresholds
@@ -818,34 +819,35 @@ export const FEATURE_FLAGS = {
     /**
      * Google Business Profile Sync (Feature #3)
      *
-     * true: GBP integration enabled (OAuth, nightly sync, hours apply)
-     * false: GBP features hidden, no sync jobs run
+     * Reserved true state: GBP integration may expose a separately reviewed
+     * OAuth, sync, and owner-approved hours flow after implementation.
+     * Current false state: provider features stay hidden and no sync job runs.
      *
      * Prerequisites:
      * - GBP API access approved by Google
      * - OAuth client configured
      * - GOOGLE_GBP_CLIENT_ID and GOOGLE_GBP_CLIENT_SECRET set
      *
-     * What It Does:
+     * Reserved Scope (not current runtime):
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      * - Auto-syncs menu link (websiteUri) to GBP nightly
      * - Detects hours drift (weekly hours only, read-only)
      * - Manual hours apply button (owner-approved)
      * - MOL logging for all actions
      *
-     * What It Does NOT Do (Phase 1):
+     * Reserved Exclusions:
      * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
      * - Reviews, posts, photos, Q&A
      * - Auto-hours write without approval
      * - Performance analytics/dashboard
      * - Holiday/special hours sync
      *
-     * @see __docs__/gbp-sync/GBP_SYNC_impl.md
+     * @see __docs__/gbp-sync/gbp-sync_impl.md
      *
      * Production: Enable after GBP API access approved
      * Development: Keep false until prerequisites met
      */
-    ENABLE_GBP_SYNC: false, // Default OFF until prerequisites met
+    ENABLE_GBP_SYNC: false, // Keep OFF until the complete provider flow and prerequisites are verified
 
     // ═══════════════════════════════════════════════════════════════
     // MULTI-STORE BRAND CONSISTENCY (Feature #4)
@@ -877,7 +879,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when ready for multi-store tenants
      * Development: Enable to test the feature
      */
-    ENABLE_MULTI_OUTLET: true, // Implementation complete - enabled for testing
+    ENABLE_MULTI_OUTLET: true, // Enabled in source; release still follows external certification gates
 
     /**
      * Allow changing which store is master
@@ -902,13 +904,12 @@ export const FEATURE_FLAGS = {
     ENABLE_UNLINK_FROM_MASTER: false, // Disabled by default (chain invariant)
 
     // Multi-Outlet Store Onboarding (Feature #4C)
-    // @see __docs__/multi-outlet-consistency/store-onboarding-flow_impl.md
+    // @see __docs__/multi-outlet-consistency/store-onboarding/store-onboarding_impl.md
     ENABLE_OUTLET_CREATION: true,           // Allow creating outlet stores from master
     ENABLE_PROJECT_PROPAGATION: true,       // Auto-create outlet projects when master creates new project
     ENABLE_OUTLET_BILLING: true,            // Quantity-based billing for outlets
     ENABLE_OUTLET_PRORATION_DISPLAY: true,  // Show proration estimate in add-outlet modal
     ENABLE_OUTLET_DEACTIVATE: true,         // Allow outlet deactivation from Chain Control Panel
-    ENABLE_BILLING_REMOVAL_SCHEDULE: true,  // Schedule quantity reduction for next billing cycle
     ENABLE_CHAIN_CONTROL_PANEL: true,       // Show "Locations" sidebar item for master stores
 
     /**
@@ -968,7 +969,7 @@ export const FEATURE_FLAGS = {
      * Production: Enable when ready for outlet awareness
      * Development: Enable to test the feature
      */
-    ENABLE_MASTER_UPDATE_AWARENESS: true, // Default OFF until implementation complete
+    ENABLE_MASTER_UPDATE_AWARENESS: true, // Enabled in source; awareness remains non-blocking
 
     // ─────────────────────────────────────────────────────────────
     // GUEST FEEDBACK (Internal Feedback System)
@@ -982,7 +983,7 @@ export const FEATURE_FLAGS = {
      * false: Hide all feedback UI, disable public endpoint
      *
      * Feature: Internal Feedback System
-     * Purpose: Private reputation firewall - collect feedback before public reviews
+     * Purpose: Private customer feedback and correction channel for the active store
      */
     ENABLE_GUEST_FEEDBACK: true,
 
@@ -1158,10 +1159,11 @@ export const FEATURE_FLAGS = {
      * - "POS Sync" tab appears in Business Settings
      * - Menu changes trigger debounced webhook delivery
      * - Full menu snapshot sent to configured POS endpoint
-     * - HMAC-SHA256 signed payloads with retry logic
+     * - HMAC-SHA256 signed payloads with bounded delivery logging
      *
      * Architecture: Store-level only (each outlet configures its own POS)
-     * Delivery: Queue-based via API route, never blocks UI
+     * Delivery: Debounced browser trigger to a protected API route; one attempt
+     * per acknowledged editor save and never part of the save transaction
      * Payload: Full snapshot (no delta), all item/category fields
      *
      * @see __docs__/pos-webhook-sync/pos-webhook-sync_impl.md
@@ -1475,53 +1477,48 @@ export const FEATURE_FLAGS = {
      * Single calm indicator: "Customer Trust: Strong / Stable / Weak"
      * Derived from aggregate visitor behavior patterns (weekly computation).
      *
-     * When enabled:
-     * - Weekly trust state computed from existing analytics data
-     * - TrustHealthCard shown on Owner Dashboard (when sufficient data exists)
-     * - Stored as healthSignals.trust on store document
+     * Current source is a dormant computation/UI skeleton only. There is no
+     * Functions export, scheduler caller, desktop mount, or mobile consumer.
+     * The retained processor fails closed before Firestore work.
      *
-     * When disabled:
-     * - No computation runs
-     * - No card shown
-     * - Zero cost
-     *
-     * Prerequisites: 50+ unique visitors/week for 4+ consecutive weeks
+     * Daily unique totals and page-view ratios do not prove weekly distinct
+     * visitors, returning customers, or trust. Activation requires validated
+     * aggregate counters, privacy review, leased scheduling, persisted-shape
+     * tests, and desktop/MobileShell parity—not only more traffic.
      *
      * @see __docs__/trust-health-signal/trust-health-signal_impl.md
      *
-     * Production: Enable when stores have real traffic
-     * Development: Keep false — no data to test against
+     * Production/Development: Keep false until the activation evidence exists.
      */
     ENABLE_TRUST_HEALTH_SIGNAL: false,
 
     /**
      * Loyalty Health Signal (Pillar 5)
      *
-     * Single calm indicator: "Customer Loyalty: Strong / Stable / Weak"
-     * Derived from aggregate return visit patterns (weekly computation).
-     *
-     * Shares infrastructure with Trust Health Signal.
+     * Reserved calm indicator: "Customer Loyalty: Strong / Stable / Weak".
+     * No current aggregate counter proves that the same customer returned;
+     * the legacy page-view/unique ratio is not a loyalty measurement.
      *
      * @see __docs__/loyalty-health-signal/loyalty-health-signal_impl.md
      *
-     * Production: Enable when stores have real traffic
-     * Development: Keep false — no data to test against
+     * Production/Development: Keep false until a privacy-safe returning-visitor
+     * aggregate and the shared activation gate are implemented and verified.
      */
     ENABLE_LOYALTY_HEALTH_SIGNAL: false,
 
     /**
      * Risk / Decline Detection (Pillar 6)
      *
-     * Meta-signal combining trust + loyalty + engagement trends.
-     * "Business Health: Stable / Watch / At Risk"
+     * Reserved meta-signal combining validated trust, loyalty, and engagement
+     * trends. It must not become owner-facing while either input is a proxy.
      *
      * REQUIRES: ENABLE_TRUST_HEALTH_SIGNAL and ENABLE_LOYALTY_HEALTH_SIGNAL
      * both active with sufficient data before this signal computes.
      *
      * @see __docs__/risk-decline-detection/risk-decline-detection_impl.md
      *
-     * Production: Enable after Pillars 4+5 have been active for 4+ weeks
-     * Development: Keep false
+     * Production/Development: Keep false until both prerequisite flows have
+     * validated inputs, active persistence, freshness, and owner-surface proof.
      */
     ENABLE_RISK_DECLINE_DETECTION: false,
 
@@ -1534,22 +1531,22 @@ export const FEATURE_FLAGS = {
     /**
      * Reviews & Reputation — Master kill switch
      *
-     * When enabled:
-     * - ReputationGuard component shown on dashboard (passive notice)
-     * - GET /api/reviews/states returns block/escalation booleans
-     * - Cloud Function ingests reviews nightly (requires GBP API access)
+     * Dormant source fragments currently include unmounted owner components,
+     * guarded state/suggestion routes, types, and pure classification rules.
+     * There is no GBP review ingestion, persistence, dashboard mount, reply
+     * posting, or scheduler runtime in the repository today.
      *
      * When disabled:
      * - No review infrastructure active
      * - Zero cost
      *
-     * BLOCKED: Requires GBP API access to ingest reviews.
-     * Infrastructure is built and ready — flip flag when API access granted.
+     * BLOCKED: Requires an explicit implementation pass plus GBP API access,
+     * OAuth/provider validation, persistence, mounting, and end-to-end tests.
+     * Do not flip this flag based on provider access alone.
      *
      * @see __docs__/reviews-reputation/reviews-reputation_impl.md
      *
-     * Production: Enable when GBP API access is granted
-     * Development: Keep false — no data without GBP API
+     * Production/Development: Keep false until implementation evidence exists.
      */
     ENABLE_REVIEWS_REPUTATION: false,
 
@@ -1557,7 +1554,8 @@ export const FEATURE_FLAGS = {
      * AI Reply Assist — Gemini-powered reply suggestions
      *
      * Requires ENABLE_REVIEWS_REPUTATION to be true.
-     * Owner MUST review and explicitly approve before posting.
+     * The current route can only prepare a draft; no posting transport exists.
+     * Keep disabled and unmounted until the parent flow is implemented.
      *
      * @see __docs__/reputation-protection/reputation-protection_impl.md
      */
@@ -1569,15 +1567,15 @@ export const FEATURE_FLAGS = {
     // ─────────────────────────────────────────────────────────────
 
     /**
-     * Compliance Pages — Privacy Policy + Terms on custom domains
+     * Compliance Pages — Privacy, Terms, and Refund on public business domains
      *
      * When enabled:
-     * - /privacy and /terms routes serve auto-generated compliance pages
-     * - OBP footer shows Privacy · Terms links
-     * - Owner can override with custom text via dashboard
+     * - /privacy, /terms, and /refund serve baseline compliance pages
+     * - OBP/menu footers expose the enabled policy links
+     * - Owner text is prepended without removing baseline disclosures
      *
      * When disabled:
-     * - /privacy and /terms return 404
+     * - /privacy, /terms, and /refund return 404
      * - No footer links on OBP
      * - Zero cost
      *
@@ -1683,7 +1681,7 @@ export const FEATURE_FLAGS = {
      * - Nudge text appears on OBPLinkCard ("Use this link whenever customers ask...")
      * - ShareModal shows behavior-guiding copy instead of generic text
      * - MobileShareScreen shows behavior-guiding copy
-     * - BehaviorNudgeCard appears on dashboard home (dismissible)
+     * - Owner Dashboard frames the customer link as the official source
      * - WhatsApp share pre-fills "Here is our menu link" instead of "Check out our menu"
      * - Post-publish success screen includes adoption tips
      *
@@ -1800,15 +1798,15 @@ export const FEATURE_FLAGS = {
      * SAFE_MODE — Global circuit breaker for expensive operations.
      *
      * When SAFE_MODE is active (ops_config/system.SAFE_MODE = true):
-     * - AI generation routes return 503 "System maintenance"
-     * - Bulk operations blocked
+     * - Guarded app AI routes and shared Functions Gemini generation/upload stop
+     * - Provider-file cleanup remains available
      * - Public menu viewing UNAFFECTED (cached pages)
      * - Menu publishing UNAFFECTED (core product)
      * - Dashboard login/navigation UNAFFECTED
      *
      * This flag controls whether API routes CHECK the ops_config/system doc.
      * When false: routes skip the check entirely (zero Firestore reads).
-     * When true: each AI route reads 1 doc (cached 60s per instance).
+     * When true: guarded paths read the cached SAFE_MODE state at their shared boundary.
      *
      * Firebase cost: ~₹0.05/month at 50 stores (negligible).
      *
@@ -2563,6 +2561,25 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_ANSWER_TESTS: true,
 
     /**
+     * Product-Specific First 10 Launch Pack
+     *
+     * Owner-triggered generation over one existing Knowledge Intake job. One
+     * bounded provider call prepares exactly ten draft canonical proposals and
+     * ten editable Answer Test cases. Generated drafts remain non-authoritative
+     * and unchanged source hashes reuse the stored pack without another call.
+     *
+     * Cost model: at most 30 ready source reads, one capped model request, one
+     * support credit, and at most ten existing Intake review-item writes for a
+     * newly generated source hash. No listener or scheduler work is added.
+     *
+     * Requires: ENABLE_ANSWERLATTICE_ANSWER_TESTS and
+     * ENABLE_ANSWERLATTICE_KNOWLEDGE_INTAKE.
+     *
+     * @see __docs__/answerlattice/first-trusted-answers/
+     */
+    ENABLE_ANSWERLATTICE_PRODUCT_STARTER_PACK: true,
+
+    /**
      * Summary-first owner support assistant. It reads existing compact
      * operational summaries and creates no transcript collection.
      */
@@ -2577,12 +2594,27 @@ export const FEATURE_FLAGS = {
      *       summaries already loaded for the read-only assistant.
      * false: Support Assistant keeps the existing brief/question experience.
      *
-     * Cost model: no additional Firestore reads beyond the existing five-summary
-     * assistant packet, no writes, no listeners, no scheduler, no model call.
+     * Cost model: six compact summary reads on an uncached brief request
+     * (the existing five plus activation proof), zero on the 60-second cache,
+     * no writes, no listeners, no scheduler, and no model call.
      *
      * @see __docs__/answerlattice/founder-daily-brief/
      */
     ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF: true,
+
+    /**
+     * Owner-confirmed Daily Brief action handoff.
+     *
+     * When enabled, selected launch/release actions can prefill the existing
+     * Support Board create form. Opening the form writes nothing; the owner
+     * must review and submit through the existing Support Board DAL/rules.
+     * Keep disabled until founder testing proves the handoff reduces work
+     * without creating duplicate cards.
+     *
+     * Cost model: zero reads/writes for preview; the existing one-card write
+     * applies only after owner confirmation.
+     */
+    ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS: false,
 
     /**
      * Owner-declared known issues delivered through the existing bounded
@@ -2805,6 +2837,25 @@ export const FEATURE_FLAGS = {
     ENABLE_ANSWERLATTICE_FAQ_MANAGEMENT: true,
 
     /**
+     * Answerlattice Bounded Hybrid Evidence Retrieval
+     *
+     * After canonical and approved FAQ miss, exact technical literals may add
+     * one tenant-scoped entity-linked KB query to the existing vector fallback.
+     * Candidates must contain an exact literal and are fused deterministically;
+     * this does not change source authority or add a model reranker.
+     *
+     * Cost model: ordinary questions add zero reads. An eligible technical
+     * fallback reads at most 12 additional active published KB articles.
+     *
+     * Keep false until the composite index is deployed and representative
+     * Answer Tests pass without citation, unsupported-claim, or abstention
+     * regressions.
+     *
+     * @see __docs__/answerlattice/ai-qna-chatbot/
+     */
+    ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL: false,
+
+    /**
      * Answerlattice Guided Workflows (Structured Procedure Answers)
      *
      * true: Canonical answers support answerType (explanation/navigation/procedure)
@@ -2820,7 +2871,23 @@ export const FEATURE_FLAGS = {
      * Requires: ENABLE_ANSWERLATTICE_CANONICAL_ANSWERS = true
      * @see __docs__/answerlattice/guided-workflows/
      */
-    ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS: false,
+    ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS: true,
+
+    /**
+     * Answerlattice Guided Resolution Runtime
+     *
+     * Enables the constrained Explain + Guide runtime for approved procedure
+     * answers. Each workspace must also opt in through widget configuration.
+     * The host SDK may highlight semantic targets and wait for allowlisted
+     * workflow events; it never clicks controls or executes product actions.
+     *
+     * Cost model: no added reads, listeners, schedulers, or AI calls. A guide
+     * may write one deduplicated terminal outcome signal.
+     *
+     * Requires: ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS + widget owner opt-in.
+     * @see __docs__/answerlattice/guided-workflows/
+     */
+    ENABLE_ANSWERLATTICE_GUIDED_RESOLUTION: true,
 
     /**
      * Answerlattice Instant Response Cache (Upstash Redis)

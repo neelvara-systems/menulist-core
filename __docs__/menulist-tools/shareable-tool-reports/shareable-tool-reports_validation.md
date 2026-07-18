@@ -1,7 +1,7 @@
 # Shareable Tool Reports - Validation
 
 **Status:** V0 validation evidence; not production launch certification
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -40,7 +40,11 @@ The V0 verifier checks:
 - decode diagnostics are bounded and content-free
 - strict ISO timestamp guard exists for decoded `generatedAt`
 - decoded display strings strip control characters before rendering
-- safe internal href guard exists
+- summary counts must match normalized visible checks and primary numbers stay bounded
+- setup jobs are derived from normalized visible gaps
+- primary label and report-limit statement are mandatory
+- safe same-origin href guard rejects slash/backslash origin escapes
+- viewer visibly says the hash is an unsigned browser-local self-report
 - no report API route exists
 - no Firestore/report storage path is introduced
 - consented follow-up uses only `/api/public/contact`
@@ -52,11 +56,13 @@ The V0 verifier checks:
 - Report Leads ops monitor is platform-admin only, manual-refresh, response-bounded, and read-only
 - Report Leads re-proves current persisted platform role, lifecycle, identity, and revocation state before reading lead PII
 - Report Leads exposes one current-user authorization read separately from bounded enquiry reads in its cost DTO
+- Report Leads fails closed on production limiter failure and discloses a capped/incomplete recent scan
 - Social Bio tool exposes Copy public report link
 - all current public tools expose Copy public report link
 - report evidence text is preserved
 - discovery files include `/tools/reports`
 - en-US and hi-IN locale keys exist
 - docs set exists
+- `npm run test:public-truth-tools-runtime` exercises URL, phone/action, report-tamper, internal-link, and print/share boundaries
 
 Current release approval still requires the active production-readiness audit if this is being shipped to production.

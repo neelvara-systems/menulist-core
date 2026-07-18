@@ -3,7 +3,8 @@
 **Document Type:** Product Requirements Document (Non-Technical)  
 **Audience:** CEO, PM, Business Stakeholders, Sales Teams  
 **Version:** 1.0  
-**Status:** 🔒 SPEC LOCKED — Implementation blocked until GBP API access granted  
+**Status:** FUTURE DESIGN INPUT — incomplete/disabled; provider access alone does not authorize implementation
+**Last Source Audit:** July 16, 2026
 **Date:** February 2, 2026
 
 ---
@@ -392,7 +393,7 @@ Internal Feedback ←──→ Reviews & Reputation
 | ------------------ | ---------- | ------------------------------- |
 | **GBP API Access** | 🔶 BLOCKED | Cannot implement until approved |
 
-**Resolution:** Implementation blocked until GBP API access is granted. Spec is complete and locked.
+**Resolution:** Implementation requires GBP access plus an explicit docs-first pass covering ingestion/state writers, tenant/store permissions, retention, owner/mobile UX, provider behavior, cost, deployment, and production smoke. This historical design is not an implementation-ready contract.
 
 ### Technical Risks
 
@@ -436,8 +437,8 @@ Internal Feedback ←──→ Reviews & Reputation
 ---
 
 **DOCUMENT STATUS:** 🔒 LOCKED  
-**IMPLEMENTATION STATUS:** BLOCKED (GBP API dependency)
+**IMPLEMENTATION STATUS:** INCOMPLETE AND DISABLED
 
 ---
 
-_This feature is now defined, not built. Implementation begins only after GBP API access is granted._
+_Do not implement or activate directly from this historical design. Revalidate product admission and rebuild the current contract from source and provider capabilities first._

@@ -4,7 +4,7 @@
 
 **Created:** February 19, 2026  
 **Pillar:** 1 of 6 — Customer-Facing Infrastructure  
-**Status:** ✅ ENGINEERING DONE + BEHAVIORAL ADOPTION IMPLEMENTED (Feb 19, 2026)  
+**Status:** ✅ ENGINEERING DONE + BEHAVIORAL ADOPTION IMPLEMENTED
 **Parent:** [`__docs__/customer-facing-infrastructure/`](../customer-facing-infrastructure/README.md)
 
 ---
@@ -41,8 +41,8 @@ ALREADY BUILT:
   Schema.org enrichment                   ← ✅ COMPLETE
   CDN caching (s-maxage=60)              ← ✅ COMPLETE
 
-IMPLEMENTED: Behavioral Adoption Layer (Feb 19, 2026):
-  BehaviorNudgeCard on dashboard          ← ✅ DONE (dismissible)
+IMPLEMENTED: Behavioral Adoption Layer:
+  Existing dashboard official-source card ← ✅ GUIDANCE EMBEDDED
   OBPLinkCard nudge micro-copy            ← ✅ DONE
   ShareModal behavior-guiding copy        ← ✅ DONE (desktop)
   MobileShareScreen behavior-guiding copy ← ✅ DONE (mobile)
@@ -84,4 +84,4 @@ ENABLE_OBP: false; // Master toggle — existing
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 17, 2026

@@ -38,11 +38,58 @@ type NormalizeNewItemMetadataOptions = {
     targetLanguageCodes: string[];
 };
 
+export function createNewItemMetadataProviderAliases<
+    T extends { id: string; attributes?: Array<{ id: string }> },
+>(item: T): {
+    originalAttributeIdsByAlias: Readonly<Record<string, string>>;
+    providerItem: T;
+} {
+    const attributeAliases = (item.attributes || []).map((attribute, index) => {
+        const alias = `attribute_${index + 1}`;
+        return {
+            alias,
+            attribute: { ...attribute, id: alias },
+            originalAttributeId: attribute.id,
+        };
+    });
+
+    return {
+        originalAttributeIdsByAlias: Object.fromEntries(
+            attributeAliases.map(({ alias, originalAttributeId }) => [alias, originalAttributeId]),
+        ),
+        providerItem: {
+            ...item,
+            id: 'item_1',
+            ...(item.attributes ? {
+                attributes: attributeAliases.map(({ attribute }) => attribute),
+            } : {}),
+        } as T,
+    };
+}
+
 const hasOwn = (value: object, key: string): boolean =>
     Object.prototype.hasOwnProperty.call(value, key);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
     typeof value === 'object' && value !== null && !Array.isArray(value);
+
+export function restoreNewItemMetadataProviderAttributeIds(
+    value: unknown,
+    originalAttributeIdsByAlias: Readonly<Record<string, string>>,
+): unknown {
+    if (!isRecord(value) || !Array.isArray(value.attributes)) return value;
+
+    return {
+        ...value,
+        attributes: value.attributes.map((attribute) => {
+            if (!isRecord(attribute) || typeof attribute.id !== 'string') return attribute;
+            const originalAttributeId = originalAttributeIdsByAlias[attribute.id];
+            return originalAttributeId
+                ? { ...attribute, id: originalAttributeId }
+                : attribute;
+        }),
+    };
+}
 
 function normalizeText(value: unknown, maxLength = MAX_METADATA_TEXT_LENGTH): string | null {
     if (typeof value !== 'string') return null;

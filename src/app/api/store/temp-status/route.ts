@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from "@config/features";
 import { DB_COLLECTIONS } from "@constant/database";
 import { PERMISSIONS } from "@constant/permissions";
+import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { admin } from "@lib/firebase/firebaseAdmin";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
@@ -22,13 +23,12 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from "@lib/runtime/
 import { touchDigitalScreenContentVersionForStoreServer } from "@lib/screen/serverScreenInvalidation";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getSafeZodValidationDetails } from "@lib/security/inputValidation";
+import { normalizeTempStatusMessage, TEMP_STATUS_TYPES } from "@lib/tempStatus/statusBoundary";
 import { revalidateTag } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 import { hashPublicRateLimitValue } from "src/middleware/publicApi";
 import { z } from "zod";
 import { withAuth } from "../../../../middleware/auth";
-
-const TEMP_STATUS_TYPES = ['closed_today', 'opening_late', 'closing_early', 'kitchen_closed', 'special_menu', 'custom'] as const;
 
 const SetStatusSchema = z.object({
     action: z.literal('set'),
@@ -76,26 +76,28 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         return NextResponse.json({ error: "Not onboarded" }, { status: 400 });
     }
 
-    const permissionError = await requireAnyStorePermission(
-        request,
-        session,
-        [PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE],
-        "temporary status",
-    );
-    if (permissionError) return permissionError;
-
     const rateLimitConfig = getRateLimitForFeature('DATA_WRITE');
     const userRateLimitHash = hashPublicRateLimitValue(userId || 'unknown');
     const storeRateLimitHash = hashPublicRateLimitValue(storeId);
     const rateLimitResult = await checkRateLimit({
         key: `temp-status:${userRateLimitHash}:${storeRateLimitHash}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
     if (!rateLimitResult.allowed) {
-        return NextResponse.json({
-            error: "Too many requests. Please try again later.",
-            resetAt: rateLimitResult.resetAt,
-        }, { status: 429 });
+        const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+        return NextResponse.json(
+            {
+                error: providerUnavailable
+                    ? "Temporary status is unavailable right now. Please try again in a minute."
+                    : "Too many requests. Please try again later.",
+                resetAt: rateLimitResult.resetAt,
+            },
+            {
+                headers: { 'Retry-After': String(Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000))) },
+                status: providerUnavailable ? 503 : 429,
+            },
+        );
     }
 
     const bodyResult = await readBoundedJsonBody(request, TEMP_STATUS_ACTION_MAX_BODY_BYTES, {
@@ -110,6 +112,14 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             { status: 400 }
         );
     }
+
+    const permissionError = await requireAnyStorePermission(
+        request,
+        session,
+        [PERMISSIONS.MANAGE_STORE, PERMISSIONS.MANAGE_PUBLIC_PRESENCE],
+        "temporary status",
+    );
+    if (permissionError) return permissionError;
 
     const db = admin.firestore();
     const storeRef = db.collection(DB_COLLECTIONS.STORES).doc(storeId);
@@ -126,18 +136,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
                 );
             }
 
-            // Default messages for predefined types
-            const defaultMessages: Record<string, string> = {
-                closed_today: 'Closed today',
-                opening_late: 'Opening late today',
-                closing_early: 'Closing early today',
-                kitchen_closed: 'Kitchen is closed',
-                special_menu: 'Special menu available today',
-            };
-
-            const finalMessage = type === 'custom'
-                ? (message || 'Temporary notice')
-                : (message || defaultMessages[type] || type);
+            const finalMessage = normalizeTempStatusMessage(type, message);
 
             await storeRef.update({
                 tempStatus: {
@@ -155,18 +154,29 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             });
         }
 
-        // Invalidate public menu/OBP cache so customers see the new status immediately.
-        revalidateTag(`menu-store-${storeId}`);
-        revalidateTag(`store-${storeId}`);
-        revalidateTag('client-stores');
-        revalidateTag('screen-data');
-        await touchDigitalScreenContentVersionForStoreServer(storeId, 'storeTempStatus');
-        await invalidateOwnerBusinessAssistantPacketCache({
-            tId: tenantId,
-            sId: storeId,
+        const postCommit = await runStorePublicTruthPostCommitEffects({
+            chunkSize: 1,
+            deps: {
+                invalidateAssistant: (targetStoreId, targetTenantId) => invalidateOwnerBusinessAssistantPacketCache({
+                    sId: targetStoreId,
+                    tId: targetTenantId,
+                }),
+                revalidate: (tag) => revalidateTag(tag),
+                touchScreen: (targetStoreId) => touchDigitalScreenContentVersionForStoreServer(targetStoreId, 'storeTempStatus'),
+            },
+            storeIds: [storeId],
+            tenantId,
         });
+        if (postCommit.effectsPending) {
+            logRuntimeFailure('store_temp_status_post_commit_failed', postCommit.firstError, {
+                ...getBoundedRuntimeStringContext('tenantId', tenantId),
+                ...getBoundedRuntimeStringContext('storeId', storeId),
+                action: validation.data.action,
+                failedEffectCount: postCommit.failedEffectCount,
+            });
+        }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({ effectsPending: postCommit.effectsPending, success: true });
     } catch (error) {
         logRuntimeFailure("store_temp_status_update_failed", error, {
             ...getBoundedRuntimeStringContext("tenantId", tenantId),

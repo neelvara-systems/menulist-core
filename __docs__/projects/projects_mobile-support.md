@@ -1,6 +1,6 @@
 # Projects — Mobile Support
 
-**Last Updated:** June 29, 2026
+**Last Updated:** July 16, 2026
 **Decision:** ✅ MOBILE SUPPORTED — Core operational features on mobile, advanced editor desktop-only
 
 **Source gate:** `npm run verify:menu-project-editor-boundary` checks mobile menu persistence, `MobileProjectSelectorSheet` project mutations, `BulkActionsSheet` handoff, `updateProjectWithoutLoader` acknowledgement guards, and the same public-cache path used by desktop editor writes. This is source/docs verification only; manual phone QA and browser/mobile editor QA remain required before release certification.
@@ -34,7 +34,7 @@
 | Share/QR                    | `MobileShareScreen`                         | Copy link, QR display                                        |
 | B2C theme customization     | `MobileDesignEditorScreen`                  | Home style, mood, layout, brand color, toggles, service note, acknowledged public-link copy, bounded output diagnostics |
 | Brand color picker          | `ColorPickerSheet`                          | 8 presets + custom hex                                       |
-| Publish design changes      | `MobileDesignEditorScreen` (Publish button) | Same `publishProject()` DAL plus bounded post-publish verification diagnostics |
+| Publish design changes      | `MobileDesignEditorScreen` (Publish button) | Same `publishProject()` DAL, loaded-`modifiedOn` stale-write rejection, and bounded non-blocking post-publish verification diagnostics |
 | Quick Start presets         | `MobileDesignEditorScreen` (mobile-only!)   | 3 one-tap preset bundles                                     |
 | Bulk availability/show-hide | `BulkActionsSheet`                          | Simplified Command Center                                    |
 

@@ -1,7 +1,7 @@
 import { LANGUAGE_CONSTANTS } from '@constant/languages';
 import GlobalLanguagesList from '@data/languages';
 import { useOfferingLabels } from '@hook/useOfferingLabels';
-import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
+import { getCanonicalProjectSourceLanguage, normalizeProjectLanguages } from '@lib/localization/languagePolicy';
 import { canAddLanguage, getAvailableLanguagesForMaster, getAvailableLanguagesForOutlet, getRemainingLanguageSlots } from '@lib/localization/languageResolver';
 import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
 import { StoreDataType } from '@type/platform/store';
@@ -13,6 +13,7 @@ import { LanguageType, Project } from '../types';
 const { Text } = Typography;
 
 interface LanguageSelectorModalProps {
+    canTranslate: boolean;
     projectData: Project;
     handleLanguageToggle: (updatedLanguages: string[]) => void;
     open?: boolean;
@@ -29,6 +30,7 @@ interface LanguageSelectorModalProps {
 }
 
 const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
+    canTranslate,
     projectData,
     handleLanguageToggle,
     open,
@@ -46,6 +48,15 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
     // State now holds the full Language object or null
     const [languageToRemove, setLanguageToRemove] = useState<LanguageType | null>(null);
     const [languageToAdd, setLanguageToAdd] = useState<LanguageType | null>(null);
+    const projectLanguages = useMemo(
+        () => normalizeProjectLanguages(projectData.languages),
+        [projectData.languages],
+    );
+    const sourceLanguageCode = getCanonicalProjectSourceLanguage(projectLanguages);
+    const requestedDefaultLanguageCode = String(projectData.defaultLanguage || '').trim().toLowerCase();
+    const defaultLanguageCode = projectLanguages.includes(requestedDefaultLanguageCode)
+        ? requestedDefaultLanguageCode
+        : sourceLanguageCode;
 
     // Calculate translation summary
     const translationSummary = useMemo(() => {
@@ -154,23 +165,37 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
     const handleConfirmRemove = () => {
         // Check if languageToRemove and its code exist
         if (!languageToRemove?.code) return;
-        const currentLanguages = projectData.languages || [];
+        const currentLanguages = projectLanguages;
+        if (languageToRemove.code === sourceLanguageCode) {
+            message.info('English is the source for translations and cannot be removed.');
+            return;
+        }
+        if (languageToRemove.code === defaultLanguageCode) {
+            message.info('Change the default customer language before removing it.');
+            return;
+        }
         if (currentLanguages.length <= 1) {
             message.warning('At least one language must remain selected');
             return;
         }
         // Filter using the code from the stored object
-        const updatedLanguages = currentLanguages.filter(langCode => langCode !== languageToRemove.code);
+        const updatedLanguages = normalizeProjectLanguages(
+            currentLanguages.filter(langCode => langCode !== languageToRemove.code),
+        );
         handleLanguageToggle(updatedLanguages);
         handleClose();
     };
 
     const handleConfirmAdd = () => {
+        if (!canTranslate) {
+            message.info('You do not have permission to add translated languages.');
+            return;
+        }
         // Check if languageToAdd and its code exist
         if (!languageToAdd?.code) return;
-        const currentLanguages = projectData.languages || [];
+        const currentLanguages = projectLanguages;
         // Add the code from the stored object
-        const updatedLanguages = [...currentLanguages, languageToAdd.code];
+        const updatedLanguages = normalizeProjectLanguages([...currentLanguages, languageToAdd.code]);
         handleLanguageToggle(updatedLanguages);
         // Don't close - let parent control via isTranslating prop
     };
@@ -271,11 +296,12 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                         <Flex vertical gap={16}>
                             {/* Display Current Languages with Quality Score */}
                             <Flex wrap="wrap" justify='center' align='center' gap={8}>
-                                {(projectData.languages || []).map((langCode, idx) => {
+                                {projectLanguages.map((langCode) => {
                                     const langData = GlobalLanguagesList.find(al => al.code === langCode);
                                     const isStagedForRemoval = languageToRemove?.code === langCode;
-                                    const isPrimaryLang = idx === 0;
-                                    const quality = !isPrimaryLang ? getTranslationQuality(langCode) : null;
+                                    const isSourceLanguage = langCode === sourceLanguageCode;
+                                    const isDefaultLanguage = langCode === defaultLanguageCode;
+                                    const quality = !isSourceLanguage ? getTranslationQuality(langCode) : null;
 
                                     // Determine color based on quality
                                     let tagColor = 'success';
@@ -284,11 +310,11 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                     else if (quality && quality.percentage < 100) tagColor = 'processing';
 
                                     // Tooltip content differs for primary vs secondary languages
-                                    const tooltipContent = isPrimaryLang ? (
+                                    const tooltipContent = isSourceLanguage ? (
                                         <>
-                                            <div style={{ fontWeight: 600 }}>🔒 Primary Language</div>
+                                            <div style={{ fontWeight: 600 }}>🔒 Translation source</div>
                                             <div style={{ fontSize: 11, opacity: 0.8 }}>{langData?.nativeName || langData?.name}</div>
-                                            <div style={{ fontSize: 11, opacity: 0.6 }}>Source for all translations</div>
+                                            <div style={{ fontSize: 11, opacity: 0.6 }}>English is the source for all translations</div>
                                         </>
                                     ) : isStagedForRemoval ? (
                                         'Click to confirm removal'
@@ -303,13 +329,17 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                     );
 
                                     return (
-                                        <Tooltip key={idx} title={tooltipContent}>
+                                        <Tooltip key={langCode} title={tooltipContent}>
                                             <Tag
-                                                color={isPrimaryLang ? 'blue' : tagColor}
-                                                icon={isPrimaryLang ? <LuLock size={12} /> : (isStagedForRemoval ? <LuTrash2 /> : <LuCheck />)}
+                                                color={isSourceLanguage ? 'blue' : tagColor}
+                                                icon={isSourceLanguage ? <LuLock size={12} /> : (isStagedForRemoval ? <LuTrash2 /> : <LuCheck />)}
                                                 onClick={() => {
-                                                    if (isPrimaryLang) {
-                                                        message.info('Primary language cannot be removed. It is the source for translations.');
+                                                    if (isSourceLanguage) {
+                                                        message.info('English is the source for translations and cannot be removed.');
+                                                        return;
+                                                    }
+                                                    if (isDefaultLanguage) {
+                                                        message.info('Change the default customer language before removing it.');
                                                         return;
                                                     }
                                                     handleStageRemove(langData);
@@ -319,7 +349,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                                     padding: '6px 12px',
                                                     borderRadius: '16px',
                                                     fontSize: 12,
-                                                    cursor: isPrimaryLang ? 'default' : 'pointer',
+                                                    cursor: isSourceLanguage ? 'default' : 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     gap: 4,
@@ -328,12 +358,17 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                                 }}
                                             >
                                                 {langData?.nativeName || langData?.name}
-                                                {isPrimaryLang && (
+                                                {isSourceLanguage && (
                                                     <span style={{ fontSize: 10, opacity: 0.8, marginLeft: 2 }}>
-                                                        Primary
+                                                        Source
                                                     </span>
                                                 )}
-                                                {!isPrimaryLang && quality && quality.percentage < 100 && (
+                                                {isDefaultLanguage && (
+                                                    <span style={{ fontSize: 10, opacity: 0.8, marginLeft: 2 }}>
+                                                        Default
+                                                    </span>
+                                                )}
+                                                {!isSourceLanguage && quality && quality.percentage < 100 && (
                                                     <span style={{ fontSize: 10, opacity: 0.7, marginLeft: 4 }}>
                                                         {quality.percentage}%
                                                     </span>
@@ -346,7 +381,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
 
                             {/* Language Dropdown with Native Names */}
                             {/* MAX_LANGUAGES Check: Disable dropdown when limit reached */}
-                            {!canAddLanguage(projectData.languages || []) ? (
+                            {!canAddLanguage(projectLanguages) ? (
                                 <div style={{
                                     background: token.colorInfoBg,
                                     border: `1px solid ${token.colorInfoBorder}`,
@@ -362,10 +397,11 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                             ) : (
                                 <>
                                     <Select
+                                        disabled={!canTranslate}
                                         style={{ width: '100%' }}
                                         placeholder={isMasterLinked
-                                            ? `🌍 Activate a language... (${getRemainingLanguageSlots(projectData.languages || [])} slots remaining)`
-                                            : `🌍 Add a new language... (${getRemainingLanguageSlots(projectData.languages || [])} slots remaining)`
+                                            ? `🌍 Activate a language... (${getRemainingLanguageSlots(projectLanguages)} slots remaining)`
+                                            : `🌍 Add a new language... (${getRemainingLanguageSlots(projectLanguages)} slots remaining)`
                                         }
                                         showSearch
                                         optionFilterProp="label"
@@ -379,7 +415,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                         }}
                                         options={(() => {
                                             // Multi-chain language governance: Filter languages based on store type
-                                            const currentProjectLanguages = projectData.languages || [];
+                                            const currentProjectLanguages = projectLanguages;
                                             let availableLanguages;
 
                                             if (isMasterLinked && masterProjectLanguages && masterProjectLanguages.length > 0) {
@@ -415,6 +451,11 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                                 }));
                                         })()}
                                     />
+                                    {!canTranslate && (
+                                        <Text type="secondary">
+                                            Translation access is required to add a language. Existing languages can still be reviewed or removed.
+                                        </Text>
+                                    )}
                                 </>
                             )}
 
@@ -487,6 +528,7 @@ const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                                 {languageToAdd && (
                                     <Button
                                         type="primary"
+                                        disabled={!canTranslate}
                                         icon={<LuPlusCircle />}
                                         onClick={handleConfirmAdd}
                                     >

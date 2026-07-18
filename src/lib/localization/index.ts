@@ -2,43 +2,60 @@
 
 import { DateTimeFormatOptions } from 'next-intl';
 import { cookies } from 'next/headers';
-import { APP_DATE_FORMAT_COOKIES_KEY, APP_LOCALE_COOKIES_KEY, APP_TIME_FORMAT_COOKIES_KEY, APP_TIMEZONE_COOKIES_KEY, defaultDateFormat, defaultLocale, defaultTimeFormat, Locale } from './config';
+import {
+    APP_DATE_FORMAT_COOKIES_KEY,
+    APP_LOCALE_COOKIES_KEY,
+    APP_TIME_FORMAT_COOKIES_KEY,
+    APP_TIMEZONE_COOKIES_KEY,
+    getDateFormatOptions,
+    getTimeFormatOptions,
+    Locale,
+    normalizeDateFormatPreference,
+    normalizeLocalePreference,
+    normalizeTimeFormatPreference,
+    normalizeTimeZone,
+} from './config';
 
-// In this example the locale is read from a cookie. You could alternatively
-// also read it from a database, backend service, or any other source.
+const PREFERENCE_COOKIE_OPTIONS = {
+    httpOnly: false,
+    maxAge: 60 * 60 * 24 * 365,
+    path: '/',
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+};
 
-export async function getUserLocale() {
-    return cookies().get(APP_LOCALE_COOKIES_KEY)?.value || defaultLocale;
+export async function getUserLocale(): Promise<Locale> {
+    return normalizeLocalePreference(cookies().get(APP_LOCALE_COOKIES_KEY)?.value) || 'en-US';
 }
 
 export async function setUserLocale(locale: Locale) {
-    cookies().set(APP_LOCALE_COOKIES_KEY, locale, { path: '/', maxAge: 60 * 60 * 24 * 365 });
+    const normalized = normalizeLocalePreference(locale);
+    if (!normalized) throw new Error('locale_preference_invalid');
+    cookies().set(APP_LOCALE_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function setUserTimezone(timeZone: string) {
-    cookies().set(APP_TIMEZONE_COOKIES_KEY, timeZone, { path: '/', maxAge: 60 * 60 * 24 * 365 });
+    const normalized = normalizeTimeZone(timeZone, '');
+    if (!normalized) throw new Error('timezone_preference_invalid');
+    cookies().set(APP_TIMEZONE_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function setUserDateFormat(format: string) {
-    cookies().set(APP_DATE_FORMAT_COOKIES_KEY, format, { path: '/', maxAge: 60 * 60 * 24 * 365 });
+    const normalized = normalizeDateFormatPreference(format);
+    if (normalized !== format) throw new Error('date_format_preference_invalid');
+    cookies().set(APP_DATE_FORMAT_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function setUserTimeFormat(format: string) {
-    cookies().set(APP_TIME_FORMAT_COOKIES_KEY, format, { path: '/', maxAge: 60 * 60 * 24 * 365 });
+    const normalized = normalizeTimeFormatPreference(format);
+    if (normalized !== format) throw new Error('time_format_preference_invalid');
+    cookies().set(APP_TIME_FORMAT_COOKIES_KEY, normalized, PREFERENCE_COOKIE_OPTIONS);
 }
 
 export async function getUserDateFormat(): Promise<DateTimeFormatOptions> {
-    const userFormatFromCookies = cookies().get(APP_DATE_FORMAT_COOKIES_KEY)?.value || '';
-    if (userFormatFromCookies) {
-        const [day, month, year] = userFormatFromCookies.split("|");
-        return { day, month, year } as DateTimeFormatOptions;
-    } else return defaultDateFormat;
+    return getDateFormatOptions(cookies().get(APP_DATE_FORMAT_COOKIES_KEY)?.value);
 }
 
 export async function getUserTimeFormat(): Promise<DateTimeFormatOptions> {
-    const userFormatFromCookies = cookies().get(APP_TIME_FORMAT_COOKIES_KEY)?.value || '';
-    if (userFormatFromCookies) {
-        const [hour, minute, hour12] = userFormatFromCookies.split("|");
-        return { hour, minute, hour12: hour12 === 'true' } as DateTimeFormatOptions;
-    } else return defaultTimeFormat;
+    return getTimeFormatOptions(cookies().get(APP_TIME_FORMAT_COOKIES_KEY)?.value);
 }

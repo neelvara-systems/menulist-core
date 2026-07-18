@@ -12,6 +12,7 @@
 | Upload 16MB background | Rejected by the source safety cap. |
 | Upload icon-sized valid item image | Accepted and prepared without asking the owner to find another image. |
 | Upload corrupted item image | Rejected with clear message. |
+| Direct SDK writes a GIF to `media/{profile}/...` | Rejected by Storage rules even for an authenticated same-store owner. |
 | Upload logo | Prepared with square output and gentler quality. |
 | Upload digital screen slide | Accepted only as widescreen and prepared to the screen slide budget. |
 | Upload small digital screen slide | Accepted when it is a valid image and prepared into the screen-slide frame. |
@@ -20,10 +21,15 @@
 | OBP cover or gallery upload fails after preparation | Prepared preview stays visible with Retry; store field is not updated until the retry returns a Firebase URL. |
 | Remove failed OBP replacement draft | Failed draft is discarded and the previously saved public image remains intact. |
 | Upload any profile image | Owner preview uses the prepared primary image, not the raw source file. |
+| Save a prepared image with multiple local variants | Only the selected persisted variant is uploaded; unused sibling variants cause no Storage writes. |
 | Tap Fit in Adjust preview | Image recenters and zooms out until the full source fits inside the profile frame. |
 | Pinch inside mobile Adjust preview | Two-finger pinch changes zoom between Fit-to-frame and 3x, matching the slider bounds. |
 | Upload menu background | Owner sees the prepared image in a customer menu frame with overlay/text treatment. |
 | Upload or generate business cover | Owner sees the prepared image in an Official Business Page-style frame. |
+| Browser retries the same prepared content/path | Existing immutable object URL is reused; bytes are not overwritten. |
+| Batch worker or prompt-cache copy retries the same deterministic path | Generation-zero create conflict verifies size, MIME and identity metadata, then reuses the existing Firebase download token. |
+| Batch project save commits but job acknowledgement fails, then owner discards | Already committed media remains available; browser review does not delete Storage objects. |
+| Terminal batch job reaches metadata retention | `itemsList` is pruned after seven days and the row after 30 days; public media is retained without global exclusive-reference proof. |
 
 ## Public Output
 

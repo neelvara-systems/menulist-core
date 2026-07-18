@@ -35,7 +35,7 @@ This feature belongs under `/platform/founder-monitor`, not inside:
 
 ## Users
 
-Only MenuList platform operators with `platformRole === PLATFORM`.
+Only MenuList platform operators with signed `platformRole === PLATFORM` and current persisted role/lifecycle/identity/revocation authority after a fail-closed read limit.
 
 ## Non-Goals
 

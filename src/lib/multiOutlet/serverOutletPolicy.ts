@@ -1,5 +1,6 @@
 import { DB_COLLECTIONS } from "@constant/database";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
 import {
     normalizeMultiOutletNumericDocumentId,
     normalizeMultiOutletProjectId,
@@ -110,7 +111,7 @@ export async function getLinkedOutletPolicyBlockReason({
     const projectSnap = await db
         .doc(`${DB_COLLECTIONS.PROJECTS}/${tenantScope.documentId}/${storeScope.documentId}/${projectScope.projectId}`)
         .get();
-    if (!projectSnap.exists) {
+    if (!projectSnap.exists || projectSnap.data()?.deleted === true) {
         return "Project not found";
     }
 
@@ -126,7 +127,14 @@ export async function getLinkedOutletPolicyBlockReason({
 
     const masterStoreSnap = await db.doc(`${DB_COLLECTIONS.STORES}/${masterProjectScope.storeDocumentId}`).get();
     const masterTenantScope = normalizeMultiOutletNumericDocumentId(masterStoreSnap.data()?.tenantId);
-    if (!masterTenantScope || masterTenantScope.numericId !== tenantScope.numericId) {
+    if (
+        !masterTenantScope
+        || masterTenantScope.numericId !== tenantScope.numericId
+        || masterStoreSnap.data()?.isMaster !== true
+        || masterStoreSnap.data()?.active === false
+        || masterStoreSnap.data()?.deleted === true
+        || isPlatformEntityBlocked(masterStoreSnap.data())
+    ) {
         return "Store access is required";
     }
     const policy: OutletPolicy = {

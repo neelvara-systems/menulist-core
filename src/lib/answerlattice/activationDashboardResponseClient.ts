@@ -65,6 +65,11 @@ const isActivationSummary = (value: unknown): value is AnswerlatticeActivationSu
         && isRecord(value.workspace)
         && isRecord(value.content)
         && isRecord(value.governance)
+        && isRecord(value.answerTests)
+        && isFiniteNumber(value.answerTests.activeCaseCount)
+        && isFiniteNumber(value.answerTests.firstTenCount)
+        && isFiniteNumber(value.answerTests.latestCriticalFailureCount)
+        && typeof value.answerTests.latestProofStale === 'boolean'
         && isRecord(value.launchProof)
         && Array.isArray(value.steps)
         && isRecord(value.readModel)

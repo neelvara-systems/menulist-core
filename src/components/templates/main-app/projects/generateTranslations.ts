@@ -2,7 +2,7 @@ import { AI_SERVICE_ROUTE_REQUEST_OPTIONS, readAiServiceResponseJson } from "@se
 import { syncBalanceFromResponse } from "@services/ai/balanceSync";
 import { AICapacityError, checkCapacityResponse } from "@services/ai/capacityError";
 import { TranslationAPIParams } from './types';
-import { normalizeTranslationMap } from '@lib/ai/translationOutput';
+import { normalizeTranslationCoverageSummary, normalizeTranslationMap } from '@lib/ai/translationOutput';
 import {
     getBoundedTranslationStringContext,
     getTranslationLanguageLogContext,
@@ -15,6 +15,7 @@ const MENU_TRANSLATION_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
 type MenuTranslationApiResponse = {
     data?: unknown;
     remainingBalance?: unknown;
+    translationCoverage?: unknown;
     transaction?: unknown;
 };
 
@@ -60,6 +61,30 @@ async function getTranslations({ inputJson, targetLang, sourceLang, action, proj
             parseFailureCode: 'menu_translation_response_parse_failed',
         });
         syncBalanceFromResponse(responseJson);
+        const coverage = normalizeTranslationCoverageSummary(responseJson.translationCoverage, {
+            inputKeyCount: translationKeyCount,
+            targetLanguageCount: 1,
+        });
+        if (responseJson.translationCoverage !== undefined && !coverage) {
+            logTranslationFailure('menu_translation_coverage_summary_invalid', undefined, {
+                ...getTranslationScopeLogContext(projectId, fileId),
+                ...getTranslationLanguageLogContext(targetLang?.code, sourceLang?.code),
+                ...getBoundedTranslationStringContext('action', normalizedAction),
+                translationKeyCount,
+            });
+            return null;
+        }
+        if (coverage?.hasPartialCoverage) {
+            logTranslationFailure('menu_translation_partial_response_rejected', undefined, {
+                ...getTranslationScopeLogContext(projectId, fileId),
+                ...getTranslationLanguageLogContext(targetLang?.code, sourceLang?.code),
+                ...getBoundedTranslationStringContext('action', normalizedAction),
+                fallbackKeyCount: coverage.fallbackKeyCount,
+                translatedKeyCount: coverage.translatedKeyCount,
+                translationKeyCount,
+            });
+            return null;
+        }
         const { data } = responseJson;
         if (data && typeof data === 'object' && !Array.isArray(data) && 'translations' in data) {
             const translations = (data as { translations?: unknown }).translations;

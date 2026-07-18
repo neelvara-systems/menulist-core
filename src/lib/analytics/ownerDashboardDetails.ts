@@ -47,7 +47,7 @@ export type OwnerDashboardTranslator = (key: string, values?: DashboardTranslati
 const MENU_ACTION_LABEL_KEYS: Record<keyof MenuActionBreakdown, string> = {
     call: 'Call',
     whatsapp: 'WhatsApp',
-    directions: 'Directions',
+    directions: 'Get directions',
     reserve: 'Reserve',
     order: 'Order',
 };
@@ -108,7 +108,7 @@ function buildMetricRows(metrics: OwnerDashboardMetrics, t?: OwnerDashboardTrans
         { key: 'menu-sessions', label: dashboardLabel(t, 'details.metrics.menuSessions', 'Menu sessions'), value: formatCount(metrics.menuSessions) },
         {
             key: 'engaged-sessions',
-            label: dashboardLabel(t, 'details.metrics.engagedSessions', 'Engaged sessions'),
+            label: dashboardLabel(t, 'details.metrics.engagedSessions', 'Sessions with activity'),
             value: formatCount(metrics.engagedSessions),
             detail: dashboardLabel(t, 'details.metricDetails.ofMenuSessions', `${formatRate(metrics.engagedSessionRate)} of menu sessions`, {
                 rate: formatRate(metrics.engagedSessionRate),
@@ -216,22 +216,22 @@ function buildOpenHoursRows(
     return [
         {
             key: 'open-hours-open',
-            label: dashboardLabel(t, 'details.openHours.open', 'Actions while open'),
+            label: dashboardLabel(t, 'details.openHours.open', 'Actions when open'),
             value: formatCount(breakdown.open),
         },
         {
             key: 'open-hours-closed',
-            label: dashboardLabel(t, 'details.openHours.closed', 'Actions while closed'),
+            label: dashboardLabel(t, 'details.openHours.closed', 'Actions when closed'),
             value: formatCount(breakdown.closed),
             detail: Number(breakdown.closed || 0) > 0
-                ? dashboardLabel(t, 'details.openHours.closedShare', `${breakdown.closedShare || 0}% of timed actions`, {
+                ? dashboardLabel(t, 'details.openHours.closedShare', `${breakdown.closedShare || 0}% of all recorded actions happened while closed`, {
                     rate: breakdown.closedShare || 0,
                 })
                 : undefined,
         },
         {
             key: 'open-hours-unknown',
-            label: dashboardLabel(t, 'details.openHours.unknown', 'Actions with hours hidden'),
+            label: dashboardLabel(t, 'details.openHours.unknown', 'Actions when hours status was unavailable'),
             value: formatCount(breakdown.unknown),
         },
     ].filter((row) => Number(row.value.replace(/,/g, '')) > 0);
@@ -391,8 +391,8 @@ export function buildMenuAnalyticsDetailSections(
 
     pushSection(sections, {
         key: 'open-hours-actions',
-        title: dashboardLabel(t, 'details.sections.openHoursActions', 'Open/Closed Action Timing'),
-        description: dashboardLabel(t, 'details.descriptions.openHoursActions', 'Final customer actions grouped by the business hours state customers saw.'),
+        title: dashboardLabel(t, 'details.sections.openHoursActions', 'Actions by business hours'),
+        description: dashboardLabel(t, 'details.descriptions.openHoursActions', 'Final customer actions grouped by whether the business was open, closed, or its hours status was unavailable when the customer visited.'),
         rows: buildOpenHoursRows(data.openHoursActionBreakdown, t),
     });
 

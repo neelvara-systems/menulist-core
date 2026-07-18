@@ -5,9 +5,11 @@ import { assertProjectUpdateSucceeded, updateProjectMetadata } from '@database/p
 import { getOwnerLabels } from '@config/businessLabels';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
 import { getMissingProjectPublicContentGaps, getProjectDefaultLanguage } from '@lib/localization/projectContent';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
 import { applyMissingCategoryIconsToProject, countMissingCategoryIcons } from '@lib/menu/categoryIconRepair';
 import { hasMeaningfulDescriptionsForLanguages } from '@lib/menu/descriptionQuality';
 import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { hasPublicItemDisplayPrice } from '@lib/pricing/publicItemPricePresentation';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { AICapacityError } from '@services/ai/capacityError';
 import translateProjectPublicContent from '@services/ai/projectPublicContent/translateProjectPublicContent';
@@ -35,7 +37,12 @@ import {
 import type { Project, ProjectSummaryData } from '../../templates/main-app/projects/types';
 import type { PricingConfig, PricingMethod } from '../../templates/main-app/projects/types/commandCenter.types';
 import { Button, Card, Checkbox, Collapse, Dialog, Empty, Flex, Input, NavBar, Popover, Popup, SearchBar, Select, Tag, Text, Toast } from '../antd';
-import { getProjectLanguageIssues, repairLanguageProject } from '../../templates/main-app/projects/editorView/languageRepair.shared';
+import {
+    getLanguageRepairFailureCause,
+    getLanguageRepairPartialProject,
+    getProjectLanguageIssues,
+    repairLanguageProject,
+} from '../../templates/main-app/projects/editorView/languageRepair.shared';
 import { MENU_SHEET_CONTAINER_STYLE, MENU_SHEET_BODY_STYLE } from './menuSheetLayout';
 
 interface BulkActionsSheetProps {
@@ -47,8 +54,10 @@ interface BulkActionsSheetProps {
     initialAction?: BulkAction;
     initialSelectedIds?: string[];
     itemStates?: Record<string, InheritanceState>;
+    categoryStates?: Record<string, InheritanceState>;
     isMasterLinked?: boolean;
     allowInheritedDescriptionOverride?: boolean;
+    canGenerateDescriptions?: boolean;
 }
 
 type BulkAction = 'availability' | 'showHide' | 'pricing' | 'moveCategory' | 'aiRepair' | null;
@@ -65,7 +74,7 @@ type ItemEntry = {
     available: boolean;
     active: boolean;
     fileUid: string;
-    attributes?: { id: string; name: string; price: string }[];
+    attributes?: { active?: boolean; id: string; name: string; price: string }[];
 };
 
 const STATUS_COLORS = {
@@ -89,8 +98,10 @@ export default function BulkActionsSheet({
     initialAction = null,
     initialSelectedIds = [],
     itemStates,
+    categoryStates,
     isMasterLinked = false,
     allowInheritedDescriptionOverride = false,
+    canGenerateDescriptions = false,
 }: BulkActionsSheetProps) {
     const t = useTranslations('MobileMenu');
     const { token } = theme.useToken();
@@ -154,7 +165,7 @@ export default function BulkActionsSheet({
                 result.push({
                     id: item.id,
                     name: item.name?.[activeLang] || item.name?.en || 'Untitled',
-                    price: item.price || '',
+                    price: String(item.price ?? ''),
                     description: item.description?.[activeLang] || item.description?.en || '',
                     missingDescription: hasMissingDescriptionInLanguages(item, activeProjectLanguages),
                     image: item.images?.[0]?.url || '',
@@ -164,9 +175,10 @@ export default function BulkActionsSheet({
                     active: (item.active !== false) && (catActiveMap[item.category] !== false),
                     fileUid: file.uid,
                     attributes: item.attributes?.map((attr: any) => ({
+                        active: attr.active !== false,
                         id: attr.id,
                         name: attr.name?.[activeLang] || attr.name?.en || 'Variant',
-                        price: attr.price || '',
+                        price: String(attr.price ?? ''),
                     })),
                 });
             });
@@ -339,26 +351,31 @@ export default function BulkActionsSheet({
     };
 
     const hasMissingPrice = (item: ItemEntry) => {
-        const price = Number(String(item.price || '').replace(/[^0-9.-]/g, ''));
-        return !(Number.isFinite(price) && price > 0) && !item.attributes?.length;
+        return !hasPublicItemDisplayPrice(item);
     };
 
     const hasMissingDescription = (item: ItemEntry) => item.missingDescription;
     const hasMissingImage = (item: ItemEntry) => !(item.image?.trim());
 
     const languageIssues = useMemo(() => {
-        if (!workingProject) return [];
-        const sourceLanguageCode = getProjectDefaultLanguage(workingProject);
-        return getProjectLanguageIssues(workingProject, sourceLanguageCode);
-    }, [workingProject]);
+        if (!workingProject || !canGenerateDescriptions) return [];
+        const sourceLanguageCode = getCanonicalProjectSourceLanguage(workingProject.languages);
+        return getProjectLanguageIssues(
+            workingProject,
+            sourceLanguageCode,
+            isMasterLinked ? { categoryStates, itemStates } : undefined,
+        );
+    }, [canGenerateDescriptions, categoryStates, isMasterLinked, itemStates, workingProject]);
 
     const languagesNeedingRepair = useMemo(
         () => languageIssues.filter((issue) => issue.total > 0),
         [languageIssues]
     );
     const projectPublicContentGaps = useMemo(
-        () => workingProject ? getMissingProjectPublicContentGaps(workingProject, workingProject.languages) : [],
-        [workingProject]
+        () => workingProject && canGenerateDescriptions
+            ? getMissingProjectPublicContentGaps(workingProject, workingProject.languages)
+            : [],
+        [canGenerateDescriptions, workingProject]
     );
     const projectPublicContentLanguagesNeedingRepair = useMemo(
         () => Array.from(new Set(projectPublicContentGaps.map((gap) => gap.languageCode))),
@@ -369,6 +386,9 @@ export default function BulkActionsSheet({
             ? { itemStates }
             : undefined
     ), [allowInheritedDescriptionOverride, isMasterLinked, itemStates]);
+    const translationGovernance = useMemo(() => (
+        isMasterLinked ? { categoryStates, itemStates } : undefined
+    ), [categoryStates, isMasterLinked, itemStates]);
 
     const descriptionStats = useMemo(() => {
         if (!workingProject) {
@@ -388,14 +408,16 @@ export default function BulkActionsSheet({
         const categoryIconsToRepair = countMissingCategoryIcons(workingProject);
         return {
             categoryIconsToRepair,
-            descriptionsToGenerate: descriptionStats.itemsWithoutDescriptions,
+            descriptionsToGenerate: canGenerateDescriptions
+                ? descriptionStats.itemsWithoutDescriptions
+                : 0,
             languageIssueCount: languagesNeedingRepair.reduce((total, issue) => total + issue.total, 0),
             languagesToRepair: languagesNeedingRepair.length,
             missingImages: reviewableItems.filter((item) => !item.image).length,
             missingPrices: reviewableItems.filter(hasMissingPrice).length,
             projectContentIssueCount: projectPublicContentGaps.length,
         };
-    }, [descriptionStats.itemsWithoutDescriptions, items, languagesNeedingRepair, projectPublicContentGaps.length, projectPublicContentLanguagesNeedingRepair.length, workingProject]);
+    }, [canGenerateDescriptions, descriptionStats.itemsWithoutDescriptions, items, languagesNeedingRepair, projectPublicContentGaps.length, projectPublicContentLanguagesNeedingRepair.length, workingProject]);
     const hasLatinScriptRepairLanguages = useMemo(() => (
         languagesNeedingRepair.some((issue) => !DISTINCT_SCRIPT_LANGUAGE_CODES.has(issue.code))
     ), [languagesNeedingRepair]);
@@ -426,11 +448,12 @@ export default function BulkActionsSheet({
         const runAiRepair = async () => {
             setApplying(true);
             setApplyDetail(t('repairMenuAiPreparing'));
+            const previousProject = removeObjRef(workingProject);
+            let updated = removeObjRef(workingProject);
+            let completedLanguageRepairs = 0;
             try {
-                const previousProject = removeObjRef(workingProject);
-                let updated = removeObjRef(workingProject);
                 const projectMetadataTranslationUpdate: Partial<ProjectSummaryData> = {};
-                const sourceLanguageCode = getProjectDefaultLanguage(updated);
+                const sourceLanguageCode = getCanonicalProjectSourceLanguage(updated.languages);
                 let repairedCategoryIconCount = 0;
 
                 if (aiRepairSummary.categoryIconsToRepair > 0) {
@@ -446,10 +469,16 @@ export default function BulkActionsSheet({
 
                 for (const issue of languagesNeedingRepair) {
                     setApplyDetail(t('repairMenuAiLanguageStep', { code: issue.code.toUpperCase() }));
-                    updated = await repairLanguageProject(updated, issue.code, sourceLanguageCode);
+                    updated = await repairLanguageProject(
+                        updated,
+                        issue.code,
+                        sourceLanguageCode,
+                        translationGovernance,
+                    );
+                    completedLanguageRepairs += 1;
                 }
 
-                if (descriptionStats.itemsWithoutDescriptions > 0) {
+                if (aiRepairSummary.descriptionsToGenerate > 0) {
                     setApplyDetail(t('repairMenuAiDescriptionsStep'));
                     updated = await runDescriptionGeneration({
                         action: AI_ACTIONS_TYPES.ADD_DESCRIPTION,
@@ -531,8 +560,21 @@ export default function BulkActionsSheet({
                 });
                 onClose();
             } catch (error) {
-                if (error instanceof AICapacityError) {
-                    Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
+                const partialProject = getLanguageRepairPartialProject(error);
+                if (partialProject) updated = partialProject;
+                if (partialProject || completedLanguageRepairs > 0) {
+                    setWorkingProject(updated);
+                    onApply(updated, {
+                        previousProject,
+                        successMessage: 'Repair stopped. Completed translations were saved.',
+                        updatedCount: Math.max(completedLanguageRepairs, partialProject ? 1 : 0),
+                    });
+                    Toast.show({ content: 'Repair stopped. Completed translations were saved.', duration: 2400 });
+                    onClose();
+                    return;
+                }
+                if (getLanguageRepairFailureCause(error) instanceof AICapacityError) {
+                    Toast.show({ content: t('enhancementPackRequired'), duration: 2200 });
                 } else {
                     Toast.show({ content: t('repairMenuAiFailed'), duration: 2200 });
                 }

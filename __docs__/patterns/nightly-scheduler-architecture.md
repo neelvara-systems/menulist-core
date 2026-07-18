@@ -1,7 +1,7 @@
 # Nightly Scheduler Architecture
 
 > **Status:** PRODUCTION
-> **Last Updated:** 2026-05-01
+> **Last Updated:** 2026-07-17
 > **Entry Point:** `functions/src/decisionBlocksScoring.ts`
 > **Schedule:** Every hour at :30 (timezone-aware, filters by store `timeZone` + `businessDayEndTime`; `schedulerHour` is fallback only)
 
@@ -20,7 +20,8 @@ Cloud Scheduler (every hour at :30)
   └── computeDecisionBlocksScores (CF)
       ├── Read storesSummary (1 read)
       ├── Filter: only stores whose local business-day settlement window is due
-      ├── Skip if 0 stores match (early exit — saves compute)
+      ├── Acquire daily platform-task lease
+      ├── Skip if 0 stores match and daily platform work is already complete
       │
       ├── PER-STORE TASKS (iterate matching stores):
       │   ├── Read platformSummary/projects_{sId} active-project index
@@ -32,16 +33,15 @@ Cloud Scheduler (every hour at :30)
       │   ├── Owner dashboard read-model writes
       │   └── Infrastructure enrichment (piggybacked)
       │
-      ├── PLATFORM TASKS (once per run):
+      ├── PLATFORM TASKS (one successful suite per UTC day):
       │   ├── Authority Maturation analysis
       │   ├── Menu Drift Metrics (MOL v0)
       │   ├── Guest Feedback Retention
-      │   ├── Subscription Reconciliation
       │   ├── Lifecycle Messaging
-      │   ├── Special Menu Switching
       │   ├── Infrastructure Compounding (3 sub-tasks)
-      │   ├── Reseller License Expiry
-      │   └── AI Insights (feedback intelligence, KB quality, weekly narrative, health signals)
+      │   └── Complete or fail the transactional daily lease
+      │
+      ├── Due-store Special Menu marker recovery
       │
       ├── Persist run log (schedulerRunLogs collection)
       └── Telegram Dead Man's Switch alert
@@ -51,10 +51,10 @@ Cloud Scheduler (every hour at :30)
 
 | Benefit                       | Impact                                             |
 | ----------------------------- | -------------------------------------------------- |
-| **1 cold start** instead of 3 | Saves ~$0.30/night (~$9/month)                     |
+| **Consolidated store-EOD entry** | Avoids duplicate store scans and scheduler fanout |
 | **1 run log**                 | Complete visibility in scheduler dashboard         |
 | **1 telegram alert**          | Solo founder knows if ANYTHING failed              |
-| **Shared store iteration**    | Stores read once, all tasks reuse                  |
+| **Shared store iteration**    | Due stores and active project inputs are reused    |
 | **Consistent error handling** | All tasks use same try/catch + taskResults pattern |
 
 ### Maintenance Scheduler Boundary
@@ -226,45 +226,47 @@ When creating an outlet store:
 | Dashboard read models  | Always                          | 1 write per settled surface/project with data | Writes `{tId}_{sId}_{projectId}_dashboard_summary` for low-read owner dashboards |
 | Store enrichment        | `ENABLE_STORE_TRUTH_CONFIDENCE` | 0 extra reads      | Piggybacked on project reads               |
 
-### Platform Tasks (run once per CF invocation)
+### Platform-Wide Daily Tasks
 
-| Task                        | Feature Flag                         | Cost              | Description                                                      |
-| --------------------------- | ------------------------------------ | ----------------- | ---------------------------------------------------------------- |
-| Authority Maturation        | Always                               | ~100 reads        | Phase 1/2/3 progression analysis                                 |
-| Menu Drift Metrics          | Always                               | ~50 reads         | 30-day rolling drift counters                                    |
-| Guest Feedback Retention    | `ENABLE_GUEST_FEEDBACK_RETENTION`    | Variable          | Delete expired feedback (90-day TTL)                             |
-| Subscription Reconciliation | `ENABLE_SUBSCRIPTION_RECONCILIATION` | ~50 reads         | Razorpay ↔ Firestore sync                                        |
-| Lifecycle Messaging         | Always                               | ~20 reads         | Renewal reminders + suspension warnings                          |
-| Special Menu Switching      | `ENABLE_SPECIAL_MENU_SWITCHING`      | ~10 reads/store   | Activate/deactivate scheduled menus                              |
-| Extraction Learning         | `ENABLE_EXTRACTION_LEARNING`         | ~30 reads         | Owner correction aggregation                                     |
-| Store Truth Confidence      | `ENABLE_STORE_TRUTH_CONFIDENCE`      | ~50 reads         | Composite reliability score                                      |
-| Staleness Check             | `ENABLE_STALENESS_CHECK`             | ~20 reads         | 90-day reconfirmation detection                                  |
-| Reseller License Expiry     | `ENABLE_RESELLER_DASHBOARD`          | ~10 reads         | Manual license auto-expiry                                       |
-| Feedback Intelligence       | Always                               | Variable          | AI feedback analysis                                             |
-| KB Quality                  | Always                               | Variable          | Article quality scoring                                          |
-| Weekly Narrative            | Always (Sundays only)                | Variable          | AI weekly digest                                                 |
-| Health Signals              | Always (Sundays only)                | Variable          | Trust/Loyalty/Risk computation                                   |
+The scheduler still wakes hourly so each store can settle after its own local
+business day. Platform-wide scans do not follow that hourly cadence. A
+transactional `_system/decisionBlocksPlatformDaily` lease admits at most one
+successful suite per UTC day, permits one concurrent owner, and retries a failed
+suite only after the bounded retry delay. The daily suite can run even when no
+store is due in that hour; store-local settlement remains independent.
+
+| Task | Feature Flag | Cost shape | Description |
+| --- | --- | --- | --- |
+| Authority Maturation | Always | one bounded daily collection pass | Phase 1/2/3 progression analysis |
+| Menu Drift Metrics | Always | bounded daily store/project/change-log pages | 30-day rolling drift counters |
+| Guest Feedback Retention | `ENABLE_GUEST_FEEDBACK_RETENTION` | bounded expired-row query/deletes | 90-day privacy retention |
+| Lifecycle Messaging | Always | bounded subscription/message queries | renewal reminders, suspension warnings, retry, digest |
+| Special Menu Recovery | `ENABLE_SPECIAL_MENU_SWITCHING` | once for each due-store cohort | fallback marker repair; precise transitions use the two-minute maintenance task |
+| Extraction Learning | `ENABLE_EXTRACTION_LEARNING` | one bounded daily platform pass | owner correction aggregation |
+| Store Truth Confidence | `ENABLE_STORE_TRUTH_CONFIDENCE` | one bounded daily platform pass | composite reliability score |
+| Staleness Check | `ENABLE_STALENESS_CHECK` | one bounded daily platform pass | 90-day reconfirmation detection |
+
+Subscription reconciliation, reseller expiry, retention cleanup, precise
+special-menu transitions, and other operational tasks use
+`menulistMaintenanceScheduler`, where each task has its own cadence and lease.
+Answerlattice intelligence runs only in its isolated Functions project.
 
 ---
 
 ## 4. Cost Analysis
 
-### Per Invocation (hourly)
+### Invocation Shape
 
-| Scenario                         | Stores Matched | Estimated Cost                          |
-| -------------------------------- | -------------- | --------------------------------------- |
-| No stores for this hour          | 0              | ~$0.001 (1 read + cold start amortized) |
-| 10 stores (small deployment)     | 10             | ~$0.05                                  |
-| 100 stores (medium)              | 100            | ~$0.50                                  |
-| 1000 stores (large, distributed) | ~42/hour avg   | ~$0.20/hour                             |
+| Scenario | Store-local work | Platform-wide work |
+| --- | --- | --- |
+| No store due; daily suite already complete | one summary/lease admission path, then exit | none |
+| Stores due; daily suite already complete | only those stores | none |
+| No store due; daily suite first eligible run | none | one daily suite |
+| Stores due; daily suite first eligible run | only those stores | one daily suite |
 
-### Monthly Total
-
-| Scale                   | Monthly Cost |
-| ----------------------- | ------------ |
-| 10 stores (all same TZ) | ~$1.50       |
-| 100 stores (mixed TZ)   | ~$15         |
-| 1000 stores (global)    | ~$150        |
+Do not put currency estimates in this architecture guide. Real spend comes from
+Cloud Billing export; operation counts and provider calls come from Cost
+Posture and scheduler run logs.
 
 ### Cost Optimizations Applied
 
@@ -284,6 +286,7 @@ When creating an outlet store:
 14. **Scheduler-cycle local cache** — Owner-side settled analytics cache invalidates after the next expected store-local scheduler completion window, not at midnight
 15. **Idempotent lifetime rollups** — Summary docs are checked before lifetime increments, preventing duplicate scheduled/manual runs from inflating totals
 16. **Monthly TTL cleanup** — Daily analytics cleanup runs during monthly settlement instead of every night for every project
+17. **Platform daily lease** — Global scans run once per UTC day instead of once for every populated timezone hour; a failed suite waits before a bounded retry. Due-store Special Menu marker recovery stays outside this lease because it must follow every timezone cohort.
 
 ---
 
@@ -308,10 +311,6 @@ When creating an outlet store:
 
 | File                                                  | Task                        |
 | ----------------------------------------------------- | --------------------------- |
-| `functions/src/analytics/feedbackIntelligence.ts`     | Feedback Intelligence       |
-| `functions/src/analytics/kbQuality.ts`                | KB Quality Analysis         |
-| `functions/src/analytics/weeklyNarrative.ts`          | Weekly Narrative            |
-| `functions/src/analytics/healthSignalsComputation.ts` | Health Signals              |
 | `functions/src/analytics/authorityMaturation.ts`      | Authority Maturation        |
 | `functions/src/analytics/menuDriftMetrics.ts`         | Menu Drift Metrics          |
 | `functions/src/analytics/guestFeedbackRetention.ts`   | Guest Feedback Retention    |
@@ -319,7 +318,6 @@ When creating an outlet store:
 | `functions/src/analytics/storeTruthConfidence.ts`     | Store Truth Confidence      |
 | `functions/src/analytics/stalenessCheck.ts`           | Periodic Staleness Check    |
 | `functions/src/analytics/obpAnalyticsAggregation.ts`  | OBP Analytics               |
-| `functions/src/billing/reconcileSubscriptions.ts`     | Subscription Reconciliation |
 | `functions/src/messaging/messagingEngine.ts`          | Lifecycle Messaging         |
 | `functions/src/schedulers/menuJobCleanup.ts`          | Maintenance extraction cleanup tasks |
 | `functions/src/schedulers/messagingSessionCleanup.ts` | Maintenance messaging session cleanup |
@@ -335,48 +333,31 @@ When creating an outlet store:
 
 ## 6. Adding a New Nightly Task
 
-1. Create task logic in `functions/src/analytics/` or relevant folder
-2. Export a single `async function processXxxForAllStores(): Promise<Result>`
-3. Add feature flag in `functions/src/constants/features.ts` (default: `false`)
-4. Add task block in `decisionBlocksScoring.ts` (before the run log section):
-
-```typescript
-if (FUNCTION_FLAGS.ENABLE_YOUR_TASK) {
-  try {
-    const taskStart = Date.now();
-    logger.info("=== Starting Your Task ===");
-    const { processYourTask } = await import("./analytics/yourTask");
-    const result = await processYourTask();
-    logger.info("Your Task completed", result);
-    taskResults.push({
-      name: "your_task",
-      status: "success",
-      durationMs: Date.now() - taskStart,
-      details: result,
-    });
-  } catch (error: any) {
-    logger.error("Your Task failed:", error.message);
-    taskResults.push({
-      name: "your_task",
-      status: "failed",
-      error: error.message,
-    });
-  }
-} else {
-  taskResults.push({ name: "your_task", status: "skipped" });
-}
-```
-
-5. Run `npm run verify:functions-deploy-preflight`, then deploy only the affected MenuList Functions to `menulist-qa` through `__docs__/production-readiness/external-certification-runbook.md` Gate 1. Production deploy requires QA evidence and explicit production deploy approval.
+1. Decide the cadence from behavior, not convenience:
+   - store-EOD analytics/intelligence belongs inside the store-local loop;
+   - platform-wide analytics/intelligence belongs behind the existing platform
+     daily lease and in `PLATFORM_DAILY_TASK_NAMES`;
+   - operational cleanup, retry, provider, or maintenance work belongs in
+     `menulistMaintenanceScheduler` with its own cadence and lease.
+2. Create one bounded task function and document reads, writes, deletes,
+   provider calls, maximum pages, retry behavior, and failure observability.
+3. Add a Functions flag defaulting off when the task is a new capability.
+4. Use stable failure codes and bounded diagnostic context. Never persist or log
+   raw provider or exception messages.
+5. Add source and emulator regression coverage.
+6. Run `npm run verify:functions-deploy-preflight`, then deploy only affected
+   MenuList Functions to `menulist-qa` through
+   `__docs__/production-readiness/external-certification-runbook.md` Gate 1.
+   Production requires QA evidence and explicit approval.
 
 **Rules:**
 
-- Always use dynamic import (`await import()`) to avoid cold start bloat
+- Prefer dynamic import (`await import()`) for optional task modules
 - Always wrap in try/catch — one task failure must NOT block others
 - Always push to `taskResults` (success, failed, or skipped)
-- Always gate with feature flag (default OFF)
-- For MenuList store-EOD tasks, add the task here instead of creating a new scheduled CF
-- For different-cadence operational work, keep a separate operational scheduler in `functions/src/triggers/schedulers.ts`
+- New capabilities use a feature flag defaulting off
+- MenuList store-EOD tasks stay in `decisionBlocksScoring.ts`
+- Different-cadence operational work stays in `menulistMaintenanceScheduler`
 - For Answerlattice work, add the task in `functions-answerlattice/`, not in this MenuList scheduler
 
 ---

@@ -1,107 +1,84 @@
-# Description Generation — Firebase Cost Tracking
+# Description Generation - Firebase and Cost Contract
 
-**Feature:** AI-Powered Menu Item Description Generation
 **Status:** Firebase cost evidence; not current launch certification
-**Last Updated:** July 5, 2026
-**Priority:** MEDIUM — Gemini API cost per call, but lighter than image generation.
+**Last cross-check:** July 15, 2026
 
----
+> This is source-backed Firebase/cost evidence. Release approval still requires current production-readiness evidence, External Certification Runbook evidence, AI accounting/source gates, target provider smoke, authenticated desktop/mobile QA, deploy evidence, and production-host smoke.
 
-## Current Launch Boundary
+## Storage model
 
-This Firebase cost document is description-generation cost evidence; it is not current production deployment approval. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, target feature-flag/provider review, AI accounting/source gates, provider smoke, browser/mobile editor QA, and deploy evidence for the target environment.
+Description Generation adds no collection and no per-item operation document.
 
----
+| Data | Existing authority | Write behavior |
+| --- | --- | --- |
+| Item descriptions and `descriptionSource` | existing project document | one project save after successful bulk scope, or existing item Save flow |
+| Owner-visible AI activity | `menulistAiOperations/{tId}/{sId}/{operationId}` | one compact row per successful API request/batch |
+| Credit balance and reservation | existing subscription/accounting documents | paid rewrite reserve, settle, or refund transaction |
+| Public menu cache | existing tagged cache | invalidated by project DAL after save |
 
-## Summary
+The `/api/descriptions` and `/api/new-item-metadata` routes do not re-read project item content to derive first-pass eligibility. The authenticated client already has project/file/item context; server-owned boundaries validate identity shape, permission, outlet policy, capacity, and output. The shared outlet-policy helper reads the scoped project and, when linked, the master-store policy.
 
-- **Collections Used:** `projects/{tId}/{sId}` (projectsData)
-- **Storage Buckets:** None
-- **Cloud Functions:** None (uses API route)
-- **Estimated Monthly Cost:** **Low-Medium** — Gemini API dominates
+## Operation costs
 
----
+| Action | Owner credits | Request scope |
+| --- | ---: | --- |
+| `ADD_DESCRIPTION` | 0 | up to 100 eligible items, approximately 180 KiB item payload, and 300 item-language output cells per batch |
+| `NEW_ITEM_METADATA` | 0 | one item |
+| `REWRITE_DESCRIPTION` | 1 current description-rewrite credit | up to 100 eligible items, approximately 180 KiB item payload, and 300 item-language output cells per batch |
 
-## Firestore Operations
+Current values are source-controlled in `src/constants/AI/unitCosts.ts:79`, `src/constants/AI/unitCosts.ts:80`, and `src/constants/AI/unitCosts.ts:110`. The public credit label/rate authority is `src/data/shared/contentCreditPolicy.ts`.
 
-### Reads
+The free metadata action accepts only an empty canonical source description. A direct request carrying existing source copy fails schema validation before provider work or accounting; rewrites use `REWRITE_DESCRIPTION`.
 
-| Operation                     | Collection                         | Trigger                    | Frequency   | Docs Read | Indexed?   | Notes                                                               |
-| ----------------------------- | ---------------------------------- | -------------------------- | ----------- | --------- | ---------- | ------------------------------------------------------------------- |
-| Load project for descriptions | `projects/{tId}/{sId}/{projectId}` | User opens description gen | Per request | 1         | Direct doc | Reads full project to get item names/categories for prompt context. |
+The metadata provider prompt receives the localized category name, sanitized bounded owner text, and request-local item/attribute aliases. It only generates a first description from explicit context. Original attribute IDs are restored server-side before output projection; price and source-language identity still come from the validated request rather than provider output.
 
-### Writes
+Large files are split sequentially when the 100-item cap, approximately 180 KiB serialized-item payload cap, or 300 item-language output-cell cap is reached. A paid refresh of 101 ordinary eligible items in one-to-three languages therefore produces at least two requests, two settled operation rows, and two rewrite-credit charges; unusually large item text or more languages can cause an earlier split. Before provider work, desktop and mobile compute that final batch count through the same payload/chunk helper and show the exact current credit count. When that count is greater than one, the first request also uses it for server-side whole-scope capacity admission. The request then reserves only its own normal unit, preserving the existing operation-row and refund contract.
 
-| Operation                   | Collection                         | Trigger                    | Frequency | Docs Written | Fields                                         | Notes                                                                                            |
-| --------------------------- | ---------------------------------- | -------------------------- | --------- | ------------ | ---------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Save generated descriptions | `projects/{tId}/{sId}/{projectId}` | After generation completes | Per batch | 1            | files[].extractedData.data.items[].description | Merge update. All descriptions saved at once. Uses `updateProject()` with `requestBodyComposer`. |
+## Read/write path
 
-### Deletes
+```text
+client project already loaded
+  -> API permission/policy checks
+  -> first paid batch admits the complete request count against current capacity
+  -> optional paid capacity reservation transaction
+  -> provider-only item ID aliases and provider call
+  -> alias-key allowlisting, original-ID restoration, complete output validation
+  -> accounting settlement and compact owner operation row
+  -> client merges full selected scope
+  -> one project DAL save
+  -> public menu/OBP cache invalidation
+```
 
-| Operation | Collection | Trigger | Frequency | Docs Deleted | Soft/Hard | Notes                                          |
-| --------- | ---------- | ------- | --------- | ------------ | --------- | ---------------------------------------------- |
-| None      | —          | —       | —         | —            | —         | Descriptions overwrite in place, no deletions. |
+If a batch fails before settlement, its paid reservation is safely refunded by `src/app/api/descriptions/route.ts:733`. Earlier independently successful batches remain valid operation rows, but the orchestrator does not save a partial project.
 
----
+The whole-scope admission reuses the first request's existing subscription capacity check and adds no API round trip, collection, operation row, or project read. It is not a durable reservation for all future requests. Concurrent credit use, a later provider failure, or final project-save failure can still occur after an earlier request settles; solving that would require a job-level accounting architecture that is intentionally outside the current synchronous flow.
 
-## Firebase Storage
+## Cost controls
 
-None — descriptions are text stored directly in Firestore project documents.
+- 256 KiB request-body limit.
+- Client request fields are bounded to the route schema, then batches are capped at 100 unique items, approximately 180 KiB of serialized item payload, and 300 item-language output cells; the API allows at most 100 unique items and 20 unique target languages per call.
+- Shared AI rate limit before provider work.
+- Quantity-aware admission on the first multi-request paid refresh; per-request reservations remain exact and recoverable.
+- SAFE_MODE before provider work.
+- No duplicate project read inside the description route.
+- No per-description Firestore writes.
+- No generated text duplicated into accounting-only history.
+- No project item ID is sent as a provider output key; stable request-local aliases are restored before accounting and response.
+- Browser batch accumulation uses a null-prototype map and own-key merge checks for imported item-ID safety.
+- Sequential file/batch processing avoids uncontrolled client concurrency.
+- Project save invalidates public truth once after the successful bulk scope.
 
----
+Provider parse failures use `description_provider_response_parse_failed` and the fixed `return_description_generation_failed` policy. That failure path makes no extra provider calls, performs no AI accounting writes or credit consumption, and does not save the project.
 
-## Cloud Functions
+## Security rules and infrastructure
 
-None — uses Next.js API route `/api/descriptions`.
+No Firestore rule, index, Storage rule, or Cloud Function change is required for this feature pass. Owner operation rows remain server-written; browser writes are denied by the existing accounting boundary. There is no Firebase deploy requirement because no Firebase infrastructure changed. The app-route/UI source still needs an explicit owner-authorized Vercel deploy action before it can change a target runtime; this pass does not run one.
 
----
+## External evidence still pending
 
-## Security Rules Impact
+- provider smoke against the target model/environment;
+- authenticated desktop and mobile browser/device QA;
+- target deployment evidence;
+- production-host cache and Transactions smoke.
 
-- Project read/write requires auth + tenant isolation (`{tId}/{sId}`)
-- API route protected with `withAuth()` middleware
-- Rate limiting: `checkAIOperationLimit()` — 20 requests per minute
-
----
-
-## Cost Optimization Notes
-
-### Current Optimizations
-
-- **Batch processing**: All items in a file processed in one Gemini call (not per-item)
-- **"Generate Empty" mode**: Only generates for items without descriptions (skips existing)
-- **Sequential file processing**: Files processed one at a time to prevent rate limits
-
-July 5 provider-response parse diagnostics are Firebase-cost neutral. Empty, malformed non-object, or malformed object-fragment provider JSON now logs capped `description_provider_response_parse_failed` diagnostics with fixed `return_description_generation_failed` policy and response-shape metadata only. The route still uses the existing bounded body admission, validation, permission gate, linked-outlet policy check, SAFE_MODE/rate-limit/capacity checks, single Gemini call, response normalization, `finalizeAiOperationAccounting()` write, and credit consumption order for valid output. Unusable provider responses still return the existing generic Description failure without a usable operation row or credit consumption. Shape-only local success/error logs and bounded item/language summaries in accounting input add no Firestore reads/writes/deletes, Storage operations, extra provider calls, AI accounting writes, credit consumption, cache invalidations, rules, indexes, schema changes, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
-
-July 5 editor returned-error diagnostics are also Firebase-cost neutral. `descriptionGeneration.shared.ts` still runs the same generated-description flow and direct-save fallback, but returned-error service results now log `menu_editor_description_generation_returned_error_message` with bounded result-message/file/project/message-type metadata only. This adds no Firestore reads/writes/deletes, Storage operations, provider calls, AI accounting writes, cache invalidations, rules, indexes, schema fields, Cloud Function logic changes, owner-facing settings, Firebase deploy requirement, or Vercel deploy action.
-
-### Warnings: Expensive Patterns
-
-- **"Rewrite All" mode**: Regenerates ALL descriptions, even existing ones. Use sparingly.
-- **Multi-language**: Generates descriptions in ALL project languages simultaneously = larger prompt = higher token cost
-
----
-
-## Cost Estimate (per 1000 description batches/month)
-
-| Resource         | Operations/month | Unit Cost    | Monthly Cost     |
-| ---------------- | ---------------- | ------------ | ---------------- |
-| Firestore Reads  | 1,000            | $0.06/100K   | $0.00            |
-| Firestore Writes | 1,000            | $0.18/100K   | $0.00            |
-| **Gemini API**   | 1,000 calls      | ~$0.001/call | **~$1.00**       |
-| **Total**        |                  |              | **~$1.00/month** |
-
----
-
-## DAL Functions Used
-
-| Function        | File                                 | Operation Type       |
-| --------------- | ------------------------------------ | -------------------- |
-| `updateProject` | `src/database/projects/index.ts:382` | Write (setDoc merge) |
-
-## API Routes & Their Firebase Impact
-
-| Route               | Method | Firebase Ops          | Rate Limited? | Notes                                                    |
-| ------------------- | ------ | --------------------- | ------------- | -------------------------------------------------------- |
-| `/api/descriptions` | POST   | 0R + 0W (Gemini only) | Yes (20/min)  | Returns generated descriptions. Client saves to project. |
+These are environment checks, not missing source implementation.

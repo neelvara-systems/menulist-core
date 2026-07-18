@@ -125,6 +125,8 @@ atomicTransform: (value, path) => {
 
 Do not use constructor-name heuristics as the only SDK-value test.
 
+The MenuList Google-auth user creation path in `src/lib/auth/serverUserContext.ts` follows this contract directly; auth must not reintroduce a local recursive sanitizer.
+
 ## Update Semantics
 
 Choose undefined behavior based on the write operation:

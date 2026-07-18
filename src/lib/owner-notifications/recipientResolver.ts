@@ -1,6 +1,7 @@
 import { DB_COLLECTIONS } from '@constant/database';
 import { PRODUCT_IDS } from '@constant/product';
 import {
+    hasOwnerNotificationWhatsAppConsent,
     normalizeOwnerNotificationDocumentId,
     normalizeOwnerNotificationNumericScopeDocumentId,
     type OwnerNotificationNumericScopeDocumentId,
@@ -66,16 +67,6 @@ function resolveFirstPhone(context: Record<string, any> | null | undefined, ...v
         if (phone) return phone;
     }
     return undefined;
-}
-
-function hasWhatsAppConsent(settings?: Record<string, any> | null): boolean {
-    if (!settings) return false;
-    const status = String(settings.whatsappConsentStatus || '').toLowerCase();
-    return settings.whatsappConsent === true
-        || settings.whatsappConsented === true
-        || status === 'granted'
-        || status === 'active'
-        || status === 'verified';
 }
 
 function getAnswerlatticeDb(): Firestore | null {
@@ -172,7 +163,7 @@ export function resolveOwnerNotificationRecipient(
             email: forceHintRecipient ? hintEmail || resolvedEmail : resolvedEmail,
             name: cleanString(hints.name || data.productName || data.companyName || data.businessName),
             whatsappNumber: forceHintRecipient ? hintWhatsappNumber || resolvedWhatsappNumber : resolvedWhatsappNumber,
-            whatsappConsent: hasWhatsAppConsent(settings),
+            whatsappConsent: hasOwnerNotificationWhatsAppConsent(settings),
         };
     }
 
@@ -198,6 +189,6 @@ export function resolveOwnerNotificationRecipient(
         email: forceHintRecipient ? hintEmail || email : email,
         name: cleanString(hints.name || data.name || data.businessName),
         whatsappNumber: forceHintRecipient ? hintWhatsappNumber || whatsappNumber : whatsappNumber,
-        whatsappConsent: hasWhatsAppConsent(settings),
+        whatsappConsent: hasOwnerNotificationWhatsAppConsent(settings),
     };
 }

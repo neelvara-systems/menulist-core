@@ -67,8 +67,12 @@ MenuList removes 3 daily irritations that create permanent dependency:
 | `src/components/.../OBPLinkCard.tsx` | Dashboard link card | ✅ Exists — ENHANCED |
 | `src/components/.../shareModal/index.tsx` | Desktop share modal | ✅ Exists — ENHANCED |
 | `src/components/mobile/screens/MobileShareScreen.tsx` | Mobile share screen | ✅ Exists — ENHANCED |
-| `src/components/.../OwnerDashboard/BehaviorNudgeCard.tsx` | Dashboard nudge card | 🆕 NEW |
+| `src/components/.../OwnerDashboard/index.tsx` | Existing official-source dashboard card | ✅ Active |
 | `src/app/(global-pages)/msg-preview/[sessionId]/page.tsx` | Post-publish screen | ✅ Exists — ENHANCED |
+
+There is deliberately no standalone `BehaviorNudgeCard`. The existing official
+business link surfaces carry the guidance without adding another dashboard
+banner, dismissal state, or owner decision.
 
 ## Feature Flags
 
@@ -101,4 +105,4 @@ ENABLE_BEHAVIOR_NUDGES: true  // Micro-copy nudges across share/dashboard screen
 
 ---
 
-**Last Updated:** February 19, 2026
+**Last Updated:** July 17, 2026

@@ -6,7 +6,9 @@ import { useClientAuthSession } from '@hook/useClientAuthSession';
 import { uploadFile } from '@lib/firebase/storage';
 import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { answerlatticeStorage } from '@lib/firebase/answerlatticeFirebaseClient';
+import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
+import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { INGESTION_JOB_STATUS, IngestionJob } from '@type/knowledgeBase';
 import { Alert, Button, Card, Image, Input, List, message, Modal, Progress, Space, Tag, Typography, Upload, UploadProps } from 'antd';
@@ -238,11 +240,13 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
       const storagePath = `ingestion_source_files/${tId}/${sId}/${uuidv4()}-${sanitizeKnowledgeSourceFileName(file.name)}`;
       return uploadFile(storagePath, file.originFileObj, (progress) => {
         setUploadProgress((prev) => ({ ...prev, [file.uid]: progress }));
-      }, answerlatticeStorage, getKnowledgeSourceUploadMetadata(file.originFileObj));
+      }, answerlatticeStorage, getKnowledgeSourceUploadMetadata(file.originFileObj), {
+        cleanupOnDownloadUrlFailure: true,
+      });
     });
 
     let uploadedFiles: Awaited<ReturnType<typeof uploadFile>>[] = [];
-    let jobCreated = false;
+    let jobPersistenceAttempted = false;
     try {
       const uploadResults = await Promise.allSettled(uploadPromises);
       uploadedFiles = uploadResults
@@ -260,18 +264,33 @@ const UploadModal: React.FC<UploadModalProps> = ({ open, onClose }) => {
         categories: null
       };
 
+      jobPersistenceAttempted = true;
       const newJob = await addIngestionJob(newJobData);
       assertIngestionJobWriteSucceeded(
         newJob,
         newJob.id,
         'kb_generation_upload_job_create_rejected',
       );
-      jobCreated = true;
       message.success('New generation job created successfully!');
       handleClose();
     } catch (error) {
-      if (!jobCreated && uploadedFiles.length > 0) {
-        await Promise.allSettled(uploadedFiles.map(file => deleteFileByUrl(file.downloadURL, answerlatticeStorage)));
+      if (!jobPersistenceAttempted && uploadedFiles.length > 0) {
+        const cleanupResults = await Promise.allSettled(
+          uploadedFiles.map(file => deleteFileByUrl(file.downloadURL, answerlatticeStorage)),
+        );
+        const cleanupSummary = summarizeStorageCleanupResults(cleanupResults);
+        if (cleanupSummary.failed > 0) {
+          logRuntimeFailure('answerlattice_kb_source_partial_upload_cleanup_failed', new Error('storage_cleanup_failed'), {
+            attemptedCleanupCount: cleanupSummary.attempted,
+            failedCleanupCount: cleanupSummary.failed,
+          });
+        }
+      } else if (jobPersistenceAttempted && uploadedFiles.length > 0) {
+        logRuntimeFailure(
+          'answerlattice_kb_source_ambiguous_persistence_media_retained',
+          new Error('persistence_outcome_ambiguous'),
+          { fileCount: uploadedFiles.length },
+        );
       }
       message.error('Failed to create generation job.');
     } finally {

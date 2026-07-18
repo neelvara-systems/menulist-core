@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import WebsitePageStructuredData from '@/components/website/WebsitePageStructuredData';
@@ -9,7 +10,7 @@ import { Metadata } from 'next';
 const title = 'Menu Quality Validation - MenuList | Catch Menu Issues Before Customers See Them';
 const description = 'Check menu prices, missing details, photos, and public readiness before publishing. MenuList keeps correction guidance tied to owner review and the approved menu.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
     description,
     url: '/features/menu-quality-validation',
   },
-};
+});
 
 export default function Page() {
   return (

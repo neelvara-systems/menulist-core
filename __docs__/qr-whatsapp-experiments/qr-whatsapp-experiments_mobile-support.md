@@ -1,7 +1,9 @@
 # QR WhatsApp Experiments Mobile Support
 
-**Status:** Docs-ready
-**Last Updated:** June 25, 2026
+**Status:** PLANNING ONLY — NO MOBILE RUNTIME
+**Last Updated:** July 17, 2026
+
+No mobile runtime exists. The capabilities below are admission guidance for a later docs-first implementation, not current MobileShell behavior.
 
 ## Mobile Admission Decision
 

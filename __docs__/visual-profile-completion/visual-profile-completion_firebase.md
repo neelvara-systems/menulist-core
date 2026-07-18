@@ -34,7 +34,7 @@ Existing uploads continue to use the Media Image System profiles:
 
 ## Indexes
 
-No new Firestore indexes.
+No query index is required. The underlying `stores.publicPresence` map is read only from the already-resolved store document and is exempt from automatic single-field indexing, so cover/gallery arrays and profile copy do not add unused index fanout when owners save them.
 
 ## Rules
 
@@ -56,3 +56,5 @@ Cost impact:
 - Cloud Functions: 0
 - provider calls: 0
 - schedulers: 0
+
+**Last Updated:** July 17, 2026

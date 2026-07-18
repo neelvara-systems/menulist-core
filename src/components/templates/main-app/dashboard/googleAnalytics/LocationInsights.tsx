@@ -2,6 +2,7 @@
 
 import { fetchLocationStats } from '@services/analytics';
 import { getBoundedAnalyticsStringContext, logAnalyticsFailure } from '@lib/analytics/analyticsDiagnostics';
+import { formatNumber } from '@util/formatters';
 import { Card, Progress, Space, Table, Typography, theme } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { LuGlobe } from 'react-icons/lu';
@@ -95,7 +96,7 @@ const LocationInsights: React.FC<LocationInsightsProps> = ({ propertyId, dateRan
             render: (record: LocationData) => (
                 <Space direction="vertical" size={0} style={{ width: '100%' }}>
                     <Space>
-                        <Text>{record.visitors.toLocaleString()}</Text>
+                        <Text>{formatNumber(record.visitors)}</Text>
                         <Text type="secondary">({record.percentage.toFixed(1)}%)</Text>
                     </Space>
                     <Progress
@@ -128,7 +129,7 @@ const LocationInsights: React.FC<LocationInsightsProps> = ({ propertyId, dateRan
                                 <Text strong>Total Visitors</Text>
                             </Table.Summary.Cell>
                             <Table.Summary.Cell index={1}>
-                                <Text strong>{totalVisitors.toLocaleString()}</Text>
+                                <Text strong>{formatNumber(totalVisitors)}</Text>
                             </Table.Summary.Cell>
                         </Table.Summary.Row>
                     </Table.Summary>

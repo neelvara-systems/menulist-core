@@ -1,33 +1,28 @@
 # Entity System — Firebase Cost & Operations
 
 > **Version:** 2.0.1
-> **Last Updated:** 2026-06-29
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers
-> **Status:** ENHANCEMENT — cost impact of 6 targeted changes
+> **Status:** MAINTAINED — Current operations, bounded reads/writes, and required indexes
 
 ---
 
-## 1. Existing Collections (No Changes)
+## 1. Collections Used
 
-All 9 Answerlattice collections remain unchanged. No new collections created.
+This feature uses existing Answerlattice collections and adds no collection. The table is the entity-loop subset, not the complete Answerlattice data inventory.
 
 | Collection | DB Constant | Firebase Project | Purpose |
 |------------|-------------|-----------------|---------|
-| entities | `ANSWERLATTICE_ENTITIES` | answerlattice | Product ontology entities |
-| entityRelations | `ANSWERLATTICE_ENTITY_RELATIONS` | answerlattice | Entity relationships |
-| entitySearchIndex | `ANSWERLATTICE_ENTITY_SEARCH_INDEX` | answerlattice | Deterministic retrieval index |
-| entityCandidates | `ANSWERLATTICE_ENTITY_CANDIDATES` | answerlattice | AI extraction staging |
-| canonicalAnswers | `ANSWERLATTICE_CANONICAL_ANSWERS` | answerlattice | Governed answer assets |
-| signalEvents | `ANSWERLATTICE_SIGNAL_EVENTS` | answerlattice | Raw signal log |
-| mutationProposals | `ANSWERLATTICE_MUTATION_PROPOSALS` | answerlattice | Mutation queue |
-| auditLogs | `ANSWERLATTICE_AUDIT_LOGS` | answerlattice | Audit trail |
-| releases | `ANSWERLATTICE_RELEASES` | answerlattice | Version timeline |
-
-**Also affected (MenuList Firebase):**
-
-| Collection | DB Constant | Firebase Project | Change |
-|------------|-------------|-----------------|--------|
-| kb_articles | `KB_ARTICLES` | menulist-qa | Add `entityIds` field (E2) |
+| `answerlattice_entities` | `ANSWERLATTICE_ENTITIES` | Answerlattice | Product ontology entities |
+| `answerlattice_entityRelations` | `ANSWERLATTICE_ENTITY_RELATIONS` | Answerlattice | Entity relationships |
+| `answerlattice_entitySearchIndex` | `ANSWERLATTICE_ENTITY_SEARCH_INDEX` | Answerlattice | Deterministic retrieval index |
+| `answerlattice_entityCandidates` | `ANSWERLATTICE_ENTITY_CANDIDATES` | Answerlattice | AI extraction staging |
+| `answerlattice_canonicalAnswers` | `ANSWERLATTICE_CANONICAL_ANSWERS` | Answerlattice | Governed answer assets |
+| `answerlattice_signalEvents` | `ANSWERLATTICE_SIGNAL_EVENTS` | Answerlattice | Raw signal log |
+| `answerlattice_mutationProposals` | `ANSWERLATTICE_MUTATION_PROPOSALS` | Answerlattice | Mutation queue |
+| `answerlattice_auditLogs` | `ANSWERLATTICE_AUDIT_LOGS` | Answerlattice | Audit trail |
+| `answerlattice_releases` | `ANSWERLATTICE_RELEASES` | Answerlattice | Version timeline |
+| `kb_articles` | `KB_ARTICLES` | Answerlattice | Article `entityIds` and fallback evidence |
 
 ---
 
@@ -41,7 +36,7 @@ All 9 Answerlattice collections remain unchanged. No new collections created.
 | Update entity with aliases | WRITE | On alias edit (rare) | 1 write |
 | Sync aliases to search index | WRITE | On alias edit | 1 write |
 
-**Monthly cost estimate:** ~₹0 (manual operations, <10/month typical)
+Measure actual governance usage and current Firestore pricing; do not publish a fixed manual-operation estimate.
 
 ---
 
@@ -49,12 +44,14 @@ All 9 Answerlattice collections remain unchanged. No new collections created.
 
 | Operation | Type | Frequency | Cost |
 |-----------|------|-----------|------|
-| Write entityIds on article save | WRITE | On article create/update | 0 extra writes (merged with existing save) |
-| Query articles by entityId | READ | On entity-centric RAG | 1 read per query (array-contains) |
+| Write matched `entityIds` | WRITE | After eligible post-save extraction | 0-1 article writes, capped at 10 normalized IDs |
+| Query articles by entityId | READ | Eligible technical fallback only | Up to 12 returned documents (`array-contains-any`; query minimum billing may apply) |
 
-**Monthly cost estimate:** ~₹0.50 per 1,000 queries (single indexed array-contains query)
+Recalculate monthly cost from the enabled-query rate, returned document count, and current Firestore pricing before rollout. Ordinary questions add no reads from this lane.
 
-**Index required:** `kb_articles` composite index on `entityIds` (array-contains) + `status` + `tId`
+**Index required:** `kb_articles` composite index on `pId + tId + sId + status + active + entityIds` (`entityIds` uses `CONTAINS`).
+
+The runtime query is default off and reads at most 12 articles only when a query has both a bounded exact technical literal and normalized resolved entities. Ordinary questions add zero reads.
 
 ---
 
@@ -62,27 +59,28 @@ All 9 Answerlattice collections remain unchanged. No new collections created.
 
 | Operation | Type | Frequency | Cost |
 |-----------|------|-----------|------|
-| Load existing entities for context | READ | Per extraction batch | 1 read (getEntities) |
-| AI extraction call (Gemini) | EXTERNAL | Per batch of 5 articles | ~$0.001 per batch |
+| Load scoped entity registry | READ | Per eligible post-save extraction | Up to 500 returned documents; only active `pId = AL` rows enter extraction context |
+| AI extraction call (Gemini) | EXTERNAL | Per eligible post-save extraction | Measure from actual model usage and current provider pricing |
 
-**Monthly cost estimate:** ~₹2 per 100 articles extracted (mostly AI cost, not Firestore)
-
-**Note:** Existing entities are loaded ONCE per extraction batch, not per article. This is a single `getEntities()` call.
+Do not use a fixed monthly estimate before representative source size, entity count, model usage, and provider pricing are measured.
 
 ---
 
 ### E4 — Auto-Extract on Article Save
 
-| Operation | Type | Frequency | Cost |
-|-----------|------|-----------|------|
-| Load entities for context | READ | Per article save (if changed) | 1 read |
-| AI extraction | EXTERNAL | Per article save | ~$0.0002 per article |
-| Write entityIds to article | WRITE | Per extraction | 0 extra (merged) |
-| Write candidate entities | WRITE | Per new entity found | 1 write per candidate |
+When ontology is enabled, article create and content, title, or category updates make one best-effort request containing only the article ID to the protected extraction route. The route re-reads the scoped stored article, and the article write is never blocked.
 
-**Monthly cost estimate:** ~₹1 per 100 article saves
+| Operation | Type | Per eligible trigger |
+|-----------|------|----------------------|
+| Re-read stored article | READ | 1 point read |
+| Load scoped entity registry | READ | Up to 500 returned documents; inactive/cross-product rows are discarded |
+| Entity extraction | EXTERNAL | 1 model call |
+| AI accounting | WRITE | Existing accounting operation writes |
+| New entity candidates | READ+WRITE | Bounded governed writes per new candidate |
+| Persist confirmed article `entityIds` | WRITE | 0-1 article writes with at most 10 normalized active entity IDs; a confirmed empty match may clear stale links |
+| Invalidate KB cache/context versions | WRITE | Existing bounded KB invalidation batch only when links changed |
 
-**Debounce protection:** Max 1 extraction per article per 5 minutes. Prevents rapid re-extraction during editing.
+The browser trigger is best effort and has no durable retry lease. Provider or parsing failure preserves current links and returns failure; a successful no-change extraction avoids the article and cache writes. Recalculate cost from actual enabled save volume, registry size, candidate count, model usage, and current provider pricing.
 
 ---
 
@@ -90,18 +88,18 @@ All 9 Answerlattice collections remain unchanged. No new collections created.
 
 | Operation | Type | Frequency | Cost |
 |-----------|------|-----------|------|
-| Read both entities | READ | Per merge | 2 reads |
-| Read all canonical answers | READ | Per merge | 1 read |
-| Update affected answers | WRITE | Per merge | N writes (N = affected answers) |
-| Read all relations | READ | Per merge | 1 read |
-| Delete + recreate relations | WRITE | Per merge | 2N writes (N = affected relations) |
-| Update survivor entity | WRITE | Per merge | 1 write |
-| Deprecate merged entity | WRITE | Per merge | 1 write |
-| Audit log | WRITE | Per merge | 1 write |
+| Read operation, entities, and ontology counter | READ | Per new merge | 4 point reads |
+| Read merged/survivor canonical references | READ | Per merge | Two bounded queries, each returning at most 201 documents before the 200-reference guard rejects |
+| Rewrite affected answers and write answer audits | WRITE | Per merge | 2N writes |
+| Read articles linked to merged entity | READ | Per merge | At most 201 returned documents before the 200-reference guard rejects |
+| Rewrite affected article `entityIds` | WRITE | Per merge | 0-200 bounded writes |
+| Read inbound/outbound relations | READ | Per merge | Two bounded queries, each returning at most 201 documents before rejection |
+| Rewrite or remove affected relations | WRITE | Per merge | One write per unique affected relation |
+| Read survivor/merged search-index rows | READ | Per merge | Two bounded queries, each returning at most 11 documents before the 10-row guard rejects |
+| Update or remove search-index rows | WRITE | Per merge | One write per returned row |
+| Entity, counter, audit, source-version, cache, and bundle updates | WRITE | Per merge | Bounded fixed overhead; conditional cache writes depend on affected sources |
 
-**Monthly cost estimate:** ~₹0.10 per merge (merges are rare, <5/month typical)
-
-**Warning:** Merge is the most expensive single operation. For a tenant with 50 entities and 100 answers, worst case is ~10 reads + ~20 writes. Acceptable for rare manual operation.
+Do not use a fixed merge-price estimate. Guard queries request one extra document to detect overflow. The server rejects the merge before the 450-write transaction boundary; larger migrations require a controlled server migration.
 
 ---
 
@@ -111,21 +109,13 @@ All 9 Answerlattice collections remain unchanged. No new collections created.
 |-----------|------|-----------|------|
 | Fetch entity descriptions | READ | Per RAG fallback query | 0-5 reads (getEntityById per matched entity) |
 
-**Monthly cost estimate:** ~₹1 per 1,000 RAG queries
-
-**Optimization:** If canonical retrieval already loaded entities during its attempt, reuse that data. Zero additional reads in most cases.
+The current helper performs at most five exact-scope entity point reads. Reuse would require an explicit server-side preload contract and is not claimed by the maintained runtime.
 
 ---
 
-## 3. Total Monthly Cost Impact
+## 3. Cost Measurement Boundary
 
-| Scenario | Articles | Queries/Month | Merges | Cost Impact |
-|----------|----------|---------------|--------|-------------|
-| Small tenant | 50 | 500 | 1 | ~₹0.50/month |
-| Medium tenant | 200 | 5,000 | 3 | ~₹5/month |
-| Large tenant | 500 | 20,000 | 5 | ~₹15/month |
-
-**Verdict:** Negligible cost impact. All enhancements are Firestore-efficient.
+Do not publish a fixed monthly estimate from document counts alone. Measure enabled post-save triggers, returned entity documents, model tokens, candidate writes, eligible hybrid queries, returned article documents, merge reference counts, and current Firebase/provider prices. Ordinary questions add no hybrid-lane reads while the feature remains off.
 
 ---
 
@@ -133,15 +123,13 @@ All 9 Answerlattice collections remain unchanged. No new collections created.
 
 ### New Indexes
 
-```
-# kb_articles: entity-centric article retrieval (E2)
-Collection: kb_articles
-Fields: entityIds (array-contains), status (ascending), tId (ascending)
-```
+| Use | Collection | Fields |
+|-----|------------|--------|
+| Exact technical/entity fallback | `kb_articles` | `pId + tId + sId + status + active + entityIds(CONTAINS)` |
+| Governed entity-merge article rewrite | `kb_articles` | `pId + tId + sId + entityIds(CONTAINS)` |
 
-### Existing Indexes (No Changes)
+### Other Maintained Indexes
 
-All existing Answerlattice indexes remain unchanged:
 - `entities`: tId + sId + type
 - `entityCandidates`: tId + sId + status + confidence (desc)
 - `canonicalAnswers`: tId + sId + scope.entityIds (array-contains) + status
@@ -157,22 +145,22 @@ All existing Answerlattice indexes remain unchanged:
 
 | Function | Type | Reads | Writes |
 |----------|------|-------|--------|
-| getEntities | READ | 1 | 0 |
-| getEntitiesByType | READ | 1 | 0 |
+| getEntities | READ | bounded query documents | 0 |
+| getEntitiesByType | READ | bounded query documents | 0 |
 | getEntityById | READ | 1 | 0 |
 | addEntity | SERVER TRANSACTION | bounded point reads | entity + search index + slug/counter/invalidation/operation writes |
 | updateEntity | SERVER TRANSACTION | entity + operation | entity + invalidation/operation writes |
 | deprecateEntity | SERVER TRANSACTION | entity + operation | entity + invalidation/operation writes |
-| getEntityRelations | READ | 1 | 0 |
-| getRelationsForEntity | READ | 1 | 0 |
+| getEntityRelations | READ | bounded query documents | 0 |
+| getRelationsForEntity | READ | bounded query documents | 0 |
 | addEntityRelation | SERVER TRANSACTION | bounded point reads | relation + counter/invalidation/operation writes |
 | deleteEntityRelation | SERVER TRANSACTION | bounded point reads | relation delete + counter/invalidation/operation writes |
-| getEntitySearchIndex | READ | 1 | 0 |
+| getEntitySearchIndex | READ | bounded query documents | 0 |
 | upsertEntitySearchIndex | SERVER TRANSACTION | bounded point reads | search-index + invalidation/operation writes |
-| **mergeEntities** | **READ+WRITE** | **4+** | **5+** | **NEW (E5)** |
+| **mergeEntities** | **SERVER TRANSACTION** | **bounded point and reference-query documents** | **bounded dependency rewrites + fixed governance overhead** |
 
 Entity mutation costs are owned by the protected ontology transaction rather than direct browser writes. Entity creation and candidate promotion atomically update entity, search-index, ontology counter, invalidation/source-version, slug-index and operation-replay state. The server then awaits the tenant-summary merge used by scheduler discovery. A failed derived-summary write returns failure after the authoritative transaction; retrying the idempotent action replays the committed result and retries summary synchronization.
-| **syncAliasesToSearchIndex** | **READ+WRITE** | **1** | **1** | **NEW (E1)** |
+| **syncAliasesToSearchIndex** | **READ+WRITE** | **1** | **1** |
 
 ### entityCandidates.ts (7 functions — unchanged)
 
@@ -190,13 +178,14 @@ Answerlattice App Entity Candidate ID Boundary: the browser normalizes action ID
 
 Answerlattice App Entity DAL ID Boundary: browser reads validate stored contracts; mutation IDs are normalized before server-owned ontology/governance actions. Malformed, reserved, path-shaped or unresolved IDs fail before dispatch, and no browser mutation can bypass the server transaction.
 
-### entityExtraction.ts (3 functions — 1 new)
+### Entity Extraction Runtime
 
 | Function | Type | Reads | Writes |
 |----------|------|-------|--------|
-| extractEntitiesFromArticles | READ+WRITE | 0 | N (candidates) |
+| extractEntitiesFromArticles | AI + callback | Caller-owned | Governed candidate callback only |
 | buildSearchIndexEntry | PURE | 0 | 0 |
-| **extractAndMapEntities** | **READ+WRITE** | **1** | **N** | **NEW (E4)** |
+| extractEntitiesForArticle | Helper | Returned entity documents | 0; caller owns persistence |
+| `/api/answerlattice/articles/extract-entities` | Protected route | 1 stored article + 0-500 entities | Accounting, candidates, 0-1 article, bounded cache invalidation |
 
 ### canonicalRetrieval.ts (3 functions — 2 new)
 

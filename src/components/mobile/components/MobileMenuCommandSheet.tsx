@@ -2,8 +2,9 @@
 
 import { getOwnerLabels } from '@config/businessLabels';
 import type { OfferingLabels } from '@lib/menu-kit/businessTypeLabels';
+import { timeAgo } from '@util/dateTime/timeAgo';
 import { theme } from 'antd';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { useMemo } from 'react';
 import { LuArrowUpDown, LuCamera, LuDollarSign, LuExternalLink, LuEyeOff, LuFileImage, LuFileText, LuFolderInput, LuLanguages, LuPalette, LuPen, LuPlus, LuPrinter, LuSettings2, LuSparkles, LuTags, LuToggleRight, LuX, LuZap } from 'react-icons/lu';
 import { Card, Flex, List, NavBar, Popup, Text } from '../antd';
@@ -40,27 +41,17 @@ interface MobileMenuCommandSheetProps {
     onUploadMenu: () => void;
     onPricing: () => void;
     onReorderMenu: () => void;
-    onSmartRecommendations: () => void;
+    onSmartRecommendations?: () => void;
     onShowHide: () => void;
     onMoveCategory: () => void;
     visible: boolean;
 }
 
-function formatRelativeDate(timestamp: any): string {
+function formatRelativeDate(timestamp: any, locale: string): string {
     try {
         const date = timestamp?.toDate?.() || (timestamp instanceof Date ? timestamp : new Date(timestamp));
         if (isNaN(date.getTime())) return '';
-
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-        if (diffDays === 0) return 'Updated today';
-        if (diffDays === 1) return 'Updated yesterday';
-        if (diffDays < 7) return `Updated ${diffDays} days ago`;
-        if (diffDays < 30) return `Updated ${Math.floor(diffDays / 7)} week${Math.floor(diffDays / 7) > 1 ? 's' : ''} ago`;
-
-        return date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
+        return timeAgo(date, locale);
     } catch {
         return '';
     }
@@ -95,6 +86,7 @@ export default function MobileMenuCommandSheet({
 }: MobileMenuCommandSheetProps) {
     const { token } = theme.useToken();
     const t = useTranslations('MobileMenu');
+    const locale = useLocale();
     const availabilityLabels = getOwnerLabels(businessType, businessCategory);
 
     const bulkActions = useMemo<CommandAction[]>(() => [
@@ -226,13 +218,13 @@ export default function MobileMenuCommandSheet({
             description: t('reorderMenuDesc'),
             onClick: onReorderMenu,
         },
-        {
+        ...(onSmartRecommendations ? [{
             key: 'decision-blocks',
             icon: <LuZap style={{ fontSize: 20 }} />,
             title: t('featuredSections'),
             description: t('featuredSectionsDesc'),
             onClick: onSmartRecommendations,
-        },
+        }] : []),
     ], [labels.offeringLower, onAddItem, onCategories, onOpenDesignEditor, onPreview, onPrintMenu, onReorderMenu, onSmartRecommendations, onUploadMenu, t]);
 
     const renderIconTile = (icon: React.ReactNode) => (
@@ -313,7 +305,7 @@ export default function MobileMenuCommandSheet({
                     { (lastUpdatedAt || menuVersion) && (
                         <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 6, paddingTop: 10 }}>
                             <Text type="secondary" style={{ fontSize: 12 }}>
-                                {lastUpdatedAt && formatRelativeDate(lastUpdatedAt)}
+                                {lastUpdatedAt && `Updated ${formatRelativeDate(lastUpdatedAt, locale)}`}
                                 {menuVersion ? `${lastUpdatedAt ? ' · ' : ''}v${menuVersion}` : ''}
                             </Text>
                         </div>

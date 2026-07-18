@@ -63,4 +63,4 @@ Mobile support expectation:
 - modals and drawers fit the viewport;
 - large content authoring remains better on desktop through the desktop-tools shortcut.
 
-The Embedding 2 migration adds no separate mobile flow or navigation. The shared responsive article modal now derives “Search ready” from the active `embeddingV2` field, so desktop and mobile administration cannot report readiness from a legacy-only vector.
+The canonical Embedding 2 contract adds no separate mobile flow or navigation. The shared responsive article modal derives “Search ready” from the same `embedding` field used by retrieval, so desktop and mobile administration report one consistent readiness state.

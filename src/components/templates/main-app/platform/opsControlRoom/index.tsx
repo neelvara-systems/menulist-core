@@ -1,6 +1,6 @@
 'use client'
 
-import { getAdoptionPulse, getIntegritySignals, getRecentAlerts, getSystemState } from '@database/ops';
+import { getOpsControlRoomSnapshot } from '@database/ops';
 import { usePlatformStoreSummaryOptions } from '@hook/usePlatformStoreSummaryOptions';
 import {
     OPS_CONTROL_ROOM_REQUEST_POLICY,
@@ -12,7 +12,7 @@ import {
 import { getBoundedOpsStringContext, logOpsFailure } from '@lib/ops/opsDiagnostics';
 import type { AdoptionPulse, IntegritySignals, OpsAlert, SystemState } from '@lib/ops/types';
 import { formatDateTime } from '@util/dateTime';
-import { Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message, theme } from 'antd';
+import { Alert, Button, Card, Divider, Modal, Select, Spin, Tag, Typography, message, theme } from 'antd';
 import { useSession } from 'next-auth/react';
 import { useFormatter } from 'next-intl';
 import { redirect } from 'next/navigation';
@@ -40,6 +40,7 @@ function OpsControlRoom() {
     const [adoption, setAdoption] = useState<AdoptionPulse | null>(null);
     const [integrity, setIntegrity] = useState<IntegritySignals | null>(null);
     const [alerts, setAlerts] = useState<OpsAlert[]>([]);
+    const [loadError, setLoadError] = useState(false);
     const [safeModeLoading, setSafeModeLoading] = useState(false);
     const [muteLoading, setMuteLoading] = useState(false);
     const [republishLoading, setRepublishLoading] = useState(false);
@@ -47,6 +48,7 @@ function OpsControlRoom() {
     const isPlatform = platformRole === 'PLATFORM';
     const hasSessionUser = Boolean(session?.user);
     const {
+        error: storesError,
         loading: storesLoading,
         selectedStore,
         selectedStoreId,
@@ -61,18 +63,15 @@ function OpsControlRoom() {
 
     const loadData = useCallback(async () => {
         setLoading(true);
+        setLoadError(false);
         try {
-            const [sys, adopt, integ, alertList] = await Promise.all([
-                getSystemState(),
-                getAdoptionPulse(),
-                getIntegritySignals(),
-                getRecentAlerts(10),
-            ]);
-            setSystemState(sys);
-            setAdoption(adopt);
-            setIntegrity(integ);
-            setAlerts(alertList);
+            const snapshot = await getOpsControlRoomSnapshot();
+            setSystemState(snapshot.systemState);
+            setAdoption(snapshot.adoption);
+            setIntegrity(snapshot.integrity);
+            setAlerts(snapshot.alerts);
         } catch (error) {
+            setLoadError(true);
             logOpsFailure('ops_control_room_load_failed', error, {
                 hasSessionUser,
                 isPlatform,
@@ -96,8 +95,8 @@ function OpsControlRoom() {
     // SAFE_MODE toggle
     const toggleSafeMode = async (action: 'activate' | 'deactivate') => {
         const confirmMsg = action === 'activate'
-            ? 'This will block ALL AI generation and bulk operations. Public menus will remain unaffected. Continue?'
-            : 'This will restore all AI generation and bulk operations. Continue?';
+            ? 'This will stop guarded AI generation and provider-upload paths. Public menus and publishing remain available. Continue?'
+            : 'This will restore guarded AI generation and provider-upload paths. Continue?';
 
         Modal.confirm({
             title: action === 'activate' ? 'Enable SAFE_MODE' : 'Disable SAFE_MODE',
@@ -228,22 +227,34 @@ function OpsControlRoom() {
                 </div>
             </div>
 
+            {loadError && (
+                <Alert
+                    message="Ops state unavailable"
+                    description="The latest platform state could not be verified. Values below may be missing or from the previous successful refresh."
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    type="error"
+                />
+            )}
+
             {/* Section 1: System State */}
             <Card title="System State" size="small" style={{ marginBottom: 16 }}>
                 <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
                     <div>
                         <Text type="secondary">SAFE_MODE</Text><br />
-                        {systemState?.safeModeActive
-                            ? <Tag color="red">ACTIVE</Tag>
-                            : <Tag color="green">OFF</Tag>
-                        }
+                        {!systemState
+                            ? <Tag>UNKNOWN</Tag>
+                            : systemState.safeModeActive
+                                ? <Tag color="red">ACTIVE</Tag>
+                                : <Tag color="green">OFF</Tag>}
                     </div>
                     <div>
                         <Text type="secondary">Alerts</Text><br />
-                        {systemState?.alertsMuted
-                            ? <Tag color="orange">MUTED</Tag>
-                            : <Tag color="blue">ACTIVE</Tag>
-                        }
+                        {!systemState
+                            ? <Tag>UNKNOWN</Tag>
+                            : systemState.alertsMuted
+                                ? <Tag color="orange">MUTED</Tag>
+                                : <Tag color="blue">ACTIVE</Tag>}
                     </div>
                     <div>
                         <Text type="secondary">Last Alert</Text><br />
@@ -287,7 +298,7 @@ function OpsControlRoom() {
             {/* Section 4: Recent Alerts */}
             <Card title="Recent Alerts" size="small" style={{ marginBottom: 16 }}>
                 {alerts.length === 0 ? (
-                    <Text type="secondary">No alerts</Text>
+                    <Text type="secondary">{loadError ? 'Alert state unavailable' : 'No alerts in the bounded recent window'}</Text>
                 ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         {alerts.slice(0, 5).map((alert) => (
@@ -365,9 +376,10 @@ function OpsControlRoom() {
                         Force Republish
                     </Button>
                 </div>
+                {storesError && <Text type="danger">Store options are unavailable. Refresh before running recovery.</Text>}
                 <div style={{ marginTop: 12 }}>
                     <Text type="secondary">
-                        SAFE_MODE blocks AI generation and bulk operations. Public menus remain unaffected.
+                        SAFE_MODE stops guarded AI generation and provider-upload paths. Public menus, publishing, cleanup, and unrelated maintenance remain available.
                     </Text>
                 </div>
             </Card>

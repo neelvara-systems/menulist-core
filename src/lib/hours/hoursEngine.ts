@@ -1,3 +1,4 @@
+import { parseClockMinutes } from '@lib/menu/timeSlotPresetBoundary';
 import { formatClockTime } from '@util/dateTime';
 import {
     logHoursStatusInvalidTimeRange,
@@ -5,337 +6,304 @@ import {
 } from './hoursDiagnostics';
 
 /**
- * Hours Engine - Compute store open/closed status from workingHours
+ * Canonical weekly-hours evaluator used by owner and public surfaces.
  *
- * Feature #2A: Hours Status Display (P0)
- * Uses existing workingHours field from StoreDataType
- *
- * @module lib/hours/hoursEngine
+ * A range belongs to the weekday on which it starts. For example, Friday
+ * 22:00-02:00 remains open during the early hours of Saturday; Saturday's own
+ * 22:00-02:00 range does not make the store open on Saturday morning.
  */
 
-/**
- * Store status result
- */
 export type StoreStatus = {
     isOpen: boolean;
-    statusText: string; // "Open" or "Closed"
-    nextChange?: string; // "Closes at 11:00 PM" or "Opens at 9:00 AM"
-    currentDayHours?: string; // "09:00 - 23:00" for today
+    statusText: string;
+    nextChange?: string;
+    currentDayHours?: string;
 };
 
-/**
- * Day abbreviation mapping (workingHours uses lowercase 3-letter keys)
- */
-const DAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-type DayKey = (typeof DAY_KEYS)[number];
+export const WORKING_HOURS_DAY_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const;
+export type WorkingHoursDayKey = (typeof WORKING_HOURS_DAY_KEYS)[number];
+
+export type WorkingHoursRange = Readonly<{
+    endMinutes: number;
+    endTime: string;
+    startMinutes: number;
+    startTime: string;
+}>;
+
 const MINUTES_PER_DAY = 24 * 60;
 
-/**
- * Get day key for a date based on timezone
- */
-function getDayKeyForDate(date: Date, timeZone?: string): DayKey {
+function isWorkingHoursDayKey(value: string): value is WorkingHoursDayKey {
+    return WORKING_HOURS_DAY_KEYS.includes(value as WorkingHoursDayKey);
+}
+
+function getDayKeyForDate(date: Date, timeZone?: string): WorkingHoursDayKey {
     try {
-        const options: Intl.DateTimeFormatOptions = {
-            weekday: "short",
-            timeZone: timeZone || "UTC",
-        };
-        const dayStr = new Intl.DateTimeFormat("en-US", options)
-            .format(date)
-            .toLowerCase();
-        return dayStr as DayKey;
+        const day = new Intl.DateTimeFormat('en-US', {
+            timeZone: timeZone || 'UTC',
+            weekday: 'short',
+        }).format(date).toLowerCase();
+        if (isWorkingHoursDayKey(day)) return day;
+        throw new Error('working_hours_day_key_invalid');
     } catch (error) {
-        logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_day_key", "local_day_key");
-        // Fallback to local timezone if invalid
-        const day = date.getDay();
-        return DAY_KEYS[day];
+        logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_day_key', 'local_day_key');
+        return WORKING_HOURS_DAY_KEYS[date.getDay()];
     }
 }
 
-/**
- * Get current day key based on timezone
- */
-function getCurrentDayKey(timeZone?: string): DayKey {
-    return getDayKeyForDate(new Date(), timeZone);
-}
-
-/**
- * Get time in HH:mm format for a date based on timezone
- */
 function getTimeForDate(date: Date, timeZone?: string): string {
     try {
-        const options: Intl.DateTimeFormatOptions = {
-            hour: "2-digit",
-            minute: "2-digit",
+        return new Intl.DateTimeFormat('en-GB', {
+            hour: '2-digit',
             hour12: false,
-            hourCycle: "h23",
-            timeZone: timeZone || "UTC",
-        };
-        return new Intl.DateTimeFormat("en-GB", options).format(date);
+            hourCycle: 'h23',
+            minute: '2-digit',
+            timeZone: timeZone || 'UTC',
+        }).format(date);
     } catch (error) {
-        logHoursStatusTimeZoneFallback(error, timeZone, "hours_engine_time", "local_time");
-        // Fallback to local time
-        return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
+        logHoursStatusTimeZoneFallback(error, timeZone, 'hours_engine_time', 'local_time');
+        return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
     }
 }
 
-/**
- * Get current time in HH:mm format based on timezone
- */
-function getCurrentTime(timeZone?: string): string {
-    return getTimeForDate(new Date(), timeZone);
+export function getStoreDayKey(timeZone?: string, now = new Date()): WorkingHoursDayKey {
+    return getDayKeyForDate(now, timeZone);
 }
 
-/**
- * Parse time string "HH:mm" to minutes since midnight
- */
-function parseTimeToMinutes(time: string): number {
-    const [hours, minutes] = time.split(":").map(Number);
-    return hours * 60 + minutes;
+export function normalizeWorkingHoursValue(value: unknown): string | null {
+    if (typeof value !== 'string') return null;
+    const normalized = value.trim();
+    if (!normalized || normalized.toLowerCase() === 'closed') return '';
+
+    const ranges = normalized.split(',').map((range) => range.trim());
+    if (!ranges.length || ranges.some((range) => !range)) return null;
+
+    const normalizedRanges: string[] = [];
+    for (const range of ranges) {
+        const match = /^((?:[01]\d|2[0-3]):[0-5]\d)\s*-\s*((?:[01]\d|2[0-3]):[0-5]\d)$/.exec(range);
+        if (!match) return null;
+        const startMinutes = parseClockMinutes(match[1]);
+        const endMinutes = parseClockMinutes(match[2]);
+        if (startMinutes === null || endMinutes === null || startMinutes === endMinutes) return null;
+        normalizedRanges.push(`${match[1]}-${match[2]}`);
+    }
+
+    return normalizedRanges.join(', ');
 }
 
-/**
- * Check if current time is within a time window
- */
-function isWithinWindow(
+export function parseWorkingHoursRanges(value: unknown): WorkingHoursRange[] {
+    const normalized = normalizeWorkingHoursValue(value);
+    if (!normalized) return [];
+
+    return normalized.split(',').map((range) => {
+        const [startTime, endTime] = range.trim().split('-');
+        return {
+            endMinutes: parseClockMinutes(endTime) as number,
+            endTime,
+            startMinutes: parseClockMinutes(startTime) as number,
+            startTime,
+        };
+    });
+}
+
+function getDayOffset(day: WorkingHoursDayKey, offset: number): WorkingHoursDayKey {
+    const index = WORKING_HOURS_DAY_KEYS.indexOf(day);
+    return WORKING_HOURS_DAY_KEYS[(index + offset + WORKING_HOURS_DAY_KEYS.length) % WORKING_HOURS_DAY_KEYS.length];
+}
+
+function getRangesForDay(
+    workingHours: Record<string, string>,
+    day: WorkingHoursDayKey,
+    surface: Parameters<typeof logHoursStatusInvalidTimeRange>[2],
+): { configuredInvalid: boolean; ranges: WorkingHoursRange[] } {
+    const source = workingHours[day];
+    if (source !== undefined && typeof source !== 'string') {
+        logHoursStatusInvalidTimeRange(day, undefined, surface);
+        return { configuredInvalid: true, ranges: [] };
+    }
+    const normalized = normalizeWorkingHoursValue(source);
+    if (source && source.trim() && source.trim().toLowerCase() !== 'closed' && normalized === null) {
+        logHoursStatusInvalidTimeRange(day, source, surface);
+        return { configuredInvalid: true, ranges: [] };
+    }
+    return { configuredInvalid: false, ranges: parseWorkingHoursRanges(source) };
+}
+
+function formatRange(range: WorkingHoursRange, timeFormat?: string): string {
+    return `${formatClockTime(range.startTime, timeFormat)} - ${formatClockTime(range.endTime, timeFormat)}`;
+}
+
+function getDayDisplayName(day: WorkingHoursDayKey): string {
+    const names: Record<WorkingHoursDayKey, string> = {
+        fri: 'Friday',
+        mon: 'Monday',
+        sat: 'Saturday',
+        sun: 'Sunday',
+        thu: 'Thursday',
+        tue: 'Tuesday',
+        wed: 'Wednesday',
+    };
+    return names[day];
+}
+
+function findNextOpenTime(
+    workingHours: Record<string, string>,
+    currentDay: WorkingHoursDayKey,
     currentMinutes: number,
-    startMinutes: number,
-    endMinutes: number,
-): boolean {
-    // Handle overnight hours (e.g., 22:00-02:00)
-    if (endMinutes < startMinutes) {
-        return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+    timeFormat?: string,
+): string | undefined {
+    const laterToday = getRangesForDay(workingHours, currentDay, 'hours_engine_next_open')
+        .ranges
+        .filter((range) => range.startMinutes > currentMinutes)
+        .sort((left, right) => left.startMinutes - right.startMinutes)[0];
+    if (laterToday) return `Opens at ${formatClockTime(laterToday.startTime, timeFormat)}`;
+
+    for (let offset = 1; offset <= 7; offset += 1) {
+        const day = getDayOffset(currentDay, offset);
+        const firstRange = getRangesForDay(workingHours, day, 'hours_engine_next_open')
+            .ranges
+            .sort((left, right) => left.startMinutes - right.startMinutes)[0];
+        if (!firstRange) continue;
+        const opensAt = formatClockTime(firstRange.startTime, timeFormat);
+        return offset === 1
+            ? `Opens tomorrow at ${opensAt}`
+            : offset === 7
+                ? `Opens next ${getDayDisplayName(day)} at ${opensAt}`
+                : `Opens ${getDayDisplayName(day)} at ${opensAt}`;
     }
-    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+
+    return undefined;
 }
 
-/**
- * Get the next day key
- */
-function getNextDayKey(currentDay: DayKey): DayKey {
-    const currentIndex = DAY_KEYS.indexOf(currentDay);
-    const nextIndex = (currentIndex + 1) % 7;
-    return DAY_KEYS[nextIndex];
+type ActiveRange = Readonly<{
+    closeDelta: number;
+    range: WorkingHoursRange;
+}>;
+
+type ScheduleInterval = Readonly<{
+    end: number;
+    range: WorkingHoursRange;
+    start: number;
+}>;
+
+function getActiveRanges(
+    workingHours: Record<string, string>,
+    currentDay: WorkingHoursDayKey,
+    currentMinutes: number,
+): ActiveRange[] {
+    const previousDay = getDayOffset(currentDay, -1);
+    const previousIntervals = getRangesForDay(workingHours, previousDay, 'hours_engine_current_status')
+        .ranges
+        .filter((range) => range.endMinutes < range.startMinutes)
+        .map((range): ScheduleInterval => ({
+            end: range.endMinutes,
+            range,
+            start: range.startMinutes - MINUTES_PER_DAY,
+        }));
+
+    const todayIntervals = getRangesForDay(workingHours, currentDay, 'hours_engine_current_status')
+        .ranges
+        .map((range): ScheduleInterval => ({
+            end: range.endMinutes < range.startMinutes
+                ? range.endMinutes + MINUTES_PER_DAY
+                : range.endMinutes,
+            range,
+            start: range.startMinutes,
+        }));
+
+    const intervals = [...previousIntervals, ...todayIntervals]
+        .sort((left, right) => left.start - right.start || left.end - right.end);
+    const activeIndex = intervals.findIndex((interval) => (
+        interval.start <= currentMinutes && currentMinutes < interval.end
+    ));
+    if (activeIndex === -1) return [];
+
+    let closeAt = intervals[activeIndex].end;
+    let closingRange = intervals[activeIndex].range;
+    for (let index = activeIndex + 1; index < intervals.length; index += 1) {
+        const interval = intervals[index];
+        if (interval.start > closeAt) break;
+        if (interval.end > closeAt) {
+            closeAt = interval.end;
+            closingRange = interval.range;
+        }
+    }
+
+    return [{ closeDelta: closeAt - currentMinutes, range: closingRange }];
 }
 
-/**
- * Compute store open/closed status
- *
- * @param workingHours - Record<string, string> from store data (e.g., { "mon": "09:00-23:00" })
- * @param timeZone - Store timezone (e.g., "Asia/Kolkata")
- * @param timeFormat - Time format preference ("12h" or "24h")
- * @returns StoreStatus object
- */
 export function getStoreStatus(
     workingHours?: Record<string, string>,
     timeZone?: string,
     timeFormat?: string,
+    now = new Date(),
 ): StoreStatus {
-    // No hours configured - suppress open/closed authority. Public surfaces
-    // should show less rather than claim the business is open from missing data.
-    if (!workingHours || Object.keys(workingHours).length === 0) {
-        return {
-            isOpen: false,
-            statusText: "Hours not available",
-        };
+    if (!workingHours || Array.isArray(workingHours) || Object.keys(workingHours).length === 0) {
+        return { isOpen: false, statusText: 'Hours not available' };
     }
 
-    const currentDay = getCurrentDayKey(timeZone);
-    const currentTime = getCurrentTime(timeZone);
-    const currentMinutes = parseTimeToMinutes(currentTime);
-
-    if (!Number.isFinite(currentMinutes)) {
-        return {
-            isOpen: false,
-            statusText: "Hours not available",
-        };
+    const currentDay = getDayKeyForDate(now, timeZone);
+    const currentMinutes = parseClockMinutes(getTimeForDate(now, timeZone));
+    if (currentMinutes === null) {
+        return { isOpen: false, statusText: 'Hours not available' };
     }
 
-    const todayHours = workingHours[currentDay];
-
-    // No hours for today - store is closed
-    if (!todayHours || !todayHours.includes("-")) {
-        // Find next open day
-        const nextOpen = findNextOpenTime(workingHours, currentDay, timeFormat);
+    const today = getRangesForDay(workingHours, currentDay, 'hours_engine_current_status');
+    const currentDayHours = today.ranges.length
+        ? today.ranges.map((range) => formatRange(range, timeFormat)).join(', ')
+        : undefined;
+    const active = getActiveRanges(workingHours, currentDay, currentMinutes)[0];
+    if (active) {
         return {
-            isOpen: false,
-            statusText: "Closed",
-            nextChange: nextOpen,
-        };
-    }
-
-    // Parse today's hours
-    const [openTime, closeTime] = todayHours.split("-").map((t) => t.trim());
-    const openMinutes = parseTimeToMinutes(openTime);
-    const closeMinutes = parseTimeToMinutes(closeTime);
-
-    if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
-        logHoursStatusInvalidTimeRange(currentDay, todayHours, "hours_engine_current_status");
-        return {
-            isOpen: false,
-            statusText: "Hours not available",
-        };
-    }
-
-    const isCurrentlyOpen = isWithinWindow(
-        currentMinutes,
-        openMinutes,
-        closeMinutes,
-    );
-
-    if (isCurrentlyOpen) {
-        // Store is open - show when it closes
-        const closesAt = formatClockTime(closeTime, timeFormat);
-        return {
+            currentDayHours: formatRange(active.range, timeFormat),
             isOpen: true,
-            statusText: "Open",
-            nextChange: `Closes at ${closesAt}`,
-            currentDayHours: `${formatClockTime(openTime, timeFormat)} - ${formatClockTime(closeTime, timeFormat)}`,
-        };
-    } else {
-        // Store is closed
-        // Check if it opens later today
-        if (currentMinutes < openMinutes) {
-            const opensAt = formatClockTime(openTime, timeFormat);
-            return {
-                isOpen: false,
-                statusText: "Closed",
-                nextChange: `Opens at ${opensAt}`,
-                currentDayHours: `${formatClockTime(openTime, timeFormat)} - ${formatClockTime(closeTime, timeFormat)}`,
-            };
-        }
-
-        // Already past closing time - find next open time
-        const nextOpen = findNextOpenTime(workingHours, currentDay, timeFormat);
-        return {
-            isOpen: false,
-            statusText: "Closed",
-            nextChange: nextOpen,
-            currentDayHours: `${formatClockTime(openTime, timeFormat)} - ${formatClockTime(closeTime, timeFormat)}`,
+            nextChange: `Closes at ${formatClockTime(active.range.endTime, timeFormat)}`,
+            statusText: 'Open',
         };
     }
+
+    if (today.configuredInvalid) {
+        return { isOpen: false, statusText: 'Hours not available' };
+    }
+
+    return {
+        currentDayHours,
+        isOpen: false,
+        nextChange: findNextOpenTime(workingHours, currentDay, currentMinutes, timeFormat),
+        statusText: 'Closed',
+    };
 }
 
 /**
- * Minutes until today's visible open/close boundary.
- *
- * This is intentionally scoped to today's schedule so floating UI only appears
- * for immediate urgency instead of announcing tomorrow or later openings.
+ * Minutes until the next boundary that occurs during the current store day.
+ * This includes the close of a previous-day overnight range and a later opening
+ * today, but deliberately does not announce tomorrow's schedule as urgent.
  */
 export function getMinutesUntilStoreStatusChange(
     workingHours?: Record<string, string>,
     timeZone?: string,
     now = new Date(),
 ): number | null {
-    if (!workingHours || Object.keys(workingHours).length === 0) {
-        return null;
-    }
+    if (!workingHours || Array.isArray(workingHours) || Object.keys(workingHours).length === 0) return null;
 
     const currentDay = getDayKeyForDate(now, timeZone);
-    const currentTime = getTimeForDate(now, timeZone);
-    const currentMinutes = parseTimeToMinutes(currentTime);
-    const todayHours = workingHours[currentDay];
+    const currentMinutes = parseClockMinutes(getTimeForDate(now, timeZone));
+    if (currentMinutes === null) return null;
 
-    if (
-        !Number.isFinite(currentMinutes) ||
-        !todayHours ||
-        !todayHours.includes("-")
-    ) {
-        return null;
-    }
+    const active = getActiveRanges(workingHours, currentDay, currentMinutes)[0];
+    if (active) return active.closeDelta;
 
-    const [openTime, closeTime] = todayHours.split("-").map((t) => t.trim());
-    const openMinutes = parseTimeToMinutes(openTime);
-    const closeMinutes = parseTimeToMinutes(closeTime);
-
-    if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
-        return null;
-    }
-
-    if (closeMinutes < openMinutes) {
-        if (currentMinutes >= openMinutes) {
-            return MINUTES_PER_DAY - currentMinutes + closeMinutes;
-        }
-        if (currentMinutes < closeMinutes) {
-            return closeMinutes - currentMinutes;
-        }
-        return openMinutes - currentMinutes;
-    }
-
-    if (currentMinutes < openMinutes) {
-        return openMinutes - currentMinutes;
-    }
-
-    if (isWithinWindow(currentMinutes, openMinutes, closeMinutes)) {
-        return closeMinutes - currentMinutes;
-    }
-
-    return null;
+    const nextToday = getRangesForDay(workingHours, currentDay, 'hours_engine_next_change')
+        .ranges
+        .filter((range) => range.startMinutes > currentMinutes)
+        .map((range) => range.startMinutes - currentMinutes)
+        .sort((left, right) => left - right)[0];
+    return nextToday ?? null;
 }
 
-/**
- * Find next open time (for showing "Opens Monday at 9:00 AM")
- */
-function findNextOpenTime(
-    workingHours: Record<string, string>,
-    currentDay: DayKey,
-    timeFormat?: string,
-): string | undefined {
-    let checkDay = getNextDayKey(currentDay);
-
-    // Check up to 7 days ahead
-    for (let i = 0; i < 7; i++) {
-        const hours = workingHours[checkDay];
-        if (hours && hours.includes("-")) {
-            const [openTime, closeTime] = hours.split("-").map((t) => t.trim());
-            const openMinutes = parseTimeToMinutes(openTime);
-            const closeMinutes = parseTimeToMinutes(closeTime);
-            if (!Number.isFinite(openMinutes) || !Number.isFinite(closeMinutes)) {
-                logHoursStatusInvalidTimeRange(checkDay, hours, "hours_engine_next_open");
-                checkDay = getNextDayKey(checkDay);
-                continue;
-            }
-            const opensAt = formatClockTime(openTime, timeFormat);
-            const dayName = getDayDisplayName(checkDay);
-
-            // If it's tomorrow, just say "tomorrow"
-            if (i === 0) {
-                return `Opens tomorrow at ${opensAt}`;
-            }
-
-            return `Opens ${dayName} at ${opensAt}`;
-        }
-        checkDay = getNextDayKey(checkDay);
-    }
-
-    return undefined;
-}
-
-/**
- * Get display name for day
- */
-function getDayDisplayName(day: DayKey): string {
-    const names: Record<DayKey, string> = {
-        sun: "Sunday",
-        mon: "Monday",
-        tue: "Tuesday",
-        wed: "Wednesday",
-        thu: "Thursday",
-        fri: "Friday",
-        sat: "Saturday",
-    };
-    return names[day];
-}
-
-/**
- * React hook-friendly version that updates status
- * Use this in client components
- */
 export function useStoreStatus(
     workingHours?: Record<string, string>,
     timeZone?: string,
     timeFormat?: string,
 ): StoreStatus {
-    // For SSR compatibility, compute on each render
-    // In a real implementation, you might add a timer to update every minute
     return getStoreStatus(workingHours, timeZone, timeFormat);
 }

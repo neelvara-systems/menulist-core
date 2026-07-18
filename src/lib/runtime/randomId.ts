@@ -20,11 +20,40 @@ const bytesToHex = (bytes: Uint8Array): string => (
     Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')
 );
 
+const formatUuidBytes = (bytes: Uint8Array): string => {
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    const hex = bytesToHex(bytes);
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};
+
 const getRandomUuid = (): string | null => {
     const runtimeCrypto = getRuntimeCrypto();
     return typeof runtimeCrypto?.randomUUID === 'function'
         ? runtimeCrypto.randomUUID()
         : null;
+};
+
+export const createRuntimeUuid = (): string => {
+    const uuid = getRandomUuid();
+    if (uuid) return uuid;
+
+    const runtimeCrypto = getRuntimeCrypto();
+    if (typeof runtimeCrypto?.getRandomValues === 'function') {
+        const bytes = new Uint8Array(16);
+        runtimeCrypto.getRandomValues(bytes);
+        return formatUuidBytes(bytes);
+    }
+
+    fallbackCounter = (fallbackCounter + 1) % Number.MAX_SAFE_INTEGER;
+    const fallbackHex = `${Date.now().toString(16)}${fallbackCounter.toString(16).padStart(16, '0')}`
+        .padStart(32, '0')
+        .slice(-32);
+    const bytes = Uint8Array.from(
+        fallbackHex.match(/.{2}/g) || [],
+        (value) => Number.parseInt(value, 16),
+    );
+    return formatUuidBytes(bytes);
 };
 
 export const createRandomIdSegment = (length = 12): string => {

@@ -216,34 +216,34 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
         eyebrow: "Image reuse",
         heroTitle: "Reuse existing images without pretending they are perfect source files.",
         description:
-            "CueLayers converts uploaded or generated flat images into safe editable candidates when possible, with protected text, review flags, and a flat fallback.",
+            "CueLayers preserves an uploaded flat image as a locked source, opens it in Creative Studio, and keeps every owner-added edit separate and reusable.",
         metaDescription:
-            "Learn how CampaignCue CueLayers helps owners reuse uploaded or generated images as editable candidates with source snapshots and safe fallbacks.",
+            "Learn how CampaignCue CueLayers preserves an uploaded image, opens it in Creative Studio, and keeps the original available as a safe fallback.",
         ownerProblem:
             "Owners often have old posters, generated images, or downloaded creatives they want to adjust instead of recreating from scratch.",
         outcome:
-            "CampaignCue keeps the original flat image safe, creates editable candidates where reliable, and marks uncertain text or layers for review.",
+            "CampaignCue keeps the original image safe while the owner adds verified text, shapes, QR details, or drawing layers in the shared editor.",
         previewKind: "cuelayers",
         dashboardNote:
             "Provider-driven editable decomposition remains gated. The active path is the safe upload spine and editor handoff with flat-safe fallback.",
         proofRows: [
             { label: "Source", value: "Uploaded flat image or generated asset", status: "Preserved" },
             { label: "Truth", value: "Business text, brand, rights, and source snapshots", status: "Pinned" },
-            { label: "Layers", value: "Image, offer block, text candidate, and fallback", status: "Reviewable" },
+            { label: "Editor", value: "Locked source plus owner-added text, shapes, QR, and drawing", status: "Flat-safe" },
             { label: "Export", value: "Saved revision and server-checked PNG path", status: "Revision pinned" },
         ],
         steps: [
             {
                 title: "Upload or select the image",
-                detail: "The source package stores the original and normalized references without persisting signed URLs.",
+                detail: "The active flow accepts an uploaded PNG, JPEG, or WebP and stores the original without persisting signed URLs.",
             },
             {
-                title: "Create safe candidates",
-                detail: "The reconstruction keeps a flat reference layer and marks any editable candidates with confidence and review state.",
+                title: "Preserve the source",
+                detail: "CueLayers opens the uploaded image unchanged as one locked flat-safe layer instead of inventing editable source parts.",
             },
             {
                 title: "Open in Creative Studio",
-                detail: "The shared editor receives a CreativeEditorDocument snapshot and CueLayers layer index sidecar.",
+                detail: "The owner can add verified text, shapes, QR details, or drawing layers through the shared editor while the original stays available.",
             },
             {
                 title: "Export only after save",
@@ -252,9 +252,9 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
         ],
         benefits: [
             "Lets owners reuse real assets they already have.",
-            "Keeps conservative fallbacks when reconstruction is uncertain.",
+            "Keeps the first editor render faithful to the uploaded source.",
             "Avoids source-file recovery overclaims.",
-            "Fits the same CampaignCue editor and asset library path used by generated packs.",
+            "Keeps saved edits and exports in the CampaignCue editor and Asset Library path.",
         ],
         boundaries: [
             "Not Canva, PSD, Figma, or SVG source recovery.",
@@ -268,7 +268,7 @@ export const CAMPAIGNCUE_WEBSITE_FEATURES = [
             },
             {
                 question: "What happens if text cannot be trusted?",
-                answer: "CampaignCue keeps that part as an image or marks it for review instead of silently changing business-critical text.",
+                answer: "The active flow leaves source text inside the locked image. New editable text is added separately from confirmed CampaignCue facts instead of silently rewriting the image.",
             },
         ],
         relatedFeatureSlugs: ["creative-studio", "creative-trust-center", "brand-playbook-proof-deck"],

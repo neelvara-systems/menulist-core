@@ -1,9 +1,9 @@
 # Menu Correctness Engine — Product Specification
 
-**Version:** 3.1
+**Version:** 3.2
 **Status:** Implemented source evidence; active runtime flag (`ENABLE_MCE: true`); not current launch certification
 **Owner:** Product
-**Last Updated:** February 14, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -15,9 +15,11 @@ Current release approval requires the active [production-readiness audit](../aud
 
 Current public claim boundary: MCE validates project data at save time and stamps `_mce` metadata on the existing project document. It does not certify every customer-facing surface, artifact, device, or provider target without separate target evidence.
 
+In the current runtime, that persisted stamp applies to standalone update and standalone publish transactions. The editor gate also validates the resolved linked-outlet view, while linked persistence is enforced by `/api/projects/outlet-save` and does not stamp `_mce`. Supported display prices include currency values, text prices, and ranges; numeric-only rules apply only when one numeric value can be parsed safely.
+
 ## 1. Executive Summary
 
-The Menu Correctness Engine (MCE) is a validation layer that runs on every menu save, checking whether project data is complete, valid, and safe before supported customer-facing publishing flows continue. MCE validates — it does not duplicate, route, or store separate copies of data.
+The Menu Correctness Engine (MCE) is a validation layer used by standalone project update/publish transactions and the editor gate. It checks project completeness and structural validity without duplicating, routing, or storing separate customer-data copies.
 
 Supported surfaces read from the same Firestore project document through their existing refresh, download, device, or provider paths. MCE adds the missing piece: **deterministic validation that catches errors at save-time** and stamps the project data as verified.
 
@@ -160,7 +162,7 @@ These rules define how MCE governs exposure without becoming annoying software.
 | #   | Rule                                     | What It Means                                                                                                         |
 | --- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | 1   | **Controls validation, not editor**      | Owner can type anything, change anything, experiment freely. MCE only validates what gets stamped as verified         |
-| 2   | **Validate on every save**               | Every save goes through CSR validation. Verification is silent and fast (< 100ms, client-side)                        |
+| 2   | **Validate supported mutations**         | Standalone update/publish and the editor gate run local CSR; linked saves use the protected outlet route             |
 | 3   | **Never block the save**                 | Raw data write always succeeds. MCE adds verification metadata but never prevents the Firestore write                 |
 | 4   | **Silent authority, zero notifications** | MCE never says "Error", "Fix this", "Warning". If something unsafe is detected, validation result is stamped silently |
 | 5   | **Per-outlet independence**              | Each outlet has its own project document. One outlet's validation state has zero impact on other outlets              |
@@ -174,7 +176,7 @@ These rules define how MCE governs exposure without becoming annoying software.
 
 | Component                            | Description                                                                |
 | ------------------------------------ | -------------------------------------------------------------------------- |
-| **Correctness State Resolver (CSR)** | Validates menu data completeness and safety on every save                  |
+| **Correctness State Resolver (CSR)** | Validates menu data completeness and safety on supported mutation/gate paths |
 | **Verification Metadata (`_mce`)**   | Stamps project document with verification status — no separate collection  |
 | **Centralized Sanitization Utility** | Extracts `sanitizeForClient()` to shared module for all surface data paths |
 | **Publish-Gate Integration**         | Blocks "Continue to UI Editor" if menu data fails critical validation      |
@@ -203,7 +205,7 @@ These rules define how MCE governs exposure without becoming annoying software.
 | ---- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
 | US-1 | As an owner, I want supported surfaces to use the same menu source so customers see consistent MenuList output | Supported surfaces read from the same verified project data through their audited paths |
 | US-2 | As an owner, I want to be told if my menu has issues before it goes live so I can fix them             | Validation errors shown clearly before proceeding to UI Editor                       |
-| US-3 | As an owner, I don't want to manually check each surface after making changes                          | MCE validates automatically on every save — zero manual steps                        |
+| US-3 | As an owner, I don't want a separate correctness workflow after normal edits                          | Validation runs inside supported mutations/gates — zero extra owner settings         |
 | US-4 | As a multi-outlet owner, I want all locations to reflect my master menu changes correctly              | MCE validates master→outlet propagation correctness on every outlet save             |
 | US-5 | As an owner, I want my menu to stay available even if something goes wrong in the system               | Existing caching (screen localStorage, Vercel ISR) keeps menus visible during issues |
 
@@ -223,7 +225,7 @@ These rules define how MCE governs exposure without becoming annoying software.
 
 | ID   | Requirement                                                                                        | Priority |
 | ---- | -------------------------------------------------------------------------------------------------- | -------- |
-| FR-1 | MCE validates menu data on every save (required fields, price validity, category integrity)        | P0       |
+| FR-1 | MCE validates standalone update/publish and editor-gate data (required fields, price validity, category integrity) | P0 |
 | FR-2 | Verification metadata (`_mce`) added to project document as part of existing `setDoc` call         | P0       |
 | FR-3 | If validation fails, raw data write still succeeds — MCE never blocks saves                        | P0       |
 | FR-4 | MCE integrates with existing `updateProject()` flow without changing owner UX                      | P0       |
@@ -282,7 +284,7 @@ MCE is designed for the 3-Year Architecture Freeze. Once implemented:
 | Dependency                     | Status                    | Impact on MCE                           |
 | ------------------------------ | ------------------------- | --------------------------------------- |
 | Editor save flow (syncChanges) | ✅ Implemented            | MCE hooks into `updateProject()` flow   |
-| Multi-outlet resolution        | ✅ Implemented            | MCE validates resolved output           |
+| Multi-outlet resolution        | ✅ Implemented            | Editor gate validates resolved output; outlet route enforces persisted shape/policy |
 | POS Webhook Sync               | ✅ Implemented (flag OFF) | POS reads same verified project data    |
 | Digital Screens                | ✅ Implemented            | Screens read same verified project data |
 | PDF Generator                  | ✅ Implemented            | PDF generates from same project data    |
@@ -437,7 +439,7 @@ These decisions were made during the design phase after evaluating the full Chat
 
 **Rationale:**
 
-- CSR validates on every save. Data cannot become invalid between saves unless someone bypasses `updateProject()` (which would be a security breach, not a correctness issue).
+- CSR validates supported mutation/gate state. Other writers must keep their own authenticated schema, permission, scope, and concurrency boundary; `_mce` is not a universal write-authority marker.
 - The only scenario where drift could occur: direct Firestore writes bypassing the DAL. This is protected by Firestore security rules.
 - Adding a Cloud Function increases Firebase cost (~$0.15/month for 1000 stores), requires `functions/` directory changes, and adds maintenance burden.
 - If we ever need it, it's a simple addition later — re-run CSR on all active stores' project data, log failures.
@@ -473,7 +475,7 @@ This section documents an explicit architectural decision about what MCE v1 cont
 
 ### What MCE v1 Controls
 
-- **Validation:** CSR validates menu data on every save. This is the core protection.
+- **Validation:** CSR covers standalone update/publish and the editor gate; protected server writers retain their own validation contract.
 - **Marking:** `_mce` metadata stamps whether data passed validation. This is the record.
 - **Publish-Gate:** Blocks "Continue to UI Editor" if critical validation fails. This is the owner-facing enforcement.
 

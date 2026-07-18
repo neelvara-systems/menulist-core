@@ -7,6 +7,11 @@ import {
 import { isMenuListPublicApiEntityEligible } from '../../src/lib/publicApi/targetEligibility';
 import { buildPullApiETagPayload } from '../../src/lib/publicApi/responseIdentity';
 import {
+    MAX_CUSTOM_BUSINESS_ATTRIBUTES,
+    normalizeBusinessAttributes,
+    normalizeCustomBusinessAttributes,
+} from '../../src/lib/obp/businessAttributes';
+import {
     isMenuListPublicApiCredentialInScope,
     isMenuListPublicApiProductEntity,
     isMenuListPublicApiStoreIdentityConsistent,
@@ -61,6 +66,22 @@ assert.deepEqual(
     'business attribute output must include only known boolean public fields',
 );
 assert.equal(normalizePublicBusinessAttributes(['vegetarian']), null);
+assert.deepEqual(
+    normalizeBusinessAttributes({ acceptsCards: false, internal: true, vegetarian: true, wifi: 'false' }),
+    { acceptsCards: false, vegetarian: true },
+    'owner and public controlled attributes must share known-boolean runtime admission',
+);
+const normalizedCustomAttributes = normalizeCustomBusinessAttributes([
+    { active: false, id: 'disabled', label: 'Disabled owner attribute' },
+    { active: 'yes', id: 'malformed-active', label: 'Malformed active state' },
+    { id: 'duplicate', label: 'First duplicate' },
+    { id: 'duplicate', label: 'Second duplicate' },
+    ...Array.from({ length: 10 }, (_, index) => ({ id: `bounded-${index}`, label: `Bounded ${index}` })),
+]);
+assert.equal(normalizedCustomAttributes.length, MAX_CUSTOM_BUSINESS_ATTRIBUTES, 'custom attributes must remain owner-editor bounded');
+assert.equal(normalizedCustomAttributes[0]?.active, false, 'disabled custom attributes must retain explicit owner state');
+assert.equal(normalizedCustomAttributes[1]?.active, false, 'malformed active state must fail closed');
+assert.equal(normalizedCustomAttributes.filter((attribute) => attribute.id === 'duplicate').length, 1, 'duplicate custom attribute IDs must not enter public projection');
 assert.deepEqual(
     getActivePublicTempStatus({
         createdBy: 'private-user-id',

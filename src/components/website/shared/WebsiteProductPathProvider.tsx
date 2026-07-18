@@ -1,5 +1,6 @@
 'use client';
 
+import { isReviewedWebsiteResourceLocale } from '@/content/websiteResources/routing';
 import { createContext, useContext, useMemo } from 'react';
 
 const WebsiteProductPathContext = createContext('');
@@ -11,16 +12,20 @@ const PREFIXABLE_WEBSITE_PATHS = [
     '/contact',
     '/create-menu',
     '/features',
+    '/faq',
     '/get-started',
     '/how-it-works',
     '/industries',
+    '/invite',
     '/multi-location',
     '/pricing',
     '/privacy-policy',
     '/refund-policy',
     '/resources',
     '/terms-of-service',
+    '/tools',
     '/trust-security',
+    '/whatsapp',
 ];
 
 function normalizeBasePath(basePath?: string | null): string {
@@ -30,6 +35,11 @@ function normalizeBasePath(basePath?: string | null): string {
 
 export function shouldPrefixWebsiteHref(href: string): boolean {
     if (!href.startsWith('/') || href.startsWith('//')) return false;
+
+    const [firstPathPart, secondPathPart] = href.split('/').filter(Boolean);
+    if (isReviewedWebsiteResourceLocale(firstPathPart) && secondPathPart === 'resources') {
+        return true;
+    }
 
     return PREFIXABLE_WEBSITE_PATHS.some((path) => (
         href === path
@@ -47,8 +57,20 @@ export function withWebsiteBasePath(href: string, basePath: string): string {
     return `${normalizedBasePath}${href}`;
 }
 
+export function withoutWebsiteBasePath(pathname: string, basePath: string): string {
+    const normalizedBasePath = normalizeBasePath(basePath);
+    if (!normalizedBasePath) return pathname;
+    if (pathname === normalizedBasePath) return '/';
+    if (pathname.startsWith(`${normalizedBasePath}/`)) return pathname.slice(normalizedBasePath.length);
+    return pathname;
+}
+
+export function useWebsiteBasePath(): string {
+    return useContext(WebsiteProductPathContext);
+}
+
 export function useWebsitePath(href: string): string {
-    const basePath = useContext(WebsiteProductPathContext);
+    const basePath = useWebsiteBasePath();
     return useMemo(() => withWebsiteBasePath(href, basePath), [basePath, href]);
 }
 

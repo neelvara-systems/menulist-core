@@ -177,7 +177,7 @@ const FOUNDER_CONTROL_CARDS = [
     {
         eyebrow: 'Before release',
         title: 'Run saved answer tests',
-        description: 'Keep up to 100 critical questions and check the expected approved answer, FAQ/owner answer, provider fallback, escalation, no-answer path, source, and required wording. Deterministic checks do not call the fallback model.',
+        description: 'Keep up to 100 priority questions and check the expected approved answer, FAQ/owner answer, provider fallback, escalation, no-answer path, required wording, and supporting references. Critical failures mark release proof blocked; deterministic checks do not call the fallback model or change a release.',
         href: '/product/knowledge-governance',
         cta: 'Review answer controls',
     },

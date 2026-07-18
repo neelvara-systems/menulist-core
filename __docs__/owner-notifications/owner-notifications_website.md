@@ -1,9 +1,9 @@
 # Owner Notifications - Website Content Guidance
 
 **Status:** Public-content guidance only
-**Date:** 2026-07-13
+**Date:** 2026-07-16
 
-July 13 verification: internal recovery authorization and bounded-read hardening do not change public capability or this website guidance.
+July 16 verification: internal recovery/provider hardening and removal of the fake desktop notification badge do not add a public capability. No owner notification center or notification settings surface is currently shipped.
 
 Owner Notifications is mostly infrastructure. It does not need a standalone public landing page unless product packaging later exposes it as a trust/readiness capability.
 

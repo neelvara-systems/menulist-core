@@ -1,7 +1,7 @@
 # Roles & Permissions — Mobile Support
 
-**Last Updated:** July 1, 2026 (v11 - Staff/Roles route parity source gate)
-**Decision:** ✅ MOBILE SUPPORTED — Owner can manage roles and permissions from phone
+**Last Updated:** July 16, 2026 (v12 - owner-target and response parity)
+**Decision:** MOBILE SUPPORTED — local source verified; hosted device evidence pending
 
 ---
 
@@ -38,6 +38,7 @@
 | Activate/deactivate staff      | `MobileUsersScreen`                   | ✅     |
 | Change staff role              | `MobileUsersScreen`                   | ✅     |
 | Remove staff from store        | `MobileUsersScreen`                   | ✅     |
+| View Owner account as Manager  | `MobileUsersScreen` (read-only detail) | ✅    |
 | Filter bottom tabs by role     | `MobileShell` + `MobileNavigation`    | ✅     |
 | Filter More sub-screens by role | `MobileMoreScreen`                   | ✅     |
 
@@ -47,6 +48,7 @@
 - Uses the same shared staff client response boundary as desktop: staff/role API responses are capped at 256KB and successful list/mutation/role envelopes are shape-checked before mobile state updates
 - Mobile staff create, update, remove, reset-passcode, and force-sign-out flows inherit operation-specific mutation acknowledgement checks from `src/lib/staffManagement/client.ts`: the response must include the expected `mode`, `user`, and `userId`, and `user.id` must match `userId`, before mobile rows, selected-user state, passcode sheets, or success copy advance
 - Mobile add/reset supports email, phone, and Staff ID aliases. When mobile create has a phone number, it sends the store country/dial code as the fallback phone context. Owner create/reset shows a temporary passcode once in a closeable mobile sheet with row-level copy icons, equal-width **WhatsApp** and **Share** actions, and a `wa.me` share link that targets the staff phone number when one is saved. Failed row-copy, fallback copy, WhatsApp open, and native share actions log bounded `mobile_staff_login_details_*` diagnostics only; raw Staff IDs, passcodes, phone numbers, and generated login messages must not be logged.
+- A Manager with `canManageUsers` but without `canAssignRoles` can add ordinary Staff and manage non-owner staff. Mobile keeps Owner accounts visible for context but disables edit, reset, force-sign-out, activate/deactivate, and remove actions with plain explanatory copy. The same server target check runs again against fresh transaction data.
 - Mobile self-service password change uses the shared `/api/auth/change-password` route from the signed-in profile screen. The old top-level More row is intentionally removed because account access is a rare profile action, not a daily settings action.
 - Mobile signed-in profile edit uses `/api/auth/update-profile` for the current user's name, display/contact email, and phone fields. This does not change the Firebase Auth login email; password/passcode changes stay under Account access.
 - Same `storeDetails.roles` data source
@@ -78,4 +80,6 @@
 
 ## RBAC Enforcement (Inherited)
 
-Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store checks, `canManageUsers`, `canAssignRoles`, role validation, current-store scoped staff payloads for non-master managers, and last-owner protection. Mobile also hides unavailable bottom tabs and More sub-screens before navigation; direct hash/sub-screen access falls back to More with a short unavailable message. Removing a staff member from the current store removes them from the current-store mobile list even if the account remains assigned to another location.
+Mobile calls the same staff/role APIs as desktop. Those routes enforce `withAuth()`, tenant/store lifecycle checks, `canManageUsers`, `canAssignRoles`, role validation, current-store scoped staff payloads for non-master managers, owner-target protection, and last-owner protection. Mobile also hides unavailable bottom tabs and More sub-screens before navigation; direct hash/sub-screen access falls back to More with a short unavailable message. Removing a staff member from the current store removes them from the current-store mobile list even if the account remains assigned to another location.
+
+`MobileUsersScreen` cannot reset the currently signed-in account through the staff-owner flow; self password/passcode change stays under **More → Profile → Account access**. Hosted iOS/Android browser and installed-PWA evidence remains an owner/release task and is not implied by local source parity.

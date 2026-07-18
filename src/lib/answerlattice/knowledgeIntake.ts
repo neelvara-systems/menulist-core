@@ -35,6 +35,7 @@ import {
     reserveAnswerlatticeIntakeUsage,
 } from '@lib/answerlattice/intakeUsageLedger';
 import { rebuildProductSurfaceContentSummaryServer } from '@lib/answerlattice/productSurfaceContentServer';
+import { validateProcedure } from '@lib/answerlattice/procedureValidation';
 import { answerlatticeFirestoreAdmin } from '@lib/firebase/answerlatticeFirebaseAdmin';
 import {
     fetchBoundedPublicText,
@@ -112,12 +113,15 @@ type UpdateReviewItemInput = Partial<Pick<
     | 'body'
     | 'question'
     | 'answer'
+    | 'answerType'
     | 'routePath'
     | 'versionLabel'
     | 'tags'
     | 'contextKeys'
     | 'entityIds'
->>;
+>> & {
+    procedure?: AnswerlatticeIntakeReviewItem['procedure'] | null;
+};
 
 const db = answerlatticeFirestoreAdmin as admin.firestore.Firestore;
 
@@ -1176,8 +1180,56 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
         const nextTarget = (patch.target || current.target) as AnswerlatticeIntakeReviewItem['target'];
         const nextStatus = (patch.status || current.status) as AnswerlatticeIntakeReviewItem['status'];
         const nextEntityIds = patch.entityIds !== undefined ? patch.entityIds : current.entityIds;
+        const nextAnswer = patch.answer !== undefined ? patch.answer : current.answer;
+        const nextBody = patch.body !== undefined ? patch.body : current.body;
+        const nextAnswerType = patch.answerType !== undefined ? patch.answerType : current.answerType;
+        const shouldClearProcedure = input.procedure === null
+            || (
+                input.procedure === undefined
+                && input.answerType !== undefined
+                && input.answerType !== 'procedure'
+                && current.procedure !== undefined
+            );
+        if (shouldClearProcedure) {
+            patch.procedure = FieldValue.delete();
+        }
+        const nextProcedure = shouldClearProcedure
+            ? undefined
+            : input.procedure !== undefined
+                ? input.procedure
+                : current.procedure;
+        const nextAnswerBody = cleanLongText(
+            current.launchPack ? nextAnswer : nextAnswer || nextBody,
+            ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_BODY_CHARS,
+        );
+        if (
+            (nextAnswerType === 'procedure' || nextProcedure !== undefined)
+            && nextTarget !== ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
+        ) {
+            throw new Error('Guided procedures are available only for canonical answer proposals.');
+        }
+        if (nextAnswerType === 'procedure' && nextProcedure === undefined) {
+            throw new Error('Complete the guided procedure before saving this canonical answer proposal.');
+        }
+        if (nextProcedure !== undefined && nextAnswerType !== 'procedure') {
+            throw new Error('Choose the guided procedure answer format before saving procedure steps.');
+        }
+        if (nextAnswerType === 'procedure') {
+            const procedureValidation = validateProcedure(nextAnswerType, nextProcedure);
+            if (!procedureValidation.valid) {
+                throw new Error('Complete the guided procedure before saving this canonical answer proposal.');
+            }
+        }
         if (nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CHANGELOG && patch.status === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED) {
             throw new Error('Changelog entries are owner-managed. Use release notes as source context, not as an intake publish target.');
+        }
+        if (
+            nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
+            && nextStatus === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED
+            && current.launchPack
+            && current.launchPack.expectedSource !== 'canonical'
+        ) {
+            throw new Error('This launch item is marked for safe escalation or no answer. Add approved source evidence and refresh the product-specific set before accepting a canonical answer proposal.');
         }
         if (
             nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
@@ -1186,7 +1238,13 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
         ) {
             throw new Error('Add at least one related entity before accepting a canonical answer proposal.');
         }
-
+        if (
+            nextTarget === ANSWERLATTICE_INTAKE_REVIEW_TARGET.CANONICAL_PROPOSAL
+            && nextStatus === ANSWERLATTICE_INTAKE_REVIEW_STATUS.ACCEPTED
+            && nextAnswerBody.length < 20
+        ) {
+            throw new Error('Add a supported answer before accepting a canonical answer proposal.');
+        }
         const modifiedAt = now();
         tx.set(ref, {
             ...patch,
@@ -1203,6 +1261,9 @@ export async function updateKnowledgeIntakeReviewItem(scopeInput: IntakeScope, j
         }
 
         updatedItem = { id: normalizedItemId, ...current, ...patch };
+        if (shouldClearProcedure && updatedItem) {
+            delete (updatedItem as AnswerlatticeIntakeReviewItem).procedure;
+        }
     });
 
     if (!updatedItem) throw new Error('Review item update failed.');
@@ -1263,6 +1324,13 @@ export async function analyzeKnowledgeIntakeJob(scopeInput: IntakeScope, jobId: 
             : 0;
         if (currentRun?.status === 'processing' && leaseExpiry > Date.now()) {
             throw new Error('Knowledge intake analysis is already running.');
+        }
+        const launchPackLeaseExpiry = currentJob.launchPackRun?.leaseExpiresAt
+            && typeof (currentJob.launchPackRun.leaseExpiresAt as any).toMillis === 'function'
+            ? (currentJob.launchPackRun.leaseExpiresAt as any).toMillis()
+            : 0;
+        if (currentJob.launchPackRun?.status === 'processing' && launchPackLeaseExpiry > Date.now()) {
+            throw new Error('Product-specific starter pack generation is already running.');
         }
         if ([
             ANSWERLATTICE_KNOWLEDGE_INTAKE_STATUS.PUBLISHING,
@@ -2059,9 +2127,19 @@ async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeI
         ) {
             throw new Error('One or more selected review items are not available for publishing.');
         }
+        if (current.launchPack && current.launchPack.expectedSource !== 'canonical') {
+            throw new Error('This launch item is marked for safe escalation or no answer and cannot publish as a canonical answer proposal.');
+        }
         const relatedEntityIds = cleanIdList(current.entityIds, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_ENTITY_IDS);
         if (relatedEntityIds.length === 0) {
             throw new Error('Add at least one related entity before publishing a canonical answer proposal.');
+        }
+        const supportedAnswer = cleanLongText(
+            current.launchPack ? current.answer : current.answer || current.body,
+            4000,
+        );
+        if (supportedAnswer.length < 20) {
+            throw new Error('Add a supported answer before publishing a canonical answer proposal.');
         }
         if (proposalSnap.exists) {
             const existing = proposalSnap.data() || {};
@@ -2087,12 +2165,17 @@ async function publishCanonicalProposal(scope: IntakeScope, item: AnswerlatticeI
                     ticketCount: 0,
                     chatCount: 0,
                     negativeFeedbackRate: 0,
-                    exampleReferences: current.sourceId ? [current.sourceId] : [],
+                    exampleReferences: cleanIdList(
+                        current.launchPack?.sourceIds || (current.sourceId ? [current.sourceId] : []),
+                        5,
+                    ),
                 },
                 suggestedChange: {
                     draftTitle: cleanText(current.title, 160),
-                    structuredSummary: cleanLongText(current.answer || current.body, 500),
-                    detailedExplanation: cleanLongText(current.body || current.answer, 4000),
+                    structuredSummary: cleanLongText(supportedAnswer, 500),
+                    detailedExplanation: supportedAnswer,
+                    ...(current.procedure ? { procedure: current.procedure } : {}),
+                    ...(current.answerType ? { proposedAnswerType: current.answerType } : {}),
                     edgeCases: '',
                     constraints: 'Review before publishing as an authoritative Answerlattice answer.',
                     draftStatus: 'generated',
@@ -2345,6 +2428,23 @@ function sanitizeReviewItemPatch(input: UpdateReviewItemInput) {
     if (input.body !== undefined) patch.body = cleanLongText(input.body, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_REVIEW_BODY_CHARS);
     if (input.question !== undefined) patch.question = cleanText(input.question, 240);
     if (input.answer !== undefined) patch.answer = cleanLongText(input.answer, 2000);
+    if (input.answerType !== undefined) {
+        if (!['explanation', 'navigation', 'procedure'].includes(input.answerType)) {
+            throw new Error('Use a valid answer type.');
+        }
+        patch.answerType = input.answerType;
+    }
+    if (input.procedure !== undefined) {
+        if (input.procedure === null) {
+            patch.procedure = FieldValue.delete();
+        } else {
+            const procedureValidation = validateProcedure('procedure', input.procedure);
+            if (!procedureValidation.valid) {
+                throw new Error('Use a valid guided procedure.');
+            }
+            patch.procedure = input.procedure;
+        }
+    }
     if (input.routePath !== undefined) patch.routePath = input.routePath ? normalizeAnswerlatticeRoutePath(input.routePath) : null;
     if (input.versionLabel !== undefined) patch.versionLabel = cleanText(input.versionLabel, 40) || null;
     if (input.tags !== undefined) patch.tags = cleanList(input.tags, ANSWERLATTICE_KNOWLEDGE_INTAKE_CONSTRAINTS.MAX_TAGS);

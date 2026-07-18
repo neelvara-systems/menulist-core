@@ -58,7 +58,7 @@ Review everything before it goes live. Edit any item, fix a price, add descripti
 **A:** Clear handwritten menus may be readable, but printed menus give the best results. Review the draft before publishing.
 
 ### Q: How many pages can I upload?
-**A:** Multi-page PDFs are fully supported. Each page is processed separately and combined into one menu.
+**A:** Multi-page PDFs are supported. The upload flow converts pages for extraction and tells you if the selected batch is too large.
 
 ## SEO Meta
 - **Page Title:** Menu Photo to Digital Menu | Automatic Extraction | MenuList

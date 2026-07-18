@@ -1,53 +1,38 @@
-# Hours & Holiday Accuracy — Help Documentation
+# Set Your Working Hours and Menu Time Slots
 
 ## Current Source Boundary
 
 This help doc covers current weekly working-hours status and Today quick-hours edits. Holiday calendars and date-specific exception managers are not shipped. For an unscheduled closure, use Temporary Status or update today's hours.
 
-## Quick Summary
-Your menu automatically shows customers whether you're currently open or closed, based on the working hours you set in your store settings.
+## Set Regular Weekly Hours
 
----
+1. Open **Business Settings → Working Hours** on desktop, or **More → Working Hours** on mobile.
+2. Set an opening and closing time for each open day.
+3. Leave a day closed if you do not serve customers that day.
+4. Review the customer preview.
+5. Save or publish the regular hours.
 
-## How-To Guides
+An overnight range is allowed. For example, Friday `10:00 PM–2:00 AM` stays open into early Saturday and closes at 2:00 AM.
 
-### How to set your working hours
-1. Go to **Settings** → **Store Settings**
-2. Find the **Working Hours** section
-3. Set opening and closing times for each day of the week
-4. For days you're closed, leave the hours empty or mark as "Closed"
-5. Click **Save**
+## Make a One-Day Change
 
-### How the "Open/Closed" badge works
-- When customers scan your QR code, they see a badge at the top of your menu
-- **Open now** — Your current time is within working hours
-- **Closed** — Your current time is outside working hours
-- The badge updates automatically — no action needed from you
+Use **Today → Edit [day] Hours** when the regular timing for that weekday should change. This changes the regular weekly value for that weekday.
 
-### How to handle an unscheduled closure
-- Use Temporary Status for a clear customer-facing notice.
-- Or update today's hours in the mobile Today screen or Store Settings.
+Use **Temporary Status** for a one-off closure or short interruption without changing the regular weekly schedule.
 
----
+## Set Menu Time Slots
 
-## Troubleshooting
+1. Open **Time Slot Presets** in Business Settings or Mobile More.
+2. Create a short label such as Breakfast, Lunch, or Late Night.
+3. Set different start and end times. Overnight windows are allowed.
+4. Assign the preset to the relevant menu category.
 
-### Badge shows "Closed" but I'm open
-**Fix:** Check your working hours in Store Settings. Make sure the correct times are set and the timezone is right.
+Presets may overlap because separate categories can be available at the same time. A category disappears exactly at its end time.
 
-### Badge shows "Open" but I'm closed today
-**Fix:** If you're closed for an unscheduled reason, set Temporary Status or update today's hours.
+## If the Save Fails
 
----
+MenuList restores the previous owner view and shows a fixed retry message. Check your connection and retry. Do not assume customers received the change until the saved confirmation appears.
 
-## Tips
-- Set hours accurately — customers rely on them
-- Remember to update hours if they change seasonally
-- Working hours also appear in public menu structured data when available
+## Not Available
 
-## Related Features
-- **[Stores Management]** — Where you configure working hours
-- **[Client Menu]** — Where customers see the open/closed badge
-
-## Need More Help?
-- **Email:** support@menulist.ai
+Automatic holiday calendars, date-specific special hours, and Google Business Profile hours sync are not part of the current runtime.

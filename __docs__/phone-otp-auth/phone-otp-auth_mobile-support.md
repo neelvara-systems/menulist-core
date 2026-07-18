@@ -26,8 +26,11 @@ The UI avoids technical wording. Errors say:
 - Invalid verification code
 - Code expired
 - Too many attempts
+- Phone verification is temporarily unavailable
 
 No provider, token, or Firebase details are shown to owners.
+
+The temporary-unavailable state is a 503 from the fail-closed limiter boundary. It does not start a WhatsApp send or verification side effect, and Google or password/passcode remain available from the same sign-in surface.
 
 ## Response Diagnostics
 

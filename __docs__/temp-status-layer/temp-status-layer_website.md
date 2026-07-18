@@ -1,43 +1,35 @@
-# Temporary Status Layer — Website Content
+# Temporary Status - Website Content Boundary
 
-**Date:** February 19, 2026  
-**Audience:** Potential Customers (PUBLIC)
+**Audience:** Public-content maintainers
+**Last reviewed:** July 16, 2026
 
----
+## Suggested Copy
 
-## Hero Section
+### Temporary changes, clearly shown
 
-**Headline:** Tell Customers Before They Arrive  
-**Subheadline:** Quick temporary notices — "Closed today", "Opening late", "Special menu" — that disappear automatically.
+Closing today? Opening late? Add a short notice with an end time. Customers using your supported MenuList pages can see the change, and the notice disappears when it expires.
 
-## Problem Statement
+### What owners can do
 
-Customers check your page, see normal hours, and show up — only to find you're closed for a private event or running a limited menu. Frustration, wasted trips, bad reviews.
-
-## Solution Statement
-
-Set a temporary notice on your MenuList page in 2 taps. Choose from common scenarios or write your own message. Set when it expires — it removes itself automatically.
-
-## Feature Benefits
-
-1. **2-Tap Setup** — Choose status type, set expiry, done.
-2. **Auto-Expires** — No need to remember to remove it.
-3. **Visible Everywhere** — Shows on your official page and digital menu.
-4. **Works from Phone** — Set status from anywhere, anytime.
+- Choose a common status or write a short custom notice.
+- Set a future end date and time.
+- Clear the notice early from desktop or mobile.
+- Keep normal weekly Working Hours unchanged.
 
 ## FAQ
 
-**Q: What happens when the status expires?**  
-A: It disappears automatically. Your page goes back to normal.
+**Does this update every place where my business appears?**
 
-**Q: Can I remove it early?**  
-A: Yes, clear it anytime with one tap.
+No. It updates supported MenuList customer surfaces. External profiles and older downloaded or printed material are separate.
 
-## SEO Meta
+**What happens after expiry?**
 
-- **Page Title:** Temporary Status Notices for Your Business | MenuList
-- **Meta Description:** Set quick temporary notices on your business page. Closed today, opening late, special menu — auto-expires when you're back to normal.
+The notice is hidden from supported public output. It does not depend on a background cleanup job.
 
----
+**Does Kitchen Closed mark the whole business closed?**
 
-**Last Updated:** February 19, 2026
+No. Only an explicit Closed Today status is represented as a whole-business closure in structured data.
+
+## Public Claim Guard
+
+Avoid “visible everywhere,” “real-time,” “instant on all surfaces,” automatic holiday handling, or external-provider delivery. Website copy must stay within the current source contract.

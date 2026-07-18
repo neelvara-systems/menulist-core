@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 
 import { mceValidate } from "../../src/lib/mce";
-import { buildProjectAfterPartialUpdate } from "../../src/lib/menu/projectUpdateProjection";
-import { sanitizeProjectPartialUpdate } from "../../src/lib/menu/projectUpdateProjection";
+import {
+    buildProjectAfterPartialUpdate,
+    preserveExistingProjectImageMetadata,
+    sanitizeProjectPartialUpdate,
+} from "../../src/lib/menu/projectUpdateProjection";
 import type { Project } from "../../src/components/templates/main-app/projects/types";
 
 const currentProject: Project = {
@@ -86,5 +89,25 @@ assert.deepEqual(projectedNestedSave.menuSettings, {
     specialNote: { en: "Tax included" },
 });
 assert.equal(JSON.stringify(currentProject), currentBefore, "projection must not mutate current project truth");
+
+const generatedImagePatch = { projectImage: 'https://storage.example/generated.webp' };
+assert.deepEqual(
+    preserveExistingProjectImageMetadata(generatedImagePatch, { projectImage: null }),
+    generatedImagePatch,
+    'generated image may fill an absent summary image',
+);
+assert.deepEqual(
+    preserveExistingProjectImageMetadata(generatedImagePatch, { projectImage: 'https://storage.example/owner.webp' }),
+    {},
+    'transaction-current owner image must win over a generated default',
+);
+assert.deepEqual(
+    preserveExistingProjectImageMetadata(
+        { ...generatedImagePatch, description: { en: 'Keep this metadata' } },
+        { projectImage: 'https://storage.example/owner.webp' },
+    ),
+    { description: { en: 'Keep this metadata' } },
+    'preserving an owner image must not drop unrelated metadata fields',
+);
 
 console.log("Project partial-update projection tests passed.");

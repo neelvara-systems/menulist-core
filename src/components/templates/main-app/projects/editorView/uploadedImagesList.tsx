@@ -1,5 +1,5 @@
+import { FEATURE_FLAGS } from '@config/features';
 import { assertProjectUpdateSucceeded, updateProject } from '@database/projects';
-import { deleteFileByUrl } from '@database/storage/deleteFromStorage';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import useDeviceType from '@hook/useDeviceType';
 import { ProjectsDataContext, ProjectsDataProviderType } from '@providers/projectsDataProvider';
@@ -10,7 +10,7 @@ import { Button, Flex, Image, Modal, Popover, Space, Tooltip, message, theme } f
 import { Fragment, useContext, useState } from 'react';
 import { LuMoreVertical, LuPencil, LuTrash } from 'react-icons/lu';
 import { ExtractedDataItem, Project } from '../types';
-import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorFailure } from '../utils/editorDiagnostics';
+import { getBoundedMenuEditorStringContext, getMenuEditorProjectLogContext, logMenuEditorDiagnostic, logMenuEditorFailure } from '../utils/editorDiagnostics';
 import EditImageModal from './AiImageGenerator/EditImageModal';
 
 function UploadedImagesList({
@@ -71,7 +71,6 @@ function UploadedImagesList({
                     // Directly sync the changes without waiting for the full sync function logic
                     // because we only modified the existing data structure
                     try {
-                        await deleteFileByUrl(imageToDelete.url);
                         if (onProjectDataUpdate) {
                             await onProjectDataUpdate({ ...updatedProjectData, projectId: activeProject.projectId });
                         } else {
@@ -83,6 +82,12 @@ function UploadedImagesList({
                             );
                             setActiveProject(removeObjRef(savedProject));
                         }
+
+                        logMenuEditorDiagnostic('menu_editor_item_image_cleanup_deferred_shared_reference', {
+                            ...getMenuEditorProjectLogContext(activeProject?.projectId || projectData.projectId, (projectData as { masterProjectId?: unknown }).masterProjectId),
+                            ...getBoundedMenuEditorStringContext('itemId', selectedItem.id),
+                            ...getBoundedMenuEditorStringContext('imageUrl', imageToDelete.url),
+                        });
                         message.success('Image deleted successfully!');
                     } catch (error) {
                         logMenuEditorFailure('menu_editor_item_image_delete_failed', error, {
@@ -112,10 +117,12 @@ function UploadedImagesList({
                 const imagePreviewConfig = disabled || isMobile ? true : {
                     mask: (
                         <Space size={12}>
-                            <LuPencil
-                                style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
-                                onClick={(e) => { e.stopPropagation(); setImageEditModal({ active: true, imageData: image }); }}
-                            />
+                            {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                                <LuPencil
+                                    style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
+                                    onClick={(e) => { e.stopPropagation(); setImageEditModal({ active: true, imageData: image }); }}
+                                />
+                            ) : null}
                             <LuTrash
                                 style={{ fontSize: 16, color: '#fff', cursor: 'pointer' }}
                                 onClick={(e) => { e.stopPropagation(); onImageDelete(item, image); }}
@@ -126,16 +133,18 @@ function UploadedImagesList({
 
                 const mobileActionContent = (
                     <Flex gap={6} style={{ minWidth: 132 }} vertical>
-                        <Button
-                            icon={<LuPencil size={14} />}
-                            onClick={() => {
-                                setMobileActionImageUrl(null);
-                                setImageEditModal({ active: true, imageData: image });
-                            }}
-                            size="small"
-                        >
-                            Edit
-                        </Button>
+                        {FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
+                            <Button
+                                icon={<LuPencil size={14} />}
+                                onClick={() => {
+                                    setMobileActionImageUrl(null);
+                                    setImageEditModal({ active: true, imageData: image });
+                                }}
+                                size="small"
+                            >
+                                Edit
+                            </Button>
+                        ) : null}
                         <Button
                             danger
                             icon={<LuTrash size={14} />}
@@ -196,7 +205,7 @@ function UploadedImagesList({
                     </Flex>
                 </Fragment>
             })}
-            {!disabled ? (
+            {!disabled && FEATURE_FLAGS.ENABLE_AI_IMAGE_GENERATION ? (
                 <EditImageModal
                     selectedItem={item}
                     open={imageEditModal.active}

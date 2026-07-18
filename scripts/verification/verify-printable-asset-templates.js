@@ -154,7 +154,9 @@ const renderer = read('src/lib/printable-asset-templates/renderPrintableAsset.ts
   'requestedFormat',
   'renderPdfFirstPageToPng',
   'PDFJS_CDN_SRC',
+  'PDFJS_CDN_TIMEOUT_MS = 5000',
   'loadPdfJsFromCdn',
+  'PDF preview library load timed out',
   'wrapImageBlobInPdf',
   'generateMenuKitAsset',
   "outputFormat: requestedFormat === 'png' ? 'png' : 'pdf'",
@@ -354,8 +356,6 @@ const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts
   'PLATFORM_TEMPLATE_GENERIC_CATEGORY',
   'PLATFORM_TEMPLATE_CATALOG_KEYS',
   'getPlatformCatalogKeysForMutation',
-  'findPlatformTemplateMutationTarget',
-  'readPlatformCatalogMutationSnapshot',
   'BUSINESS_CATEGORIES',
   'STORE_TEMPLATE_DOC_ID',
   'MAX_DOCUMENT_BYTES',
@@ -381,7 +381,19 @@ const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts
   'getCreativeEditorTemplate',
   'getCreativeEditorUserTemplate',
   'deleteCreativeEditorTemplate',
-  'requestBodyComposer',
+  'composeRequestBody',
+  'getActiveSession',
+  'runTransaction',
+  'transaction.get',
+  'transaction.set',
+  'buildCreativeEditorTemplateVersionId',
+  'matchesCreativeEditorTemplateRecord',
+  'upsertCreativeEditorTemplateRecord',
+  'removeCreativeEditorTemplateRecord',
+  'creative_editor_template_ambiguous_user_save_retained',
+  'creative_editor_template_ambiguous_platform_save_retained',
+  'creative_editor_template_ambiguous_user_delete_retained',
+  'creative_editor_template_ambiguous_platform_delete_retained',
   'readIndexRecords',
   'recordMatchesRequest',
   'filterRecordsForRequest',
@@ -397,6 +409,35 @@ const templateRegistryDal = read('src/lib/creative-editor/templateRegistryDal.ts
   'payloadBlob.size > MAX_DOCUMENT_BYTES',
   'storage/quota-exceeded',
 ].forEach((token) => requireToken(templateRegistryDal, token, 'creative editor template registry DAL'));
+if (templateRegistryDal.includes('await setDoc(')) {
+  failures.push('creative editor template registry writes must use transactions instead of read-then-set mutations');
+}
+
+const templateRegistryIndexBoundary = read('src/lib/creative-editor/templateRegistryIndexBoundary.ts');
+[
+  'matchesCreativeEditorTemplateRecord',
+  'upsertCreativeEditorTemplateRecord',
+  'removeCreativeEditorTemplateRecord',
+  'Template index limit must be a positive safe integer',
+].forEach((token) => requireToken(templateRegistryIndexBoundary, token, 'creative editor template registry index boundary'));
+
+const templateRegistryStorageBoundary = read('src/lib/creative-editor/templateRegistryStorageBoundary.ts');
+[
+  'buildCreativeEditorTemplateVersionId',
+  'buildCreativeEditorTemplateFileName',
+  'isOwnedCreativeEditorTemplateStoragePath',
+  'document-',
+  'preview-',
+  'document.json',
+].forEach((token) => requireToken(templateRegistryStorageBoundary, token, 'creative editor template registry Storage boundary'));
+
+const templateRegistryBoundaryTest = read('scripts/verification/test-creative-editor-template-registry-boundaries.ts');
+[
+  'creative-editor/templates/user/1/101/tpl_2',
+  'Creative Editor template registry boundary tests passed.',
+  'upsertCreativeEditorTemplateRecord',
+  'isOwnedCreativeEditorTemplateStoragePath',
+].forEach((token) => requireToken(templateRegistryBoundaryTest, token, 'creative editor template registry boundary test'));
 if (templateRegistryDal.includes('return JSON.parse(await payloadBlob.text())')) {
   failures.push('creative editor template registry DAL must size-check stored documents before reading blob text');
 }
@@ -497,7 +538,9 @@ const storageRules = read('storage.rules');
   'canAccessCreativeEditorTemplateStore',
   'isValidCreativeEditorTemplateUpload',
   'document.json',
+  '^document-[a-zA-Z0-9_-]{8,64}\\\\.json$',
   '^preview\\\\.(png|jpg|jpeg|webp)$',
+  '^preview-[a-zA-Z0-9_-]{8,64}\\\\.(png|jpg|jpeg|webp)$',
 ].forEach((token) => requireToken(storageRules, token, 'creative editor template registry Storage rules'));
 
 const creativeEditor = read('src/modules/creative-editor/CreativeEditor.tsx');

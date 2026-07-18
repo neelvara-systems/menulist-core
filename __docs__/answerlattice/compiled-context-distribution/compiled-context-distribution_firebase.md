@@ -44,7 +44,9 @@ Private reads and all client writes are denied by Storage rules. Server/admin co
 - MCP read tools use cached manifests/objects. Cold private bundle reads check Storage metadata before download, repeat the byte check after download, and treat oversized objects as unavailable. `report_missing_context` can write its aggregate bucket without loading a bundle first.
 - Best-effort Storage `manifest.json` copy failures add bounded diagnostics only. They do not add Firestore operations, do not change object paths, and do not change the Firestore manifest write that selects the active bundle version.
 - Manifest version fields must resolve to canonical nonnegative safe integers before a build lock, Storage upload, or retention delete. Invalid/exhausted existing versions fail closed; retention deletes zero objects when it cannot construct a valid active/last-ready keep set.
+- Manual and scheduled builders claim `bundleBuildLock_*` in a Firestore transaction, persist the reserved `bundleVersion`, refuse an unexpired `building` lease, and advance beyond an expired/failed reservation. Final ready/failure writes are transactionally conditional on the same UUID `lockId`, so a replaced worker cannot overwrite versioned objects, publish a stale pointer, release another worker's lease, or mark the newer build failed.
 - `sourceVersions_*` ownership and counters are runtime-validated before source equality or bundle work. Wrong product/workspace or ambiguous/unsafe counters cannot suppress a rebuild or be serialized into bundle manifests.
+- Cache-backed KB/canonical source changes use one atomic writer for `answerlattice_cacheVersions`, `sourceVersions_*`, and `bundleManifest_*`. The operation remains three writes, but one failed commit applies zero of them and one successful commit applies all three.
 
 ## Cache-Control
 

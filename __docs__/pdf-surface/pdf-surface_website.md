@@ -1,13 +1,17 @@
 # PDF Surface — Website / Public Page Content
 
 **Feature:** Download Menu as PDF
-**Version:** 2.1
-**Last Updated:** 2026-03
+**Version:** Compatibility copy boundary
+**Last Updated:** July 16, 2026
 **Audience:** Prospective customers visiting menulist.ai
 
 ---
 
-## Page Section: PDF Download
+## Public Copy Ownership
+
+PDF Surface is not marketed as a separate current feature. Public print-menu claims belong to Menu Card Export and must remain conditional on current release evidence and reviewed print artifacts.
+
+## Reusable Copy Candidate
 
 **Headline:**
 Your menu. Print-ready. Versioned.
@@ -23,10 +27,10 @@ The PDF is generated from the current project data every time you download it.
 
 ## Feature Bullets
 
-- Print-ready A4 format, professional layout
+- Controlled print-menu PDF layout
 - Generated from current project data at download time
 - Works from your phone or computer
-- Each PDF is stamped with the date it was generated
+- Can include the current live-menu QR
 
 ---
 

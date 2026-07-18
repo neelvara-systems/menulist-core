@@ -5,24 +5,31 @@ import { FEATURE_FLAGS } from '@config/features';
 import { getMetadataFieldsForBusiness, type MetadataFieldConfig } from '@config/itemMetadataConfig';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import GlobalLanguagesList from '@data/languages';
+import { CONTENT_CREDIT_OPERATION_COSTS } from '@data/shared/contentCreditPolicy';
 import { useAppDispatch } from '@hook/useAppDispatch';
 import { getProjectDescriptionContentLength, getProjectDescriptionTone } from '@lib/ai/projectAIPreferences';
-import { hasMeaningfulDescription } from '@lib/menu/descriptionQuality';
+import { getCanonicalProjectSourceLanguage } from '@lib/localization/languagePolicy';
+import { hasAnyNonEmptyDescription } from '@lib/menu/descriptionQuality';
 import { getDecisionFactValue, setDecisionFactValue } from '@lib/menu/itemDecisionFacts';
 import { downloadSharableItemCard, shareSharableItemCard, type SharableItemCardInput } from '@lib/menu/sharableItemCard';
 import { getMediaProfileAcceptAttribute } from '@lib/media/imageProfiles';
 import { prepareMediaImage } from '@lib/media/prepareMediaImage';
-import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
+import { MENU_PRICE_TEXT_MAX_LENGTH, normalizeOptionalMenuPrice } from '@lib/validation/pricing.schema';
 import { PlatformGlobalDataContext } from '@providers/platformProviders/platformGlobalDataProvider';
 import { startLoader, stopLoader } from '@reduxSlices/loader';
 import { AICapacityError } from '@services/ai/capacityError';
-import getNewItemMetadataViaAPI, { mergeGeneratedItemMetadata } from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
+import getNewItemMetadataViaAPI, {
+    mergeGeneratedItemMetadata,
+    prepareNewItemMetadataRequestItem,
+} from '@services/ai/dataGeneration/getNewItemMetadataViaAPI';
 import type { InheritanceState, OutletPolicy } from '@type/multiOutlet.types';
 import { theme } from 'antd';
 import { useTranslations } from 'next-intl';
 import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { LuCamera, LuClock, LuDownload, LuLanguages, LuMinus, LuPlus, LuShare2, LuSparkles, LuStar, LuTrash2, LuTrendingUp } from 'react-icons/lu';
 import type { ExtractedDataAttribute, ExtractedDataItem, NewItemMetadataAPIParams, Project, ProjectFileType } from '../../templates/main-app/projects/types';
+import { runSingleItemDescriptionGeneration } from '../../templates/main-app/projects/editorView/descriptionGeneration.shared';
 import { translateItem } from '../../templates/main-app/projects/utils/translationsUtils';
 import { Button, Card, Collapse, Dialog, Flex, Image, Input, NavBar, Popup, Select, Switch, Text, TextArea, Toast } from '../antd';
 import type { MobileMenuItemType } from '../types';
@@ -65,7 +72,7 @@ function createDraftItem({
     item?: MobileMenuItemType | null;
     languages: string[];
 }): ExtractedDataItem {
-    const primaryLanguage = languages[0] || 'en';
+    const primaryLanguage = getCanonicalProjectSourceLanguage(languages);
     return {
         active: item?.active ?? true,
         attributes: (item?.rawItem?.attributes || item?.attributes || []).map((attribute: any, index: number) => ({
@@ -81,6 +88,7 @@ function createDraftItem({
         description: item?.rawItem?.description
             ? { ...item.rawItem.description }
             : Object.fromEntries(languages.map((lang) => [lang, lang === primaryLanguage ? (item?.description || '') : ''])),
+        descriptionSource: item?.rawItem?.descriptionSource,
         id: item?.rawItem?.id || item?.id || `draft-item-${Date.now()}`,
         images: item?.rawItem?.images || undefined,
         isBestSeller: item?.rawItem?.isBestSeller ?? item?.isBestSeller ?? false,
@@ -125,6 +133,7 @@ function normalizeDraftItemForComparison(draftItem: ExtractedDataItem, languages
         category: draftItem.category || '',
         decisionFacts: draftItem.decisionFacts || {},
         description: normalizeLocalizedRecord(draftItem.description, languages),
+        descriptionSource: draftItem.descriptionSource,
         isBestSeller: draftItem.isBestSeller === true,
         legacyFacts: {
             allergens: draftItem.allergens || [],
@@ -175,7 +184,8 @@ export default function ItemEditSheet({
 }: ItemEditSheetProps) {
     const t = useTranslations('MobileMenu');
     const dispatch = useAppDispatch();
-    const { storeDetails } = useContext(PlatformGlobalDataContext);
+    const { storeDetails, userPermissions } = useContext(PlatformGlobalDataContext);
+    const canGenerateDescriptions = userPermissions?.canGenerateDescriptions === true;
     const { token } = theme.useToken();
     const sectionCardStyle = {
         border: `1px solid ${token.colorBorderSecondary}`,
@@ -193,7 +203,7 @@ export default function ItemEditSheet({
         [storeDetails?.businessType, storeDetails?.businessCategory],
     );
     const isAddMode = mode === 'add';
-    const primaryLanguage = selectedLanguages[0] || 'en';
+    const primaryLanguage = getCanonicalProjectSourceLanguage(selectedLanguages);
     const hasMultipleLanguages = selectedLanguages.length > 1;
     const isInheritedOutletItem = Boolean(
         projectData?.masterProjectId &&
@@ -275,9 +285,7 @@ export default function ItemEditSheet({
     const sharableCardInput = useMemo<SharableItemCardInput>(() => {
         const itemName = getLocalizedValue(draftItem.name, primaryLanguage).trim() || item?.name || 'Menu item';
         const description = getLocalizedValue(draftItem.description, primaryLanguage).trim();
-        const price = !(draftItem.attributes || []).length && draftItem.price
-            ? formatMenuPrice(draftItem.price, currencySymbol)
-            : '';
+        const price = getPublicItemListPriceLabel(draftItem, currencySymbol) || '';
         const store = storeDetails as any;
         const projectName = getLocalizedValue((projectData as any)?.metadata?.name, primaryLanguage);
 
@@ -320,42 +328,39 @@ export default function ItemEditSheet({
             setIsCardWorking(false);
         }
     };
-    const hasAnyDescription = Object.values(draftItem.description || {}).some((description) => hasMeaningfulDescription(description));
+    const sourceDescription = getLocalizedValue(draftItem.description, primaryLanguage).trim();
+    const hasSourceDescription = sourceDescription.length > 0;
+    const manualDescriptionProtected = draftItem.descriptionSource === 'manual'
+        && hasAnyNonEmptyDescription(draftItem.description);
     const contentActionCopy = useMemo(() => {
-        if (hasMultipleLanguages) {
-            return hasAnyDescription
-                ? {
-                    label: 'Regenerate Description & Translations',
-                    helper: 'Refreshes the description and translations for this item.',
-                    success: 'Description and translations refreshed.',
-                    failure: 'Failed to refresh description and translations.',
-                    validation: 'description and translations',
-                }
-                : {
-                    label: 'Generate Description & Translations',
-                    helper: 'Creates the description and translations for this item.',
-                    success: 'Description and translations generated.',
-                    failure: 'Failed to generate description and translations.',
-                    validation: 'description and translations',
-                };
+        if (hasSourceDescription) {
+            return {
+                label: 'Refresh Descriptions',
+                helper: `Refreshes this item in every menu language. Uses ${CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE} enhancement credit.`,
+                success: 'Descriptions refreshed.',
+                failure: 'Failed to refresh descriptions.',
+                validation: 'descriptions',
+            };
         }
 
-        return hasAnyDescription
-            ? {
-                label: 'Regenerate Description',
-                helper: 'Refreshes the description for this item.',
-                success: 'Description refreshed.',
-                failure: 'Failed to refresh description.',
-                validation: 'description',
-            }
-            : {
-                label: 'Generate Description',
-                helper: 'Creates the description for this item.',
-                success: 'Description generated.',
-                failure: 'Failed to generate description.',
-                validation: 'description',
+        if (hasMultipleLanguages) {
+            return {
+                label: 'Generate Description & Translations',
+                helper: 'Creates the first description and translations for this item at no credit cost.',
+                success: 'Description and translations generated.',
+                failure: 'Failed to generate description and translations.',
+                validation: 'description and translations',
             };
-    }, [hasAnyDescription, hasMultipleLanguages]);
+        }
+
+        return {
+            label: 'Generate Description',
+            helper: 'Creates the first description for this item at no credit cost.',
+            success: 'Description generated.',
+            failure: 'Failed to generate description.',
+            validation: 'description',
+        };
+    }, [hasMultipleLanguages, hasSourceDescription]);
     const initialComparisonState = useMemo(() => JSON.stringify({
         draftItem: normalizeDraftItemForComparison(
             createDraftItem({ item, initialCategoryId, languages: selectedLanguages }),
@@ -398,6 +403,7 @@ export default function ItemEditSheet({
                 ...(previous[field] || {}),
                 [language]: value,
             },
+            ...(field === 'description' ? { descriptionSource: 'manual' as const } : {}),
         }));
     };
 
@@ -554,9 +560,20 @@ export default function ItemEditSheet({
 
     const handleGenerateContent = async () => {
         if (isAiWorking || !canEditDescription || !projectData?.projectId || !sourceFile?.uid) return;
+        if (!canGenerateDescriptions) {
+            Toast.show({ content: 'You do not have permission to generate descriptions.', duration: 1800 });
+            return;
+        }
+        if (manualDescriptionProtected) {
+            Toast.show({ content: 'Your manual description was kept unchanged.', duration: 1800 });
+            return;
+        }
 
         const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLanguage);
-        const targetLanguages = selectedLanguages
+        const targetLanguageCodes = selectedLanguages.length > 0
+            ? selectedLanguages
+            : [primaryLanguage];
+        const targetLanguages = targetLanguageCodes
             .map((languageCode) => GlobalLanguagesList.find((language) => language.code === languageCode))
             .filter(Boolean);
 
@@ -567,28 +584,54 @@ export default function ItemEditSheet({
             return;
         }
 
+        if (hasSourceDescription) {
+            const confirmed = await Dialog.confirm({
+                cancelText: 'Cancel',
+                confirmText: 'Refresh descriptions',
+                content: `Uses ${CONTENT_CREDIT_OPERATION_COSTS.DESCRIPTION_REWRITE} enhancement credit. Your current generated descriptions will be replaced.`,
+                title: "Refresh this item's descriptions?",
+            });
+            if (!confirmed) return;
+        }
+
         setIsAiWorking(true);
         dispatch(startLoader('generating_content'));
         try {
+            if (hasSourceDescription) {
+                const descriptionResult = await runSingleItemDescriptionGeneration({
+                    contentLength: getProjectDescriptionContentLength(projectData, storeDetails?.businessType, storeDetails?.businessCategory),
+                    item: draftItem,
+                    projectData,
+                    sourceFile,
+                    tone: getProjectDescriptionTone(projectData, storeDetails?.businessType, storeDetails?.businessCategory),
+                });
+                if (descriptionResult.reason === 'manual_protected') {
+                    Toast.show({ content: 'Your manual description was kept unchanged.', duration: 1800 });
+                    return;
+                }
+                if (descriptionResult.reason) {
+                    Toast.show({ content: contentActionCopy.failure, duration: 2000 });
+                    return;
+                }
+
+                setDraftItem(descriptionResult.updatedItem);
+                Toast.show({ content: contentActionCopy.success, duration: 1400 });
+                return;
+            }
+
             const payload: NewItemMetadataAPIParams = {
-                businessType: storeDetails?.businessType || '',
                 fileId: sourceFile.uid,
-                item: {
-                    attributes: (draftItem.attributes || []).map((attribute) => ({
-                        id: attribute.id,
-                        name: getLocalizedValue(attribute.name, primaryLanguage),
-                        price: attribute.price,
-                    })),
-                    category: draftItem.category,
-                    description: getLocalizedValue(draftItem.description, primaryLanguage) || '',
-                    id: draftItem.id,
-                    name: getLocalizedValue(draftItem.name, primaryLanguage),
-                },
+                item: prepareNewItemMetadataRequestItem(
+                    draftItem,
+                    sourceFile.extractedData?.data?.categories || [],
+                    sourceLanguage.code,
+                ),
                 projectId: projectData.projectId,
                 sourceLang: sourceLanguage,
                 targetLang: targetLanguages as any,
                 contentLength: getProjectDescriptionContentLength(projectData, storeDetails?.businessType, storeDetails?.businessCategory),
                 tone: getProjectDescriptionTone(projectData, storeDetails?.businessType, storeDetails?.businessCategory),
+                ...(storeDetails?.businessType?.trim() ? { businessType: storeDetails.businessType.trim().slice(0, 100) } : {}),
             };
 
             const result = await getNewItemMetadataViaAPI(payload);
@@ -601,7 +644,7 @@ export default function ItemEditSheet({
             }
         } catch (error) {
             if (error instanceof AICapacityError) {
-                Toast.show({ content: t('translationCreditsRequired'), duration: 2200 });
+                Toast.show({ content: t('enhancementPackRequired'), duration: 2200 });
             } else {
                 Toast.show({ content: contentActionCopy.failure, duration: 2000 });
             }
@@ -612,7 +655,14 @@ export default function ItemEditSheet({
     };
 
     const handleRetryTranslation = async (languageCode: string) => {
-        if (isAiWorking || !projectData || !sourceFile) return;
+        if (
+            isAiWorking
+            || !canGenerateDescriptions
+            || !canEditMasterFields
+            || languageCode === primaryLanguage
+            || !projectData
+            || !sourceFile
+        ) return;
         const sourceLanguage = GlobalLanguagesList.find((language) => language.code === primaryLanguage);
         const targetLanguage = GlobalLanguagesList.find((language) => language.code === languageCode);
         if (!sourceLanguage || !targetLanguage) return;
@@ -649,7 +699,7 @@ export default function ItemEditSheet({
         const normalizedAttributes = (draftItem.attributes || []).map((attribute) => ({
             ...attribute,
             localizedName: getLocalizedValue(attribute.name, primaryLanguage).trim(),
-            priceValue: String(attribute.price ?? '').trim(),
+            priceResult: normalizeOptionalMenuPrice(attribute.price),
         }));
 
         const seenAttributeNames = new Set<string>();
@@ -667,22 +717,16 @@ export default function ItemEditSheet({
             }
             seenAttributeNames.add(attributeNameKey);
 
-            if (attribute.priceValue.length > 0) {
-                const parsedAttributePrice = Number(attribute.priceValue);
-                if (!Number.isFinite(parsedAttributePrice) || parsedAttributePrice < 0) {
-                    Toast.show({ content: `Attribute ${index + 1} price must be 0 or more.`, duration: 1800 });
-                    return;
-                }
+            if (!attribute.priceResult.success) {
+                Toast.show({ content: `Attribute ${index + 1}: ${attribute.priceResult.error || 'Invalid price format.'}`, duration: 1800 });
+                return;
             }
         }
 
-        const rawItemPrice = String(draftItem.price ?? '').trim();
-        if (!normalizedAttributes.length && rawItemPrice.length > 0) {
-            const parsedItemPrice = Number(rawItemPrice);
-            if (!Number.isFinite(parsedItemPrice) || parsedItemPrice < 0) {
-                Toast.show({ content: 'Item price must be 0 or more.', duration: 1800 });
-                return;
-            }
+        const normalizedItemPrice = normalizeOptionalMenuPrice(draftItem.price);
+        if (!normalizedItemPrice.success) {
+            Toast.show({ content: normalizedItemPrice.error || 'Invalid price format.', duration: 1800 });
+            return;
         }
 
         if (draftItem.duration !== undefined && (draftItem.duration < 0 || draftItem.duration > 240)) {
@@ -706,7 +750,7 @@ export default function ItemEditSheet({
                     active: attribute.active !== false,
                     id: attribute.id,
                     name: attribute.localizedName,
-                    price: parseFloat(attribute.priceValue || '0') || 0,
+                    price: attribute.priceResult.data || '',
                 })),
                 available: draftItem.available !== false,
                 categoryId: draftItem.category || undefined,
@@ -719,7 +763,7 @@ export default function ItemEditSheet({
                 duration: draftItem.duration,
                 name: getLocalizedValue(draftItem.name, primaryLanguage).trim(),
                 ownerBoost: draftItem.ownerBoost ?? 0,
-                price: parseFloat(String(draftItem.price || 0)) || 0,
+                price: normalizedItemPrice.data || '',
                 rawItem: draftItem,
             });
         } finally {
@@ -735,7 +779,10 @@ export default function ItemEditSheet({
                     {hasMultipleLanguages ? (
                         <Flex align="center" justify="space-between">
                             <Text strong>{languageLabel}</Text>
-                            {!isAddMode && languageCode !== primaryLanguage && canEditDescription ? (
+                            {!isAddMode
+                            && languageCode !== primaryLanguage
+                            && canGenerateDescriptions
+                            && canEditMasterFields ? (
                                 <Button
                                     disabled={isAiWorking || isSaving}
                                     fill="outline"
@@ -822,9 +869,10 @@ export default function ItemEditSheet({
                                                     <Text type="secondary">{t('variantPrice')}</Text>
                                                     <Input
                                                         disabled={!canEditMasterFields}
+                                                        inputMode="text"
+                                                        maxLength={MENU_PRICE_TEXT_MAX_LENGTH}
                                                         onChange={(value) => updateAttributeField(attribute.id, { price: value })}
                                                         placeholder={t('variantPrice')}
-                                                        type="number"
                                                         value={String(attribute.price || '')}
                                                     />
                                                 </Flex>
@@ -939,8 +987,8 @@ export default function ItemEditSheet({
                                                     <Text>{imageActionLabel}</Text>
                                                 </Flex>
                                             </Button>
-                                            {itemImagePreviews.length > 0 ? (
-                                                <Button fill="outline" onClick={onGenerateImage || onManageImages} size="small">
+                                            {itemImagePreviews.length > 0 && onGenerateImage ? (
+                                                <Button fill="outline" onClick={onGenerateImage} size="small">
                                                     <Flex align="center" gap={6}>
                                                         <LuSparkles size={14} />
                                                         <Text>{t('generateImage')}</Text>
@@ -973,9 +1021,10 @@ export default function ItemEditSheet({
                                     <Text strong>{t('priceLabel', { currency: currencySymbol })}</Text>
                                     <Input
                                         disabled={!canEditPrice}
+                                        inputMode="text"
+                                        maxLength={MENU_PRICE_TEXT_MAX_LENGTH}
                                         onChange={(value) => setDraftItem((previous) => ({ ...previous, price: value }))}
                                         placeholder={t('pricePlaceholder')}
-                                        type="number"
                                         value={String(draftItem.price || '')}
                                     />
                                 </Flex>
@@ -1203,7 +1252,13 @@ export default function ItemEditSheet({
                         renderLanguagePanel(primaryLanguage)
                     )}
 
-                    {(projectData && sourceFile && canEditDescription) ? (
+                    {(projectData && sourceFile && canEditDescription && manualDescriptionProtected) ? (
+                        <Text type="secondary">
+                            Manual descriptions are protected. Use the language controls to refresh a translation.
+                        </Text>
+                    ) : null}
+
+                    {(projectData && sourceFile && canEditDescription && canGenerateDescriptions && !manualDescriptionProtected) ? (
                         <Flex gap={6} vertical>
                             <Button
                                 block

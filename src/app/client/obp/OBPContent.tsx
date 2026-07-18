@@ -9,6 +9,7 @@
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { FEATURE_FLAGS } from "@config/features";
 import { PLATFORM_DOMAIN } from "@constant/urls";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import {
@@ -24,6 +25,7 @@ import {
     withAuthoritativeSummaryProjectId,
 } from "@lib/firestore/parseSummaryProjects";
 import { resolveStorePublicLanguage } from "@lib/localization/publicRenderLanguage";
+import { normalizeMultiOutletProjectId } from "@lib/multiOutlet/projectIdBoundary";
 import { getTenantFromHeaders as sharedGetTenantFromHeaders } from "@lib/multiTenant/getTenantFromHeaders";
 import { isStarterPublicSurfaceExpired } from "@lib/onboarding/starterActivation";
 import { isPlatformEntityBlocked } from "@lib/platform/entityBlock";
@@ -90,7 +92,7 @@ async function withRetry<T>(
  * slug, and the full active-projects list for per-project CTA rendering.
  */
 const getObpMenuInfo = unstable_cache(
-    async (storeId: number, activeSpecialMenuId?: string): Promise<ObpMenuInfo> => {
+    async (tenantId: number, storeId: number, activeSpecialMenuId?: string): Promise<ObpMenuInfo> => {
         const empty: ObpMenuInfo = { hasMenu: false, defaultSlug: undefined, projects: [] };
         try {
             const summarySnap = await firestoreAdmin
@@ -100,7 +102,13 @@ const getObpMenuInfo = unstable_cache(
             if (!summarySnap.exists) return empty;
             const raw = parseSummaryProjects(summarySnap.data());
             const entries = Object.entries(raw)
-                .map(([projectId, data]) => withAuthoritativeSummaryProjectId(projectId, data));
+                .flatMap(([projectId, data]) => {
+                    const projectScope = normalizeMultiOutletProjectId(projectId);
+                    return projectScope?.tenantDocumentId === String(tenantId)
+                        && projectScope.storeDocumentId === String(storeId)
+                        ? [withAuthoritativeSummaryProjectId(projectId, data)]
+                        : [];
+                });
             const activeRegular = entries.filter(isActiveRegularSummaryProject);
             if (activeRegular.length === 0) return empty;
 
@@ -156,6 +164,7 @@ const getObpMenuInfo = unstable_cache(
         } catch (error) {
             logObpServerResolutionFailure('public_obp_menu_info_lookup_failed', error, {
                 storeId,
+                tenantId,
                 activeSpecialMenuId,
                 operation: 'menu_info_lookup',
             });
@@ -173,6 +182,7 @@ const countActiveStoresForTenant = unstable_cache(
                 .collection(DB_COLLECTIONS.STORES)
                 .where("tenantId", "==", tenantId)
                 .where("active", "==", true)
+                .limit(FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1)
                 .get();
             return storesSnap.docs.filter((storeDoc) => !isPlatformEntityBlocked(storeDoc.data())).length;
         } catch (error) {
@@ -253,7 +263,11 @@ export default async function OBPContent({
         }
     }
 
-    const menuInfo = await withTimeout(getObpMenuInfo(storeData.storeId, storeData.activeSpecialMenuId))
+    const menuInfo = await withTimeout(getObpMenuInfo(
+        storeData.tenantId,
+        storeData.storeId,
+        storeData.activeSpecialMenuId,
+    ))
         .catch((error) => {
             logObpServerResolutionFailure('public_obp_menu_info_resolution_failed', error, {
                 storeId: storeData.storeId,

@@ -1,6 +1,6 @@
 # Digital Screens — Website Content
 
-**Last Updated:** February 8, 2026
+**Last Updated:** July 16, 2026
 
 ## Source Gate
 
@@ -25,7 +25,7 @@ MenuList puts your full menu on your TV — with categories, items, and prices f
 
 ### 1. Your Full Menu On Screen
 
-Categories, items, prices — exactly what customers need to decide. Not slideshows. Not generic content. Your actual menu.
+Categories, items, and valid prices from the current approved menu source. If a source price is missing or unclear, the board says `Ask` instead of guessing.
 
 > **Visual:** TV screen above counter showing clean menu board with categories and prices
 
@@ -43,13 +43,13 @@ Use your counter TV for the full menu. Use your waiting area TV for rotating hig
 
 ### 4. Zero Effort After Setup
 
-Open one link on your TV. Bookmark it. Press fullscreen. That's it. Forever.
+Open one link on your TV. Bookmark it. Press fullscreen. The display then follows the saved source through the screen refresh path.
 
 > **Visual:** Calendar showing 30 days — "Last manual update: Never needed"
 
 ### 5. Works with Any Screen
 
-TV, tablet, LED display — if it has a browser, it works. No special hardware required.
+TV, tablet, or LED display with a supported modern browser. No dedicated MenuList hardware is required.
 
 > **Visual:** Three different screen types all showing MenuList content
 

@@ -603,6 +603,16 @@ firebase functions:shell
 
 Public analytics write authority boundary: browser events are filtered by the shared field policy, queued for 30 seconds or 40 events, and sent only to `POST /api/public/analytics/track`. The route rejects inactive, deleted, or platform-blocked stores and tenants, rechecks project activity and analytics preferences, applies the same field policy again, and performs the Admin write. Numeric counters accept only bounded finite numbers, tracking-control scalars accept only booleans, and label maps accept only bounded strings. Direct client creates, updates, and deletes in `analytics` are denied by Firestore rules.
 
+Analytics index fanout boundary: the five high-cardinality map paths `hourlyClicksByItem`, `itemNames`, `searchTerms`, `viewsByContent`, and `zeroResultSearchTerms` are never Firestore query predicates or sort fields. Their single-field indexes are disabled in `firestore.indexes.json`; document reads and settlement/dashboard consumers still receive the same stored maps. This is an index-storage/write-fanout optimization only and requires the scoped Firestore index configuration deploy before it affects Firebase.
+
 Settlement integrity boundary: the nightly Functions pipeline uses the scheduler-provided store-local settlement date for summary idempotency, validates daily document ID and embedded tenant/store/project/date metadata before aggregation, validates compact cached daily rows before rollup/delta reuse, applies late-event summary increments and dashboard-baseline replacement in one transaction, and deletes expired daily documents through fresh bounded 400-document batches. The manual trigger uses the same daily contract and reports whether the idempotent summary transaction actually changed state.
 
 _Document Status: ✅ IMPLEMENTED_
+
+## July 16, 2026 Public Date Admission Cross-Check
+
+`POST /api/public/analytics/track` now validates a supplied `dateString` as a real calendar date through the shared `normalizeAnalyticsDateKey()` boundary before cached store, tenant, or project target reads. The later trusted-date step still uses the validated store timezone and business-day cutoff and accepts only the current or previous business date. Impossible dates therefore return the existing 400 response instead of reaching the Admin writer and becoming a retryable 500. Valid event shape, queueing, preferences, write count, document ID, and settlement behavior are unchanged.
+
+Owner action receipt acknowledgement now reads the current dashboard summary, confirms the action still exists, calculates bounded receipt pruning, and writes the receipt inside one Admin Firestore transaction. Re-marking an existing deterministic receipt does not remove another receipt, and concurrent owner submissions retry against current state instead of racing a stale read/update pair. The valid path still performs one dashboard read and one dashboard update.
+
+`npm run verify:analytics-write-boundary` includes the Admin daily-write emulator and the owner-action receipt transaction emulator. The latter proves missing/stale action refusal, two concurrent new acknowledgements under the 20-receipt cap, oldest-first pruning, and repeat-mark sibling preservation.

@@ -1,8 +1,10 @@
 # URL Routing Architecture — Mobile Support Assessment
 
-> **Last Updated:** July 11, 2026
-> **Version:** 1.4
+> **Last Updated:** July 16, 2026
+> **Version:** 1.6
 > **Local Source Gate:** `npm run verify:url-routing-boundary`
+
+Owner public-link assignment is shared by mobile and desktop settings. Once the protected claim/store/summary transaction commits, derived cache/screen/assistant failures return pending metadata instead of a false save failure; there is no mobile-only persistence path.
 
 ---
 
@@ -44,6 +46,10 @@ The July 11, 2026 brand subdomain master-store admission boundary keeps the exis
 
 The July 13, 2026 custom-domain claim hardening is shared server infrastructure for both owner surfaces. Mobile keeps the same `/api/domain` add/status/remove calls and `{ success: true, removed: true }` removal acknowledgement. The route now serializes same-store and cross-store requests, rejects duplicate/mismatched legacy ownership with `409`, rechecks canonical tenant/store eligibility around provider reads, and returns truthful `refreshPending`, `providerCleanupPending`, or `claimReleasePending` metadata when authoritative work committed but a derived effect remains. No mobile-only Firestore/provider path or new owner decision was added; fixed failure copy remains appropriate for conflict responses.
 
+The July 16 parity pass moves mobile custom-domain availability to the authenticated `GET /api/domain?candidate=` advisory boundary, so mobile no longer depends on a browser Firestore query for cross-store uniqueness. Mobile add now requires `success: true` plus a returned domain, applies the returned verified boolean, and prefers explicit status booleans over stale store context. Explicit provider downgrade clears the verified badge. Successful add/remove responses with pending derived effects show fixed background refresh/cleanup copy. No mobile-only DAL, provider path, or persistence contract was added.
+
+Mobile and desktop also share `normalizeVercelDomainDnsRecords()`: apex instructions use Vercel's preferred IPv4/A response, subdomain instructions use the project-specific preferred CNAME, and TXT challenges preserve provider name/value. If the provider response has no unambiguous guidance, mobile shows a retry message and never fabricates a generic CNAME.
+
 ---
 
 ## Related Mobile Screens
@@ -51,7 +57,7 @@ The July 13, 2026 custom-domain claim hardening is shared server infrastructure 
 | Screen                     | Relationship                                                                                                                                    |
 | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | `MobileShareScreen`        | Uses `generateProjectUrl()` which relies on `subdomain`/`customDomain` from store data. No changes needed — slug generation is upstream in DAL. |
-| `MobileDomainSettingsScreen` | Manages owner subdomain/custom-domain setup inside the mobile shell. `/api/domain` and `/api/subdomain/check` calls use the shared authenticated browser request policy before bounded response parsing, and remove requires the `{ success: true, removed: true }` delete acknowledgement before clearing local custom-domain state. |
+| `MobileDomainSettingsScreen` | Manages owner subdomain/custom-domain setup inside the mobile shell. Custom-domain advisory/add/status/remove and subdomain checks use authenticated server boundaries before bounded response parsing; add requires `success: true` plus domain, and remove requires `{ success: true, removed: true }`. |
 | `MobileDesignEditorScreen` | No relationship                                                                                                                                 |
 
 ---

@@ -30,9 +30,12 @@ const navigation = read('src/constants/answerlattice/navigations.ts');
 const dashboardLayout = read('src/components/answerlattice/AnswerlatticeDashboardLayout.tsx');
 const dashboardPage = read('src/app/(answerlattice)/answerlattice/dashboard/page.tsx');
 const activationPage = read('src/components/templates/answerlattice/activation/AnswerlatticeActivationCommandCenter.tsx');
+const answerlatticeBasePage = read('src/app/(answerlattice)/answerlattice/page.tsx');
 const assistantLib = read('src/lib/answerlattice/ownerSupportAssistant.ts');
 const assistantUi = read('src/components/templates/answerlattice/ownerSupportAssistant/AnswerlatticeOwnerSupportAssistant.tsx');
 const assistantPage = read('src/app/(answerlattice)/answerlattice/support-assistant/page.tsx');
+const supportBoardUi = read('src/components/templates/answerlattice/supportBoard/AnswerlatticeSupportBoard.tsx');
+const changelogUi = read('src/components/templates/platform/changelog/index.tsx');
 const briefRoute = read('src/app/api/answerlattice/support-assistant/brief/route.ts');
 const queryRoute = read('src/app/api/answerlattice/support-assistant/query/route.ts');
 const productPage = read('src/app/sites/answerlattice/product/page.tsx');
@@ -63,7 +66,8 @@ const founderDailyBriefImpl = read('__docs__/answerlattice/founder-daily-brief/f
 const founderDailyBriefFirebase = read('__docs__/answerlattice/founder-daily-brief/founder-daily-brief_firebase.md');
 
 assertIncludes(featureFlags, 'ENABLE_ANSWERLATTICE_FOUNDER_DAILY_BRIEF: true', 'feature flag');
-assertIncludes(featureFlags, 'no additional Firestore reads beyond the existing five-summary', 'feature flag cost note');
+assertIncludes(featureFlags, 'ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS: false', 'owner-confirmed action rollout flag');
+assertIncludes(featureFlags, 'six compact summary reads on an uncached brief request', 'feature flag cost note');
 
 assertIncludes(navigation, "key: 'support-assistant', label: 'Daily Brief'", 'Support Control navigation label');
 assert(
@@ -83,6 +87,10 @@ assertIncludes(dashboardPage, 'Today&apos;s Brief', 'dashboard Daily Brief short
 assertIncludes(dashboardPage, 'openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)', 'dashboard Daily Brief route');
 assertIncludes(activationPage, 'Today&apos;s Brief', 'activation Daily Brief shortcut');
 assertIncludes(activationPage, 'openRoute(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)', 'activation Daily Brief route');
+assertIncludes(answerlatticeBasePage, 'launchProof?.ready === true', 'stage-aware management home proof gate');
+assertIncludes(answerlatticeBasePage, "key?: unknown }).key === 'priority-answer-checks'", 'stage-aware management home current proof version gate');
+assertIncludes(answerlatticeBasePage, 'redirect(ANSWERLATTICE_ROUTES.SUPPORT_ASSISTANT)', 'launched-owner Daily Brief redirect');
+assertIncludes(answerlatticeBasePage, 'redirect(ANSWERLATTICE_ROUTES.ACTIVATION)', 'incomplete launch fail-safe redirect');
 
 assertIncludes(assistantLib, 'export type AnswerlatticeFounderDailyBrief', 'Founder Daily Brief type');
 assertIncludes(assistantLib, 'buildFounderDailyBrief', 'Founder Daily Brief builder');
@@ -92,13 +100,18 @@ assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc
 assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`supportBoardSummary_${tId}_${sId}`)", 'Support Board summary read');
 assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`frictionSnapshot_${tId}_${sId}`)", 'friction summary read');
 assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`knowledgeIntakeSummary_${tId}_${sId}`)", 'Knowledge Intake summary read');
-assertIncludes(assistantLib, 'const snapshots = await db.getAll(...refs);', 'bounded five-summary read');
-assertIncludes(assistantLib, "readModel: { firestoreReads: packet.cacheHit ? 0 : 5, source: 'summary_only', cacheHit: packet.cacheHit }", 'summary-only read model');
+assertIncludes(assistantLib, "db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`activation_${tId}_${sId}`)", 'activation summary read');
+assertIncludes(assistantLib, 'const snapshots = await db.getAll(...refs);', 'bounded six-summary read');
+assertIncludes(assistantLib, "readModel: { firestoreReads: packet.cacheHit ? 0 : 6, source: 'summary_only', cacheHit: packet.cacheHit }", 'summary-only read model');
+assertIncludes(assistantLib, 'const DAILY_ACTION_LIMIT = 4;', 'bounded daily action count');
+assertIncludes(assistantLib, 'answer-outcome-review', 'explicit outcome review action');
+assertIncludes(assistantLib, "href: `${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`", 'release-change founder handoff');
 assertIncludes(assistantLib, "'release'", 'release intent');
 assertIncludes(assistantLib, "'install'", 'install intent');
 assertIncludes(assistantLib, "'reply'", 'reply intent');
 assertIncludes(assistantLib, "'cost'", 'cost intent');
 assertIncludes(assistantLib, 'This brief is computed from existing summaries', 'brief cost note');
+assertIncludes(assistantLib, 'preparedReviewCard', 'bounded prepared Support Board handoff');
 assertNotIncludes(assistantLib, '@google/genai', 'Founder Daily Brief server runtime');
 assertNotIncludes(assistantLib, 'generateContent', 'Founder Daily Brief server runtime');
 assertNotIncludes(assistantLib, 'answerlattice_aiOperations', 'Founder Daily Brief server runtime');
@@ -106,11 +119,23 @@ assertNotIncludes(assistantLib, '.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).ad
 
 assertIncludes(assistantUi, 'Daily Support Brief', 'Support Assistant UI title');
 assertIncludes(assistantUi, "Today&apos;s plan", 'Support Assistant UI daily plan');
-assertIncludes(assistantUi, 'brief.dailyBrief.actions.map', 'Support Assistant UI daily actions');
+assertIncludes(assistantUi, 'renderDailyAction(brief.dailyBrief.actions[0], true)', 'Support Assistant UI primary action');
+assertIncludes(assistantUi, 'brief.dailyBrief.actions.slice(1)', 'Support Assistant UI secondary actions');
+assertIncludes(assistantUi, 'Launch verification', 'Support Assistant UI launch verification');
+assertIncludes(assistantUi, 'I shipped a change', 'Support Assistant UI release shortcut');
+assertIncludes(assistantUi, 'Same-session recontact:', 'Support Assistant UI explicit outcome evidence');
 assertIncludes(assistantUi, 'DAILY_FOCUS_META', 'Support Assistant UI owner-readable focus labels');
 assertIncludes(assistantUi, 'action.costImpact', 'Support Assistant UI cost transparency');
 assertIncludes(assistantUi, 'Summary updated', 'Support Assistant UI summary freshness');
+assertIncludes(assistantUi, 'Prepare review card', 'Support Assistant UI prepared-card action');
+assertIncludes(assistantUi, 'ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS', 'Support Assistant UI action flag gate');
 assertIncludes(assistantUi, 'style={{ minHeight: 44', 'Support Assistant UI mobile touch target');
+assertIncludes(supportBoardUi, "searchParams.get('create') !== '1'", 'Support Board prepared-card admission gate');
+assertIncludes(supportBoardUi, 'setCreateOpen(true)', 'Support Board prepared-card owner confirmation form');
+assertIncludes(supportBoardUi, 'router.replace(toAnswerlatticeDashboardRoute', 'Support Board prepared-card URL cleanup');
+assertIncludes(changelogUi, "searchParams.get('create') !== '1'", 'changelog founder-entry admission gate');
+assertIncludes(changelogUi, 'setIsModalVisible(true)', 'changelog founder-entry owner form');
+assertIncludes(changelogUi, "nextParams.delete('create')", 'changelog founder-entry query cleanup');
 assertIncludes(assistantPage, "title: 'Daily Brief | Answerlattice'", 'Support Assistant page metadata');
 
 assertIncludes(briefRoute, 'ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT', 'brief route parent flag');
@@ -132,12 +157,12 @@ assertIncludes(answerlatticeReadme, 'Founder Daily Brief', 'Answerlattice README
 assertIncludes(ownerAssistantReadme, 'dailyBrief', 'Owner Support Assistant README');
 assertIncludes(ownerAssistantReadme, 'release, install, reply, cost', 'Owner Support Assistant README intents');
 assertIncludes(ownerAssistantImpl, 'Deterministic ten-intent classifier', 'Owner Support Assistant implementation docs');
-assertIncludes(ownerAssistantFirebase, 'adds no read, write, listener, scheduler, provider call, or support-credit debit', 'Owner Support Assistant Firebase docs');
+assertIncludes(ownerAssistantFirebase, 'six reads on a cold packet and zero reads on a tenant/store cache hit', 'Owner Support Assistant Firebase docs');
 assertIncludes(founderDailyBriefReadme, 'No new Firestore collection.', 'Founder Daily Brief README boundary');
 assertIncludes(founderDailyBriefSpec, 'New assistant task queue', 'Founder Daily Brief spec boundary');
 assertIncludes(founderDailyBriefImpl, 'no new route', 'Founder Daily Brief implementation boundary');
-assertIncludes(founderDailyBriefFirebase, 'adds no incremental Firestore reads', 'Founder Daily Brief Firebase cost boundary');
+assertIncludes(founderDailyBriefFirebase, 'adds one compact activation-summary read', 'Founder Daily Brief Firebase cost boundary');
 assertIncludes(changelog, 'Answerlattice Founder Daily Brief', 'changelog entry');
-assertIncludes(changelog, 'adds no Firestore collection, read beyond the existing brief request, write, realtime listener, scheduler, provider call, support-credit debit', 'changelog cost boundary');
+assertIncludes(changelog, 'six compact summary reads on an uncached brief request', 'changelog cost boundary');
 
 console.log('Answerlattice Founder Daily Brief boundary verifier passed');

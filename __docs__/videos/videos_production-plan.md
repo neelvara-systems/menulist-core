@@ -124,6 +124,9 @@ Audio requirements:
 - use founder voice or approved local TTS for production review;
 - choose a BGM rule for every video, including explicit "no music" if used;
 - use only license-recorded music and SFX;
+- keep `.media/manifest.jsonl` provenance and separate `assets/licenses/` rights evidence for any third-party or hosted asset;
+- do not use HeyGen Free Plan output in production-bound MenuList assets;
+- keep production zero-cost and local-only: no paid APIs, subscriptions, metered credits, cloud rendering or generation, paid media catalogs, paid plugins, or account-backed generation services;
 - add SFX only for meaningful UI moments such as upload, preview, approval, QR scan, and CTA;
 - duck BGM under voice;
 - normalize public masters to the approved loudness target;

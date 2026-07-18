@@ -2,6 +2,7 @@
 
 **Status:** Desktop-first internal tool
 **Created:** June 24, 2026
+**Last Updated:** July 16, 2026
 
 ## Decision
 
@@ -23,11 +24,15 @@ The Mission screen may be read on mobile for emergency visibility, but creation,
 - View mission summary.
 - View recent research table output.
 - View blocked/risk actions.
+- View an existing experiment's readback plan and founder decision.
+- Keep the selected-card inspector available while experiment create, readback-edit, result-summary, and decision controls remain disabled.
 - Use existing emergency kill switches through Control Room.
 
 ## Mobile Blocked
 
 - Create experiment card.
+- Edit comparison windows, primary metric, confounders, or next-readback time.
+- Record an experiment result summary or submit repeat, narrow, hold, stop, or complete.
 - Run Research Agent Table prompts or source-provider research.
 - Edit offer/CTA.
 - Edit reply playbook.

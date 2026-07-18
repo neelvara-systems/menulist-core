@@ -1,7 +1,7 @@
 # QR WhatsApp Experiments Marketing
 
-**Status:** Internal
-**Last Updated:** June 25, 2026
+**Status:** HOLD — NOT CURRENT SALES ENABLEMENT
+**Last Updated:** July 17, 2026
 
 ## One-Liner
 

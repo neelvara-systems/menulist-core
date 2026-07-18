@@ -2,9 +2,14 @@
 
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { getPaginatedAiOperations } from '@database/aiOperations';
-import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary } from '@lib/ai/operationPresentation';
+import { formatAiOperationActionLabel, formatAiOperationCredits, getAiOperationOwnerSummary, MENULIST_OWNER_AI_ACTIONS } from '@lib/ai/operationPresentation';
+import {
+    formatAiOperationHistoryLanguage,
+    getAiOperationHistoryJsonObject,
+    type AiOperationHistoryRow,
+} from '@lib/ai/operationHistoryClientContract';
 import { formatDateRange, getFormatedDateAndTime, type DateLike } from '@util/dateTime';
-import { formatInrPaise, formatProcessingTime } from '@util/formatters';
+import { formatInrPaise, formatNumber, formatProcessingTime } from '@util/formatters';
 import { theme } from 'antd';
 import dayjs from 'dayjs';
 import { useSession } from 'next-auth/react';
@@ -18,37 +23,7 @@ interface MobileTransactionsScreenProps {
     onBack: () => void;
 }
 
-interface TransactionItem {
-    action: string;
-    candidatesTokenCount?: number;
-    chargePerCredit?: number;
-    clientResponse?: any;
-    contentLength?: 'Small' | 'Medium' | 'Large';
-    createdOn: DateLike;
-    fileId?: string;
-    files?: Array<{ uid?: string; name?: string; type?: string; url?: string }>;
-    generationConfig?: any;
-    geminiResponse?: string;
-    id: string;
-    inputStrings?: Record<string, string>;
-    itemsList?: Array<{ id?: string; name?: string; description?: Record<string, string> }>;
-    model?: string;
-    marginPaise?: number;
-    ourChargePaise?: number;
-    processingTime: number;
-    promptTokenCount?: number;
-    projectId?: string;
-    realCostPaise?: number;
-    sourceLang?: LanguageValue;
-    storeId?: string;
-    targetLang?: LanguageValue | LanguageValue[];
-    targetLanguages?: LanguageValue[];
-    tokenPerCredit?: number;
-    totalCharge?: number;
-    totalCredits?: number;
-    totalTokenCount?: number;
-    unitsConsumed?: number;
-}
+type TransactionItem = AiOperationHistoryRow;
 
 type LanguageValue = {
     code?: string;
@@ -59,22 +34,23 @@ const PAGE_SIZE = 15;
 
 const formatLanguage = (language: LanguageValue, notRecorded: string) => {
     if (!language) return notRecorded;
-    if (typeof language === 'string') return language;
-    if (language.name && language.code) return `${language.name} (${language.code})`;
-    return language.name || language.code || notRecorded;
+    return formatAiOperationHistoryLanguage(language) || notRecorded;
 };
 
 const getDescriptionRows = (tx: TransactionItem, unknownItem: string) => {
     const rows: Array<{ description: string; itemId: string; itemName: string; language: string }> = [];
-    if (!tx.clientResponse || typeof tx.clientResponse !== 'object') return rows;
+    const response = getAiOperationHistoryJsonObject(tx.clientResponse);
+    if (!response || typeof response.responseSummaryKind === 'string') return rows;
 
-    Object.entries(tx.clientResponse).forEach(([itemId, langDescriptions]) => {
-        if (!langDescriptions || typeof langDescriptions !== 'object') return;
+    Object.entries(response).forEach(([itemId, langDescriptions]) => {
+        const descriptions = getAiOperationHistoryJsonObject(langDescriptions);
+        if (!descriptions) return;
 
-        Object.entries(langDescriptions as Record<string, unknown>).forEach(([language, description]) => {
+        Object.entries(descriptions).forEach(([language, description]) => {
+            if (typeof description !== 'string') return;
             const item = tx.itemsList?.find((entry) => entry.id === itemId);
             rows.push({
-                description: typeof description === 'string' ? description : JSON.stringify(description),
+                description,
                 itemId,
                 itemName: item?.name || unknownItem,
                 language,
@@ -87,21 +63,32 @@ const getDescriptionRows = (tx: TransactionItem, unknownItem: string) => {
 
 const getTranslationRows = (tx: TransactionItem, notRecorded: string) => {
     if (!tx.inputStrings || typeof tx.inputStrings !== 'object') return [];
+    const response = getAiOperationHistoryJsonObject(tx.clientResponse);
+    const translations = getAiOperationHistoryJsonObject(response?.translations);
+    if (!translations) return [];
     return Object.entries(tx.inputStrings).map(([key, sourceText]) => ({
         key,
         sourceText,
-        translatedText: tx.clientResponse?.translations?.[key] || notRecorded,
+        translatedText: typeof translations?.[key] === 'string' ? translations[key] : notRecorded,
     }));
 };
 
-const getExtractedItems = (tx: TransactionItem) => {
-    const items = tx.clientResponse?.data?.items;
-    return Array.isArray(items) ? items : [];
-};
+const getHistoryCount = (value: unknown): number => (
+    typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : 0
+);
 
-const getExtractedCategories = (tx: TransactionItem) => {
-    const categories = tx.clientResponse?.data?.categories;
-    return Array.isArray(categories) ? categories : [];
+const getExtractedCounts = (tx: TransactionItem) => {
+    const response = getAiOperationHistoryJsonObject(tx.clientResponse);
+    const data = getAiOperationHistoryJsonObject(response?.data);
+    const dataSummary = getAiOperationHistoryJsonObject(response?.dataSummary);
+    return {
+        categories: Array.isArray(data?.categories)
+            ? data.categories.length
+            : getHistoryCount(dataSummary?.categoriesCount),
+        items: Array.isArray(data?.items)
+            ? data.items.length
+            : getHistoryCount(dataSummary?.itemsCount),
+    };
 };
 
 export default function MobileTransactionsScreen({ onBack }: MobileTransactionsScreenProps) {
@@ -118,11 +105,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     const [draftEndDate, setDraftEndDate] = useState('');
     const [filterOpen, setFilterOpen] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<TransactionItem | null>(null);
-    const lastVisibleRef = useRef<any>(null);
+    const lastVisibleRef = useRef<{ id: string } | null>(null);
     const pageRef = useRef(1);
     const formatter = useFormatter();
     const { data: session } = useSession();
-    const platformRole = (session as any)?.platformRole || (session?.user as any)?.platformRole;
+    const platformRole = session?.platformRole || session?.user.platformRole;
     const isPlatform = platformRole === 'PLATFORM';
 
     const fetchPage = useCallback(async (reset = false) => {
@@ -177,7 +164,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
     }, [fetchPage]);
 
     const actionOptions = useMemo(() => (
-        Object.values(AI_ACTIONS_TYPES as Record<string, string>).map((value) => ({
+        MENULIST_OWNER_AI_ACTIONS.map((value) => ({
             label: formatAiOperationActionLabel(value, t),
             value,
         }))
@@ -193,7 +180,11 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
 
     const getActionColor = (action: string) => {
         if (action === AI_ACTIONS_TYPES.IMAGE_PROCESSING) return token.colorPrimary;
-        if (action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION) return token.colorSuccess;
+        if (
+            action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION
+            || action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION
+            || action === AI_ACTIONS_TYPES.ITEM_TRANSLATION
+        ) return token.colorSuccess;
         if (action === AI_ACTIONS_TYPES.ADD_DESCRIPTION || action === AI_ACTIONS_TYPES.REWRITE_DESCRIPTION) return token.colorInfo;
         return token.colorTextSecondary;
     };
@@ -274,23 +265,36 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
             );
         }
 
-        if (tx.action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION || tx.action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION) {
+        if (
+            tx.action === AI_ACTIONS_TYPES.LANGUAGE_ADDITION
+            || tx.action === AI_ACTIONS_TYPES.IMAGE_TRANSLATION
+            || tx.action === AI_ACTIONS_TYPES.ITEM_TRANSLATION
+        ) {
             const rows = getTranslationRows(tx, t('notRecorded'));
-            const targetLanguage = Array.isArray(tx.targetLang)
-                ? tx.targetLang.map((language) => formatLanguage(language, t('notRecorded'))).join(', ')
-                : formatLanguage(tx.targetLang, t('notRecorded'));
+            const languageSummary = getAiOperationHistoryJsonObject(tx.languageSummary);
+            const compactSourceLanguage = typeof languageSummary?.sourceLang === 'string'
+                ? languageSummary.sourceLang
+                : undefined;
+            const targetLanguageValues = tx.targetLanguages?.length
+                ? tx.targetLanguages
+                : Array.isArray(tx.targetLang)
+                    ? tx.targetLang
+                    : tx.targetLang
+                        ? [tx.targetLang]
+                        : [];
+            const targetLanguage = targetLanguageValues.length
+                ? targetLanguageValues.map((language) => formatLanguage(language, t('notRecorded'))).join(', ')
+                : t('notRecorded');
 
             return (
                 <Card>
                     <Flex gap={12} vertical>
                         <Title level={5} style={{ margin: 0 }}>{t('languageDetails')}</Title>
                         <Flex gap={8} wrap="wrap">
-                            <Tag>{t('sourceWithValue', { value: formatLanguage(tx.sourceLang, t('notRecorded')) })}</Tag>
+                            <Tag>{t('sourceWithValue', { value: formatLanguage(tx.sourceLang || compactSourceLanguage, t('notRecorded')) })}</Tag>
                             <Tag>{t('targetWithValue', { value: targetLanguage })}</Tag>
                         </Flex>
-                        {rows.length === 0 ? (
-                            <Text type="secondary">{t('noTranslationRowsRecorded')}</Text>
-                        ) : rows.slice(0, 8).map((row) => (
+                        {rows.slice(0, 8).map((row) => (
                             <Card key={row.key} style={{ backgroundColor: token.colorFillQuaternary }}>
                                 <Flex gap={4} vertical>
                                     <Text strong>{row.key}</Text>
@@ -306,8 +310,7 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
         }
 
         if (tx.action === AI_ACTIONS_TYPES.IMAGE_PROCESSING) {
-            const items = getExtractedItems(tx);
-            const categories = getExtractedCategories(tx);
+            const extractedCounts = getExtractedCounts(tx);
 
             return (
                 <Card>
@@ -326,7 +329,10 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                 {tx.targetLanguages.map((language) => <Tag key={formatLanguage(language, t('notRecorded'))}>{formatLanguage(language, t('notRecorded'))}</Tag>)}
                             </Flex>
                         ) : null}
-                        <Text>{t('itemsCategoriesExtracted', { items: items.length.toLocaleString(), categories: categories.length.toLocaleString() })}</Text>
+                        <Text>{t('itemsCategoriesExtracted', {
+                            items: formatNumber(extractedCounts.items),
+                            categories: formatNumber(extractedCounts.categories),
+                        })}</Text>
                     </Flex>
                 </Card>
             );
@@ -375,10 +381,10 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                                     <List.Item title={t('actualProviderCost')} extra={<Text>{formatOptionalPaise(tx.realCostPaise)}</Text>} />
                                     <List.Item title={t('configuredOwnerCharge')} extra={<Text>{formatOptionalPaise(tx.ourChargePaise)}</Text>} />
                                     <List.Item title={t('configuredMargin')} extra={<Text>{formatOptionalPaise(tx.marginPaise)}</Text>} />
-                                    <List.Item title={t('tokenCredits')} extra={<Text>{Number(tx.totalCredits || 0).toLocaleString()}</Text>} />
-                                    <List.Item title={t('tokens')} extra={<Text>{Number(tx.totalTokenCount || 0).toLocaleString()}</Text>} />
-                                    <List.Item title={t('promptTokens')} extra={<Text>{Number(tx.promptTokenCount || 0).toLocaleString()}</Text>} />
-                                    <List.Item title={t('outputTokens')} extra={<Text>{Number(tx.candidatesTokenCount || 0).toLocaleString()}</Text>} />
+                                    <List.Item title={t('tokenCredits')} extra={<Text>{formatNumber(Number(tx.totalCredits || 0))}</Text>} />
+                                    <List.Item title={t('tokens')} extra={<Text>{formatNumber(Number(tx.totalTokenCount || 0))}</Text>} />
+                                    <List.Item title={t('promptTokens')} extra={<Text>{formatNumber(Number(tx.promptTokenCount || 0))}</Text>} />
+                                    <List.Item title={t('outputTokens')} extra={<Text>{formatNumber(Number(tx.candidatesTokenCount || 0))}</Text>} />
                                     {tx.model ? <List.Item title={t('model')} extra={<Text>{tx.model}</Text>} /> : null}
                                     {tx.projectId ? <List.Item title={t('projectId')} extra={<Text>{tx.projectId}</Text>} /> : null}
                                     {tx.fileId ? <List.Item title={t('fileId')} extra={<Text>{tx.fileId}</Text>} /> : null}
@@ -398,10 +404,10 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                 onBack={onBack}
                 right={(
                     <Flex align="center" gap={4}>
-                        <Button fill="none" onClick={openFilterSheet} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                        <Button aria-label={t('filterByAction')} fill="none" onClick={openFilterSheet} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuFilter color={hasActiveFilters ? token.colorPrimary : token.colorTextSecondary} size={18} />
                         </Button>
-                        <Button fill="none" loading={loading && transactions.length > 0} onClick={() => { setLoading(true); void fetchPage(true); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
+                        <Button aria-label={t('refresh')} fill="none" loading={loading && transactions.length > 0} onClick={() => { setLoading(true); void fetchPage(true); }} style={{ minHeight: 44, minWidth: 44, paddingInline: 0 }}>
                             <LuRefreshCw color={token.colorTextSecondary} size={18} />
                         </Button>
                     </Flex>
@@ -456,15 +462,15 @@ export default function MobileTransactionsScreen({ onBack }: MobileTransactionsS
                             <Flex gap={8} vertical>
                                 <Flex justify="space-between">
                                     <Text type="secondary">{t('loaded')}</Text>
-                                    <Text strong>{transactions.length.toLocaleString()}</Text>
+                                    <Text strong>{formatNumber(transactions.length)}</Text>
                                 </Flex>
                                 <Flex justify="space-between">
                                     <Text type="secondary">{t('creditsUsed')}</Text>
-                                    <Text strong>{loadedCreditsUsed.toLocaleString()}</Text>
+                                    <Text strong>{formatNumber(loadedCreditsUsed)}</Text>
                                 </Flex>
                                 <Flex justify="space-between">
                                     <Text type="secondary">{t('noCreditActions')}</Text>
-                                    <Text strong>{loadedNoCreditActions.toLocaleString()}</Text>
+                                    <Text strong>{formatNumber(loadedNoCreditActions)}</Text>
                                 </Flex>
                             </Flex>
                         </Card>

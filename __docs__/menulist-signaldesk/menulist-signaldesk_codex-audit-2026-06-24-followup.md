@@ -138,3 +138,11 @@ Covered Storage semantics:
 SignalDesk is **safe for local desktop trial** and **safe for local mobile observe-only trial**.
 
 It is **not safe for real outreach** until sender identity, physical address, unsubscribe, bounce/complaint handling, source-list approval, provider budget, and legal/compliance checks are separately reviewed and approved.
+
+## Current Revalidation - July 15, 2026
+
+**Current verdict: PASS for local controlled internal trial.** The earlier blocker closure remains valid and the current aggregate suite passes with `3521` static assertions, the complete authenticated Firestore-emulator E2E, Firestore/Storage semantic rules tests, 75 warmed private route/API checks, root and Functions TypeScript, scoped lint, dependency freeze, repository-wide diff hygiene, and Firestore emulator configuration startup.
+
+Additional hardening since the original follow-up covers exact sender/CTA/replay authority, bounded concurrent AI admission, persisted source-lifecycle authority, strict workspace timestamps and approval-history projection, revenue-summary product/document identity, committed AI-finalization recovery, published-content authority incidents and explicit resolution, terminal proof/content lifecycle behavior, critical-reply priority in an existing pending daily mission, and collection-wide raw-secret/payload inspection. The prior team-member visibility concern is superseded by current self-only normal-member rules and semantic coverage; platform admins retain the documented broader audit visibility.
+
+Current command evidence and implementation details are maintained in `menulist-signaldesk_validation.md`. No deployment, real send, paid API call, business contact, public SignalDesk surface, or MenuList truth mutation occurred. Real-world outreach remains blocked pending permissioned source/contact authority and separate sender, legal, provider, and owner approval.

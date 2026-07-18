@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import CustomerQuestionCoverageCheckPage from '@/components/website/customerQuestionCoverageCheck/CustomerQuestionCoverageCheckPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'Customer Question Coverage Check - MenuList | Check Common Customer Answers';
 const description = 'Check whether pasted public business source text can answer common customer questions about menu, services, hours, prices, location, contact, and next actions.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/customer-question-coverage-check',
   },
-};
+});
 
 export default function Page() {
   if (

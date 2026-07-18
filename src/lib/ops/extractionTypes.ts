@@ -25,8 +25,8 @@ export interface ExtractionJobSummary {
     categoriesExtracted: number;
     qualityScore: number | null;
     processingTime: number | null;
-    createdAt: any;
-    completedAt: any;
+    createdAt: unknown;
+    completedAt: unknown;
     isFirstExtraction: boolean | null;
     destinationType?: MenuExtractionDestinationType;
     source?: string | null;
@@ -53,9 +53,9 @@ export interface ExtractionJobDetails extends ExtractionJobSummary {
     sourceMetadata: Record<string, unknown> | null;
     timings?: Record<string, unknown> | null;
     result: {
-        combinedData?: any;
+        combinedData?: unknown;
         summary?: Record<string, unknown>;
-        dataPrunedAt?: any;
+        dataPrunedAt?: unknown;
         dataPrunedReason?: string;
         qualityScore: number;
         qualityDetails: {

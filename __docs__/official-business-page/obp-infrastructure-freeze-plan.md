@@ -89,7 +89,7 @@ If I look at OBP from scratch — as a customer landing on `joespizza.menulist.a
 
 **Research says:** Restaurants frequently have multiple menus (Food, Bar, Dessert, Brunch).
 
-**Current OBP:** `/menu` always shows default project only.
+**Current OBP:** OBP emits canonical project links. Customer-typed `/menu` resolves an owner-claimed `menu` slug first and otherwise aliases the explicit default; no-default state uses the recovery ladder.
 
 **My verdict:** When store has >1 published project, the "View Menu" button should either show a project list or the OBP should show multiple menu links. Forcing a single default is fragile.
 

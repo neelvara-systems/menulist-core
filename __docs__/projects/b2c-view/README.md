@@ -2,7 +2,7 @@
 
 **Sub-feature of:** Projects (Menu Digitization)  
 **Status:** Implemented source evidence; not current launch certification
-**Last Updated:** July 8, 2026
+**Last Updated:** July 16, 2026
 
 **Launch boundary:** This hub links B2C/customer-menu source docs; it is not current launch certification. Current release approval requires the active [production-readiness audit](../../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../../production-readiness/external-certification-runbook.md) evidence, Digital Menu Output Constitution checks, `npm run verify:menu-design-presentation-boundary`, public cache/deploy evidence, browser/mobile customer-menu QA, and target production smoke.
 
@@ -32,7 +32,9 @@ The customer-facing digital menu that restaurant patrons see. Includes a control
 - Subdomain: `{store}.menulist.ai/{slug}`
 - Custom Domain: `custom-domain.com/{slug}`
 
-### Performance Targets
+### Performance Acceptance Targets
+
+These are release targets, not current measured results. They require target browser/device evidence before use in launch or marketing claims.
 
 | Metric                   | Target |
 | ------------------------ | ------ |
@@ -48,6 +50,16 @@ The customer-facing digital menu that restaurant patrons see. Includes a control
 
 Category tabs are a separate navigation toggle for mobile/tablet customer browsing. Legacy saved `tabs` layout values are normalized into a compatible layout while preserving the category-tabs display intent.
 
+| Mood | Compatible layouts |
+| --- | --- |
+| Clean | List, Grid |
+| Warm | List, Card, Grid |
+| Premium | List, Card |
+| Bold | Card, Grid |
+| Fast | List |
+
+When price display is enabled, active option prices are visible in the item list before interaction. Invalid/inactive options are excluded, and large menus keep all current items addressable for search, category navigation, and direct item links.
+
 ### Key Files
 
 ```text
@@ -59,6 +71,8 @@ src/components/templates/main-app/projects/b2cView/menuPage/menuPageSettingsNew.
 src/components/shared/menuDesign/MenuStylePresetPreview.tsx
 src/components/mobile/screens/MobileDesignEditorScreen.tsx
 src/lib/menu/menuDesignPresets.ts
+src/lib/menu/publicMenuBackground.ts
+src/lib/pricing/publicItemPricePresentation.ts
 src/database/projects/index.ts
 ```
 
@@ -75,7 +89,7 @@ src/database/projects/index.ts
 
 ## Source Gate
 
-`npm run verify:menu-design-presentation-boundary` checks mood/layout normalization, desktop and mobile design controls, visual preset preview parity, public menu image/price/category-tabs behavior, the project publish/cache path, and this doc boundary. Passing this source gate is not current launch certification; release approval still needs the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
+`npm run verify:menu-design-presentation-boundary` checks the exact mood/layout matrix, malformed/prototype config normalization, desktop and mobile design controls, visual preset preview parity, public background admission, upfront active option prices, stable large-menu addressability, public image/category-tabs behavior, the project publish/truth/cache path, and this doc boundary. Passing this source gate is not current launch certification; release approval still needs the External Certification Runbook, Digital Menu Output Constitution checks, browser/mobile customer-menu QA, public cache/deploy evidence, and target production smoke.
 
 ---
 
@@ -98,4 +112,4 @@ src/database/projects/index.ts
 
 ---
 
-_Last Updated: July 8, 2026_
+_Last Updated: July 16, 2026_

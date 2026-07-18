@@ -13,7 +13,7 @@
  * const { model, config } = AI_MODELS.IMAGE_PROCESSING;
  */
 
-import { ANSWERLATTICE_EMBEDDING_CONFIGS } from '@data/shared/answerlatticeEmbedding';
+import { ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG } from '@data/shared/answerlatticeEmbedding';
 
 // ═══════════════════════════════════════════════════════════════
 // GOOGLE GEMINI MODELS
@@ -33,8 +33,7 @@ export const GEMINI_MODELS = {
     IMAGE_FRONTIER_FAST_STABLE: 'gemini-3.1-flash-lite-image',
 
     // Embedding Model
-    TEXT_EMBEDDING: ANSWERLATTICE_EMBEDDING_CONFIGS.v1.model,
-    MULTIMODAL_EMBEDDING: ANSWERLATTICE_EMBEDDING_CONFIGS.v2.model,
+    MULTIMODAL_EMBEDDING: ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.model,
 } as const;
 
 // ═══════════════════════════════════════════════════════════════

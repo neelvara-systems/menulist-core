@@ -9,6 +9,7 @@ import {
     CAMPAIGNCUE_DAILY_DESK_MAX_RESULT_OPTIONS,
     CAMPAIGNCUE_DAILY_DESK_RECIPES,
 } from "@constant/campaigncue/dailyDesk";
+import { getCampaignCueOutputPickerItem } from "@constant/campaigncue/outputPicker";
 import { buildCampaignCueDecisions, campaignCueRecipeById } from "@lib/campaigncue/decisionEngine";
 import {
     buildCampaignCueCampaignRhythm,
@@ -895,6 +896,7 @@ function buildCampaignCueOutputPack(params: {
 }): CampaignCueOutputPack {
     const slug = slugifyPackPart(params.campaign.title);
     const decision = params.decision;
+    const outputIntent = getCampaignCueOutputPickerItem(params.campaign.pack?.outputIntentId);
     const freshness = evaluateCampaignCuePackFreshness({
         freshness: params.campaign.pack?.freshness,
         now: params.now,
@@ -1391,6 +1393,8 @@ function buildCampaignCueOutputPack(params: {
     const bundleManifest = outputPackFile({
         content: JSON.stringify({
             campaignId: params.campaign.id,
+            outputIntentId: outputIntent?.id,
+            requestedOutputTypes: params.campaign.pack?.requestedOutputTypes || [],
             rootFolder: `${slug}-campaign-pack`,
             files: files.map((file) => ({
                 path: file.path,
@@ -1419,6 +1423,11 @@ function buildCampaignCueOutputPack(params: {
             whyNow: decision?.explanation.whyNow.length ? decision.explanation.whyNow : [params.recipe.whenToUse],
             confidence: decision?.confidence === "high" ? "ready" : decision?.confidence === "medium" ? "needs_review" : "blocked",
             riskState: readiness.status,
+            outputIntent: outputIntent ? {
+                id: outputIntent.id,
+                title: outputIntent.title,
+                requestedOutputTypes: params.campaign.pack?.requestedOutputTypes || outputIntent.outputTypes,
+            } : undefined,
         },
         facts: {
             usedFactRefs: uniqueCompactStrings([

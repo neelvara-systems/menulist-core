@@ -14,11 +14,20 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { DB_COLLECTIONS } from '@constant/database';
 import { PERMISSIONS } from '@constant/permissions';
-import { deleteComplianceOverrideServer, getComplianceOverridesServer, saveComplianceOverrideServer } from '@database/compliance/server';
+import {
+    deleteComplianceOverrideServer,
+    getComplianceCacheTag,
+    getComplianceOverridesServer,
+    saveComplianceOverrideServer,
+} from '@database/compliance/server';
 import { sanitizeComplianceContent } from '@lib/compliance/sanitizer';
 import { composeComplianceContent, extractComplianceInputs, generateComplianceContent } from '@lib/compliance/templates';
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
 import { isValidFirestoreDocumentId } from '@lib/firebase/firestoreDocumentId';
+import {
+    isMenuListPublicEntityEligible,
+    normalizeMenuListPublicEntityIdentityAliases,
+} from '@lib/publicTruth/entityEligibility';
 import { requireAnyStorePermission } from '@lib/permissions/server';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
@@ -26,6 +35,7 @@ import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/
 import { readBoundedJsonBody } from '@lib/security/boundedRequestBody';
 import { getSafeZodValidationDetails } from '@lib/security/inputValidation';
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 import { withAuth } from '../../../middleware/auth';
 import { hashPublicRateLimitValue } from '../../../middleware/publicApi';
@@ -39,6 +49,20 @@ const COMPLIANCE_OVERRIDE_MAX_BODY_BYTES = 32 * 1024;
 type ComplianceStoreLookupResult =
     | { ok: true; store: any | null }
     | { ok: false };
+
+async function revalidateCompliancePublicCache(sId: string, tId: string): Promise<boolean> {
+    try {
+        revalidateTag(getComplianceCacheTag(sId));
+        return false;
+    } catch (error) {
+        logRuntimeFailure('compliance_public_cache_revalidation_failed', error, {
+            ...getBoundedRuntimeStringContext('storeId', sId),
+            ...getBoundedRuntimeStringContext('tenantId', tId),
+            failurePolicy: 'bounded_60_second_stale_fallback',
+        });
+        return true;
+    }
+}
 
 function normalizeComplianceSessionDocumentId(value: unknown): string | null {
     const raw = typeof value === 'string' || typeof value === 'number' ? String(value) : '';
@@ -150,6 +174,7 @@ export const POST = withAuth(async (request: NextRequest, session) => {
     const rateLimitResult = await checkRateLimit({
         key: `compliance:${userRateLimitHash}:${storeRateLimitHash}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
     if (!rateLimitResult.allowed) {
         return NextResponse.json({
@@ -192,22 +217,26 @@ export const POST = withAuth(async (request: NextRequest, session) => {
         }
 
         await saveComplianceOverrideServer(sId, tId, type, sanitized);
+        const refreshPending = await revalidateCompliancePublicCache(sId, tId);
 
         return NextResponse.json({
             action,
             success: true,
             type,
+            refreshPending,
             message: `${pageLabel} updated with your custom content.`,
         });
     }
 
     if (action === 'reset') {
         await deleteComplianceOverrideServer(sId, type);
+        const refreshPending = await revalidateCompliancePublicCache(sId, tId);
 
         return NextResponse.json({
             action,
             success: true,
             type,
+            refreshPending,
             message: `${pageLabel} reset to default.`,
         });
     }
@@ -224,8 +253,26 @@ async function getStoreData(sId: string, tId?: string): Promise<ComplianceStoreL
             .collection(DB_COLLECTIONS.STORES)
             .doc(sId)
             .get();
-        if (!snapshot.exists || snapshot.data()?.active === false) return { ok: true, store: null };
-        return { ok: true, store: snapshot.data() };
+        const store = snapshot.data();
+        if (!snapshot.exists || !isMenuListPublicEntityEligible(store)) return { ok: true, store: null };
+
+        const storeIdentityValues = [store?.storeId, store?.sId]
+            .filter((value) => value !== undefined && value !== null);
+        const tenantIdentityValues = [store?.tenantId, store?.tId]
+            .filter((value) => value !== undefined && value !== null);
+        const storeIdentityMatches = storeIdentityValues.length === 0
+            || normalizeMenuListPublicEntityIdentityAliases(storeIdentityValues)?.documentId === sId;
+        const tenantIdentityMatches = tenantIdentityValues.length > 0
+            && normalizeMenuListPublicEntityIdentityAliases(tenantIdentityValues)?.documentId === tId;
+        if (!storeIdentityMatches || !tenantIdentityMatches) {
+            logRuntimeFailure('compliance_store_scope_mismatch', new Error('compliance_store_scope_mismatch'), {
+                ...getBoundedRuntimeStringContext('storeId', sId),
+                ...getBoundedRuntimeStringContext('tenantId', tId),
+                failurePolicy: 'return_500',
+            });
+            return { ok: false };
+        }
+        return { ok: true, store };
     } catch (error) {
         logRuntimeFailure('compliance_store_lookup_failed', error, {
             ...getBoundedRuntimeStringContext('storeId', sId),

@@ -319,6 +319,16 @@ export default function ReportLeadMonitor() {
                 description="This reads existing public contact enquiries tagged by shareable reports. It does not store reports, inspect external platforms, or mutate owner business truth."
             />
 
+            {snapshot?.feature.scanMayBeIncomplete ? (
+                <Alert
+                    type="warning"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message="Recent report-lead limit reached"
+                    description="Results and filters cover only the bounded recent report-lead query. Older matching report leads may exist."
+                />
+            ) : null}
+
             <Card size="small" style={{ marginBottom: 16 }}>
                 <Space wrap size={12}>
                     <Select
@@ -341,7 +351,7 @@ export default function ReportLeadMonitor() {
                     />
                     <Text type="secondary">
                         Manual refresh. Uses {snapshot?.cost.authReads || 1} current-user authorization read plus{' '}
-                        {snapshot?.cost.enquiryReads || 0} recent enquiry reads.
+                        {snapshot?.cost.enquiryReads || 0} report-lead enquiry reads.
                     </Text>
                 </Space>
             </Card>

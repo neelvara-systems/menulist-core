@@ -33,6 +33,14 @@ function verifyStaffRolesRouteParity() {
   const mobileUsersScreen = read('src/components/mobile/screens/MobileUsersScreen.tsx');
   const mobileRolesScreen = read('src/components/mobile/screens/MobileRolesScreen.tsx');
   const staffClient = read('src/lib/staffManagement/client.ts');
+  const staffServer = read('src/lib/staffManagement/server.ts');
+  const staffConcurrencyBoundary = read('src/lib/staffManagement/concurrencyBoundary.ts');
+  const staffScopeBoundary = read('src/lib/staffManagement/scopeBoundary.ts');
+  const desktopUsersScreen = read('src/components/templates/main-app/users/usersList/index.tsx');
+  const desktopUsersTable = read('src/components/templates/main-app/users/usersList/usersListTable.tsx');
+  const desktopUserDetails = read('src/components/templates/main-app/users/usersList/userDetailsModal.tsx');
+  const platformUsers = read('src/components/templates/platform/users/index.tsx');
+  const accessStatusRoute = read('src/app/api/auth/access-status/route.ts');
   const mobileSupportDoc = read('__docs__/roles-permissions/roles-permissions_mobile-support.md');
   const verificationDoc = read('__docs__/roles-permissions/roles-permissions_verification.md');
   const auditDoc = read('__docs__/audits/menulist-production-readiness-audit.md');
@@ -40,6 +48,10 @@ function verifyStaffRolesRouteParity() {
   assert(
     packageJson.scripts?.['verify:staff-roles-route-parity'] === 'node scripts/verification/verify-staff-roles-route-parity.js',
     'package.json must expose verify:staff-roles-route-parity',
+  );
+  assert(
+    read('src/data/shared/defaultRoles.ts') === read('functions/src/sharedData/defaultRoles.ts'),
+    'MenuList app and Functions default-role mirrors must remain byte-identical',
   );
 
   [
@@ -95,6 +107,12 @@ function verifyStaffRolesRouteParity() {
     'const data = await requestStaffPasswordReset',
     'const data = await forceSignOutStaffUser',
     'userHasCurrentStore(response.user, storeDetails?.storeId)',
+    'const selectedTargetCanBeManaged = selectedUser ? canManageTarget(selectedUser) : false;',
+    "Owner accounts can only be changed by someone who can assign roles.",
+    'disabled={!selectedTargetCanBeManaged}',
+    'assignableRoles.map',
+    'getMobileStaffTargetFailureCopy',
+    "Only an Owner can change an Owner account",
   ].forEach((token) => {
     assertIncludes(mobileUsersScreen, token, 'Mobile staff screen parity');
   });
@@ -132,6 +150,90 @@ function verifyStaffRolesRouteParity() {
   ].forEach((token) => {
     assertIncludes(staffClient, token, 'Shared staff client parity');
   });
+  [
+    'value.users.every(isStaffUserSummaryResponse)',
+    'value.stores.every(isStaffStoreOptionResponse)',
+    'value.roles.every(isRoleDefinitionResponse)',
+    'hasConsistentStaffMutationIdentity',
+    'isCreateStaffCompatibilityVerificationResponse',
+    'value.mode === "existing_user_auth_bound"',
+  ].forEach((token) => {
+    assertIncludes(staffClient, token, 'Shared staff response shape boundary');
+  });
+
+  [
+    'staffTargetHasOwnerAccess',
+    'canManageStaffTarget',
+    'value.ownerProtected === true',
+  ].forEach((token) => {
+    assertIncludes(staffScopeBoundary, token, 'Owner-target permission boundary');
+  });
+  [
+    'OWNER_MANAGEMENT_FORBIDDEN',
+    '"staff_add_store"',
+    '"staff_update"',
+    '"staff_remove"',
+    '"staff_password_reset"',
+    '"staff_force_signout"',
+    'assertOwnerTargetMutationAllowed(authority, currentData)',
+    'assertOwnerTargetMutationAllowed(authority, freshData)',
+    'const sessionUserId = session?.uId || session?.user?.id;',
+    'revokeStaffFirebaseRefreshTokensAfterCommit',
+    'const repair = await runStaffRoleMutationTransaction({',
+    'mode: "existing_user_auth_bound"',
+    'mutation: { kind: "upsert", mapping: stores[0], verified: true }',
+    'staff_existing_user_auth_bound',
+    'staff_verify_auth_compensation_failed',
+    'staff_password_setup_metadata_write_failed',
+    'PASSWORD_RESET_EMAIL_REQUEST_FAILED',
+    'AbortSignal.timeout(STAFF_PASSWORD_RESET_PROVIDER_TIMEOUT_MS)',
+    'AUTH_BINDING_INVALID',
+    '? jsonError("This email is already registered in the auth system", 409, "EMAIL_EXISTS")',
+    ': jsonError("Could not reserve a Staff ID. Please try again.", 409, "STAFF_LOGIN_COLLISION")',
+    'const MAX_STAFF_STORE_MAPPINGS = FEATURE_FLAGS.MAX_OUTLETS_PER_TENANT + 1;',
+    'stores: z.array(StoreMappingSchema).min(1).max(MAX_STAFF_STORE_MAPPINGS).optional()',
+    '.where("active", "==", true)',
+    '.limit(STAFF_TENANT_STORE_QUERY_LIMIT)',
+    'if (snapshot.size > MAX_STAFF_STORE_MAPPINGS)',
+    'rawStoreOptionDocs.unshift(targetStore);',
+    'throw new Error("STAFF_TENANT_STORE_LIMIT_EXCEEDED")',
+  ].forEach((token) => {
+    assertIncludes(staffServer, token, 'Staff owner/auth/concurrency boundary');
+  });
+  assert(!staffServer.includes('if (concurrencyResponse && error instanceof StaffConcurrencyError && error.code === "USER_ALREADY_EXISTS")'), 'Created Auth users must be compensated after every failed first Firestore create');
+  assertIncludes(
+    staffConcurrencyBoundary,
+    "| { kind: 'upsert'; mapping: UserStoreMappingType; verified?: boolean }",
+    'Existing-user Auth verification mapping upsert boundary',
+  );
+  [
+    'isCreateStaffCompatibilityVerificationResponse(',
+    'userModal.id,',
+    'userModal.email,',
+    'setAllTenantUsers((current)',
+    'Could not verify this user. Review the email and account state, then try again.',
+  ].forEach((token) => {
+    assertIncludes(platformUsers, token, 'Platform verification acknowledgement boundary');
+  });
+  assert(!platformUsers.includes('isCreateStaffCompatibilityEmailExistsResponse'), 'Platform verification must reject orphan Auth email collisions');
+  assert(!platformUsers.includes('await updateUser(updatedUser);'), 'Platform verification must not mark the client user verified after a generic compatibility response');
+  [
+    'canManageTarget={canManageTarget}',
+    'canEdit={canManageTarget(userDetailsModal.data)}',
+    'if (!canManageTarget(user)) return;',
+  ].forEach((token) => {
+    assertIncludes(desktopUsersScreen, token, 'Desktop owner-target UI boundary');
+  });
+  assertIncludes(desktopUsersTable, 'disabled={!targetCanBeManaged}', 'Desktop owner-target table actions');
+  assertIncludes(desktopUserDetails, 'disabled={!canEdit}', 'Desktop owner-target detail edit action');
+  [
+    'return invalidAccess(request, session, "TENANT_DELETED"',
+    'return invalidAccess(request, session, "TENANT_INACTIVE"',
+    'return invalidAccess(request, session, "STORE_DELETED"',
+    'return invalidAccess(request, session, "STORE_INACTIVE"',
+  ].forEach((token) => {
+    assertIncludes(accessStatusRoute, token, 'Staff session entity lifecycle boundary');
+  });
 
   [
     'Staff/Roles route parity source gate: `npm run verify:staff-roles-route-parity`',
@@ -144,7 +246,7 @@ function verifyStaffRolesRouteParity() {
 
   [
     '| Staff/Roles route parity source gate | Passed by source verifier: `npm run verify:staff-roles-route-parity` locks desktop aliases, mobile More permission gates, shared client usage, and docs/audit parity. |',
-    '| Mobile parity | Passed by code/build/source gates | Mobile staff, roles, More screen, and shell filtering share the same permission contract as desktop. |',
+    '| Mobile parity | Passed by source/type gates | Mobile staff, roles, More screen, and shell filtering share desktop contracts. Hosted iOS/Android/PWA interaction remains pending. |',
   ].forEach((token) => {
     assertIncludes(verificationDoc, token, 'Roles verification route parity docs');
   });
@@ -152,7 +254,7 @@ function verifyStaffRolesRouteParity() {
   [
     'Staff/Roles route parity source gate',
     'verify:staff-roles-route-parity',
-    'Browser smoke has not yet been run for `/users/list`, `/users/permissions`, or the mobile Staff/Roles sub-screens.',
+    'Hosted browser/device smoke has not yet been run for `/users/list`, `/users/permissions`, or the mobile Staff/Roles sub-screens.',
   ].forEach((token) => {
     assertIncludes(auditDoc, token, 'Production audit Staff/Roles route parity evidence');
   });

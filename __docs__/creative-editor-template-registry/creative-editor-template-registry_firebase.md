@@ -1,20 +1,20 @@
 # Creative Editor Template Registry - Firebase Cost
 
 **Status:** Implemented
-**Last Updated:** June 17, 2026
+**Last Updated:** July 13, 2026
 
 ## Summary
 
 The registry adds Firebase cost when an owner explicitly saves, opens, lists, or deletes their own saved templates. Platform template catalogs are Firebase-managed metadata so they can be updated without a code deploy, but they remain read-only to owners and do not create user documents until the owner saves a copy. Platform users manage those catalogs through a platform-only client DAL surface.
 
-There are no new Cloud Functions and no new Firestore indexes. Access is through the client-side MenuList DAL, with Firestore and Storage rules enforcing platform/admin and tenant/store scope. Acting-user details are stored as document metadata through the shared `requestBodyComposer` flow.
+There are no new Cloud Functions and no new Firestore indexes. Access is through the client-side MenuList DAL, with Firestore and Storage rules enforcing platform/admin and tenant/store scope. Acting-user details are captured once and composed through the pure `composeRequestBody` boundary before transaction writes.
 
 ## Operation Ledger
 
 | Operation | Firestore Reads | Firestore Writes | Storage | Functions | Notes |
 | --- | ---: | ---: | ---: | ---: | --- |
 | Open `/platform/asset-templates` | 1 | 0 | 0 | 0 | One selected `platformAssetTemplates/{businessCategory}` catalog read. Switching asset type filters local `data`. |
-| Create/update category platform template design | 1 | 1 | 1 document upload + optional preview upload | 0 | Reads current category catalog, writes updated bounded `data`, and stores the neutral editor document in Storage. |
+| Create/update category platform template design | 1 | 1 | 1 immutable document upload + optional immutable preview upload | 0 | One transaction read/write plus post-commit cleanup of superseded unreferenced objects. |
 | Create/update generic platform template design | 8 | 8 | 1 shared document upload + optional preview upload | 0 | Writes metadata into `generic` plus every shared business-category catalog while storing one shared Storage payload. This preserves one owner platform read. |
 | Save category platform template metadata/status | 1 | 1 | 0 | 0 | Reads current category catalog and rewrites only the bounded metadata array; use this for draft/publish/archive changes. |
 | Save generic platform template metadata/status | 8 | 8 | 0 | 0 | Derives the mutation fan-out from the stored record, then updates every category copy so generic templates cannot drift when edited from a category view. |
@@ -25,7 +25,7 @@ There are no new Cloud Functions and no new Firestore indexes. Access is through
 | Customize generated template | 0 | 0 | 0 | 0 | Document generated in browser memory. |
 | Switch asset type after load | 0 | 0 | 0 | 0 | UI filters the already-loaded platform/user `data` arrays by `productId`, `sourceSurface`, and `assetTypeId`. |
 | List Saved designs | 1 | 0 | 0 | 0 | One bounded store-level `default` template index metadata doc; no full payload or preview blob read. |
-| Save as template | 1 | 1 | 1 document upload + optional preview upload | 0 | Reads current store index, writes updated index; Storage is primary for JSON/preview. |
+| Save as template | 1 | 1 | 1 immutable document upload + optional immutable preview upload | 0 | One transaction read/write; concurrent owner saves cannot replace one another's index changes. |
 | Open saved template | 1 | 0 | 1 document download | 0 | Reads store index, downloads document JSON, then rehydrates live QR/source values. |
 | Delete saved template | 1 | 1 | Up to 2 deletes | 0 | Reads index, rewrites `data` without that template, deletes Storage document/preview. The `default` doc is not deleted. |
 
@@ -38,13 +38,13 @@ storeAssetTemplates/{tenantId}/{storeId}/default
 
 Platform catalog `businessCategory` values are `generic`, `food`, `service`, `retail`, `professional`, `creative`, `health`, and `specialty`. The owner business category is resolved from `src/data/shared/businessTypes.ts`; `generic` is only the fallback/default category when no business category is available. Templates that should appear for every category are stored inside each category document's `data` array so the owner page does not need a second platform read. Each `platformAssetTemplates/{businessCategory}` document holds all platform printable asset template summaries for that category, with `productId`, `sourceSurface`, and `assetTypeId` used for UI filtering. Platform catalogs and store asset template indexes store summary arrays only. They do not contain full editor documents or preview image bytes.
 
-The previous user-id path is intentionally not used. The index doc is always `default` and stores `data: []`. Nested template summaries carry `productId`, `sourceSurface`, `assetTypeId`, `uId`, `createdBy`, `createdOn`, `modifiedBy`, and `modifiedOn` metadata from `requestBodyComposer`, while sharing saved templates at store level.
+The previous user-id path is intentionally not used. The index doc is always `default` and stores `data: []`. Nested template summaries carry `productId`, `sourceSurface`, `assetTypeId`, `uId`, `createdBy`, `createdOn`, `modifiedBy`, and `modifiedOn` metadata from pure `composeRequestBody`, while sharing saved templates at store level.
 
 ## Payload Shape
 
 ```text
-creative-editor/templates/platform/{businessCategory}/{templateId}/document.json
-creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/document.json
+creative-editor/templates/platform/{businessCategory}/{templateId}/document-{versionId}.json
+creative-editor/templates/user/{tenantId}/{storeId}/{templateId}/document-{versionId}.json
 ```
 
 The payload stores the size-limited neutral `CreativeEditorDocument`. List calls do not read this payload. Open calls check the Storage blob size against `MAX_DOCUMENT_BYTES` before decoding JSON, so an oversized stored document fails before the browser materializes the full text payload.
@@ -59,6 +59,10 @@ The payload stores the size-limited neutral `CreativeEditorDocument`. List calls
 - Firestore and Storage rules cap user template metadata/files and enforce tenant/store scope.
 - User indexes are capped at 100 summaries per store-level `default` document to avoid Firestore document growth.
 - Platform category catalogs are capped at 200 summaries per document to keep each category doc bounded.
+- Every save uses an attempt-unique Storage filename. Existing referenced bytes are never overwritten before metadata commit.
+- Firestore transaction retries reuse the pre-captured session and pure payload composition; no auth fetch or external side effect runs inside a retry callback.
+- Normal successful operations retain the same read/write counts. Only a failed or ambiguous acknowledgement may add one authoritative metadata probe read.
+- Old and cap-evicted Storage objects are deleted only after the committed index/catalog no longer references them; uncertain probes retain objects rather than risking broken metadata.
 - No per-preview write.
 - No per-download write.
 - No platform template clones until the owner explicitly saves.

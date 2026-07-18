@@ -72,6 +72,7 @@
     "functions",
     "functions-answerlattice",
     "functions-signaldesk",
+    "sites",
     "src/__tests__"
   ]
 }

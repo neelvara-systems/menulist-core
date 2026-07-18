@@ -6,7 +6,7 @@ import {
 import { timeAgo } from "@util/dateTime/timeAgo";
 import { Space, Typography } from "antd";
 import { Timestamp } from "firebase/firestore";
-import { useFormatter } from "next-intl";
+import { useFormatter, useLocale } from "next-intl";
 import React from "react";
 
 const { Text } = Typography;
@@ -23,6 +23,7 @@ interface GenericDateTimeDisplayProps {
 
 const DateTimeDisplay: React.FC<GenericDateTimeDisplayProps> = ({ value, mode = "date", label, style, fallback = "" }) => {
     const formatter = useFormatter();
+    const locale = useLocale();
     if (!value) return fallback ? <Text type="secondary" style={style}>{fallback}</Text> : null;
 
     // Normalize any date-like value into a plain JS Date
@@ -38,7 +39,7 @@ const DateTimeDisplay: React.FC<GenericDateTimeDisplayProps> = ({ value, mode = 
             displayValue = formatDateTime(dateObj, "time", formatter);
             break;
         case "fromnow":
-            displayValue = timeAgo(dateObj);
+            displayValue = timeAgo(dateObj, locale);
             break;
         case "date":
         default:

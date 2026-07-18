@@ -1,7 +1,7 @@
 # Owner Notifications - Test Cases
 
 **Status:** Implemented source-gate coverage; provider and manual recovery smokes require a configured non-production environment
-**Date:** 2026-07-13
+**Date:** 2026-07-16
 
 ## Test Matrix
 
@@ -34,8 +34,8 @@
 | MenuList publish | Publish verification succeeds | Enqueues `MENU_PUBLISHED`. |
 | MenuList publish | Publish verification fails | Enqueues `MENU_PUBLISH_FAILED` if owner action requires notice. |
 | MenuList stale | Store stale detection fires | Enqueues `MENU_STALE` instead of writing orphan pending message log. |
-| WhatsApp onboarding | Preview generated | Sends WhatsApp preview link and writes delivery log. |
-| WhatsApp onboarding | Publish completes | Sends live menu link and writes delivery log. |
+| WhatsApp onboarding | Preview generated | Sends the WhatsApp preview link and records the messaging session/outbound-delivery state; it does not write an owner-notification delivery row. |
+| WhatsApp onboarding | Publish completes | Sends the live-menu link through the messaging adapter and records messaging lifecycle state; it does not duplicate the event in the owner-notification ledger. |
 | Answerlattice | Notification test route | Enqueues/sends `ANSWERLATTICE_NOTIFICATION_TEST` to support owner. |
 | Answerlattice | Workflow integration event | Does not enter owner notification queue. |
 | Ops dashboard | Non-platform user opens `/ops/owner-notifications` | Redirected or denied; API returns forbidden through platform role guard. |
@@ -58,6 +58,13 @@
 | Ops bounded counts | History grows beyond the recent scan cap | Refresh reads at most 90 event documents; displayed status counts describe that same product-scoped recent window. |
 | Ops product filtering | Delivery query returns a row whose `productId` differs from the selected event | The billed row is excluded from the response. |
 | Ops manual handoff concurrency | Source event is deleted or changes product before handoff commit | Transaction returns not found; neither delivery nor event marker commits and the event is not recreated. |
+| Owner header truth | Owner opens the desktop dashboard | No hard-coded order activity or fake unread badge is rendered. |
+| Consent revocation | Legacy consent boolean is true but status is revoked/denied/inactive/withdrawn | WhatsApp delivery is skipped. |
+| Event size | Event metadata would push the event JSON above 128KB | Event creation and provider work are skipped with a bounded diagnostic. |
+| Provider redirect | WhatsApp returns a redirect | The redirect is not followed. |
+| Provider timeout | SMTP or WhatsApp does not respond | Provider work ends at the bounded timeout and the source business operation remains independent. |
+| Provider message ID | SMTP/WhatsApp returns a long or control-character message ID | Only the bounded normalized ID is retained. |
+| Publish failure replay | Publish verification fails repeatedly for one store on one UTC day | One deterministic owner-notification reference is used for the day. |
 
 ## Manual Verification Flow
 
@@ -82,9 +89,13 @@
 
 ## Automated Verification Targets
 
-Source-gate script:
+Source and behavior gates:
 
-- `npm run verify:menulist-api-tenant-safety`
+- `npm run verify:owner-notifications-boundary`
+- `npm run test:owner-notification-delivery-boundaries`
+- `npm run test:notification-delivery-claim:emulator`
+- `npm run verify:messaging-onboarding-monitor-boundary`
+- `npm run test:messaging-whatsapp-adapter`
 
 The source gate validates:
 

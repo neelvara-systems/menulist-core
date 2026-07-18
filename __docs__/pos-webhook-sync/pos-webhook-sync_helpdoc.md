@@ -1,204 +1,137 @@
-# External Menu Sync — Help Documentation
+# Connect MenuList to an External Menu System
 
-> **Document Type:** Customer-facing help article
-> **Audience:** Existing customers (restaurant/salon/spa owners, non-technical)
-> **Language:** Zero jargon. Written for non-tech Indian SMB owners.
-> **Status:** Implemented
-> **Last Updated:** June 11, 2026
-> **Version:** 2.3
+> **Owner-facing feature:** External Menu Sync
+> **Last reviewed:** July 16, 2026
 
----
+## What it does
 
-## Quick Summary
+External Menu Sync sends a signed copy of your current MenuList menu to one connected system after MenuList saves an approved project change. The receiving provider, developer, agency, website, ordering system, or POS must supply a compatible public HTTPS connection URL and implement the MenuList payload.
 
-External Menu Sync lets MenuList safely share official business updates with trusted connected systems. You edit once in MenuList, and your provider, developer, agency, website, or ordering system can receive the latest approved information.
+If nobody has asked you for a webhook or connection URL, you do not need this setting.
 
-MenuList remains the source of truth. Connected systems receive updates from MenuList, but they cannot overwrite your official business information.
+## Before you start
 
-You can ignore this section if you do not use external integrations.
+Ask the receiving team for:
 
----
+- a public URL beginning with `https://` that accepts MenuList POST requests;
+- confirmation that they can verify HMAC-SHA256 signatures;
+- confirmation that they can process a full menu snapshot;
+- a contact who can check their server when a test fails.
 
-## Getting Started
+MenuList does not create a vendor account or discover a POS connection automatically.
 
-### What You Need Before Starting
+## Connect on desktop
 
-- A published menu in MenuList
-- A provider, developer, agency, website, or ordering system that asked to connect
-- The provider connection URL they gave you
+1. Open **Business Settings**.
+2. Open **External Menu Sync**.
+3. Turn on the connection. MenuList securely prepares a verification secret if one does not exist.
+4. Enter the public HTTPS URL supplied by the receiving team.
+5. Save the URL.
+6. Use **Copy** beside the verification secret and share it privately with the receiving team.
+7. Click **Test connection**.
+8. Continue only when MenuList shows the connection is reachable and the receiving team confirms their test request.
 
-### First-Time Setup
+## Connect on mobile
 
-1. Go to **Business Settings** in your MenuList dashboard
-2. Scroll down to the **External Menu Sync** section
-3. Read **Who should use this?**
-   > Use it only when your provider, developer, or agency asked to connect another system.
-4. Turn ON the **Enable External Sync** toggle
-   > A verification secret will be created automatically. It is hidden by default. Use **Reveal** only when needed, or click **Copy** to share it with your provider.
-5. Enter your **Provider connection URL** in the text field
-   > This URL comes from your provider. If you don't have it, see "How to get your provider connection URL" below.
-6. Click **Test connection** to check the connection
-7. If you see "Connection reachable" — you're done. Approved menu changes can now reach the connected system automatically.
-   > 📸 **Screenshot:** Show the External Menu Sync tab with all fields filled and "Connection reachable" success message.
+1. Open **More** in the MenuList mobile app.
+2. Open **External Menu Sync**.
+3. Turn it on, enter the provider URL, and save.
+4. Reveal or copy the secret only when sharing it with the receiving team.
+5. Run the connection test.
 
----
+Mobile uses the same secure secret and test as desktop. Delivery history and setup handoffs remain easier on desktop.
 
-## How-To Guides
+## What happens after a save
 
-### How to get your provider connection URL
+MenuList waits 25 seconds after the latest acknowledged project save, then sends the latest full snapshot once. Keep the MenuList app open until that wait has passed. Rapid saves are combined into one attempt.
 
-If you don't know your provider connection URL, you have two options:
+There is no automatic retry. If the app closes before the timer fires or the receiver is unavailable, the next acknowledged project save sends the latest full snapshot.
 
-**Option A: Ask your provider**
+## Understand the status
 
-1. Contact your provider's support team
-2. Ask them: "I need a webhook URL to receive updates from MenuList"
-3. They will give you a URL like `https://provider.example.com/webhook/menu`
+- **Connected:** the current connection is configured and the latest accepted status is healthy.
+- **Connection issue:** a deliberate test/configuration check failed, or three live deliveries in a row failed.
+- **Disabled:** MenuList is not sending updates to this destination.
 
-**Option B: Share setup instructions from MenuList**
+A successful MenuList delivery means the receiver returned an HTTP 2xx response. It does not prove the receiver applied the menu. Confirm application with the receiving team.
 
-1. In the External Menu Sync section, find **Share setup instructions with your provider or developer**
-2. Enter your provider's email address
-3. Click **Send**
-4. MenuList opens an email draft with the setup information and tracks the handoff
-5. Review the draft and send it from your own email app
-   > You can prepare up to 3 provider email drafts per day.
-   > 📸 **Screenshot:** Show the "Send Instructions" section with email field and send button.
+## Delivery history
 
-### How to test your connection
+Desktop shows the newest 20 attempts with time, version, response status, and duration. MenuList does not show the provider response body.
 
-1. Go to **Business Settings** → **External Menu Sync**
-2. Click **Test connection**
-3. Wait a few seconds
-4. You'll see one of two results:
-   - **"Connection reachable"** — The connected system is ready to receive menu updates
-   - **"Could not reach connected system"** — Check your URL or contact your provider
-     > 📸 **Screenshot:** Show both success and failure states of the test button.
+If an attempt says Success but the external menu did not change, contact the receiving team with the delivery time/version. Their endpoint accepted the request but may not have applied it.
 
-### How to check delivery status
+## Share setup details
 
-1. Go to **Business Settings** → **External Menu Sync**
-2. Look at the **Delivery Status** section:
-   - **Last delivery:** Shows when the last menu update was sent
-   - **Status:** Shows if it was successful
-   - **Menu version:** Shows which version of your menu was sent
-3. Below that, **Updates sent** shows the last 20 deliveries with time, status, and response
-   > 📸 **Screenshot:** Show delivery status section and recent deliveries table.
+Desktop can:
 
-### How to share setup info with your provider via WhatsApp
+- prepare an email draft for the provider contact;
+- copy the technical header/signature summary;
+- download a sample JSON payload.
 
-1. In the External Menu Sync section, click **Copy setup details**
-2. Open WhatsApp and paste the copied text to your provider
-3. The message includes everything they need: a link to documentation and a brief explanation
+MenuList opens a draft on your device; it does not send the email itself. The “three per day” limit counts draft preparation, not delivered emails.
 
-### How to download a sample menu file for your provider
+## Keep the secret safe
 
-1. In the External Menu Sync section, click **Download sample update file**
-2. A JSON file will download to your computer
-3. Send this file to your provider — they can use it to test their setup
+- Share it only with the team operating the receiving endpoint.
+- Do not put it in screenshots, tickets, public documents, or chat groups.
+- MenuList masks it by default.
+- If it was exposed, rotate it immediately and send the new value privately.
 
-### How to change your secret key
+### Rotate the secret
 
-If you need a new secret key (for example, if the old one was shared accidentally):
+1. Open External Menu Sync.
+2. Click **Regenerate**.
+3. Type `REGENERATE`.
+4. Wait for the success message.
+5. Copy the new secret and give it to the receiving team.
+6. Run **Test connection** after they update their verification configuration.
 
-1. Go to **Business Settings** → **External Menu Sync**
-2. Click **Regenerate** next to the verification secret
-3. Confirm in the popup
-4. A new key will be created
-5. **Important:** Share the new key with your provider. The old key will stop working immediately.
+The previous secret stops signing new MenuList requests immediately.
 
----
+## Troubleshooting
 
-## Troubleshooting / FAQ
+### “Could not reach connected system”
 
-### The connected system is not receiving menu updates
+Check:
 
-**Why this happens:** The most common reasons are: wrong provider connection URL, provider server is down, or the secret key doesn't match.
+- URL begins with `https://`;
+- no username, password, or `#fragment` is in the URL;
+- the endpoint is public, not localhost/private network;
+- the provider server is running;
+- it responds within five seconds;
+- it returns a 2xx response;
+- it has the current secret.
 
-**How to fix it:**
+Then run the test again. MenuList intentionally does not display the provider's raw error body.
 
-1. Go to **Business Settings** → **External Menu Sync**
-2. Check if the status shows "Connection issue"
-3. Click **Test connection** to check the connection
-4. If the test fails:
-   - Verify the provider connection URL is correct (no extra spaces, correct `https://`)
-   - Contact your provider to confirm their server is running
-   - Make sure they're using the correct secret key
-5. If the test succeeds, the next menu change will sync normally
-   > If none of this works, contact your provider first. MenuList sends the data — they need to confirm they're receiving it.
+### The connection changed after secret rotation
 
-### I see "Connection issue" in my External Menu Sync status
+The provider still has the old secret. Share the new secret and test again.
 
-**Why this happens:** MenuList tried to send a menu update but couldn’t reach the connected system. It marked the connection as having issues to alert you.
+### A saved change was not delivered
 
-**How to fix it:**
+- Confirm External Menu Sync was enabled for this outlet.
+- Confirm the provider URL was saved.
+- Keep the app open for at least 25 seconds after the save.
+- Check desktop delivery history.
+- Make another acknowledged project save after fixing the connection; this sends the current full snapshot.
 
-1. Check with your provider if their server is working
-2. Once they confirm it's fixed, click **Test connection** in MenuList
-3. If the test succeeds, the status will change back to "Connected"
-4. The next menu change will sync normally
+### The test succeeds but the POS does not update
 
-### I changed my menu but the connected system didn't update
+The provider accepted the request but did not apply it. Share the delivery version/time with them. MenuList cannot inspect their internal processing.
 
-**Why this happens:** MenuList waits about 25 seconds after your last edit before sending. This prevents sending many updates when you’re making several changes at once.
+## Multi-outlet businesses
 
-**How to fix it:**
+Connections are store-level. Configure and test each outlet separately. MenuList does not claim that one master connection updates every outlet/provider automatically.
 
-1. Wait 1 minute after your last edit
-2. Check the **Updates sent** section — you should see a new entry
-3. If the delivery shows "Success" but the connected system didn't update, contact your provider — the issue is on their side
+## When to contact MenuList support
 
-### The connected system shows old prices
+Contact MenuList support when:
 
-**Why this happens:** Either the delivery failed (check delivery status) or the connected system is not processing the updates correctly.
+- the protected secret cannot load or rotate for an authorized user;
+- saves repeatedly fail inside MenuList;
+- no delivery row appears after an acknowledged save and the 25-second wait while the app remained open;
+- the provider URL is public HTTPS but MenuList consistently rejects it.
 
-**How to fix it:**
-
-1. Check **Updates sent** — was the latest delivery successful?
-2. If successful: Contact your provider. MenuList sent the correct menu — they need to apply it.
-3. If failed: Follow the "The connected system is not receiving menu updates" steps above.
-
-### Can I use this with multiple outlets?
-
-**Yes.** Each outlet connects to its own external system independently:
-
-1. Switch to the outlet you want to configure (using the store switcher)
-2. Go to **Business Settings** → **External Menu Sync**
-3. Set up the provider connection URL for that outlet's connected system
-4. Repeat for each outlet
-
-Each outlet can use a different connected system.
-
----
-
-## Tips & Best Practices
-
-- **Test before relying on it** — Always click "Test connection" after entering your provider connection URL. This catches most problems immediately.
-- **Don't worry about it** — Once set up and tested, External Menu Sync runs silently. You don't need to check it regularly.
-- **Share setup instructions with your provider** — If your provider doesn't know how to connect, use the setup instructions feature. It gives them everything they need.
-- **One change at a time** — If you're making many menu changes, finish all your edits first. MenuList waits for you to finish before sending one combined update.
-- **Keep your secret key private** — Don't share it publicly. Only share it with your provider.
-
----
-
-## Related Features
-
-- **[Multi-Outlet Management]** — Manage multiple outlets from one account. Each outlet can have its own External Menu Sync configuration.
-- **[Menu Editor]** — Where you make menu changes that trigger external updates.
-- **[Business Settings]** — Where External Menu Sync and other store settings are configured.
-
----
-
-## Need More Help?
-
-If you're having trouble with External Menu Sync:
-
-1. **Check this guide** — Most issues are covered in the Troubleshooting section above
-2. **Contact your provider** — If MenuList shows "Success" but the connected system isn't updated, the issue is on their side
-3. **Contact MenuList support** — Email us or reach out via WhatsApp if you need further assistance
-
----
-
-**Document Signature:** Customer Help Documentation
-**Author:** Cascade + Founder
-**Last Updated:** May 23, 2026
+For a success row that was not applied, contact the receiving provider first.

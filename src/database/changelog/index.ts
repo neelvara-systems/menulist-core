@@ -18,6 +18,7 @@ import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { STORAGE_CACHE_CONTROL } from '@lib/storage/cacheControl';
 import { generateStoragePath } from '@lib/storage/pathGenerator';
+import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
 import type { ChangelogPage } from '@type/changelog';
 import type { UserUploadedFileType } from '@type/common';
 import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore';
@@ -37,6 +38,42 @@ const getCollectionRef = (scope: { tId: number; sId: number }) => collection(
     answerlatticeFirebaseClient,
     `${COLLECTION}/${scope.tId}/${scope.sId}`,
 );
+
+const cleanupRemovedFiles = async (urls: string[], operation: string) => {
+    if (urls.length === 0) return;
+    const uniqueUrls = Array.from(new Set(urls));
+    const results = await Promise.allSettled(uniqueUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+    const summary = summarizeStorageCleanupResults(results);
+    if (summary.failed > 0) {
+        logRuntimeFailure('answerlattice_changelog_storage_cleanup_failed', new Error('storage_cleanup_failed'), {
+            operation,
+            fileCount: summary.attempted,
+            failedCleanupCount: summary.failed,
+        });
+    }
+};
+
+const logAmbiguousChangelogMediaRetention = (action: 'create' | 'update', fileCount: number) => {
+    if (fileCount === 0) return;
+    logRuntimeFailure(
+        'answerlattice_changelog_ambiguous_persistence_media_retained',
+        new Error('persistence_outcome_ambiguous'),
+        { action, fileCount },
+    );
+};
+
+const deferPersistedChangelogMediaCleanup = (
+    urls: readonly string[],
+    operation: 'update_replaced' | 'delete_entry',
+) => {
+    const retainedReferenceCount = new Set(urls.map((url) => url.trim()).filter(Boolean)).size;
+    if (retainedReferenceCount === 0) return;
+    logRuntimeFailure(
+        'answerlattice_changelog_persisted_media_cleanup_deferred_shared_reference',
+        new Error('persisted_media_reference_scope_incomplete'),
+        { operation, retainedReferenceCount },
+    );
+};
 
 const toIsoDate = (value: unknown): string | null => {
     if (!value || typeof value !== 'object' || typeof (value as { toDate?: unknown }).toDate !== 'function') return null;
@@ -102,7 +139,7 @@ const uploadPendingFiles = async (
         }
         return { files: prepared, uploadedUrls };
     } catch (error) {
-        await Promise.allSettled(uploadedUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+        await cleanupRemovedFiles(uploadedUrls, 'partial_upload');
         throw error;
     }
 };
@@ -139,7 +176,7 @@ const buildMutationAction = async (
     };
     const parsed = parseAnswerlatticeChangelogAction(raw);
     if (!parsed) {
-        await Promise.allSettled(prepared.uploadedUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+        await cleanupRemovedFiles(prepared.uploadedUrls, 'invalid_action');
         throw new Error('Invalid changelog entry');
     }
     return { parsed, uploadedUrls: prepared.uploadedUrls };
@@ -164,23 +201,13 @@ const executeChangelogAction = async (action: AnswerlatticeChangelogAction) => {
     return parsed.data;
 };
 
-const cleanupRemovedFiles = async (urls: string[]) => {
-    if (urls.length === 0) return;
-    const results = await Promise.allSettled(urls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
-    if (results.some((result) => result.status === 'rejected')) {
-        logRuntimeFailure('answerlattice_changelog_storage_cleanup_failed', new Error('storage_cleanup_failed'), {
-            fileCount: urls.length,
-        });
-    }
-};
-
 export const addChangelogEntry = async (entryPayload: unknown) => apiCallComposer(
     async () => {
         const prepared = await buildMutationAction('create', entryPayload);
         try {
             return await executeChangelogAction(prepared.parsed);
         } catch (error) {
-            await cleanupRemovedFiles(prepared.uploadedUrls);
+            logAmbiguousChangelogMediaRetention('create', prepared.uploadedUrls.length);
             throw error;
         }
     },
@@ -193,10 +220,10 @@ export const updateChangelogEntry = async (entryId: string, entryPayload: unknow
         const prepared = await buildMutationAction('update', entryPayload, entryId);
         try {
             const result = await executeChangelogAction(prepared.parsed);
-            await cleanupRemovedFiles(result.removedFileUrls);
+            deferPersistedChangelogMediaCleanup(result.removedFileUrls, 'update_replaced');
             return result;
         } catch (error) {
-            await cleanupRemovedFiles(prepared.uploadedUrls);
+            logAmbiguousChangelogMediaRetention('update', prepared.uploadedUrls.length);
             throw error;
         }
     },
@@ -214,7 +241,7 @@ export const deleteChangelogEntry = async (entryId: string) => apiCallComposer(
         });
         if (!action) throw new Error('Invalid changelog entry ID');
         const result = await executeChangelogAction(action);
-        await cleanupRemovedFiles(result.removedFileUrls);
+        deferPersistedChangelogMediaCleanup(result.removedFileUrls, 'delete_entry');
         return result;
     },
     { entryId },

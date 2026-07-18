@@ -13,6 +13,7 @@ import { PERMISSIONS } from "@constant/permissions";
 import { isReservedSubdomain } from "@constant/reservedSlugs";
 import { getMenuUrl } from "@constant/urls";
 import { admin } from "@lib/firebase/firebaseAdmin";
+import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import { getOutletSessionScope } from "@lib/multiOutlet/outletSessionScope";
 import { invalidateOwnerBusinessAssistantPacketCache } from "@lib/ownerBusinessAssistant/server/contextPacketCache";
 import { requireAnyStorePermission } from "@lib/permissions/server";
@@ -286,16 +287,32 @@ export const POST = withAuth(async (request: NextRequest, session) => {
             }
         });
 
-        revalidateTag(`menu-store-${scope.storeDocumentId}`);
-        revalidateTag(`store-${scope.storeDocumentId}`);
-        revalidateTag('client-stores');
-        revalidateTag('screen-data');
-        await touchDigitalScreenContentVersionForStoreServer(scope.storeDocumentId, 'subdomainAssign');
-        await invalidateOwnerBusinessAssistantPacketCache({
-            tId: scope.tenantDocumentId,
-            sId: scope.storeDocumentId,
+        const postCommit = await runStorePublicTruthPostCommitEffects({
+            chunkSize: 1,
+            storeIds: [scope.storeDocumentId],
+            tenantId: scope.tenantDocumentId,
+            deps: {
+                invalidateAssistant: (storeId, tenantId) => (
+                    invalidateOwnerBusinessAssistantPacketCache({ tId: tenantId, sId: storeId })
+                ),
+                revalidate: (tag) => revalidateTag(tag),
+                touchScreen: (storeId) => touchDigitalScreenContentVersionForStoreServer(storeId, 'subdomainAssign'),
+            },
         });
-        return NextResponse.json({ subdomain, success: true });
+        if (postCommit.effectsPending) {
+            logSecurityFailure('subdomain_assign_post_commit_effect_failed', postCommit.firstError, {
+                failedEffectCount: postCommit.failedEffectCount,
+                route: '/api/subdomain/check',
+                storeIdLength: scope.storeDocumentId.length,
+                tenantIdLength: scope.tenantDocumentId.length,
+            });
+        }
+        return NextResponse.json({
+            effectsPending: postCommit.effectsPending,
+            failedEffectCount: postCommit.failedEffectCount,
+            subdomain,
+            success: true,
+        });
     } catch (error) {
         if (isSubdomainOwnerScopeError(error)) {
             return NextResponse.json({

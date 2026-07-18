@@ -93,7 +93,7 @@ The following infrastructure improvements were implemented to make the menu surf
 
 | Feature                     | Implementation                                                   |
 | --------------------------- | ---------------------------------------------------------------- |
-| **Client Sanitization**     | `sanitizeForClient()` strips `_mce` and internal metadata        |
+| **Client Sanitization**     | `sanitizeForClient()` emits an explicit browser-safe project DTO; `projectPublicClientStore()` emits an explicit browser-safe store DTO |
 | **MCE Publish Gate**        | 17 validation rules prevent corrupt data from reaching customers |
 | **Multi-Outlet Resolution** | `resolveProjectForRender()` merges master + outlet data. Metadata outlet lookup, metadata project lookup, and runtime outlet lookup failures remain fail-open but log bounded `public_menu_resolution_*` diagnostics with tenant/store/slug presence-length context only. |
 
@@ -449,6 +449,10 @@ async function getProjectBySlugOrDefault(
 
 Public menu project document-ID boundary: `src/app/client/[[...slug]]/page.tsx` resolves the public menu project through `normalizePublicMenuProjectDocumentScope` before reading `projects/{tId}/{sId}/{projectId}`. The guard keeps valid immutable project IDs, reads tenant scope from the first segment and store scope from the final segment, and requires both scope segments to be exact positive numeric Firestore document IDs. Whitespace-mutated, path-shaped, reserved, malformed, zero, negative, unsafe, or nonnumeric project scope fails closed as menu not found before Admin SDK project refs are built.
 
+Public browser projection boundary: canonical project and store documents remain server-side. Before `ClientMenuRenderer` receives props, `sanitizeForClient()` allowlists customer render fields and removes source-upload metadata, extraction diagnostics/business suggestions, owner ranking/review state, inactive items/categories/attributes, and non-value decision-fact provenance. Item/category images are reduced to public URL/variant references. `projectPublicClientStore()` separately allowlists identity, locale, currency, public contact/actions, public analytics IDs/toggles, PWA, hours, feedback, and temporary-status fields. Roles, licence/billing data, contact-person fields, API/widget credentials, POS secrets, notification settings, integration state, and future unknown store fields remain excluded by default.
+
+Supplied-slug resolution boundary: a current slug, legacy name slug, or `previousSlugs[]` match resolves normally. A miss returns the not-available recovery surface. Literal `/menu` alone may use the explicit `isDefault: true` Layer 2 alias; it does not fall through to the first active project. The no-slug first-project compatibility path remains only behind the OBP emergency rollback branch.
+
 ### 4. Decision Blocks Fetch
 
 ```typescript
@@ -709,12 +713,13 @@ useEffect(() => {
 
 | Operation               | Reads       |
 | ----------------------- | ----------- |
-| Store lookup            | 1           |
-| Project metadata (list) | 1           |
-| Project data            | 1           |
-| Decision Blocks         | 1           |
-| Store details (full)    | 1           |
-| **Total**               | **5 reads** |
+| Store lookup + canonical tenant eligibility | 2 |
+| Project summary packet | 1 |
+| Selected project data | 1 |
+| Embedded Decision Blocks | 0 extra |
+| Store details reuse | 0 extra |
+| **Normal single-store total** | **4 cold reads** |
+| Linked master or active special project | **+1 each when applicable** |
 
 ---
 
@@ -739,12 +744,14 @@ useEffect(() => {
 | Subdomain     | Visit `{subdomain}.menulist.ai`  | Menu loads        |
 | Custom Domain | Visit verified custom domain     | Menu loads        |
 | Slug          | Visit `{domain}/drinks`          | Correct project   |
-| Default       | Visit domain without slug        | Default project   |
+| Root          | Visit domain without slug        | Official Business Page |
+| Menu alias    | Visit `/menu` with explicit default | Default project with canonical slug metadata |
+| Unknown slug  | Visit an unclaimed project slug  | Menu-not-available recovery; never another menu |
 | 404           | Visit non-existent store         | 404 page          |
 | SEO           | View page source                 | Metadata present  |
 | Schema        | Search for "application/ld+json" | JSON-LD present   |
 | Mobile        | Test on phone                    | Responsive layout |
-| Offline       | Enable airplane mode             | Cached content    |
+| Offline       | Enable airplane mode             | No stale menu-content cache is invented; installed-app recovery follows Customer App policy |
 | Refresh       | Scroll + refresh                 | Position restored |
 | Back          | Open item + press back           | Modal closes      |
 
@@ -770,8 +777,7 @@ Collection: stores
 Index 1: subdomain ASC, active ASC
 Index 2: customDomain ASC, domainVerified ASC, active ASC
 
-Collection: projectsMetadata/{tId}/{sId}/metadata
-Index: deleted ASC, active ASC
+Project routing uses a direct `platformSummary/projects_{sId}` document read and a direct immutable project document read; it does not require a `projectsMetadata` collection index.
 ```
 
 ---

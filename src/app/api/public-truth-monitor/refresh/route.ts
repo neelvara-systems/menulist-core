@@ -6,8 +6,7 @@ import {
     readPublicTruthMonitorProjectDataServer,
     readPublicTruthMonitorProjectSummariesServer,
     readPublicTruthMonitorStoreDataServer,
-    readPublicTruthMonitorSummaryServer,
-    writePublicTruthMonitorSummaryServer,
+    updatePublicTruthMonitorSummaryServer,
 } from "@database/publicTruthMonitor/server";
 import { buildOwnerPublicTruthReadinessReport } from "@lib/public-truth-tools/ownerPublicTruthReadiness";
 import {
@@ -43,7 +42,9 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Feature disabled" }, { status: 404 });
         }
 
-        const rateLimitResponse = await checkDataWriteLimit();
+        const rateLimitResponse = await checkDataWriteLimit({
+            failClosedOnProviderError: process.env.NODE_ENV === "production",
+        });
         if (rateLimitResponse) return rateLimitResponse;
 
         const jsonBody = await parsePublicTruthMonitorJsonBody(request);
@@ -119,25 +120,22 @@ export const POST = withAuth(async (request, session) => {
             selectedProjectId,
             store: storeData,
         });
-        const currentSummary = await readPublicTruthMonitorSummaryServer(sessionScope.storeScope.documentId);
         const entry = buildPublicTruthMonitorHistoryEntry({
             generatedAt,
             report,
             sId: sessionScope.storeScope.documentId,
             tId: sessionScope.tenantScope.documentId,
         });
-        const summary = buildPublicTruthMonitorSummary({
-            current: currentSummary,
-            entitlement,
-            entry,
-            generatedByUserId: session.uId || session.user?.id,
-            sId: sessionScope.storeScope.documentId,
-            tId: sessionScope.tenantScope.documentId,
-        });
-
-        await writePublicTruthMonitorSummaryServer({
+        const summary = await updatePublicTruthMonitorSummaryServer({
             storeId: sessionScope.storeScope.documentId,
-            summary,
+            buildSummary: (current) => buildPublicTruthMonitorSummary({
+                current,
+                entitlement,
+                entry,
+                generatedByUserId: session.uId || session.user?.id,
+                sId: sessionScope.storeScope.documentId,
+                tId: sessionScope.tenantScope.documentId,
+            }),
         });
 
         return NextResponse.json({

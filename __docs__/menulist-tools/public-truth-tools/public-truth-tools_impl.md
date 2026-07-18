@@ -1,7 +1,7 @@
 # Public Truth Tools - Implementation Plan
 
 **Status:** Active family; sixteen V0 tools, five public asset makers, shareable report viewer, and eighteen V1 owner readiness modules with owner fix lists implemented
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Developers and future maintainers
 
 ---
@@ -54,14 +54,18 @@ Current V0 rules:
 - no AI/provider call
 - every shared row keeps `evidenceText`
 - next actions are guarded to internal MenuList hrefs
+- summary counts must exactly match normalized visible rows
+- setup jobs are rebuilt from those rows instead of trusted from the hash
+- at least one report-limit statement and a non-empty primary label are required
+- the viewer labels the payload as an unsigned browser-local self-report
 
 All current public tool report cards are source-tool integrations. Future public tools should adopt this shared contract when their report cards are created.
 
-The report viewer's optional follow-up form posts only to the existing `/api/public/contact` route. Accepted submissions create one existing public contact enquiry and tag it with bounded `shareable_tool_report` metadata (`sourceKind`, `sourceToolId`, `sourceReportStatus`, `sourcePrimaryNumber`, and nested `sourceContext`) for operational triage. `/ops/report-leads` can read those existing enquiries for platform-admin manual triage. This is lead metadata, not report storage or canonical business truth.
+The report viewer's optional follow-up form posts only to the existing `/api/public/contact` route. Accepted submissions create one existing public contact enquiry and tag it with bounded `shareable_tool_report` metadata (`sourceKind`, `sourceToolId`, `sourceReportStatus`, `sourcePrimaryNumber`, and nested `sourceContext`) for operational triage. `/ops/report-leads` can read those existing enquiries for platform-admin manual triage. The route fails closed on production rate-limit-provider failure. Its scoped `sourceKind + createdOn` query intentionally reads at most 120 recent report leads; the response/UI marks the result incomplete whenever that cap is reached so operators do not mistake a bounded query for complete history. This is lead metadata, not report storage or canonical business truth.
 
 ## 1.1C Public URL Boundary
 
-V0 tools may parse owner-entered URLs only as local readiness hints. The shared helper at `src/lib/public-truth-tools/publicUrlValidation.ts` accepts bare public domains by normalizing them to HTTPS, then requires a public HTTPS URL. It rejects explicit `http://`, localhost, `.localhost`, `.local`, private IPv4, raw IPv4, loopback IPv6, and credentialed URLs.
+V0 tools may parse owner-entered URLs only as local readiness hints. The shared helper at `src/lib/public-truth-tools/publicUrlValidation.ts` accepts bare public domains by normalizing them to HTTPS, then requires a public HTTPS URL. It rejects explicit `http://`, localhost (including a trailing-dot form), `.localhost`, `.local`, private/raw IPv4, raw IPv6 including IPv4-mapped IPv6, empty hostname labels, and credentialed URLs. Print & Share Tools use this same helper instead of maintaining a second parser.
 
 The parser does not fetch, open, resolve DNS, crawl, inspect, store, or mutate the target. It only decides whether an owner-entered link is suitable to count as a public customer link in a browser-local report.
 
@@ -69,9 +73,11 @@ Malformed URL syntax uses bounded parse diagnostics. `public_truth_tool_url_pars
 
 URL-derived evidence text in manifest-backed public reports must name the public HTTPS boundary. Generic "URL format was checked" wording is not enough because it hides the local/private/insecure rejection rule from the generated report.
 
+Local phone/action validation lives in `phoneValidation.ts`. Booking Inquiry Readiness, WhatsApp Reply Pack, and WhatsApp Action Link Check use the same digit/separator, country-code, `tel:`, `mailto:`, and `whatsapp://send` rules. A WhatsApp preview is generated only after the entered number passes the international-phone shape check.
+
 ---
 
-## 1.2 Next Build Sequence
+## 1.2 Current Runtime Registry
 
 The next implementation should not start a generic registry or broad toolbox. Add the next tool only after its full doc set is created under `__docs__/menulist-tools/[tool-name]/`.
 

@@ -1,10 +1,20 @@
 import { DB_COLLECTIONS } from '@constant/database';
+import { getKnownProductDomains, type DeploymentProductId } from '@constant/deploymentTargets';
+import { ALL_PRODUCT_DOMAINS } from '@constant/productDomains';
 
 const CUSTOM_DOMAIN_CLAIM_DOCUMENT_PREFIX = 'customDomainClaim_';
 const CUSTOM_DOMAIN_PATTERN = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/;
 const CUSTOM_DOMAIN_MAX_LENGTH = 253;
 const CUSTOM_DOMAIN_LABEL_MAX_LENGTH = 63;
 export const CUSTOM_DOMAIN_RESERVATION_TTL_MS = 15 * 60 * 1000;
+const DEPLOYMENT_PRODUCT_IDS: DeploymentProductId[] = [
+    'menulist',
+    'neelvara',
+    'answerlattice',
+    'campaigncue',
+    'mycodex',
+    'signaldesk',
+];
 
 export class CustomDomainUnavailableError extends Error {
     readonly code = 'CUSTOM_DOMAIN_UNAVAILABLE';
@@ -35,6 +45,20 @@ export function normalizeCustomDomainClaimCandidate(value: unknown): string | nu
         && domain.split('.').every((label) => label.length <= CUSTOM_DOMAIN_LABEL_MAX_LENGTH)
         ? domain
         : null;
+}
+
+const RESERVED_CUSTOM_DOMAIN_ROOTS = Array.from(new Set([
+    ...ALL_PRODUCT_DOMAINS,
+    ...DEPLOYMENT_PRODUCT_IDS.flatMap((productId) => getKnownProductDomains(productId)),
+])).filter((domain) => normalizeCustomDomainClaimCandidate(domain));
+
+/** Platform/product roots and every hostname below them are not tenant claims. */
+export function isReservedCustomDomainClaimCandidate(value: unknown): boolean {
+    const domain = normalizeCustomDomainClaimCandidate(value);
+    if (!domain) return false;
+    return RESERVED_CUSTOM_DOMAIN_ROOTS.some((root) => (
+        domain === root || domain.endsWith(`.${root}`)
+    ));
 }
 
 export function getCustomDomainClaimDocumentId(domain: string): string {

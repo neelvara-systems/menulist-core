@@ -1,40 +1,78 @@
-# POS Webhook Sync — Mobile Support
+# External Menu Sync — Mobile Support
 
-**Last Updated:** July 2, 2026
-**Decision:** ⚠️ LIMITED MOBILE SUPPORT — Status and light configuration supported
+> **Decision:** Supported as an operational MobileShell screen
+> **Last code-truth review:** July 16, 2026
 
----
+## Route and permission
 
-## Feature Admission Test
+The entry appears under `MobileShell > More` only when `ENABLE_POS_SYNC` is true and the current user has `canManageIntegrations`. Share-screen handoff opens the same shell sub-screen. It must not use `window.location`, force reload, or bypass inherited auth/store context.
 
-| Gate | Result | Reasoning |
-|------|--------|-----------|
-| **Frequency** | ⚠️ MIXED | Full setup is rare, but status checks happen on phone |
-| **Speed** | ⚠️ MIXED | Light edits and test ping are acceptable on mobile |
-| **Touch** | ⚠️ MIXED | URL input is not ideal, but manageable for urgent fixes |
-| **Value** | ✅ PASS | Owners may need to verify sync health away from desk |
+## Supported actions
 
-**Decision:** Mobile supports operational visibility and light-touch edits:
-- understand what External Menu Sync does before seeing technical fields
-- view a simple MenuList -> connected systems explanation and "Who should use this?" guidance
-- enable/disable sync
-- view status
-- edit provider connection URL
-- view masked verification secret preview, reveal deliberately, copy secret, and regenerate with typed confirmation
-- test the connection
+- view Connected / Connection issue / Disabled status;
+- enable or disable the connection;
+- edit and validate the provider URL;
+- securely load the current signing secret;
+- reveal/copy the masked secret deliberately;
+- rotate after typing `REGENERATE`;
+- run a connection test;
+- reset unsaved URL/toggle changes.
 
-Heavy integration setup and provider coordination are still desktop-preferred. Mobile must not expose the full signing secret by default.
+Desktop-only convenience remains delivery-history table, provider email draft, technical-summary copy, and sample download. This is intentional; mobile remains light operational control.
 
-## Failure Boundary
+## Secret flow
 
-`MobilePosSyncScreen` saves external sync settings and secret-rotation metadata through the shared `updateStore()` path. It must require `assertStoreUpdateSucceeded()` before local POS Sync state or saved copy changes. Rejected store acknowledgements use `mobile_pos_sync_store_update_rejected` and route through the same bounded failure handler. Failed settings saves must log `mobile_pos_sync_settings_save_failed` with bounded store, tenant, status presence/length, enabled-state booleans, webhook URL/secret presence-length metadata, pending-secret-rotation presence, and changed-field booleans before showing fixed owner-facing copy.
+Mobile never hydrates a secret from `storeDetails.posSync.webhookSecret` and never writes a secret through `updateStore()`.
 
-Failed signing-secret copy actions must log `mobile_pos_sync_secret_copy_failed` with bounded store/tenant context, secret presence/length, reveal state, pending-rotation presence, and clipboard/fallback support booleans only. Signing-secret copied feedback must wait for Clipboard API success or acknowledged textarea fallback success.
+On screen open:
 
-Connection-test requests must import the shared `POS_SYNC_TEST_REQUEST_POLICY` from `src/lib/posSync/testResponse.ts`, preserving same-origin credentials, no-store cache policy, and manual redirect handling before the same shared 16KB bounded `/api/pos-sync/test` response guard as desktop. Mobile shows reachable feedback only after an OK HTTP response plus `isSuccessfulPosSyncTestResponse()`. Malformed or oversized responses log `mobile_pos_sync_test_response_parse_failed`; invalid acknowledgements log `mobile_pos_sync_test_response_invalid`; provider-side test failures continue to log `mobile_pos_sync_test_failed`.
+1. call protected `GET /api/pos-sync/secret` with same-origin credentials, no cache, and manual redirect handling;
+2. parse no more than 4 KiB;
+3. accept only a shaped positive secret/version response;
+4. keep the secret in component memory, masked by default;
+5. remove any legacy secret from the local client projection.
 
-The mobile screen must not log raw webhook URLs, webhook secrets, provider responses, API response text, or exception text. Connection tests continue to show the fixed `Could not reach connected system` message.
+Enabling without a secret calls `action: ensure`. Rotation calls `action: rotate` immediately; the modal remains loading until the server acknowledgement. The server persists the rotation metadata and resets stale connection state. Mobile appends the existing non-blocking MOL audit only after success.
 
-## Source Gate
+## Settings save
 
-POS Sync boundary source gate: `npm run verify:pos-sync-boundary`. This locks MobileShell More routing, the shared URL validator and `/api/pos-sync/test` acknowledgement boundary, debounced delivery URL+secret admission, fixed owner-facing failure copy, and docs/audit parity. It is source-only and does not call an external POS provider.
+`updateStore()` persists non-secret POS configuration through the shared DAL. `assertStoreUpdateSucceeded()` is required before local saved state or success copy changes.
+
+The save payload must not contain `webhookSecret`. It may contain `secretVersion`, which is non-secret concurrency state. Failed saves show fixed owner copy and bounded diagnostics.
+
+## Connection test
+
+The screen imports `POS_SYNC_TEST_REQUEST_POLICY` and the shared 16 KiB response guard. Reachable feedback requires both an OK HTTP response and `isSuccessfulPosSyncTestResponse()`.
+
+Failure diagnostics may contain:
+
+- bounded tenant/store identity presence;
+- response status and response-shape booleans;
+- secret presence/length only;
+- URL presence/length only;
+- clipboard/fallback availability.
+
+They must not contain raw URL, secret, provider body, API body, exception text, email, or setup content. Owner copy remains `Could not reach connected system`.
+
+## Touch and accessibility
+
+- actions use existing mobile button/switch components and large targets;
+- secret is not visible without an explicit tap;
+- destructive rotation requires typed confirmation;
+- loading disables conflicting secret/toggle actions;
+- save/reset remain in the sticky mobile action area;
+- status never relies on color alone.
+
+## Cost
+
+- store and auth context are inherited;
+- screen open adds two server reads for the secret (plus migration writes only for legacy data);
+- no mobile delivery-log query;
+- reveal/copy/reset are local;
+- ensure/rotate use two transaction reads and two writes.
+
+## Verification
+
+`npm run verify:pos-sync-boundary` locks MobileShell routing, permission admission, protected secret use, no client secret hydration/write, URL/test parity, fixed copy, and shared DAL trigger coverage. `npm run test:pos-sync-secret:rules` proves the browser cannot access the canonical secret collection.
+
+These are source/emulator gates and do not prove a live provider or deployed mobile PWA.

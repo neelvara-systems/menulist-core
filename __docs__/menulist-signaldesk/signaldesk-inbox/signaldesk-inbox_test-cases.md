@@ -2,6 +2,7 @@
 
 **Status:** Initial test matrix
 **Created:** June 23, 2026
+**Last Updated:** July 15, 2026
 
 ## Functional Tests
 
@@ -12,6 +13,9 @@
 | INB-T003 | Wrong-contact reply arrives | Contact identity is suppressed and target is flagged for review. |
 | INB-T004 | Complaint reply arrives | Suppression and control-room incident are created. |
 | INB-T005 | Operator overrides classifier | Override reason and audit event are stored. |
+| INB-T006 | Two identical reply captures race | One actor/key claim owns one message, classification, conversation transition, incident/pause, backlog, audit, and cost effect; the other returns durable replay. |
+| INB-T007 | Same reply key is reused with changed target/channel/message | Rejected as an idempotency conflict with no new effects. |
+| INB-T008 | Reply arrives after target is converted | Reply and safety truth are retained without downgrading the target from converted. |
 
 ## Cost Tests
 

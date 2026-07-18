@@ -1,5 +1,5 @@
 import { DB_COLLECTIONS } from "@constant/database";
-import { doc, getDoc, runTransaction, Timestamp } from "@firebase/firestore";
+import { doc, runTransaction, Timestamp, type Transaction } from "@firebase/firestore";
 import { FEATURE_FLAGS } from "@config/features";
 import { firebaseClient } from "@lib/firebase/firebaseClient";
 import {
@@ -70,7 +70,8 @@ const parseProjectPath = (projectId?: string | number | null) => {
     };
 };
 
-const buildScreenMenuProjection = async (
+const buildScreenMenuProjectionInTransaction = async (
+    transaction: Transaction,
     projectId: string | number | null | undefined,
     contentVersion: number,
     expectedStoreId: string,
@@ -80,7 +81,7 @@ const buildScreenMenuProjection = async (
     if (path.storeId !== expectedStoreId) return null;
 
     const summaryRef = doc(firebaseClient, DB_COLLECTIONS.PLATFORM_SUMMARY, `projects_${path.storeId}`);
-    const summarySnap = await getDoc(summaryRef);
+    const summarySnap = await transaction.get(summaryRef);
     if (!summarySnap.exists()) return null;
 
     const projectMap = parseSummaryProjects(summarySnap.data() || {});
@@ -99,7 +100,7 @@ const buildScreenMenuProjection = async (
         `${DB_COLLECTIONS.PROJECTS}/${path.tenantId}/${path.storeId}`,
         baseProjectId,
     );
-    const projectSnap = await getDoc(projectRef);
+    const projectSnap = await transaction.get(projectRef);
     if (!projectSnap.exists()) return null;
 
     const projectData = projectSnap.data();
@@ -155,7 +156,8 @@ const executeDigitalScreenContentVersionTouch = async (
                 throw new Error("digital_screen_public_state_invalid");
             }
 
-            const menuProjection = await buildScreenMenuProjection(
+            const menuProjection = await buildScreenMenuProjectionInTransaction(
+                transaction,
                 options.projectId,
                 nextContentVersion,
                 normalizedStoreId,

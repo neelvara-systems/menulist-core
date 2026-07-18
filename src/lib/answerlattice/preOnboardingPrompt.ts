@@ -569,3 +569,73 @@ export function renderAnswerlatticePreOnboardingPrompt(): string {
         '',
     ].join('\n');
 }
+
+export const ANSWERLATTICE_PRE_ONBOARDING_TOOL_KEYS = [
+    'codex',
+    'cursor',
+    'claude-code',
+    'replit',
+    'lovable',
+] as const;
+
+export type AnswerlatticePreOnboardingToolKey = typeof ANSWERLATTICE_PRE_ONBOARDING_TOOL_KEYS[number];
+
+const TOOL_START_INSTRUCTIONS: Record<AnswerlatticePreOnboardingToolKey, { label: string; instructions: string[] }> = {
+    codex: {
+        label: 'Codex',
+        instructions: [
+            'Open the product repository or docs workspace in Codex before pasting this prompt.',
+            'Allow only the local files and public URLs needed for the target product.',
+            'Ask Codex to run the validation checks named in the prompt before returning the package.',
+        ],
+    },
+    cursor: {
+        label: 'Cursor',
+        instructions: [
+            'Open the target product repository in Cursor and start an Agent conversation.',
+            'Add the product paths and explicit sister-product exclusions before running the prompt.',
+            'Review every generated file in the editor before uploading it to Answerlattice.',
+        ],
+    },
+    'claude-code': {
+        label: 'Claude Code',
+        instructions: [
+            'Start Claude Code from the target product repository or docs directory.',
+            'Provide public website URLs separately when web access is available; otherwise mark them pending.',
+            'Require a final source-access and private-data review before accepting the package.',
+        ],
+    },
+    replit: {
+        label: 'Replit',
+        instructions: [
+            'Run this from the product Repl or an exported project workspace that contains the relevant source and docs.',
+            'Do not assume deployment secrets, private databases, or production logs are safe intake sources.',
+            'Download and review the generated package before moving it into Answerlattice.',
+        ],
+    },
+    lovable: {
+        label: 'Lovable',
+        instructions: [
+            'Use the project context, public product URL, owner notes, and approved screenshots available to the builder.',
+            'If repository, policy, or login-only product access is unavailable, keep those source families pending.',
+            'Treat the output as a review-ready source package, not as automatically approved support truth.',
+        ],
+    },
+};
+
+export function renderAnswerlatticePreOnboardingToolPrompt(tool: AnswerlatticePreOnboardingToolKey): string {
+    const config = TOOL_START_INSTRUCTIONS[tool];
+    return [
+        `# Answerlattice Pre-Onboarding Package for ${config.label}`,
+        '',
+        'This is a tool-specific start wrapper around the same Answerlattice master prompt. It is not a product integration or endorsement.',
+        '',
+        '## Start In This Tool',
+        '',
+        ...config.instructions.map((instruction, index) => `${index + 1}. ${instruction}`),
+        '',
+        '## Shared Master Prompt',
+        '',
+        renderAnswerlatticePreOnboardingPrompt(),
+    ].join('\n');
+}

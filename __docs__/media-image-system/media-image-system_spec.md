@@ -59,7 +59,7 @@ Menu background and Official Business Page business cover uploads also show a pu
 
 ## Variant Policy
 
-Every profile has named variants even when the current UI initially saves one URL:
+Every profile has named variants so preparation and future renderers share stable dimensions:
 
 | Profile | Variants |
 | --- | --- |
@@ -71,7 +71,7 @@ Every profile has named variants even when the current UI initially saves one UR
 | Digital screen slide | desktop, full |
 | Gallery image | thumb, full |
 
-Profile-aware saves upload all named variants to deterministic sibling paths. The current single persisted URL remains the profile primary variant for compatibility. Future renderers can move to the named variant URL map without changing the profile identifiers.
+Profile-aware saves upload only the selected variant that the current Firestore field persists. The default is the profile primary variant; an explicit current consumer may select another allowed variant. Prepared sibling variants remain local outputs and are not uploaded speculatively. A future renderer that needs multiple public variants must first add an explicit persisted URL-map/read contract, then enable only the variants it consumes.
 
 ## Format Rules
 

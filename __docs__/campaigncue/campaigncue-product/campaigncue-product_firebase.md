@@ -19,7 +19,7 @@ CampaignCue is cost-sensitive because campaign generation, videos, asset process
 | `campaigncueWorkspaces/{workspaceId}/analyticsSummaries/{summaryId}` | Dashboard/report read model | Mutation-time summary updates | Low |
 | `campaigncueWorkspaces/{workspaceId}/approvalRequests/{approvalId}` | Agency/client approval queue | Approval request state | Medium |
 | `campaigncueWorkspaces/{workspaceId}/usageLedger/{ledgerId}` | Billing/credit screen | Future credit lifecycle | High correctness risk |
-| `campaigncueWorkspaces/{workspaceId}/idempotencyKeys/{key}` | Server mutation replay protection | Idempotency result tracking | Low |
+| `campaigncueWorkspaces/{workspaceId}/idempotencyKeys/{key}` | Server mutation replay protection | Actor/action/request-bound five-minute claim lease, exact worker ownership, and terminal replay result | Low |
 
 ## Cost Rules
 
@@ -67,16 +67,28 @@ The current implementation adds an export/download-first CampaignCue runtime:
 - First workspace load: may create workspace, business brain, source snapshot, and dashboard summary documents once for the signed-in tenant/store.
 - Owner business/profile save: after workspace/business guard reads, reads the compact `sourceSnapshots/current` read model, rebuilds current facts from the new Business Brain plus saved snapshot facts, and writes workspace/business/source snapshot updates in one batch. It does not list `sourceInputs` for profile-only changes.
 - Owner source input save: after workspace/business guard reads, reads the compact `sourceSnapshots/current` read model and writes the source input, refreshed snapshot, and event in one batch. It does not scan the `sourceInputs` collection just to rebuild facts.
-- Owner campaign creation: reads bounded source, campaign history, asset, schedule, location, and summary context so the selected cue and deterministic decision can be resolved server-side; then atomically claims one idempotency key and writes one campaign with compact `pack.recipeId`/`pack.decision`, one trust report, one event, one atomic summary increment, and one idempotency completion in the same Firestore batch.
-- Campaign action: reads the target campaign once, atomically claims one idempotency key, then writes the scoped campaign update, event, summary increment, and idempotency completion in one Firestore batch. Schedule, approval, and owner-reported outcome actions update summary counters without scanning raw events. The API response is built from known mutation state and does not reread the campaign after commit.
-- Blocked or needs-fix trust-gate public-use actions (`download`, `export`, `mark_used`, `schedule`) write an `export_action_blocked` event and completed idempotency error record in one Firestore batch so owner retries do not leave dangling `in_progress` keys. Approval requests and result recording stay available so unsafe packs can still be reviewed or historically annotated.
-- Asset registration uses a workspace-only guard read, then writes the asset metadata record and event in one batch. Location creation uses a workspace-only guard read, then writes the location record plus one event. Asset metadata now includes rights status, consent type, note, and tags without requiring binary upload.
+- Owner campaign creation: transactionally claims or recovers one bounded idempotency lease, reads bounded source, campaign history, asset, schedule, location, and summary context so the selected cue and deterministic decision can be resolved server-side, then writes one campaign with compact `pack.recipeId`/`pack.decision`, one trust report, one event, one atomic summary increment, and exact claim-owned idempotency completion in one Firestore transaction.
+- Campaign action: after the workspace guard and actor/request-bound five-minute idempotency lease, one transaction reads the current claim and campaign, derives counters/result state from that snapshot, and writes campaign, event, summary increment, optional schedule, and exact claim-owned completion. Public-use actions also transaction-read the current workspace and conditionally the compact source snapshot. Schedule, approval, and owner-reported outcome actions update summary counters without scanning raw events. The API response is built from transaction state and does not reread after commit.
+- Blocked or needs-fix trust-gate public-use actions (`download`, `export`, `mark_used`, `schedule`) transactionally write an `export_action_blocked` event and completed idempotency error record after the current campaign/workspace/source recheck, so owner retries do not leave dangling `in_progress` keys. Approval requests and result recording stay available so unsafe packs can still be reviewed or historically annotated.
+- Metadata-only asset registration uses a workspace guard read, then writes the asset record and event in one batch. Campaign-linked registration adds one direct campaign read; Storage-backed registration adds one object-metadata lookup and stores only the workspace path plus authoritative size/type. External or signed download URLs are rejected and never persisted. Location creation uses a workspace-only guard read, then writes the location record plus one event.
 - CueLayers flat-safe upload stores `current.jobId` on the design as a summary pointer; upload replay prefers a direct job document read and only falls back to the indexed `designId` query for legacy records.
 - Provider setup/manual confirmation writes are not active; `/api/campaigncue/integrations` is read-only posture.
 - The owner workspace UI merges successful mutation responses locally instead of reloading the full overview after every save/action.
 - Social account connection, direct provider calls, paid generation, rendered video, billing checkout, and ad spend mutation: disabled, zero provider cost.
 
 No CampaignCue Cloud Function or scheduler cost is introduced in this pass.
+
+## Current Index Boundary
+
+`firestore-campaigncue.indexes.json` intentionally contains no composite index. Every active query first resolves one exact `campaigncueWorkspaces/{workspaceId}` path and then uses a direct subcollection document read, a single-field equality filter, or a single-field `createdAt`/`updatedAt` order with a bounded limit. Firestore's automatic single-field indexes cover those shapes.
+
+The previous twelve `workspaceId + createdAt/updatedAt` and `designId + createdAt` composites had no matching runtime query. Removing them avoids composite-index fanout and storage on source, campaign, asset, schedule, event, location, and CueLayers writes. Add a composite only with the exact bounded query and verifier that needs it; do not pre-provision cross-workspace or dormant-provider indexes.
+
+QA deployment evidence (July 17, 2026): the scoped `campaigncue-qa` index deploy loaded the empty manifest and stopped before upload at the Firebase Rules test endpoint with HTTP 403 caller permission. No remote index changed. An authorized operator must repeat:
+
+```bash
+firebase deploy --project campaigncue-qa --config firebase-campaigncue.json --only firestore:indexes --non-interactive
+```
 
 ## Foundation Firebase Decision
 

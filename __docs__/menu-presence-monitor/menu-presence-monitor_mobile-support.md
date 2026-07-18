@@ -1,7 +1,7 @@
 # Menu Presence Monitor — Mobile Support Assessment
 
-> **Version:** 1.5
-> **Last Updated:** July 10, 2026
+> **Version:** 1.6
+> **Last Updated:** July 16, 2026
 
 ---
 
@@ -29,9 +29,12 @@ No fixed timing claim is approved from this source gate. Release copy needs brow
 - **Actions:** Tap a row to open the bottom sheet, copy/open the official link, then use explicit **Mark as added** or **Remove** buttons
 - **Activation proof:** Mobile shows the same `buildStarterActivationSummary()` result as desktop: two-action progress, MenuList-recorded count, and owner-confirmed count.
 - **Diagnostics:** Failed official-link copy, confirm, and remove actions must log `mobile_presence_official_link_copy_failed`, `mobile_presence_confirm_failed`, and `mobile_presence_remove_failed` with bounded store/tenant, link, surface, count, starter-signal, and clipboard/fallback support metadata only. Copied feedback must wait for Clipboard API or acknowledged textarea fallback success.
-- **Write acknowledgement:** Confirm/remove actions must call `assertMenuPresenceUpdateSucceeded()` before local presence state, success copy, or selected-surface state changes.
+- **Write acknowledgement:** Confirm/remove actions must call `assertMenuPresenceUpdateSucceeded()` before local/global presence state, success copy, or selected-surface state changes. The acknowledged timestamp updates loaded activation truth only if the same store remains selected.
 - **Discovery parity:** Google Business, Apple Business Connect, Bing Places, Instagram Bio, and WhatsApp Profile use the same bottom-sheet confirmation workflow as desktop. Digital Screens remains desktop-derived because the mobile Share loader does not own that state.
+- **Automatic truth parity:** Table QR requires an active/non-deleted project with a valid explicit publish timestamp. Feedback additionally requires feedback not disabled. Mobile Share and the standalone Presence Monitor both use the shared readiness helper instead of treating any active project as published.
 - **Active store scope:** Mobile confirm/remove inherits the shared `updateMenuPresence()` active-session store guard. A stale or mismatched store selection must reject before writing `menuPresence` or `starterActivationSignals`.
+- **Store-switch safety:** Local confirmation/sheet state resets from the newly loaded store. A late acknowledgement cannot change the new store's local or global state.
+- **Removal truth:** Removing a confirmation also removes its matching starter action in the same transaction, so the activation proof cannot stay complete from a placement the owner retracted.
 - **Source gate:** Run `npm run verify:menu-presence-monitor-boundary` after changes to mobile presence monitor routing, bottom-sheet actions, active-session store guards, or activation proof copy.
 
 ## Localization

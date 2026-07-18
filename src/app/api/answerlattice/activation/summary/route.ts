@@ -11,13 +11,24 @@ export const dynamic = 'force-dynamic';
 import { FEATURE_FLAGS } from '@config/features';
 import { ANSWERLATTICE_PERMISSION_KEYS } from '@constant/answerlattice/permissions';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PRODUCT_IDS } from '@constant/product';
 import { requireAnswerlatticePermission } from '@lib/answerlattice/accessControl';
 import {
     buildAnswerlatticeActivationSummary,
     getAnswerlatticeActivationSummaryDocId,
     shouldPersistActivationSummary,
 } from '@lib/answerlattice/activationSummary';
-import { getAnswerlatticeBundleManifestDocId } from '@lib/answerlattice/compiledContext';
+import { buildAnswerlatticeActivationAnswerTestSummary } from '@lib/answerlattice/activationAnswerTestSummary';
+import {
+    getAnswerlatticeAnswerTestSummaryId,
+    normalizeAnswerlatticeAnswerTestSourceVersions,
+} from '@lib/answerlattice/answerTestContracts';
+import {
+    areAnswerlatticeCompiledSourceVersionsValid,
+    getAnswerlatticeBundleManifestDocId,
+    getAnswerlatticeSourceVersionsDocId,
+    normalizeCompiledSourceVersions,
+} from '@lib/answerlattice/compiledContext';
 import {
     getContextContentSummaryDocId,
     normalizeAnswerlatticeSurfaceContentSummary,
@@ -122,14 +133,27 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
         const coverageRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`coverage_${tId}_${sId}`);
         const trustRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(`trustMetrics_${tId}_${sId}`);
         const bundleManifestRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeBundleManifestDocId(tId, sId));
+        const answerTestsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeAnswerTestSummaryId(tId, sId));
+        const sourceVersionsRef = db.collection(DB_COLLECTIONS.PLATFORM_SUMMARY).doc(getAnswerlatticeSourceVersionsDocId(tId, sId));
 
-        const [storeSnap, existingSummarySnap, contextSnap, coverageSnap, trustSnap, bundleManifestSnap] = await Promise.all([
+        const [
+            storeSnap,
+            existingSummarySnap,
+            contextSnap,
+            coverageSnap,
+            trustSnap,
+            bundleManifestSnap,
+            answerTestsSnap,
+            sourceVersionsSnap,
+        ] = await Promise.all([
             storeRef.get(),
             summaryRef.get(),
             contextRef.get(),
             coverageRef.get(),
             trustRef.get(),
             bundleManifestRef.get(),
+            answerTestsRef.get(),
+            sourceVersionsRef.get(),
         ]);
 
         if (!storeSnap.exists) {
@@ -147,6 +171,18 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
             ? await readLegacySubscription(db, tId, sId)
             : null;
 
+        const compiledContext = buildCompiledContextReadiness(
+            bundleManifestSnap.exists ? bundleManifestSnap.data() as any : null,
+        );
+        const rawSourceVersions = sourceVersionsSnap.exists ? sourceVersionsSnap.data() : null;
+        const currentAnswerTestSourceVersions = !rawSourceVersions
+            ? normalizeAnswerlatticeAnswerTestSourceVersions(normalizeCompiledSourceVersions({}))
+            : rawSourceVersions.pId === PRODUCT_IDS.ANSWERLATTICE
+                && rawSourceVersions.tId === tId
+                && rawSourceVersions.sId === sId
+                && areAnswerlatticeCompiledSourceVersionsValid(rawSourceVersions)
+                ? normalizeAnswerlatticeAnswerTestSourceVersions(normalizeCompiledSourceVersions(rawSourceVersions))
+                : null;
         const summary = buildAnswerlatticeActivationSummary({
             tId,
             sId,
@@ -157,7 +193,13 @@ export const GET = withAuth(async (_request: NextRequest, session) => {
                 : null,
             coverage: coverageSnap.exists ? coverageSnap.data() as any : null,
             trustMetrics: trustSnap.exists ? trustSnap.data() as any : null,
-            compiledContext: buildCompiledContextReadiness(bundleManifestSnap.exists ? bundleManifestSnap.data() as any : null),
+            compiledContext,
+            answerTests: buildAnswerlatticeActivationAnswerTestSummary(
+                answerTestsSnap.exists ? answerTestsSnap.data() : null,
+                tId,
+                sId,
+                currentAnswerTestSourceVersions,
+            ),
         });
 
         const existingSummary = existingSummarySnap.exists ? existingSummarySnap.data() || null : null;

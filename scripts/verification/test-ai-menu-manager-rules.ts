@@ -40,6 +40,8 @@ function compactSession(id = sessionId) {
         compactMessages: [],
         pendingCardSummaries: [],
         pendingOperations: [],
+        hasPendingOperations: false,
+        pendingCount: 0,
         recentReceiptSummaries: [],
         counters: { commands: 0, proposalsCreated: 0, approvals: 0, executions: 0 },
         createdAt: Timestamp.now(),
@@ -74,6 +76,23 @@ async function run(): Promise<void> {
         await assertSucceeds(setDoc(doc(ownerDb, 'aiMenuManagerSessions', sessionId), compactSession()));
         await assertSucceeds(getDoc(doc(ownerDb, 'aiMenuManagerSessions', sessionId)));
         await assertSucceeds(updateDoc(doc(ownerDb, 'aiMenuManagerSessions', sessionId), {
+            updatedAt: Timestamp.now(),
+        }));
+        await assertFails(updateDoc(doc(ownerDb, 'aiMenuManagerSessions', sessionId), {
+            hasPendingOperations: false,
+            pendingCount: 1,
+            updatedAt: Timestamp.now(),
+        }));
+        await assertSucceeds(updateDoc(doc(ownerDb, 'aiMenuManagerSessions', sessionId), {
+            pendingOperations: [{ operationId: 'metadata-operation' }],
+            hasPendingOperations: true,
+            pendingCount: 1,
+            updatedAt: Timestamp.now(),
+        }));
+        await assertSucceeds(updateDoc(doc(ownerDb, 'aiMenuManagerSessions', sessionId), {
+            pendingOperations: [],
+            hasPendingOperations: false,
+            pendingCount: 0,
             updatedAt: Timestamp.now(),
         }));
         await assertFails(updateDoc(doc(ownerDb, 'aiMenuManagerSessions', sessionId), {
@@ -128,6 +147,8 @@ async function run(): Promise<void> {
                 ];
                 transaction.update(sessionRef, {
                     pendingOperations,
+                    hasPendingOperations: true,
+                    pendingCount: pendingOperations.length,
                     counters: {
                         ...current.counters,
                         commands: (current.counters?.commands || 0) + 1,
@@ -143,7 +164,6 @@ async function run(): Promise<void> {
             'transaction retries must preserve both concurrently prepared operations',
         );
         assert.equal(concurrentSession?.counters?.commands, 3);
-
         const arbitraryLegacyId = 'amm_aaaaaaaaaaaaaaaaaaaaaaaa';
         await assertFails(setDoc(
             doc(ownerDb, 'aiMenuManagerSessions', arbitraryLegacyId),

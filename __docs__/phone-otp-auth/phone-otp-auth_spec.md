@@ -34,7 +34,10 @@ Make the primary owner authentication flow work for phone-first SMB owners while
 ## Security
 
 - Public OTP routes validate input with Zod.
-- Send and verify are separately rate limited.
+- Send and verify are separately rate limited by IP and by normalized phone/challenge identity.
+- Every OTP limiter uses `failClosedOnProviderError: true`.
+- An unavailable limiter provider returns 503 with fixed temporary-unavailable copy. The route does not continue to WhatsApp, challenge reads/writes, user resolution, or login-token creation.
+- An exhausted working limiter returns 429 with `Retry-After`.
 - OTPs and login tokens are HMAC hashed before storage.
 - Login tokens are one-time use and expire after 10 minutes.
 - Raw OTP is never logged.

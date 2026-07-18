@@ -2,12 +2,17 @@
 
 import { FEATURE_FLAGS } from '@config/features';
 import {
+    ANSWERLATTICE_ROUTES,
+} from '@constant/answerlattice/routes';
+import {
     type AnswerlatticeOwnerAssistantAnswer,
     type AnswerlatticeOwnerAssistantBrief,
     type AnswerlatticeOwnerAssistantStatus,
+    type AnswerlatticeFounderDailyAction,
     type AnswerlatticeFounderDailyActionSeverity,
 } from '@lib/answerlattice/ownerSupportAssistant';
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
+import { formatDateTime, type IntlFormatter } from '@util/dateTime';
 import {
     Alert,
     Button,
@@ -23,15 +28,18 @@ import {
     message,
     theme,
 } from 'antd';
+import { useFormatter } from 'next-intl';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {
     LuArrowRight,
     LuAlertCircle,
     LuCheckCircle,
+    LuFilePlus2,
     LuGauge,
     LuListChecks,
     LuRefreshCw,
+    LuRocket,
     LuSearch,
     LuShieldCheck,
 } from 'react-icons/lu';
@@ -69,9 +77,19 @@ const getError = (payload: { error?: string } | null, fallback: string) => (
     payload?.error?.trim() || fallback
 );
 
+const formatOwnerSupportDateTime = (
+    value: string | null | undefined,
+    formatter: IntlFormatter,
+    fallback: string,
+): string => {
+    const label = formatDateTime(value, 'datetime', formatter);
+    return label === 'N/A' ? fallback : label;
+};
+
 export default function AnswerlatticeOwnerSupportAssistant() {
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
+    const formatter = useFormatter();
     const router = useRouter();
     const isMobile = screens.md !== true;
     const [brief, setBrief] = useState<AnswerlatticeOwnerAssistantBrief | null>(null);
@@ -126,9 +144,68 @@ export default function AnswerlatticeOwnerSupportAssistant() {
         }
     }, [question]);
 
+    const prepareReviewCard = useCallback((action: NonNullable<AnswerlatticeOwnerAssistantBrief['dailyBrief']>['actions'][number]) => {
+        if (!action.preparedReviewCard || !FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS) return;
+        const params = new URLSearchParams({
+            create: '1',
+            title: action.preparedReviewCard.title.slice(0, 140),
+            description: action.preparedReviewCard.description.slice(0, 1200),
+            priority: action.preparedReviewCard.priority,
+            tags: action.preparedReviewCard.tags.slice(0, 8).join(','),
+        });
+        router.push(`${ANSWERLATTICE_ROUTES.SUPPORT_BOARD}?${params.toString()}`);
+    }, [router]);
+
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT) return null;
 
     const statusMeta = STATUS_META[brief?.status || 'insufficient_data'];
+    const renderDailyAction = (action: AnswerlatticeFounderDailyAction, primary: boolean) => {
+        const actionMeta = ACTION_SEVERITY_META[action.severity];
+        return (
+            <div
+                key={action.id}
+                style={{
+                    border: `1px solid ${primary ? token.colorPrimaryBorder : token.colorBorderSecondary}`,
+                    borderRadius: 8,
+                    padding: isMobile ? 12 : 14,
+                    background: primary ? token.colorPrimaryBg : token.colorBgContainer,
+                }}
+            >
+                <Flex justify="space-between" align={isMobile ? 'stretch' : 'start'} vertical={isMobile} gap={12}>
+                    <Flex vertical gap={6} style={{ minWidth: 0 }}>
+                        <Space size={[6, 6]} wrap>
+                            {primary ? <Tag color="blue">Start here</Tag> : null}
+                            <Tag color={actionMeta.color}>{actionMeta.label}</Tag>
+                            <Text type="secondary">{action.source}</Text>
+                        </Space>
+                        <Title level={5} style={{ margin: 0 }}>{action.title}</Title>
+                        <Paragraph style={{ margin: 0 }}>{action.description}</Paragraph>
+                        <Text type="secondary">{action.reason}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{action.aiAssist}</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{action.costImpact}</Text>
+                    </Flex>
+                    <Flex vertical gap={8} style={{ minWidth: isMobile ? '100%' : 170 }}>
+                        <Button
+                            type={primary || action.severity === 'critical' || action.severity === 'high' ? 'primary' : 'default'}
+                            onClick={() => router.push(action.href)}
+                            style={{ minHeight: 44, width: '100%' }}
+                        >
+                            {action.cta}
+                        </Button>
+                        {FEATURE_FLAGS.ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS && action.preparedReviewCard ? (
+                            <Button
+                                icon={<LuFilePlus2 />}
+                                onClick={() => prepareReviewCard(action)}
+                                style={{ minHeight: 44, width: '100%' }}
+                            >
+                                Prepare review card
+                            </Button>
+                        ) : null}
+                    </Flex>
+                </Flex>
+            </div>
+        );
+    };
 
     return (
         <Flex vertical gap={20} style={{ width: '100%', maxWidth: 1120, margin: '0 auto', padding: isMobile ? 12 : 24 }}>
@@ -142,7 +219,16 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                         Start with today&apos;s plan, then ask what needs review, where users are stuck, or whether support is ready. Answers come from compact operational summaries and link back to the governed source.
                     </Paragraph>
                 </div>
-                <Button icon={<LuRefreshCw />} onClick={loadBrief} loading={loading} style={{ minHeight: 44 }}>Refresh brief</Button>
+                <Space wrap>
+                    <Button
+                        icon={<LuRocket />}
+                        onClick={() => router.push(`${ANSWERLATTICE_ROUTES.CHANGELOG}?create=1`)}
+                        style={{ minHeight: 44 }}
+                    >
+                        I shipped a change
+                    </Button>
+                    <Button icon={<LuRefreshCw />} onClick={loadBrief} loading={loading} style={{ minHeight: 44 }}>Refresh brief</Button>
+                </Space>
             </Flex>
 
             <Alert
@@ -174,49 +260,63 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                                     </Tag>
                                 </Flex>
 
-                                <Flex vertical gap={10}>
-                                    {brief.dailyBrief.actions.map(action => {
-                                        const actionMeta = ACTION_SEVERITY_META[action.severity];
-                                        return (
-                                            <div
-                                                key={action.id}
-                                                style={{
-                                                    border: `1px solid ${token.colorBorderSecondary}`,
-                                                    borderRadius: 8,
-                                                    padding: isMobile ? 12 : 14,
-                                                    background: token.colorBgContainer,
-                                                }}
+                                <div
+                                    style={{
+                                        border: `1px solid ${brief.launchVerification.ready ? token.colorSuccessBorder : token.colorBorderSecondary}`,
+                                        borderRadius: 8,
+                                        padding: isMobile ? 12 : 14,
+                                        background: brief.launchVerification.ready ? token.colorSuccessBg : token.colorFillAlter,
+                                    }}
+                                >
+                                    <Flex justify="space-between" align={isMobile ? 'stretch' : 'center'} vertical={isMobile} gap={12}>
+                                        <Flex vertical gap={4}>
+                                            <Space wrap>
+                                                <Text strong>Launch verification</Text>
+                                                <Tag color={brief.launchVerification.ready ? 'green' : brief.launchVerification.available ? 'orange' : 'default'}>
+                                                    {brief.launchVerification.ready ? 'Ready' : brief.launchVerification.available ? 'Incomplete' : 'Not verified'}
+                                                </Tag>
+                                                {brief.launchVerification.available ? (
+                                                    <Text type="secondary">
+                                                        {brief.launchVerification.completeCount}/{brief.launchVerification.totalCount} checks complete
+                                                    </Text>
+                                                ) : null}
+                                            </Space>
+                                            <Text type="secondary">
+                                                {brief.launchVerification.ready
+                                                    ? `Verified ${formatOwnerSupportDateTime(
+                                                        brief.launchVerification.verifiedAt,
+                                                        formatter,
+                                                        'from the latest activation snapshot',
+                                                    )}.`
+                                                    : brief.launchVerification.blockers[0] || 'Open Activation to create the first factual launch verification.'}
+                                            </Text>
+                                        </Flex>
+                                        {!brief.launchVerification.ready ? (
+                                            <Button
+                                                onClick={() => router.push(brief.launchVerification.nextActionRoute)}
+                                                style={{ minHeight: 44 }}
                                             >
-                                                <Flex justify="space-between" align={isMobile ? 'stretch' : 'start'} vertical={isMobile} gap={12}>
-                                                    <Flex vertical gap={6} style={{ minWidth: 0 }}>
-                                                        <Space size={[6, 6]} wrap>
-                                                            <Tag color={actionMeta.color}>{actionMeta.label}</Tag>
-                                                            <Text type="secondary">{action.source}</Text>
-                                                        </Space>
-                                                        <Title level={5} style={{ margin: 0 }}>{action.title}</Title>
-                                                        <Paragraph style={{ margin: 0 }}>{action.description}</Paragraph>
-                                                        <Text type="secondary">{action.reason}</Text>
-                                                        <Text type="secondary" style={{ fontSize: 12 }}>{action.aiAssist}</Text>
-                                                        <Text type="secondary" style={{ fontSize: 12 }}>{action.costImpact}</Text>
-                                                    </Flex>
-                                                    <Button
-                                                        type={action.severity === 'critical' || action.severity === 'high' ? 'primary' : 'default'}
-                                                        onClick={() => router.push(action.href)}
-                                                        style={{ minHeight: 44, minWidth: isMobile ? '100%' : 150 }}
-                                                    >
-                                                        {action.cta}
-                                                    </Button>
-                                                </Flex>
-                                            </div>
-                                        );
-                                    })}
+                                                {brief.launchVerification.nextActionLabel || 'Open Activation'}
+                                            </Button>
+                                        ) : null}
+                                    </Flex>
+                                </div>
+
+                                <Flex vertical gap={10}>
+                                    {brief.dailyBrief.actions[0] ? renderDailyAction(brief.dailyBrief.actions[0], true) : null}
+                                    {brief.dailyBrief.actions.length > 1 ? <Text strong>Also review</Text> : null}
+                                    {brief.dailyBrief.actions.slice(1).map(action => renderDailyAction(action, false))}
                                 </Flex>
 
                                 <Flex vertical gap={2}>
                                     <Text type="secondary" style={{ fontSize: 12 }}>{brief.dailyBrief.costNote}</Text>
                                     <Text type="secondary" style={{ fontSize: 12 }}>{brief.dailyBrief.sourceNote}</Text>
                                     <Text type="secondary" style={{ fontSize: 12 }}>
-                                        Summary updated {brief.updatedAt ? new Date(brief.updatedAt).toLocaleString() : 'after the next available summary run'}.
+                                        Summary updated {formatOwnerSupportDateTime(
+                                            brief.updatedAt,
+                                            formatter,
+                                            'after the next available summary run',
+                                        )}.
                                     </Text>
                                 </Flex>
                             </Flex>
@@ -231,7 +331,13 @@ export default function AnswerlatticeOwnerSupportAssistant() {
                                     <Text type="secondary">{brief.readModel.cacheHit ? 'Cached summary' : `${brief.readModel.firestoreReads} summary reads`}</Text>
                                 </Space>
                                 <Title level={4} style={{ margin: 0 }}>{brief.headline}</Title>
-                                <Text type="secondary">Updated {brief.updatedAt ? new Date(brief.updatedAt).toLocaleString() : 'after the next available summary run'}</Text>
+                                <Text type="secondary">
+                                    Updated {formatOwnerSupportDateTime(
+                                        brief.updatedAt,
+                                        formatter,
+                                        'after the next available summary run',
+                                    )}
+                                </Text>
                             </Flex>
                             <Statistic title="Items needing attention" value={brief.attentionCount} valueStyle={{ color: brief.attentionCount ? token.colorWarning : token.colorSuccess }} />
                         </Flex>
@@ -239,10 +345,16 @@ export default function AnswerlatticeOwnerSupportAssistant() {
 
                     <Flex gap={12} wrap="wrap">
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Coverage" value={brief.metrics.coverageRate ?? 0} suffix={brief.metrics.coverageRate === null ? '' : '%'} prefix={<LuShieldCheck size={16} />} /></Card>
-                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Resolution" value={brief.metrics.resolutionRate ?? 0} suffix={brief.metrics.resolutionRate === null ? '' : '%'} prefix={<LuGauge size={16} />} /></Card>
+                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Confirmed resolved" value={brief.metrics.confirmedResolutionRate ?? 0} suffix={brief.metrics.confirmedResolutionRate === null ? '' : '%'} prefix={<LuGauge size={16} />} /></Card>
+                        <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="No escalation" value={brief.metrics.resolutionRate ?? 0} suffix={brief.metrics.resolutionRate === null ? '' : '%'} prefix={<LuGauge size={16} />} /></Card>
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Drifted answers" value={brief.metrics.driftedAnswers} prefix={<LuAlertCircle size={16} />} /></Card>
                         <Card size="small" style={{ flex: '1 1 170px' }}><Statistic title="Review items" value={brief.metrics.reviewItems + brief.metrics.needsAnswerCards} prefix={<LuListChecks size={16} />} /></Card>
                     </Flex>
+                    {brief.metrics.recontactEligible > 0 ? (
+                        <Text type="secondary">
+                            Same-session recontact: {brief.metrics.recontactedSameSession}/{brief.metrics.recontactEligible} trackable solved outcomes. This is shown separately from no-escalation rate.
+                        </Text>
+                    ) : null}
 
                     <Card title="Ask about support operations">
                         <Flex vertical gap={14}>

@@ -16,8 +16,8 @@ import {
     type AnswerlatticeSupportBoardStatus,
 } from '@type/answerlattice';
 import { Alert, Badge, Button, Card, Col, Empty, Flex, Form, Grid, Input, Modal, Row, Select, Skeleton, Space, Statistic, Tag, Tooltip, Typography, theme } from 'antd';
-import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     LuArrowRight,
     LuClipboardList,
@@ -251,6 +251,8 @@ function SupportBoardCard({
 export default function AnswerlatticeSupportBoard() {
     const session = useClientAuthSession();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const preparedCardHandledRef = useRef(false);
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
@@ -263,6 +265,25 @@ export default function AnswerlatticeSupportBoard() {
     const { access } = useAnswerlatticeAccess();
     const canCreateGovernanceProposal = access?.isPlatformAdmin
         || access?.permissions?.[ANSWERLATTICE_PERMISSION_KEYS.MANAGE_GOVERNANCE] === true;
+
+    useEffect(() => {
+        if (preparedCardHandledRef.current || searchParams.get('create') !== '1') return;
+        const title = String(searchParams.get('title') || '').trim().slice(0, 140);
+        if (!title) return;
+        preparedCardHandledRef.current = true;
+        const priority = searchParams.get('priority');
+        createForm.setFieldsValue({
+            title,
+            description: String(searchParams.get('description') || '').trim().slice(0, 1200),
+            priority: priority === ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.HIGH || priority === ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.LOW
+                ? priority
+                : ANSWERLATTICE_SUPPORT_BOARD_PRIORITY.MEDIUM,
+            status: ANSWERLATTICE_SUPPORT_BOARD_STATUS.NEEDS_TRIAGE,
+            tags: String(searchParams.get('tags') || '').split(',').map(value => value.trim()).filter(Boolean).slice(0, 8).join(', '),
+        });
+        setCreateOpen(true);
+        router.replace(toAnswerlatticeDashboardRoute(ANSWERLATTICE_ROUTES.SUPPORT_BOARD, currentHostname));
+    }, [createForm, currentHostname, router, searchParams]);
 
     const actor = useMemo(() => ({
         id: session?.uId || session?.user?.id || 'unknown',

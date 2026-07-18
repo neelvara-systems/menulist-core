@@ -1,6 +1,6 @@
 # Owner Support Assistant - Action Support Architecture
 
-> **Status:** DEFERRED TARGET CONTRACT - no action runtime exists
+> **Status:** BOUNDED HANDOFF IMPLEMENTED; DIRECT MUTATION ADAPTERS DEFERRED
 > **Created:** 2026-06-07
 > **Purpose:** Long-term owner-confirmed action contract for tickets, replies, unanswered-question review, and product-boundary-safe business actions.
 
@@ -23,6 +23,8 @@ The assistant is not allowed to become an unrestricted business action executor.
 - target-record history and/or Answerlattice audit log
 
 No generic `assistantActions`, `assistantJobs`, `assistantActionQueue`, or transcript-backed execution collection is added.
+
+The current runtime implements only the lowest-risk handoff: selected launch and release Daily Brief items can prefill the existing Support Board create form behind `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT_ACTIONS`. Opening the form performs no write. The owner reviews and submits through the existing Support Board path. Ticket replies, ticket status changes, knowledge drafts, and governance proposal execution remain deferred until their target-specific preview, idempotency, permission, and audit adapters are implemented and validated.
 
 The supported case and prompt catalogue is defined in `owner-support-assistant_cases-and-actions.md`. This file owns execution mechanics; the cases file owns the user-facing capability list.
 

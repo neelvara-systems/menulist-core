@@ -1,15 +1,15 @@
 # Compliance Pages — Website Content
 
-**Version:** 1.0  
-**Date:** March 18, 2026  
+**Version:** 1.1
+**Date:** July 16, 2026
 **Audience:** Public (menulist.ai visitors)
 
 ---
 
 ## Hero Section
 
-- **Headline:** Your domain. Verification-ready.
-- **Subheadline:** Privacy policy and terms pages are handled automatically when you connect your domain.
+- **Headline:** Core policy pages on your domain.
+- **Subheadline:** Privacy, terms, and refund routes are present when you connect your domain, with baseline content from your business details.
 - **CTA Text:** Connect Your Domain →
 - **CTA Link:** /get-started
 
@@ -17,28 +17,28 @@
 
 ## Problem Statement
 
-Connecting a custom domain to your business page should be the end of setup — not the beginning of building a website. But platforms like Meta and Google require privacy and terms pages on your domain for verification.
+Connecting a custom domain should not require building a separate page system. Third-party onboarding may ask for accessible policy links, while final approval and legal requirements remain controlled by that provider and your jurisdiction.
 
 ---
 
 ## Solution Statement
 
-MenuList auto-generates professional privacy and terms pages for your domain. They're ready the moment you connect. No legal expertise needed, no page builder, no maintenance.
+MenuList provides plain-text privacy, terms, and refund baseline pages on your public domain. You can add reviewed owner text without removing the MenuList baseline and platform disclosure. These pages are not legal advice or a verification guarantee.
 
 ---
 
 ## Feature Benefits
 
-1. **Verification-ready instantly** — Meta, Google, and payment providers accept your domain without extra work
-2. **Zero maintenance** — Pages update automatically when your business info changes
-3. **Professional defaults** — Clean, standard policy pages that work for any business type
-4. **Your content if needed** — Paste your own text anytime for custom legal requirements
+1. **Fixed public routes** — `/privacy`, `/terms`, and `/refund` use the same public domain
+2. **Current business details** — Baseline text follows resolved business identity and contact data
+3. **Plain-text baseline** — No page builder or rich-text surface
+4. **Reviewed owner content** — Add your text before the retained baseline and disclosure
 
 ---
 
 ## SEO Meta
 
 ```
-Title: Custom Domain with Built-in Privacy & Terms | MenuList
-Description: Connect your domain to MenuList and get professional privacy policy and terms pages automatically. Pass platform verification without building a website.
+Title: Custom Domain Policy Pages | MenuList
+Description: Connect your domain to MenuList and publish baseline privacy, terms, and refund routes without building a separate page system.
 ```

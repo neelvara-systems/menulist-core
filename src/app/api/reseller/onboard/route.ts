@@ -5,8 +5,13 @@ import { DB_COLLECTIONS } from "@constant/database";
 import { getGeneratedEmail, getMenuUrl, SIGNIN_URL } from "@constant/urls";
 import { getOwnerRoleId } from "@data/defaultRoles";
 import { FALLBACK_BUSINESS_TYPE } from "@data/shared/businessTypes";
-import { createResellerTransaction, getResellerProfile, updateResellerStatsOnOnboarding } from "@database/reseller/server";
-import { createInitialSubscription } from "@database/subscriptions/server";
+import {
+    createResellerOnboardingBilling,
+    getResellerOfflineCapFromError,
+    getResellerProfile,
+} from "@database/reseller/server";
+import { getSubscriptionById } from "@database/subscriptions/server";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { getBoundedResellerApiStringContext, getResellerApiFailureLogData, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { revalidateMenuCache } from "@lib/actions/revalidateMenuCache";
@@ -27,6 +32,12 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { normalizeRazorpaySubscriptionCheckoutUrl } from "@lib/razorpay/checkoutUrl";
+import {
+    getResellerOnboardingOperationFingerprint,
+    isMatchingResellerOnboardingOperation,
+} from "@lib/reseller/resellerOnboardingOperation";
+import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { getBoundedSecurityRouteContext } from "@lib/security/securityDiagnostics";
 import { validateAPIInput } from "@lib/security/inputValidation";
@@ -129,14 +140,15 @@ async function prepareOwnerAuthUser(params: {
     return { cleanupOnFailure: true, uid: createdUser.uid };
 }
 
-async function compensateResellerPaymentProviderFailure(params: {
+async function compensateResellerOnboardingFailure(params: {
     authUid: string;
     db: admin.firestore.Firestore;
+    reason: string;
     resellerId: string;
     storeId: number;
     tenantId: number;
     userId: string;
-}) {
+}): Promise<boolean> {
     const context = {
         ...getBoundedResellerApiStringContext('resellerId', params.resellerId),
         ...getBoundedResellerApiStringContext('tenantId', params.tenantId),
@@ -147,7 +159,7 @@ async function compensateResellerPaymentProviderFailure(params: {
     try {
         await compensateFailedTenantStoreOnboarding({
             db: params.db,
-            reason: 'reseller_online_provider_setup_failed',
+            reason: params.reason,
             source: "RESELLER_ONBOARDING",
             storeId: params.storeId,
             tenantId: params.tenantId,
@@ -155,7 +167,7 @@ async function compensateResellerPaymentProviderFailure(params: {
         });
     } catch (compensationError) {
         logResellerApiFailure(RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED, compensationError, context);
-        return;
+        return false;
     }
 
     try {
@@ -173,6 +185,8 @@ async function compensateResellerPaymentProviderFailure(params: {
     } catch (cacheError) {
         logResellerApiFailure(RESELLER_ONBOARD_PROVIDER_COMPENSATION_CACHE_REVALIDATION_FAILED, cacheError, context);
     }
+
+    return true;
 }
 
 /**
@@ -225,11 +239,22 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: 'Invalid input', details: errorMsg }, { status: 400 });
         }
 
-        const { businessName, businessType, ownerCountryCode, ownerDialCode, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
+        const { operationId, businessName, businessType, ownerCountryCode, ownerDialCode, ownerPhone, ownerEmail, ownerPassword, pricingTier, billingInterval, commitmentMonths, locationCount, paymentMode } = validation.data;
 
         // 3. Validate reseller profile exists and is active
-        const resellerProfile = await getResellerProfile(resellerId, session.user.email);
-        if (!isPlatformUser && (!resellerProfile || !resellerProfile.active)) {
+        const resellerProfile = isPlatformUser
+            ? null
+            : await getResellerProfile(resellerId, session.user.email);
+        if (isPlatformUser) {
+            if (!await getCurrentPlatformUser(session)) {
+                return NextResponse.json({ error: "Access denied." }, { status: 403 });
+            }
+        } else if (!isActiveResellerProfileForSession({
+            actorId: resellerId,
+            profile: resellerProfile,
+            sessionEmail: session.user.email,
+            sessionProfileId: session.user.resellerProfileId,
+        })) {
             logger.security('Reseller Onboard - Profile Not Found or Inactive', {
                 ...getBoundedSecurityRouteContext(session, request),
                 ...getBoundedResellerApiStringContext('resellerId', resellerId),
@@ -268,11 +293,8 @@ export const POST = withAuth(async (request, session) => {
             },
         });
 
-        // 6. ATOMIC TRANSACTION: Create Tenant, Store, User (centralized utility)
+        // 6. Normalize owner login and recover an already-committed request.
         const db = admin.firestore();
-
-        // Pre-check subdomain uniqueness (must be outside transaction)
-        const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
         const normalizedOwnerEmail = ownerEmail?.toLowerCase()?.trim() || '';
         const normalizedOwnerPhone = normalizePhoneNumberForStorage({
             countryCode: ownerCountryCode,
@@ -288,6 +310,83 @@ export const POST = withAuth(async (request, session) => {
         if (!emailValidation.valid) {
             return NextResponse.json({ error: getEmailValidationError(ownerLoginEmail) }, { status: 400 });
         }
+
+        const operationFingerprint = getResellerOnboardingOperationFingerprint({
+            billingInterval,
+            businessName,
+            businessType,
+            commitmentMonths: commitmentMonths || null,
+            locationCount,
+            ownerLoginEmail,
+            ownerPassword,
+            ownerUsername,
+            paymentMode,
+            pricingTier,
+        });
+        const operationRef = db.collection(DB_COLLECTIONS.RESELLER_TRANSACTIONS).doc(operationId);
+        const existingOperationSnapshot = await operationRef.get();
+        if (existingOperationSnapshot.exists) {
+            const operation = existingOperationSnapshot.data() || {};
+            if (!isMatchingResellerOnboardingOperation({
+                fingerprint: operationFingerprint,
+                operationData: operation,
+                operationId,
+                resellerId,
+            })) {
+                return NextResponse.json({ error: "This onboarding retry belongs to another request." }, { status: 409 });
+            }
+
+            const replaySubscriptionId = String(operation.subscriptionId);
+            const replayStoreId = Number(operation.storeId);
+            const replayTenantId = Number(operation.tenantId);
+            const [replaySubscription, replayStoreSnapshot] = await Promise.all([
+                getSubscriptionById(replaySubscriptionId),
+                db.collection(DB_COLLECTIONS.STORES).doc(String(replayStoreId)).get(),
+            ]);
+            if (!replaySubscription || !replayStoreSnapshot.exists) {
+                return NextResponse.json({ error: "This onboarding result needs support review." }, { status: 409 });
+            }
+            const replaySubdomain = String(replayStoreSnapshot.data()?.subdomain || '').trim() || undefined;
+            const replayShortUrl = normalizeRazorpaySubscriptionCheckoutUrl(replaySubscription.shortUrl) || undefined;
+            if (replaySubscription.billingMode === 'auto' && !replayShortUrl) {
+                return NextResponse.json({ error: "This payment link needs support review." }, { status: 409 });
+            }
+            if (replaySubscription.billingMode === 'manual' && replaySubscription.status === 'active') {
+                await safeSyncStorePlanEntitlementFromSubscription(
+                    replaySubscription,
+                    'api:reseller-onboard-offline-replay',
+                );
+                await safelyRecordOwnerReferralPaymentAndRepair({
+                    paidScope: { tenantId: replayTenantId, storeId: replayStoreId },
+                    evidence: {
+                        paidAt: operation.validFrom?.toDate?.() || new Date(),
+                        paymentEvidenceId: operationId,
+                        source: 'api:reseller-onboard-offline-replay',
+                        subscriptionId: replaySubscriptionId,
+                    },
+                });
+            }
+
+            return NextResponse.json({
+                dashboardUrl: SIGNIN_URL,
+                locationCount,
+                loginEmail: ownerLoginEmail,
+                ownerUsername,
+                passwordSet: true,
+                publicUrl: replaySubdomain ? getMenuUrl(replaySubdomain) : undefined,
+                shortUrl: replayShortUrl,
+                status: operation.status === 'active' ? 'active' : 'pending',
+                storeId: replayStoreId,
+                subdomain: replaySubdomain,
+                subscriptionId: replaySubscriptionId,
+                tenantId: replayTenantId,
+                transactionId: operationId,
+                userId: replaySubscription.userId,
+            });
+        }
+
+        // Pre-check subdomain uniqueness (must be outside transaction).
+        const preCheckedSubdomain = await preCheckSubdomain(db, businessName);
 
         const existingOwnerSnapshot = await db.collection(DB_COLLECTIONS.USERS)
             .where('email', '==', ownerLoginEmail)
@@ -491,15 +590,33 @@ export const POST = withAuth(async (request, session) => {
             });
         }
 
-        // 7. Create Subscription
+        // 7. Create provider/manual subscription plus ledger/profile state.
         let subscriptionId = '';
         let shortUrl: string | undefined;
+        const transactionId = operationId;
         const durationForOffline = commitmentMonths || 3;
         const billingAmount = billingInterval === 'MONTH' ? tier.monthlyPriceINR : tier.yearlyPriceINR;
+        const transactionBase = {
+            action: 'ONBOARD' as const,
+            billingInterval,
+            commitmentMonths: paymentMode === 'offline' ? durationForOffline : commitmentMonths,
+            currency: 'INR' as const,
+            locationCount,
+            operationFingerprint,
+            operationId,
+            paymentMode,
+            pricingTier,
+            resellerEmail: session.user.email || '',
+            resellerId,
+            resellerProfileId: resellerProfile?.id || null,
+            storeId: result.storeId,
+            storeName: result.storeName,
+            subscriptionQuantity: locationCount,
+            tenantId: result.tenantId,
+        };
 
         if (paymentMode === 'online') {
-            // Create Razorpay Subscription (same as self-serve)
-            const totalCount = (billingInterval || 'MONTH') === 'MONTH' ? 36 : 3;
+            const totalCount = billingInterval === 'MONTH' ? 36 : 3;
             let razorpayPlanId = '';
             let razorpaySubscription: any;
 
@@ -507,11 +624,10 @@ export const POST = withAuth(async (request, session) => {
                 razorpayPlanId = await getOrCreateRazorpayPlan({
                     price: billingAmount,
                     currency: 'INR',
-                    interval: billingInterval || 'MONTH',
+                    interval: billingInterval,
                     userType: 'B2C',
                     planId: tier.planId,
                 });
-
                 razorpaySubscription = await razorpayClient.subscriptions.create({
                     plan_id: razorpayPlanId,
                     total_count: totalCount,
@@ -523,7 +639,7 @@ export const POST = withAuth(async (request, session) => {
                         userType: 'B2C',
                         planId: tier.planId,
                         priceKey: 'priceINR',
-                        interval: billingInterval || 'MONTH',
+                        interval: billingInterval,
                         name: businessName,
                         email: result.loginEmail,
                         ownerUsername: result.ownerUsername,
@@ -533,10 +649,24 @@ export const POST = withAuth(async (request, session) => {
                         remainingCredits: 0,
                     },
                 });
+                shortUrl = normalizeRazorpaySubscriptionCheckoutUrl(razorpaySubscription.short_url) || undefined;
+                if (!shortUrl) throw new Error('Razorpay subscription did not return a valid checkout URL.');
             } catch (providerError) {
-                await compensateResellerPaymentProviderFailure({
+                if (razorpaySubscription?.id) {
+                    try {
+                        await razorpayClient.subscriptions.cancel(razorpaySubscription.id);
+                    } catch (providerCompensationError) {
+                        logResellerApiFailure(RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED, providerCompensationError, {
+                            ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                            ...getBoundedResellerApiStringContext('subscriptionId', razorpaySubscription.id),
+                        });
+                        throw providerError;
+                    }
+                }
+                await compensateResellerOnboardingFailure({
                     authUid: result.authUid,
                     db,
+                    reason: 'reseller_online_provider_setup_failed',
                     resellerId,
                     storeId: result.storeId,
                     tenantId: result.tenantId,
@@ -546,23 +676,20 @@ export const POST = withAuth(async (request, session) => {
             }
 
             subscriptionId = razorpaySubscription.id;
-            shortUrl = razorpaySubscription.short_url;
-
-            // Create Firestore subscription record
             const subscriptionPayload: Omit<FirestoreSubscriptionDoc, "id"> = {
-                paymentProvider: "razorpay",
-                providerSubscriptionId: razorpaySubscription.id,
+                paymentProvider: 'razorpay',
+                providerSubscriptionId: subscriptionId,
                 providerPlanId: razorpayPlanId,
                 userId: result.userId,
                 name: businessName,
                 email: result.loginEmail,
                 tenantId: result.tenantId,
                 storeId: result.storeId,
-                planType: billingInterval || 'MONTH',
+                planType: billingInterval,
                 userType: 'B2C',
                 currency: 'INR',
                 amount: billingAmount,
-                status: "pending",
+                status: 'pending',
                 lastWebhook: null,
                 planId: tier.planId,
                 planName: tier.displayName,
@@ -578,10 +705,10 @@ export const POST = withAuth(async (request, session) => {
                 monthlyCredits: tier.monthlyCredits,
                 topUpCredits: 0,
                 creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
-                shortUrl: razorpaySubscription.short_url,
-                paymentMethod: { type: "", brand: "", last4: "", upiId: "", upiTransactionId: "" },
+                shortUrl,
+                paymentMethod: { type: '', brand: '', last4: '', upiId: '', upiTransactionId: '' },
                 statuses: [{
-                    status: "pending",
+                    status: 'pending',
                     timestamp: Timestamp.now(),
                     amount: billingAmount * locationCount,
                     currency: 'INR',
@@ -589,7 +716,6 @@ export const POST = withAuth(async (request, session) => {
                 }],
                 billingHistory: [],
                 quantity: locationCount,
-                // Reseller fields
                 billingMode: 'auto',
                 onboardingSource: 'RESELLER_ONBOARDING',
                 resellerId,
@@ -598,25 +724,67 @@ export const POST = withAuth(async (request, session) => {
                 commitmentPeriodMonths: commitmentMonths || null,
             };
 
-            await createInitialSubscription(razorpaySubscription.id, subscriptionPayload);
-            if (resellerProfile?.id) {
-                await updateResellerStatsOnOnboarding(
-                    resellerProfile.id,
-                    paymentMode,
-                    billingAmount * locationCount,
+            try {
+                await createResellerOnboardingBilling({
+                    profileId: resellerProfile?.id,
+                    subscription: subscriptionPayload,
+                    subscriptionId,
+                    transaction: {
+                        ...transactionBase,
+                        amountExpected: billingAmount * locationCount,
+                        profileRevenueRecognized: false,
+                        status: 'pending_payment',
+                        subscriptionId,
+                        validFrom: null,
+                        validUntil: null,
+                    },
+                });
+            } catch (persistenceError) {
+                const [persistedSubscription, persistedOperation] = await Promise.all([
+                    getSubscriptionById(subscriptionId).catch(() => null),
+                    operationRef.get().catch(() => null),
+                ]);
+                const operationPersisted = Boolean(
+                    persistedOperation?.exists
+                    && isMatchingResellerOnboardingOperation({
+                        fingerprint: operationFingerprint,
+                        operationData: persistedOperation.data(),
+                        operationId,
+                        resellerId,
+                    }),
                 );
+                if (persistedSubscription?.providerSubscriptionId !== subscriptionId || !operationPersisted) {
+                    try {
+                        await razorpayClient.subscriptions.cancel(subscriptionId);
+                    } catch (providerCompensationError) {
+                        logResellerApiFailure(RESELLER_ONBOARD_PROVIDER_COMPENSATION_FAILED, providerCompensationError, {
+                            ...getBoundedResellerApiStringContext('resellerId', resellerId),
+                            ...getBoundedResellerApiStringContext('subscriptionId', subscriptionId),
+                        });
+                        throw persistenceError;
+                    }
+                    await compensateResellerOnboardingFailure({
+                        authUid: result.authUid,
+                        db,
+                        reason: 'reseller_online_billing_persistence_failed',
+                        resellerId,
+                        storeId: result.storeId,
+                        tenantId: result.tenantId,
+                        userId: result.userId,
+                    });
+                    throw persistenceError;
+                }
             }
         } else {
-            // OFFLINE: Create manual subscription
-            const now = new Date();
-            const validUntil = new Date(now);
+            const paidAt = new Date();
+            const validUntil = new Date(paidAt);
             validUntil.setMonth(validUntil.getMonth() + durationForOffline);
-
             const totalAmount = calculateOfflineAmount(pricingTier, durationForOffline, locationCount);
-            subscriptionId = `manual_${result.tenantId}_${result.storeId}_${Date.now()}`;
-
+            subscriptionId = `manual_${operationId}`;
+            const paidAtTimestamp = Timestamp.fromDate(paidAt);
+            const validUntilTimestamp = Timestamp.fromDate(validUntil);
             const subscriptionPayload: Omit<FirestoreSubscriptionDoc, "id"> = {
-                paymentProvider: "razorpay",
+                paymentProvider: 'razorpay',
                 providerSubscriptionId: subscriptionId,
                 providerPlanId: '',
                 userId: result.userId,
@@ -628,46 +796,95 @@ export const POST = withAuth(async (request, session) => {
                 userType: 'B2C',
                 currency: 'INR',
                 amount: totalAmount,
-                status: "active",
+                status: 'active',
                 lastWebhook: null,
                 planId: tier.planId,
                 planName: tier.displayName,
-                cycleStartDate: Timestamp.now(),
-                subscriptionEndDate: Timestamp.fromDate(validUntil),
-                subscriptionStartDate: Timestamp.now(),
+                cycleStartDate: paidAtTimestamp,
+                subscriptionEndDate: validUntilTimestamp,
+                subscriptionStartDate: paidAtTimestamp,
                 pastDueSinceAt: null as any,
                 totalPaymentsNeededCount: 1,
                 totalPaymentsMadeCount: 1,
-                cycleEndDate: Timestamp.fromDate(validUntil),
+                cycleEndDate: validUntilTimestamp,
                 renewsOn: null as any,
                 monthlyCreditsAllowance: tier.monthlyCredits,
                 monthlyCredits: tier.monthlyCredits,
                 topUpCredits: 0,
                 creditsLastResetMonth: new Date().getFullYear() * 100 + (new Date().getMonth() + 1),
                 shortUrl: '',
-                paymentMethod: { type: "offline", brand: "", last4: "", upiId: "", upiTransactionId: "" },
+                paymentMethod: { type: 'offline', brand: '', last4: '', upiId: '', upiTransactionId: '' },
                 statuses: [{
-                    status: "active",
-                    timestamp: Timestamp.now(),
+                    status: 'active',
+                    timestamp: paidAtTimestamp,
                     amount: totalAmount,
                     currency: 'INR',
                     remark: `Reseller offline onboarding (${tier.name}) — ${locationCount} location${locationCount > 1 ? 's' : ''}, ${durationForOffline} months`,
                 }],
                 billingHistory: [],
                 quantity: locationCount,
-                // Reseller fields
                 billingMode: 'manual',
-                validUntil: Timestamp.fromDate(validUntil),
+                validUntil: validUntilTimestamp,
                 onboardingSource: 'RESELLER_ONBOARDING',
                 resellerId,
                 resellerProfileId: resellerProfile?.id || null,
                 resellerPricingTier: pricingTier,
                 commitmentPeriodMonths: durationForOffline,
                 manualPaymentConfirmed: true,
-                manualPaymentConfirmedAt: Timestamp.now(),
+                manualPaymentConfirmedAt: paidAtTimestamp,
             };
 
-            await createInitialSubscription(subscriptionId, subscriptionPayload);
+            try {
+                await createResellerOnboardingBilling({
+                    profileId: resellerProfile?.id,
+                    subscription: subscriptionPayload,
+                    subscriptionId,
+                    transaction: {
+                        ...transactionBase,
+                        amountExpected: totalAmount,
+                        profileRevenueRecognized: true,
+                        status: 'active',
+                        subscriptionId,
+                        validFrom: paidAtTimestamp,
+                        validUntil: validUntilTimestamp,
+                    },
+                });
+            } catch (persistenceError) {
+                const exceededOfflineCap = getResellerOfflineCapFromError(persistenceError);
+                const [persistedSubscription, persistedOperation] = await Promise.all([
+                    getSubscriptionById(subscriptionId).catch(() => null),
+                    operationRef.get().catch(() => null),
+                ]);
+                const operationPersisted = Boolean(
+                    persistedOperation?.exists
+                    && isMatchingResellerOnboardingOperation({
+                        fingerprint: operationFingerprint,
+                        operationData: persistedOperation.data(),
+                        operationId,
+                        resellerId,
+                    }),
+                );
+                if (persistedSubscription?.providerSubscriptionId !== subscriptionId || !operationPersisted) {
+                    const compensated = await compensateResellerOnboardingFailure({
+                        authUid: result.authUid,
+                        db,
+                        reason: exceededOfflineCap
+                            ? 'reseller_offline_cap_rejected'
+                            : 'reseller_offline_billing_persistence_failed',
+                        resellerId,
+                        storeId: result.storeId,
+                        tenantId: result.tenantId,
+                        userId: result.userId,
+                    });
+                    if (exceededOfflineCap && compensated) {
+                        return NextResponse.json({
+                            error: `Maximum offline activations reached (${exceededOfflineCap}). Use online payment mode or wait for existing stores to expire.`,
+                        }, { status: 409 });
+                    }
+                    throw persistenceError;
+                }
+            }
+
             await safeSyncStorePlanEntitlementFromSubscription(
                 { ...subscriptionPayload, id: subscriptionId },
                 'api:reseller-onboard-offline',
@@ -675,45 +892,13 @@ export const POST = withAuth(async (request, session) => {
             await safelyRecordOwnerReferralPaymentAndRepair({
                 paidScope: { tenantId: result.tenantId, storeId: result.storeId },
                 evidence: {
-                    paidAt: now,
-                    paymentEvidenceId: subscriptionId,
+                    paidAt,
+                    paymentEvidenceId: operationId,
                     source: 'api:reseller-onboard-offline',
                     subscriptionId,
                 },
             });
-            if (resellerProfile?.id) {
-                await updateResellerStatsOnOnboarding(resellerProfile.id, paymentMode, totalAmount);
-            }
         }
-
-        // 8. Create reseller transaction record (immutable)
-        const transactionId = await createResellerTransaction({
-            resellerId,
-            resellerProfileId: resellerProfile?.id || null,
-            resellerEmail: session.user.email || '',
-            storeId: result.storeId,
-            tenantId: result.tenantId,
-            storeName: 'Main Store',
-            action: 'ONBOARD',
-            pricingTier,
-            billingInterval: billingInterval || 'MONTH',
-            commitmentMonths: commitmentMonths || durationForOffline,
-            amountExpected: paymentMode === 'offline'
-                ? calculateOfflineAmount(pricingTier, durationForOffline, locationCount)
-                : billingAmount * locationCount,
-            currency: 'INR',
-            locationCount,
-            subscriptionQuantity: locationCount,
-            paymentMode,
-            status: paymentMode === 'offline' ? 'active' : 'pending_payment',
-            subscriptionId,
-            validFrom: paymentMode === 'offline' ? Timestamp.now() : null,
-            validUntil: paymentMode === 'offline' ? Timestamp.fromDate((() => {
-                const d = new Date();
-                d.setMonth(d.getMonth() + durationForOffline);
-                return d;
-            })()) : null,
-        });
 
         await writeLogEntry({
             logFileName: LOG_FILE,

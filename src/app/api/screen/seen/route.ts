@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
  */
 
 import { DB_COLLECTIONS } from "@constant/database";
+import { FEATURE_FLAGS } from "@config/features";
 import { firestoreAdmin } from "@lib/firebase/firebaseAdmin";
 import { getPublicStoreById } from "@lib/firestore/clientStoreLookup";
 import { logger } from "@lib/monitoring/logger";
@@ -58,6 +59,10 @@ export async function POST(request: NextRequest) {
     };
 
     try {
+        if (!FEATURE_FLAGS.DIGITAL_SCREENS_ENABLED) {
+            return NextResponse.json({ error: 'Screen not found' }, { status: 404 });
+        }
+
         const declaredBodyResponse = rejectInvalidOrOversizedDeclaredBody(request, SCREEN_SEEN_MAX_BODY_BYTES, {
             invalidRequestMessage: 'Invalid request',
             tooLargeMessage: 'Invalid request',
@@ -191,7 +196,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true });
     } catch (error) {
         logScreenDisplayFailure('screen_seen_route_failed', error, logContext);
-        // Return success anyway - don't break screen for ops signal
-        return NextResponse.json({ ok: true, error: 'logged' });
+        // The display request is fire-and-forget, so a retryable response keeps
+        // a transient failure from being cached as today's successful signal.
+        return NextResponse.json({ error: 'Temporarily unavailable' }, { status: 503 });
     }
 }

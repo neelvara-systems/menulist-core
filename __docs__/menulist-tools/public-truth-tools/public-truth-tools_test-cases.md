@@ -1,7 +1,7 @@
 # Public Truth Tools - Test Cases
 
 **Status:** Active family tests - sixteen public tools, five public asset makers, shareable reports, eighteen V1 owner readiness modules, and V2 paid add-on runtime gate covered
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Audience:** QA, developers
 
 ---
@@ -48,6 +48,13 @@
 | PTT-024 | Public V0 report uses generic URL-format evidence instead of naming the public HTTPS URL boundary | Verification fails |
 | PTT-025 | Public V0 URL parser drops capped `public_truth_tool_url_parse_failed` diagnostics, source labels, or the raw-URL exclusion boundary for malformed owner-entered links | Verification fails |
 | PTT-026 | V1 owner readiness menu URL generation drops capped `public_truth_owner_menu_url_generation_failed` diagnostics, bounded shape metadata, or the raw-domain/project exclusion boundary | Verification fails |
+| PTT-027 | Public URL uses trailing-dot localhost, raw IPv6, IPv4-mapped IPv6, or an empty hostname label | It is not counted as a public customer link and no network request occurs |
+| PTT-028 | Phone/action input contains arbitrary letters, an invalid `tel:`/`mailto:` value, or an unrecognized `whatsapp://` host | It is missing/unclear; no preview or message action is treated as ready |
+| PTT-029 | Public Truth Check URL path contains words such as `hours`, `price`, `contact`, or a city while pasted source text is empty | URL text does not prove those facts |
+| PTT-030 | Shareable hash has mismatched summary counts, injected setup jobs, missing report limits, or an origin-escaping next action | Decoder rejects the payload or derives safe rows/jobs and falls back to `/create-menu` |
+| PTT-031 | Report Lead Ops indexed report-lead query reaches its cap | API and UI disclose that older matching leads may exist; unrelated contact enquiries are not read |
+| PTT-032 | Two entitled monitor refreshes overlap | Transaction merges each refresh against current saved history; capped history is not silently overwritten |
+| PTT-033 | Public Truth Tools runtime boundary script is removed or fails | Aggregate verifier fails |
 
 ---
 
@@ -118,7 +125,7 @@
 npm run verify:public-truth-tools
 ```
 
-The family command runs the implemented Tools Hub, Public Truth Check, Business Facts Copy Pack, WhatsApp Reply Pack, Customer FAQ Reply Pack, QR Link Health Check, Menu Readability Check, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, Google Profile Basics Checklist, One Customer Link Preview, Social Bio Link Consistency Check, WhatsApp Action Link Check, Hours Check, and Photo Gap Check verifiers.
+The family command runs the implemented Tools Hub, Public Truth Check, Business Facts Copy Pack, WhatsApp Reply Pack, Customer FAQ Reply Pack, QR Link Health Check, Menu Readability Check, Customer Question Coverage Check, Booking Inquiry Readiness Check, Price Availability Gap Check, Menu PDF Cleanup Check, Google Profile Basics Checklist, One Customer Link Preview, Social Bio Link Consistency Check, WhatsApp Action Link Check, Hours Check, Photo Gap Check, Print & Share Tools, Shareable Reports, Report Leads, Public Truth Monitor, and the executable cross-tool runtime boundary tests.
 
 Shareable Tool Reports is also included in the aggregate verifier and can be run directly:
 

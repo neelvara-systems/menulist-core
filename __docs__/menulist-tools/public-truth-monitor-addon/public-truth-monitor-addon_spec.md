@@ -1,6 +1,6 @@
 # Public Truth Monitor Add-On - Spec
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 **Status:** V2 paid saved-history runtime implemented
 
 ---
@@ -73,6 +73,8 @@ V2 may reuse V1 owner modules:
 4. Owner refresh: authenticated and tenant-verified.
 5. Report export: browser-local text file from saved summary/history.
 6. Mobile: compact Business Health card inside `MobileShell`.
+7. Concurrency: manual refresh merges against the current saved summary inside a Firestore transaction.
+8. Admission: production rate-limit-provider failure blocks summary/refresh requests.
 
 ## Not Enabled
 

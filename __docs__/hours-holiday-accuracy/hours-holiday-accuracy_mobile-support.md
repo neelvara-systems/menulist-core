@@ -1,53 +1,46 @@
-# Hours + Holiday Accuracy — Mobile Support
+# Working Hours, Holidays, and Time Slots — Mobile Support
 
-**Last Updated:** July 2, 2026
-**Decision:** ✅ MOBILE SUPPORTED — Hours display and editing implemented
+**Status:** MobileShell parity implemented
+
+**Last verified:** July 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This mobile-support doc is source-gated mobile working-hours evidence only; Hours mobile release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated mobile working-hours and Today quick-hours save QA, customer-facing public menu/OBP hours output QA, cache/deploy evidence for store-output writes, and production-host smoke.
 
----
-
 ## Source Gate
 
-- Source gate: `npm run verify:working-hours-boundary`
-- `MobileWorkingHoursEditScreen` covers full weekly hours edits.
-- `MobileHoursScreen` covers Today quick-hours edits.
-- `MobileTimeSlotsScreen` covers store-level time-slot presets and project category cascade acknowledgement.
-- Browser/manual mutation QA is still required before using this source gate as release certification.
+Run `npm run verify:working-hours-boundary`, `npm run test:time-slot-data-flow`, and `npm run verify:mobile-shell-route-map`.
 
----
+## Current Screens
 
-## Feature Admission Test
+| Flow | Screen | Contract |
+| --- | --- | --- |
+| Current status and quick edit | `MobileHoursScreen` | Store-timezone weekday/status; minute refresh; one-day patch; optimistic rollback |
+| Full regular week | `MobileWorkingHoursEditScreen` | Seven days; overnight accepted; only changed days persisted; removed days deleted |
+| Reusable category windows | `MobileTimeSlotsScreen` | Shared validation; overlaps allowed; store/cascade acknowledgement; context refresh |
 
-| Gate | Result | Reasoning |
-|------|--------|-----------|
-| **Frequency** | ✅ PASS | Hours checked/updated daily during service |
-| **Speed** | ✅ PASS | Toggle <1s, save <2s |
-| **Touch** | ✅ PASS | Simple toggles and time pickers |
-| **Value** | ✅ PASS | Owner on floor needs to update hours quickly |
+`MobileWorkingHoursEditScreen` and `MobileTimeSlotsScreen` are More sub-screens. Today remains the normal daily entry. No mobile route bypass, reload, desktop escape, or second data loader is introduced.
 
----
+## UX and Failure Rules
 
-## Mobile Implementation
+- Controls use the current Tailwind/mobile component layer and 44px owner actions.
+- Owner copy distinguishes regular weekly hours from Temporary Status.
+- Equal or malformed clock endpoints are rejected before save.
+- The saved toast appears only after `assertStoreUpdateSucceeded()`.
+- Failed optimistic Today/full-hours mutations restore prior `workingHours` and `hoursLastUpdatedAt`.
+- Time-slot success appears only after the store write and required project cascade acknowledge success.
+- No raw exception/provider text is shown.
 
-| Feature | Mobile Component | Status |
-|---------|-----------------|--------|
-| View today's hours + status | `MobileHoursScreen` | ✅ |
-| View weekly schedule | `MobileHoursScreen` | ✅ |
-| Edit working hours | `MobileWorkingHoursEditScreen` | ✅ |
-| Holiday/exceptions (#2B) | N/A — deferred on desktop too | ⏳ |
+## Parity Notes
 
-## Data Format Parity
+- Desktop and mobile both support overnight hours and overlapping presets.
+- Both use the same store DAL, cache invalidation, preset normalization, and category cascade.
+- Mobile Today derives `todayKey` from the store timezone, not the handset timezone.
+- Legacy multiple ranges are displayed from the first range in current editors; untouched days remain byte-preserved. Public readers can render all valid ranges.
 
-- Day keys: `sun`, `mon`, `tue`... (matches desktop)
-- Time format: `HH:mm-HH:mm` 24h (matches desktop)
-- DAL: `updateStore` (same as desktop)
+## Pending Manual QA
 
-## Failure Boundary
-
-- `MobileWorkingHoursEditScreen` uses optimistic local updates, then persists through `updateStore()`.
-- `MobileWorkingHoursEditScreen` and the Today quick-hours sheet must require `assertStoreUpdateSucceeded()` before treating the store write as saved.
-- Failed full-screen saves must log `mobile_working_hours_save_failed` with bounded store, tenant, changed-day count, closed-day count, and previous-hours presence metadata before restoring the previous working hours.
-- Failed Today quick-hours saves must log `mobile_today_hours_update_failed` with bounded store, tenant, day-key, previous-hours, next-hours, and previous freshness metadata before restoring the previous working hours.
-- `MobileTimeSlotsScreen` must require `assertTimeSlotPresetUpdateSucceeded()` before local preset state changes. The shared `updateTimeSlotPresets()` DAL path refreshes the public menu/OBP cache after the store-level preset write; preset edit/delete cascades keep their project-level cache refreshes.
-- Owner-facing failure copy stays fixed; raw server or exception text must not be shown.
+- Store timezone differs from handset timezone near midnight.
+- Friday overnight status at Friday 23:00, Saturday 01:00, and Saturday 02:00.
+- Full-hours save success/failure/rollback and closed-day deletion.
+- Preset create/edit/delete and category visibility at exact end time.
+- iOS Safari and Android Chrome inside the installed PWA shell.

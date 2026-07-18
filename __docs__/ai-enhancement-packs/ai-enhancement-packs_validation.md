@@ -1,9 +1,15 @@
 # AI Enhancement Packs — Implementation Validation Report
 
 > **Generated:** Feb 9, 2026
-> **Last Updated:** May 20, 2026
-> **Status:** Implementation Complete — Live usage-date hardening verified locally
+> **Last Updated:** July 15, 2026
+> **Status:** Current source contract updated; final verification evidence is recorded in the July 14 section
 > **Type Check:** ✅ Zero new errors introduced
+
+## July 15, 2026 Client Capacity Error Compatibility
+
+- `AICapacityError` now restores `AICapacityError.prototype`, preserving `instanceof` behavior under the repository's ES5 target.
+- The description orchestration boundary sends a mocked 402 response through `checkCapacityResponse()`, verifies the `exhausted` capacity code reaches the caller, attempts no later batch, and publishes no local project update.
+- This changes failure classification only; successful requests, server reservation/settlement, balance sync, and existing Billing copy remain unchanged.
 
 ## May 20, 2026 Usage History Hardening
 
@@ -17,9 +23,25 @@ Verification:
 
 Billing mutation failure paths on desktop and mobile now use the monitored logger instead of frontend `console.error`.
 
+## July 14, 2026 End-to-End Accounting and Owner-Surface Correction
+
+- Inherited-outlet operations remain in the selected outlet history while reservation, settlement, refund, and stale-reservation recovery use the effective HQ subscription recorded as `accountingBillingStoreId`.
+- Balance events include `billingStoreId`; the session provider ignores responses for any other active subscription.
+- Completed/partial authenticated menu extraction atomically mirrors a compact zero-credit activity row into `menulistAiOperations/{tId}/{sId}` while preserving the detailed platform row in `MENULIST_AI_OPERATIONS`.
+- Owner-history mirroring requires a project destination, a non-empty exact owner ID, and either the authenticated owner-upload or authenticated menu-link source. Public-draft and messaging extraction remain platform-audit-only even when their durable jobs carry platform scope IDs.
+- Desktop and mobile action filters use the MenuList owner action allowlist. Desktop now exposes Previous/Next when an empty filtered scan requires manual continuation, matching mobile reachability.
+- MenuList Billing shows exact purchased Pack balance and operation credit costs, but hides monthly included allowance, monthly remaining, used-this-cycle, provider cost, and margin.
+- Batch-image preview uses the shared generated-menu-image cost (5 credits each); extraction upload/delete warnings no longer claim that no credits were used.
+
+Verification commands: `npm run verify:ai-accounting`, `npm run verify:billing-entitlement-boundary`, `npm run test:ai-capacity-reservation:emulator`, `npm run typecheck`, and the MenuList Functions build/lint gates.
+
+The initial scoped `processMenuImagesJob` QA deploy and the post-cross-check retry each passed their configured Functions lint/build predeploy and then stopped before upload at Cloud Resource Manager HTTP 403 because the caller lacks project permission. Source/local gates are complete; deployed owner extraction-history mirroring remains pending that external permission.
+
 ---
 
-## 1. Engineering Checklist
+## Historical February Engineering Checklist
+
+The tables below preserve the original implementation evidence. The July 14 correction above supersedes old line numbers, post-provider consume ordering, owner monthly-meter language, and pre-reservation route descriptions.
 
 ### Task 0.1: Kill Switch (ENABLE_AI_ENHANCEMENTS)
 
@@ -116,13 +138,13 @@ Billing mutation failure paths on desktop and mobile now use the monitored logge
 
 | Check                                    | Status | Evidence                                                                |
 | ---------------------------------------- | ------ | ----------------------------------------------------------------------- |
-| `AICapacityError` class created          | ✅     | `src/services/ai/capacityError.ts:14-21`                                |
-| `checkCapacityResponse()` utility        | ✅     | `src/services/ai/capacityError.ts:30-38`                                |
-| Descriptions service — 402 handling      | ✅     | `src/services/ai/description/generateDescriptionViaAPI.ts:25`           |
-| Image generation service — 402 handling  | ✅     | `src/services/ai/image/generateImageViaApi.ts:46`                       |
-| Image editing service — 402 handling     | ✅     | `src/services/ai/image/editImageViaApi.ts:15`                           |
-| Translations service — 402 handling      | ✅     | `src/components/templates/main-app/projects/generateTranslations.ts:22` |
-| New item metadata service — 402 handling | ✅     | `src/services/ai/dataGeneration/getNewItemMetadataViaAPI.ts:16`         |
+| `AICapacityError` class and ES5-safe prototype | ✅ | `src/services/ai/capacityError.ts:22` |
+| `checkCapacityResponse()` utility        | ✅     | `src/services/ai/capacityError.ts:39`                                   |
+| Descriptions service — 402 handling      | ✅     | `src/services/ai/description/generateDescriptionViaAPI.ts:40`           |
+| Image generation service — 402 handling  | ✅     | `src/services/ai/image/generateImageViaApi.ts:62`                        |
+| Image editing service — 402 handling     | ✅     | `src/services/ai/image/editImageViaApi.ts:30`                            |
+| Translations service — 402 handling      | ✅     | `src/components/templates/main-app/projects/generateTranslations.ts:45` |
+| New item metadata service — 402 handling | ✅     | `src/services/ai/dataGeneration/getNewItemMetadataViaAPI.ts:97`         |
 
 ---
 
@@ -159,7 +181,7 @@ Billing mutation failure paths on desktop and mobile now use the monitored logge
 | Per-store capacity model                  | ✅     | `checkAICapacity(tenantId, storeId, ...)`       |
 | Uses existing subscription.monthlyCredits | ✅     | No new Firestore documents or collections       |
 | Uses existing subscription.topUpCredits   | ✅     | No new Firestore documents or collections       |
-| Outcome-based external language           | ✅     | No credits/tokens/units in UI or error messages |
+| Transparent Pack/operation language       | ✅     | Exact Pack credits and per-operation costs are allowed; monthly included capacity and provider economics stay private |
 | 3-year architecture freeze compliant      | ✅     | No new infrastructure, uses existing patterns   |
 
 ---

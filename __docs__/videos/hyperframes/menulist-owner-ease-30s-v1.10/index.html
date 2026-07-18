@@ -1,0 +1,777 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="assets/vendor/gsap.min.js"></script>
+    <style>
+      @font-face {
+        font-family: "Inter";
+        src: url("assets/fonts/inter-latin-variable.woff2") format("woff2");
+        font-style: normal;
+        font-weight: 100 900;
+        font-display: block;
+      }
+
+      :root {
+        --ink: #0f172a;
+        --secondary: #475569;
+        --muted: #64748b;
+        --blue: #0051d1;
+        --sky: #0284c7;
+        --cyan: #27a8e3;
+        --border: #e2e8f0;
+        --subtle: #f8fafc;
+        --success: #059669;
+        --danger: #dc2626;
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; letter-spacing: 0; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden; background: #fff; }
+      body { font-family: "Inter", system-ui, sans-serif; color: var(--ink); }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden; isolation: isolate; background: #fff; }
+
+      .canvas {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(circle at 14% 14%, rgba(219, 234, 254, 0.72), transparent 34%),
+          radial-gradient(circle at 82% 78%, rgba(39, 168, 227, 0.10), transparent 35%),
+          linear-gradient(120deg, #ffffff 0%, #fbfdff 54%, #f8fbff 100%);
+      }
+
+      .canvas::before {
+        content: "";
+        position: absolute;
+        inset: 70px 96px;
+        border-top: 1px solid rgba(2, 132, 199, 0.12);
+        border-bottom: 1px solid rgba(2, 132, 199, 0.10);
+      }
+
+      .scene {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        padding: 118px 132px 176px;
+        background:
+          radial-gradient(circle at 14% 14%, rgba(219, 234, 254, 0.72), transparent 34%),
+          radial-gradient(circle at 82% 78%, rgba(39, 168, 227, 0.10), transparent 35%),
+          linear-gradient(120deg, #ffffff 0%, #fbfdff 54%, #f8fbff 100%);
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      #scene-hook { opacity: 1; visibility: visible; }
+
+      .scene-grid {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+        display: grid;
+        grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+        gap: 88px;
+        align-items: center;
+      }
+
+      .scene-grid.reverse { grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr); }
+      .copy { max-width: 720px; }
+      .eyebrow { margin-bottom: 22px; color: var(--blue); font-size: 22px; line-height: 1.25; font-weight: 720; }
+      h1 { max-width: 760px; font-size: 76px; line-height: 1.08; font-weight: 760; }
+      h2 { font-size: 54px; line-height: 1.12; font-weight: 730; }
+      .gradient-text {
+        background: linear-gradient(90deg, #0051d1 0%, #0284c7 52%, #27a8e3 100%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+      }
+      .support { max-width: 700px; margin-top: 26px; color: var(--secondary); font-size: 28px; line-height: 1.48; font-weight: 450; }
+
+      .panel {
+        position: relative;
+        min-height: 510px;
+        overflow: hidden;
+        border: 1px solid rgba(226, 232, 240, 0.92);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.93);
+        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(12px);
+      }
+
+      .panel-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 88px;
+        padding: 22px 28px;
+        border-bottom: 1px solid var(--border);
+      }
+      .panel-title { font-size: 24px; line-height: 1.2; font-weight: 720; }
+      .panel-note { margin-top: 5px; color: var(--secondary); font-size: 17px; line-height: 1.25; }
+      .status { padding: 8px 13px; border-radius: 999px; font-size: 16px; line-height: 1.2; font-weight: 720; white-space: nowrap; }
+      .status.old { color: #b91c1c; background: #fef2f2; border: 1px solid rgba(220, 38, 38, 0.18); }
+      .status.private { color: #1e40af; background: #eff6ff; border: 1px solid rgba(30, 64, 175, 0.16); }
+      .status.approved { color: #047857; background: #f0fdf4; border: 1px solid rgba(5, 150, 105, 0.20); }
+
+      .version-stage { position: relative; height: 410px; padding: 28px; }
+      .version-card {
+        position: absolute;
+        width: 265px;
+        min-height: 156px;
+        padding: 22px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.07);
+      }
+      .version-card strong { display: block; font-size: 20px; line-height: 1.25; }
+      .version-card p { margin-top: 9px; color: var(--secondary); font-size: 16px; line-height: 1.35; }
+      .version-price { margin-top: 17px; color: var(--danger); font-size: 27px; line-height: 1; font-weight: 760; }
+      .version-card.pdf { left: 32px; top: 36px; transform: rotate(-3deg); }
+      .version-card.shot { left: 50%; top: 66px; transform: translateX(-50%) rotate(2deg); }
+      .version-card.qr { right: 32px; top: 34px; transform: rotate(3deg); }
+      .current-question {
+        position: absolute;
+        left: 50%;
+        bottom: 30px;
+        transform: translateX(-50%);
+        min-width: 360px;
+        padding: 17px 24px;
+        border: 1px solid rgba(0, 81, 209, 0.18);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.82);
+        color: var(--ink);
+        text-align: center;
+        font-size: 22px;
+        font-weight: 700;
+        backdrop-filter: blur(14px);
+      }
+
+      .intake-stage { position: relative; height: 420px; }
+      .menu-source {
+        position: absolute;
+        width: 245px;
+        min-height: 310px;
+        padding: 24px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+      }
+      .menu-source.photo { left: 42px; top: 50px; transform: rotate(-3deg); }
+      .menu-source.pdf { right: 42px; top: 64px; transform: rotate(3deg); }
+      .source-kicker { color: var(--blue); font-size: 15px; font-weight: 720; }
+      .source-name { margin-top: 14px; font-size: 25px; line-height: 1.16; font-weight: 730; }
+      .source-line { display: flex; justify-content: space-between; margin-top: 22px; padding-bottom: 12px; border-bottom: 1px solid var(--border); color: var(--secondary); font-size: 16px; }
+      .upload-target {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 320px;
+        min-height: 230px;
+        transform: translate(-50%, -50%);
+        display: grid;
+        place-items: center;
+        padding: 34px;
+        border: 2px dashed rgba(0, 81, 209, 0.28);
+        border-radius: 8px;
+        background: rgba(239, 246, 255, 0.92);
+        text-align: center;
+        z-index: 3;
+      }
+      .upload-arrow { width: 60px; height: 60px; display: grid; place-items: center; margin: 0 auto 16px; border-radius: 50%; background: #fff; color: var(--blue); font-size: 31px; font-weight: 700; box-shadow: 0 8px 20px rgba(0, 81, 209, 0.10); }
+      .upload-target strong { display: block; font-size: 27px; line-height: 1.18; }
+      .upload-target span { display: block; margin-top: 10px; color: var(--secondary); font-size: 18px; line-height: 1.35; }
+      .no-retyping {
+        position: absolute;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        padding: 12px 18px;
+        border: 1px solid rgba(226, 232, 240, 0.84);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.74);
+        color: var(--blue);
+        font-size: 18px;
+        font-weight: 700;
+        backdrop-filter: blur(12px);
+        z-index: 4;
+      }
+
+      .prepare-stage { position: relative; height: 420px; padding: 34px; }
+      .prepare-card {
+        position: relative;
+        height: 100%;
+        padding: 32px;
+        overflow: hidden;
+        border: 1px solid rgba(226, 232, 240, 0.92);
+        border-radius: 8px;
+        background: rgba(248, 250, 252, 0.78);
+      }
+      .prepare-source-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      .prepare-source {
+        min-height: 104px;
+        padding: 22px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 10px 26px rgba(15, 23, 42, 0.05);
+      }
+      .prepare-source strong { display: block; font-size: 21px; line-height: 1.2; }
+      .prepare-source span { display: block; margin-top: 7px; color: var(--secondary); font-size: 16px; line-height: 1.3; }
+      .prepare-progress { margin-top: 30px; }
+      .prepare-step { display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 14px; min-height: 58px; color: var(--secondary); font-size: 18px; }
+      .prepare-step + .prepare-step { border-top: 1px solid var(--border); }
+      .prepare-dot { width: 24px; height: 24px; border: 2px solid #bfdbfe; border-radius: 50%; background: #fff; }
+      .prepare-state { color: var(--muted); font-size: 15px; font-weight: 680; }
+      .prepare-ready {
+        position: absolute;
+        left: 32px;
+        right: 32px;
+        bottom: 26px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 18px 20px;
+        border: 1px solid rgba(5, 150, 105, 0.22);
+        border-radius: 8px;
+        background: #f0fdf4;
+        color: #047857;
+        font-size: 18px;
+        font-weight: 720;
+        opacity: 0;
+      }
+
+      .customer-menu { padding: 0 26px 24px; }
+      .business-line { display: flex; align-items: center; gap: 14px; padding: 22px 0 18px; border-bottom: 1px solid var(--border); }
+      .business-avatar { width: 48px; height: 48px; display: grid; place-items: center; border-radius: 8px; background: #eff6ff; color: var(--blue); font-size: 20px; font-weight: 800; }
+      .business-name { font-size: 22px; font-weight: 730; }
+      .business-meta { margin-top: 4px; color: var(--secondary); font-size: 16px; }
+      .search-bar { margin: 18px 0 8px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 17px; }
+      .menu-row { display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 68px; border-bottom: 1px solid var(--border); font-size: 20px; }
+      .menu-row strong { font-size: 20px; }
+      .menu-row:last-child { border-bottom: 0; }
+
+      .review-list { padding: 18px 28px 26px; }
+      .review-row { display: grid; grid-template-columns: 1fr auto; align-items: center; min-height: 66px; padding: 0 10px; border-bottom: 1px solid var(--border); font-size: 20px; }
+      .review-row strong { font-size: 20px; }
+      .review-summary { margin-top: 16px; padding: 15px 16px; border-radius: 6px; background: var(--subtle); color: var(--secondary); font-size: 17px; }
+      .approval-bar { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; }
+      .approval-bar p { max-width: 340px; color: var(--secondary); font-size: 17px; line-height: 1.4; }
+      .approve-button { min-width: 224px; padding: 16px 20px; border-radius: 6px; background: var(--blue); color: #fff; text-align: center; font-size: 19px; font-weight: 720; box-shadow: 0 10px 24px rgba(0, 81, 209, 0.18); }
+      .cursor { position: absolute; z-index: 8; width: 0; height: 0; border-top: 32px solid var(--blue); border-right: 21px solid transparent; transform: rotate(-12deg); filter: drop-shadow(0 5px 8px rgba(15, 23, 42, 0.14)); opacity: 0; }
+      .tap-ring { position: absolute; z-index: 7; width: 56px; height: 56px; border: 2px solid rgba(0, 81, 209, 0.34); border-radius: 50%; opacity: 0; }
+
+      .network-stage { position: relative; height: 418px; }
+      .link-core {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 365px;
+        min-height: 176px;
+        transform: translate(-50%, -50%);
+        display: grid;
+        place-items: center;
+        padding: 30px;
+        border: 1px solid rgba(0, 81, 209, 0.24);
+        border-radius: 8px;
+        background: #fff;
+        text-align: center;
+        box-shadow: 0 20px 48px rgba(0, 81, 209, 0.12);
+        z-index: 3;
+      }
+      .link-core strong { font-size: 27px; line-height: 1.22; }
+      .link-core span { display: block; margin-top: 10px; color: var(--blue); font-size: 17px; font-weight: 680; }
+      .surface {
+        position: absolute;
+        width: 176px;
+        min-height: 92px;
+        display: grid;
+        place-items: center;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.95);
+        font-size: 18px;
+        font-weight: 690;
+        text-align: center;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        z-index: 2;
+      }
+      .surface.page { left: 28px; top: 28px; }
+      .surface.qr { right: 28px; top: 30px; }
+      .surface.print { left: 30px; bottom: 28px; }
+      .surface.actions { right: 28px; bottom: 26px; }
+      .connector { position: absolute; z-index: 1; width: 190px; height: 2px; background: linear-gradient(90deg, rgba(0,81,209,0.08), rgba(0,81,209,0.50)); transform-origin: left center; }
+      .connector.c1 { left: 190px; top: 127px; transform: rotate(24deg); }
+      .connector.c2 { right: 188px; top: 133px; transform: rotate(156deg); }
+      .connector.c3 { left: 190px; bottom: 125px; transform: rotate(-24deg); }
+      .connector.c4 { right: 186px; bottom: 122px; transform: rotate(204deg); }
+
+      .outcome-stage { position: relative; min-height: 510px; }
+      .qr-card {
+        position: absolute;
+        left: 34px;
+        top: 86px;
+        width: 250px;
+        padding: 22px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        text-align: center;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+      }
+      .qr-card strong { display: block; margin-top: 12px; font-size: 19px; }
+      .qr-graphic { width: 150px; height: 150px; margin: 0 auto; color: var(--ink); }
+      .scan-line { position: absolute; left: 47px; top: 95px; width: 222px; height: 3px; border-radius: 999px; background: linear-gradient(90deg, transparent, var(--cyan), transparent); box-shadow: 0 0 14px rgba(39, 168, 227, 0.48); }
+      .phone-page {
+        position: absolute;
+        right: 24px;
+        top: 10px;
+        width: 430px;
+        min-height: 492px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: 0 18px 48px rgba(15, 23, 42, 0.09);
+      }
+      .phone-page .panel-top { min-height: 78px; }
+      .phone-body { padding: 0 24px 22px; }
+      .action-row { display: flex; gap: 8px; margin-top: 15px; }
+      .action-chip { flex: 1; padding: 11px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--subtle); color: var(--secondary); font-size: 15px; font-weight: 650; text-align: center; }
+
+      .summary-card { min-height: 500px; padding: 28px 32px; }
+      .summary-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+      .summary-head strong { font-size: 25px; line-height: 1.2; }
+      .summary-row { display: grid; grid-template-columns: 48px 1fr auto; gap: 18px; align-items: center; min-height: 112px; border-bottom: 1px solid var(--border); }
+      .summary-index { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 8px; background: #eff6ff; color: var(--blue); font-size: 19px; font-weight: 760; }
+      .summary-copy strong { display: block; font-size: 22px; line-height: 1.2; }
+      .summary-copy span { display: block; margin-top: 6px; color: var(--secondary); font-size: 17px; line-height: 1.35; }
+      .summary-check { color: var(--success); font-size: 24px; font-weight: 800; }
+      .summary-domain { margin-top: 20px; color: var(--blue); font-size: 18px; font-weight: 700; text-align: right; }
+
+      .brand-bug {
+        position: absolute;
+        right: 84px;
+        bottom: 44px;
+        z-index: 18;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--ink);
+        font-size: 18px;
+        font-weight: 740;
+      }
+      .brand-bug img { width: 40px; height: 40px; object-fit: contain; }
+
+      .caption {
+        position: absolute;
+        left: 50%;
+        bottom: 64px;
+        z-index: 45;
+        width: 1220px;
+        transform: translateX(-50%);
+        color: var(--muted);
+        text-align: center;
+        font-size: 29px;
+        line-height: 1.35;
+        font-weight: 650;
+        opacity: 0;
+      }
+      .caption-word { display: inline-block; margin-right: 0.26em; transform-origin: center bottom; }
+
+      .brand-slate {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(219, 234, 254, 0.82), transparent 34%),
+          radial-gradient(circle at 82% 82%, rgba(39, 168, 227, 0.10), transparent 34%),
+          #fff;
+        opacity: 0;
+        visibility: hidden;
+      }
+      #opening-brand-slate { opacity: 0; visibility: hidden; }
+      .opening-poster {
+        position: absolute;
+        inset: 0;
+        z-index: 29;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 18% 18%, rgba(219, 234, 254, 0.82), transparent 34%),
+          radial-gradient(circle at 82% 82%, rgba(39, 168, 227, 0.10), transparent 34%),
+          #fff;
+      }
+      .brand-stack { display: flex; align-items: center; gap: 54px; transform-origin: center; }
+      .brand-icon { width: 324px; height: 202px; display: grid; place-items: center; }
+      .brand-copy { display: flex; flex-direction: column; align-items: flex-start; }
+      .brand-name { position: relative; font-size: 128px; line-height: 0.98; font-weight: 850; white-space: nowrap; }
+      .brand-tagline { margin-top: 14px; font-size: 34px; line-height: 1.2; font-weight: 680; }
+      .brand-domain { margin-top: 20px; color: var(--blue); font-size: 22px; line-height: 1.2; font-weight: 680; }
+      .animated-logo-mark { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 18px 30px rgba(0, 81, 209, 0.12)); }
+      .logo-mark-scaffold, .logo-mark-base, .logo-mark-trace { fill: none; stroke-width: 63.6323; vector-effect: non-scaling-stroke; }
+      .logo-mark-scaffold { opacity: 0.60; }
+      .logo-mark-trace { stroke: rgba(235, 249, 255, 0.98); stroke-width: 22; stroke-linecap: round; opacity: 0; filter: drop-shadow(0 0 14px rgba(39, 168, 227, 0.68)); }
+      .wordmark-reveal { position: relative; }
+      .wordmark-scaffold { color: var(--ink); opacity: 0.70; }
+      .wordmark-letters { position: absolute; inset: 0; display: inline-flex; align-items: baseline; }
+      .wordmark-letter { display: inline-block; color: var(--ink); }
+      .wordmark-ink-sweep { position: absolute; left: 0; right: 0; bottom: -9px; height: 3px; border-radius: 999px; background: linear-gradient(90deg, transparent, var(--blue) 25%, var(--cyan) 75%, transparent); transform-origin: left center; }
+      .brand-symbol-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="30" data-width="1920" data-height="1080" data-fps="30">
+      <div id="video-canvas" class="canvas clip" data-start="0" data-duration="30" data-track-index="0" data-layout-ignore></div>
+
+      <svg class="brand-symbol-defs" aria-hidden="true">
+        <defs>
+          <linearGradient id="video-logo-gradient-a" x1="1335.95" y1="845.436" x2="1784.85" y2="845.436" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#29AAE3"></stop><stop offset="0.498958" stop-color="#0071BD"></stop><stop offset="1" stop-color="#0051D2"></stop>
+          </linearGradient>
+          <linearGradient id="video-logo-gradient-b" x1="1595.11" y1="848.904" x2="2048.63" y2="848.904" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#29AAE3"></stop><stop offset="1" stop-color="#0054D0"></stop>
+          </linearGradient>
+          <path id="video-logo-path-a" d="M1664.9 725.404C1640.93 696.899 1608.97 676.232 1573.14 666.07C1537.31 655.908 1499.26 656.717 1463.89 668.394C1428.53 680.07 1397.48 702.078 1374.74 731.577C1352.01 761.076 1338.63 796.711 1336.35 833.884C1334.07 871.057 1342.98 908.061 1361.93 940.12C1380.88 972.18 1409.01 997.823 1442.68 1013.74C1476.35 1029.66 1514.02 1035.12 1550.82 1029.42C1587.63 1023.72 1627.82 1000.02 1655.09 974.66M1662.82 723.153L1784.28 847.619L1719.9 908.993"></path>
+          <path id="video-logo-path-b" d="M1715.48 970.547C1739.76 999.424 1772.14 1020.36 1808.44 1030.66C1844.73 1040.95 1883.28 1040.13 1919.11 1028.3C1954.94 1016.47 1986.4 994.177 2009.43 964.294C2032.46 934.41 2046 898.31 2048.32 860.652C2050.63 822.995 2041.61 785.508 2022.4 753.03C2003.2 720.552 1974.71 694.575 1940.6 678.449C1906.49 662.324 1868.33 656.792 1831.05 662.567C1793.76 668.341 1752.25 692.743 1724.62 718.43M1717.59 972.827L1594.55 846.738L1658.1 784.526"></path>
+        </defs>
+      </svg>
+
+      <div id="opening-poster" class="opening-poster" data-layout-ignore>
+        <div class="brand-stack">
+          <div class="brand-icon">
+            <svg class="animated-logo-mark" viewBox="1260 610 870 500" fill="none" aria-hidden="true">
+              <use href="#video-logo-path-a" class="logo-mark-base" stroke="url(#video-logo-gradient-a)"></use>
+              <use href="#video-logo-path-b" class="logo-mark-base" stroke="url(#video-logo-gradient-b)"></use>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <div class="brand-name">MenuList</div>
+            <div class="brand-tagline gradient-text">One approved customer link</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="opening-brand-slate" class="clip brand-slate" data-start="0" data-duration="2.15" data-track-index="30" data-layout-ignore data-layout-allow-occlusion>
+        <div class="brand-stack opening-lockup">
+          <div class="brand-icon">
+            <svg class="animated-logo-mark" viewBox="1260 610 870 500" fill="none">
+              <use href="#video-logo-path-a" class="logo-mark-scaffold" stroke="url(#video-logo-gradient-a)"></use><use href="#video-logo-path-b" class="logo-mark-scaffold" stroke="url(#video-logo-gradient-b)"></use>
+              <use href="#video-logo-path-a" class="logo-mark-base logo-mark-base-a" stroke="url(#video-logo-gradient-a)"></use><use href="#video-logo-path-b" class="logo-mark-base logo-mark-base-b" stroke="url(#video-logo-gradient-b)"></use>
+              <use href="#video-logo-path-a" class="logo-mark-trace logo-mark-trace-a"></use><use href="#video-logo-path-b" class="logo-mark-trace logo-mark-trace-b"></use>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <div class="brand-name wordmark-reveal"><span class="wordmark-scaffold">MenuList</span><span class="wordmark-letters"><span class="wordmark-letter">M</span><span class="wordmark-letter">e</span><span class="wordmark-letter">n</span><span class="wordmark-letter">u</span><span class="wordmark-letter">L</span><span class="wordmark-letter">i</span><span class="wordmark-letter">s</span><span class="wordmark-letter">t</span></span><span class="wordmark-ink-sweep"></span></div>
+            <div class="brand-tagline gradient-text">One approved customer link</div>
+          </div>
+        </div>
+      </div>
+
+      <section id="scene-hook" class="clip scene" data-start="0" data-duration="4.70" data-track-index="1" data-layout-allow-overlap data-layout-allow-occlusion>
+        <div class="scene-grid">
+          <div class="copy">
+            <div class="eyebrow">For busy owners</div>
+            <h1>Do not type <span class="gradient-text">your menu again.</span></h1>
+            <p class="support">Upload menu photos or a PDF already on your phone. MenuList prepares the first customer version.</p>
+          </div>
+          <div class="panel hook-panel">
+            <div class="panel-top"><div><div class="panel-title">Start with what you already have</div><div class="panel-note">No new menu setup before you can begin</div></div><span class="status private">Private</span></div>
+            <div class="intake-stage">
+              <div class="menu-source photo"><div class="source-kicker">MENU PHOTOS</div><div class="source-name">Phone gallery</div><div class="source-line"><span>Menu board</span><strong>Photo</strong></div><div class="source-line"><span>Drinks</span><strong>Photo</strong></div><div class="source-line"><span>Offers</span><strong>Photo</strong></div></div>
+              <div class="menu-source pdf"><div class="source-kicker">CURRENT PDF</div><div class="source-name">Menu.pdf</div><div class="source-line"><span>Pages</span><strong>3</strong></div><div class="source-line"><span>Items</span><strong>24</strong></div><div class="source-line"><span>Source</span><strong>Owner</strong></div></div>
+              <div class="upload-target"><div><div class="upload-arrow">↑</div><strong>Upload what exists</strong><span>Photos or PDF from your phone.</span></div></div>
+              <div class="no-retyping">No full menu retyping</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-intake" class="clip scene" data-start="3.85" data-duration="6.05" data-track-index="2" data-layout-allow-overlap data-layout-allow-occlusion>
+        <div class="scene-grid">
+          <div class="copy">
+            <div class="eyebrow">Upload what exists</div>
+            <h1>Upload photos. <span class="gradient-text">Preview appears.</span></h1>
+            <p class="support">MenuList reads the existing menu and prepares the private customer version for review.</p>
+          </div>
+          <div class="panel">
+            <div class="panel-top"><div><div class="panel-title">Preparing private customer preview</div><div class="panel-note">The uploaded source stays private</div></div><span class="status private">Private</span></div>
+            <div class="prepare-stage">
+              <div class="prepare-card">
+                <div class="prepare-source-row">
+                  <div class="prepare-source"><strong>Menu photos</strong><span>Existing images from the owner phone</span></div>
+                  <div class="prepare-source"><strong>Current PDF</strong><span>The menu file already being shared</span></div>
+                </div>
+                <div class="prepare-progress">
+                  <div class="prepare-step"><span class="prepare-dot"></span><strong>Read items and prices</strong><span class="prepare-state">Waiting</span></div>
+                  <div class="prepare-step"><span class="prepare-dot"></span><strong>Organize menu sections</strong><span class="prepare-state">Waiting</span></div>
+                  <div class="prepare-step"><span class="prepare-dot"></span><strong>Prepare customer preview</strong><span class="prepare-state">Waiting</span></div>
+                </div>
+                <div class="prepare-ready"><span>Private preview ready</span><span>Review next →</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-preview" class="clip scene" data-start="9.25" data-duration="5.45" data-track-index="3" data-layout-allow-overlap data-layout-allow-occlusion>
+        <div class="scene-grid reverse">
+          <div class="panel preview-panel">
+            <div class="panel-top"><div><div class="panel-title">Private customer preview</div><div class="panel-note">Prepared from the uploaded menu</div></div><span class="status private">Not public yet</span></div>
+            <div class="customer-menu">
+              <div class="business-line"><div class="business-avatar">DP</div><div><div class="business-name">The Daily Plate</div><div class="business-meta">Menu · Open today</div></div></div>
+              <div class="search-bar">Search the menu</div>
+              <div class="menu-row"><span>Masala Tea</span><strong>₹20</strong></div>
+              <div class="menu-row"><span>Cold Coffee</span><strong>₹120</strong></div>
+              <div class="menu-row"><span>Paneer Tikka Bowl</span><strong>₹220</strong></div>
+            </div>
+          </div>
+          <div class="copy">
+            <div class="eyebrow">Private preview first</div>
+            <h1>A private preview is <span class="gradient-text">prepared for review.</span></h1>
+            <p class="support">No full menu retyping. Check the items, prices, categories, and business details.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-approval" class="clip scene" data-start="13.90" data-duration="4.45" data-track-index="4" data-layout-allow-overlap data-layout-allow-occlusion>
+        <div class="scene-grid reverse">
+          <div class="panel approval-panel">
+            <div class="panel-top"><div><div class="panel-title">Owner review</div><div class="panel-note">The same customer version</div></div><span class="status private approval-status">Private</span></div>
+            <div class="review-list">
+              <div class="review-row"><span>Masala Tea</span><strong>₹20</strong></div>
+              <div class="review-row"><span>Cold Coffee</span><strong>₹120</strong></div>
+              <div class="review-row"><span>Paneer Tikka Bowl</span><strong>₹220</strong></div>
+              <div class="review-summary">Items, prices, and business details are ready to approve.</div>
+              <div class="approval-bar"><p>Nothing becomes public until the owner approves it.</p><div class="approve-button">Approve customer version</div></div>
+            </div>
+            <div class="cursor approval-cursor"></div><div class="tap-ring approval-ring"></div>
+          </div>
+          <div class="copy">
+            <div class="eyebrow">Owner control</div>
+            <h1><span class="gradient-text">Review first.</span> Then publish.</h1>
+            <p class="support">The owner decides what customers see.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-link" class="clip scene" data-start="16.32" data-duration="7.08" data-track-index="5" data-layout-allow-overlap data-layout-allow-occlusion>
+        <div class="scene-grid">
+          <div class="copy">
+            <div class="eyebrow">One approved source</div>
+            <h1><span class="gradient-text">One approved link</span> keeps supported surfaces aligned.</h1>
+            <p class="support">QR, official page, print files, sharing, and customer actions stay tied to the approved MenuList version.</p>
+          </div>
+          <div class="panel link-panel">
+            <div class="panel-top"><div><div class="panel-title">Approved customer source</div><div class="panel-note">Verified MenuList outputs</div></div><span class="status approved">Approved</span></div>
+            <div class="network-stage">
+              <div class="connector c1"></div><div class="connector c2"></div><div class="connector c3"></div><div class="connector c4"></div>
+              <div class="surface page">Official page</div><div class="surface qr">QR</div><div class="surface print">Print files</div><div class="surface actions">Sharing + actions</div>
+              <div class="link-core"><div><strong>Approved customer link</strong><span>menulist.online/the-daily-plate</span></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="scene-outcome" class="clip scene" data-start="22.45" data-duration="4.85" data-track-index="6" data-layout-allow-overlap data-layout-allow-occlusion>
+        <div class="scene-grid">
+          <div class="copy">
+            <div class="eyebrow">Ready for customers</div>
+            <h1>Put one <span class="gradient-text">approved customer link</span> online.</h1>
+            <p class="support">Start with what you already have. Review the customer version. Share one trusted link.</p>
+          </div>
+          <div class="panel summary-card">
+            <div class="summary-head"><strong>Ready for customers</strong><span class="status approved">Approved</span></div>
+            <div class="summary-row"><div class="summary-index">1</div><div class="summary-copy"><strong>Upload existing menu</strong><span>Photos or PDF already on the owner phone</span></div><div class="summary-check">✓</div></div>
+            <div class="summary-row"><div class="summary-index">2</div><div class="summary-copy"><strong>Review private preview</strong><span>Items, prices, categories, and business details</span></div><div class="summary-check">✓</div></div>
+            <div class="summary-row"><div class="summary-index">3</div><div class="summary-copy"><strong>Share one approved link</strong><span>QR, official page, print, sharing, and actions</span></div><div class="summary-check">✓</div></div>
+            <div class="summary-domain">menulist.online/the-daily-plate</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="brand-bug"><img src="assets/brand/menulist-symbol-transparent.png" alt="" /><span>MenuList</span></div>
+
+      <div class="caption" data-caption-start="0.00" data-caption-end="2.92">MenuList is built for busy owners, not technical setup.</div>
+      <div class="caption" data-caption-start="3.31" data-caption-end="6.65">Take photos of the menu you already have, or upload a PDF.</div>
+      <div class="caption" data-caption-start="7.01" data-caption-end="9.51">MenuList turns it into a private customer preview.</div>
+      <div class="caption" data-caption-start="9.85" data-caption-end="11.53">You do not type the full menu again.</div>
+      <div class="caption" data-caption-start="11.81" data-caption-end="14.35">You review the items, prices, and business details.</div>
+      <div class="caption" data-caption-start="14.68" data-caption-end="16.38">Nothing goes public until you approve.</div>
+      <div class="caption" data-caption-start="16.67" data-caption-end="22.39">Once approved, one customer link powers your QR, page, print files, WhatsApp sharing, and customer actions.</div>
+      <div class="caption" data-caption-start="22.74" data-caption-end="24.52">MenuList. Upload what you have.</div>
+      <div class="caption" data-caption-start="24.86" data-caption-end="26.70">Put one approved customer link online.</div>
+
+      <div id="end-brand-slate" class="clip brand-slate" data-start="26.55" data-duration="3.45" data-track-index="31" data-layout-ignore data-layout-allow-occlusion>
+        <div class="brand-stack end-lockup">
+          <div class="brand-icon">
+            <svg class="animated-logo-mark" viewBox="1260 610 870 500" fill="none">
+              <use href="#video-logo-path-a" class="logo-mark-scaffold" stroke="url(#video-logo-gradient-a)"></use><use href="#video-logo-path-b" class="logo-mark-scaffold" stroke="url(#video-logo-gradient-b)"></use>
+              <use href="#video-logo-path-a" class="logo-mark-base logo-mark-base-a" stroke="url(#video-logo-gradient-a)"></use><use href="#video-logo-path-b" class="logo-mark-base logo-mark-base-b" stroke="url(#video-logo-gradient-b)"></use>
+              <use href="#video-logo-path-a" class="logo-mark-trace logo-mark-trace-a"></use><use href="#video-logo-path-b" class="logo-mark-trace logo-mark-trace-b"></use>
+            </svg>
+          </div>
+          <div class="brand-copy">
+            <div class="brand-name wordmark-reveal"><span class="wordmark-scaffold">MenuList</span><span class="wordmark-letters"><span class="wordmark-letter">M</span><span class="wordmark-letter">e</span><span class="wordmark-letter">n</span><span class="wordmark-letter">u</span><span class="wordmark-letter">L</span><span class="wordmark-letter">i</span><span class="wordmark-letter">s</span><span class="wordmark-letter">t</span></span><span class="wordmark-ink-sweep"></span></div>
+            <div class="brand-tagline gradient-text">One approved customer link</div>
+            <div class="brand-domain">menulist.ai</div>
+          </div>
+        </div>
+      </div>
+
+      <audio id="audio-master" class="clip" data-start="0" data-duration="30" data-track-index="40" src="assets/mix/owner-ease-30s-v1.10-master.wav" preload="auto"></audio>
+    </div>
+
+    <script>
+      window.__timelines = window.__timelines || {};
+
+      document.querySelectorAll(".caption").forEach((caption) => {
+        const words = caption.textContent.trim().split(/\s+/);
+        caption.innerHTML = words.map((word) => `<span class="caption-word">${word}</span>`).join(" ");
+      });
+
+      const tl = gsap.timeline({ paused: true });
+      const laterScenes = ["#scene-intake", "#scene-preview", "#scene-approval", "#scene-link", "#scene-outcome"];
+      tl.set(laterScenes, { autoAlpha: 0 }, 0);
+      tl.set("#opening-brand-slate", { autoAlpha: 0 }, 0);
+      tl.set("#end-brand-slate", { autoAlpha: 0 }, 0);
+      tl.set(".brand-bug", { autoAlpha: 0 }, 0);
+      tl.set(".connector", { scaleX: 0 }, 0);
+      tl.set(".prepare-ready", { autoAlpha: 0, y: 10 }, 0);
+      tl.set(".approval-cursor", { autoAlpha: 0, x: 470, y: 350 }, 0);
+      tl.set(".approval-ring", { autoAlpha: 0, x: 487, y: 374, scale: 0.45 }, 0);
+
+      ["#opening-brand-slate", "#end-brand-slate"].forEach((slate) => {
+        tl.set(`${slate} .wordmark-letter`, { autoAlpha: 0, y: 12, clipPath: "inset(0 100% 0 0)", filter: "blur(8px)", color: "#0051d1" }, 0);
+        tl.set(`${slate} .wordmark-ink-sweep`, { autoAlpha: 0, scaleX: 0.08 }, 0);
+        tl.set(`${slate} .logo-mark-trace-a`, { strokeDasharray: "170 990", strokeDashoffset: 1160, autoAlpha: 0 }, 0);
+        tl.set(`${slate} .logo-mark-trace-b`, { strokeDasharray: "170 1005", strokeDashoffset: 1175, autoAlpha: 0 }, 0);
+        tl.set(`${slate} .logo-mark-base-a`, { strokeDasharray: 1160.5172, strokeDashoffset: 1160.5172 }, 0);
+        tl.set(`${slate} .logo-mark-base-b`, { strokeDasharray: 1175.3367, strokeDashoffset: 1175.3367 }, 0);
+      });
+
+      tl.to("#opening-brand-slate", { autoAlpha: 1, duration: 0.10 }, 0.02);
+      tl.to("#opening-poster", { autoAlpha: 0, duration: 0.14 }, 0.10);
+      tl.to("#opening-brand-slate .logo-mark-base-a, #opening-brand-slate .logo-mark-base-b", { strokeDashoffset: 0, duration: 1.05, ease: "power2.inOut" }, 0.12);
+      tl.to("#opening-brand-slate .logo-mark-trace", { autoAlpha: 0.92, duration: 0.10 }, 0.42);
+      tl.to("#opening-brand-slate .logo-mark-trace-a", { strokeDashoffset: 0, duration: 0.88, ease: "power2.inOut" }, 0.42);
+      tl.to("#opening-brand-slate .logo-mark-trace-b", { strokeDashoffset: 0, duration: 0.88, ease: "power2.inOut" }, 0.48);
+      tl.to("#opening-brand-slate .wordmark-ink-sweep", { autoAlpha: 0.64, scaleX: 1, duration: 0.90, ease: "power2.inOut" }, 0.28);
+      tl.to("#opening-brand-slate .wordmark-letter", { autoAlpha: 1, y: 0, clipPath: "inset(0 0% 0 0)", filter: "blur(0px)", color: "#0f172a", duration: 0.46, stagger: 0.075, ease: "power3.out" }, 0.34);
+      tl.to("#opening-brand-slate .wordmark-scaffold, #opening-brand-slate .logo-mark-scaffold", { autoAlpha: 0, duration: 0.20 }, 1.12);
+      tl.to("#opening-brand-slate .logo-mark-trace, #opening-brand-slate .wordmark-ink-sweep", { autoAlpha: 0, duration: 0.18 }, 1.34);
+      tl.to("#opening-brand-slate", { autoAlpha: 0, duration: 0.46, ease: "sine.inOut" }, 1.66);
+
+      tl.fromTo("#scene-hook .copy > *", { autoAlpha: 0, y: 18 }, { autoAlpha: 1, y: 0, duration: 0.48, stagger: 0.09, ease: "power2.out" }, 1.38);
+      tl.fromTo("#scene-hook .hook-panel", { autoAlpha: 0, x: 24, scale: 0.988 }, { autoAlpha: 1, x: 0, scale: 1, duration: 0.54, ease: "power2.out" }, 1.46);
+      tl.fromTo("#scene-hook .menu-source", { autoAlpha: 0, y: 18, scale: 0.97 }, { autoAlpha: 1, y: 0, scale: 1, duration: 0.48, stagger: 0.10, ease: "power2.out" }, 1.72);
+      tl.fromTo("#scene-hook .upload-target", { autoAlpha: 0, scale: 0.93 }, { autoAlpha: 1, scale: 1, duration: 0.48, ease: "power3.out" }, 2.02);
+      tl.fromTo("#scene-hook .no-retyping", { autoAlpha: 0, y: 10 }, { autoAlpha: 1, y: 0, duration: 0.34, ease: "power2.out" }, 2.42);
+      tl.to(".brand-bug", { autoAlpha: 1, duration: 0.24 }, 1.94);
+      tl.to("#scene-hook .menu-source.photo", { x: 176, y: 30, scale: 0.76, autoAlpha: 0.20, duration: 0.86, ease: "power2.inOut" }, 3.12);
+      tl.to("#scene-hook .menu-source.pdf", { x: -176, y: 22, scale: 0.76, autoAlpha: 0.20, duration: 0.86, ease: "power2.inOut" }, 3.18);
+      tl.to("#scene-hook .copy", { autoAlpha: 0, x: -12, duration: 0.22, ease: "sine.inOut" }, 3.50);
+      tl.set("#scene-intake", { autoAlpha: 1, y: 0, scale: 1, clipPath: "inset(0 100% 0 0)" }, 3.76);
+      tl.to("#scene-intake", { clipPath: "inset(0 0% 0 0)", duration: 0.58, ease: "power2.inOut" }, 3.76);
+      tl.set("#scene-hook", { autoAlpha: 0 }, 4.36);
+
+      tl.set("#scene-preview", { autoAlpha: 1, y: 0, scale: 1, clipPath: "inset(0 100% 0 0)" }, 9.18);
+      tl.to("#scene-preview", { clipPath: "inset(0 0% 0 0)", duration: 0.58, ease: "power2.inOut" }, 9.18);
+      tl.set("#scene-intake", { autoAlpha: 0 }, 9.78);
+
+      tl.set("#scene-approval", { autoAlpha: 1, y: 0, scale: 1, clipPath: "inset(0 100% 0 0)" }, 13.82);
+      tl.to("#scene-approval", { clipPath: "inset(0 0% 0 0)", duration: 0.58, ease: "power2.inOut" }, 13.82);
+      tl.set("#scene-preview", { autoAlpha: 0 }, 14.42);
+
+      tl.set("#scene-link", { autoAlpha: 1, x: 34, clipPath: "inset(0 0 0 100%)" }, 16.32);
+      tl.to("#scene-link", { x: 0, clipPath: "inset(0 0 0 0%)", duration: 0.56, ease: "power2.inOut" }, 16.32);
+      tl.set("#scene-approval", { autoAlpha: 0 }, 16.90);
+
+      tl.set("#scene-outcome", { autoAlpha: 1, y: 0, scale: 1, clipPath: "inset(0 100% 0 0)" }, 22.36);
+      tl.to("#scene-outcome", { clipPath: "inset(0 0% 0 0)", duration: 0.60, ease: "power2.inOut" }, 22.36);
+      tl.set("#scene-link", { autoAlpha: 0 }, 22.98);
+
+      tl.from("#scene-intake .copy > *", { autoAlpha: 0, y: 16, duration: 0.42, stagger: 0.09, ease: "power2.out" }, 3.94);
+      tl.from("#scene-intake .prepare-card", { autoAlpha: 0, x: 22, scale: 0.985, duration: 0.50, ease: "power2.out" }, 3.92);
+      tl.from("#scene-intake .prepare-source", { autoAlpha: 0, y: 14, duration: 0.38, stagger: 0.10, ease: "power2.out" }, 3.98);
+      [6.02, 6.72, 7.42].forEach((at, index) => {
+        const row = index + 1;
+        tl.to(`#scene-intake .prepare-step:nth-child(${row}) .prepare-dot`, { backgroundColor: "#059669", borderColor: "#059669", scale: 1.08, duration: 0.22, ease: "power2.out" }, at);
+        tl.to(`#scene-intake .prepare-step:nth-child(${row}) .prepare-dot`, { scale: 1, duration: 0.18, ease: "sine.out" }, at + 0.22);
+        tl.to(`#scene-intake .prepare-step:nth-child(${row}) .prepare-state`, { textContent: "Ready", color: "#047857", duration: 0.20 }, at);
+      });
+      tl.to("#scene-intake .prepare-ready", { autoAlpha: 1, y: 0, duration: 0.38, ease: "power2.out" }, 8.18);
+      tl.to("#scene-intake .prepare-card", { boxShadow: "0 18px 42px rgba(5,150,105,0.10)", duration: 0.60, ease: "sine.inOut" }, 8.42);
+      tl.to("#scene-intake .copy", { autoAlpha: 0, x: -12, duration: 0.22, ease: "sine.inOut" }, 8.94);
+
+      tl.from("#scene-preview .preview-panel", { autoAlpha: 0, x: -22, scale: 0.987, duration: 0.50, ease: "power2.out" }, 9.24);
+      tl.from("#scene-preview .copy > *", { autoAlpha: 0, y: 16, duration: 0.42, stagger: 0.09, ease: "power2.out" }, 9.36);
+      tl.from("#scene-preview .business-line, #scene-preview .search-bar, #scene-preview .menu-row", { autoAlpha: 0, x: -14, duration: 0.34, stagger: 0.10, ease: "power2.out" }, 9.62);
+      tl.to("#scene-preview .menu-row", { backgroundColor: "rgba(239,246,255,0.66)", duration: 0.24, stagger: 0.18, yoyo: true, repeat: 1, ease: "sine.inOut" }, 11.92);
+      tl.to("#scene-preview .copy", { autoAlpha: 0, x: 12, duration: 0.22, ease: "sine.inOut" }, 13.56);
+
+      tl.from("#scene-approval .approval-panel", { autoAlpha: 0, x: -18, scale: 0.988, duration: 0.46, ease: "power2.out" }, 13.86);
+      tl.from("#scene-approval .copy > *", { autoAlpha: 0, y: 16, duration: 0.40, stagger: 0.08, ease: "power2.out" }, 13.96);
+      tl.from("#scene-approval .review-row, #scene-approval .review-summary, #scene-approval .approval-bar", { autoAlpha: 0, x: -12, duration: 0.30, stagger: 0.07, ease: "power2.out" }, 14.12);
+      tl.to(".approval-cursor", { autoAlpha: 1, x: 598, y: 436, duration: 0.52, ease: "power2.inOut" }, 14.82);
+      tl.to(".approval-ring", { autoAlpha: 1, x: 612, y: 455, scale: 1, duration: 0.26, ease: "power2.out" }, 15.34);
+      tl.to(".approve-button", { scale: 0.976, duration: 0.10, yoyo: true, repeat: 1, ease: "power1.inOut" }, 15.38);
+      tl.to(".approval-ring", { autoAlpha: 0, scale: 1.42, duration: 0.32, ease: "power1.out", overwrite: "auto" }, 15.62);
+      tl.to(".approval-status", { textContent: "Approved", color: "#047857", backgroundColor: "#f0fdf4", borderColor: "rgba(5,150,105,0.20)", duration: 0.26 }, 15.58);
+      tl.to(".approval-cursor", { autoAlpha: 0, duration: 0.18 }, 15.92);
+      tl.to("#scene-approval .copy", { autoAlpha: 0, x: 12, duration: 0.20, ease: "sine.inOut" }, 16.08);
+      tl.set("#scene-approval .copy", { autoAlpha: 0 }, 16.32);
+
+      tl.from("#scene-link .copy > *", { autoAlpha: 0, y: 16, duration: 0.42, stagger: 0.09, ease: "power2.out" }, 16.42);
+      tl.from("#scene-link .link-core", { autoAlpha: 0, scale: 0.90, duration: 0.50, ease: "power3.out" }, 16.48);
+      tl.to("#scene-link .connector", { scaleX: 1, duration: 0.56, stagger: 0.08, ease: "power2.inOut" }, 17.02);
+      tl.from("#scene-link .surface", { autoAlpha: 0, scale: 0.88, duration: 0.40, stagger: 0.10, ease: "power2.out" }, 17.34);
+      tl.to("#scene-link .link-core", { boxShadow: "0 24px 54px rgba(0,81,209,0.16)", duration: 0.72, ease: "sine.inOut", yoyo: true, repeat: 1 }, 19.62);
+      tl.to("#scene-link .copy", { autoAlpha: 0, x: -12, duration: 0.22, ease: "sine.inOut" }, 22.10);
+
+      tl.from("#scene-outcome .copy > *", { autoAlpha: 0, y: 16, duration: 0.42, stagger: 0.09, ease: "power2.out" }, 22.46);
+      tl.from("#scene-outcome .summary-card", { autoAlpha: 0, x: 24, scale: 0.987, duration: 0.50, ease: "power2.out" }, 22.42);
+      tl.from("#scene-outcome .summary-row", { autoAlpha: 0, x: 16, duration: 0.36, stagger: 0.16, ease: "power2.out" }, 22.86);
+      tl.from("#scene-outcome .summary-domain", { autoAlpha: 0, y: 8, duration: 0.32, ease: "power2.out" }, 23.52);
+      tl.to("#scene-outcome .copy", { autoAlpha: 0, x: -12, duration: 0.22, ease: "sine.inOut" }, 26.24);
+
+      tl.to(".brand-bug", { autoAlpha: 0, y: 8, duration: 0.22 }, 26.48);
+      tl.set("#end-brand-slate", { autoAlpha: 1, clipPath: "inset(0 100% 0 0)" }, 26.50);
+      tl.to("#end-brand-slate", { clipPath: "inset(0 0% 0 0)", duration: 0.42, ease: "power2.inOut" }, 26.50);
+      tl.set("#scene-outcome", { autoAlpha: 0 }, 26.94);
+      tl.to("#end-brand-slate .logo-mark-base-a, #end-brand-slate .logo-mark-base-b", { strokeDashoffset: 0, duration: 1.05, ease: "power2.inOut" }, 26.76);
+      tl.to("#end-brand-slate .logo-mark-trace", { autoAlpha: 0.92, duration: 0.10 }, 27.06);
+      tl.to("#end-brand-slate .logo-mark-trace-a", { strokeDashoffset: 0, duration: 0.88, ease: "power2.inOut" }, 27.06);
+      tl.to("#end-brand-slate .logo-mark-trace-b", { strokeDashoffset: 0, duration: 0.88, ease: "power2.inOut" }, 27.12);
+      tl.to("#end-brand-slate .wordmark-ink-sweep", { autoAlpha: 0.64, scaleX: 1, duration: 0.90, ease: "power2.inOut" }, 26.92);
+      tl.to("#end-brand-slate .wordmark-letter", { autoAlpha: 1, y: 0, clipPath: "inset(0 0% 0 0)", filter: "blur(0px)", color: "#0f172a", duration: 0.46, stagger: 0.075, ease: "power3.out" }, 26.97);
+      tl.to("#end-brand-slate .wordmark-scaffold, #end-brand-slate .logo-mark-scaffold", { autoAlpha: 0, duration: 0.22 }, 27.72);
+      tl.to("#end-brand-slate .logo-mark-trace, #end-brand-slate .wordmark-ink-sweep", { autoAlpha: 0, duration: 0.18 }, 27.98);
+      tl.from("#end-brand-slate .brand-tagline, #end-brand-slate .brand-domain", { autoAlpha: 0, y: 12, duration: 0.36, stagger: 0.11, ease: "power2.out" }, 27.14);
+      tl.to("#end-brand-slate .brand-stack", { scale: 1.018, duration: 0.14, ease: "power2.out" }, 28.22);
+      tl.to("#end-brand-slate .brand-stack", { scale: 1, duration: 0.30, ease: "sine.out" }, 28.36);
+
+      document.querySelectorAll(".caption").forEach((caption) => {
+        const start = Number(caption.dataset.captionStart);
+        const end = Number(caption.dataset.captionEnd);
+        const words = Array.from(caption.querySelectorAll(".caption-word"));
+        const step = (end - start) / words.length;
+        tl.set(words, { color: "#64748b", scale: 1 }, start);
+        tl.to(caption, { autoAlpha: 1, y: 0, duration: 0.16, overwrite: "auto" }, start);
+        words.forEach((word, index) => {
+          const at = start + index * step;
+          if (index > 0) tl.set(words[index - 1], { color: "#0f172a", scale: 1 }, at);
+          tl.set(word, { color: "#0051d1", scale: 1.035 }, at);
+        });
+        tl.set(words[words.length - 1], { color: "#0f172a", scale: 1 }, end - 0.12);
+        tl.to(caption, { autoAlpha: 0, y: -5, duration: 0.16, overwrite: "auto" }, end - 0.16);
+      });
+
+      window.__timelines.main = tl;
+    </script>
+  </body>
+</html>

@@ -138,7 +138,8 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
         });
 
         const payload = {
-            ...storeDetails,
+            storeId: storeDetails.storeId,
+            tenantId: storeDetails.tenantId,
             activeLanguages: normalizedLanguagePolicy.activeLanguages,
             currencyCode: formData.currencyCode,
             currencySymbol: formData.currencySymbol,
@@ -152,7 +153,7 @@ export default function MobileLocaleSettingsScreen({ onBack, onOpenBusinessCopyS
         setStoreDetails((previous: any) => ({ ...previous, ...payload }));
 
         try {
-            const writeResult = await updateStore(payload as any);
+            const writeResult = await updateStore(payload);
             assertStoreUpdateSucceeded(
                 writeResult,
                 storeDetails.storeId,

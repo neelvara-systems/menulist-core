@@ -7,7 +7,7 @@ import {
 } from "@lib/answerlattice/sessionScope";
 import { syncAnswerlatticeAuthWithCustomToken } from "@lib/firebase/syncAnswerlatticeAuth";
 import { createFirebaseBootstrapError, logFirebaseBootstrapFailure } from "@lib/firebase/firebaseDiagnostics";
-import { firebaseClaimsMatchTargetStore } from "@lib/auth/setClaimsWorkspace";
+import { firebaseClaimsMatchTargetStore } from "@lib/auth/firebaseClaimsAcknowledgement";
 import { applyActiveStoreContextToSession } from "@lib/multiOutlet/activeStoreContext";
 import { readJsonResponseWithLimit } from "@lib/security/boundedResponseBody";
 import { signInWithCustomToken, type IdTokenResult } from "firebase/auth";

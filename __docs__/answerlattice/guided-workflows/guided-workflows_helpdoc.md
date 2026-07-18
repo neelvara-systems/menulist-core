@@ -1,133 +1,89 @@
-# Answerlattice — Guided Workflows: Help Documentation
+# Answerlattice Guided Workflows Help
 
-> **Status:** DESIGNED — Ready for Implementation
-> **Version:** 1.0.0
-> **Created:** 2026-03-08
-> **Last Updated:** 2026-03-08
-> **Audience:** Answerlattice Customers (SaaS Founders)
+> **Status:** Implemented, workspace opt-in
+> **Last verified:** 2026-07-18
 
----
+## What It Does
 
-## What are Guided Workflows?
+Guided Resolution helps an end user follow an approved procedure inside your product. It can highlight the control for the current step and wait for a product event that you verify.
 
-Guided Workflows let you create structured, step-by-step procedure answers for "how to" questions. Instead of answering procedural queries with paragraphs, Answerlattice serves numbered steps — each representing one atomic user action.
+It never clicks the control or changes product data.
 
----
+## Configure an Approved Procedure
 
-## When to Use Guided Workflows
+1. Open **Governance**.
+2. Open **Canonical Answers**.
+3. Create or edit an answer.
+4. Set the answer type to **Procedure**.
+5. Add 1-12 short steps.
+6. For a step that should point to a control, add a semantic target such as `billing.change_plan`.
+7. For a step that should advance after a verified state change, add an expected event such as `billing.plan_changed`.
+8. Save and complete the existing approval flow.
 
-Use procedure answers when your users ask questions like:
-- "How do I invite a teammate?"
-- "How to connect Stripe integration?"
-- "How do I change my billing email?"
+Targets and events must be lowercase semantic IDs. Do not enter CSS selectors.
 
-Use explanation answers for conceptual questions:
-- "What is workspace visibility?"
-- "What plans are available?"
+## Instrument the Client Product
 
----
+Mark only the important control:
 
-## Creating a Procedure Answer
+```html
+<button data-answerlattice-target="billing.change_plan">
+  Change plan
+</button>
+```
 
-1. Open the **Governance Hub** in your Answerlattice dashboard
-2. Go to **Canonical Answers**
-3. Click **New Answer**
-4. Select **Answer Type: Procedure (Step-by-Step)**
-5. Fill in the title and bind to relevant entities
-6. Add your procedure steps using the step editor
-7. Optionally add warnings and prerequisites
-8. Save
+Emit an event only after your product confirms the expected state:
 
----
+```js
+window.AnswerlatticeWidget?.emitWorkflowEvent('billing.plan_changed');
+```
 
-## Writing Good Steps
+Do not include customer data, form values, tokens, record IDs, or secrets in target/event names.
 
-Each step should represent **one user action**. Follow these guidelines:
+Use one shared registry inside the client application. MenuList, the first reference client, imports all target and event names from one typed module rather than repeating string values across screens.
 
-| Rule | Example |
-|------|---------|
-| One action per step | ✅ "Click Team Members" — ❌ "Click Team Members and then Invite" |
-| Use approved verbs | open, navigate, click, select, enter, toggle, submit, confirm, download, upload, copy, paste, scroll, expand, collapse |
-| Keep instructions short | Maximum 80 characters per instruction |
-| Maximum 12 steps | If your procedure needs more, split into multiple answers |
+Only emit completion after the product has verified the transition. A button click by itself is not proof that an import, publish, or configuration change succeeded.
 
-### Example Procedure
+## Enable the Workspace
 
-**Title:** How to invite a teammate
+1. Open **Widget**.
+2. Open **Behavior**.
+3. Turn on **Guided resolution**.
+4. Use the **Guided Steps** install tab for the current integration example.
+5. Test the procedure on an allowed-origin client page.
 
-| Step | Action | Instruction |
-|------|--------|-------------|
-| 1 | open | Open Settings |
-| 2 | click | Click Team Members |
-| 3 | click | Click Invite User |
-| 4 | enter | Enter the teammate's email address |
-| 5 | click | Click Send Invite |
+Existing widget configurations remain disabled until this setting is enabled.
 
----
+## End-User Behavior
 
-## Adding Warnings
+- **Guide me:** starts the current approved procedure.
+- **Continue:** advances a step when no verified event is required.
+- **Target missing:** ends the guide and records which semantic target was absent.
+- **Get support:** ends the guide and sends a governed escalation signal.
+- Closing the widget or changing page/context safely clears the highlight.
 
-Warnings alert users before they perform potentially harmful actions.
+If a target is missing, the written instruction remains visible so the user is not blocked by instrumentation.
 
-| Severity | When to Use | Example |
-|----------|-------------|---------|
-| Info | Helpful context | "Invited users gain access immediately" |
-| Warning | Important but not destructive | "This action affects all team members" |
-| Destructive | Irreversible or dangerous | "Deleting a workspace permanently removes all data" |
+## Troubleshooting
 
----
+| Problem | Check |
+|---|---|
+| Guide button is absent | Workspace toggle, canonical answer status, procedure shape |
+| Target is not highlighted | Exact `data-answerlattice-target` value and current page |
+| Step does not advance | Exact `expectedEvent` value and event emitted after verified state |
+| Guide resets | The page route or widget context changed |
+| Outcome is not recorded | Signal mutation may be disabled, or public request admission failed |
 
-## Adding Prerequisites
+## Safety Limits
 
-Prerequisites tell users what conditions must be met before they can follow the procedure.
+Guided Resolution does not:
 
-| Type | Example |
-|------|---------|
-| Role | "You must be a workspace admin" |
-| Plan | "Requires Pro plan or higher" |
-| State | "Workspace must be active (not suspended)" |
-| General | "You need at least one project created" |
+- read the full DOM;
+- capture screenshots;
+- read forms;
+- click controls;
+- execute arbitrary actions;
+- alter roles, billing, security, or customer data;
+- approve or publish knowledge.
 
----
-
-## How It Works in the Widget
-
-When an end user asks a procedural question, the widget receives structured step data. Depending on your widget implementation, steps can be rendered as:
-
-- Numbered lists
-- Step cards
-- Guided walkthroughs
-- Interactive tutorials
-
-The widget always receives a text summary as fallback for clients that don't support structured rendering.
-
----
-
-## Governance
-
-Procedure answers follow the same governance as all canonical answers:
-
-- **Drift detection** — When you release a new product version, Answerlattice flags procedures that may be outdated
-- **Mutation proposals** — If users report confusion with a procedure, the signal engine proposes improvements
-- **Audit logging** — All procedure changes are tracked
-- **Version binding** — Procedures are bound to product versions
-
----
-
-## Limits
-
-| Limit | Value |
-|-------|-------|
-| Steps per procedure | 1–12 |
-| Instruction length | 80 characters |
-| Warnings per procedure | 0–5 |
-| Prerequisites per procedure | 0–5 |
-| Conditional branching | Not supported (use prerequisites instead) |
-
----
-
-## Version History
-
-| Date | Version | Change |
-|------|---------|--------|
-| 2026-03-08 | 1.0.0 | Initial help documentation |
+Imported or generated procedures appear as review work first. They become available to end users only after the normal canonical-answer governance approval.

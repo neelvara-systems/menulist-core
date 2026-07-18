@@ -1,3 +1,4 @@
+import { completeWebsiteMetadata } from '@/lib/seo/websiteMetadata';
 import Footer from '@/components/website/Footer';
 import Header from '@/components/website/Header';
 import PrintShareToolPage from '@/components/website/printShareTools/PrintShareToolPage';
@@ -11,7 +12,7 @@ import { notFound } from 'next/navigation';
 const title = 'WhatsApp Menu Status Maker - MenuList | Free Status Asset';
 const description = 'Make a free WhatsApp Status or story image that points customers to one current menu, service, or customer link.';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = completeWebsiteMetadata({
   title,
   description,
   alternates: {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
     description,
     url: '/tools/whatsapp-menu-status-maker',
   },
-};
+});
 
 export default function Page() {
   if (

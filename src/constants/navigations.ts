@@ -17,8 +17,8 @@ export const normalizeHelpCenterRouteSegment = (value?: string | null) => (value
     .replace(/^-+|-+$/g, '');
 export const getHelpCenterArticleRouteSegment = (article: { id?: string; url?: string; title?: string }) =>
     article.url || normalizeHelpCenterRouteSegment(article.title) || article.id || '';
-export const helpCenterArticleRouting = (articleId: string) => `${helpCenterTabRouting('kb')}/articles/${articleId}`;
-export const helpCenterChangelogRouting = (entryId?: string) => entryId ? `${helpCenterTabRouting('changelog')}/${entryId}` : helpCenterTabRouting('changelog');
+export const helpCenterArticleRouting = (articleId: string) => `${helpCenterTabRouting('kb')}/articles/${encodeURIComponent(articleId)}`;
+export const helpCenterChangelogRouting = (entryId?: string) => entryId ? `${helpCenterTabRouting('changelog')}/${encodeURIComponent(entryId)}` : helpCenterTabRouting('changelog');
 
 export const NAVIGARIONS_ROUTINGS = {
 
@@ -145,7 +145,7 @@ export const SUPPORT_MENU_OPTIONS = [
     {
         key: 'help-center',
         label: 'Help Center',
-        description: 'Open the Answerlattice help center',
+        description: 'Open MenuList Help Center',
         icon: LuHeartHandshake,
         route: HELP_CENTER_ROUTING,
     },

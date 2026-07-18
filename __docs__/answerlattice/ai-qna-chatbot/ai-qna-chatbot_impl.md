@@ -1,7 +1,7 @@
 # AI QnA Chatbot — Technical Implementation Blueprint
 
-> **Version:** 1.0.0
-> **Last Updated:** 2026-06-30
+> **Version:** 1.1.0
+> **Last Updated:** 2026-07-18
 > **Audience:** Developers
 > **Source:** Codebase forensic audit (code is truth)
 
@@ -11,8 +11,8 @@
 
 The AI QnA Chatbot is a **hybrid client-server feature**:
 
-- **Client-side:** Chat UI, session management, feedback, SWR caching (Firestore client SDK via DAL)
-- **Server-side:** RAG pipeline (3 API routes using Firestore Admin SDK + Gemini AI)
+- **Client-side:** Chat UI, session management, feedback, and SWR caching through existing DAL boundaries
+- **Server-side:** Shared canonical-first search pipeline used by authenticated Help Center and API-key/widget wrappers
 - **Cloud Functions:** Nightly analytics aggregation, feedback intelligence, weekly narratives
 
 ---
@@ -132,7 +132,7 @@ Diagnostics record only bounded session/message/search-history/tenant/store/arti
 
 | File                                            | Lines | Purpose                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------- | :---: | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/lib/vectorEmbeddings/index.ts`             |  290  | **RAG Core** — `callGeminiEmbedding()` (`gemini-embedding-001`), `generateSearchQueryFromImage()` (`gemini-2.5-flash` vision context extraction), `callGeminiChat()` (`gemini-2.5-flash`, JSON output). Builds system instructions per mode (QnA/Assistant/Image). Conversation context from last 5 messages. Temperature=0.0, TopP=0.9, TopK=40. |
+| `src/lib/vectorEmbeddings/index.ts`             |  290  | **RAG Core** — `callGeminiEmbedding()` (`gemini-embedding-2`, canonical 768-dimension vector contract), `generateSearchQueryFromImage()` (`gemini-2.5-flash` vision context extraction), `callGeminiChat()` (`gemini-2.5-flash`, JSON output). Builds system instructions per mode (QnA/Assistant/Image). Conversation context from last 5 messages. Temperature=0.0, TopP=0.9, TopK=40. |
 | `src/lib/vectorEmbeddings/articleEmbeddings.ts` |  19   | `extractPlainTextFromEditorContent()` — Recursive TipTap JSON → plain text. `extractEditortextForComparison()` — Lowercase + strip non-alphanumeric.                                                                                                                                                                                                    |
 | `src/lib/validation/chatSchemas.ts`             |  147  | Zod schemas — `SearchRequestSchema` validates: query (1-2000 chars, XSS patterns), imageUrl (HTTPS, Firebase host), mode (qna/assistant), context (max 5 messages, alternating roles). 7 malicious pattern detections.                                                                                                                                  |
 | `src/lib/answerlattice/supportClipboard.ts`     |   —   | Browser-local copy acknowledgement helper shared by HelpChat message copy, AI Search answer copy, and ArticleView link copy. It waits for Clipboard API success or acknowledged textarea fallback success before the UI shows copied feedback.                                                                                                                   |
@@ -146,7 +146,7 @@ Diagnostics record only bounded session/message/search-history/tenant/store/arti
 | `uploadChatImage(image, session)`                         |   0   | 1 storage | Tenant-scoped: `chatSessions/chatimages/{tId}/{sId}/{imageId}` |
 | `saveChatSession(data)`                                   |   0   |     1     | `apiCallComposerClientWithoutLoader` (no global spinner); new-session UI requires a saved session acknowledgement |
 | `updateChatSession(sessionId, updates)`                   |   0   |     1     | Merge update with explicit `{ success, sessionId, updatedFields }` acknowledgement |
-| `deleteChatSession(sessionId)`                            |   0   |     1     | Hard delete with explicit `{ success, sessionId, deleted, storageFilesDeleted }` acknowledgement |
+| `deleteChatSession(sessionId)`                            |   1   |     1     | Transaction-current hard delete with explicit acknowledgement; tenant/store-scoped images are retained because one session cannot prove cross-session non-reference |
 | `getUserChatSessions(session)`                            |   N   |     0     | `tId + uId`, ordered by modifiedOn desc                        |
 | `getChatSessionById(sessionId)`                           |   1   |     0     | Admin use                                                      |
 | `updateMessageFeedback(sessionId, messageId, feedback)`   |   1   |     1     | Read-modify-write on messages array; returns explicit `{ success, sessionId, messageId }` acknowledgement |
@@ -182,6 +182,8 @@ HelpChat answer feedback requires both write acknowledgements before local feedb
 
 HelpChat session deletion is optimistic for responsiveness but requires `assertChatSessionDeleteSucceeded()` before success copy. If the delete acknowledgement is missing or malformed, the handler reloads chat sessions and restores the previously active session/search state instead of leaving an unconfirmed deletion visible.
 
+The development-only bulk-clear control deletes only the current user's loaded sessions. It passes those bounded IDs through `deleteChatSession()` sequentially, preserves partial acknowledgements, removes only acknowledged IDs from local state, and never attempts client deletion of server-owned `aiSearchHistory` or `queryEmbeddings` rows. This keeps local/QA behavior on the same separate-Answerlattice Firebase and tenant/storage boundary as normal chat deletion.
+
 **Query Embeddings:** `src/database/queryEmbeddings/index.ts` (93 lines)
 
 | Function                                       | Reads | Writes | Notes                                             |
@@ -196,24 +198,35 @@ HelpChat session deletion is optimistic for responsiveness but requires `assertC
 ### 3.1 Non-Streaming (`/api/helpCenter/search-kb`)
 
 ```
-1. SAFE_MODE check          → Dynamic import @lib/ops/safeMode
-2. Parse + validate body    → SearchRequestSchema (Zod)
-3. Rate limit               → checkAIOperationLimit() (Upstash)
-4. Get session              → getActiveSession()
-5. Image processing (if imageUrl):
+1. Auth wrapper             → withAuth()
+2. Rate limit               → checkAIOperationLimit()
+3. Parse bounded body       → 64 KB maximum
+4. Validate request         → SearchRequestSchema (Zod)
+5. Resolve AL scope         → exact tId + sId from the authenticated session
+6. Start support accounting → settle actual provider operations after the result
+7. Core SAFE_MODE check
+8. Image processing (if imageUrl):
    a. Validate URL          → HTTPS, Firebase Storage host, bucket path
    b. Fetch with timeout    → 10s timeout, AbortController
-   c. Validate size         → 10MB max
+   c. Validate size         → 5 MB max
    d. Convert to base64
    e. Generate bounded visual search context → generateSearchQueryFromImage() [Gemini 2.5 Flash]
-6. Build cache key          → normalizeQuery(query) + optional ::IMAGE::hash(imageUrl)
-7. Response cache check     → findCachedSearchByCacheKey(key, session)
+9. Build scoped cache key   → query + image/context/mode + KB/canonical source versions
+10. Response cache check    → findCachedSearchByCacheKey(key, scope)
    → HIT: Return cached response immediately
-8. Embedding cache check    → getCachedEmbedding(key)
+11. Canonical lookup        → approved canonical answer remains authoritative
+12. Approved FAQ lookup     → deterministic fallback before RAG
+13. Published-KB check      → skip provider work when no published article exists
+14. Embedding cache check   → getCachedEmbedding(key, scope)
    → HIT: Use cached vector
-   → MISS: callGeminiEmbedding(query) + saveCachedEmbedding()
-9. Vector search            → firestoreAdmin.collection(KB_ARTICLES)
+   → MISS: callGeminiEmbeddingWithMetadata(query, { purpose: 'query' })
+           + saveCachedEmbedding(key, query, vector, scope)
+15. Vector search           → firestoreAdmin.collection(KB_ARTICLES)
+                               .where('pId', '==', 'AL')
+                               .where('tId', '==', tId)
+                               .where('sId', '==', sId)
                                .where('status', '==', 'published')
+                               .where('active', '==', true)
                                .findNearest({
                                  vectorField: 'embedding',
                                  queryVector: vector,
@@ -221,30 +234,25 @@ HelpChat session deletion is optimistic for responsiveness but requires `assertC
                                  distanceMeasure: 'COSINE',
                                  distanceResultField: 'distance'
                                })
-10. Similarity filter       → Primary: >0.6, Fallback: >0.4
-11. Prepare Gemini payload  → Extract plain text from TipTap JSON per article
-12. Answer generation       → callGeminiChat(query, docs, imageContext?, conversationHistory?)
+16. Similarity filter       → Primary: >0.6, fallback: >0.4
+17. Optional hybrid lane    → Default-off exact literal + resolved entity query;
+                               exact scope, active/published only, maximum 12 docs
+18. Deterministic fusion    → Weighted reciprocal-rank fusion; no model reranker
+19. Prepare Gemini payload  → At most six bounded article contexts
+20. Answer generation       → callGeminiChatWithMetadata(...)
     → Model: gemini-2.5-flash
     → Temperature: 0.0
     → Output: JSON { craftedAnswer, references[], suggestedQuestions[] }
-13. Enrich references       → Map referenced doc IDs to full article data with scores
-14. Save to history         → addAiSearchHistory({ query, cacheKey, craftedAnswer, references })
-15. Log performance         → writeLogEntry with per-step timing
-16. Return response         → { ...response, id: savedHistory.id }
+21. Reference enforcement   → Non-refusal generated answers require a valid source reference
+22. Save to history         → scoped aiSearchHistory cache
+23. Log bounded metrics     → timings, route context, provider-operation metadata
+24. Settle accounting       → actual provider operations only
+25. Return private response → Cache-Control: private, no-store
 ```
 
-### 3.2 Streaming (`/api/helpCenter/search-kb-stream`)
+### 3.2 Current Delivery Mode
 
-Same pipeline steps 1-11, then:
-
-```
-12. Create TransformStream + SSE writer
-13. Stream answer generation → callGeminiChatStream() with onChunk callback
-    → Each text chunk: sendEvent('answer_delta', { text })
-    → On complete: sendEvent('answer_complete', { references, suggestedQuestions })
-14. Save to history (async, after stream completes)
-15. Return ReadableStream with SSE headers
-```
+The current HelpChat client uses `POST /api/helpCenter/search-kb` and receives one bounded JSON response. There is no maintained `search-kb-stream` route, streaming feature flag, or streaming chat reducer state.
 
 ### 3.3 Frontend Send Flow
 
@@ -257,11 +265,8 @@ useChatHandlers.onSendMessage(content, image?, targetMode?)
   → Optimistic UI update (add user message to session immediately)
   → Create temp session if new chat (id=null, title=first 150 chars)
   → dispatchChatState('SEARCH_START')
-  → performSearch() — routes to streaming or non-streaming based on flag:
-    → FEATURE_FLAGS.ENABLE_STREAMING_RESPONSES ?
-      → searchKnowledgeBaseStream() with SSE event handlers
-      → STREAMING_START → STREAMING_UPDATE (per chunk) → STREAMING_COMPLETE
-    : searchKnowledgeBase() → returns full response
+  → performSearch() → searchKnowledgeBase() → POST /api/helpCenter/search-kb
+  → Read and validate the bounded JSON response
   → Create AI message (craftedAnswer, references, suggestedQuestions)
   → If existing session: update messages array + persist to Firestore
   → If new session: saveChatSession() to Firestore, set activeSessionId
@@ -276,10 +281,11 @@ useChatHandlers.onSendMessage(content, image?, targetMode?)
 
 ### 4.1 Embedding Model
 
-- **Model:** `gemini-embedding-001`
+- **Model:** `gemini-embedding-2`
 - **Dimensions:** 768
-- **Input format:** Plain text (extracted from TipTap JSON)
-- **Article embedding input:** `Category: {cat}\nSection: {sec}\nTitle: {title}\nContent: {text}`
+- **Query format:** `task: question answering | query: {query}`
+- **Article embedding input:** `title: {title} | text: Category: {cat}\nSection: {sec}\nTitle: {title}\nContent: {text}`
+- **Storage field/cache version:** `embedding` / `gemini-embedding-2:768:v1`
 
 ### 4.2 Chat Model
 
@@ -327,7 +333,6 @@ All variants include:
 | `idle`      | No active operation                          |
 | `loading`   | Search in progress                           |
 | `typing`    | AI answer received, typing animation playing |
-| `streaming` | SSE streaming in progress                    |
 | `success`   | Search complete, typing done                 |
 | `error`     | Search failed                                |
 
@@ -338,23 +343,18 @@ All variants include:
 | `SEARCH_ERROR`       | → error                   |
 | `TYPING_COMPLETE`    | → success                 |
 | `SKIP_TYPING`        | → success (immediate)     |
-| `STREAMING_START`    | → streaming               |
-| `STREAMING_UPDATE`   | streaming (update text)   |
-| `STREAMING_COMPLETE` | → success                 |
 | `RESET`              | → idle                    |
 
 ---
 
-## 6. Identified Issues
+## 6. Current Constraints
 
-| #   | Issue                                                   | Severity | File:Line                                                                       | Notes                          |
-| --- | ------------------------------------------------------- | -------- | ------------------------------------------------------------------------------- | ------------------------------ |
-| 1   | No `withAuth()` on search API routes                    | Medium   | `search-kb/route.ts`, `search-kb-stream/route.ts`, `article-embedding/route.ts` | Relies on `getActiveSession()` |
-| 2   | `console.error` used instead of structured logging      | Resolved | `search-kb/route.ts`, `vectorEmbeddings/index.ts`                               | Image query errors use `writeLogEntry` and degrade gracefully |
-| 3   | Query embedding cache had no TTL                        | Resolved | `queryEmbeddings/index.ts`                                                      | 30-day `expiresAt`, TTL override, stale-read cleanup, and fixed cleanup-failure diagnostics are implemented |
-| 4   | No conversation length limit                            | Low      | `useChatHandlers.ts`                                                            | Messages array grows unbounded |
-| 5   | `updateMessageFeedback` is read-then-write (not atomic) | Low      | `chatSessions/index.ts:192`                                                     | Concurrent updates could drift |
-| 6   | Streaming mode untested in production                   | Medium   | Feature-flagged OFF                                                             | Should test before enabling    |
+| Constraint | Current control | Release implication |
+|---|---|---|
+| Hybrid evidence is not yet rollout-proven | Default-off feature flag plus focused retrieval contracts | Keep disabled until representative Answer Tests pass and both required indexes are deployed and read back |
+| Post-save entity extraction has no durable retry lease | Best-effort browser trigger; article save remains authoritative | Failed extraction must remain visible for manual retry or later queue design |
+| Exact/entity evidence can increase retrieval recall but also introduce weak context | Exact literal admission, resolved entities, source scope, bounded fusion, and reference enforcement | Block rollout on unsupported-claim, citation, freshness, or abstention regression |
+| Provider and Firestore pricing can change | Operation-shape documentation and runtime accounting | Recalculate from measured usage before packaging claims |
 | 7   | Commented-out vector search code                        | Trivial  | `search-kb/route.ts:252-266`                                                    | Dead code                      |
 
 ---
@@ -390,3 +390,22 @@ All variants include:
 | Session persist                  | saveChatSession / updateChatSession → Firestore chatSessions                                                                   |    ✅    |
 | Cache hit                        | search-kb → findCachedSearchByCacheKey → return cached response                                                                |    ✅    |
 | Embedding cache                  | search-kb → getCachedEmbedding → return cached vector                                                                          |    ✅    |
+
+---
+
+## 8. Bounded Hybrid Evidence Retrieval
+
+`src/lib/answerlattice/hybridEvidenceRetrieval.ts` owns the pure technical-literal extraction, exact entity-evidence qualification, and reciprocal-rank fusion helpers. `src/lib/search/searchCore.ts` remains the single runtime pipeline.
+
+Runtime contract:
+
+1. Canonical answers and approved FAQs keep priority.
+2. Vector search keeps its existing 12-document limit and similarity thresholds.
+3. The entity lane runs only when `ENABLE_ANSWERLATTICE_HYBRID_EVIDENCE_RETRIEVAL` is enabled, the effective query contains at least one bounded technical literal, and canonical retrieval produced at least one normalized resolved entity ID.
+4. The additional Firestore query is scoped to `pId = AL`, exact `tId`, exact `sId`, `status = published`, `active = true`, and `entityIds array-contains-any` over at most 10 resolved IDs. It reads at most 12 articles.
+5. An entity-query result is admitted only when its title, tags, or extracted TipTap body contains an exact technical literal from the query.
+6. Similarity-qualified vector ranks and exact/entity ranks are fused deterministically, deduplicated by article ID, and capped before the existing six-document prompt boundary.
+7. Exact-only references do not invent a cosine similarity score. Existing vector references retain their real cosine score.
+8. Query text and article bodies are not added to logs. Metrics record only lane eligibility, candidate/match counts, and duration.
+
+The feature is default off. Rollout requires the composite index in both maintained manifests, remote deployment/readback, and representative Answer Tests covering exact error codes/API paths plus ordinary-language negative controls. A failed entity query degrades to the existing vector path.

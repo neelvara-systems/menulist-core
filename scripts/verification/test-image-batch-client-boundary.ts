@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { BATCH_IMAGE_GENERATION_JOB_STATUS } from '@constant/AI';
 import {
     isAllowedImageBatchOwnerTransition,
+    isImageBatchOwnerOutcomeAlreadyCommitted,
     isImageBatchOwnerVisibleStatus,
     mergeImageBatchSelectionState,
     normalizeImageBatchGenerationConfig,
@@ -101,6 +102,48 @@ assert.equal(
     ),
     false,
     'A queued job cannot be resolved as finished before worker processing completes.',
+);
+const discardedJob = normalizeImageBatchJobForClient({
+    ...validJob(),
+    selectedImagesPersisted: false,
+    status: BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+    statusHistory: [{
+        createdOn: '2024-07-05T00:00:00.000Z',
+        status: BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+    }],
+}, JOB_ID);
+assert.ok(discardedJob);
+assert.equal(
+    discardedJob.selectedImagesPersisted,
+    false,
+    'An explicit false terminal selection outcome must survive client normalization.',
+);
+assert.equal(
+    isImageBatchOwnerOutcomeAlreadyCommitted(
+        discardedJob,
+        BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+        false,
+    ),
+    true,
+    'A retry of the exact committed owner outcome should converge without another write.',
+);
+assert.equal(
+    isImageBatchOwnerOutcomeAlreadyCommitted(
+        discardedJob,
+        BATCH_IMAGE_GENERATION_JOB_STATUS.DISCARDED,
+        true,
+    ),
+    false,
+    'A terminal retry with a different selection outcome must not be accepted as committed.',
+);
+assert.equal(
+    isImageBatchOwnerOutcomeAlreadyCommitted(
+        discardedJob,
+        BATCH_IMAGE_GENERATION_JOB_STATUS.FINISHED,
+        false,
+    ),
+    false,
+    'A different terminal status must still pass through normal transition rejection.',
 );
 assert.deepEqual(normalized.itemsList[0].images[0], {
     name: 'one.webp',

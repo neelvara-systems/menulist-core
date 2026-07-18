@@ -50,8 +50,11 @@ contains(
     'buildStarterActivationSummary',
     'systemRecordedCount',
     'ownerConfirmedCount',
+    'normalizeStarterActivationTimestamp',
+    'applyStarterActivationSignalToStoreDetails',
+    'applyStarterPresenceUpdateToStoreDetails',
   ],
-  'Starter activation has a shared two-surface summary and evidence model',
+  'Starter activation has a validated shared summary and acknowledgement projection model',
 );
 
 contains(
@@ -114,12 +117,37 @@ contains(
 contains(
   'src/database/stores/index.tsx',
   [
+    'assertStarterActivationSignalUpdateSucceeded',
     'recordStarterActivationSignal',
     'updateMenuPresence',
     'starterActivationSignals.actions',
     'menuPresence.${surface}',
+    'shouldRecordStarterActivationSignal(store as StoreDataType)',
+    'STARTER_ACTIVATION_PRESENCE_SIGNAL_BY_SURFACE[surface]',
+    'deleteField()',
+    'recordedAt: now',
   ],
-  'Activation truth still uses existing store-local starter and presence fields',
+  'Activation truth uses acknowledged authoritative store-local starter and presence fields',
+);
+
+contains(
+  'src/components/mobile/screens/MobileShareScreen.tsx',
+  [
+    'assertStarterActivationSignalUpdateSucceeded',
+    'applyStarterActivationSignalToStoreDetails',
+    'setStoreDetails',
+  ],
+  'Mobile sharing refreshes acknowledged activation truth without another read',
+);
+
+contains(
+  'src/components/templates/main-app/useMenuList/index.tsx',
+  [
+    'assertStarterActivationSignalUpdateSucceeded',
+    'applyStarterActivationSignalToStoreDetails',
+    'setStoreDetails',
+  ],
+  'Desktop sharing refreshes acknowledged activation truth without another read',
 );
 
 notContains(
@@ -152,6 +180,26 @@ contains(
     'SignalDesk remains observer-only',
   ],
   'Activation Concierge docs record the implemented existing-route decision',
+);
+
+for (const docPath of [
+  '__docs__/menulist-activation-concierge/README.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_spec.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_impl.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_firebase.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_mobile-support.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_helpdoc.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_marketing.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_website.md',
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_test-cases.md',
+]) {
+  contains(docPath, ['Local source complete'], `${docPath} local source status`);
+}
+
+notContains(
+  '__docs__/menulist-activation-concierge/menulist-activation-concierge_marketing.md',
+  ['starter activation tracks whether the link is actually used on customer surfaces'],
+  'Activation Concierge marketing avoids unsupported customer-use proof',
 );
 
 const failed = checks.filter((check) => !check.passed);

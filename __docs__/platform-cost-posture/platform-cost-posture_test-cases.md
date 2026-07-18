@@ -15,8 +15,15 @@
 - SAFE_MODE active changes posture to action required unless setup-required billing export blocks final accuracy.
 - Cost/usage alerts appear in recent alerts when present.
 - Extraction operations with `realCostPaise` are summed.
-- Extraction operations without `realCostPaise` fall back to `totalCharge`.
+- Extraction operations without `realCostPaise` contribute zero provider cost; `totalCharge` remains an owner-charge fallback only.
 - Business Health answer events sum provider calls, internal cost, owner charge, and observed Firestore reads.
+- Missing, malformed, stale, and future timestamps do not enter a selected-period total.
+- Negative, non-finite, coercible-string, unsafe, and overflow-producing metrics do not corrupt totals.
+- An explicit extraction `providerCallCount` is used when present; otherwise one operation row is the documented proxy.
+- A response whose `periodDays` differs from the request is rejected.
+- Malformed SAFE_MODE or row timestamps, reversed period boundaries, negative totals, and fractional counters are rejected by the browser DAL.
+- Changing lookback while a request is in flight aborts the older request; an older response cannot overwrite the current selection.
+- Failed current refresh clears stale posture data.
 
 ## UI
 
@@ -37,3 +44,4 @@
 - No writes occur.
 - No collection group scan across `menulistAiOperations/{tId}/{sId}` occurs.
 - No scheduler is created.
+- Reaching a source limit warns that totals can be partial without issuing a probe read.

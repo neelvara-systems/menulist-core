@@ -1,7 +1,7 @@
 # WhatsApp Action Link Check - Implementation Plan
 
 **Status:** Implemented - V0 public browser-local checker
-**Last Updated:** July 5, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Developers and future maintainers
 
 ---
@@ -108,6 +108,8 @@ Every `WhatsAppActionLinkItem` includes `evidenceText: string`.
 | Hours expectation | owner selection or message hints | Present when the customer has a reply/timing expectation |
 | Fallback action | owner selection | Present when a fallback call/booking/public link is indicated |
 | Message delivery | boundary row | Always `not_checked` in V0 |
+
+Number parsing uses `phoneValidation.ts` and rejects arbitrary non-format characters rather than stripping them into a different number. Existing WhatsApp links are recognized only for strict HTTPS `wa.me/{digits}`, strict `/send?phone=` on the approved WhatsApp web hosts, or `whatsapp://send?phone=`. The generated preview is always a local `https://wa.me/{digits}` value and is produced only after the phone shape passes.
 
 The code must never claim the WhatsApp account works or that a message was delivered.
 

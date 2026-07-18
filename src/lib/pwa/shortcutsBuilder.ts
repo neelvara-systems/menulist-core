@@ -6,7 +6,7 @@
  * shortcutSourceDetector can attribute the launch in analytics.
  *
  * Day-one shortcuts:
- *   - View Menu   (always present)
+ *   - View Menu   (only when the public `/menu` entry resolves)
  *   - Call        (only if store has a phone)
  *   - Directions  (only if store has a mapsUrl or address with coords)
  *   - WhatsApp    (only if store has a WhatsApp number)
@@ -16,8 +16,8 @@
  */
 
 export interface ShortcutStoreInfo {
-  /** Root path customers land on for the menu — defaults to '/'. */
-  menuPath?: string;
+  /** Resolvable public menu path. Null/empty omits the View Menu shortcut. */
+  menuPath?: string | null;
   /** E.164 or national phone; if set, adds the Call shortcut. */
   phone?: string | null;
   /** Pre-built Google Maps URL; if set, adds the Directions shortcut. */
@@ -49,13 +49,15 @@ function withEntrySource(url: string, entrySource: string): string {
 export function buildShortcuts(info: ShortcutStoreInfo): ManifestShortcut[] {
   const shortcuts: ManifestShortcut[] = [];
 
-  const menuPath = info.menuPath && info.menuPath.length > 0 ? info.menuPath : '/';
-  shortcuts.push({
-    name: 'View Menu',
-    short_name: 'Menu',
-    description: 'Open the menu',
-    url: withEntrySource(menuPath, 'menu'),
-  });
+  const menuPath = info.menuPath?.trim();
+  if (menuPath) {
+    shortcuts.push({
+      name: 'View Menu',
+      short_name: 'Menu',
+      description: 'Open the menu',
+      url: withEntrySource(menuPath, 'menu'),
+    });
+  }
 
   if (info.phone) {
     shortcuts.push({

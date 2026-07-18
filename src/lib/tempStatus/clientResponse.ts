@@ -12,8 +12,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
     Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 );
 
-const isTempStatusSuccessResponse = (value: unknown): value is { success: true } => (
-    isRecord(value) && value.success === true
+export type TempStatusSuccessResponse = { effectsPending: boolean; success: true };
+
+const isTempStatusSuccessResponse = (value: unknown): value is TempStatusSuccessResponse => (
+    isRecord(value)
+    && value.success === true
+    && (value.effectsPending === undefined || typeof value.effectsPending === 'boolean')
 );
 
 const getTempStatusResponseContext = (
@@ -69,7 +73,7 @@ export const readTempStatusResponse = async (
     response: Response,
     action: TempStatusAction,
     context: TempStatusResponseContext = {},
-): Promise<{ success: true }> => {
+): Promise<TempStatusSuccessResponse> => {
     let payload: unknown = null;
     const responseContext = getTempStatusResponseContext(response, action, context);
 
@@ -100,5 +104,8 @@ export const readTempStatusResponse = async (
         throw error;
     }
 
-    return payload;
+    return {
+        effectsPending: payload.effectsPending === true,
+        success: true,
+    };
 };

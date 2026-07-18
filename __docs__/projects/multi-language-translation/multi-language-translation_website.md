@@ -1,6 +1,7 @@
 # Multi-Language Translation — Website Content
 
 **Status:** Source-backed website draft; not current publication or launch certification
+**Last Updated:** July 15, 2026
 
 ## Current Public Website Placement
 
@@ -14,7 +15,7 @@ Do not publish one-click, instant, universal-language, full-menu, quality, custo
 - **Headline:** Customer Languages From The Approved Menu
 - **Subheadline:** Prepare customer-language menu drafts from the approved source, review the translated fields, and publish only the approved output.
 - **CTA Text:** See Supported Languages
-- **CTA Link:** /features/multi-language
+- **CTA Link:** /features/menu-content-prep
 
 ## Problem Statement
 Your restaurant may serve customers who speak different languages. A single-language menu can make the customer menu harder to read for some visitors.

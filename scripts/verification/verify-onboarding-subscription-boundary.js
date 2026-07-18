@@ -43,7 +43,7 @@ for (const token of [
   'await compensateOnboardingSubscriptionPersistenceFailure({',
   'subscription: { id: razorpaySubscription.id }',
 ]) requireText(route, token, 'onboarding route');
-for (const token of ['findOnboardingProviderSubscriptionForAttempt', 'isOnboardingProviderSubscription', 'resolveOnboardingPlanPrice']) {
+for (const token of ['findOnboardingProviderSubscriptionForAttempt', 'isOnboardingProviderSubscription', 'isMatchingPersistedOnboardingSubscription', 'resolveOnboardingPlanPrice']) {
   requireText(subscriptionBoundary, token, 'onboarding subscription boundary');
 }
 
@@ -52,6 +52,7 @@ const cancellation = route.indexOf('await razorpayClient.subscriptions.cancel(pa
 const compensationCall = route.indexOf('await compensateOnboardingSubscriptionPersistenceFailure({');
 assert.ok(cancellation >= 0 && persistenceWrite >= 0 && compensationCall > persistenceWrite, 'persistence failure must trigger provider/local compensation');
 requireText(paymentHandler, 'const subscriptionId = subscription.id;', 'bounded client response consumer');
+requireText(route, 'isMatchingPersistedOnboardingSubscription({', 'exact ambiguous local persistence recovery');
 forbidText(route, 'subscription: razorpaySubscription,', 'raw provider response');
 forbidText(route, 'let razorpaySubscription: any;', 'provider response type');
 

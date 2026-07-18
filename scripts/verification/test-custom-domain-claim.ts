@@ -4,6 +4,7 @@ import * as firebaseAdminSdk from 'firebase-admin';
 import {
     getCustomDomainClaimDocumentId,
     isCustomDomainUnavailableError,
+    isReservedCustomDomainClaimCandidate,
     normalizeCustomDomainClaimCandidate,
     readCustomDomainReservationInTransaction,
     writeCurrentCustomDomainClaim,
@@ -29,6 +30,12 @@ async function run(): Promise<void> {
         normalizeCustomDomainClaimCandidate(`${'a'.repeat(64)}.example.com`) === null,
         'DNS labels longer than 63 characters must fail before provider work',
     );
+    assert(isReservedCustomDomainClaimCandidate('menulist.ai'), 'production MenuList root must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('owner.menulist.ai'), 'MenuList tenant/service namespace must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('answerlattice.menulist.online'), 'preview product host must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('support.answerlattice.com'), 'product descendants must be reserved');
+    assert(isReservedCustomDomainClaimCandidate('surfaceos.app'), 'declared future product roots must be reserved');
+    assert(!isReservedCustomDomainClaimCandidate('owner.example.com'), 'unrelated owner domains must remain available');
 
     const app = firebaseAdminSdk.apps.length
         ? firebaseAdminSdk.app()

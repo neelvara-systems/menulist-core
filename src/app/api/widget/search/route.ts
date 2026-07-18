@@ -421,7 +421,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Add procedure for guided workflows
-        if (result.procedure && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS) {
+        if (result.canonical && result.procedure && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_GUIDED_WORKFLOWS) {
             response.procedure = result.procedure;
         }
 

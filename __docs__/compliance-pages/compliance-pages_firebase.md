@@ -1,7 +1,7 @@
 # Compliance Pages — Firebase Cost Tracking
 
-**Version:** 1.3
-**Date:** July 10, 2026
+**Version:** 1.4
+**Date:** July 16, 2026
 **Local Source Gate:** `npm run verify:compliance-pages-boundary`
 
 > **Launch boundary:** Not current launch certification or deploy approval. This document is source-gated Compliance Pages Firestore-rule, read/write, and cost evidence only. Current release approval still requires the active [production-readiness audit](../audits/menulist-production-readiness-audit.md), [External Certification Runbook](../production-readiness/external-certification-runbook.md), `npm run verify:production-readiness-local`, `npm run verify:compliance-pages-boundary`, browser custom-domain smoke for `/privacy`, `/terms`, and `/refund`, authenticated desktop/mobile owner save/reset QA, owner/legal review of final generated or custom policy text, DNS/custom-domain verification, applicable target Firebase/Vercel deploy evidence, and production-host smoke.
@@ -23,11 +23,13 @@
 | Operation | Reads | Writes | Trigger |
 |-----------|-------|--------|---------|
 | Resolve store (subdomain/custom domain) | 0 | 0 | Uses shared cached public store lookup |
-| Read compliancePages doc | 1 | 0 | direct compliancePages doc read in renderer |
+| Read compliancePages doc | 0 or 1 | 0 | direct compliancePages doc read only on tagged cache fill |
 | Generate from template (if system) | 0 | 0 | Pure function — no Firestore |
 | **Total per view** | **1** | **0** | |
 
-**With cache:** 1 read per 60 seconds per store (not per visitor).
+**Current cache contract:** the direct compliancePages doc read is behind a tagged 60-second cache keyed by store. A successful override/reset invalidates `compliance-store-{sId}`; an invalidation failure returns `refreshPending: true` and remains bounded by the 60-second TTL.
+
+July 16 end-to-end hardening adds no new valid owner read/write and reduces repeated public reads. The owner preview store read now fails closed when canonical tenant/store identity aliases do not match the authenticated scope. Template dates are deterministic and the refund baseline removes unsupported customer refund timelines. These changes add no Firebase rule, index, Storage operation, Cloud Function, collection, or schema field.
 
 ### Custom Override (Rare — owner action)
 
@@ -71,7 +73,7 @@ July 1 mutation acknowledgement shape hardening is Firebase-cost neutral. `POST 
 
 July 2 sanitizer/source-gate hardening is Firebase-cost neutral. The compliance sanitizer now removes script/style blocks before generic tag stripping, and `npm run verify:compliance-pages-boundary` checks sanitizer behavior, API admission, public route intercepts, owner editor acknowledgement guards, Firestore rule shape, and docs parity locally. This changes no Firestore reads/writes/deletes, Storage operations, Cloud Functions, cache invalidations, rules, indexes, schema fields, provider calls, owner settings, or public route shape.
 
-July 5 public override-read diagnostics are Firebase-cost neutral. Public `/privacy`, `/terms`, and `/refund` pages still perform the existing direct `compliancePages/{sId}` doc read for owner overrides and still fall back to generated policy text if the override read fails. Failed override reads now log bounded `public_compliance_override_read_failed` diagnostics only. This adds no Firestore reads/writes/deletes beyond the existing read, no analytics write, no Storage operation, no Cloud Function, no API route, no cache invalidation, no rule, no index, no schema field, no provider call, no owner setting, and no deploy requirement.
+July 5 public override-read diagnostics remain active. Public `/privacy`, `/terms`, and `/refund` pages fall back to generated policy text if the current tagged cache fill fails, and log bounded `public_compliance_override_read_failed` diagnostics only.
 
 July 6 public override document-ID boundary is Firebase-cost neutral for valid requests. Public `/privacy`, `/terms`, and `/refund` pages normalize the store-scoped `compliancePages/{sId}` override document ID before the Admin SDK read. Malformed, reserved, empty, whitespace-mutated, path-shaped, zero, negative, unsafe, or nonnumeric store scope skips the override read, logs bounded `public_compliance_override_read_failed` diagnostics with fixed invalid-scope source metadata, and keeps generated policy text. This adds no Firestore reads/writes/deletes for valid public compliance pages, no analytics write, no Storage operation, no Cloud Function, no API route, no cache invalidation, no rule, no index, no schema field, no provider call, no owner setting, and no deploy requirement.
 
@@ -85,19 +87,19 @@ July 5 owner store-lookup diagnostics are Firebase-cost neutral beyond the exist
 
 | Scenario | Reads | Writes | Cost |
 |----------|-------|--------|------|
-| Page views (avg 100/month, cached) | ~50 | 0 | ~₹0.003 |
+| Page views (avg 100/month) | 1–100 cache fills | 0 | Traffic spacing determines fills; never more than one override read per request |
 | Owner edits (1-2/month) | 2 | 2 | ~₹0.0002 |
-| **Total** | **~52** | **~2** | **~₹0.003** |
+| **Total** | **cache-pattern dependent + 2 owner reads** | **~2** | Use measured traffic/cache-hit data for billing forecasts |
 
 ### At Scale
 
 | Scale | Monthly Reads | Monthly Writes | Monthly Cost |
 |-------|--------------|----------------|--------------|
-| 100 stores | 5,200 | 200 | ₹0.30 |
-| 1,000 stores | 52,000 | 2,000 | ₹3.00 |
-| 10,000 stores | 520,000 | 20,000 | ₹30.00 |
+| 100 stores | 100–10,000 public override reads for the example traffic | 200 | Measure actual cache-hit distribution |
+| 1,000 stores | 1,000–100,000 public override reads for the example traffic | 2,000 | Measure actual cache-hit distribution |
+| 10,000 stores | 10,000–1,000,000 public override reads for the example traffic | 20,000 | Measure actual cache-hit distribution |
 
-**Verdict:** Negligible cost. Template generation is pure function (zero reads). Caching keeps page views extremely cheap. Rejected oversized or rate-limited owner mutations do not reach compliance writes.
+**Verdict:** Template generation is free and tagged caching bounds repeat reads, but exact cost depends on traffic spacing and cache hits. Do not present a single rupee estimate as guaranteed. Rejected oversized or rate-limited owner mutations do not reach compliance writes.
 
 ---
 

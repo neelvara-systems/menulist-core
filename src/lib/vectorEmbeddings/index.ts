@@ -9,7 +9,6 @@ import {
     type AnswerlatticeEmbeddingPurpose,
     type AnswerlatticeEmbeddingVersion,
     buildAnswerlatticeEmbeddingRequest,
-    getAnswerlatticeEmbeddingConfig,
 } from '@data/shared/answerlatticeEmbedding';
 import { answerlatticeGenAIClient } from '@lib/answerlattice/genAiClient';
 import { AnswerlatticeVector as Vector } from '@lib/firebase/answerlatticeFirebaseAdmin';
@@ -21,12 +20,9 @@ export const EMBEDDING_CACHE_VERSION = ANSWERLATTICE_EMBEDDING_CACHE_VERSION;
 const CHAT_MODEL = ANSWERLATTICE_VISION_CONTEXT_MODEL;
 
 type VectorInstance = InstanceType<typeof Vector>;
-type EmbeddingTaskType = 'RETRIEVAL_QUERY' | 'RETRIEVAL_DOCUMENT';
 type EmbeddingCallOptions = {
     purpose?: AnswerlatticeEmbeddingPurpose;
-    taskType?: EmbeddingTaskType;
     title?: string;
-    version?: AnswerlatticeEmbeddingVersion;
 };
 export type GeminiTokenCountSource = 'provider' | 'estimated' | 'none';
 export type GeminiUsageMetadata = {
@@ -161,16 +157,12 @@ export async function callGeminiEmbeddingWithMetadata(
     vectorField: string;
     version: AnswerlatticeEmbeddingVersion;
 }> {
-    const purpose: AnswerlatticeEmbeddingPurpose = options.purpose
-        || (options.taskType === 'RETRIEVAL_DOCUMENT' ? 'document' : 'query');
-    const embeddingConfig = getAnswerlatticeEmbeddingConfig(
-        options.version || ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG.version,
-    );
+    const purpose: AnswerlatticeEmbeddingPurpose = options.purpose || 'query';
+    const embeddingConfig = ANSWERLATTICE_ACTIVE_EMBEDDING_CONFIG;
     const request = buildAnswerlatticeEmbeddingRequest({
         content: text,
         purpose,
         title: options.title,
-        version: embeddingConfig.version,
     });
     const response = await answerlatticeGenAIClient.models.embedContent(request);
     const embedding = response.embeddings[0];

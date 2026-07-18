@@ -17,8 +17,10 @@ Founder Support Controls prove that approved support remains correct as a SaaS p
 
 ## Allowed Claims After Runtime Verification
 
-- Reusable answer tests with source and version evidence.
+- Reusable answer tests with source, version, required-claim, and supporting-reference evidence.
+- Advisory ready, review, or blocked proof status for priority release questions.
 - Release-scoped checks and owner-reviewed rollback proposals.
+- Read-only current-versus-proposed checks for explicitly linked priority questions before approval.
 - Contextual, expiring known-issue notices.
 - Optional signed visitor context.
 - Support-safe evidence links.
@@ -28,6 +30,7 @@ Founder Support Controls prove that approved support remains correct as a SaaS p
 
 - Automatic quality guarantee.
 - Automatic rollback or incident resolution.
+- Provider-backed simulation of unapproved answer content.
 - Full status page or subscriber notification system.
 - Session replay or product analytics.
 - Private account-data retrieval.
@@ -35,4 +38,4 @@ Founder Support Controls prove that approved support remains correct as a SaaS p
 
 ## Sales One-Liner
 
-Test support before users rely on it, and keep the right message visible when the product changes.
+Prove priority support answers before users rely on them, then keep the right message visible when the product changes.

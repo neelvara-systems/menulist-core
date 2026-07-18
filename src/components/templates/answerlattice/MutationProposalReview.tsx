@@ -13,13 +13,19 @@
 import { FEATURE_FLAGS } from '@config/features';
 import { useMutationProposals } from '@hook/answerlattice/useMutationProposals';
 import { useClientAuthSession } from '@hook/useClientAuthSession';
+import type { AnswerlatticeGovernanceEditedContent } from '@lib/answerlattice/governanceContracts';
+import type {
+    AnswerlatticeProposalImpactComparison,
+    AnswerlatticeProposalImpactResponse,
+} from '@lib/answerlattice/proposalImpactContracts';
 import { AnswerlatticeMutationProposal } from '@type/answerlattice';
 import { Alert, Badge, Button, Card, Empty, Flex, Form, Grid, Input, List, Modal, Popconfirm, Space, Tag, Typography, theme } from 'antd';
 import { useCallback, useState } from 'react';
-import { LuCheck, LuFileCheck, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
+import { LuCheck, LuFileCheck, LuGitCompare, LuRefreshCw, LuSparkles, LuX } from 'react-icons/lu';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
+const ACTION_BUTTON_STYLE = { minHeight: 44 };
 
 const MUTATION_TYPE_COLORS: Record<string, string> = {
     content_refinement: 'blue',
@@ -40,7 +46,9 @@ function ProposalItem({
     onApprove,
     onReject,
     onOpenDraft,
+    onPreviewImpact,
     onRegenerateDraft,
+    previewing,
     regenerating,
     isMobile,
 }: {
@@ -48,7 +56,9 @@ function ProposalItem({
     onApprove: (id: string) => void;
     onReject: (id: string) => void;
     onOpenDraft: (proposal: AnswerlatticeMutationProposal) => void;
+    onPreviewImpact: (proposal: AnswerlatticeMutationProposal) => void;
     onRegenerateDraft: (proposal: AnswerlatticeMutationProposal) => void;
+    previewing: boolean;
     regenerating: boolean;
     isMobile?: boolean;
 }) {
@@ -69,7 +79,18 @@ function ProposalItem({
     const canApprove = hasGeneratedDraft || appliesAnswerChange;
     const actions = hasGeneratedDraft
         ? [
-            <Button key="publish" type="primary" icon={<LuFileCheck />} onClick={() => onOpenDraft(proposal)}>
+            ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS ? [
+                <Button
+                    key="impact"
+                    icon={<LuGitCompare />}
+                    onClick={() => onPreviewImpact(proposal)}
+                    loading={previewing}
+                    style={ACTION_BUTTON_STYLE}
+                >
+                    Check impact
+                </Button>,
+            ] : []),
+            <Button key="publish" type="primary" icon={<LuFileCheck />} onClick={() => onOpenDraft(proposal)} style={ACTION_BUTTON_STYLE}>
                 Publish answer
             </Button>,
             <Popconfirm
@@ -79,7 +100,7 @@ function ProposalItem({
                 onConfirm={() => onRegenerateDraft(proposal)}
                 okText="Regenerate"
             >
-                <Button type="text" icon={<LuSparkles />} loading={regenerating}>
+                <Button type="text" icon={<LuSparkles />} loading={regenerating} style={ACTION_BUTTON_STYLE}>
                     Regenerate
                 </Button>
             </Popconfirm>,
@@ -91,7 +112,7 @@ function ProposalItem({
                 okText="Reject"
                 okButtonProps={{ danger: true }}
             >
-                <Button type="text" icon={<LuX />} danger>
+                <Button type="text" icon={<LuX />} danger style={ACTION_BUTTON_STYLE}>
                     Reject
                 </Button>
             </Popconfirm>,
@@ -105,10 +126,21 @@ function ProposalItem({
                     onConfirm={() => onRegenerateDraft(proposal)}
                     okText="Generate"
                 >
-                    <Button type="primary" ghost icon={<LuSparkles />} loading={regenerating}>
+                    <Button type="primary" ghost icon={<LuSparkles />} loading={regenerating} style={ACTION_BUTTON_STYLE}>
                         Generate draft
                     </Button>
                 </Popconfirm>,
+            ] : []),
+            ...(canApprove && FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS ? [
+                <Button
+                    key="impact"
+                    icon={<LuGitCompare />}
+                    onClick={() => onPreviewImpact(proposal)}
+                    loading={previewing}
+                    style={ACTION_BUTTON_STYLE}
+                >
+                    Check impact
+                </Button>,
             ] : []),
             ...(canApprove ? [<Popconfirm
                 key="approve"
@@ -120,7 +152,7 @@ function ProposalItem({
                 okText="Approve"
                 okButtonProps={{ style: { backgroundColor: token.colorSuccess } }}
             >
-                <Button type="text" icon={<LuCheck />} style={{ color: token.colorSuccess }}>
+                <Button type="text" icon={<LuCheck />} style={{ ...ACTION_BUTTON_STYLE, color: token.colorSuccess }}>
                     {appliesAnswerChange ? 'Approve and apply' : 'Approve'}
                 </Button>
             </Popconfirm>] : []),
@@ -132,7 +164,7 @@ function ProposalItem({
                 okText="Reject"
                 okButtonProps={{ danger: true }}
             >
-                <Button type="text" icon={<LuX />} danger>
+                <Button type="text" icon={<LuX />} danger style={ACTION_BUTTON_STYLE}>
                     Reject
                 </Button>
             </Popconfirm>,
@@ -234,12 +266,108 @@ function ProposalItem({
     );
 }
 
+const IMPACT_CLASSIFICATION_LABELS: Record<AnswerlatticeProposalImpactComparison['classification'], string> = {
+    regression: 'Regression',
+    improvement: 'Improvement',
+    changed: 'Changed',
+    unchanged: 'Unchanged',
+};
+
+const IMPACT_CLASSIFICATION_COLORS: Record<AnswerlatticeProposalImpactComparison['classification'], string> = {
+    regression: 'error',
+    improvement: 'success',
+    changed: 'warning',
+    unchanged: 'default',
+};
+
+function ImpactResultPanel({
+    comparison,
+    isMobile,
+}: {
+    comparison: AnswerlatticeProposalImpactComparison;
+    isMobile: boolean;
+}) {
+    const { token } = theme.useToken();
+    const renderOutcome = (
+        label: string,
+        result: AnswerlatticeProposalImpactComparison['current'],
+    ) => (
+        <div style={{
+            flex: 1,
+            minWidth: 0,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            borderRadius: token.borderRadius,
+            padding: 12,
+            background: token.colorFillQuaternary,
+        }}>
+            <Flex vertical gap={6}>
+                <Text strong>{label}</Text>
+                <Space size={[6, 6]} wrap>
+                    <Tag color={result.passed ? 'success' : 'error'}>
+                        {result.passed ? 'Pass' : 'Needs review'}
+                    </Tag>
+                    <Tag>{result.source.replace('_', ' ')}</Tag>
+                    {result.confidence && <Tag>{result.confidence} confidence</Tag>}
+                </Space>
+                <Text style={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>
+                    {result.answerPreview || 'No deterministic answer returned.'}
+                </Text>
+                {result.failures.length > 0 && (
+                    <Flex vertical gap={4}>
+                        {result.failures.map((failure, index) => (
+                            <Text key={`${comparison.caseId}-${label}-${index}`} type="danger" style={{ fontSize: 12 }}>
+                                {failure}
+                            </Text>
+                        ))}
+                    </Flex>
+                )}
+            </Flex>
+        </div>
+    );
+
+    return (
+        <div style={{
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+            paddingBlock: 16,
+        }}>
+            <Flex vertical gap={10}>
+                <Flex justify="space-between" align="flex-start" gap={8} wrap>
+                    <div style={{ minWidth: 0 }}>
+                        <Text strong>{comparison.title}</Text>
+                        <div>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                {comparison.riskLevel === 'critical' ? 'Critical test' : 'Standard test'}
+                            </Text>
+                        </div>
+                    </div>
+                    <Tag color={IMPACT_CLASSIFICATION_COLORS[comparison.classification]}>
+                        {IMPACT_CLASSIFICATION_LABELS[comparison.classification]}
+                    </Tag>
+                </Flex>
+                <Flex gap={10} vertical={isMobile}>
+                    {renderOutcome('Current', comparison.current)}
+                    {renderOutcome('Proposed', comparison.proposed)}
+                </Flex>
+            </Flex>
+        </div>
+    );
+}
+
 export default function MutationProposalReview() {
     const session = useClientAuthSession();
     const screens = Grid.useBreakpoint();
     const { token } = theme.useToken();
     const isMobile = screens.md !== true;
-    const { proposals, loading, approve, reject, approveDraft, regenerateDraft, refresh } = useMutationProposals(
+    const {
+        proposals,
+        loading,
+        approve,
+        reject,
+        approveDraft,
+        regenerateDraft,
+        previewImpact,
+        refresh,
+    } = useMutationProposals(
         session?.tId || 0,
         session?.sId || 0,
     );
@@ -247,6 +375,8 @@ export default function MutationProposalReview() {
     const [draftProposal, setDraftProposal] = useState<AnswerlatticeMutationProposal | null>(null);
     const [publishing, setPublishing] = useState(false);
     const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+    const [previewingId, setPreviewingId] = useState<string | null>(null);
+    const [impactResult, setImpactResult] = useState<AnswerlatticeProposalImpactResponse | null>(null);
 
     const openDraftModal = useCallback((proposal: AnswerlatticeMutationProposal) => {
         setDraftProposal(proposal);
@@ -266,7 +396,12 @@ export default function MutationProposalReview() {
 
     const publishDraft = useCallback(async () => {
         if (!draftProposal) return;
-        const values = await draftForm.validateFields();
+        let values: AnswerlatticeGovernanceEditedContent;
+        try {
+            values = await draftForm.validateFields();
+        } catch {
+            return;
+        }
         const approvedBy = String(session?.user?.email || session?.uId || 'answerlattice_owner');
 
         setPublishing(true);
@@ -286,6 +421,32 @@ export default function MutationProposalReview() {
             setRegeneratingId(null);
         }
     }, [regenerateDraft]);
+
+    const handlePreviewImpact = useCallback(async (
+        proposal: AnswerlatticeMutationProposal,
+        editedContent?: AnswerlatticeGovernanceEditedContent,
+    ) => {
+        setPreviewingId(proposal.id);
+        try {
+            const result = await previewImpact(proposal.id, editedContent);
+            setImpactResult(result);
+        } catch {
+            setImpactResult(null);
+        } finally {
+            setPreviewingId(null);
+        }
+    }, [previewImpact]);
+
+    const previewEditedDraft = useCallback(async () => {
+        if (!draftProposal) return;
+        let values: AnswerlatticeGovernanceEditedContent;
+        try {
+            values = await draftForm.validateFields();
+        } catch {
+            return;
+        }
+        await handlePreviewImpact(draftProposal, values);
+    }, [draftForm, draftProposal, handlePreviewImpact]);
 
     if (!FEATURE_FLAGS.ENABLE_ANSWERLATTICE_SIGNAL_MUTATION) {
         return (
@@ -327,7 +488,9 @@ export default function MutationProposalReview() {
                         onApprove={approve}
                         onReject={reject}
                         onOpenDraft={openDraftModal}
+                        onPreviewImpact={handlePreviewImpact}
                         onRegenerateDraft={handleRegenerateDraft}
+                        previewing={previewingId === proposal.id}
                         regenerating={regeneratingId === proposal.id}
                         isMobile={isMobile}
                     />
@@ -336,11 +499,34 @@ export default function MutationProposalReview() {
             <Modal
                 title="Publish Canonical Answer"
                 open={Boolean(draftProposal)}
-                okText="Publish answer"
-                confirmLoading={publishing}
-                onOk={publishDraft}
                 onCancel={closeDraftModal}
                 destroyOnClose
+                footer={[
+                    <Button key="cancel" onClick={closeDraftModal} style={ACTION_BUTTON_STYLE}>
+                        Cancel
+                    </Button>,
+                    ...(FEATURE_FLAGS.ENABLE_ANSWERLATTICE_ANSWER_TESTS ? [
+                        <Button
+                            key="impact"
+                            icon={<LuGitCompare />}
+                            onClick={previewEditedDraft}
+                            loading={Boolean(draftProposal && previewingId === draftProposal.id)}
+                            style={ACTION_BUTTON_STYLE}
+                        >
+                            Check impact
+                        </Button>,
+                    ] : []),
+                    <Button
+                        key="publish"
+                        type="primary"
+                        icon={<LuFileCheck />}
+                        onClick={publishDraft}
+                        loading={publishing}
+                        style={ACTION_BUTTON_STYLE}
+                    >
+                        Publish answer
+                    </Button>,
+                ]}
             >
                 <Form form={draftForm} layout="vertical">
                     <Form.Item
@@ -348,7 +534,7 @@ export default function MutationProposalReview() {
                         label="Title"
                         rules={[{ required: true, message: 'Title is required' }]}
                     >
-                        <Input maxLength={200} />
+                        <Input maxLength={180} />
                     </Form.Item>
                     <Form.Item
                         name="structuredSummary"
@@ -362,15 +548,94 @@ export default function MutationProposalReview() {
                         label="Detailed Explanation"
                         rules={[{ required: true, message: 'Explanation is required' }]}
                     >
-                        <TextArea rows={6} />
+                        <TextArea rows={6} maxLength={24_000} showCount />
                     </Form.Item>
                     <Form.Item name="edgeCases" label="Edge Cases">
-                        <TextArea rows={2} />
+                        <TextArea rows={2} maxLength={8_000} />
                     </Form.Item>
                     <Form.Item name="constraints" label="Constraints">
-                        <TextArea rows={2} />
+                        <TextArea rows={2} maxLength={8_000} />
                     </Form.Item>
                 </Form>
+            </Modal>
+            <Modal
+                title="Proposed Answer Impact"
+                open={Boolean(impactResult)}
+                onCancel={() => setImpactResult(null)}
+                width={isMobile ? 'calc(100vw - 24px)' : 920}
+                styles={{
+                    body: {
+                        maxHeight: isMobile ? '70dvh' : '72vh',
+                        overflowY: 'auto',
+                    },
+                }}
+                destroyOnClose
+                footer={[
+                    <Button key="close" onClick={() => setImpactResult(null)} style={ACTION_BUTTON_STYLE}>
+                        Close
+                    </Button>,
+                ]}
+            >
+                {impactResult && (
+                    <Flex vertical gap={16}>
+                        <Alert
+                            showIcon
+                            type={impactResult.proposedProofStatus === 'blocked'
+                                ? 'error'
+                                : impactResult.proposedProofStatus === 'review'
+                                    ? 'warning'
+                                    : impactResult.proposedProofStatus === 'ready'
+                                        ? 'success'
+                                        : 'warning'}
+                            message={impactResult.proposedProofStatus
+                                ? `Projected proof for checked tests: ${impactResult.proposedProofStatus}`
+                                : 'No linked proof is available'}
+                            description={impactResult.proposedProofStatus
+                                ? 'This is advisory evidence. Publishing still uses the normal governance approval checks.'
+                                : 'Add an active Answer Test linked to this answer or one of its product entities before relying on the change.'}
+                        />
+                        <div style={{
+                            border: `1px solid ${token.colorBorderSecondary}`,
+                            borderRadius: token.borderRadius,
+                            padding: 12,
+                        }}>
+                            <Flex vertical gap={6}>
+                                <Text strong>{impactResult.candidate.title}</Text>
+                                <Text>{impactResult.candidate.structuredSummary}</Text>
+                                <Space size={[6, 6]} wrap>
+                                    <Tag>{impactResult.candidate.status}</Tag>
+                                    <Tag>{impactResult.candidate.answerType}</Tag>
+                                    <Tag>{impactResult.evaluatedTestCount} checked</Tag>
+                                    <Tag color={impactResult.regressionCount > 0 ? 'error' : 'default'}>
+                                        {impactResult.regressionCount} regressions
+                                    </Tag>
+                                    <Tag color={impactResult.improvementCount > 0 ? 'success' : 'default'}>
+                                        {impactResult.improvementCount} improvements
+                                    </Tag>
+                                    <Tag color={impactResult.changedCount > 0 ? 'warning' : 'default'}>
+                                        {impactResult.changedCount} changed
+                                    </Tag>
+                                </Space>
+                            </Flex>
+                        </div>
+                        {impactResult.warnings.map((warning, index) => (
+                            <Alert key={`${impactResult.proposalId}-warning-${index}`} type="info" showIcon message={warning} />
+                        ))}
+                        {impactResult.comparisons.length > 0 ? (
+                            <div>
+                                {impactResult.comparisons.map(comparison => (
+                                    <ImpactResultPanel
+                                        key={comparison.caseId}
+                                        comparison={comparison}
+                                        isMobile={isMobile}
+                                    />
+                                ))}
+                            </div>
+                        ) : (
+                            <Empty description="No linked active Answer Tests to compare" />
+                        )}
+                    </Flex>
+                )}
             </Modal>
         </Card>
     );

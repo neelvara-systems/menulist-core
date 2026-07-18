@@ -1,12 +1,10 @@
-import uploadBlobToStorage from "@database/storage/uploadBlobToStorage";
-import { deleteFileByUrl } from "@database/storage/deleteFromStorage";
-import { logStorageHelperFailure } from "@database/storage/storageDiagnostics";
+import { createOrReuseBlobInStorage } from "@database/storage/uploadBlobToStorage";
 import { getMediaImageProfile, type MediaImageType, type MediaImageVariantId } from "@lib/media/imageProfiles";
-import { buildMediaStoragePath, getDataUrlBlob, getMediaDataFingerprint, getMediaFileExtension, isDataUrl } from "@lib/media/mediaStorage";
+import { buildMediaStoragePath, getDataUrlBlob, getMediaFileExtension, isDataUrl } from "@lib/media/mediaStorage";
 import {
     assertMediaUploadBlobCandidate,
-    cleanupUploadedMediaUrls,
     normalizeMediaUploadMimeType,
+    resolvePreparedMediaIdentity,
 } from "@lib/media/mediaUploadBoundary";
 import type { PreparedMediaImage, PreparedMediaVariant } from "@lib/media/prepareMediaImage";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
@@ -29,7 +27,7 @@ export interface UploadPreparedMediaImageData {
 
 export interface UploadedPreparedMediaImage {
     primaryUrl: string;
-    uploadedUrls: string[];
+    variantUrls: string[];
 }
 
 async function getBlobFingerprint(blob: Blob): Promise<string> {
@@ -102,16 +100,17 @@ export async function uploadPreparedMediaImageWithLedger({
         profile,
         variant: selectedVariantId,
     });
-    const blobFingerprint = useDataUrlBlob
-        ? getMediaDataFingerprint(dataUrl)
-        : await getBlobFingerprint(uploadBlob);
-    const uploadMediaId = prepared?.mediaId
-        || mediaId
-        || `${profile}_${blobFingerprint}`;
-    const checksum = String(prepared?.checksum || mediaChecksum || blobFingerprint).trim();
-    if (!/^[a-f0-9]{8,128}$/i.test(checksum)) {
-        throw new Error('prepared_media_checksum_invalid');
-    }
+    const blobFingerprint = await getBlobFingerprint(uploadBlob);
+    const identity = resolvePreparedMediaIdentity({
+        blobFingerprint,
+        mediaChecksum,
+        mediaId,
+        preparedChecksum: prepared?.checksum,
+        preparedMediaId: prepared?.mediaId,
+        profile,
+    });
+    const checksum = identity.checksum;
+    const uploadMediaId = identity.mediaId;
     const preparedVersion = prepared?.version ?? 1;
     if (!Number.isSafeInteger(preparedVersion) || preparedVersion < 1 || preparedVersion > 99) {
         throw new Error('prepared_media_version_invalid');
@@ -139,7 +138,7 @@ export async function uploadPreparedMediaImageWithLedger({
             variant: variantId,
         });
 
-        const url = await uploadBlobToStorage({
+        const result = await createOrReuseBlobInStorage({
             blob: variantBlob,
             cacheControl: STORAGE_CACHE_CONTROL.immutablePublic,
             contentType: normalizedContentType,
@@ -155,8 +154,8 @@ export async function uploadPreparedMediaImageWithLedger({
             },
             path,
         });
-        if (!url) throw new Error('Prepared media upload returned no URL');
-        return url;
+        if (!result.url) throw new Error('Prepared media upload returned no URL');
+        return result.url;
     };
 
     const preparedVariants: PreparedMediaVariant[] = [];
@@ -178,54 +177,27 @@ export async function uploadPreparedMediaImageWithLedger({
     }
 
     if (preparedVariants.length > 0) {
-        if (!preparedVariants.some((preparedVariant) => preparedVariant.id === selectedVariantId)) {
+        const selectedPreparedVariant = preparedVariants.find(
+            (preparedVariant) => preparedVariant.id === selectedVariantId,
+        );
+        if (!selectedPreparedVariant) {
             throw new Error('prepared_media_variant_missing');
         }
-        const uploadResults = await Promise.allSettled(preparedVariants.map(async (preparedVariant) => ({
-            id: preparedVariant.id,
-            url: await uploadVariant(
-                preparedVariant.id,
-                preparedVariant.blob,
-                preparedVariant.mimeType || preparedVariant.blob.type || uploadContentType,
-            ),
-        })));
-        const uploadedVariants = uploadResults.flatMap((result) => (
-            result.status === 'fulfilled' ? [result.value] : []
-        ));
-        const failedVariant = uploadResults.find((result) => result.status === 'rejected');
-        if (failedVariant?.status === 'rejected') {
-            const cleanup = await cleanupUploadedMediaUrls(
-                uploadedVariants.map(({ url }) => url),
-                deleteFileByUrl,
-            );
-            if (cleanup.failedCount > 0) {
-                logStorageHelperFailure(
-                    'prepared_media_partial_variant_cleanup_failed',
-                    new Error('prepared_media_partial_variant_cleanup_failed'),
-                    {
-                        attemptedCleanupCount: cleanup.attemptedCount,
-                        failedCleanupCount: cleanup.failedCount,
-                        profile,
-                        uploadedVariantCount: uploadedVariants.length,
-                    },
-                );
-            }
-            throw failedVariant.reason instanceof Error
-                ? failedVariant.reason
-                : new Error('Prepared media variant upload failed');
-        }
-
-        const primaryUrl = uploadedVariants.find((uploadedVariant) => uploadedVariant.id === selectedVariantId)?.url || '';
+        const primaryUrl = await uploadVariant(
+            selectedPreparedVariant.id,
+            selectedPreparedVariant.blob,
+            selectedPreparedVariant.mimeType || selectedPreparedVariant.blob.type || uploadContentType,
+        );
         if (!primaryUrl) throw new Error('Prepared media upload returned no URL');
         return {
             primaryUrl,
-            uploadedUrls: uploadedVariants.map(({ url }) => url),
+            variantUrls: [primaryUrl],
         };
     }
 
     const primaryUrl = await uploadVariant(selectedVariantId, uploadBlob, uploadContentType);
     if (!primaryUrl) throw new Error('Prepared media upload returned no URL');
-    return { primaryUrl, uploadedUrls: [primaryUrl] };
+    return { primaryUrl, variantUrls: [primaryUrl] };
 }
 
 export async function uploadPreparedMediaImage(

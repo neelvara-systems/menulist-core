@@ -86,7 +86,7 @@ Data Source:
 | `src/lib/obp/hoursStatus.ts`    | Open/closed status calculator |
 | `src/lib/obp/generateOBPUrl.ts` | URL generation helpers        |
 
-### Dashboard (5 files)
+### Dashboard (4 files)
 
 | File                                                           | Purpose                                                |
 | -------------------------------------------------------------- | ------------------------------------------------------ |
@@ -94,7 +94,10 @@ Data Source:
 | `src/components/.../businessSettings/tabs/OfficialPageTab.tsx` | publicPresence settings (photos, reviews, identity)    |
 | `src/database/stores/uploadOBPPhoto.ts`                        | OBP photo upload to Firebase Storage                   |
 | `src/components/.../OwnerDashboard/OBPMetricsCard.tsx`         | Dashboard card showing OBP analytics                   |
-| `src/components/.../OwnerDashboard/BehaviorNudgeCard.tsx`      | Link adoption nudge (dismissible)                      |
+
+Official-link guidance is embedded in the existing Dashboard and Share
+surfaces. There is deliberately no separate nudge card or browser dismissal
+state.
 
 ### Routing, Types, Analytics, Cloud Functions
 
@@ -116,11 +119,20 @@ Data Source:
 ## Feature Flag
 
 ```typescript
-ENABLE_OBP: false; // in src/config/features.ts
+ENABLE_OBP: true; // in src/config/features.ts
 ```
 
 When `true`: subdomain root shows OBP. Menu at `/menu` and slug paths.  
-When `false`: subdomain root shows digital menu (current behavior).
+When `false`: emergency rollback shows the digital menu at the subdomain root.
+
+## Owner mutation integrity boundary
+
+- Desktop and MobileShell save customer-facing address data to canonical `addressLine` and `postalCode`. Legacy `address` and `pincode` hydrate existing owner forms but are not written as new truth.
+- Latitude and longitude are admitted as one pair, with latitude in `-90..90` and longitude in `-180..180`. An empty pair clears saved coordinates; a partial, non-finite, or out-of-range pair is rejected before the store write. Valid zero coordinates remain valid.
+- Maps, review, reservation, and order links pass the same HTTPS/host boundary before owner save and again before public rendering. A successful save cannot silently produce a link the public page must hide.
+- Call and WhatsApp actions render only when the shared phone normalizer produces a non-empty destination. Malformed legacy values never produce an empty public `href`.
+- Cover and gallery uploads are retryable cleanup candidates until acknowledged store truth retains them. Reset, navigation, replacement, or publish cleanup deletes only unreferenced objects and keeps failed deletes queued for retry.
+- Tenant outlet-count and brand-selector queries are capped at `MAX_OUTLETS_PER_TENANT + 1`, matching the existing 30-outlet policy plus one overflow row.
 
 ---
 

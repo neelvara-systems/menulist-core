@@ -41,6 +41,7 @@ const commandContextSchema = z.object({
 
 export const AiMenuManagerCommandRequestSchema = z.object({
     sessionId: sessionIdSchema.optional(),
+    sessionDate: sessionDateSchema.optional(),
     storeId: z.union([z.string(), z.number()]).transform((value) => String(value)),
     projectId: projectIdSchema,
     inputType: z.enum(['text', 'voice_transcript', 'upload', 'suggested_action']),

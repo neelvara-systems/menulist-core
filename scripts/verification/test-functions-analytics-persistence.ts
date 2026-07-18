@@ -8,6 +8,7 @@ const {
     getRecentQualifyingHealthSignalWeeksForTest,
     groupHealthSignalDailyDocumentsForTest,
     normalizeHealthSignalDailyDocumentForTest,
+    processHealthSignalsForAllStores,
 } = require('../../functions/lib/functions/src/analytics/healthSignalsComputation.js');
 const {
     getTodayLiveStats,
@@ -127,6 +128,14 @@ async function verifyRealtimeCounters(): Promise<void> {
     assert.equal(normalizedStats.totalChats, 0, 'negative persisted counters must not reach consumers');
     assert.equal(normalizedStats.qnaChats, 0, 'string counters must not be coerced into analytics truth');
     assert.equal(normalizedStats.assistantChats, 4, 'valid persisted counters must survive normalization');
+}
+
+async function verifyDormantHealthSignalExecutionGuard(): Promise<void> {
+    await assert.rejects(
+        processHealthSignalsForAllStores(),
+        /HEALTH_SIGNALS_DORMANT_UNVALIDATED_COUNTERS/,
+        'the dormant helper must reject before any store scan or analytics read',
+    );
 }
 
 function verifyHealthSignalContracts(): void {
@@ -334,6 +343,7 @@ async function run(): Promise<void> {
     if (!process.env.FIRESTORE_EMULATOR_HOST) throw new Error('FIRESTORE_EMULATOR_HOST is required');
     await clearCollection('chatAnalytics');
     await clearCollection('messageLogs');
+    await verifyDormantHealthSignalExecutionGuard();
     verifyHealthSignalContracts();
     await verifyRealtimeCounters();
     await verifyStalenessClaims();

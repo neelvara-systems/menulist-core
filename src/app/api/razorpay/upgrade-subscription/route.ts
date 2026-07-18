@@ -15,6 +15,7 @@ import {
 } from '@lib/billing/razorpayDiagnostics';
 import { isAnswerlatticeBillingProduct, normalizeBillingProductId } from '@lib/billing/productBillingPlans';
 import { validateTransition } from '@lib/billing/subscriptionStateMachine';
+import { getRazorpayManagedSubscriptionId } from '@lib/billing/subscriptionProviderSync';
 import { logger } from "@lib/monitoring/logger";
 import { razorpayClient } from "@lib/razorpay/razorpay";
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
@@ -115,6 +116,23 @@ export const POST = withAuth(async (request, session) => {
         if (!newInternalSub || !newInternalSub.providerSubscriptionId) {
             return NextResponse.json({ error: "New subscription was not found." }, { status: 404 });
         }
+        const oldProviderSubscriptionId = getRazorpayManagedSubscriptionId(internalSub);
+        const newProviderSubscriptionId = getRazorpayManagedSubscriptionId(newInternalSub);
+        if (!oldProviderSubscriptionId || !newProviderSubscriptionId) {
+            return NextResponse.json(
+                { error: 'Prepaid subscriptions are managed by your reseller or support.' },
+                { status: 409 },
+            );
+        }
+        if (
+            newInternalSub.founderMonitorReplacementForSubscriptionId
+            && newInternalSub.founderMonitorReplacementForSubscriptionId !== oldSubscriptionId
+        ) {
+            return NextResponse.json(
+                { error: 'The replacement subscription does not match the current subscription.' },
+                { status: 409 },
+            );
+        }
 
         // 🔒 CRITICAL: Verify old subscription belongs to user's tenant/store
         if (Number(tenantId) != Number(internalSub.tenantId) || Number(storeId) != Number(internalSub.storeId)) {
@@ -178,22 +196,22 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Subscription cannot be upgraded in its current state." }, { status: 409 });
         }
 
-        const providerSubscriptionBeforeCancel = await razorpayClient.subscriptions.fetch(internalSub.providerSubscriptionId);
+        const providerSubscriptionBeforeCancel = await razorpayClient.subscriptions.fetch(oldProviderSubscriptionId);
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL',
             data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
         });
 
-        if (providerSubscriptionBeforeCancel.status === "completed") {
+        if (['cancelled', 'completed', 'expired'].includes(String(providerSubscriptionBeforeCancel.status))) {
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_BEFORE_CANCEL_COMPLETED',
                 data: getRazorpaySubscriptionMutationLogContext(providerSubscriptionBeforeCancel),
             });
         } else {
-            await razorpayClient.subscriptions.cancel(internalSub.providerSubscriptionId); // Immediate cancel
-            const providerSubscriptionAfterCancel = await razorpayClient.subscriptions.fetch(internalSub.providerSubscriptionId);
+            await razorpayClient.subscriptions.cancel(oldProviderSubscriptionId); // Immediate cancel
+            const providerSubscriptionAfterCancel = await razorpayClient.subscriptions.fetch(oldProviderSubscriptionId);
             await writeLogEntry({
                 logFileName: LOG_FILE,
                 logType: 'RAZORPAY_UPGRADE_SUBSCRIPTION_FLOW_PROVIDER_SUBSCRIPTION_AFTER_CANCEL',

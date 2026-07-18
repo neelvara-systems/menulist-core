@@ -92,6 +92,63 @@ const verifyConcurrentAddsPreserveEveryMapping = async (): Promise<void> => {
     );
 };
 
+const verifyConcurrentUpsertPreservesOtherMappings = async (): Promise<void> => {
+    const originalStoreId = 93220;
+    const addedStoreId = 93221;
+    await Promise.all([originalStoreId, addedStoreId].map((storeId) => seedStore(storeId)));
+    await seedUser('staff-concurrent-upsert', [{ role: DEFAULT_ROLE_IDS.STAFF, storeId: originalStoreId }]);
+    await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc('staff-concurrent-upsert').update({ isVerified: false });
+
+    await Promise.all([
+        runStaffUserMutationTransaction({
+            buildUpdate: ({ nextMappings }) => userUpdate(nextMappings),
+            db: firestoreAdmin,
+            mutation: {
+                kind: 'add',
+                mapping: { name: 'Forged added store', role: DEFAULT_ROLE_IDS.STAFF, storeId: addedStoreId },
+            },
+            tenantId,
+            userId: 'staff-concurrent-upsert',
+        }),
+        runStaffUserMutationTransaction({
+            buildUpdate: ({ nextMappings }) => ({
+                ...userUpdate(nextMappings),
+                firebaseUid: 'verified-auth-uid',
+                isVerified: true,
+            }),
+            db: firestoreAdmin,
+            mutation: {
+                kind: 'upsert',
+                mapping: { name: 'Forged original store', role: DEFAULT_ROLE_IDS.STAFF, storeId: originalStoreId },
+                verified: true,
+            },
+            tenantId,
+            userId: 'staff-concurrent-upsert',
+        }),
+    ]);
+
+    const [snapshot, stateSnapshot] = await Promise.all([
+        firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc('staff-concurrent-upsert').get(),
+        firestoreAdmin.collection(DB_COLLECTIONS.STAFF_STORE_ACCESS_STATE).doc(`${tenantId}_${originalStoreId}`).get(),
+    ]);
+    const data = snapshot.data() || {};
+    assert.deepEqual(
+        [...data.storeIds].sort((left: number, right: number) => left - right),
+        [originalStoreId, addedStoreId],
+        'Auth-binding mapping upsert must not lose a concurrent store addition',
+    );
+    assert.equal(data.firebaseUid, 'verified-auth-uid');
+    assert.equal(data.isVerified, true);
+    assert(
+        stateSnapshot.data()?.assignments?.some(({ userId }: { userId: string }) => userId === 'staff-concurrent-upsert'),
+        'Successful Auth binding must activate the verified staff assignment in the same transaction',
+    );
+    assert(
+        data.stores.every((mapping: { name: string; storeId: number }) => mapping.name === `Store ${mapping.storeId}`),
+        'Auth-binding mapping upsert must keep canonical store names',
+    );
+};
+
 const verifyConcurrentCreateClaimsOneUserAndOneAssignment = async (): Promise<void> => {
     const storeId = 93250;
     await seedStore(storeId);
@@ -239,6 +296,28 @@ const verifyBlockedOwnerDoesNotSatisfyLastOwner = async (): Promise<void> => {
     );
 };
 
+const verifyUnverifiedOwnerDoesNotSatisfyLastOwner = async (): Promise<void> => {
+    const storeId = 93375;
+    await seedStore(storeId);
+    await Promise.all([
+        seedUser('staff-verified-owner', [{ role: DEFAULT_ROLE_IDS.OWNER, storeId }]),
+        seedUser('staff-unverified-owner', [{ role: DEFAULT_ROLE_IDS.OWNER, storeId }]),
+    ]);
+    await firestoreAdmin.collection(DB_COLLECTIONS.USERS).doc('staff-unverified-owner').update({ isVerified: false });
+
+    await assert.rejects(
+        runStaffUserMutationTransaction({
+            buildUpdate: ({ nextMappings }) => userUpdate(nextMappings),
+            db: firestoreAdmin,
+            mutation: { kind: 'remove', storeId },
+            tenantId,
+            userId: 'staff-verified-owner',
+        }),
+        (error: unknown) => error instanceof StaffConcurrencyError && error.code === 'LAST_OWNER',
+        'An unverified Owner placeholder must not satisfy the last-owner invariant',
+    );
+};
+
 const verifyRoleAssignmentAndDeactivationCannotBothCommit = async (): Promise<void> => {
     const storeId = 93400;
     const customRoleId = 'custom-concurrent';
@@ -311,10 +390,12 @@ const verifyConcurrentRoleEditsPreserveBothChanges = async (): Promise<void> => 
 const run = async (): Promise<void> => {
     assert(process.env.FIRESTORE_EMULATOR_HOST, 'FIRESTORE_EMULATOR_HOST is required');
     await verifyConcurrentAddsPreserveEveryMapping();
+    await verifyConcurrentUpsertPreservesOtherMappings();
     await verifyConcurrentCreateClaimsOneUserAndOneAssignment();
     await verifyConcurrentOAuthCreateClaimsOneUser();
     await verifyConcurrentOwnerRemovalPreservesOneOwner();
     await verifyBlockedOwnerDoesNotSatisfyLastOwner();
+    await verifyUnverifiedOwnerDoesNotSatisfyLastOwner();
     await verifyRoleAssignmentAndDeactivationCannotBothCommit();
     await verifyConcurrentRoleEditsPreserveBothChanges();
     console.log('Staff concurrency emulator verification passed.');

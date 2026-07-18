@@ -1,7 +1,7 @@
 # PDF Surface — Help Documentation
 
 **Feature:** Download Menu as PDF
-**Last Updated:** 2026-03
+**Last Updated:** July 16, 2026
 **Audience:** Restaurant/cafe owners using MenuList
 
 ---
@@ -10,9 +10,9 @@
 
 1. Open your MenuList dashboard
 2. Go to your menu project
-3. Tap the **Share** button
-4. Scroll to the **Download PDF** section
-5. Tap **Download PDF**
+3. Open **Share** or **Use MenuList**
+4. Choose **Print Menu**
+5. Review the preview and warnings, then choose **Create PDF** or **Share**
 
 The PDF is generated from the current project data and then downloads to your device. Review the file before printing or sharing it.
 
@@ -23,7 +23,9 @@ The PDF is generated from the current project data and then downloads to your de
 - Your business name at the top
 - All active menu items, grouped by category
 - Prices in your configured currency
-- A footer showing when the PDF was generated
+- Your existing logo/color when available
+- A live-menu QR and contact block when enabled
+- Generated-file metadata and MenuList attribution for non-Premium plans
 
 ---
 
@@ -37,7 +39,7 @@ There is no saved PDF copy inside MenuList — each download is created on the s
 
 ## Freshness warning
 
-If you see a yellow warning near the PDF download button that says "Menu updated since last download" — your menu data has changed since you last downloaded a PDF. Download a fresh copy before printing.
+Print Menu history on this device shows whether an older file still matches the current menu. Download a fresh copy after menu or business-detail changes.
 
 ---
 
@@ -52,13 +54,13 @@ If you see a yellow warning near the PDF download button that says "Menu updated
 ## Frequently Asked Questions
 
 **Can I change the layout or colors of the PDF?**
-No. MenuList uses a constrained PDF layout so you do not need to design it yourself. Review the generated PDF before printing or sharing it.
+You can choose the available controlled style, density, and safe content options. MenuList does not provide a freeform PDF designer.
 
 **Can I add my logo to the PDF?**
-Not currently. Logo embedding is planned for a future update.
+MenuList uses your existing business logo when it can be loaded safely. If it cannot be embedded, the PDF still renders without a broken placeholder.
 
-**Why does the PDF have a code like `m-x9af2` in the footer?**
-This is a menu version — it identifies exactly which version of your menu this PDF represents. If a customer ever disputes a price, the version code helps confirm what the menu contained when the PDF was created. You can ignore it for day-to-day use.
+**Why does the filename include a short reference?**
+It helps distinguish files created from different menu states. Use the current Print Menu history to see whether an older file still matches.
 
 **Can I generate PDFs for multiple menus?**
 Yes — each menu project has its own Share button and PDF download.

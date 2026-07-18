@@ -12,6 +12,8 @@
 | DEM-T003 | Partner referral is entered | Referral review item is created with evidence note. |
 | DEM-T004 | Route-token signal arrives | Viral route attribution is linked to outcome bridge. |
 | DEM-T005 | Suppressed target receives demand signal | Outreach remains blocked. |
+| DEM-T006 | Two identical manual signals race | One actor/key claim owns one event, aggregate increment, audit, control, and cost effect; the other returns durable replay. |
+| DEM-T007 | Target-scoped signal supplies a changed name or unknown ID | Current target supplies the canonical name; unknown target is rejected. |
 
 ## Privacy Tests
 

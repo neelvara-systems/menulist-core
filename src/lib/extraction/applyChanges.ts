@@ -12,8 +12,9 @@
  */
 
 import { DB_COLLECTIONS } from '@constant/database';
+import { applyStoreBusinessAttributeDefaults, assertStoreUpdateSucceeded } from '@database/stores';
 import getActiveSession from '@lib/auth/getActiveSession';
-import { revalidatePublicClientCache, revalidatePublicClientCacheForProject } from '@lib/cache/publicClientCache';
+import { revalidatePublicClientCacheForProject } from '@lib/cache/publicClientCache';
 import { firebaseClient } from '@lib/firebase/firebaseClient';
 import {
     getBoundedMenuProcessingStringContext,
@@ -31,8 +32,9 @@ import { normalizeMenuExtractionJobId } from '@lib/menu-extraction/jobIdBoundary
 import { normalizeMenuExtractionProjectId } from '@lib/menu-extraction/projectIdBoundary';
 import { getBusinessAttributesWithMenuDefaults } from '@lib/obp/inferBusinessAttributesFromMenu';
 import { logMOLEvent } from '@lib/pricing/molLogger';
-import { doc, getDoc, Timestamp, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, runTransaction, Timestamp, updateDoc } from 'firebase/firestore';
 import type { ApplyPlan } from './comparisonEngine.types';
+import { cloneFirestoreData } from './cloneFirestoreData';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TYPES
@@ -89,6 +91,17 @@ export function getAppliedExtractionChangeCount(stats: ApplyChangesResult['stats
     );
 }
 
+function createApplyStats(): ApplyChangesResult['stats'] {
+    return {
+        categoriesAdded: 0,
+        categoriesUpdated: 0,
+        itemsAdded: 0,
+        itemsUpdated: 0,
+        overridesApplied: 0,
+        categoryOverridesApplied: 0,
+    };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // HELPER FUNCTIONS
 // ═══════════════════════════════════════════════════════════════════════════
@@ -98,7 +111,7 @@ export function getAppliedExtractionChangeCount(stats: ApplyChangesResult['stats
  * Uses structuredClone for a true deep copy.
  */
 function cloneFiles(files: any[]): any[] {
-    return structuredClone(files);
+    return cloneFirestoreData(files);
 }
 
 function sanitizeFirestoreValue<T>(value: T): T {
@@ -223,7 +236,7 @@ function ensureItemCategoryInFile(files: any[], fileIndex: number, categoryId?: 
         .find((category: any) => category?.id === categoryId);
 
     if (sourceCategory) {
-        targetFile.extractedData.data.categories.push(structuredClone(sourceCategory));
+        targetFile.extractedData.data.categories.push(cloneFirestoreData(sourceCategory));
     }
 }
 
@@ -332,6 +345,103 @@ function applyStableIdAliases(files: any[], aliases?: {
     return applied;
 }
 
+function applyProjectMutationsToCurrentFiles(params: {
+    jobData: any;
+    languages: any[];
+    mutations: NonNullable<ApplyPlan['projectMutations']>;
+    projectFiles: any[];
+}): { changed: boolean; files: any[]; stats: ApplyChangesResult['stats'] } {
+    const { jobData, languages, mutations, projectFiles } = params;
+    const files = cloneFiles(projectFiles);
+    const stats = createApplyStats();
+
+    ensureReviewSourceFiles(files, jobData, languages);
+
+    for (const categoryMutation of mutations.upsertCategories) {
+        if (!categoryMutation.newCategory) continue;
+        const fileIndex = findMutationFileIndex(files, jobData, categoryMutation.targetFileUid);
+        if (fileIndex === -1) throwMissingReviewSourceFile(categoryMutation.targetFileUid, 'new_category');
+        ensureCategoryArray(files[fileIndex], languages);
+        upsertById(files[fileIndex].extractedData.data.categories, [categoryMutation.newCategory]);
+        stats.categoriesAdded++;
+    }
+
+    for (const itemMutation of mutations.upsertItems) {
+        if (!itemMutation.newItem) continue;
+        const fileIndex = findMutationFileIndex(files, jobData, itemMutation.targetFileUid);
+        if (fileIndex === -1) throwMissingReviewSourceFile(itemMutation.targetFileUid, 'new_item');
+        ensureCategoryArray(files[fileIndex], languages);
+        if (!Array.isArray(files[fileIndex].extractedData.data.items)) {
+            files[fileIndex].extractedData.data.items = [];
+        }
+        ensureItemCategoryInFile(files, fileIndex, itemMutation.newItem.category, languages);
+        upsertById(files[fileIndex].extractedData.data.items, [itemMutation.newItem]);
+        stats.itemsAdded++;
+    }
+
+    for (const categoryMutation of mutations.upsertCategories) {
+        if (!categoryMutation.categoryId || !categoryMutation.patch) continue;
+        const fileIndex = findMutationFileIndex(files, jobData, categoryMutation.targetFileUid);
+        if (fileIndex === -1) throwMissingReviewSourceFile(categoryMutation.targetFileUid, 'category_patch');
+        const categories = files[fileIndex]?.extractedData?.data?.categories || [];
+        const categoryIndex = categories.findIndex((category: any) => category.id === categoryMutation.categoryId);
+        if (categoryIndex === -1) continue;
+        categories[categoryIndex] = { ...categories[categoryIndex], ...categoryMutation.patch };
+        stats.categoriesUpdated++;
+    }
+
+    for (const itemMutation of mutations.upsertItems) {
+        if (!itemMutation.itemId || !itemMutation.patch) continue;
+        const fileIndex = findMutationFileIndex(files, jobData, itemMutation.targetFileUid);
+        if (fileIndex === -1) throwMissingReviewSourceFile(itemMutation.targetFileUid, 'item_patch');
+        const items = files[fileIndex]?.extractedData?.data?.items || [];
+        const itemIndex = items.findIndex((item: any) => item.id === itemMutation.itemId);
+        if (itemIndex === -1) continue;
+        items[itemIndex] = { ...items[itemIndex], ...itemMutation.patch };
+        stats.itemsUpdated++;
+    }
+
+    const aliasApplied = applyStableIdAliases(files, mutations.stableIdAliases);
+    return {
+        changed: Boolean(
+            aliasApplied
+            || stats.categoriesAdded
+            || stats.categoriesUpdated
+            || stats.itemsAdded
+            || stats.itemsUpdated
+        ),
+        files,
+        stats,
+    };
+}
+
+function assertExpectedAppliedChangeCount(params: {
+    expectedChangeCount?: number;
+    jobId: string;
+    mode: ApplyPlan['mode'];
+    projectId: string;
+    stats: ApplyChangesResult['stats'];
+}): number {
+    const { expectedChangeCount, jobId, mode, projectId, stats } = params;
+    const appliedChangeCount = getAppliedExtractionChangeCount(stats);
+    const hasExpectedChangeCount = Number.isInteger(expectedChangeCount);
+    if (
+        appliedChangeCount <= 0
+        || (hasExpectedChangeCount && appliedChangeCount !== expectedChangeCount)
+    ) {
+        const error = new Error('menu_review_apply_acknowledgement_mismatch');
+        logMenuProcessingFailure('menu_review_apply_acknowledgement_mismatch', error, {
+            ...getMenuProcessingProjectLogContext(projectId),
+            ...getMenuProcessingJobLogContext(jobId),
+            mode,
+            appliedChangeCount,
+            expectedChangeCount: hasExpectedChangeCount ? expectedChangeCount : null,
+        });
+        throw new Error(APPLY_CHANGES_GENERIC_ERROR);
+    }
+    return appliedChangeCount;
+}
+
 function pickRecordFields(record: unknown, allowedFields: Set<string>): Record<string, any> {
     if (!record || typeof record !== 'object' || Array.isArray(record)) return {};
 
@@ -420,11 +530,24 @@ const getLinkedOutletApplyLogContext = (
     ...getBoundedMenuProcessingStringContext('masterProjectId', project.masterProjectId),
 });
 
-async function saveLinkedOutletProject(project: Record<string, any>, jobId: string): Promise<void> {
+async function saveLinkedOutletProject(params: {
+    appliedChangeCount: number;
+    expectedLocalVersion: number;
+    jobId: string;
+    project: Record<string, any>;
+}): Promise<void> {
+    const { appliedChangeCount, expectedLocalVersion, jobId, project } = params;
     const logContext = getLinkedOutletApplyLogContext(project, jobId);
     const response = await fetch('/api/projects/outlet-save', {
         ...LINKED_OUTLET_SAVE_REQUEST_POLICY,
-        body: JSON.stringify({ project }),
+        body: JSON.stringify({
+            extractionReview: {
+                expectedChangeCount: appliedChangeCount,
+                expectedLocalVersion,
+                jobId,
+            },
+            project,
+        }),
         headers: { 'Content-Type': 'application/json' },
         method: 'POST',
     });
@@ -462,7 +585,11 @@ async function saveLinkedOutletProject(project: Record<string, any>, jobId: stri
         );
     }
 
-    if (!isLinkedOutletSaveResponse(payload, project.projectId, project.masterProjectId)) {
+    if (
+        !isLinkedOutletSaveResponse(payload, project.projectId, project.masterProjectId)
+        || (payload as { extractionReviewCompleted?: unknown }).extractionReviewCompleted !== true
+        || (payload as { appliedChangeCount?: unknown }).appliedChangeCount !== appliedChangeCount
+    ) {
         const error = createLinkedOutletProjectSaveError(
             'linked_outlet_project_save_response_invalid',
             response.status,
@@ -537,7 +664,7 @@ function assertOwnedPreviewJob(jobData: any, session: Awaited<ReturnType<typeof 
     }
 
     const sessionUserIds = [session.uId, session.user?.id].filter(Boolean);
-    if (jobData.uId && !sessionUserIds.some((userId) => idsMatch(jobData.uId, userId))) {
+    if (!jobData.uId || !sessionUserIds.some((userId) => idsMatch(jobData.uId, userId))) {
         throw new Error('Extraction review does not belong to this user');
     }
 }
@@ -575,14 +702,7 @@ export async function applyExtractionChanges(
     const projectId = normalizeMenuExtractionProjectId(rawProjectId) || '';
     const jobId = normalizeMenuExtractionJobId(rawJobId) || '';
 
-    const stats = {
-        categoriesAdded: 0,
-        categoriesUpdated: 0,
-        itemsAdded: 0,
-        itemsUpdated: 0,
-        overridesApplied: 0,
-        categoryOverridesApplied: 0,
-    };
+    const stats = createApplyStats();
 
     try {
         if (!projectId || !jobId) {
@@ -590,127 +710,55 @@ export async function applyExtractionChanges(
         }
 
         const session = await getActiveSession();
+        if (!session) throw new Error(APPLY_CHANGES_GENERIC_ERROR);
         const projectRef = doc(firebaseClient, `${DB_COLLECTIONS.PROJECTS}/${session.tId}/${session.sId}`, projectId);
         const jobRef = doc(firebaseClient, DB_COLLECTIONS.MENU_IMAGE_PROCESSING_JOBS, jobId);
-
-        // ═══════════════════════════════════════════════════════════
-        // STEP 1: Read current project state ONCE
-        // ═══════════════════════════════════════════════════════════
-        const [projectSnap, jobSnap] = await Promise.all([
-            getDoc(projectRef),
-            getDoc(jobRef),
-        ]);
-        if (!projectSnap.exists()) {
-            throw new Error('Project not found');
-        }
-        const projectData = projectSnap.data();
-        const files = cloneFiles(projectData.files || []);
-        const jobData = jobSnap.exists() ? jobSnap.data() : null;
-        assertOwnedPreviewJob(jobData, session, projectId);
-
-        // Single update payload — all mutations collected here, written once
-        const updatePayload: Record<string, any> = {};
+        let projectData: Record<string, any> = {};
+        let files: any[] = [];
+        let standaloneCommitted = false;
         let linkedOutletProjectPayload: Record<string, any> | null = null;
 
         if (applyPlan.mode === 'SINGLE_STORE' || applyPlan.mode === 'MASTER_PROJECT') {
-            // ═══════════════════════════════════════════════════════════
-            // SINGLE_STORE / MASTER_PROJECT: Direct project mutations
-            // All mutations applied in-memory to `files` clone
-            // ═══════════════════════════════════════════════════════════
-
             const mutations = applyPlan.projectMutations;
-            if (!mutations) {
-                throw new Error('No project mutations in apply plan');
-            }
+            if (!mutations) throw new Error('No project mutations in apply plan');
 
-            ensureReviewSourceFiles(files, jobData, projectData.languages || []);
-
-            // Process new categories — add to files in-memory
-            for (const cat of mutations.upsertCategories) {
-                if (cat.newCategory) {
-                    const fileIndex = findMutationFileIndex(files, jobData, cat.targetFileUid);
-                    if (fileIndex === -1) {
-                        throwMissingReviewSourceFile(cat.targetFileUid, 'new_category');
-                    }
-                    if (!files[fileIndex].extractedData) {
-                        files[fileIndex].extractedData = { data: { categories: [], items: [] } };
-                    }
-                    if (!files[fileIndex].extractedData.data) {
-                        files[fileIndex].extractedData.data = { categories: [], items: [] };
-                    }
-                    if (!files[fileIndex].extractedData.data.categories) {
-                        files[fileIndex].extractedData.data.categories = [];
-                    }
-                    upsertById(files[fileIndex].extractedData.data.categories, [cat.newCategory]);
-                    stats.categoriesAdded++;
-                }
-            }
-
-            // Process new items — add to files in-memory
-            for (const item of mutations.upsertItems) {
-                if (item.newItem) {
-                    const fileIndex = findMutationFileIndex(files, jobData, item.targetFileUid);
-                    if (fileIndex === -1) {
-                        throwMissingReviewSourceFile(item.targetFileUid, 'new_item');
-                    }
-                    if (!files[fileIndex].extractedData?.data?.items) {
-                        files[fileIndex].extractedData = files[fileIndex].extractedData || {};
-                        files[fileIndex].extractedData.data = files[fileIndex].extractedData.data || {};
-                        files[fileIndex].extractedData.data.items = [];
-                    }
-                    ensureItemCategoryInFile(
-                        files,
-                        fileIndex,
-                        item.newItem.category,
-                        projectData.languages || [],
-                    );
-                    upsertById(files[fileIndex].extractedData.data.items, [item.newItem]);
-                    stats.itemsAdded++;
-                }
-            }
-
-            // Process category patches — merge in-memory
-            for (const catPatch of mutations.upsertCategories) {
-                if (catPatch.categoryId && catPatch.patch) {
-                    const fileIndex = findMutationFileIndex(files, jobData, catPatch.targetFileUid);
-                    if (fileIndex === -1) {
-                        throwMissingReviewSourceFile(catPatch.targetFileUid, 'category_patch');
-                    }
-
-                    const categories = files[fileIndex]?.extractedData?.data?.categories || [];
-                    const catIndex = categories.findIndex((c: any) => c.id === catPatch.categoryId);
-                    if (catIndex === -1) continue;
-
-                    categories[catIndex] = { ...categories[catIndex], ...catPatch.patch };
-                    stats.categoriesUpdated++;
-                }
-            }
-
-            // Process item patches — merge in-memory
-            for (const itemPatch of mutations.upsertItems) {
-                if (itemPatch.itemId && itemPatch.patch) {
-                    const fileIndex = findMutationFileIndex(files, jobData, itemPatch.targetFileUid);
-                    if (fileIndex === -1) {
-                        throwMissingReviewSourceFile(itemPatch.targetFileUid, 'item_patch');
-                    }
-
-                    const items = files[fileIndex]?.extractedData?.data?.items || [];
-                    const itemIndex = items.findIndex((i: any) => i.id === itemPatch.itemId);
-                    if (itemIndex === -1) continue;
-
-                    items[itemIndex] = { ...items[itemIndex], ...itemPatch.patch };
-                    stats.itemsUpdated++;
-                }
-            }
-
-            const aliasApplied = applyStableIdAliases(files, mutations.stableIdAliases);
-
-            // Collect modified files into payload
-            if (aliasApplied || stats.categoriesAdded || stats.categoriesUpdated || stats.itemsAdded || stats.itemsUpdated) {
-                updatePayload.files = files;
-            }
+            const committed = await runTransaction(firebaseClient, async (transaction) => {
+                const [projectSnap, jobSnap] = await Promise.all([
+                    transaction.get(projectRef),
+                    transaction.get(jobRef),
+                ]);
+                if (!projectSnap.exists()) throw new Error('Project not found');
+                const currentProject = projectSnap.data();
+                const currentJob = jobSnap.exists() ? jobSnap.data() : null;
+                assertOwnedPreviewJob(currentJob, session, projectId);
+                const projection = applyProjectMutationsToCurrentFiles({
+                    jobData: currentJob,
+                    languages: currentProject.languages || [],
+                    mutations,
+                    projectFiles: currentProject.files || [],
+                });
+                assertExpectedAppliedChangeCount({
+                    expectedChangeCount,
+                    jobId,
+                    mode: applyPlan.mode,
+                    projectId,
+                    stats: projection.stats,
+                });
+                if (!projection.changed) throw new Error(APPLY_CHANGES_GENERIC_ERROR);
+                transaction.update(projectRef, sanitizeFirestoreValue({ files: projection.files }));
+                transaction.update(jobRef, buildCompletedReviewJobPayload());
+                return { files: projection.files, projectData: currentProject, stats: projection.stats };
+            });
+            files = committed.files;
+            projectData = committed.projectData;
+            Object.assign(stats, committed.stats);
+            standaloneCommitted = true;
 
         } else if (applyPlan.mode === 'OUTLET_LINKED') {
+            const projectSnap = await getDoc(projectRef);
+            if (!projectSnap.exists()) throw new Error('Project not found');
+            projectData = projectSnap.data();
+            files = cloneFiles(projectData.files || []);
             // ═══════════════════════════════════════════════════════════
             // OUTLET_LINKED: Local items + price overrides
             // Local files and overrides must pass through /api/projects/outlet-save
@@ -736,14 +784,30 @@ export async function applyExtractionChanges(
 
             // Add local-only categories in-memory
             if (mutations.upsertLocalCategories.length > 0) {
+                const existingCategoryIds = new Set(
+                    localFile.extractedData.data.categories
+                        .map((category: any) => category?.id)
+                        .filter(Boolean),
+                );
                 upsertById(localFile.extractedData.data.categories, mutations.upsertLocalCategories);
-                stats.categoriesAdded = mutations.upsertLocalCategories.length;
+                for (const category of mutations.upsertLocalCategories) {
+                    if (existingCategoryIds.has(category.id)) stats.categoriesUpdated++;
+                    else stats.categoriesAdded++;
+                }
             }
 
             // Add local-only items in-memory
             if (mutations.upsertLocalItems.length > 0) {
+                const existingItemIds = new Set(
+                    localFile.extractedData.data.items
+                        .map((item: any) => item?.id)
+                        .filter(Boolean),
+                );
                 upsertById(localFile.extractedData.data.items, mutations.upsertLocalItems);
-                stats.itemsAdded = mutations.upsertLocalItems.length;
+                for (const item of mutations.upsertLocalItems) {
+                    if (existingItemIds.has(item.id)) stats.itemsUpdated++;
+                    else stats.itemsAdded++;
+                }
             }
 
             const aliasApplied = applyStableIdAliases(files, mutations.stableIdAliases);
@@ -774,7 +838,9 @@ export async function applyExtractionChanges(
             if (
                 aliasApplied
                 || stats.categoriesAdded > 0
+                || stats.categoriesUpdated > 0
                 || stats.itemsAdded > 0
+                || stats.itemsUpdated > 0
                 || stats.overridesApplied > 0
                 || (mutations.applyCategoryOverrides?.length || 0) > 0
                 || (mutations.stableIdAliases?.categoryAliases?.length || 0) > 0
@@ -789,35 +855,26 @@ export async function applyExtractionChanges(
             }
         }
 
-        const appliedChangeCount = getAppliedExtractionChangeCount(stats);
-        const hasExpectedChangeCount = Number.isInteger(expectedChangeCount);
-        if (
-            appliedChangeCount <= 0
-            || (hasExpectedChangeCount && appliedChangeCount !== expectedChangeCount)
-        ) {
-            const error = new Error('menu_review_apply_acknowledgement_mismatch');
-            logMenuProcessingFailure('menu_review_apply_acknowledgement_mismatch', error, {
-                ...getMenuProcessingProjectLogContext(projectId),
-                ...getMenuProcessingJobLogContext(jobId),
-                mode: applyPlan.mode,
-                appliedChangeCount,
-                expectedChangeCount: hasExpectedChangeCount ? expectedChangeCount : null,
-            });
-            throw new Error(APPLY_CHANGES_GENERIC_ERROR);
-        }
+        const appliedChangeCount = assertExpectedAppliedChangeCount({
+            expectedChangeCount,
+            jobId,
+            mode: applyPlan.mode,
+            projectId,
+            stats,
+        });
 
         // ═══════════════════════════════════════════════════════════
         // STEP 2: SINGLE ATOMIC WRITE — all project mutations
         // ═══════════════════════════════════════════════════════════
         if (linkedOutletProjectPayload) {
-            await saveLinkedOutletProject(linkedOutletProjectPayload, jobId);
-            await updateDoc(jobRef, buildCompletedReviewJobPayload());
+            await saveLinkedOutletProject({
+                appliedChangeCount,
+                expectedLocalVersion: Number(projectData.outletLocalState?.localVersion) || 0,
+                jobId,
+                project: linkedOutletProjectPayload,
+            });
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
-        } else if (Object.keys(updatePayload).length > 0) {
-            const batch = writeBatch(firebaseClient);
-            batch.update(projectRef, sanitizeFirestoreValue(updatePayload));
-            batch.update(jobRef, buildCompletedReviewJobPayload());
-            await batch.commit();
+        } else if (standaloneCommitted) {
             await revalidatePublicClientCacheForProject(projectId, 'applyExtractionChanges');
 
             try {
@@ -830,8 +887,16 @@ export async function applyExtractionChanges(
                 );
 
                 if (nextBusinessAttributes) {
-                    await updateDoc(storeRef, { businessAttributes: nextBusinessAttributes });
-                    await revalidatePublicClientCache(session.sId, 'applyExtractionBusinessAttributes');
+                    const storeResult = await applyStoreBusinessAttributeDefaults({
+                        businessAttributes: nextBusinessAttributes,
+                        storeId: session.sId,
+                        tenantId: session.tId,
+                    });
+                    assertStoreUpdateSucceeded(
+                        storeResult,
+                        session.sId,
+                        'menu_review_apply_business_attributes_store_update_rejected',
+                    );
                 }
             } catch (error) {
                 logMenuProcessingFailure('menu_review_apply_business_attributes_failed', error, {

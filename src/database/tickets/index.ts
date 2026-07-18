@@ -18,18 +18,28 @@ import { apiCallComposer } from "@lib/apiHelper/apiCallComposer";
 import getActiveSession from "@lib/auth/getActiveSession";
 import { emitAnswerlatticeSignal } from "@lib/answerlattice/signalEmitter";
 import { resolveAnswerlatticeSessionScope } from '@lib/answerlattice/sessionScope';
+import {
+    ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT,
+    buildSupportTicketAttachmentFileId,
+    isSupportTicketAttachmentStoragePath,
+    parseSupportTicketAttachmentUpload,
+    type SupportTicketAttachmentUpload,
+} from '@lib/answerlattice/supportTicketAttachmentBoundary';
 import { answerlatticeFirebaseClient, answerlatticeStorage } from "@lib/firebase/answerlatticeFirebaseClient";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import { clearCapturedLogs, getCapturedLogs, getClientDebugContext } from "@lib/localLogs/localLogsTracker";
+import { isDataUrl } from "@lib/media/mediaStorage";
 import { triggerNotification } from "@lib/notifications/client";
 import { STORAGE_CACHE_CONTROL } from "@lib/storage/cacheControl";
 import { generateStoragePath } from "@lib/storage/pathGenerator";
+import { summarizeStorageCleanupResults } from '@lib/storage/storageCleanupResults';
 import { ANSWERLATTICE_SIGNAL_TYPE } from "@type/answerlattice";
 import { UserUploadedFileType } from "@type/common";
 import { SUPPORT_TICKET_STATUS, SupportTicketType, TicketMessage } from "@type/supportTicket";
 import { addDoc } from "firebase/firestore";
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
-import { createTimestampedRuntimeId } from '@lib/runtime/randomId';
+import { createRuntimeId, createTimestampedRuntimeId } from '@lib/runtime/randomId';
+import { ref } from 'firebase/storage';
 
 const COLLECTION = DB_COLLECTIONS.SUPPORT_TICKETS;
 const STORE_TICKETS_LIMIT = 100;
@@ -108,24 +118,71 @@ const normalizeSupportTicketScope = (scope?: SupportTicketMutationScope): Normal
     return { tId, sId };
 };
 
-const collectTicketAttachmentUrls = (ticket: Partial<SupportTicketType> = {}): string[] => {
+const isOwnedTicketAttachmentUrl = (url: string, scope: NormalizedSupportTicketScope): boolean => {
+    try {
+        return isSupportTicketAttachmentStoragePath({
+            collection: COLLECTION,
+            path: ref(answerlatticeStorage, url).fullPath,
+            tId: scope.tId,
+            sId: scope.sId,
+        });
+    } catch {
+        return false;
+    }
+};
+
+const collectTicketAttachmentUrls = (
+    ticket: Partial<SupportTicketType> = {},
+    scope: NormalizedSupportTicketScope,
+): string[] => {
     const urls = new Set<string>();
 
     (ticket.documents || []).forEach((document: any) => {
-        if (typeof document?.url === 'string' && document.url) {
+        if (typeof document?.url === 'string' && isOwnedTicketAttachmentUrl(document.url, scope)) {
             urls.add(document.url);
         }
     });
 
     (ticket.messages || []).forEach((message) => {
         (message.attachments || []).forEach((attachment) => {
-            if (typeof attachment?.url === 'string' && attachment.url) {
+            if (typeof attachment?.url === 'string' && isOwnedTicketAttachmentUrl(attachment.url, scope)) {
                 urls.add(attachment.url);
             }
         });
     });
 
     return Array.from(urls);
+};
+
+const cleanupTicketAttachmentUrls = async (
+    urls: readonly string[],
+    operation: 'create_pre_persist' | 'message_pre_persist' | 'message_duplicate' | 'ticket_delete',
+) => {
+    const uniqueUrls = Array.from(new Set(urls));
+    const results = await Promise.allSettled(
+        uniqueUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)),
+    );
+    const summary = summarizeStorageCleanupResults(results);
+    if (summary.failed > 0) {
+        logRuntimeFailure('answerlattice_ticket_attachment_storage_cleanup_failed', new Error('storage_cleanup_failed'), {
+            operation,
+            attemptedCleanupCount: summary.attempted,
+            failedCleanupCount: summary.failed,
+        });
+    }
+    return summary;
+};
+
+const logAmbiguousTicketAttachmentRetention = (
+    operation: 'create' | 'message_append',
+    fileCount: number,
+) => {
+    if (fileCount === 0) return;
+    logRuntimeFailure(
+        'answerlattice_ticket_ambiguous_persistence_attachments_retained',
+        new Error('persistence_outcome_ambiguous'),
+        { operation, fileCount },
+    );
 };
 
 const isPlatformTicketSession = (session: any): boolean => {
@@ -248,44 +305,42 @@ const buildDeletedSupportTicketsQuery = async (maxResults = 100) => {
  * @param data - File data with base64 content
  * @param type - File category (e.g., 'documents', 'messages')
  */
-const uploadImage = async (data: UserUploadedFileType, type = 'documents', stableId?: string) => {
+const uploadImage = async (data: SupportTicketAttachmentUpload, type = 'documents', stableId?: string) => {
 
     let uploadedUrl: any = '';
-    const stablePrefix = String(stableId || '').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 120);
-    const safeUid = String(data.uid || 'file').replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 80);
-    const docId = stablePrefix
-        ? `${stablePrefix}-${safeUid}`
-        : `${new Date().getTime()}-${safeUid}`;
+    const docId = buildSupportTicketAttachmentFileId({
+        attemptId: createRuntimeId('upload'),
+        stableId,
+        uid: data.uid,
+    });
 
-    if (data.url?.includes('base64')) {
-        // Get fresh session for tenant-scoped storage paths
-        const session = await getActiveSession();
+    // Get fresh session for tenant-scoped storage paths
+    const session = await getActiveSession();
 
-        // Generate tenant/store-scoped path for multi-tenancy isolation
-        const path = generateStoragePath({
-            collection: COLLECTION,
-            fileType: type,
-            session,
-            fileId: docId
-        });
+    // Generate tenant/store-scoped path for multi-tenancy isolation
+    const path = generateStoragePath({
+        collection: COLLECTION,
+        fileType: type,
+        session,
+        fileId: docId
+    });
 
-        // Upload to Firebase Storage
-        uploadedUrl = await uploadBase64ToStorage({
-            cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
-            fileId: docId,
-            storage: answerlatticeStorage,
-            url: data.url,
-            path,
-            type: data.type
-        })
-    }
-    return uploadedUrl || data.url;
+    // Upload to Firebase Storage
+    uploadedUrl = await uploadBase64ToStorage({
+        cacheControl: STORAGE_CACHE_CONTROL.immutablePrivate,
+        fileId: docId,
+        storage: answerlatticeStorage,
+        url: data.url,
+        path,
+        type: data.type as UserUploadedFileType['type']
+    });
+    return uploadedUrl;
 }
 
 export const addTicket = async (data: SupportTicketType) => {
     return await apiCallComposer(
         async () => {
-            if (Array.isArray(data.documents) && data.documents.length > 20) {
+            if (Array.isArray(data.documents) && data.documents.length > ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT) {
                 throw new Error('answerlattice_ticket_document_limit_reached');
             }
             const capturedLogs = getCapturedLogs();
@@ -298,16 +353,18 @@ export const addTicket = async (data: SupportTicketType) => {
                 ...(clientDebugContext ? { clientDebugContext } : {}),
             }, { isNew: true });
             delete submitData.documents;
-            const files = data.documents?.filter(doc => doc.url.includes('base64')) || [];
+            const files = Array.isArray(data.documents)
+                ? data.documents.map(parseSupportTicketAttachmentUpload)
+                : [];
             const uploadedTicketUrls: string[] = [];
             let docRef: Awaited<ReturnType<typeof addDoc>>;
+            let persistenceAttempted = false;
             try {
                 if (files.length) {
-                    submitData.documents = data.documents.map((document) => ({ ...document }));
-                    for (let i = 0; i < data.documents.length; i++) {
-                        const isNewUpload = data.documents[i].url.includes('base64');
-                        submitData.documents[i].url = await uploadImage(data.documents[i], 'documents');
-                        if (isNewUpload) uploadedTicketUrls.push(submitData.documents[i].url);
+                    submitData.documents = files.map((document) => ({ ...document }));
+                    for (let i = 0; i < files.length; i++) {
+                        submitData.documents[i].url = await uploadImage(files[i], 'documents');
+                        uploadedTicketUrls.push(submitData.documents[i].url);
                     }
                 }
                 if (!parseAnswerlatticeSupportTicketDocument({
@@ -320,9 +377,14 @@ export const addTicket = async (data: SupportTicketType) => {
                 })) {
                     throw new Error('answerlattice_ticket_create_payload_invalid');
                 }
+                persistenceAttempted = true;
                 docRef = await addDoc(getCollectionRef(), submitData);
             } catch (createError) {
-                await Promise.allSettled(uploadedTicketUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+                if (persistenceAttempted) {
+                    logAmbiguousTicketAttachmentRetention('create', uploadedTicketUrls.length);
+                } else {
+                    await cleanupTicketAttachmentUrls(uploadedTicketUrls, 'create_pre_persist');
+                }
                 throw createError;
             }
             clearCapturedLogs(); // Clear only after the ticket is persisted successfully.
@@ -556,26 +618,28 @@ export const addTicketMessage = async (
 
             // Handle file uploads for attachments (same pattern as ticket documents)
             if (attachments?.length) {
-                if (attachments.length > 4) throw new Error('answerlattice_ticket_attachment_limit_reached');
+                if (attachments.length > ANSWERLATTICE_TICKET_ATTACHMENT_LIMIT) throw new Error('answerlattice_ticket_attachment_limit_reached');
                 persistedMessage.attachments = [];
                 try {
-                    for (let i = 0; i < attachments.length; i++) {
+                    const parsedAttachments = attachments.map(parseSupportTicketAttachmentUpload);
+                    for (let i = 0; i < parsedAttachments.length; i++) {
+                        const attachment = parsedAttachments[i];
                         const uploadedUrl = await uploadImage(
-                            attachments[i],
+                            attachment,
                             'messages',
                             `${normalizedTicketId}-${messageId}`,
                         );
                         uploadedAttachmentUrls.push(uploadedUrl);
                         persistedMessage.attachments.push({
                             url: uploadedUrl,
-                            name: String(attachments[i].name || '').slice(0, 300),
-                            type: String(attachments[i].type || '').slice(0, 120),
-                            size: Number(attachments[i].size || 0),
+                            name: attachment.name,
+                            type: attachment.type,
+                            size: attachment.size,
                         });
                     }
                     parseAnswerlatticeTicketMessage(persistedMessage);
                 } catch (uploadError) {
-                    await Promise.allSettled(uploadedAttachmentUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+                    await cleanupTicketAttachmentUrls(uploadedAttachmentUrls, 'message_pre_persist');
                     throw uploadError;
                 }
             }
@@ -616,14 +680,13 @@ export const addTicketMessage = async (
                 messageCount = transactionResult.messageCount;
                 if (!inserted && uploadedAttachmentUrls.length > 0) {
                     const existingUrls = new Set((transactionResult.message.attachments || []).map((item) => item.url));
-                    await Promise.allSettled(
-                        uploadedAttachmentUrls
-                            .filter((url) => !existingUrls.has(url))
-                            .map((url) => deleteFileByUrl(url, answerlatticeStorage)),
+                    await cleanupTicketAttachmentUrls(
+                        uploadedAttachmentUrls.filter((url) => !existingUrls.has(url)),
+                        'message_duplicate',
                     );
                 }
             } catch (transactionError) {
-                await Promise.allSettled(uploadedAttachmentUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage)));
+                logAmbiguousTicketAttachmentRetention('message_append', uploadedAttachmentUrls.length);
                 throw transactionError;
             }
 
@@ -710,10 +773,8 @@ export const deleteTicket = async (data: any) => {
                 persistedTicket = requirePersistedTicket(ticketId, ticketSnapshot.data(), mutationContext.scope);
                 transaction.delete(ticketRef);
             });
-            const attachmentUrls = collectTicketAttachmentUrls(persistedTicket || {});
-            await Promise.allSettled(
-                attachmentUrls.map((url) => deleteFileByUrl(url, answerlatticeStorage))
-            );
+            const attachmentUrls = collectTicketAttachmentUrls(persistedTicket || {}, mutationContext.scope);
+            await cleanupTicketAttachmentUrls(attachmentUrls, 'ticket_delete');
             return null;
         },
         data,

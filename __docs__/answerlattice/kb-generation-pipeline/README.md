@@ -59,7 +59,7 @@ When intake implementation begins, the current publish/embedding behavior remain
 - `functions/src/logic/` — shared emulator/legacy compatibility mirror
 - `embeddingSourceBoundary.ts` — canonical embedding input and source hash
 - `src/data/shared/answerlatticeEmbedding.ts` plus both Functions mirrors — version-locked model, field, dimensions, cache version, and provider request format
-- `functions-answerlattice/src/answerlattice/embeddingV2Migration.ts` — bounded resumable v2 backfill owned by the existing master scheduler
+- `functions-answerlattice/src/answerlattice/kbGenerationWatchdog.ts` — bounded transaction-safe timeout recovery in the dedicated project
 - `kbPublishingLifecycle.ts` — deterministic task dispatch and durable set-based finalization
 
 ### Types
@@ -88,7 +88,8 @@ Upload Files → Create Job (pending)
 
 | Date | Version | Change |
 |------|---------|--------|
-| 2026-07-13 | 1.4.0 | Migrated active retrieval to `gemini-embedding-2`/`embeddingV2`, added versioned query-cache isolation, bounded master-scheduler backfill, and temporary legacy dual-write rollback coverage. |
+| 2026-07-17 | 1.5.0 | Kept the pre-launch corpus on one `gemini-embedding-2`/`embedding` contract, removing the temporary dual-vector migration, its scheduled scans, duplicate index, and possible duplicate provider/write cost. |
+| 2026-07-13 | 1.4.0 | Introduced the Embedding 2 direction; its temporary dual-vector migration design was superseded before launch by the single canonical contract above. |
 | 2026-07-12 | 1.3.0 | Aligned dedicated/shared publish and embedding lifecycle, strict durable sets, source-hash reuse, deterministic task identity, and recoverable cleanup docs to runtime truth. |
 | 2026-05-31 | 1.2.0 | Clarified that Knowledge Intake must publish through existing KB/FAQ/search/cache/embedding runtime paths rather than a parallel intake runtime. |
 | 2026-05-31 | 1.1.0 | Added successor architecture note pointing to Knowledge Intake Command Center docs |

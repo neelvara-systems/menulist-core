@@ -209,7 +209,13 @@ export async function resolveProjectForRender(
 
     // 2-READ ARCHITECTURE: Extract tId and sId from strict masterProjectId format
     const masterProjectScope = normalizeMultiOutletProjectId(storeProject.masterProjectId);
-    if (!masterProjectScope) {
+    const storeProjectScope = normalizeMultiOutletProjectId(storeProject.projectId);
+    if (
+        !masterProjectScope
+        || !storeProjectScope
+        || masterProjectScope.tenantDocumentId !== storeProjectScope.tenantDocumentId
+        || masterProjectScope.storeDocumentId === storeProjectScope.storeDocumentId
+    ) {
         logMultiOutletFailure('multi_outlet_master_project_reference_invalid', undefined, {
             ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
         });
@@ -233,7 +239,12 @@ export async function resolveProjectForRender(
     );
 
     // Graceful handling: If master not found, return store as-is with warning
-    if (!masterProject || !masterProject.files?.length) {
+    if (
+        !masterProject
+        || !masterProject.files?.length
+        || masterProject.active === false
+        || masterProject.deleted === true
+    ) {
         logMultiOutletFailure('multi_outlet_master_project_missing', undefined, {
             ...getMultiOutletProjectLogContext(storeProject.projectId, storeProject.masterProjectId),
             masterProjectPresent: Boolean(masterProject),

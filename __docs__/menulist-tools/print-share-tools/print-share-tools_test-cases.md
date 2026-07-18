@@ -1,6 +1,6 @@
 # Print & Share Tools - Test Cases
 
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 
@@ -9,7 +9,8 @@
 | PST-001 | Public user opens `/tools/qr-poster-maker` | Page loads without login |
 | PST-002 | Public user enters business name and a valid public HTTPS URL | Browser-local asset preview renders |
 | PST-003 | Public user enters invalid URL | Report marks customer link missing and evidence says public HTTPS URL format was checked locally |
-| PST-003A | Public user enters `http://localhost`, private IP, raw IP, `.local`, or credentialed URL | Report marks customer link missing and the asset falls back instead of encoding that URL in the QR |
+| PST-003A | Public user enters `http://localhost`, trailing-dot localhost, private/raw IPv4, raw/IPv4-mapped IPv6, empty-label host, `.local`, or credentialed URL | Report marks customer link missing and the asset falls back instead of encoding that URL in the QR |
+| PST-003B | Shared public URL boundary changes | Print & Share verifier and runtime test prove it still imports and uses that single helper |
 | PST-004 | Public user downloads PNG | PNG is generated from the browser-local SVG |
 | PST-005 | Public user downloads PDF | PDF is generated in the browser with no server route |
 | PST-006 | Public user uses Print | Browser print window opens with the generated asset |

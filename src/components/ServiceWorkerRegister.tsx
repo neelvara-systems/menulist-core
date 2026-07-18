@@ -34,6 +34,7 @@
  */
 
 import { resolveDomain } from '@lib/multiTenant/domainResolver';
+import { resolveDeploymentStage } from '@constant/deploymentTargets';
 import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { useEffect } from 'react';
 
@@ -48,10 +49,15 @@ const reportedServiceWorkerScriptLabelFailures = new Set<string>();
 const OWNER_APP_PATHS = [
     /^\/dashboard(?:\/|$)/,
     /^\/billing(?:\/|$)/,
+    /^\/assets(?:\/|$)/,
+    /^\/business-health(?:\/|$)/,
     /^\/business-settings(?:\/|$)/,
     /^\/feedback\/?$/,
+    /^\/forgot-password(?:\/|$)/,
+    /^\/growth-kits(?:\/|$)/,
     /^\/help-center(?:\/|$)/,
     /^\/locations(?:\/|$)/,
+    /^\/menu-manager(?:\/|$)/,
     /^\/ops(?:\/|$)/,
     /^\/platform(?:\/|$)/,
     /^\/projects(?:\/|$)/,
@@ -64,6 +70,7 @@ const OWNER_APP_PATHS = [
     /^\/transactions(?:\/|$)/,
     /^\/use-menulist(?:\/|$)/,
     /^\/users(?:\/|$)/,
+    /^\/unauthorized(?:\/|$)/,
 ];
 
 function getResolvedDomain() {
@@ -104,7 +111,14 @@ function getRegistrationScriptUrl(reg: ServiceWorkerRegistration): string | unde
 
 function shouldPreserveOwnerWorkerWithoutTarget(): boolean {
     const resolved = getResolvedDomain();
-    return resolved?.type === 'platform';
+    return resolved?.type === 'platform' && isOwnerWorkerRuntimeEnabled();
+}
+
+function isOwnerWorkerRuntimeEnabled(): boolean {
+    const deploymentStage = resolveDeploymentStage();
+    return process.env.NODE_ENV === 'production'
+        && deploymentStage.valid
+        && deploymentStage.stage !== 'preview';
 }
 
 function getTargetSwUrl(): string | null {
@@ -132,6 +146,7 @@ function getTargetSwUrl(): string | null {
     // already-installed standalone owner app must be able to repair/register
     // its worker even when iOS launches it at the origin root.
     if (resolved.type === 'platform') {
+        if (!isOwnerWorkerRuntimeEnabled()) return null;
         return isOwnerAppPath(window.location.pathname) || isStandaloneDisplayMode()
             ? OWNER_SW_URL
             : null;
@@ -291,13 +306,19 @@ export default function ServiceWorkerRegister() {
                     }
                 }
 
-                // If the correct SW is already registered, nothing to do.
+                // Re-check an existing worker on each full app load so a newly
+                // deployed worker does not wait for the browser's periodic check.
                 const alreadyRegistered = registrations.some((reg) => {
                     const activeUrl = getRegistrationScriptUrl(reg);
                     return activeUrl === absoluteTargetUrl;
                 });
 
-                if (!alreadyRegistered) {
+                if (alreadyRegistered) {
+                    const currentRegistration = registrations.find((reg) => (
+                        getRegistrationScriptUrl(reg) === absoluteTargetUrl
+                    ));
+                    await currentRegistration?.update();
+                } else {
                     await navigator.serviceWorker.register(targetUrl, { scope: '/' });
                 }
             } catch (error) {

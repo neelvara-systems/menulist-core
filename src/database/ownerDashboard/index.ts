@@ -551,7 +551,7 @@ function transformOwnerConfidence(data: any): OwnerConfidence {
     if ((metrics.zeroResultSearches || 0) > 0 || (metrics.unavailableItemTaps || 0) > 0 || (metrics.actionRate || 0) < 10) {
         return {
             status: 'watch',
-            label: 'Watch',
+            label: 'Needs attention',
             message: 'Customers are showing interest, but one menu area needs attention.',
         };
     }

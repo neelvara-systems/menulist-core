@@ -80,3 +80,10 @@ export interface OpsAlert {
   tId: string;
   sId: string;
 }
+
+export interface OpsControlRoomSnapshot {
+  systemState: SystemState;
+  adoption: AdoptionPulse;
+  integrity: IntegritySignals;
+  alerts: OpsAlert[];
+}

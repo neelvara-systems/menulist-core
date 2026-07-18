@@ -72,10 +72,30 @@ async function run(): Promise<void> {
         }).firestore();
         const ticketRef = doc(ownerDb, 'supportTickets', 'ticket-1');
 
+        const longMessages = Array.from({ length: 450 }, (_, index) => message(`history-${index}`));
+        await testEnv.withSecurityRulesDisabled(async (context) => {
+            await setDoc(doc(context.firestore(), 'supportTickets', 'long-ticket'), ticket({ messages: longMessages }));
+        });
+        await assertSucceeds(updateDoc(doc(ownerDb, 'supportTickets', 'long-ticket'), {
+            messages: [...longMessages, message('history-450')],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+
         await assertSucceeds(setDoc(ticketRef, ticket()));
         await assertSucceeds(getDoc(ticketRef));
         await assertFails(getDoc(doc(otherDb, 'supportTickets', 'ticket-1')));
         await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'wrong-product'), ticket({ pId: 'ML' })));
+        await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'empty-subject'), ticket({ subject: '' })));
+        await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'forged-status-actor'), ticket({
+            statuses: [{
+                ...statusEntry('Open'),
+                createdBy: { ...actor, id: 'another-owner' },
+            }],
+        })));
+        await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'preloaded-message'), ticket({
+            messages: [message('forged-initial-message')],
+        })));
         await assertFails(setDoc(doc(ownerDb, 'supportTickets', 'too-many-documents'), ticket({
             documents: Array.from({ length: 21 }, (_, index) => ({
                 name: `file-${index}`,
@@ -87,6 +107,24 @@ async function run(): Promise<void> {
 
         await assertSucceeds(updateDoc(ticketRef, {
             messages: [message('reply-1')],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+        await assertFails(updateDoc(ticketRef, {
+            messages: [message('rewritten-reply'), message('reply-2')],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+        await assertFails(updateDoc(ticketRef, {
+            messages: [message('reply-1'), {
+                ...message('reply-2'),
+                sender: { ...actor, id: 'another-owner' },
+            }],
+            modifiedBy: 'Owner',
+            modifiedOn: NOW,
+        }));
+        await assertFails(updateDoc(ticketRef, {
+            statuses: [{ ...statusEntry('Open'), remark: 'Rewritten history' }],
             modifiedBy: 'Owner',
             modifiedOn: NOW,
         }));
@@ -114,6 +152,14 @@ async function run(): Promise<void> {
             modifiedBy: 'Owner',
             modifiedOn: NOW,
         }));
+        await assertSucceeds(updateDoc(ticketRef, {
+            satisfaction: { rating: 5, comment: 'Resolved', submittedAt: NOW },
+            modifiedOn: NOW,
+        }));
+        await assertFails(updateDoc(ticketRef, {
+            satisfaction: { rating: 1, comment: 'Rewritten', submittedAt: NOW },
+            modifiedOn: NOW,
+        }));
         await assertFails(updateDoc(ticketRef, { tId: 2, sId: 202, modifiedOn: NOW }));
         await assertFails(deleteDoc(ticketRef));
         await assertSucceeds(deleteDoc(doc(platformDb, 'supportTickets', 'ticket-1')));
@@ -128,4 +174,3 @@ run().catch((error) => {
     console.error(error);
     process.exit(1);
 });
-

@@ -50,7 +50,7 @@ Each feature folder follows the repo doc-set pattern: `README.md`, `_spec.md`, `
 | [ugc-script-studio](./ugc-script-studio/README.md) | Owner/staff/creator-brief scripts, hook banks, shot lists, testimonial guardrails. |
 | [whatsapp-sales-studio](./whatsapp-sales-studio/README.md) | WhatsApp drafts, download/export/manual mode, consent posture, and blocked direct-send rules. |
 | [google-local-studio](./google-local-studio/README.md) | Google Business Profile-ready manual drafts, local captions, fallback posture, and no ranking claims. |
-| [ads-studio](./ads-studio/README.md) | Meta/Google ad variants, click-to-WhatsApp creative, media-buyer handoff, performance-claim guardrails. |
+| [ads-studio](./ads-studio/README.md) | Meta/Google ad variants, click-to-WhatsApp creative, media-buyer handoff, performance-claim guardrails, and a disabled read-first Meta Ads MCP evidence posture. |
 | [calendar-scheduler](./calendar-scheduler/README.md) | Current runtime stores manual schedule tasks; weekly/30-day generated asset plans remain a guarded architecture path. |
 | [asset-library](./asset-library/README.md) | Uploads, asset classification, consent/rights, source links, requests, reuse. |
 | [cue-layers](./cue-layers/README.md) | Safe upload spine implemented for owner-uploaded flat images: source package, locked original, shared-editor projection, autosave/version snapshots, fallback repair records, Storage-backed export registration, and Asset Library download handoff. Provider-driven OCR, segmentation, vectorization, generated-source intake, and high-confidence decomposition remain gated. |

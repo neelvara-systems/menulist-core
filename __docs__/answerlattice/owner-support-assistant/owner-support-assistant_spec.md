@@ -1,13 +1,13 @@
 # Owner Support Assistant - Product Specification
 
-> **Status:** TARGET CONTRACT - read-only summary runtime live; expansion deferred
+> **Status:** TARGET CONTRACT - summary-only runtime live; optional Support Board prefill disabled by default; expansion deferred
 > **Created:** 2026-06-07
 > **Feature Flag:** `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` (live, `true`)
 > **Primary Route:** `/answerlattice/support-assistant` (live in source)
 
 ---
 
-The current runtime implements the dedicated management route, five-summary brief, deterministic summary-only query, governed route links, and responsive read-only client. Everything below involving bounded detail, AI wording, owner analytics, feedback, draft/card/note creation, or mutation preview/execute is retained only as deferred design material and is not a shipped claim.
+The current runtime implements the dedicated management route, six-summary brief, deterministic summary-only query, governed route links, and responsive client. A separate flag, disabled by default, can prefill the existing Support Board create form for selected launch/release items without writing a card. Everything below involving bounded detail, AI wording, owner analytics, feedback, automatic draft/card/note creation, or direct mutation preview/execute adapters is retained only as deferred design material and is not a shipped claim.
 
 ## Problem
 
@@ -174,7 +174,7 @@ Blocked actions:
 1. The route is hidden and unavailable unless `ENABLE_ANSWERLATTICE_OWNER_SUPPORT_ASSISTANT` is enabled.
 2. The route uses the Answerlattice dashboard layout and existing access checks.
 3. A disabled flag returns a calm unavailable state and performs no assistant reads.
-4. A cold brief reads exactly five compact summaries and never opens a realtime listener.
+4. A cold brief reads exactly six compact summaries and never opens a realtime listener.
 5. The summary packet is cached for 60 seconds and the process cache is capped at 300 workspaces.
 6. Owner questions are classified into attention, answer risk, friction, readiness, intake, or unsupported.
 7. Query handling validates input with Zod and applies a workspace/user rate limit before the Firestore-backed permission check.

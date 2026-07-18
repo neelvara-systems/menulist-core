@@ -3,7 +3,17 @@ import { DB_COLLECTIONS } from '@constant/database';
 import { getStoreContextName } from '@lib/businessIdentity/names';
 import { canManageAnswerlatticeBillingMutation, canManageBillingMutation } from "@lib/billing/billingAccess";
 import {
+    claimBillingCheckoutLease,
+    completeBillingCheckoutLease,
+    markBillingCheckoutProviderCreated,
+    releaseBillingCheckoutLease,
+    renewExpiredBillingCheckoutLease,
+} from '@lib/billing/billingCheckoutLease';
+import {
     createProductInitialSubscription,
+    getBillingFirestoreAdminForProduct,
+    getDirectActiveProductSubscriptionForStore,
+    getProductSubscriptionById,
     resolveBillingScopeFromSession,
 } from "@lib/billing/productBillingServer";
 import {
@@ -19,6 +29,7 @@ import {
 } from "@lib/billing/razorpayDiagnostics";
 import { logger } from "@lib/monitoring/logger";
 import { firestoreAdmin } from '@lib/firebase/firebaseAdmin';
+import { getFounderSubscriptionMrrPaise } from '@lib/ops/founderRevenueReadModel';
 import {
     clearOwnerReferralCookie,
     readOwnerReferralCookie,
@@ -30,6 +41,7 @@ import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
 import { getOrCreateRazorpayPlan } from "@lib/razorpay/plan-handler";
 import { razorpayClient } from "@lib/razorpay/razorpay";
+import { getRazorpayManagedSubscriptionId } from '@lib/billing/subscriptionProviderSync';
 import { readBoundedJsonBody } from "@lib/security/boundedRequestBody";
 import { validateAPIInput } from "@lib/security/inputValidation";
 import { CreateSubscriptionRequestSchema } from "@lib/validation/apiSchemas";
@@ -42,6 +54,9 @@ import { verifyTenantAccess, withAuth } from "../../../../middleware/auth";
 
 const LOG_FILE = "razorpay-subscription.log";
 const RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES = 8 * 1024;
+const CHECKOUT_PROVIDER_RECOVERY_WINDOW_MS = 10 * 60 * 1000;
+const CHECKOUT_PROVIDER_RECOVERY_PAGE_SIZE = 100;
+const CHECKOUT_PROVIDER_RECOVERY_MAX_PAGES = 5;
 
 const createSubscriptionLogSummary = (input: {
     currency: string;
@@ -65,12 +80,66 @@ const createSubscriptionLogSummary = (input: {
     ...getBoundedRazorpayStringContext('userType', input.userType),
 });
 
+function isMatchingCheckoutProviderSubscription(candidate: any, expected: {
+    attemptId: string;
+    planId: string;
+    providerPlanId: string;
+    productId: string;
+    quantity: number;
+    storeId: string | number;
+    tenantId: string | number;
+}): boolean {
+    const notes = candidate?.notes || {};
+    return typeof candidate?.id === 'string'
+        && candidate.status === 'created'
+        && candidate.plan_id === expected.providerPlanId
+        && String(notes.checkoutAttemptId || '') === expected.attemptId
+        && String(notes.productId || '') === expected.productId
+        && String(notes.tenantId || '') === String(expected.tenantId)
+        && String(notes.storeId || '') === String(expected.storeId)
+        && String(notes.planId || '') === expected.planId
+        && Number(notes.quantity || candidate.quantity || 1) === expected.quantity;
+}
+
+async function recoverCheckoutProviderSubscription(params: {
+    attemptId: string;
+    planId: string;
+    providerPlanId: string;
+    productId: string;
+    quantity: number;
+    startedAtMillis: number;
+    storeId: string | number;
+    tenantId: string | number;
+}): Promise<any | null> {
+    const from = Math.max(946684800, Math.floor((params.startedAtMillis - CHECKOUT_PROVIDER_RECOVERY_WINDOW_MS) / 1000));
+    const to = Math.floor((Date.now() + CHECKOUT_PROVIDER_RECOVERY_WINDOW_MS) / 1000);
+    for (let page = 0; page < CHECKOUT_PROVIDER_RECOVERY_MAX_PAGES; page += 1) {
+        const response = await razorpayClient.subscriptions.all({
+            count: CHECKOUT_PROVIDER_RECOVERY_PAGE_SIZE,
+            from,
+            plan_id: params.providerPlanId,
+            skip: page * CHECKOUT_PROVIDER_RECOVERY_PAGE_SIZE,
+            to,
+        });
+        const match = response.items.find((candidate) => isMatchingCheckoutProviderSubscription(candidate, params));
+        if (match) return match;
+        if (response.items.length < CHECKOUT_PROVIDER_RECOVERY_PAGE_SIZE) break;
+    }
+    return null;
+}
+
 export const POST = withAuth(async (request, session) => {
     // ✅ Session guaranteed by withAuth middleware
     // ✅ Auth failures automatically logged to Sentry
     const userId = session.user.id;
     let subscriptionForLog: any = null;
+    let providerSubscriptionCreated = false;
+    let providerSubscriptionCompensated = false;
+    let providerSubscriptionCreateAttempted = false;
+    let subscriptionPersisted = false;
     let clearReferralCookieOnResponse = false;
+    let checkoutLeaseIdentity: Parameters<typeof claimBillingCheckoutLease>[0] | null = null;
+    let checkoutAttemptId: string | null = null;
 
     try {
         const bodyResult = await readBoundedJsonBody(request, RAZORPAY_PAYMENT_ACTION_MAX_BODY_BYTES, {
@@ -171,11 +240,51 @@ export const POST = withAuth(async (request, session) => {
         }
 
         // 2. Extract validated data
-        const { planId, interval, currency, userType, quantity: requestedQuantity = 1 } = validation.data;
+        const {
+            planId,
+            interval,
+            currency,
+            userType,
+            quantity: requestedQuantity = 1,
+            replacementForSubscriptionId,
+        } = validation.data;
         const name = session?.user?.name || '';
         const email = session?.user?.email || '';
         const remainingCredits = 0;
         const quantity = Math.max(1, requestedQuantity);
+
+        const currentSubscription = await getDirectActiveProductSubscriptionForStore(productId, tenantId, storeId);
+        const replacementSubscription = replacementForSubscriptionId
+            ? await getProductSubscriptionById(productId, replacementForSubscriptionId)
+            : null;
+        if (replacementForSubscriptionId) {
+            const replacementProviderId = replacementSubscription
+                ? getRazorpayManagedSubscriptionId(replacementSubscription)
+                : null;
+            if (
+                !replacementSubscription
+                || replacementProviderId !== replacementForSubscriptionId
+                || Number(replacementSubscription.tenantId ?? replacementSubscription.tId) !== Number(tenantId)
+                || Number(replacementSubscription.storeId ?? replacementSubscription.sId) !== Number(storeId)
+                || !['active', 'past_due', 'paused', 'cancelled'].includes(String(replacementSubscription.status))
+                || (
+                    currentSubscription
+                    && currentSubscription.status !== 'pending'
+                    && currentSubscription.id !== replacementForSubscriptionId
+                    && currentSubscription.providerSubscriptionId !== replacementForSubscriptionId
+                )
+            ) {
+                return NextResponse.json(
+                    { error: 'The current subscription is not eligible for replacement.' },
+                    { status: 409 },
+                );
+            }
+        } else if (currentSubscription && currentSubscription.status !== 'pending') {
+            return NextResponse.json(
+                { error: 'A current subscription already exists. Use the change-plan flow.' },
+                { status: 409 },
+            );
+        }
 
         if (!isAnswerlatticeBillingProduct(productId)) {
             const referralCookiePresent = Boolean(readOwnerReferralCookie(request));
@@ -219,6 +328,83 @@ export const POST = withAuth(async (request, session) => {
             return NextResponse.json({ error: "Plan price not available." }, { status: 400 });
         }
 
+        const billingDb = getBillingFirestoreAdminForProduct(productId);
+        const pendingSubscriptions = await billingDb.collection(DB_COLLECTIONS.SUBSCRIPTIONS)
+            .where('status', '==', 'pending')
+            .where('tenantId', '==', Number(tenantId))
+            .where('storeId', '==', Number(storeId))
+            .limit(10)
+            .get();
+        for (const pendingDoc of pendingSubscriptions.docs) {
+            const pending = { ...pendingDoc.data(), id: pendingDoc.id } as FirestoreSubscriptionDoc;
+            const sameIntent = (
+                pending.planId === planId
+                && pending.planType === interval
+                && pending.currency === currency
+                && Number(pending.quantity || 1) === quantity
+                && String(pending.founderMonitorReplacementForSubscriptionId || '') === String(replacementForSubscriptionId || '')
+            );
+            if (!sameIntent) {
+                return NextResponse.json(
+                    { error: 'Another subscription checkout is already pending. Complete or cancel it before starting a new one.' },
+                    { status: 409 },
+                );
+            }
+
+            const pendingProviderId = getRazorpayManagedSubscriptionId(pending);
+            if (!pendingProviderId) {
+                return NextResponse.json(
+                    { error: 'The pending subscription requires billing support.' },
+                    { status: 409 },
+                );
+            }
+            const providerPendingSubscription = await razorpayClient.subscriptions.fetch(pendingProviderId);
+            if (providerPendingSubscription.status === 'created') {
+                const response = NextResponse.json({ subscription: providerPendingSubscription, reused: true });
+                if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
+                return response;
+            }
+            if (!['cancelled', 'completed', 'expired'].includes(String(providerPendingSubscription.status))) {
+                return NextResponse.json(
+                    { error: 'A subscription payment is already being processed. Refresh billing before trying again.' },
+                    { status: 409 },
+                );
+            }
+            await pendingDoc.ref.set({
+                status: 'expired',
+                subscriptionEndDate: Timestamp.now(),
+                cycleEndDate: Timestamp.now(),
+            }, { merge: true });
+        }
+
+        checkoutLeaseIdentity = {
+            actorId: userId,
+            kind: 'subscription',
+            productId,
+            tenantId,
+            storeId,
+            requestFacts: {
+                currency,
+                interval,
+                planId,
+                productId,
+                quantity,
+                replacementForSubscriptionId: replacementForSubscriptionId || null,
+                storeId: String(storeId),
+                tenantId: String(tenantId),
+                unitAmount,
+                userType,
+            },
+        };
+        const checkoutClaim = await claimBillingCheckoutLease(checkoutLeaseIdentity);
+        if (checkoutClaim.outcome === 'in_progress' || checkoutClaim.outcome === 'conflict') {
+            return NextResponse.json(
+                { error: 'A billing checkout is already being prepared. Please wait and try again.' },
+                { status: 409 },
+            );
+        }
+        checkoutAttemptId = checkoutClaim.attemptId;
+
         // 4. Orchestration Logic
         // Step A: Get Provider Plan
         const razorpayPlanId = await getOrCreateRazorpayPlan({
@@ -233,6 +419,45 @@ export const POST = withAuth(async (request, session) => {
         let totalCount: number = 3; // Yearly: 3 cycles (auto-renewal for up to 3 years)
         if (interval === 'MONTH') totalCount = 36; // Monthly: 36 cycles (3 years)
 
+        let recoveredProviderSubscription: any | null = null;
+        if (checkoutClaim.outcome === 'provider_created') {
+            const candidate = await razorpayClient.subscriptions.fetch(checkoutClaim.providerEntityId);
+            if (!isMatchingCheckoutProviderSubscription(candidate, {
+                attemptId: checkoutClaim.attemptId,
+                planId,
+                providerPlanId: razorpayPlanId,
+                productId,
+                quantity,
+                storeId,
+                tenantId,
+            })) throw new Error('billing_checkout_provider_subscription_mismatch');
+            recoveredProviderSubscription = candidate;
+        } else if (checkoutClaim.outcome === 'recover_attempt') {
+            recoveredProviderSubscription = await recoverCheckoutProviderSubscription({
+                attemptId: checkoutClaim.attemptId,
+                planId,
+                providerPlanId: razorpayPlanId,
+                productId,
+                quantity,
+                startedAtMillis: checkoutClaim.startedAtMillis,
+                storeId,
+                tenantId,
+            });
+            if (!recoveredProviderSubscription) {
+                const renewed = await renewExpiredBillingCheckoutLease(
+                    checkoutLeaseIdentity,
+                    checkoutClaim.attemptId,
+                );
+                if (!renewed.acquired || !renewed.attemptId) {
+                    return NextResponse.json(
+                        { error: 'A billing checkout is already being prepared. Please wait and try again.' },
+                        { status: 409 },
+                    );
+                }
+                checkoutAttemptId = renewed.attemptId;
+            }
+        }
+
         // Razorpay subscription notes allow max 15 keys; keep provider notes canonical and compact.
         const subscriptionNotes = {
             productId,
@@ -242,12 +467,12 @@ export const POST = withAuth(async (request, session) => {
             userType,
             planId,
             quantity,
-            priceKey,
             interval,
             name,
             email,
             price: unitAmount,
-            remainingCredits,
+            checkoutAttemptId,
+            ...(replacementForSubscriptionId ? { replacementForSubscriptionId } : {}),
         };
 
         // Step B: Create Provider Subscription
@@ -272,8 +497,37 @@ export const POST = withAuth(async (request, session) => {
                 userType,
             }),
         });
-        const razorpaySubscription = await razorpayClient.subscriptions.create(RazorpayCreateObj);
+        let razorpaySubscription: any;
+        if (recoveredProviderSubscription) {
+            razorpaySubscription = recoveredProviderSubscription;
+        } else {
+            providerSubscriptionCreateAttempted = true;
+            try {
+                razorpaySubscription = await razorpayClient.subscriptions.create(RazorpayCreateObj);
+            } catch (providerCreateError) {
+                const recovered = await recoverCheckoutProviderSubscription({
+                    attemptId: checkoutAttemptId,
+                    planId,
+                    providerPlanId: razorpayPlanId,
+                    productId,
+                    quantity,
+                    startedAtMillis: Date.now(),
+                    storeId,
+                    tenantId,
+                });
+                if (!recovered) throw providerCreateError;
+                razorpaySubscription = recovered;
+            }
+        }
         subscriptionForLog = razorpaySubscription;
+        providerSubscriptionCreated = true;
+        if (!checkoutAttemptId || !checkoutLeaseIdentity || !(await markBillingCheckoutProviderCreated({
+            attemptId: checkoutAttemptId,
+            identity: checkoutLeaseIdentity,
+            providerEntityId: razorpaySubscription.id,
+        }))) {
+            throw new Error('billing_checkout_provider_subscription_claim_lost');
+        }
         await writeLogEntry({
             logFileName: LOG_FILE,
             logType: 'RAZORPAY_CREATE_SUBSCRIPTION_RESPONSE',
@@ -338,6 +592,12 @@ export const POST = withAuth(async (request, session) => {
             ],
             billingHistory: [],
             quantity,  // Multi-Outlet Billing (Feature #4C-B): master + paid outlet locations
+            ...(replacementSubscription ? {
+                founderMonitorReplacementForSubscriptionId: replacementForSubscriptionId,
+                founderMonitorReplacementMrrPaise: getFounderSubscriptionMrrPaise(replacementSubscription),
+                founderMonitorReplacementPlanId: replacementSubscription.planId || null,
+                founderMonitorReplacementPlanName: replacementSubscription.planName || null,
+            } : {}),
         };
 
         await writeLogEntry({
@@ -357,13 +617,62 @@ export const POST = withAuth(async (request, session) => {
                 quantity,
             },
         });
-        await createProductInitialSubscription(productId, razorpaySubscription.id, subscriptionPayload);
+        try {
+            await createProductInitialSubscription(productId, razorpaySubscription.id, subscriptionPayload);
+            subscriptionPersisted = true;
+        } catch (persistenceError) {
+            const persistedSubscription = await getProductSubscriptionById(productId, razorpaySubscription.id)
+                .catch(() => null);
+            if (persistedSubscription?.providerSubscriptionId === razorpaySubscription.id) {
+                subscriptionPersisted = true;
+            } else {
+                try {
+                    await razorpayClient.subscriptions.cancel(razorpaySubscription.id);
+                    providerSubscriptionCompensated = true;
+                } catch (compensationError) {
+                    logger.error(
+                        'Subscription persistence compensation failed',
+                        new Error('razorpay_create_subscription_compensation_failed'),
+                        getRazorpayFailureLogData('razorpay_create_subscription_compensation_failed', compensationError, {
+                            ...getRazorpaySubscriptionMutationLogContext(razorpaySubscription),
+                            ...getBoundedRazorpayStringContext('productId', productId),
+                            ...getBoundedRazorpayStringContext('tenantId', tenantId),
+                            ...getBoundedRazorpayStringContext('storeId', storeId),
+                        }),
+                    );
+                }
+                throw persistenceError;
+            }
+        }
+
+        await completeBillingCheckoutLease({
+            attemptId: checkoutAttemptId,
+            identity: checkoutLeaseIdentity,
+        }).catch((completionError) => {
+            logger.warn('Subscription checkout replay checkpoint failed', {
+                ...getRazorpayFailureLogData('razorpay_subscription_checkout_completion_failed', completionError),
+            });
+            return false;
+        });
 
         // 5. Response
         const response = NextResponse.json({ subscription: razorpaySubscription });
         if (clearReferralCookieOnResponse) clearOwnerReferralCookie(response);
         return response;
     } catch (error) {
+        if (
+            checkoutLeaseIdentity
+            && checkoutAttemptId
+            && (
+                (!providerSubscriptionCreated && !providerSubscriptionCreateAttempted)
+                || providerSubscriptionCompensated
+            )
+        ) {
+            await releaseBillingCheckoutLease({
+                attemptId: checkoutAttemptId,
+                identity: checkoutLeaseIdentity,
+            }).catch(() => false);
+        }
         const failureData = getRazorpayFailureLogData('razorpay_create_subscription_failed', error, {
             ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
             ...getBoundedRazorpayStringContext('userId', userId),
@@ -371,6 +680,12 @@ export const POST = withAuth(async (request, session) => {
             ...getBoundedRazorpayStringContext('storeId', session.user.storeId),
         });
         logger.error('Subscription creation failed', new Error('razorpay_create_subscription_failed'), failureData);
+
+        if (providerSubscriptionCreated && !subscriptionPersisted) {
+            logger.warn('Provider subscription was not persisted locally', {
+                ...getRazorpaySubscriptionMutationLogContext(subscriptionForLog),
+            });
+        }
 
         await writeLogEntry({
             logFileName: LOG_FILE,

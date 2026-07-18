@@ -6,6 +6,8 @@ import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { getBoundedResellerApiStringContext, logResellerApiFailure } from "@lib/billing/resellerApiDiagnostics";
 import { safeSyncStorePlanEntitlementFromSubscription } from "@lib/billing/subscriptionEntitlementSync";
 import { logger } from "@lib/monitoring/logger";
+import { markResellerTransactionsActiveForSubscription } from "@lib/reseller/resellerLedger";
+import { isActiveResellerProfileForSession } from "@lib/reseller/resellerProfileAuthority";
 import { safelyRecordOwnerReferralPaymentAndRepair } from '@lib/ownerReferral/ownerReferralSettlementServer';
 import { checkRateLimit } from "@lib/rateLimit";
 import { getRateLimitForFeature } from "@lib/rateLimit/configs";
@@ -18,31 +20,6 @@ import { withAuth } from "../../../../middleware/auth";
 import { hashPublicRateLimitValue } from "../../../../middleware/publicApi";
 
 const RESELLER_ACTION_MAX_BODY_BYTES = 16 * 1024;
-
-const hasCurrentResellerProfile = (params: {
-    profile: Awaited<ReturnType<typeof getResellerProfile>>;
-    resellerId: string;
-    sessionEmail: unknown;
-    sessionProfileId: unknown;
-}): boolean => {
-    const email = typeof params.sessionEmail === 'string'
-        ? params.sessionEmail.toLowerCase().trim()
-        : '';
-    const sessionProfileId = typeof params.sessionProfileId === 'string'
-        ? params.sessionProfileId.trim()
-        : '';
-    if (
-        !params.profile
-        || params.profile.active !== true
-        || !email
-        || typeof params.profile.email !== 'string'
-        || params.profile.email.toLowerCase().trim() !== email
-    ) {
-        return false;
-    }
-    if (sessionProfileId && sessionProfileId !== params.profile.id) return false;
-    return params.profile.id === params.resellerId || params.profile.authUserId === params.resellerId;
-};
 
 /**
  * POST /api/reseller/confirm-payment — Offline payment confirmation
@@ -93,9 +70,9 @@ export const POST = withAuth(async (request, session) => {
             }
         } else {
             const resellerProfile = await getResellerProfile(resellerId, session.user.email);
-            if (!hasCurrentResellerProfile({
+            if (!isActiveResellerProfileForSession({
+                actorId: resellerId,
                 profile: resellerProfile,
-                resellerId,
                 sessionEmail: session.user.email,
                 sessionProfileId: session.user.resellerProfileId,
             })) {
@@ -128,6 +105,11 @@ export const POST = withAuth(async (request, session) => {
         if (confirmation.kind === 'malformed') {
             return NextResponse.json({ error: "This subscription cannot be confirmed. Contact support." }, { status: 409 });
         }
+
+        await markResellerTransactionsActiveForSubscription(
+            subscriptionId,
+            'api:reseller-confirm-payment',
+        );
 
         await safeSyncStorePlanEntitlementFromSubscription(
             {

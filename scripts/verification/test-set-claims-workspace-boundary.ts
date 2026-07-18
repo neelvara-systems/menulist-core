@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
+import { firebaseClaimsMatchTargetStore } from '../../src/lib/auth/firebaseClaimsAcknowledgement';
 import {
-    firebaseClaimsMatchTargetStore,
+    resolveSetClaimsRole,
     resolveSetClaimsWorkspaceFromStore,
 } from '../../src/lib/auth/setClaimsWorkspace';
 import {
@@ -11,6 +12,12 @@ import {
 } from '../../src/lib/answerlattice/staffClaimsContracts';
 
 const activeStore = { active: true, storeId: 200, tenantId: 100 };
+
+assert.equal(resolveSetClaimsRole({ hasPlatformAccess: false, userRole: 'owner' }), 'owner');
+assert.equal(resolveSetClaimsRole({ hasPlatformAccess: false, userRole: 'custom-shift-lead' }), 'custom-shift-lead');
+assert.equal(resolveSetClaimsRole({ hasPlatformAccess: false, userRole: undefined }), null);
+assert.equal(resolveSetClaimsRole({ hasPlatformAccess: false, userRole: 'PLATFORM' }), null);
+assert.equal(resolveSetClaimsRole({ hasPlatformAccess: true, userRole: undefined }), 'staff');
 
 assert.equal(hasAnswerlatticeTenantAdminClaim('staff', 'PLATFORM_SUPPORT'), true);
 assert.equal(hasAnswerlatticeTenantAdminClaim('staff', 'PLATFORM'), true);

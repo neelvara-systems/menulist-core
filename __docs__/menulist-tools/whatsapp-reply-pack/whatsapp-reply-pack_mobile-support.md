@@ -1,7 +1,7 @@
 # WhatsApp Reply Pack - Mobile Support
 
 **Status:** Mobile-compatible public V0 route  
-**Last Updated:** July 4, 2026
+**Last Updated:** July 16, 2026
 
 ---
 

@@ -79,6 +79,7 @@ const ACTIONS = [
   "upsert-content-source",
   "upsert-proof-permission",
   "create-content-asset",
+  "review-content-asset",
   "generate-content-distribution-drafts",
   "review-content-distribution-draft",
   "schedule-content-distribution-draft",
@@ -218,12 +219,14 @@ function verifyFeatureFlags() {
   assertIncludes(functionFlags, "ENABLE_SIGNALDESK_PROVIDER_WEBHOOKS: false", "SignalDesk function webhook flag");
   assertIncludes(functionFlags, "ENABLE_SIGNALDESK_AI_WORKERS: false", "SignalDesk function AI worker flag");
   assertIncludes(functionFlags, "ENABLE_SIGNALDESK_SCHEDULED_SUMMARIES: false", "SignalDesk function scheduler flag");
+  assertIncludes(functionFlags, "ENABLE_SIGNALDESK_PROOF_PERMISSION_LIFECYCLE: true", "SignalDesk proof-permission lifecycle has its own narrow function flag");
 }
 
 function verifyRoutesAndUi() {
   const routes = read("src/constants/signaldesk/routes.ts");
   const types = read("src/types/signaldesk/index.ts");
   const workspaceRoute = read("src/app/api/signaldesk/workspace/route.ts");
+  const workspaceDatabase = read("src/database/signaldesk/index.ts");
   const workspace = read("src/components/signaldesk/SignalDeskWorkspace.tsx");
   const layout = read("src/app/(signaldesk)/layout.tsx");
   const signinLayout = read("src/app/(signaldesk-auth)/signaldesk/signin/layout.tsx");
@@ -266,8 +269,12 @@ function verifyRoutesAndUi() {
       const suffix = routePath.slice("/signaldesk".length);
       assertIncludes(routes, `${routeKey}: \`\${SIGNALDESK_BASE_PATH}${suffix}\``, `SignalDesk route path ${routePath}`);
     }
-    assertIncludes(workspaceRoute, `"${section}"`, `Workspace API section ${section}`);
+    assertIncludes(workspaceDatabase, `"${section}"`, `Workspace database section ${section}`);
   }
+
+  assertIncludes(workspaceDatabase, "export const SIGNALDESK_WORKSPACE_SECTIONS", "Workspace sections have one exported source of truth");
+  assertIncludes(workspaceDatabase, "export const parseSignalDeskWorkspaceSection", "Workspace section parser is shared");
+  assertIncludes(workspaceRoute, "parseSignalDeskWorkspaceSection", "Workspace API consumes the shared section parser");
 
   assertIncludes(workspace, "SIGNALDESK_ROUTES.OPPORTUNITIES", "Primary nav exposes Opportunities");
   assertIncludes(workspace, "SIGNALDESK_ROUTES.CONVERSATIONS", "Primary nav exposes Conversations");
@@ -304,7 +311,7 @@ function verifyRoutesAndUi() {
       && !line.includes("mobileReadOnly")
     ));
   assert(
-    savingOnlyButtons.every((line) => line.includes("setSelectedContent")),
+    savingOnlyButtons.every((line) => line.includes("setSelectedContent") || line.includes("selectContent")),
     "SignalDesk mutation buttons use mobile-aware actionDisabled gate",
   );
   assertIncludes(workspace, "data.setup.providerSendEnabled", "Send-step UI remains gated by provider send flag");
@@ -364,8 +371,10 @@ function verifyApiSecurityAndActions() {
   const overviewRoute = read("src/app/api/signaldesk/overview/route.ts");
   const workspaceRoute = read("src/app/api/signaldesk/workspace/route.ts");
   const killSwitches = read("src/app/api/signaldesk/kill-switches/route.ts");
+  const types = read("src/types/signaldesk/index.ts");
   const workflow = read("src/lib/signaldesk/workflowServer.ts");
   const overviewServer = read("src/lib/signaldesk/server.ts");
+  const overviewHook = read("src/hooks/signaldesk/useSignalDeskOverview.ts");
   const workspace = read("src/components/signaldesk/SignalDeskWorkspace.tsx");
   const apiGuards = read("src/lib/signaldesk/apiGuards.ts");
   const clientDal = read("src/database/signaldesk/index.ts");
@@ -373,6 +382,9 @@ function verifyApiSecurityAndActions() {
   const webhookServer = read("src/lib/signaldesk/webhookServer.ts");
   const outcomeBridgeRoute = read("src/app/api/signaldesk/outcomes/route.ts");
   const outcomeBridgeServer = read("src/lib/signaldesk/outcomeBridgeServer.ts");
+  const outcomeContracts = read("src/lib/signaldesk/outcomeContracts.ts");
+  const outcomeContractTests = read("scripts/verification/test-signaldesk-outcome-contracts.ts");
+  const outcomeRouteEmulatorTests = read("scripts/verification/test-signaldesk-outcome-route-emulator.js");
 
   assertIncludes(actions, "parseSignalDeskJsonBody", "Actions route shared JSON parser");
   assertIncludes(actions, "logSignalDeskValidationFailure", "Actions route validation logging");
@@ -386,8 +398,17 @@ function verifyApiSecurityAndActions() {
   assertIncludes(actions, '"run-ai-volume-batch": "provider_run"', "AI volume runs are blocked on mobile as provider work");
   assertIncludes(actions, '? "BATCH_OPERATION"', "AI volume runs use the bounded batch rate limit");
   assertIncludes(actions, 'maxEstimatedCostUsd: z.number().min(0.01).max(5)', "AI volume founder cost maximum is bounded");
+  assertIncludes(actions, "return NextResponse.json({ data: { drafts } });", "Array-returning content draft generation uses the bounded object response envelope");
+  assertIncludes(dal, '"generate-content-distribution-drafts": projectSignalDeskCommonActionAcknowledgement', "Content draft generation response is validated before entering client state");
   assertIncludes(killSwitches, "parseSignalDeskJsonBody", "Kill-switch route shared JSON parser");
   assertIncludes(killSwitches, "logSignalDeskValidationFailure", "Kill-switch route validation logging");
+  assertIncludes(killSwitches, "SIGNALDESK_KILL_SWITCH_SCOPE_VALUES", "Kill-switch route uses the canonical scope tuple");
+  assertIncludes(killSwitches, "idempotencyKey: z.string().trim().min(8).max(180)", "Kill-switch route requires a bounded idempotency key");
+  assert(
+    killSwitches.indexOf("const rateLimit = await applySignalDeskRateLimit")
+      < killSwitches.indexOf("await recordSignalDeskMobileActionBlockedServer"),
+    "Kill-switch route applies the write limiter before mobile blocked-audit writes",
+  );
   assertIncludes(apiGuards, "readBoundedJsonBody", "SignalDesk API guard bounded JSON body reader");
   assertIncludes(apiGuards, "const SIGNALDESK_JSON_BODY_MAX_BYTES = 256 * 1024;", "SignalDesk JSON body cap");
   assertNotIncludes(apiGuards, "request.json()", "SignalDesk API guard raw JSON parser");
@@ -449,7 +470,18 @@ function verifyApiSecurityAndActions() {
   assertIncludes(clientDal, "readJsonResponseWithLimit<unknown>", "SignalDesk client DAL bounded response reader");
   assertIncludes(clientDal, "isSignalDeskOverviewData", "SignalDesk client DAL overview response guard");
   assertIncludes(clientDal, "isSignalDeskWorkspaceData", "SignalDesk client DAL workspace response guard");
-  assertIncludes(clientDal, "isDataEnvelope(payload)", "SignalDesk client DAL requires data envelope");
+  assertIncludes(clientDal, "isSignalDeskKillSwitchData", "SignalDesk client DAL kill-switch response guard");
+  const emptyWorkspaceFactory = clientDal.slice(
+    clientDal.indexOf("export const createEmptySignalDeskWorkspace"),
+    clientDal.indexOf("const SIGNALDESK_OVERVIEW_KEYS"),
+  );
+  assert((emptyWorkspaceFactory.match(/scores: \[\]/g) || []).length === 1, "Empty SignalDesk workspace initializes scores exactly once");
+  const clientResponseLogContext = clientDal.slice(
+    clientDal.indexOf("const getSignalDeskClientResponseLogContext"),
+    clientDal.indexOf("const isAbortError"),
+  );
+  assert((clientResponseLogContext.match(/getBoundedRuntimeStringContext\(\"scope\"/g) || []).length === 1, "SignalDesk client response log context bounds scope exactly once");
+  assertIncludes(clientDal, "isSignalDeskClientDataEnvelope(payload)", "SignalDesk client DAL requires the shared exact data envelope");
   assertIncludes(clientDal, "logRuntimeFailure(SIGNALDESK_CLIENT_RESPONSE_PARSE_FAILED", "SignalDesk client DAL logs bounded response parse diagnostics");
   assertIncludes(clientDal, "logRuntimeFailure(SIGNALDESK_CLIENT_RESPONSE_REJECTED", "SignalDesk client DAL logs bounded response rejection diagnostics");
   assertIncludes(clientDal, "logRuntimeFailure(SIGNALDESK_CLIENT_RESPONSE_INVALID", "SignalDesk client DAL logs bounded invalid-response diagnostics");
@@ -457,6 +489,23 @@ function verifyApiSecurityAndActions() {
   assertNotIncludes(clientDal, "responsePayload?.error ||", "SignalDesk client DAL must not throw raw action response text");
   assertNotIncludes(clientDal, "response.json().catch(() => null)", "SignalDesk client DAL must not silently swallow response parse failures");
   assertNotIncludes(clientDal, "await response.json()", "SignalDesk client DAL must not parse response bodies directly");
+  assertIncludes(overviewHook, "killSwitchRetryRef.current?.requestKey === requestKey", "Kill-switch client retry key is stable for unchanged request facts");
+  assertIncludes(overviewHook, "idempotencyKey: retry.idempotencyKey", "Kill-switch client sends its stable retry key");
+  assertIncludes(overviewServer, "SIGNALDESK_KILL_SWITCH_SCOPE_VALUES.map", "Overview reads every governed kill-switch scope deterministically");
+  assertIncludes(overviewServer, ".where(\"pId\", \"==\", SIGNALDESK_PRODUCT_CODE)", "Overview incident query is product scoped");
+  assertIncludes(overviewServer, "SIGNALDESK_INCIDENT_LIST_LIMIT = 50", "Overview incident presentation is bounded independently of its count");
+  assertIncludes(overviewServer, "SIGNALDESK_INCIDENT_STRICT_COUNT_MAX_DOCUMENTS = 500", "Overview strict incident count has an explicit collection ceiling");
+  assertIncludes(overviewServer, "SIGNALDESK_INCIDENT_STRICT_COUNT_LIMIT_EXCEEDED", "Overview refuses to approximate incident truth above its strict ceiling");
+  assertNotIncludes(overviewServer, "aggregateCount - invalidCount", "Overview does not count unvalidated incident rows");
+  assert((overviewServer.match(/{ key: \"demand\"/g) || []).length === 1, "Overview emits exactly one demand metric");
+  assertIncludes(overviewServer, "db.runTransaction", "Kill-switch settlement is transactional");
+  assertIncludes(overviewServer, "requestFingerprintHash", "Kill-switch idempotency is bound to exact request facts");
+  assertIncludes(overviewServer, "KILL_SWITCH_IDEMPOTENCY_CONFLICT", "Kill-switch changed-input retries conflict");
+  assertNotIncludes(
+    overviewServer.slice(overviewServer.indexOf("export async function setSignalDeskKillSwitchServer")),
+    "channelStatus:",
+    "Kill-switch settlement does not overwrite provider-derived channel health",
+  );
   assertIncludes(workspace, "Team Access", "Settings exposes internal team access panel");
   assertIncludes(workflow, "upsertSignalDeskTeamMemberServer", "Workflow supports audited SignalDesk team-member updates");
   assertIncludes(workflow, "reviewSignalDeskAiShadowRunServer", "Workflow supports founder AI shadow review");
@@ -480,9 +529,22 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, 'lock?.activeVolumeRunId === params.volumeRef.id', "AI volume recovery releases only its owned lock");
   assertIncludes(workflow, "SIGNALDESK_AI_VOLUME_LOCK_TTL_MS = 6 * 60 * 1000", "AI volume lock outlives the route window with recovery grace");
   assertIncludes(workflow, "runSignalDeskAiCritic", "AI volume flow runs an independent critic pass");
+  assertIncludes(workflow, 'doc(`ai_assist_${idempotencyKeyHash}`)', "Direct paid AI assist claims a deterministic idempotency record before provider work");
+  assertIncludes(workflow, 'throw new Error("AI assist idempotency conflict")', "Direct paid AI assist rejects changed-input key reuse");
+  assertIncludes(workflow, 'return { runId: runRef.id, status: "in_progress" as const };', "Exact concurrent AI assist retries join the durable in-progress claim");
+  assertIncludes(workflow, "const exactCommittedClaim = Boolean(", "Ambiguous AI assist admission probes durable exact-claim truth");
+  assertIncludes(workflow, "if (!exactCommittedClaim) throw error;", "AI assist admission recovery cannot adopt a different request claim");
+  assertIncludes(workflow, "pId: SIGNALDESK_PRODUCT_CODE,\n            status,", "Reviewed content draft retains product identity before strict projection");
+  assertIncludes(workflow, "for (const waitMs of [50, 100, 250, 500, 1000, 2000, 4000, 8000, 12000, 16000])", "Concurrent AI assist replay uses a bounded low-read completion wait");
+  assertIncludes(workflow, 'currentClaim?.claimId !== claimId', "Direct paid AI assist finalization requires exact claim ownership");
   assertIncludes(workflow, "projectedMaxCostUsd", "AI volume flow preflights worst-case estimated cost");
+  assertIncludes(actions, 'idempotencyKey: z.string().trim().min(8).max(180)', "Paid AI assist and volume routes require bounded idempotency keys");
+  assertIncludes(workspace, "aiAssistRetry?.requestKey === requestKey", "Direct AI assist reuses its key only for the exact browser request");
   assertIncludes(workflow, "Math.min(3, pairs.length)", "AI volume child concurrency is bounded");
   assertIncludes(workflow, "idempotencyKeyHash", "AI volume paid batches use deterministic idempotency");
+  assertIncludes(workflow, "assertSignalDeskAiVolumeRequestIdentity", "AI volume idempotency is bound to the exact normalized request");
+  assertIncludes(workflow, 'throw new Error("AI volume idempotency conflict")', "AI volume rejects changed-input idempotency reuse");
+  assertIncludes(workflow, "committed.workerClaimId !== workerClaimId", "AI volume ambiguous transaction recovery continues only for the exact worker claim");
   assertIncludes(workflow, 'workerType: "ai_volume_batch"', "AI volume parent reuses the worker-run ledger");
   assertIncludes(workflow, 'throw new Error("Founder approval is required for AI volume runs")', "AI volume server enforces founder role");
   assertIncludes(workflow, 'logRuntimeFailure("signaldesk_ai_volume_child_failed"', "AI volume child failure diagnostics are stable");
@@ -498,7 +560,6 @@ function verifyApiSecurityAndActions() {
   }
 
   for (const scope of KILL_SWITCH_SCOPES) {
-    assertIncludes(killSwitches, `"${scope}"`, `Kill-switch API scope ${scope}`);
     assertIncludes(overviewServer, `"${scope}"`, `Overview normalizes kill-switch scope ${scope}`);
     assertIncludes(workspace, `"${scope}"`, `Control-room UI exposes kill-switch scope ${scope}`);
   }
@@ -511,27 +572,133 @@ function verifyApiSecurityAndActions() {
   assertIncludes(actions, '"SOURCE_POLICY_REVIEW_REQUIRED"', "Source policy review-required safe error");
   assertIncludes(actions, '"SOURCE_POLICY_USE_NOT_ALLOWED"', "Source policy allowed-use safe error");
   assertIncludes(actions, '"SOURCE_POLICY_RETENTION_MISSING"', "Source policy retention safe error");
+  assertIncludes(actions, "const CaptureReplySchema = z.object({", "Reply capture has a runtime boundary schema");
+  assertIncludes(actions, "idempotencyKey: z.string().trim().min(8).max(180)", "Reply capture requires a bounded idempotency key");
   assertIncludes(actions, '"ACTIVATION_TWO_DISTINCT_SURFACES_REQUIRED"', "Activation distinct-surface safe error");
   assertIncludes(actions, '"PROOF_PERMISSION_REQUIRED"', "Proof-permission safe error");
   assertIncludes(workflow, "sendSignalDeskApprovedMessageServer", "Approved message send server path");
+  assertIncludes(workflow, "provider-send-v1", "Provider send uses one approval/channel operation identity");
+  assertIncludes(workflow, 'status: "running"', "Provider send persists a pre-provider running claim");
+  assertIncludes(workflow, 'throw new Error("PROVIDER_SEND_REVIEW_REQUIRED")', "Provider send refuses running or unresolved replay");
+  assertIncludes(workflow, 'failureCode: "provider_send_outcome_unresolved"', "Ambiguous provider failure persists unresolved truth");
+  assertIncludes(workflow, 'claimSnap.data()?.status !== "completed" || !exportSnap.exists', "Provider send probes durable final truth after acknowledgement loss");
+  assertIncludes(workflow, "email-export-v1", "Export-only preparation uses deterministic operation identity");
+  assertIncludes(workflow, "const priorExportSnap = await transaction.get(exportRef)", "Export-only exact replay returns durable truth before repeated effects");
+  assertIncludes(workflow, 'throw new Error("Approved export truth is stale")', "Export-only settlement verifies current approval/draft/target coupling");
+  assertIncludes(workflow, "assisted-handoff-v1", "Assisted handoff uses deterministic approval/channel identity");
+  assertIncludes(workflow, 'throw new Error("Assisted handoff truth is stale")', "Assisted handoff verifies current approval/draft/target coupling");
+  assertIncludes(workflow, "recipient: null,", "Assisted handoff replay redacts recipient data");
+  assertIncludes(workflow, "recipientPreview: normalizeText(priorExport.recipientPreview) || null", "Assisted handoff replay returns only its durable masked recipient preview");
+  assertIncludes(workflow, "replay: true,", "Assisted handoff replay marks replay truth");
+  assertNotIncludes(workflow, "const loadApprovedMessageContext", "Retired pre-transaction outbound helper is absent");
+  assertNotIncludes(workflow, "params.exportRef || params.db.collection", "Outbound delivery state requires caller-owned deterministic export identity");
   assertIncludes(workflow, "sendSignalDeskOwnedSequenceStepServer", "Owned sequencer send server path");
+  assertIncludes(workflow, "reply_capture_${operationHash}", "Reply capture uses actor/key deterministic operation identity");
+  assertIncludes(workflow, 'throw new Error("Reply idempotency conflict")', "Reply capture binds keys to exact request facts");
+  assertIncludes(workflow, 'operation: "reply_capture"', "Reply capture claims the event with its effects");
+  assertIncludes(workflow, 'status: target.status === "converted" ? "converted" : "replied"', "Reply capture preserves transaction-current converted lifecycle");
+  assertIncludes(workflow, "const criticalReplyGrowthMissionPatch =", "Critical replies can refresh only a pending daily decision packet");
+  assertIncludes(workflow, 'current.ownerDecision !== "pending"', "Reviewed daily missions remain immutable during critical-reply handling");
+  assertIncludes(workflow, '"growth_mission_critical_reply_refresh"', "Critical-reply mission refresh is audited transactionally");
+  assertIncludes(workflow, 'return await db.runTransaction(async (transaction: FirebaseFirestore.Transaction)', "Sequencer handoff creation settles under transaction-current authority");
+  assertIncludes(workflow, 'throw new Error("Sequencer handoff truth is stale")', "Sequencer handoff requires exact approval, draft, and target coupling");
+  assertIncludes(workflow, 'existingHandoff.approvalId !== input.approvalId', "Sequencer handoff replay validates immutable approval identity before lifecycle admission");
+  assertIncludes(workflow, 'existingHandoff.provider !== input.provider', "Sequencer handoff replay validates immutable provider identity");
+  assertIncludes(workflow, 'throw new Error("Sequencer handoff request conflicts with existing truth")', "Sequencer handoff replay rejects changed sender authority");
+  assertIncludes(workflow, "owned-sequence-send-v1", "Owned sequence send uses one handoff operation identity");
+  assertIncludes(workflow, 'operation: "owned_sequence_send"', "Owned sequence send persists a pre-provider running claim");
+  assertIncludes(workflow, 'throw new Error("OWNED_SEQUENCE_SEND_REVIEW_REQUIRED")', "Owned sequence send refuses running or unresolved replay");
+  assertIncludes(workflow, 'failureCode: "owned_sequence_send_outcome_unresolved"', "Ambiguous owned sequence provider failure persists unresolved truth");
+  assertIncludes(workflow, 'throw new Error("Owned sequence truth is stale")', "Owned sequence send revalidates approval, draft, target, handoff, and step coupling");
   assertIncludes(workflow, "recommendSignalDeskMarketPodPlanServer", "Market pod recommender server path");
   assertIncludes(workflow, "createSignalDeskWeeklyStrategistMemoServer", "Weekly strategist memo server path");
   assertIncludes(workflow, "createSignalDeskDailyGrowthMissionServer", "Daily growth mission server path");
   assertIncludes(workflow, "reviewSignalDeskGrowthMissionServer", "Growth mission review server path");
+  assertIncludes(workflow, "const projectSignalDeskGrowthMission", "Growth missions use a strict public DTO projector");
+  assertIncludes(workflow, "const readGrowthMissions", "Growth mission workspace reads filter invalid persisted rows");
+  assert((workflow.match(/workspace\.growthMissions = await readGrowthMissions\(db\)/g) || []).length >= 3, "Every growth mission workspace surface uses the strict projector");
+  assertIncludes(workflow, 'growthMissionId !== growthMissionIdFor(day)', "Growth mission projector binds document identity to its exact calendar day");
+  assertIncludes(workflow, 'throw new Error("GROWTH_MISSION_REQUEST_CONFLICT")', "Same-day mission creation rejects changed request identity");
+  assertIncludes(workflow, 'transaction.create(missionRef, sanitizeForFirestore(mission))', "Growth mission creation cannot merge over reviewed daily truth");
+  assertIncludes(workflow, 'throw new Error("GROWTH_MISSION_PRODUCT_MISMATCH")', "Growth mission mutations reject wrong-product document collisions");
+  assertIncludes(workflow, 'throw new Error("GROWTH_MISSION_SHAPE_INVALID")', "Growth mission mutations reject malformed persisted state");
+  assertIncludes(workflow, 'throw new Error("GROWTH_MISSION_TERMINAL")', "Completed growth missions cannot be reopened");
+  assertIncludes(actions, "const GrowthMissionDaySchema", "Growth mission API validates real calendar days");
+  assertIncludes(actions, 'ownerDecision: z.enum(["approved", "hold", "redirected", "completed"])', "Growth mission review API does not accept a pending no-op decision");
+  assertIncludes(actions, "Mission status conflicts with owner decision", "Growth mission API rejects contradictory decision/status input");
   assertIncludes(workflow, "createSignalDeskExperimentCardServer", "Experiment card server path");
   assertIncludes(workflow, "reviewSignalDeskExperimentCardServer", "Experiment review server path");
   assertIncludes(workflow, "upsertSignalDeskOfferCtaServer", "Offer CTA server path");
+  assertIncludes(workflow, "const projectSignalDeskExperimentCard", "Experiment cards use a strict public DTO projector");
+  assertIncludes(types, "export interface SignalDeskExperimentReadbackPlan", "Experiment cards expose one versioned readback contract");
+  assertIncludes(types, "readbackPlan: SignalDeskExperimentReadbackPlan | null", "Legacy experiment cards retain an explicit no-readback state");
+  assertIncludes(actions, "const ExperimentReadbackPlanSchema", "Experiment creation validates its readback plan at the API boundary");
+  assertIncludes(actions, "Baseline and candidate windows cannot overlap", "Experiment API rejects overlapping comparison windows");
+  assertIncludes(actions, 'ownerDecision: z.enum(["repeat", "narrow", "stop", "hold", "complete"])', "Experiment review API refuses a pending no-op decision");
+  assertIncludes(actions, "resultSummary: z.string().trim().min(2).max(1000)", "Experiment review API requires bounded fresh evidence");
+  assertIncludes(workflow, "const projectSignalDeskExperimentReadbackPlan", "Experiment readback plans use a strict runtime projector");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_READBACK_PLAN_INVALID")', "Experiment creation rejects malformed readback truth");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_REVIEW_RESULT_REQUIRED")', "Experiment review direct callers require bounded fresh evidence");
+  assertIncludes(workflow, "readbackPlan: projectedExperiment.readbackPlan", "Experiment retry identity includes the readback contract");
+  assertIncludes(workspace, 'aria-label="Primary metric"', "Experiment UI records a primary readback metric");
+  assertIncludes(workspace, 'aria-label="Next readback"', "Experiment UI records the next evidence review time");
+  assertIncludes(workspace, "const experimentReviewDisabled =", "Experiment UI blocks decisions without permission, desktop mode, selection, and evidence");
+  assertIncludes(workspace, 'placeholder="Result summary required before a decision"', "Experiment UI makes the evidence prerequisite explicit");
+  assertIncludes(workflow, "const lifecyclePairValid = (", "Experiment projector rejects contradictory decision and lifecycle pairs");
+  assertIncludes(workflow, 'status === "paused" && Boolean(authorityHoldReason)', "Experiment projector preserves system-paused authority cascades");
+  assertIncludes(workflow, "const projectSignalDeskOfferCta", "Offer CTAs use a strict public DTO projector");
+  assertIncludes(workflow, "const readExperimentCards", "Experiment workspace reads filter malformed and wrong-product rows");
+  assertIncludes(workflow, "const readOfferCtas", "Offer workspace reads filter malformed and wrong-product rows");
+  assert((workflow.match(/workspace\.experimentCards = await readExperimentCards\(db\)/g) || []).length >= 3, "Every experiment workspace surface uses the strict projector");
+  assert((workflow.match(/workspace\.offerCtas = await readOfferCtas\(db\)/g) || []).length >= 3, "Every offer workspace surface uses the strict projector");
+  assertIncludes(workflow, "const readSignalDeskExperimentAuthority", "Experiment mutations share one current-authority validator");
+  assertIncludes(workflow, "const readSignalDeskOfferAuthority", "Offer consumers share one current-authority validator");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_ACTIVE_AUTHORITY_REQUIRED")', "Active experiments require pod, source-policy, and offer authority");
+  assertIncludes(workflow, 'throw new Error("OFFER_CTA_PRODUCT_MISMATCH")', "Offer mutations reject wrong-product document collisions");
+  assertIncludes(workflow, "return { offer: existing, reconciliationRequired: false, reconciliationToken: \"\" }", "Exact-current offer retries return without repeated write effects");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_CARD_PRODUCT_MISMATCH")', "Experiment mutations reject wrong-product document collisions");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_REVIEW_STATUS_MISMATCH")', "Experiment reviews reject decision/status contradictions");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_TERMINAL_REOPEN_NOT_ALLOWED")', "Terminal experiments cannot be reopened");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_TERMINAL_MUTATION_NOT_ALLOWED")', "Terminal experiment results cannot be rewritten by a retry");
+  assertIncludes(workflow, "prior.ownerDecision === input.ownerDecision", "Exact-current experiment reviews return without repeated effects");
+  assertIncludes(workflow, "await readSignalDeskOfferAuthority(db, transaction, offerCtaRef, offerCtaSnap, true)", "Commercial offers require transaction-current active nested Offer CTA authority");
+  assertIncludes(workflow, "readExperimentCards(db, true)", "Daily missions consume only active experiments with current authority");
+  assertIncludes(workflow, "readOfferCtas(db, true)", "Daily missions consume only active offers with current nested authority");
   assertIncludes(workflow, "upsertSignalDeskReplyPlaybookServer", "Reply playbook server path");
   assertIncludes(workflow, "createSignalDeskSourceQualitySnapshotServer", "Source quality snapshot server path");
   assertIncludes(workflow, "upsertSignalDeskChannelWindowStateServer", "Channel window state server path");
+  assertIncludes(workflow, "CHANNEL_WINDOW_IDEMPOTENCY_KEY_REQUIRED", "Channel-window server requires operation identity");
+  assertIncludes(workflow, "CHANNEL_WINDOW_IDEMPOTENCY_CONFLICT", "Channel-window replay rejects changed input");
+  assertIncludes(workspace, "channelWindowRetry?.requestKey === requestKey", "Channel-window browser retry reuses unchanged operation identity");
   assertIncludes(workflow, "refreshSignalDeskProviderSourceRetentionServer", "Provider source retention server path");
   assertIncludes(workflow, "createSignalDeskProviderEvaluationServer", "Provider evaluation server path");
   assertIncludes(workflow, "upsertSignalDeskTrustPartnerProfileServer", "Trust partner profile server path");
   assertIncludes(workflow, "reviewSignalDeskTrustPartnerRenewalServer", "Trust partner renewal server path");
+  assertIncludes(workflow, "TRUST_PARTNER_METRICS_IDEMPOTENCY_KEY_REQUIRED", "Trust metrics require operation identity");
+  assertIncludes(workflow, "TRUST_PARTNER_DELIVERABLE_MISMATCH", "Trust metrics enforce deliverable ownership");
+  assertIncludes(workflow, "count: increment(ownerSignals)", "Trust metrics preserve incremental demand observations");
+  assertIncludes(workspace, "trustMetricsRetry?.requestKey === requestKey", "Trust metrics browser retry reuses unchanged operation identity");
   assertIncludes(workflow, "upsertSignalDeskContentSourceServer", "Content source server path");
+  assertIncludes(actions, "defaultMarketPodId: z.string().trim().max(160).nullable().optional(),\n    idempotencyKey: z.string().trim().min(8).max(180),", "Content source API requires bounded retry identity and explicit pod clearing");
+  assertIncludes(workflow, "CONTENT_SOURCE_IDEMPOTENCY_KEY_REQUIRED", "Content source server requires operation identity");
+  assertIncludes(workflow, 'doc(`content_source_${operationHash}`)', "Content source claims actor-bound operation identity");
+  assertIncludes(workflow, "legacyContentSourceIdFor", "Content source identity preserves matching legacy documents");
+  assertIncludes(workflow, "canonicalizeContentUrl", "Content sources use a dedicated HTTP(S) canonicalizer");
+  assertIncludes(workflow, 'throw new Error("CONTENT_SOURCE_PROVENANCE_IMMUTABLE")', "Content source provenance is immutable after creation");
+  assertIncludes(workflow, "readContentSources", "Content workspace projects persisted source shapes at runtime");
+  assertIncludes(workflow, 'transaction.get(contentSourceRef), transaction.get(pauseRef), transaction.get(marketPodRef)', "Default content-source seed reads current source, pause and pod authority transactionally");
+  assertIncludes(workspace, "contentSourceRetry?.requestKey === requestKey", "Content source browser retains exact-input retry identity");
+  assertIncludes(workspace, "contentSourceId: selectedContentSourceId || undefined", "Content source editor submits explicit identity");
+  assertIncludes(workspace, "setContentSourceTitle(source.title)", "Content source editor hydrates selected source");
+  assertIncludes(workspace, 'pod.status === "active" && pod.reviewDecision === "approved" && Boolean(pod.approvedBy)', "Content controls select only founder-approved active pods");
+  assertIncludes(workspace, "selectedContentAssetSource?.sourceType", "Sourced assets derive source type from current source truth");
+  assertNotIncludes(workspace, "contentAssetUrl || contentSourceUrl", "Standalone assets cannot inherit the source-editor URL");
   assertIncludes(workflow, "generateSignalDeskContentDistributionDraftsServer", "Content draft generation server path");
   assertIncludes(workflow, "Content asset is not ready", "Content draft generation blocks held assets");
+  assertIncludes(workflow, "CONTENT_PERFORMANCE_IDEMPOTENCY_KEY_REQUIRED", "Content performance requires operation identity");
+  assertIncludes(workflow, "CONTENT_PERFORMANCE_DRAFT_MISMATCH", "Content performance enforces draft/asset/channel coupling");
+  assertIncludes(workflow, 'doc("scope_content-distribution")', "Content performance reads pause authority transactionally");
+  assertIncludes(workspace, "contentPerformanceRetry?.requestKey === requestKey", "Content performance browser retry reuses unchanged operation identity");
   assertIncludes(workflow, "scheduleSignalDeskContentDistributionDraftServer", "Content schedule server path");
   assertIncludes(workflow, "recordSignalDeskContentPerformanceServer", "Content performance server path");
   assertIncludes(workflow, "ENABLE_MENULIST_SIGNALDESK_PROVIDER_SEND", "Workflow checks provider-send flag");
@@ -560,13 +727,32 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, "activationWatchSyncStatus", "Recorded outcomes update activation state automatically");
   assertIncludes(workflow, 'reconciliation: "qualification-after-outcome"', "Qualification reconciles outcomes recorded before the revenue account existed");
   assertIncludes(workflow, "hasTwoSurfaceActivation", "Revenue qualification distinguishes two-surface activation from generic conversion state");
+  assertIncludes(workflow, "readStrictOutcomeSummaryQueryInTransaction", "Revenue outcome consumers paginate strict summary authority inside their transaction");
+  assertIncludes(workflow, "sourcePolicyUsabilityError(sourcePolicy", "Revenue qualification revalidates current source-policy authority inside its transaction");
+  assertNotIncludes(workflow, "const targetSnap = await targetRef.get();\n    if (!targetSnap.exists) throw new Error(\"Target not found\");\n    const target = parseSignalDeskTargetSummaryDocument", "Revenue qualification does not settle from target authority read before its transaction");
   assertIncludes(workflow, 'where("outcomeType", "==", "two_surface_activation")', "Activation derivation preserves terminal activation evidence outside the latest window");
   assertIncludes(workflow, 'orderBy("updatedAt", "desc")', "Activation derivation reads a deterministic latest outcome window");
   assertIncludes(workflow, "toTimestampMillis(target.ownerQualifiedAt)", "Activation deadline starts from the durable owner-qualified timestamp");
   assertIncludes(workflow, "annotateActivationWatch", "Expired activation deadlines read as stalled without a scheduler");
   assertIncludes(workflow, 'name: "Bengaluru first proof pod"', "First proof pod matches the maintained Bengaluru recommendation");
-  assertIncludes(workflow, "legacyUnapprovedMarketPod", "Default seeding migrates only the exact unapproved legacy first pod");
-  assertIncludes(workflow, "!existingMarketPodSnap.exists || legacyUnapprovedMarketPod", "Default seeding cannot overwrite a founder-approved market pod");
+  assertIncludes(workflow, "providerDefaults.length !== 18", "Default seed registry asserts all 18 provider accounts");
+  assertIncludes(workflow, "providerBudgetDefaults.length !== 17", "Default seed registry deduplicates the 18 accounts into 17 provider budgets");
+  assertIncludes(workflow, "businessRefs.length !== 53", "Default seed foundation asserts its exact 53 business documents");
+  assertIncludes(workflow, "const foundationRefs = [ctaSeedRef, ...businessRefs]", "Default seed foundation reads current CTA and all business rows together");
+  assertIncludes(workflow, "transaction.create(ref, sanitizeForFirestore(data))", "Default seeding creates missing generic rows without overwriting current truth");
+  assertIncludes(workflow, "if (businessWriteCount === 0) return", "Clean seed replay skips audit, timeline, and cost side effects");
+  assertIncludes(workflow, "isExactLegacyModelRoute", "Default seeding bounds model-route migration to an exact legacy shape");
+  assertIncludes(workflow, "isExactLegacyMarketPod", "Default seeding bounds first-pod migration to an exact legacy shape");
+  assertIncludes(workflow, "isExactLegacyOfferCta", "Default seeding bounds Offer CTA migration to an exact legacy shape");
+  assertIncludes(workflow, "assertSeedProviderAccount", "Existing provider defaults are validated before create-only preservation");
+  assertIncludes(workflow, "assertSeedBudgetPolicy", "Existing budget defaults are validated before create-only preservation");
+  assertIncludes(workflow, "assertSeedContentSource", "Existing default content source is strictly validated and preserved");
+  assertIncludes(workflow, "const currentPod = assertSeedMarketPod", "Default content-source activation uses strict current pod authority");
+  assertIncludes(workflow, 'use: "sender", disabledReason: "Enable sender authority only after SMTP credentials', "Owned-email sender authority is explicitly disabled until sender controls pass");
+  assertIncludes(workflow, 'identityMigrationState: "migrated"', "Explicit current CTA resolution closes the identity migration marker");
+  assertIncludes(actions, '"PROVIDER_ACCOUNT_PRODUCT_MISMATCH"', "Seed collisions return a bounded provider product error");
+  assertIncludes(actions, '"SIGNALDESK_SEED_DEFAULT_REGISTRY_INVALID"', "Seed registry failures return a bounded action error");
+  assertIncludes(actions, '"OFFER_CTA_SEED_IDENTITY_CONFLICT"', "Seed Offer identity conflicts return a bounded action error");
   assertIncludes(workflow, "estimated spend today", "Daily founder brief includes spend");
   assertIncludes(workflow, "overdue revenue next action", "Daily founder brief includes stale revenue work");
   assertIncludes(workflow, 'const exceptionOnlyHeld = requestedApprovalMode === "exception-only"', "Exception-only envelope is deterministically held");
@@ -588,16 +774,16 @@ function verifyApiSecurityAndActions() {
   assertIncludes(workflow, "unsupportedClaims?.length", "Approval review blocks unsupported draft claims");
   assertIncludes(workflow, "assertSourcePolicyUsable", "Workflow centralizes source policy active/expiry guard");
   assertIncludes(workflow, "appendSourcePolicyBlockedAudit", "Workflow audits source policy blocks");
-  assertIncludes(workflow, "SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED", "Workflow has research source-policy scan diagnostic code");
-  assertIncludes(workflow, "logRuntimeFailure(SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED", "Workflow logs bounded research source-policy scan diagnostics");
-  assertIncludes(workflow, "candidatePolicyCount: snap.docs.length", "Workflow logs bounded source-policy candidate count");
-  assertIncludes(workflow, "rejectedPolicyCount", "Workflow tracks rejected provider policy candidates");
+  assertIncludes(workflow, "const requestedSourcePolicyId = normalizeText(input.sourcePolicyId)", "Research runs require one caller-selected source policy");
+  assertIncludes(workflow, 'throw new Error("RESEARCH_SOURCE_POLICY_ID_REQUIRED")', "Research runs fail closed without explicit source-policy identity");
+  assertNotIncludes(workflow, "SIGNALDESK_RESEARCH_SOURCE_POLICY_SCAN_FAILED", "Research runs do not auto-select policy authority from a bounded scan");
+  assertNotIncludes(workflow, '.where("provider", "==", provider)', "Research policy authority is not inferred from provider scans");
   assertIncludes(workflow, "isSourcePolicyExpired", "Workflow checks source policy expiry");
   assertIncludes(workflow, "getSourcePolicyState", "Workflow computes source policy UI state");
   assertIncludes(workflow, "allowedFields", "Source policies persist field-level source rights");
   assertIncludes(workflow, "prohibitedUses", "Source policies persist prohibited downstream uses");
-  assertIncludes(workflow, "expiresAt: timestampFromIsoOrDefault(input.expiresAt, input.retentionDays)", "Source policy creation sets expiry");
-  assertIncludes(workflow, 'if (!isSenderDomainReady(await readReadySenderDomain(db))) throw new Error("Sender domain is not ready")', "Email export requires sender readiness");
+  assertIncludes(workflow, "expiresAt: admin.firestore.Timestamp.fromDate(new Date(normalized.expiresAt))", "Source policy creation persists schema-validated expiry");
+  assertIncludes(workflow, 'if (!isSenderDomainReady(sender)) throw new Error("Sender domain is not ready")', "Email export requires transaction-current sender readiness");
   assertIncludes(actions, '"SignalDesk Operating Layer is disabled"', "Actions route exposes operating-layer safe error");
   assertIncludes(actions, '"Content asset is not ready"', "Actions route exposes content asset readiness safe error");
 
@@ -642,8 +828,9 @@ function verifyApiSecurityAndActions() {
   assertIncludes(webhookServer, "existingEventSnap.exists", "Webhook duplicate event guard");
   assertIncludes(webhookServer, "eventFingerprintHash", "Webhook duplicate guard binds the normalized event facts");
   assertIncludes(webhookServer, "transaction.create(eventRef", "Webhook event reservation is atomic with downstream writes");
-  assertIncludes(webhookServer, "findTargetByIdentity(transaction", "Webhook identity and supplied target are resolved in one transaction");
-  assertIncludes(webhookServer, "suppliedTargetId !== identityTargetId", "Webhook rejects identity and supplied-target disagreement");
+  assertIncludes(webhookServer, "findContactAuthorityByIdentity(transaction", "Webhook contact authority is resolved inside the event transaction");
+  assertIncludes(webhookServer, "resolveSignalDeskWebhookTargetAuthority", "Webhook resolves contact, delivery, and supplied-target authority through the strict contract");
+  assertIncludes(webhookServer, "SIGNALDESK_WEBHOOK_SUPPLIED_TARGET_UNTRUSTED", "Webhook rejects untrusted supplied-target ownership");
   assertIncludes(webhookServer, "targetId: targetId || null", "Webhook preserves identity-level suppression when no target resolves");
   assertIncludes(webhookServer, "isOutOfOrder: outOfOrder", "Webhook message evidence marks out-of-order delivery");
   assertIncludes(webhookServer, "for (const event of events)", "Webhook processes every event in a provider batch");
@@ -660,11 +847,53 @@ function verifyApiSecurityAndActions() {
   assertIncludes(outcomeBridgeServer, "OUTCOME_BRIDGE_MAX_CLOCK_SKEW_MS", "Outcome bridge rejects replay-window drift");
   assertIncludes(outcomeBridgeServer, ".strict()", "Outcome bridge rejects unknown payload fields");
   assertIncludes(outcomeBridgeServer, "Invalid SignalDesk route token", "Outcome bridge verifies route attribution token");
-  assertIncludes(outcomeBridgeServer, "SIGNALDESK_OUTCOME_ROUTE_SCOPE", "Outcome bridge requires a versioned route-token scope");
+  assertIncludes(outcomeBridgeServer, "parseSignalDeskRouteTokenDocument", "Outcome bridge delegates route-token scope validation to the strict authority contract");
   assertIncludes(outcomeBridgeServer, "routeTokenValidation", "Outcome bridge delegates authoritative token validation to the outcome transaction");
   assertNotIncludes(outcomeBridgeServer, "token: payload.routeToken", "Outcome bridge does not persist the raw route token");
+  assertIncludes(outcomeContracts, "parseSignalDeskRouteTokenDocument", "Persisted route tokens use a strict authority contract");
+  assertIncludes(outcomeContracts, "parseSignalDeskOutcomeEventDocument", "Persisted outcome events use a strict authority contract");
+  assertIncludes(outcomeContracts, "parseSignalDeskOutcomeSummaryDocument", "Persisted outcome summaries use a strict DTO projector");
+  assertIncludes(outcomeContracts, "parseSignalDeskOutcomeIdempotencyClaimDocument", "Outcome claims bind keys, fingerprints, and event identities");
+  assertIncludes(outcomeContracts, "parseSignalDeskRouteTokenIdempotencyClaimDocument", "Route-token claims bind actors, intent fingerprints, and token authority");
+  assertIncludes(outcomeContracts, "parseSignalDeskOutcomeTargetAuthority", "Outcome mutations require strict target lifecycle authority");
+  assertIncludes(outcomeContracts, "parseSignalDeskOutcomeEvidenceAuthority", "Outcome mutations require current target evidence authority");
+  assertIncludes(outcomeContracts, "parseSignalDeskOutcomeDemandSourceDocument", "Demand outcomes require strict source-event lineage");
+  assertIncludes(outcomeContracts, "parseSignalDeskAttributionTouchDocument", "Outcome attribution touches use a strict authority contract");
+  assertIncludes(outcomeContracts, "parseSignalDeskConversationSummaryDocument", "Conversation summaries use a strict DTO projector");
+  assertIncludes(outcomeContracts, 'z.literal(SIGNALDESK_PRODUCT_CODE)', "Outcome persistence contracts reject foreign-product rows");
+  assertIncludes(outcomeContracts, 'z.literal(SIGNALDESK_OUTCOME_ROUTE_SCOPE)', "Route-token contracts enforce the exact bridge scope");
+  assertIncludes(outcomeContracts, 'signaldesk:outcome-route-fingerprint:v1', "Route-token fingerprints are domain separated");
+  assertIncludes(outcomeContracts, 'signaldesk:outcome-route-intent:v1', "Route-token intent fingerprints are domain separated");
+  assertIncludes(outcomeContracts, 'signaldesk:outcome-route-idempotency:v1', "Route-token idempotency identities are domain separated");
+  assertIncludes(outcomeContracts, 'signaldesk:outcome-route-token:v1', "Deterministic route-token material is domain separated");
+  assertIncludes(outcomeContracts, "assertSignalDeskOutcomeEventMatchesRouteToken", "Outcome event and route-token authority can be checked together");
+  assertIncludes(outcomeContracts, "signalDeskOutcomeDayForMillis", "Outcome daily identity derives from one validated UTC event timestamp");
+  assertIncludes(outcomeContracts, "parseCompletedSourceDataLifecycle", "Strict outcome contracts admit only complete retained-source tombstone metadata");
+  assertIncludes(outcomeContracts, 'SOURCE_DATA_LIFECYCLE_KIND = "source-data-retention-v1"', "Retained outcome authority requires the exact scheduler lifecycle kind");
+  assertIncludes(outcomeContracts, 'SOURCE_DATA_LIFECYCLE_SYSTEM_ACTOR = "signaldesk-source-data-lifecycle"', "Retained outcome authority requires the scheduler system actor");
+  assertIncludes(outcomeContracts, '"conversation-record"', "Retained conversation authority accepts the scheduler legal-review reason");
+  assertIncludes(outcomeContracts, "assertSignalDeskRouteTokenClaimMatchesDocument", "Route-token claims are coupled to their immutable route document");
+  assertIncludes(outcomeContracts, "assertSignalDeskAttributionTouchMatchesOutcome", "Attribution touches can be checked against their exact outcome");
+  assertNotIncludes(outcomeContracts, "return { ...raw", "Outcome DTO projectors do not pass through persisted private fields");
+  assertIncludes(outcomeContractTests, "Exact route retries must derive the same opaque token", "Outcome contract tests cover deterministic exact retry material");
+  assertIncludes(outcomeContractTests, "An accepted event remains valid evidence after its route token is later revoked", "Outcome contract tests preserve exact replay evidence after later revocation");
+  assertIncludes(outcomeContractTests, "Revoked before event", "Outcome contract tests reject post-revocation events");
+  assertIncludes(outcomeContractTests, '"privateOwnerEmail" in projection, false', "Outcome contract tests prevent private event-field projection");
+  assertIncludes(outcomeContractTests, '"latestOutcomeEventId" in summaryProjection, false', "Outcome summary projection does not expose internal event-linkage fields");
+  assertIncludes(outcomeContractTests, "Completed retention route tombstone must remain strict replay authority", "Outcome contract tests preserve strict route authority after lifecycle tombstoning");
+  assertIncludes(outcomeContractTests, "Post-retention inbound merge must remain parseable", "Outcome contract tests preserve strict retained-conversation inbound processing");
+  assertIncludes(outcomeContractTests, "Lifecycle token must not enter the client conversation DTO", "Conversation projection omits internal retention tokens");
+  assertIncludes(outcomeRouteEmulatorTests, "Concurrent issuance did not elect one writer", "Outcome emulator covers concurrent route-token issuance");
+  assertIncludes(outcomeRouteEmulatorTests, "Exact issuance replay was not stable after lifecycle hold", "Outcome emulator covers replay-before-current-lifecycle ordering");
+  assertIncludes(outcomeRouteEmulatorTests, "Recorded replay was blocked by current revocation or retention tombstone state", "Outcome emulator covers recorded bridge replay after revocation and retention tombstoning");
+  assertIncludes(outcomeRouteEmulatorTests, "Completed retention route tombstone was not strict parse authority", "Outcome emulator parses scheduler-completed route tombstones before exact replay");
+  assertIncludes(outcomeRouteEmulatorTests, "Demand outcome accepted invented lineage", "Outcome emulator rejects invented demand-source lineage");
+  assertIncludes(outcomeRouteEmulatorTests, "Different sources collapsed into one summary identity", "Outcome emulator preserves source-scoped summary identities");
+  assertIncludes(outcomeRouteEmulatorTests, "Malformed legacy summaries hid verified activation during qualification", "Outcome emulator covers malformed-summary starvation in revenue qualification");
+  assertIncludes(outcomeRouteEmulatorTests, "Malformed legacy summaries hid verified activation during watch refresh", "Outcome emulator covers malformed-summary starvation in activation watch refresh");
   assertIncludes(actions, '"revoke-route-token"', "Actions route exposes audited route-token revocation");
   assertIncludes(actions, "RevokeRouteTokenSchema", "Route-token revocation payload is runtime validated");
+  assertIncludes(actions, '"OUTCOME_EVIDENCE_STALE"', "Outcome action maps stale current-evidence rejection through the bounded error contract");
   assertIncludes(actions, "channel: payload.data.channel,", "Outcome and route-token handlers receive explicit validated channel projections");
   assertIncludes(actions, "outcomeType: payload.data.outcomeType,", "Outcome handler receives an explicit validated outcome projection");
   assertIncludes(actions, "targetId: payload.data.targetId,", "Route-token handlers receive explicit validated target projections");
@@ -675,11 +904,20 @@ function verifyApiSecurityAndActions() {
   assertNotIncludes(actions, "revokeSignalDeskRouteTokenServer(accessResult.access, payload.data)", "Route-token revocation must not receive a loosely inferred payload object");
   assertIncludes(actions, 'if (action === "revoke-route-token") return "signaldesk.configure";', "Route-token revocation requires configure authority");
   assertIncludes(workflow, "revokeSignalDeskRouteTokenServer", "Workflow supports transactionally audited route-token revocation");
-  assertIncludes(workflow, "routeToken.scope !== SIGNALDESK_OUTCOME_ROUTE_SCOPE", "Outcome transaction revalidates route-token scope");
-  assertIncludes(workflow, "routeToken.status !== \"active\"", "Outcome transaction rejects revoked route tokens for new events");
-  assertIncludes(workflow, "priorIdempotencySnap?.exists", "Outcome transaction resolves exact retries before current route-token state");
+  assertIncludes(workflow, 'const [pauseSnap, targetSnap] = await Promise.all([', "Route-token issuance reads pause and target authority transactionally");
+  assertIncludes(workflow, 'const [policySnap, conversationSnap, evidenceSnap] = await Promise.all([', "Route-token issuance reads policy, conversation, and evidence authority transactionally");
+  assertIncludes(workflow, "db.collection(SIGNALDESK_COLLECTIONS.ROUTE_TOKENS).doc(material.routeTokenId)", "Route-token issuance commits the deterministic token identity under the authority transaction");
+  assertIncludes(workflow, "transaction.create(claimRef, sanitizeForFirestore(claimRecord))", "Route-token issuance atomically reserves its idempotency claim");
+  assertIncludes(workflow, "parseSignalDeskRouteTokenDocument(routeTokenSnap.data(), routeTokenSnap.id)", "Outcome transaction revalidates route-token scope through the strict authority contract");
+  assertIncludes(workflow, "isSignalDeskRouteTokenActiveAt(routeToken, operationAtMillis)", "Outcome transaction rejects inactive or revoked route tokens for new events");
+  assertIncludes(workflow, "priorIdempotencySnap.exists", "Outcome transaction resolves exact retries before current route-token state");
+  assertIncludes(workflow, "const day = signalDeskOutcomeDayForMillis(operationAtMillis);", "Outcome summary day derives from the transaction-attempt event timestamp");
+  assertIncludes(workflow, "const timestamp = admin.firestore.Timestamp.fromMillis(operationAtMillis);", "Outcome event and summary share the exact transaction-attempt timestamp");
   assertIncludes(workflow, "SIGNALDESK_COLLECTIONS.ATTRIBUTION_TOUCHES", "Outcome transaction writes the direct attribution touch");
-  assertIncludes(workflow, 'method: routeTokenRef ? "route-token-direct-v1" : "manual-direct-v1"', "Outcome attribution records the direct method");
+  assertIncludes(workflow, 'method: input.source === "route-token"', "Outcome attribution selects its direct method from the validated source");
+  assertIncludes(workflow, '"route-token-direct-v1"', "Outcome attribution preserves direct route-token provenance");
+  assertIncludes(workflow, '"demand-signal-direct-v1"', "Outcome attribution preserves direct demand-signal provenance");
+  assertIncludes(workflow, '"manual-direct-v1"', "Outcome attribution preserves direct manual provenance");
 
   assertIncludes(workflow, 'SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON = "provider_budget_blocked"', "SignalDesk provider budget blocks use stable reason");
   assertIncludes(workflow, "blockedReasons.push(`${provider}: ${SIGNALDESK_PROVIDER_BUDGET_BLOCKED_REASON}`)", "SignalDesk waterfall block summaries avoid raw provider errors");
@@ -708,6 +946,103 @@ function verifyConnectorProviderAndInvestmentControls() {
   const stagingEnv = read(".env.staging.example");
   const productionEnv = read(".env.production.example");
   const e2eLocal = read("scripts/verification/e2e-signaldesk-local.js");
+  assertIncludes(e2eLocal, "SignalDesk E2E stage failed (", "SignalDesk E2E failures identify the exact workflow stage");
+  assertIncludes(e2eLocal, "NON_SECRET_COORDINATION_TOKEN_KEYS", "Secret scan distinguishes exact non-bearer reconciliation identifiers");
+  assertIncludes(e2eLocal, '!NON_SECRET_COORDINATION_TOKEN_KEYS.has(normalizedKey)', "Secret scan allowlist remains exact-key bounded");
+  assertIncludes(e2eLocal, "webhooksecret|appsecret|accesstoken|apikey", "Secret scan still blocks credential-bearing token fields");
+  assertIncludes(e2eLocal, 'process.env.SIGNALDESK_E2E_FOCUS === "seed"', "SignalDesk E2E exposes a focused seed-regression rail");
+  assertIncludes(e2eLocal, "Default seeding did not create the complete 18-account provider registry", "Seed E2E verifies all provider account identities");
+  assertIncludes(e2eLocal, "Default seeding did not create the 17 deduplicated provider budgets", "Seed E2E verifies provider-budget deduplication");
+  assertIncludes(e2eLocal, "Concurrent missing-row convergence emitted duplicate seed side effects", "Seed E2E verifies concurrent create-only convergence");
+  assertIncludes(e2eLocal, "Clean concurrent seed replay inflated the Firestore write estimate", "Seed E2E verifies clean replay has no cost side effect");
+  assertIncludes(e2eLocal, "Near-match model route was mistaken for an exact legacy seed", "Seed E2E protects operator-owned near-match model routes");
+  assertIncludes(e2eLocal, "Near-match market pod was mistaken for an exact legacy seed", "Seed E2E protects operator-owned near-match market pods");
+  assertIncludes(e2eLocal, "Exact legacy active Offer CTA was not migrated to current held authority", "Seed E2E verifies exact Offer CTA migration");
+  assertIncludes(e2eLocal, "Founder CTA resolution did not close the canonical identity marker", "Seed E2E verifies explicit CTA incident closure markers");
+  const workflowSection = (startMarker, endMarker, label) => {
+    const startIndex = workflow.indexOf(startMarker);
+    const endIndex = workflow.indexOf(endMarker, startIndex + startMarker.length);
+    assert(startIndex >= 0, `${label} start marker exists`);
+    assert(endIndex > startIndex, `${label} end marker exists after start`);
+    return workflow.slice(startIndex, endIndex);
+  };
+  const selfServiceCtaWorkflow = workflowSection(
+    "export async function upsertSignalDeskSelfServiceCtaServer",
+    "export async function upsertSignalDeskOfferCtaServer",
+    "Self-service CTA workflow section",
+  );
+  const contentSourceWorkflow = workflowSection(
+    "export async function upsertSignalDeskContentSourceServer",
+    "export async function upsertSignalDeskProofPermissionServer",
+    "Content source workflow section",
+  );
+  const proofPermissionWorkflow = workflowSection(
+    "export async function upsertSignalDeskProofPermissionServer",
+    "export async function createSignalDeskContentAssetServer",
+    "Proof permission workflow section",
+  );
+  const approvalPacketWorkflow = workflowSection(
+    "export async function createSignalDeskApprovalPacketServer",
+    "export async function createSignalDeskSequencerHandoffServer",
+    "Approval packet workflow section",
+  );
+  const contentReviewWorkflow = workflowSection(
+    "export async function reviewSignalDeskContentDistributionDraftServer",
+    "export async function scheduleSignalDeskContentDistributionDraftServer",
+    "Content draft review workflow section",
+  );
+  const contentScheduleWorkflow = workflowSection(
+    "export async function scheduleSignalDeskContentDistributionDraftServer",
+    "export async function recordSignalDeskContentPerformanceServer",
+    "Content schedule workflow section",
+  );
+  const senderUpsertWorkflow = workflowSection(
+    "export async function upsertSignalDeskSenderDomainServer",
+    "export async function upsertSignalDeskConnectorSettingServer",
+    "Sender-domain upsert workflow section",
+  );
+  const sequencerHandoffWorkflow = workflowSection(
+    "export async function createSignalDeskSequencerHandoffServer",
+    "export async function sendSignalDeskOwnedSequenceStepServer",
+    "Sequencer handoff workflow section",
+  );
+  const ownedSequenceSendWorkflow = workflowSection(
+    "export async function sendSignalDeskOwnedSequenceStepServer",
+    "export async function importSignalDeskTargetsServer",
+    "Owned sequence send workflow section",
+  );
+  const assistedHandoffWorkflow = workflowSection(
+    "export async function prepareSignalDeskChannelHandoffServer",
+    "export async function sendSignalDeskApprovedMessageServer",
+    "Assisted handoff workflow section",
+  );
+  const providerSendWorkflow = workflowSection(
+    "export async function sendSignalDeskApprovedMessageServer",
+    "export async function exportSignalDeskMessageServer",
+    "Provider send workflow section",
+  );
+  const emailExportWorkflow = workflowSection(
+    "export async function exportSignalDeskMessageServer",
+    "export async function recordSignalDeskManualContactServer",
+    "Email export workflow section",
+  );
+  assertIncludes(e2eLocal, 'idempotencyKey: `market-pod-review-non-founder-${firstPodSnap.id}`', "Market-pod non-founder E2E setup uses the seeded pod identity");
+  assertIncludes(e2eLocal, 'idempotencyKey: `market-pod-review-approved-${firstPodSnap.id}`', "Market-pod founder E2E setup uses the seeded pod identity");
+  assertIncludes(e2eLocal, "Concurrent market-pod approval did not replay durable truth", "Market-pod review replay has local concurrent E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent direct AI assist did not converge on one durable run", "Direct AI assist convergence has emulator-backed concurrency coverage");
+  assertNotIncludes(e2eLocal, 'market-pod-review-non-founder-${targetId}', "Market-pod E2E setup does not reference a target before target seeding");
+  assertIncludes(e2eLocal, 'idempotencyKey: `market-pod-review-fixture-${result.run.marketPodId}`', "Research-agent market-pod E2E review uses the run pod identity");
+  assertNotIncludes(e2eLocal, 'market-pod-review-fixture-${targetId}', "Research-agent market-pod E2E review does not reference an undefined target identity");
+  assertIncludes(e2eLocal, "assertGrowthMissionIntegrity", "Growth mission E2E covers projection, replay, product, and lifecycle integrity");
+  assertIncludes(e2eLocal, "Same-day mission refresh reset founder review state", "Growth mission E2E preserves same-day reviewed truth");
+  assertIncludes(e2eLocal, "Wrong-product deterministic growth mission collision", "Growth mission E2E rejects deterministic wrong-product collisions");
+  assertIncludes(e2eLocal, "const contentAssetCtaInput = {", "Content-asset E2E setup creates an explicit active CTA");
+  assertIncludes(e2eLocal, "ctaId: contentAssetCta.ctaId", "Content-asset E2E fixtures bind to the explicit active CTA");
+  assertIncludes(e2eLocal, "const performanceCtaFingerprintHash = hashValue(JSON.stringify({", "Content-performance E2E fixture fingerprints an active CTA");
+  assertIncludes(e2eLocal, "ctaType: performanceCta.ctaType", "Content-performance fixture includes CTA type in its authority fingerprint");
+  assertIncludes(e2eLocal, "label: performanceCta.label", "Content-performance fixture includes CTA label in its authority fingerprint");
+  assertIncludes(e2eLocal, "ctaId: performanceCta.ctaId", "Content-performance E2E fixture binds asset and draft authority to the active CTA");
+  assertIncludes(e2eLocal, "scheduledFor: performanceScheduledFor", "Published content-performance E2E fixture preserves scheduled draft authority");
 
   for (const connector of CONNECTOR_KINDS) {
     assertIncludes(actions, `"${connector}"`, `Connector action schema ${connector}`);
@@ -728,6 +1063,509 @@ function verifyConnectorProviderAndInvestmentControls() {
     "Provider budget is ready",
     "No provider spend",
   ].forEach((needle) => assertIncludes(workflow, needle, `Workflow investment control ${needle}`));
+  assertIncludes(workflow, "const canonicalizeSenderDomain =", "Sender domains share one canonical hostname contract");
+  assertIncludes(workflow, 'throw new Error("SENDER_DOMAIN_INVALID")', "Malformed sender hostnames fail closed");
+  assertIncludes(workflow, "const projectSignalDeskSenderDomain =", "Sender rows cross a strict runtime projector");
+  assertIncludes(workflow, "normalizeText(value.pId) !== SIGNALDESK_PRODUCT_CODE", "Sender projector rejects wrong-product rows");
+  assertIncludes(workflow, "senderDomainId !== senderDomainIdFor(domain)", "Sender projector binds document identity to canonical hostname");
+  assertIncludes(workflow, "|| docId !== storedId", "Sender projector rejects document and stored ID drift");
+  assertIncludes(workflow, 'typeof value.bounceRate !== "number"', "Sender projector validates numeric rates");
+  assertIncludes(workflow, "|| !updatedAt", "Sender projector requires a valid update timestamp");
+  assertIncludes(workflow, 'logRuntimeFailure("signaldesk_sender_domain_shape_invalid"', "Malformed sender rows emit bounded diagnostics");
+  assertIncludes(workflow, 'logRuntimeFailure("signaldesk_sender_domain_scan_limit_exceeded"', "Bounded sender workspace scans emit cap diagnostics");
+  const projectedSenderWorkspaceReads = (workflow.match(/workspace\.senderDomains = await readSenderDomains\(db\);/g) || []).length;
+  assert(projectedSenderWorkspaceReads === 5, "Every sender workspace surface uses the strict sender projector");
+  assertNotIncludes(workflow, "readList<SignalDeskSenderDomainSummary>(db, SIGNALDESK_COLLECTIONS.SENDER_DOMAINS", "No sender workspace returns raw Firestore rows");
+  assertIncludes(workflow, '(sender.volumeRampState === "low_volume" || sender.volumeRampState === "ready")', "Sender readiness requires an admitted ramp state");
+  assertIncludes(workflow, ".orderBy(admin.firestore.FieldPath.documentId())", "Default sender selection has explicit deterministic document ordering");
+  assertIncludes(workflow, "SENDER_DOMAIN_SCAN_MAX_PAGES", "Default sender selection has a bounded pagination cap");
+  assertIncludes(workflow, "query.startAfter(cursor)", "Default sender selection paginates beyond malformed first-page rows");
+  assertIncludes(workflow, 'throw new Error("SENDER_DOMAIN_SCAN_LIMIT_EXCEEDED")', "Sender selection fails closed at the bounded scan cap");
+  assertIncludes(actions, '"SENDER_DOMAIN_SCAN_LIMIT_EXCEEDED"', "Sender scan-cap failure has a stable safe API error");
+  assertIncludes(workflow, "const isLegacyPendingSenderSentinel =", "The exact retired sender sentinel has a bounded compatibility filter");
+  assertIncludes(workflow, "rows.filter((row) => !isLegacyPendingSenderSentinel(row))", "The exact retired sender sentinel is excluded before projection diagnostics");
+  assertNotIncludes(workflow, "const senderSeedRef =", "Default seeding no longer creates an invalid sender placeholder");
+  assertNotIncludes(workflow, "senderSeedCreated", "Default seed cost accounting no longer charges for an invalid sender placeholder");
+  assertIncludes(e2eLocal, 'assert(!placeholderBeforeSnap.exists, "Default seeding created an invalid sender placeholder")', "Sender E2E rejects default placeholder creation");
+  assertIncludes(workflow, 'throw new Error("SENDER_DOMAIN_PRODUCT_MISMATCH")', "Sender upsert rejects wrong-product collisions");
+  assertIncludes(senderUpsertWorkflow, "return db.runTransaction", "Sender mutation and retry claim settle atomically");
+  assertIncludes(senderUpsertWorkflow, 'doc(`sender_domain_${operationHash}`)', "Sender mutation uses actor-bound retry identity");
+  assertIncludes(senderUpsertWorkflow, 'operation: "sender_domain_upsert"', "Sender mutation persists its retry claim with the mutation");
+  assertIncludes(senderUpsertWorkflow, 'throw new Error("SENDER_DOMAIN_IDEMPOTENCY_CONFLICT")', "Changed sender retries fail closed");
+  assertIncludes(senderUpsertWorkflow, "result: projected", "Sender exact replay stores only its public DTO");
+  assertIncludes(actions, "const SenderDomainNameSchema = z.string().trim()", "Sender action validates canonical hostname syntax at runtime");
+  assertIncludes(actions, "idempotencyKey: z.string().trim().min(8).max(180)", "Sender action requires bounded retry identity");
+  assertIncludes(actions, "authenticationState: payload.data.authenticationState", "Sender action maps validated fields without a broad cast");
+  assertIncludes(workspace, "senderDomainRetry?.requestKey === requestKey", "Sender UI retains retry identity for exact failed input");
+  assertIncludes(workspace, "globalThis.crypto.randomUUID()", "Sender UI generates collision-resistant retry identity");
+  assertIncludes(types, "senderDomainFingerprintHash?: string | null;", "Draft, packet, export, and sequencer contracts carry sender lineage");
+  assertIncludes(workflow, "const senderDomainFingerprintHashFor =", "Sender authority has a stable lineage fingerprint");
+  assertIncludes(workflow, "senderDomainFingerprintHash,\n                senderDomainId: sender.senderDomainId", "Draft creation persists exact sender lineage");
+  assertIncludes(workflow, "currentApprovalPacket.senderDomainFingerprintHash !== currentDraft.senderDomainFingerprintHash", "Approval review rejects packet and draft sender-lineage drift");
+  assertIncludes(sequencerHandoffWorkflow, 'throw new Error("SEQUENCER_SENDER_AUTHORITY_MISMATCH")', "Sequencer handoff rejects caller-selected sender substitution");
+  assertIncludes(actions, '"SEQUENCER_SENDER_AUTHORITY_MISMATCH"', "Sequencer sender mismatch has a stable safe API error");
+  assertNotIncludes(sequencerHandoffWorkflow, '.where("status", "==", "active")', "Sequencer handoff cannot substitute an arbitrary active sender");
+  assertNotIncludes(assistedHandoffWorkflow, '.where("status", "==", "active")', "Assisted handoff cannot substitute an arbitrary active sender");
+  assertNotIncludes(providerSendWorkflow, '.where("status", "==", "active")', "Provider send cannot substitute an arbitrary active sender");
+  assertNotIncludes(emailExportWorkflow, '.where("status", "==", "active")', "Email export cannot substitute an arbitrary active sender");
+  assertIncludes(assistedHandoffWorkflow, "assertSenderDomainAuthorityBinding(priorExport, projectSenderDomainDocument(priorSenderSnap))", "Assisted email replay revalidates current sender authority");
+  assertIncludes(assistedHandoffWorkflow, "recipient: null,", "Assisted replay returns a redacted historical acknowledgement");
+  assertIncludes(assistedHandoffWorkflow, "recipientPreview: normalizeText(priorExport.recipientPreview) || null", "Assisted replay exposes only its durable masked recipient preview");
+  assertIncludes(assistedHandoffWorkflow, "replay: true,", "Assisted replay retains durable replay truth");
+  assertIncludes(providerSendWorkflow, "providerMessageId: start.replay.providerMessageId || null", "Provider send replay retains durable provider truth without message content");
+  assertIncludes(providerSendWorkflow, "await assertSignalDeskCtaLineage(db, transaction, historicalExport)", "Provider send replay revalidates current CTA authority");
+  assertIncludes(providerSendWorkflow, "isSenderDomainAuthorityBindingCurrent(", "Provider send replay revalidates current sender authority");
+  assertIncludes(providerSendWorkflow, "start.currentCtaAuthority && start.currentSenderAuthority", "Provider send replay reports combined CTA and sender authority");
+  assertIncludes(providerSendWorkflow, "historicalReplay: true", "Provider send replay is explicitly historical");
+  assertIncludes(providerSendWorkflow, "replay: true", "Provider send replay is explicitly marked as a replay");
+  assertIncludes(emailExportWorkflow, "assertSenderDomainAuthorityBinding(priorExport, projectSenderDomainDocument(priorSenderSnap))", "Content-bearing export replay revalidates current sender authority");
+  assertIncludes(providerAdapters, "senderDomain?: string | null", "Provider send input carries approved sender authority");
+  assertIncludes(providerAdapters, "export const assertSignalDeskEmailSenderDomainAuthority", "Email sender admission uses one reusable deterministic preflight");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_SENDER_DOMAIN_AUTHORITY_REQUIRED")', "SMTP send requires bound sender authority");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_SENDER_DOMAIN_AUTHORITY_MISMATCH")', "SMTP send rejects a configured From-domain mismatch");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_SENDER_FROM_INVALID")', "SMTP preflight rejects malformed From mailboxes");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_REPLY_TO_INVALID")', "SMTP preflight rejects malformed optional Reply-To mailboxes");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_SMTP_PORT_INVALID")', "SMTP preflight rejects invalid finite ports");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_SMTP_SECURE_INVALID")', "SMTP preflight rejects invalid TLS-mode values");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_UNSUBSCRIBE_URL_INVALID")', "SMTP preflight rejects invalid unsubscribe URLs");
+  assertIncludes(providerAdapters, 'throw new Error("EMAIL_PHYSICAL_ADDRESS_INVALID")', "SMTP preflight rejects invalid physical-address compliance data");
+  assertIncludes(providerAdapters, "const { port, replyTo, secure } = assertSignalDeskEmailSenderDomainAuthority", "SMTP adapter consumes the validated port, Reply-To, and TLS mode");
+  assertIncludes(providerAdapters, "connectionTimeout: SIGNALDESK_SMTP_CONNECTION_TIMEOUT_MS", "SMTP adapter has a bounded connection timeout");
+  assertIncludes(providerAdapters, "greetingTimeout: SIGNALDESK_SMTP_GREETING_TIMEOUT_MS", "SMTP adapter has a bounded greeting timeout");
+  assertIncludes(providerAdapters, "socketTimeout: SIGNALDESK_SMTP_SOCKET_TIMEOUT_MS", "SMTP adapter has a bounded socket timeout");
+  assertIncludes(providerAdapters, "signal: AbortSignal.timeout(SIGNALDESK_META_REQUEST_TIMEOUT_MS)", "Meta adapter has a bounded request timeout signal");
+  const providerPreflightIndex = providerSendWorkflow.indexOf("assertSignalDeskEmailSenderDomainAuthority(sender?.domain || null)");
+  const providerClaimCreateIndex = providerSendWorkflow.indexOf("transaction.create(claimRef");
+  assert(providerPreflightIndex >= 0 && providerPreflightIndex < providerClaimCreateIndex, "Provider email preflight runs before claim creation");
+  const sequencePreflightIndex = ownedSequenceSendWorkflow.indexOf("assertSignalDeskEmailSenderDomainAuthority(sender.domain)");
+  const sequenceClaimCreateIndex = ownedSequenceSendWorkflow.indexOf("transaction.create(claimRef");
+  assert(sequencePreflightIndex >= 0 && sequencePreflightIndex < sequenceClaimCreateIndex, "Owned sequence email preflight runs before claim creation");
+  assertIncludes(ownedSequenceSendWorkflow, "isSenderDomainAuthorityBindingCurrent(", "Owned sequence replay revalidates current sender authority");
+  assertIncludes(ownedSequenceSendWorkflow, "start.currentCtaAuthority && start.currentSenderAuthority", "Owned sequence replay reports combined CTA and sender authority");
+  assertIncludes(providerSendWorkflow, 'senderDomain: input.channel === "email" ? sender?.domain || null : null', "Approved provider send passes the bound sender domain to SMTP");
+  assertIncludes(workflow, "senderDomain: sender.domain", "Owned sequence send passes the bound sender domain to SMTP");
+  assertIncludes(actions, '"EMAIL_SENDER_DOMAIN_AUTHORITY_MISMATCH"', "SMTP sender mismatch has a stable safe API error");
+  assertIncludes(actions, '"EMAIL_SENDER_DOMAIN_AUTHORITY_REQUIRED"', "Missing SMTP sender authority has a stable safe API error");
+  assertIncludes(actions, '"EMAIL_SENDER_FROM_INVALID"', "Malformed SMTP From mailbox has a stable safe API error");
+  assertIncludes(actions, '"EMAIL_REPLY_TO_INVALID"', "Malformed SMTP Reply-To mailbox has a stable safe API error");
+  assertIncludes(actions, '"EMAIL_SMTP_PORT_INVALID"', "Invalid SMTP port has a stable safe API error");
+  assertIncludes(actions, '"EMAIL_SMTP_SECURE_INVALID"', "Invalid SMTP TLS mode has a stable safe API error");
+  assertIncludes(actions, '"EMAIL_UNSUBSCRIBE_URL_INVALID"', "Invalid unsubscribe URL has a stable safe API error");
+  assertIncludes(actions, '"EMAIL_PHYSICAL_ADDRESS_INVALID"', "Invalid physical-address compliance data has a stable safe API error");
+  assertIncludes(e2eLocal, "Concurrent sender retry repeated audit or cost effects", "Sender mutation concurrency has emulator regression coverage");
+  assertIncludes(e2eLocal, "Canonical sender recovery silently overwrote a legacy alias row", "Legacy noncanonical sender aliases have fail-closed recovery coverage");
+  assertIncludes(e2eLocal, "Invalid first-page sender rows starved the later ready canonical sender", "Bounded deterministic sender pagination has emulator coverage");
+  assertIncludes(e2eLocal, "Invalid first-page sender rows starved the later valid sender workspace DTO", "Projected sender workspace pagination has emulator coverage");
+  assertIncludes(e2eLocal, "Export cannot substitute alternate sender while bound ramp is not started", "Ramp admission and no-substitution have emulator coverage");
+  assertIncludes(e2eLocal, "Provider replay did not expose revoked current CTA authority", "Provider send replay reports revoked current CTA authority without re-sending");
+  assertIncludes(e2eLocal, "Provider replay did not expose revoked current sender authority", "Provider send replay reports revoked current sender authority without re-sending");
+  assertIncludes(e2eLocal, "Owned sequence replay did not expose revoked current sender authority", "Owned sequence replay reports revoked current sender authority without re-sending");
+  assertIncludes(e2eLocal, "Content-bearing export replay after sender authority changed", "Export replay sender revalidation has emulator coverage");
+  assertIncludes(e2eLocal, "Assisted handoff replay after sender authority changed", "Assisted replay sender revalidation has emulator coverage");
+  assertIncludes(e2eLocal, "Provider replay exposed reusable content after sender revocation", "Historical provider replay redaction has emulator coverage");
+  assertIncludes(e2eLocal, "Provider send did not receive the approved sender domain", "Provider-send sender binding has emulator coverage");
+  assertIncludes(e2eLocal, "Owned sequence send did not receive the approved sender domain", "Owned-sequence sender binding has emulator coverage");
+  assertIncludes(e2eLocal, "SMTP send without bound sender authority", "SMTP missing sender authority has adapter-level E2E coverage");
+  assertIncludes(e2eLocal, "SMTP configured From-domain mismatch", "SMTP configured From-domain mismatch has adapter-level E2E coverage");
+  assertIncludes(e2eLocal, "SMTP malformed Reply-To mailbox", "SMTP malformed Reply-To has adapter-level E2E coverage");
+  assertIncludes(e2eLocal, "SMTP malformed TLS mode", "SMTP malformed TLS mode has adapter-level E2E coverage");
+  assertIncludes(e2eLocal, "SMTP adapter omitted bounded connection, greeting, or socket timeouts", "SMTP deadline options have adapter-level E2E coverage");
+  assertIncludes(e2eLocal, "Meta adapter omitted its bounded request timeout signal", "Meta deadline signal has adapter-level E2E coverage");
+  assertIncludes(e2eLocal, "Deterministic provider preflight failure created a send claim", "Provider preflight has no-claim E2E coverage");
+  assertIncludes(e2eLocal, "Deterministic owned-sequence preflight failure created a send claim", "Owned sequence preflight has no-claim E2E coverage");
+  assertIncludes(e2eLocal, "Exact legacy sender sentinel leaked into the workspace DTO", "Exact legacy sender sentinel is quietly excluded from workspace DTOs");
+  assertIncludes(e2eLocal, 'SIGNALDESK_E2E_FOCUS === "sender-outbound"', "Sender/outbound regressions have a focused local E2E selector");
+  assertIncludes(actions, "Boolean(value.approvalId) !== Boolean(value.targetId)", "Approval packet API requires exactly one owner selector");
+  assertIncludes(workflow, "approvalPacketContentMatches", "Approval packet exact refresh avoids duplicate effects");
+  assertIncludes(approvalPacketWorkflow, "doc(draft.ctaId)", "Approval packet refresh reads the CTA bound to the draft");
+  assertNotIncludes(approvalPacketWorkflow, 'SELF_SERVICE_CTAS).where("status", "==", "active").limit(1)', "Approval packet refresh cannot substitute an arbitrary active CTA");
+  assertIncludes(types, 'diagnosticVersion: "current-menu-presence-v1"', "Evidence packets expose a versioned current-menu diagnostic");
+  assertIncludes(workflow, "buildCurrentMenuPresenceDiagnostic", "Evidence creation builds the current-menu diagnostic server-side");
+  assertIncludes(workflow, 'ownerControlState: "unverified"', "Current-menu evidence does not infer owner control");
+  assertIncludes(workflow, 'mobileAccessState: "unverified"', "Current-menu evidence does not infer mobile accessibility");
+  assertIncludes(types, 'actionVersion?: "signaldesk-action-packet-v1"', "Approval packets expose the exact action contract");
+  assertIncludes(workflow, "actionFingerprintHash: hashValue", "Approval packets fingerprint the exact prepared action");
+  assertIncludes(workflow, "approvalAllowedRoute", "Approval packets derive a current policy-allowed route");
+  assertIncludes(workspace, 'packet.allowedRoute !== "none"', "Desktop approval is disabled without an allowed action route");
+  assertIncludes(workflow, "transaction.get(evidenceQuery)", "Approval packet refresh reads latest evidence inside its transaction");
+  assertIncludes(workflow, "approval?.approvalPacketId || `packet_${approval?.approvalId || target.targetId}`", "Approval packet refresh preserves the current packet identity");
+  assertIncludes(e2eLocal, "Approval packet refresh repointed the pending approval", "Approval packet refresh identity has E2E coverage");
+  assertIncludes(workflow, "assertProviderBudgetState", "Provider budget admission shares one transaction-compatible validator");
+  assertIncludes(actions, "idempotencyKey: z.string().trim().min(8).max(180),\n    targetId: z.string().trim().min(3).max(160),\n    waterfallId:", "Enrichment waterfall API requires bounded retry identity");
+  assertIncludes(workspace, "enrichmentWaterfallRetry?.requestKey === requestKey", "Enrichment waterfall browser retains exact-input retry identity");
+  assertIncludes(workflow, 'doc(`enrichment_waterfall_${operationHash}`)', "Enrichment waterfall claims actor-bound operation identity");
+  assertIncludes(workflow, 'transaction.get(pauseRef)', "Enrichment waterfall reads current provider pause inside settlement");
+  assertIncludes(workflow, "targetPriorGuard(target, conversationSnap?.exists", "Enrichment waterfall revalidates prior-contact authority transactionally");
+  assertIncludes(workflow, "assertProviderBudgetState(\n                        accountSnap.exists", "Enrichment waterfall revalidates provider budgets inside settlement");
+  assertIncludes(workflow, 'throw new Error("ENRICHMENT_WATERFALL_IDEMPOTENCY_CONFLICT")', "Enrichment waterfall changed-input retries fail closed");
+  assertIncludes(e2eLocal, "Concurrent enrichment waterfall retry did not converge", "Enrichment waterfall concurrency has local E2E coverage");
+  assertIncludes(e2eLocal, "Paused enrichment-waterfall settlement", "Enrichment waterfall current-pause admission has local E2E coverage");
+  assertIncludes(actions, "const ContentDraftScheduleSchema = z.object({", "Content schedule API has a bounded runtime schema");
+  assertIncludes(actions, "scheduledFor: z.string().trim().max(80).optional()", "Content schedule API bounds its optional publication time");
+  assertIncludes(workspace, "contentScheduleRetry?.requestKey === requestKey", "Content schedule browser retains exact-input retry identity");
+  assertIncludes(workflow, 'doc(`content_schedule_${operationHash}`)', "Content schedule claims actor-bound operation identity");
+  assertIncludes(workflow, 'transaction.get(calendarRef)', "Content schedule replay and current calendar state share the settlement transaction");
+  assertIncludes(workflow, 'transaction.get(pauseRef)', "Content schedule reads the current content pause inside settlement");
+  assertIncludes(workflow, 'draft.approvalStatus !== "approved"', "Content schedule revalidates current draft approval inside settlement");
+  assertIncludes(contentScheduleWorkflow, 'pauseSnap.data()?.status === "active" && input.status !== "hold"', "Content pause still permits a conservative schedule hold");
+  assertIncludes(contentScheduleWorkflow, 'if (scheduledForMillis >= permissionExpiryMillis) throw new Error("CONTENT_SCHEDULE_AFTER_PROOF_EXPIRY")', "Content scheduling cannot outlive customer-proof permission");
+  assertIncludes(actions, '"CONTENT_SCHEDULE_AFTER_PROOF_EXPIRY"', "Proof-expiry schedule rejection has a stable safe API error");
+  assertIncludes(actions, '"CONTENT_SCHEDULE_PROOF_TIME_INVALID"', "Malformed proof-expiry schedule authority has a stable safe API error");
+  assertIncludes(e2eLocal, "Concurrent content scheduling did not converge", "Content schedule concurrency has local E2E coverage");
+  assertIncludes(e2eLocal, "Paused content scheduling did not persist a conservative hold", "Content pause permits a conservative schedule hold in local E2E");
+  assertIncludes(e2eLocal, "Paused content schedule settlement (advancement)", "Content pause blocks schedule advancement in local E2E");
+  assertIncludes(actions, "approvalStatus: z.enum([\"approved\", \"rejected\", \"hold\"]),\n    contentDraftId: z.string().trim().min(3).max(180),\n    idempotencyKey:", "Content review API requires bounded retry identity");
+  assertIncludes(workspace, "contentReviewRetry?.requestKey === requestKey", "Content review browser retains exact-input retry identity");
+  assertIncludes(workflow, 'doc(`content_review_${operationHash}`)', "Content review claims actor-bound operation identity");
+  assertIncludes(workflow, 'throw new Error("CONTENT_REVIEW_IDEMPOTENCY_CONFLICT")', "Content review changed-input retries fail closed");
+  assertIncludes(contentReviewWorkflow, 'pauseSnap.data()?.status === "active" && input.approvalStatus === "approved"', "Content pause blocks only approval advancement during draft review");
+  assertIncludes(e2eLocal, "Concurrent content review did not converge", "Content review concurrency has local E2E coverage");
+  assertIncludes(e2eLocal, "Paused content review did not persist a conservative hold", "Content pause permits a conservative draft hold in local E2E");
+  assertIncludes(e2eLocal, "Paused content review did not persist a rejection", "Content pause permits draft rejection in local E2E");
+  assertIncludes(e2eLocal, "Paused content review settlement (advancement)", "Content pause blocks draft approval advancement in local E2E");
+  assertIncludes(actions, "channels: z.array(ContentChannelSchema).min(1).max(8),\n    contentAssetId: z.string().trim().min(3).max(180),\n    idempotencyKey:", "Content draft generation API requires bounded retry identity");
+  assertIncludes(workspace, "contentDraftGenerationRetry?.requestKey === requestKey", "Content draft generation browser retains exact-input retry identity");
+  assertIncludes(workflow, 'doc(`content_draft_generation_${operationHash}`)', "Content draft generation claims actor-bound operation identity");
+  assertIncludes(workflow, "permissionRef ? transaction.get(permissionRef) : Promise.resolve(null)", "Shared content authority reads current proof permission inside settlement");
+  assertIncludes(workflow, "ctaRef ? transaction.get(ctaRef) : Promise.resolve(null)", "Shared content authority reads current CTA inside settlement");
+  assertIncludes(e2eLocal, "Concurrent content draft generation did not converge", "Content draft generation concurrency has local E2E coverage");
+  assertIncludes(e2eLocal, "Paused content draft generation settlement", "Content draft generation current-pause admission has local E2E coverage");
+  assertIncludes(actions, "grantedAt: z.string().datetime({ offset: true }).optional(),\n    idempotencyKey:", "Proof permission API requires bounded retry identity");
+  assertIncludes(workspace, "proofPermissionRetry?.requestKey === requestKey", "Proof permission browser retains exact-input retry identity");
+  assertIncludes(workflow, 'doc(`proof_permission_${operationHash}`)', "Proof permission claims actor-bound operation identity");
+  assertIncludes(workflow, "transaction.get(targetRef), transaction.get(permissionRef)", "Proof permission reads current target and permission inside settlement");
+  assertIncludes(workflow, 'throw new Error("PROOF_PERMISSION_TARGET_IMMUTABLE")', "Proof permission target ownership stays immutable");
+  assertIncludes(proofPermissionWorkflow, 'if (isReactivation && !requestedGrantedAt)', "Revoked or expired proof permission cannot reactivate without a new explicit grant timestamp");
+  assertIncludes(proofPermissionWorkflow, 'pauseSnap.data()?.status === "active" && input.status === "active"', "Content pause permits proof revocation and hold while blocking activation");
+  assertIncludes(e2eLocal, "Concurrent proof permission did not converge", "Proof permission concurrency has local E2E coverage");
+  assertIncludes(e2eLocal, "grantedAt: nextProofGrantIso()", "Proof permission reactivation supplies a monotonic explicit grant in local E2E");
+  assertIncludes(e2eLocal, "Unknown proof-permission target", "Proof permission current-target existence has local E2E coverage");
+  assertIncludes(actions, "const SelfServiceCtaSchema = z.object({", "Self-service CTA API has a bounded runtime schema");
+  assertIncludes(actions, 'ctaType: z.enum(["preview", "route-draft", "menu-health", "qr-public-menu", "claim-start", "two-surface-proof"]),\n    idempotencyKey: z.string().trim().min(8).max(180),', "Self-service CTA API requires bounded retry identity");
+  assertIncludes(workflow, "CONTENT_CTA_IDEMPOTENCY_KEY_REQUIRED", "Self-service CTA server requires operation identity");
+  assertIncludes(workflow, 'doc(`content_cta_${operationHash}`)', "Self-service CTA claims actor-bound operation identity");
+  assertIncludes(workflow, 'throw new Error("CONTENT_CTA_IDEMPOTENCY_CONFLICT")', "Self-service CTA changed-input retries fail closed");
+  assertIncludes(workflow, 'operation: "self_service_cta_upsert"', "Self-service CTA persists its idempotency claim with the mutation");
+  assertIncludes(selfServiceCtaWorkflow, 'pauseSnap.data()?.status === "active" && input.status === "active"', "Content pause permits CTA deactivation and hold while blocking activation");
+  assertIncludes(workflow, 'const SIGNALDESK_AUTHORITATIVE_PREVIEW_CTA_ID = "cta_private_preview_v1"', "Seed and owner upsert share one authoritative preview CTA identity");
+  assertIncludes(workflow, "const migrateSignalDeskPreviewCtaIdentity = async", "Legacy preview CTA identities converge through one bounded migration");
+  assertIncludes(workflow, 'identityAliasState: "migrated"', "Legacy preview CTA truth is retired as a non-active alias");
+  assertIncludes(workflow, 'throw new Error("CONTENT_CTA_LEGACY_IDENTITY_AMBIGUOUS")', "Genuinely ambiguous preview CTA truth fails closed after incident creation");
+  assertIncludes(workflow, 'SIGNALDESK_PREVIEW_CTA_IDENTITY_INCIDENT_TYPE', "Ambiguous preview CTA identity has an operator-recovery incident");
+  assertIncludes(workflow, '["open", "acknowledged"].includes(normalizeText(incident.status))', "Acknowledged preview CTA incidents remain resolvable by explicit founder authority");
+  assertIncludes(workflow, "signalDeskCtaFingerprintHash(canonicalCta) !== expectedCtaFingerprintHash", "CTA incident resolution rechecks exact current canonical authority");
+  assertIncludes(workflow, 'useAuthoritativePreview: ctaId === SIGNALDESK_AUTHORITATIVE_PREVIEW_CTA_ID', "Final canonical CTA lineage checks also reject dual-active preview authority");
+  assertIncludes(workflow, 'cta.ctaType === "preview" && cta.ctaId !== SIGNALDESK_AUTHORITATIVE_PREVIEW_CTA_ID', "Explicit historical preview lineage cannot bypass the canonical CTA identity");
+  assertIncludes(workflow, "const signalDeskCtaFingerprintHash =", "CTA lineage uses one authoritative fingerprint helper");
+  assertIncludes(workflow, "ctaFingerprintHash: ctaAuthority.ctaFingerprintHash", "Drafts, handoffs, steps, claims, and exports persist exact CTA lineage");
+  assert((workflow.match(/assertSignalDeskCtaLineage\(db, transaction/g) || []).length >= 8, "Approval and every final outbound path revalidate current CTA lineage");
+  assertNotIncludes(workflow, 'input.cta?.copy || "Owner reviews a private MenuList preview before anything is published."', "Approval packets do not invent fallback CTA copy");
+  assertIncludes(types, "ctaFingerprintHash?: string | null", "Outbound and trust contracts expose CTA fingerprints");
+  assertIncludes(workflow, "const projectSignalDeskTrustPartnerBrief =", "Trust briefs cross a strict runtime projector");
+  assertIncludes(workflow, "workspace.trustPartnerBriefs = await readTrustPartnerBriefs(db)", "Trust workspace omits malformed and wrong-product brief rows");
+  assertIncludes(workflow, 'throw new Error("TRUST_PARTNER_BRIEF_DEPENDENCY_SHAPE_INVALID")', "Malformed same-product trust dependencies keep CTA reconciliation pending");
+  assertIncludes(workflow, 'throw new Error("OFFER_CTA_DEPENDENCY_SHAPE_INVALID")', "Malformed same-product Offer CTA dependencies fail reconciliation visibly");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_DEPENDENCY_SHAPE_INVALID")', "Malformed same-product experiment dependencies fail reconciliation visibly");
+  assertIncludes(workflow, 'throw new Error("TRUST_PARTNER_BRIEF_CLAIM_CONFLICT")', "Contradictory trust brief claims fail closed");
+  assertIncludes(actions, '"CONTENT_CTA_STALE"', "CTA freshness rejection is a stable safe API error");
+  assertIncludes(actions, '"TRUST_PARTNER_BRIEF_DEPENDENCY_SHAPE_INVALID"', "Trust reconciliation rejection is a stable safe API error");
+  assertIncludes(e2eLocal, "Legacy-only preview CTA migration did not preserve owner truth and held state", "Legacy-only CTA migration has local E2E coverage");
+  assertIncludes(e2eLocal, "Exact dual-row preview CTA migration left two active authorities", "Dual-row CTA migration has local E2E coverage");
+  assertIncludes(e2eLocal, "Acknowledged preview CTA identity incident could not be resolved", "Acknowledged CTA incident recovery has local E2E coverage");
+  assertIncludes(e2eLocal, "Exact founder CTA replay could not finish interrupted identity-incident resolution", "CTA incident recovery is replay-safe after a post-commit interruption");
+  assertIncludes(e2eLocal, "Approval with dual-active preview CTA authority", "Dual-active final CTA revalidation has local E2E coverage");
+  assertIncludes(e2eLocal, "Historical export replay after CTA revocation", "Revoked CTA export replay has local E2E coverage");
+  assertIncludes(e2eLocal, "Historical export with noncanonical preview CTA lineage", "Historical noncanonical preview lineage fails closed in local E2E");
+  assertIncludes(e2eLocal, "Reordered trust-brief claims created a duplicate deterministic brief", "Canonical trust claims have local E2E coverage");
+  assertIncludes(e2eLocal, "Malformed same-product trust brief reconciliation", "Malformed trust dependency reconciliation has local E2E coverage");
+  assertIncludes(actions, "ctaId: z.string().trim().max(160).optional(),\n    idempotencyKey:", "Content asset API requires bounded retry identity");
+  assertIncludes(actions, "const ContentAssetReviewSchema = z.object({", "Content asset lifecycle has a dedicated runtime boundary schema");
+  assertIncludes(actions, 'status: z.enum(["ready", "hold", "archived"])', "Content asset lifecycle API exposes only bounded review transitions");
+  assertIncludes(actions, 'if (action === "review-content-asset") return "draft.approve"', "Content asset lifecycle requires approval permission");
+  assertIncludes(workspace, "contentAssetRetry?.requestKey === requestKey", "Content asset browser retains exact-input retry identity");
+  assertIncludes(workflow, 'doc(`content_asset_${operationHash}`)', "Content asset claims actor-bound operation identity");
+  assertIncludes(workflow, "transaction.get(claimRef), transaction.get(pauseRef)", "Content asset reads current pause inside settlement");
+  assertIncludes(workflow, "const contentAssetIdFor = (", "Content assets use the v2 provenance-aware identity helper");
+  assertIncludes(workflow, "? { sourceId, title: normalizeLower(title) }", "Selected-source asset identity includes the authoritative source ID");
+  assertIncludes(workflow, ": { canonicalSourceUrl: canonicalSourceUrl || null, sourceType, title: normalizeLower(title) }", "Standalone asset identity includes source type and canonical URL");
+  assertIncludes(workflow, "const legacyContentAssetIdFor =", "Content asset identity preserves compatible legacy documents");
+  assertIncludes(workflow, 'if (explicitContentAssetId && !canonicalSnap.exists) throw new Error("Content asset not found")', "Explicit content asset identity is update-only");
+  assertIncludes(workflow, 'throw new Error("CONTENT_ASSET_IDENTITY_AMBIGUOUS")', "Content asset identity ambiguity fails closed");
+  assertIncludes(workflow, 'throw new Error("CONTENT_ASSET_PROVENANCE_IMMUTABLE")', "Content asset provenance cannot be rewritten");
+  assertIncludes(workflow, 'throw new Error("CONTENT_ASSET_REFERENCED_IMMUTABLE")', "Referenced content assets cannot be rewritten");
+  assertIncludes(workflow, 'throw new Error("CONTENT_ASSET_TERMINAL_IMMUTABLE")', "Terminal content assets cannot be rewritten");
+  assertIncludes(workflow, '.where("contentAssetId", "==", assetRef.id).limit(1)', "Content asset updates inspect dependent draft, performance, and experiment references");
+  assertIncludes(workflow, "draftDependencySnap?.docs?.length", "Content asset mutation checks durable downstream references");
+  assertIncludes(workflow, 'if (input.status !== undefined) throw new Error("CONTENT_ASSET_STATUS_NOT_ALLOWED")', "New content asset writes cannot self-declare lifecycle status");
+  assertIncludes(workflow, 'const readinessStatus: SignalDeskContentAssetSummary["status"] = input.proofLevel === "internal-note" || input.riskNotes.length ? "hold" : "ready"', "Content asset readiness is derived by the server");
+  assertIncludes(workflow, 'const status = readinessStatus === "hold" ? "hold" : existingAsset?.status || readinessStatus', "Content asset create/update preserves or derives server-owned lifecycle status");
+  assertIncludes(actions, '"CONTENT_ASSET_STATUS_NOT_ALLOWED"', "Content asset status rejection has a stable safe API error");
+  assertIncludes(workflow, "export async function reviewSignalDeskContentAssetServer", "Content asset lifecycle transitions use a dedicated server boundary");
+  assertIncludes(workflow, 'doc(`content_asset_review_${operationHash}`)', "Content asset lifecycle claims actor-bound retry identity");
+  assertIncludes(workflow, 'throw new Error("CONTENT_ASSET_REVIEW_IDEMPOTENCY_CONFLICT")', "Content asset lifecycle rejects changed-input retries");
+  assertIncludes(workflow, 'input.status === "archived" && access.role !== "founder-admin"', "Only founders can archive content assets");
+  assertIncludes(workflow, 'if (current.status === "archived" && input.status !== "archived") throw new Error("CONTENT_ASSET_STATUS_TRANSITION_INVALID")', "Archived content assets cannot be reopened");
+  assertIncludes(workflow, 'if (current.proofLevel === "internal-note" || current.riskNotes.length) throw new Error("CONTENT_ASSET_READINESS_BLOCKED")', "Asset lifecycle cannot bypass readiness blockers");
+  assertIncludes(workflow, "readSignalDeskContentAssetAuthority(db, transaction, assetRef, assetSnap, false)", "Ready transition rechecks full current asset authority");
+  assertIncludes(workspace, "contentAssetReviewRetry?.requestKey === requestKey", "Content asset lifecycle UI retains exact-input retry identity");
+  assertIncludes(workspace, 'runAction("review-content-asset"', "Content asset lifecycle UI calls the dedicated action");
+  assertIncludes(workspace, 'reviewContentAsset(asset.contentAssetId, "ready")', "Content asset UI exposes approval-gated ready transition");
+  assertIncludes(workspace, 'data.access.role !== "founder-admin"', "Content asset archive UI is founder-gated");
+  assertIncludes(workflow, "const projectSignalDeskContentAsset =", "Content assets cross a bounded runtime projector");
+  assertIncludes(workflow, "const projectSignalDeskContentDraft =", "Content drafts cross a bounded runtime projector");
+  assertIncludes(workflow, "const projectSignalDeskProofPermission =", "Proof permissions cross a bounded runtime projector");
+  assertIncludes(workflow, "const projectSignalDeskSelfServiceCta =", "Self-service CTAs cross a bounded runtime projector");
+  assertIncludes(workflow, "const lifecyclePairValid = (", "Content draft projector enforces coherent approval and lifecycle pairs");
+  assertIncludes(workflow, "Boolean(ctaId) !== Boolean(ctaFingerprintHash)", "Content draft projector requires CTA identity and fingerprint together");
+  assertIncludes(workflow, '(revision === 1 && supersedesContentDraftId !== null)', "Content draft projector rejects a predecessor on revision one");
+  assertIncludes(workflow, '(revision > 1 && (!supersedesContentDraftId || supersedesContentDraftId === contentDraftId))', "Content draft projector requires a distinct predecessor on later revisions");
+  assertIncludes(workflow, 'Boolean(publicationUrl) !== Boolean(publishedAt)', "Content calendar and performance projectors require paired publication evidence");
+  assertIncludes(workflow, '(status !== "published" && (publicationUrl || publishedAt))', "Content calendar projector rejects publication evidence on non-published state");
+  assertIncludes(workflow, 'normalizeText(value.pId) !== SIGNALDESK_PRODUCT_CODE', "Content authority projectors fail closed on wrong-product rows");
+  assertIncludes(workflow, "workspace.contentAssets = await readContentAssets(db)", "Content workspace uses projected asset rows");
+  assertIncludes(workflow, "workspace.contentDistributionDrafts = await readContentDrafts(db)", "Content workspace uses projected draft rows");
+  assertIncludes(workflow, 'logRuntimeFailure("signaldesk_content_asset_shape_invalid"', "Malformed content assets emit one bounded runtime diagnostic");
+  assertIncludes(workflow, 'logRuntimeFailure("signaldesk_content_draft_shape_invalid"', "Malformed content drafts emit one bounded runtime diagnostic");
+  assertIncludes(workflow, "const readSignalDeskContentAssetAuthority = async", "Content consumers share current asset authority checks");
+  assertIncludes(workflow, "const readSignalDeskContentDraftAuthority = async", "Content consumers share current draft authority checks");
+  assertIncludes(workflow, "readSignalDeskContentAssetAuthority(db, transaction, contentAssetRef, contentAssetSnap)", "Experiments recheck current content asset authority");
+  assertIncludes(workflow, "readSignalDeskContentDraftAuthority(db, transaction, draftRef, draftSnap)", "Draft consumers recheck current content authority");
+  assert((workflow.match(/readSignalDeskContentDraftAuthority\(db, transaction, draftRef, draftSnap\)/g) || []).length >= 3, "Review, schedule, and performance share current content draft authority checks");
+  assertIncludes(workflow, 'throw new Error("CONTENT_CTA_NOT_FOUND")', "Explicit content CTA references fail closed with a stable code");
+  assertIncludes(workflow, 'throw new Error("Content source is not active")', "Content assets reject inactive source provenance");
+  assertIncludes(workflow, 'throw new Error("CONTENT_SOURCE_URL_MISMATCH")', "Content assets reject selected-source URL overrides");
+  assertIncludes(workflow, 'throw new Error("CONTENT_SOURCE_AUDIENCE_MISMATCH")', "Content assets reject selected-source audience overrides");
+  assertIncludes(workflow, 'throw new Error("CONTENT_SOURCE_MARKET_POD_MISMATCH")', "Content assets reject selected-source pod overrides");
+  assertIncludes(workflow, 'throw new Error("CONTENT_CTA_NOT_ACTIVE")', "Content assets reject inactive CTAs with a stable code");
+  assertIncludes(workflow, 'throw new Error("Market pod is not founder-approved")', "Content assets require founder-approved market pods");
+  assertIncludes(workflow, 'sourceSnap.data()?.dependentHoldReconciliationPending === true', "Content consumers fail closed while source dependency holds are pending");
+  assertIncludes(workflow, 'permissionSnap?.data()?.dependentHoldReconciliationPending === true', "Content consumers fail closed while proof dependency holds are pending");
+  assertIncludes(workflow, 'ctaSnap.data()?.dependentHoldReconciliationPending === true', "Content consumers fail closed while CTA dependency holds are pending");
+  assertIncludes(e2eLocal, "Concurrent content asset creation did not converge", "Content asset concurrency has local E2E coverage");
+  assertIncludes(e2eLocal, "Paused content asset settlement", "Content asset current-pause admission has local E2E coverage");
+  assertIncludes(e2eLocal, "Missing explicit content asset", "Content asset explicit update-only identity has E2E coverage");
+  assertIncludes(e2eLocal, "Mutable content-asset proof provenance", "Content asset immutable provenance has E2E coverage");
+  assertIncludes(e2eLocal, "Caller-declared distributed content asset", "Content asset server-owned status has E2E coverage");
+  assertIncludes(e2eLocal, "Caller-declared ready content asset", "Content asset creation cannot bypass the lifecycle review action in E2E");
+  assertIncludes(e2eLocal, "Historical status-bearing content-asset claim no longer replayed exact durable truth", "Legacy status-bearing content asset claims remain exactly replayable in E2E");
+  assertIncludes(e2eLocal, "Two URL-less selected sources with the same asset title collapsed to one identity", "Selected-source content asset identity separation has E2E coverage");
+  assertIncludes(e2eLocal, "Case-sensitive standalone content URLs collapsed to one asset identity", "Standalone content URL identity has case-sensitive E2E coverage");
+  assertIncludes(e2eLocal, "Standalone source types with the same title and URL collapsed to one asset identity", "Standalone source-type identity separation has E2E coverage");
+  assertIncludes(e2eLocal, "Content-asset v2 identity abandoned a matching legacy document", "Compatible legacy content asset reuse has E2E coverage");
+  assertIncludes(e2eLocal, "Mismatched legacy content provenance was reused instead of creating v2 identity", "Legacy content asset provenance mismatch has E2E coverage");
+  assertIncludes(e2eLocal, "Mismatched legacy content asset was overwritten during v2 creation", "Mismatched legacy content asset preservation has E2E coverage");
+  assertIncludes(e2eLocal, "Malformed persisted content asset reached the workspace", "Malformed content asset projection has E2E coverage");
+  assertIncludes(e2eLocal, "Wrong-product persisted content asset reached the workspace", "Wrong-product content asset projection has E2E coverage");
+  assertIncludes(e2eLocal, "Malformed persisted content asset consumer", "Malformed content asset consumer rejection has E2E coverage");
+  assertIncludes(e2eLocal, "Wrong-product persisted content asset consumer", "Wrong-product content asset consumer rejection has E2E coverage");
+  assertIncludes(e2eLocal, "Risk-bearing or internal content bypassed the held state", "Content asset derived readiness has E2E coverage");
+  assertIncludes(e2eLocal, "Risk-bearing asset founder readiness", "Risk-bearing content cannot bypass founder readiness review in E2E");
+  assertIncludes(e2eLocal, "Internal-note asset founder readiness", "Internal-note content cannot bypass founder readiness review in E2E");
+  assertIncludes(e2eLocal, "Concurrent founder content-asset readiness did not converge", "Content asset lifecycle idempotency has E2E coverage");
+  assertIncludes(e2eLocal, "Conflicting content-asset review key reuse", "Content asset lifecycle changed-input conflict has E2E coverage");
+  assertIncludes(e2eLocal, "Archived content asset restore", "Content asset terminal lifecycle has E2E coverage");
+  assertIncludes(types, "revision: number", "Content draft contract exposes its authoritative revision");
+  assertIncludes(types, "supersedesContentDraftId?: string | null", "Content draft contract exposes revision ancestry");
+  assertIncludes(workflow, "const contentDraftIdFor = (contentAssetId: string, channel: SignalDeskContentChannel, revision = 1)", "Content drafts use deterministic revision-aware identities");
+  assertIncludes(workflow, 'latestDraft.revision + 1', "Rejected and held content drafts advance to a new immutable revision");
+  assertIncludes(workflow, 'latestContentDraftId: contentDraftId', "Content draft base head points at the latest immutable revision");
+  assertIncludes(workflow, 'supersedesContentDraftId: revisions[index] > 1 ? latestDraftRefs[index].id : null', "Later content drafts preserve exact revision ancestry");
+  assertIncludes(workflow, 'entityIds: draftRefs.map((ref) => ref.id)', "Content draft generation claim preserves the exact created revision identities");
+  assertIncludes(workflow, 'const storedEntityIds = Array.isArray(claimSnap.data()?.entityIds)', "Content draft generation replay resolves the revisions stored by its claim");
+  assertIncludes(workflow, 'throw new Error("CONTENT_DRAFT_HEAD_INVALID")', "Content draft generation fails closed on corrupt revision heads");
+  assertIncludes(workflow, 'throw new Error("CONTENT_DRAFT_REVISION_REFERENCED")', "Content draft regeneration refuses referenced terminal revisions");
+  assertIncludes(workflow, 'throw new Error("CONTENT_DRAFT_IDENTITY_COLLISION")', "Content draft generation refuses revision identity collisions");
+  assertIncludes(workflow, 'throw new Error("CONTENT_DRAFT_ALREADY_EXISTS")', "Pending and approved content draft heads cannot be overwritten");
+  assertIncludes(actions, '"CONTENT_DRAFT_ALREADY_EXISTS"', "Content draft regeneration rejection has a stable safe API error");
+  assertIncludes(actions, '"CONTENT_DRAFT_HEAD_INVALID"', "Content draft head corruption has a stable safe API error");
+  assertIncludes(actions, '"CONTENT_DRAFT_REVISION_REFERENCED"', "Referenced content draft revision has a stable safe API error");
+  assertIncludes(e2eLocal, "Content draft regeneration under a new key", "Content draft no-regeneration boundary has E2E coverage");
+  assertIncludes(e2eLocal, "Content draft after CTA copy drift", "Content draft approval rechecks current CTA coupling in E2E");
+  assertIncludes(e2eLocal, "Draft generation with inactive CTA", "Content draft generation rechecks current CTA status in E2E");
+  assertIncludes(e2eLocal, "Content review after permission revocation", "Content review authority revocation has E2E coverage");
+  assertIncludes(e2eLocal, "Proof-permission revocation did not hold its dependent pending draft", "Proof-permission revocation cascade is asserted before review rejection");
+  assertIncludes(e2eLocal, "Content scheduling after permission revocation", "Content scheduling authority revocation has E2E coverage");
+  assertIncludes(e2eLocal, "Proof-permission revocation did not hold its dependent approved draft", "Proof-permission revocation fail-closes approved drafts before scheduling");
+  assertIncludes(e2eLocal, "Proof-permission revocation did not hold every dependent pending draft", "Proof-permission revocation covers every matching pending draft");
+  assertIncludes(e2eLocal, "Restored proof authority did not require a fresh versioned content draft", "Restored proof authority cannot reopen a terminally held draft");
+  assertIncludes(e2eLocal, "Calendar evidence fixture did not use a fresh versioned draft", "Calendar evidence negatives satisfy draft approval before testing calendar gates");
+  assertIncludes(workflow, 'draft.approvalStatus !== "approved" || !["approved", "queued", "published"].includes(draft.status)', "Content performance requires an approved usable draft");
+  assertIncludes(actions, "publicationUrl: ContentHttpUrlSchema.optional()", "Content performance API validates publication URLs");
+  assertIncludes(actions, "publishedAt: z.string().datetime({ offset: true }).optional()", "Content performance API validates publication timestamps");
+  assertIncludes(workflow, "if (input.publicationUrl !== undefined) requestFingerprint.publicationUrl", "Content performance keeps legacy retry fingerprints stable while binding publication evidence");
+  assertIncludes(workflow, "const observedMetricCount = input.views + input.clicks + ownerSignals", "Content performance derives one bounded observed-metric gate");
+  assertIncludes(workflow, 'if (observedMetricCount > 0 && !draft) throw new Error("CONTENT_PERFORMANCE_APPROVED_DRAFT_REQUIRED")', "Any observed performance requires approved draft truth");
+  assertIncludes(workflow, "contentCalendarItemIdFor(input.contentDraftId)", "Content performance resolves the deterministic calendar identity from its draft");
+  assertIncludes(workflow, "calendarRef ? transaction.get(calendarRef) : Promise.resolve(null)", "Content performance reads calendar authority in the settlement transaction");
+  assertIncludes(workflow, "const hasPublicationEvidence = Boolean(publicationUrl && publishedAt)", "Content performance normalizes paired publication evidence");
+  assertIncludes(workflow, "CONTENT_PUBLICATION_FUTURE_SKEW_MS", "Content performance rejects implausible future publication timestamps");
+  assertIncludes(workflow, "calendarItem.contentAssetId !== input.contentAssetId", "Content performance verifies calendar, draft, asset, and channel coupling");
+  assertIncludes(workflow, "const authorityCreatedAtValues = [asset.createdAt, draft.createdAt, calendarItem.createdAt]", "Publication evidence is bounded by all authoritative creation times");
+  assertIncludes(workflow, 'throw new Error("CONTENT_PERFORMANCE_AUTHORITY_TIME_MISSING")', "Publication fails closed when authority creation time is absent");
+  assertIncludes(workflow, 'throw new Error("CONTENT_PERFORMANCE_AUTHORITY_TIME_INVALID")', "Publication fails closed when authority creation time is malformed");
+  assertIncludes(workflow, 'throw new Error("CONTENT_PERFORMANCE_PREDATES_AUTHORITY")', "Publication cannot predate asset, draft, or calendar authority");
+  assertIncludes(workflow, "const publicationStateTransition = Boolean(", "Content performance derives one atomic publication transition");
+  assertIncludes(workflow, 'status: "published",\n                updatedAt: timestamp', "Content performance atomically marks the draft and calendar published");
+  assertIncludes(workflow, 'status: "distributed",\n                updatedAt: timestamp', "Content performance atomically marks the asset distributed");
+  assertIncludes(workflow, 'hasPublishedContent: false, publicationStateVersion: 1', "New content assets initialize durable publication truth explicitly");
+  assertIncludes(workflow, "const shouldAdvancePublicationMarker = Boolean(", "Content performance compares publication ordering before advancing durable provenance");
+  assertIncludes(workflow, '...(shouldAdvancePublicationMarker ? {\n                    lastPublicationUrl: publicationUrl,\n                    lastPublishedAt: publishedAt,\n                    lastPublishedContentDraftId: draft.contentDraftId,', "Content performance advances the complete authoritative publication tuple atomically");
+  assertIncludes(workflow, 'const publicationMarkerBackfill = Boolean(', "Legacy published assets receive a bounded durable publication marker");
+  assertIncludes(workflow, 'if (!lastPublishedContentDraftId) throw new Error("CONTENT_ASSET_PUBLICATION_MARKER_INVALID")', "Asset restoration validates durable publication marker identity");
+  assertIncludes(workflow, 'throw new Error("CONTENT_ASSET_PUBLICATION_REVIEW_REQUIRED")', "Unresolved published-content review blocks further distribution");
+  assertIncludes(workflow, "const resolveContentAuthorityPublicationReview = async", "Published-content review has an explicit resolution path");
+  assertIncludes(workflow, "openIncidentCount: increment(-1)", "Publication review resolution settles the open-incident summary exactly once");
+  assertIncludes(e2eLocal, "Published content review incident was not resolved after explicit restoration", "Publication review resolution has emulator E2E coverage");
+  assertIncludes(actions, '"CONTENT_ASSET_PUBLICATION_REVIEW_REQUIRED"', "Publication-review distribution block has a stable safe API error");
+  assertIncludes(e2eLocal, "Unresolved publication review draft generation", "Publication-review distribution block has emulator E2E coverage");
+  assertIncludes(workflow, '.where("contentAssetId", "==", input.contentAssetId).limit(21)', "Legacy publication restoration uses an explicit bounded fallback");
+  assertIncludes(workflow, "const projectSignalDeskContentCalendarItem =", "Content calendar rows cross a bounded runtime projector");
+  assertIncludes(workflow, "const projectSignalDeskContentPerformance =", "Content performance rows cross a bounded runtime projector");
+  assertIncludes(workflow, "workspace.contentCalendarItems = await readContentCalendarItems(db)", "Content workspace uses projected calendar rows");
+  assertIncludes(workflow, "workspace.contentPerformanceSummaries = await readContentPerformanceSummaries(db)", "Content workspace uses projected performance rows");
+  assertIncludes(types, "publicationUrl?: string | null", "Content public-state summaries expose optional canonical publication URL");
+  assertIncludes(workspace, "contentPerformancePublicationUrl", "Content performance UI captures publication URL evidence");
+  assertIncludes(workspace, "contentPerformancePublishedAt", "Content performance UI captures publication time evidence");
+  assertIncludes(workspace, "contentPerformancePublicationIncomplete", "Content performance UI blocks incomplete publication evidence");
+  assertIncludes(workspace, "contentPerformanceDraftEligible", "Content performance UI requires an explicitly selected approved draft");
+  assertIncludes(workspace, "publicationUrl: contentPerformancePublicationUrl.trim() || undefined", "Content performance UI submits bounded publication URL evidence");
+  assertIncludes(workspace, "publishedAt: contentPerformancePublishedAt.trim() || undefined", "Content performance UI submits bounded publication time evidence");
+  [
+    "CONTENT_CALENDAR_SHAPE_INVALID",
+    "CONTENT_PERFORMANCE_CALENDAR_MISMATCH",
+    "CONTENT_PERFORMANCE_CALENDAR_NOT_READY",
+    "CONTENT_PERFORMANCE_CALENDAR_REQUIRED",
+    "CONTENT_PERFORMANCE_AUTHORITY_TIME_INVALID",
+    "CONTENT_PERFORMANCE_AUTHORITY_TIME_MISSING",
+    "CONTENT_PERFORMANCE_PUBLICATION_DRAFT_REQUIRED",
+    "CONTENT_PERFORMANCE_PUBLICATION_EVIDENCE_REQUIRED",
+    "CONTENT_PERFORMANCE_PUBLICATION_MISMATCH",
+    "CONTENT_PERFORMANCE_PUBLICATION_STATE_INVALID",
+    "CONTENT_PERFORMANCE_PUBLISHED_AT_INVALID",
+    "CONTENT_PERFORMANCE_PREDATES_AUTHORITY",
+    "CONTENT_PERFORMANCE_SHAPE_INVALID",
+  ].forEach((errorCode) => assertIncludes(actions, `"${errorCode}"`, `Content publication API safe error ${errorCode}`));
+  assertIncludes(e2eLocal, "Held content asset performance", "Content performance readiness gate has E2E coverage");
+  assertIncludes(e2eLocal, "Archived content asset performance", "Archived content asset performance rejection has E2E coverage");
+  assertIncludes(e2eLocal, "Pending content draft performance", "Content performance draft-approval gate has E2E coverage");
+  assertIncludes(e2eLocal, "Nonzero content performance without publication evidence", "Observed performance requires publication evidence in E2E");
+  assertIncludes(e2eLocal, "Content performance with future publication time", "Content performance future-time rejection has E2E coverage");
+  assertIncludes(e2eLocal, "Published performance without approved draft", "Published performance approved-draft requirement has E2E coverage");
+  assertIncludes(e2eLocal, "Published performance without calendar evidence", "Published performance calendar requirement has E2E coverage");
+  assertIncludes(e2eLocal, "Published performance with mismatched calendar", "Published performance calendar coupling has E2E coverage");
+  assertIncludes(e2eLocal, "Published performance with held calendar", "Published performance calendar readiness has E2E coverage");
+  assertIncludes(e2eLocal, "Zero-metric content observation without publication evidence was rejected", "Zero-metric internal observations remain evidence-optional in E2E");
+  assertIncludes(e2eLocal, "Approved content draft performance did not mark the asset distributed", "Approved content performance owns distributed lifecycle transition in E2E");
+  assertIncludes(e2eLocal, "Approved content draft performance did not mark the draft published", "Approved content performance atomically publishes draft truth in E2E");
+  assertIncludes(e2eLocal, "Approved content draft performance did not mark the calendar item published", "Approved content performance atomically publishes calendar truth in E2E");
+  assertIncludes(e2eLocal, "Approved content draft performance lost publication provenance", "Approved content performance preserves publication provenance in E2E");
+  assertIncludes(e2eLocal, "Approved content draft performance lost publication URL evidence", "Approved content performance preserves publication evidence in E2E");
+  assertIncludes(e2eLocal, "Approved content draft performance lost publication timestamp evidence", "Approved content performance preserves publication time evidence in E2E");
+  assertIncludes(e2eLocal, "Published content performance evidence mismatch", "Published content evidence cannot drift across performance records in E2E");
+  assertIncludes(e2eLocal, "Narrowed customer proof founder readiness", "Narrowed proof scopes block asset readiness in E2E");
+  assertIncludes(e2eLocal, "Revoked customer proof founder readiness", "Revoked proof permission blocks asset readiness in E2E");
+  assertIncludes(workflow, "const hasCurrentContentAuthority = (draft:", "Daily missions recompute current content authority");
+  assertIncludes(workflow, "isProofPermissionUsable(permission, asset.proofScopes || [])", "Daily missions filter content after proof permission revocation");
+  assertIncludes(workflow, '(draft.status === "approved" || draft.status === "queued") && hasCurrentContentAuthority(draft)', "Daily missions include only currently publishable drafts");
+  assertIncludes(workflow, "const reconcileContentAuthorityHolds = async (", "Content authority changes share one paginated dependency reconciler");
+  assertIncludes(workflow, "const pauseDependentExperiments = async (", "Authority reductions pause dependent nonterminal experiments");
+  assertIncludes(workflow, "const holdDependentOfferCtas = async (", "Nested CTA and pod reductions hold dependent offers");
+  assertIncludes(workflow, 'assetField: "offerCtaId"', "Offer authority changes enter durable dependency reconciliation");
+  assertIncludes(workflow, '"dependentHoldReconciliationProgress.pausedExperimentCount"', "Experiment cascade progress is durably counted");
+  assertIncludes(workflow, '"dependentHoldReconciliationProgress.heldOfferCount"', "Offer cascade progress is durably counted");
+  assertIncludes(workflow, "const assetPageResult = await db.runTransaction(async (transaction) => {", "Content authority reconciliation revalidates each asset page in a transaction");
+  assertIncludes(workflow, "const tokenState = reconciliationTokenState(currentAuthority, input.reconciliationToken)", "Content authority reconciliation binds every page to the current authority token");
+  assertIncludes(workflow, ".orderBy(admin.firestore.FieldPath.documentId())", "Content authority reconciliation paginates deterministically");
+  assertIncludes(workflow, ".limit(200)", "Content authority reconciliation bounds every dependency page");
+  assertIncludes(workflow, '.where("contentAssetId", "in", assetIdChunk)', "Content authority reconciliation cascades through dependent drafts and calendars");
+  assertIncludes(e2eLocal, "Held CTA cascade draft reopen", "CTA authority restoration cannot reopen a terminally held draft");
+  assertIncludes(workflow, "dependentHoldReconciliationPending: reconciliationRequired", "Authority writes persist a fail-closed pending reconciliation marker");
+  assertIncludes(workflow, "dependentHoldReconciliationToken: reconciliationToken || null", "Authority reconciliation binds completion to the originating claim");
+  assertIncludes(workflow, "const completeContentAuthorityReconciliation = async (", "Authority reconciliation clears its pending marker transactionally");
+  assertIncludes(contentSourceWorkflow, 'assetField: "sourceId"', "Content-source authority changes cascade to dependent content");
+  assertIncludes(proofPermissionWorkflow, 'assetField: "proofPermissionId"', "Proof-permission authority changes cascade to dependent content");
+  assertIncludes(selfServiceCtaWorkflow, 'assetField: "ctaId"', "CTA authority changes cascade to dependent content");
+  assertIncludes(contentSourceWorkflow, "const authorityIdentityChanged = Boolean(existingSource", "Referenced source audience and pod authority are detected before mutation");
+  assertIncludes(contentSourceWorkflow, '.where("sourceId", "==", sourceRef.id).limit(1)', "Source authority mutation checks for dependent assets");
+  assertIncludes(contentSourceWorkflow, 'throw new Error("CONTENT_SOURCE_REFERENCED_IMMUTABLE")', "Referenced source audience and pod authority are immutable");
+  assertIncludes(contentSourceWorkflow, 'pauseSnap.data()?.status === "active" && input.status === "active"', "Content source pause guard permits safety-reducing state transitions");
+  assertIncludes(workflow, "proofAssetSummary: authority.asset?.title || candidate.proofAssetSummary || null", "Experiment proof summaries derive from transaction-current validated asset truth");
+  assertNotIncludes(workflow, "proofAssetSummary: contentAsset?.title || input.proofAssetSummary || null", "Experiment proof summaries do not bypass transaction-current authority");
+  assertIncludes(workflow, 'throw new Error("EXPERIMENT_OFFER_ASSET_PROVENANCE_MISMATCH")', "Experiments require offer and content-asset CTA/pod provenance agreement");
+  assertIncludes(workflow, "sourcePolicyUsabilityError(sourcePolicy, {", "Experiment authority rechecks current source-policy usability and expiry");
+  assertIncludes(workspace, 'const resolvedContentAssetId = selectedContentAsset?.contentAssetId || ""', "Content actions require an explicit selected asset");
+  assertIncludes(workspace, "const contentDraftsForSelectedAsset = data?.workspace.contentDistributionDrafts.filter", "Content draft controls are filtered to the selected asset");
+  assertIncludes(workspace, "const [selectedProofPermissionEditorId, setSelectedProofPermissionEditorId]", "Proof-permission editing has an explicit independent identity");
+  assertIncludes(workspace, "const [selectedContentAssetProofPermissionId, setSelectedContentAssetProofPermissionId]", "Customer-proof asset creation has an explicit independent permission identity");
+  assertIncludes(workspace, "const resolvedContentAssetPublicProofScopes = (selectedContentAssetProofPermission?.scopes || []).filter", "Customer-proof asset scopes derive only from the selected permission");
+  assertNotIncludes(workspace, "firstProofPermissionId", "Customer-proof asset creation has no implicit first-permission fallback");
+  assertIncludes(workspace, "const resetContentPerformanceInput = () => {", "Content performance has one complete input reset boundary");
+  assertIncludes(workspace, "setContentPerformanceViews(0);\n        setContentPerformanceClicks(0);\n        setContentPerformanceOwnerLeads(0);\n        setContentPerformanceSubmissions(0);\n        setContentPerformanceActivations(0);", "Content selection resets all performance counters");
+  assertIncludes(workspace, "setContentPerformanceChannel(\"\");\n        setContentPerformancePublicationUrl(\"\");\n        setContentPerformancePublishedAt(\"\");\n        setContentPerformanceRetry(null);", "Content selection resets channel, publication evidence, and retry identity");
+  assert((workspace.match(/resetContentPerformanceInput\(\);/g) || []).length >= 3, "Asset, draft, and channel changes all reset content performance input");
+  assertIncludes(workspace, "setSelectedContentDraftId(\"\")", "Changing the selected asset clears its prior draft identity");
+  assertIncludes(workspace, "setSelectedContentAssetId(draft.contentAssetId)", "Selecting a content draft also selects its owning asset");
+  assertIncludes(workspace, "selectedExperimentContentAssetId", "Experiments maintain an independent explicit proof-asset selection");
+  assertIncludes(workspace, "contentAssetId: selectedExperimentContentAsset?.contentAssetId || undefined", "Experiment creation submits only the explicitly selected proof asset");
+  assertIncludes(workspace, "proofAssetSummary: selectedExperimentContentAsset?.title || undefined", "Experiment UI derives proof summary from the selected asset");
+  assertIncludes(e2eLocal, "Wrong-product offer overwrite", "Offer writes reject wrong-product collisions in E2E");
+  assertIncludes(e2eLocal, "Concurrent exact offer save repeated audit and cost effects", "Concurrent exact offer writes converge without duplicate effects in E2E");
+  assertIncludes(e2eLocal, "Experiment workspace bypassed the strict DTO projector", "Experiment workspace DTO whitelisting has E2E coverage");
+  assertIncludes(e2eLocal, "Contradictory experiment lifecycle leaked into the workspace", "Contradictory persisted experiment lifecycle is filtered in E2E");
+  assertIncludes(e2eLocal, ".doc(contradictoryExperimentId).delete()", "Malformed experiment fixture is isolated before authority reconciliation");
+  assertIncludes(e2eLocal, "Active experiment without controlled authorities", "Active experiment authority requirements have E2E coverage");
+  assertIncludes(e2eLocal, "Experiment offer and asset provenance mismatch", "Experiment CTA/pod provenance coupling has E2E coverage");
+  assertIncludes(e2eLocal, "Experiment review transition mismatch", "Experiment review decision/status matrix has E2E coverage");
+  assertIncludes(e2eLocal, "Terminal experiment reopen", "Experiment terminal-state protection has E2E coverage");
+  assertIncludes(e2eLocal, "Terminal experiment result mutation", "Terminal experiment result immutability has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent exact experiment review repeated audit and cost effects", "Concurrent exact experiment reviews converge without duplicate effects in E2E");
+  assertIncludes(e2eLocal, "Commercial offer with inactive Offer CTA", "Commercial offer consumers reject inactive Offer CTA authority in E2E");
+  assertIncludes(e2eLocal, "Commercial offer with wrong-product Offer CTA", "Commercial offer consumers reject wrong-product Offer CTA authority in E2E");
+  assertIncludes(e2eLocal, "Commercial offer with pending Offer CTA", "Commercial offer consumers reject pending Offer CTA authority in E2E");
+  assertIncludes(e2eLocal, "Commercial offer with invalid nested Offer CTA authority", "Commercial offer consumers revalidate nested Offer CTA authority in E2E");
+  assertIncludes(e2eLocal, "Content asset authority reduction did not pause its experiment", "Content-asset authority cascades to experiments in E2E");
+  assertIncludes(e2eLocal, "Offer authority reduction did not pause its experiment", "Offer authority cascades to experiments in E2E");
+  assertIncludes(e2eLocal, "Market-pod authority reduction did not pause its experiment", "Market-pod authority cascades to experiments in E2E");
+  assertIncludes(e2eLocal, "Concurrent content-source update did not converge", "Content source concurrency has local E2E coverage");
+  assertIncludes(workflow, "...toPlain(claimSnap.data()?.resultSnapshot),\n                    pId: SIGNALDESK_PRODUCT_CODE,", "Content-source replay restores trusted SignalDesk product identity for legacy snapshots");
+  assertIncludes(workflow, "resultSnapshot: { ...toPlain(projectedSource), pId: SIGNALDESK_PRODUCT_CODE }", "Content-source claims persist product-valid replay snapshots");
+  assertIncludes(workflow, "resultSnapshot: { ...toPlain(projectedCta), pId: SIGNALDESK_PRODUCT_CODE }", "Content CTA claims persist product-valid replay snapshots");
+  assertIncludes(workflow, "resultSnapshot: { ...toPlain(result), pId: SIGNALDESK_PRODUCT_CODE }", "Market-pod review claims persist product-valid replay snapshots");
+  assertIncludes(workflow, "resultSnapshot: { ...toPlain(plainPermission), pId: SIGNALDESK_PRODUCT_CODE }", "Proof-permission claims persist product-valid replay snapshots");
+  assertIncludes(workflow, "resultSnapshot: { ...toPlain(projectedAsset), pId: SIGNALDESK_PRODUCT_CODE }", "Content-asset review claims persist product-valid replay snapshots");
+  assertIncludes(e2eLocal, "Case-sensitive content URLs collapsed", "Content-source URL identity has case-sensitive regression coverage");
+  assertIncludes(e2eLocal, "Default seeding created a content source while distribution was paused", "Content-source seeding has current-pause regression coverage");
+  assertIncludes(workflow, 'doc(`source_provider_${idempotencyKeyHash}`)', "Source provider work claims an actor/request-bound idempotency row");
+  assertIncludes(workflow, 'reservedCostUsd: estimatedCostUsd', "Source provider budget is reserved before external execution");
+  assertIncludes(workflow, 'throw new Error("Source provider idempotency conflict")', "Source provider changed-input retries fail closed");
+  assertIncludes(workflow, "type SourceProviderImportCompletion", "Source provider completion has one bounded internal persistence contract");
+  assertIncludes(workflow, "const resolvedRows: ResolvedRow[]", "Provider retention is bound to each resolved target lineage");
+  assertIncludes(workflow, "transaction.set(claimRef", "Provider claim completion shares the target-import transaction");
+  assertIncludes(workflow, "committedClaim?.status !== \"completed\"", "Provider import acknowledgement loss probes exact completed claim truth");
+  assertIncludes(workflow, "markSignalDeskClaimUnresolved", "Ambiguous provider failures finalize exact claims with stable unresolved truth");
+  assertIncludes(workflow, 'claim.status === "unresolved"', "Unresolved source-provider retries fail as review-required instead of active work");
+  assertIncludes(workflow, 'failureCode: "source_provider_outcome_unresolved"', "External provider failures use a stable non-sensitive code");
+  assertNotIncludes(workflow, "const vendorRunRef = db.collection(SIGNALDESK_COLLECTIONS.VENDOR_RUNS).doc();\n    const retentionEligibleProvider", "Source provider metadata is not finalized in a second non-atomic batch");
+  assertIncludes(workflow, "volumeProviderAccountRef", "AI volume rechecks provider budget while acquiring its global lock");
+  assertIncludes(workflow, "activeVolumeLock", "Standalone AI assists cannot race an active volume budget envelope");
+  assertIncludes(workflow, 'claim.status === "unresolved"', "Unresolved AI assist retries fail as review-required instead of active work");
+  assertIncludes(workflow, "markAiAssistUnresolved", "AI provider and persistence failures finalize exact claims with stable unresolved truth");
+  assertIncludes(workflow, "committedClaim?.status !== \"completed\"", "AI final transaction acknowledgement loss probes durable claim truth");
+  assertIncludes(workflow, "reservedBudgetPolicy: Boolean(providerBudget)", "AI claims bind whether an optional provider budget received the reservation");
+  assertIncludes(workflow, "if (currentClaim.reservedBudgetPolicy)", "AI settlement cannot synthesize a provider-budget document that was absent at reservation time");
+  assertIncludes(workflow, "settleSignalDeskSpendReservation", "AI final spend settles transaction-owned reservations with absolute counters");
+  assertIncludes(workflow, "reserveSignalDeskOwnedEmailSenderCapacity", "Direct and sequence email sends share one transaction-owned sender cap");
+  assertIncludes(workspace, "sourceProviderRetry?.requestKey === requestKey", "Source provider browser retry keys bind exact request input");
+  assertIncludes(e2eLocal, "assertProviderBudgetReservation", "Provider budget concurrency has local E2E coverage");
+  assertIncludes(e2eLocal, "injected provider import acknowledgement loss", "Provider atomic import has acknowledgement-loss E2E coverage");
+  assertIncludes(e2eLocal, "duplicateRetentionCount === 1", "Exact duplicate provider rows converge on one retention lineage in E2E");
+  assertIncludes(e2eLocal, "AI finalization created a partial optional provider-budget document", "Missing optional AI budget-policy persistence has E2E coverage");
+  assertIncludes(e2eLocal, "Shared owned-email sender cap", "Direct and sequence email sends have shared-cap E2E coverage");
+  assertIncludes(e2eLocal, "Source provider failure left a permanent in-progress claim", "Source-provider unresolved-claim recovery has E2E coverage");
+  assertIncludes(e2eLocal, "unresolvedAuditCount === 1", "Source-provider unresolved state emits one audit event in E2E");
+  assertIncludes(e2eLocal, "AI provider failure left a permanent in-progress claim", "AI unresolved-claim recovery has E2E coverage");
+  assertIncludes(e2eLocal, "unresolvedAiAuditCount === 1", "AI unresolved state emits one audit event in E2E");
+  assertIncludes(e2eLocal, "injected research completion acknowledgement loss", "Research Agent final batch acknowledgement loss has E2E coverage");
 
   assertIncludes(integrations, "MENULIST_SIGNALDESK_APIFY_SOURCE_ACTOR_ID", "Apify Actor ID env is product-scoped");
   [
@@ -781,7 +1619,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(sourceProviders, "SIGNALDESK_SOURCE_PROVIDER_RESPONSE_PARSE_FAILED", "SignalDesk source-provider parse failure code");
   assertIncludes(sourceProviders, "readSourceProviderJsonResponse", "SignalDesk source-provider parse helper");
   assertIncludes(sourceProviders, "logRuntimeFailure(SIGNALDESK_SOURCE_PROVIDER_RESPONSE_PARSE_FAILED", "SignalDesk source-provider parse diagnostics");
-  assertIncludes(sourceProviders, "readJsonResponseWithLimit<T>(response, SIGNALDESK_SOURCE_PROVIDER_JSON_MAX_BYTES)", "SignalDesk source-provider JSON responses are bounded");
+  assertIncludes(sourceProviders, "readJsonResponseWithLimit<unknown>(response, SIGNALDESK_SOURCE_PROVIDER_JSON_MAX_BYTES)", "SignalDesk source-provider JSON responses are bounded as unknown input");
   assert((sourceProviders.match(/redirect: "manual",/g) || []).length >= 3, "SignalDesk source-provider fetches use manual redirect handling");
   assertNotIncludes(sourceProviders, "response.json().catch(() => null)", "SignalDesk source providers do not parse uncapped provider JSON");
   assertNotIncludes(sourceProviders, "readJsonResponseWithLimit<any>(response, SIGNALDESK_SOURCE_PROVIDER_JSON_MAX_BYTES).catch(() => null)", "SignalDesk source providers do not silently swallow bounded provider JSON parse failures");
@@ -818,15 +1656,82 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(types, "recommendedMessageAngle", "Research Agent row stores recommended message angle");
   assertIncludes(types, "evidenceSummary", "Research Agent row stores evidence summary");
   assertIncludes(workflow, "createSignalDeskResearchAgentRunServer", "Research Agent Table workflow");
+  assertIncludes(workflow, "scoreIdentityHash", "Target scoring uses content-addressed operation identity");
+  assertIncludes(workflow, "const targetSnap = await transaction.get(targetRef)", "Target scoring reads target authority transactionally");
+  assertIncludes(workflow, "const sourcePolicySnap = await transaction.get(sourcePolicyRef)", "Target scoring validates source policy transactionally");
+  assertIncludes(workflow, "parseSignalDeskTargetScoreDocument(priorScoreSnap.data(), priorScoreSnap.id, targetId)", "Target scoring exact replay validates and returns existing truth without duplicate effects");
+  assertIncludes(workflow, "evidenceIdentityHash", "Evidence creation uses source-rights-aware content identity");
+  assertIncludes(workflow, "const policySnap = await transaction.get(policyRef)", "Evidence creation validates source policy transactionally");
+  assertIncludes(workflow, "if (priorSummarySnap.exists) {", "Evidence exact replay returns existing summary without duplicate effects");
+  assertIncludes(workflow, "parseSignalDeskOutcomeEvidenceAuthority(", "Evidence exact replay validates persisted summary authority before reuse");
+  assertIncludes(e2eLocal, "Concurrent identical target scoring created duplicate operations", "Target-scoring concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Score from expired policy", "Target scoring rejects expired source policy in E2E");
+  assertIncludes(e2eLocal, "Concurrent identical evidence creation produced duplicate packets", "Evidence concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent identical export preparation created duplicate exports", "Export-only concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent assisted handoff created duplicate exports", "Assisted handoff concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Assisted handoff replay did not redact recipient data", "Assisted handoff replay redaction has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent identical provider send executed the provider more than once", "Provider send single-execution claim has E2E coverage");
+  assertIncludes(e2eLocal, "Unresolved provider send retry called the provider again", "Provider send unresolved replay refusal has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent owned sequence send executed the provider more than once", "Owned sequence single-execution claim has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent sequence handoff creation repeated audit and cost effects", "Sequencer handoff concurrency convergence has E2E coverage");
+  assertIncludes(e2eLocal, "Changed sequence handoff sender", "Sequencer handoff changed-input conflict has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent complaint reply capture did not converge on one durable event", "Reply capture concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Reply capture downgraded a converted target", "Reply capture converted-state preservation has E2E coverage");
+  assertIncludes(e2eLocal, "Route token after suppression", "Route-token issuance suppression has E2E coverage");
+  assertIncludes(workspace, "const [replyRetry, setReplyRetry]", "Reply capture browser retains retry identity");
+  assertIncludes(e2eLocal, "Unresolved owned sequence retry called the provider again", "Owned sequence unresolved replay refusal has E2E coverage");
+  assertIncludes(e2eLocal, "Owned sequence called the provider after sender authority was revoked", "Owned sequence sender authority is revalidated in E2E");
+  assertIncludes(workflow, "draftIdentityHash", "Draft creation uses content-addressed draft and approval identity");
+  assertIncludes(workflow, "const targetSnap = await transaction.get(targetRef)", "Draft creation reads target authority transactionally");
+  assertIncludes(workflow, "evidenceRef ? transaction.get(evidenceRef)", "Draft creation revalidates selected evidence transactionally");
+  assertIncludes(workflow, "if (priorDraftSnap.exists && priorApprovalSnap.exists && priorPacketSnap.exists)", "Draft exact replay returns existing truth without duplicate effects");
+  assertIncludes(e2eLocal, "Concurrent identical draft creation produced duplicate drafts", "Draft concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent identical draft creation incremented approval backlog more than once", "Draft queue accounting idempotency has E2E coverage");
+  assertIncludes(workflow, 'priorRunId = await db.runTransaction', "Research Agent idempotency claim is atomic");
+  assertIncludes(workflow, 'prior.requestFingerprintHash !== requestFingerprintHash', "Research Agent idempotency binds the resolved request");
+  assertIncludes(workflow, 'prior.actorId !== access.userId', "Research Agent idempotency binds the actor");
+  assertIncludes(workflow, "researchRunIdFor(access.userId, idempotencyKeyHash)", "Research Agent run identity derives from actor and required key");
+  assertNotIncludes(workflow, "Date.now(),\n].join(\"|\")).slice(0, 22)}`;\nconst researchRowIdFor", "Research Agent run identity does not depend on collision-prone wall-clock milliseconds");
+  assertIncludes(workflow, 'if (!committedClaim) throw claimError', "Research Agent claim acknowledgement loss probes durable truth");
+  assertIncludes(workflow, 'committedRun?.status === "completed"', "Research Agent completion acknowledgement loss preserves durable completed truth");
+  assertIncludes(workflow, "await db.runTransaction(async (completeBatch: FirebaseFirestore.Transaction)", "Research Agent completion is transactionally coupled to current pod authority");
+  assertIncludes(workflow, "await completeBatch.get(researchPodRef)", "Research Agent completion reads market-pod authority inside its final transaction");
+  assertIncludes(workflow, "run: parseSignalDeskResearchRunDocument(priorRunSnap.data(), priorRunSnap.id)", "Research Agent replay preserves durable run status through the exact DTO projector");
+  assertNotIncludes(workflow, 'status: "duplicate" }) as SignalDeskResearchRunSummary', "Research Agent replay does not fabricate a run status");
+  assertIncludes(actions, "idempotencyKey: z.string().trim().min(8).max(180)", "Research Agent API requires an idempotency key");
+  assertIncludes(workspace, "researchAgentRetry?.requestKey === requestKey", "Research Agent browser retry reuses the key for unchanged input");
+  assertIncludes(workspace, "idempotencyKey: retry.idempotencyKey", "Research Agent browser sends the retained idempotency key");
+  assertIncludes(e2eLocal, "Research completion overwrote founder pod approval status", "Research Agent founder-review preservation has E2E coverage");
+  assertIncludes(e2eLocal, "Independent research keys collided on one run identity", "Independent Research Agent keys have separate run namespaces in E2E");
   assertIncludes(workflow, "fitDecision", "Research Agent pass/fail/unsure scoring");
   assertIncludes(workflow, "revalidateResearchRowRoute", "Persisted research rows are revalidated against current source rights");
   assertIncludes(workflow, "suppressed ? `suppression:${target?.suppressionStatus}`", "Persisted research routes are revoked after suppression");
   assertIncludes(workflow, "deriveActivationOpportunities", "Workspace derives activation-opportunity state");
   assertIncludes(workflow, "sourcePolicyHasCompleteRights", "Source-policy use requires a complete rights registry");
-  assertIncludes(workflow, "targetIdsByIdentity", "One import dedupes repeated business identities before batch commit");
+  assertIncludes(workflow, "preparedByIdentity", "One import dedupes exact repeated business identities before transactional commit");
   assertIncludes(workflow, "allowed.contact && allowed.evidence && allowed.personalization", "Message actions require contact, evidence, and personalization rights together");
   assertIncludes(workflow, "isVerifiedTwoSurfaceOutcome", "Activation authority requires verified two-surface evidence");
-  assertIncludes(workflow, "OUTCOME_IDEMPOTENCY_KEY_REQUIRED", "Activation outcome requires idempotency");
+  assertIncludes(workflow, "OUTCOME_IDEMPOTENCY_KEY_REQUIRED", "Every outcome requires idempotency");
+  assertIncludes(workflow, "idempotencyKey: string;", "Outcome server contract requires an idempotency key");
+  assertIncludes(actions, "const RecordOutcomeSchema = z.object({", "Outcome API uses its bounded schema");
+  assertIncludes(actions, "idempotencyKey: z.string().trim().min(8).max(180),", "Outcome API requires a bounded idempotency key");
+  assertIncludes(workspace, "outcomeRetry?.requestKey === requestKey", "Outcome browser retry reuses the key for unchanged input");
+  assertIncludes(e2eLocal, "Concurrent route outcomes did not elect one owner", "Non-activation outcome concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent channel-window retry did not converge", "Channel-window concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Unknown channel-window target", "Channel-window target ownership has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent trust metrics did not converge", "Trust metrics concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Trust metrics demand summary overwrote incremental observations", "Trust metrics aggregation has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent content performance did not converge", "Content performance concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Content performance demand summary overwrote incremental observations", "Content performance aggregation has E2E coverage");
+  assertIncludes(e2eLocal, "Paused content-performance settlement", "Content performance pause authority has E2E coverage");
+  assertIncludes(e2eLocal, "Concurrent route outcome incremented the summary more than once", "Non-activation outcome accounting idempotency has E2E coverage");
+  assertIncludes(workflow, "DEMAND_SIGNAL_IDEMPOTENCY_KEY_REQUIRED", "Demand-signal server requires an operation identity");
+  assertIncludes(workflow, "DEMAND_SIGNAL_IDEMPOTENCY_CONFLICT", "Demand-signal claim rejects changed input");
+  assertIncludes(workflow, "transaction.get(claimRef)", "Demand-signal settlement reads its claim transactionally");
+  assertIncludes(actions, "const CaptureDemandSignalSchema = z.object({", "Demand-signal API uses a bounded schema");
+  assertIncludes(workspace, "demandSignalRetry?.requestKey === requestKey", "Demand-signal browser retry reuses the key for unchanged input");
+  assertIncludes(e2eLocal, "Concurrent demand signals did not elect one owner", "Demand-signal concurrency has E2E coverage");
+  assertIncludes(e2eLocal, "Demand signal trusted a client-supplied target name", "Demand-signal target identity has E2E coverage");
   assertIncludes(workflow, "OUTCOME_IDEMPOTENCY_CONFLICT", "Outcome idempotency rejects a changed request fingerprint");
   assertIncludes(workflow, "requestFingerprintHash", "Outcome idempotency stores a request fingerprint");
   assertIncludes(workflow, "latestVerifiedActivationEvidenceRef", "Targets retain a durable verified-activation projection");
@@ -842,8 +1747,20 @@ function verifyConnectorProviderAndInvestmentControls() {
   });
   assertNotIncludes(actions, "recordSignalDeskManualContactServer(accessResult.access, payload.data as any)", "Manual contact route must not cast away the server DTO contract");
   assertIncludes(actions, "ApprovalRejectionReasonSchema", "Approval rejection reason is Zod validated");
-  assertIncludes(workflow, "const transactionResult = await db.runTransaction", "Approval terminal review is transactionally single-consumer");
+  assertIncludes(workflow, "transactionResult = await db.runTransaction", "Approval terminal review is transactionally single-consumer");
+  assertIncludes(workflow, "currentTarget.latestApprovalId !== currentApproval.approvalId", "Approval rejects superseded review units");
+  assertIncludes(workflow, "currentApprovalPacket.evidencePacketId !== currentDraft.evidencePacketId", "Approval transaction verifies packet and draft evidence coupling");
+  assertIncludes(workflow, "currentApprovalPacket.actionFingerprintHash !== expectedPacket.actionFingerprintHash", "Approval transaction rejects a changed exact action packet");
+  assertIncludes(workflow, 'expectedPacket.recommendedAction !== "approve" || expectedPacket.allowedRoute === "none"', "Approval transaction blocks non-action-ready packets");
+  assertIncludes(workflow, 'use: "approval"', "Approval transaction revalidates current source-policy rights");
+  assertIncludes(workflow, 'currentTarget.nextAction !== "approve"', "Approval transaction revalidates current target eligibility");
+  assertIncludes(e2eLocal, "Approval from expired policy", "Approval rejects expired policy in E2E");
+  assertIncludes(e2eLocal, "Approval without durable draft", "Approval requires durable draft truth in E2E");
+  assertIncludes(e2eLocal, "Approval after target suppression", "Approval rejects transaction-current suppression in E2E");
+  assertIncludes(e2eLocal, "Superseded approval", "Approval rejects superseded review units in E2E");
   assertIncludes(e2eLocal, "Concurrent approval review accepted more than one terminal decision", "Local E2E covers concurrent approval/rejection arbitration");
+  assertIncludes(e2eLocal, "Changed exact action after packet preparation", "Local E2E rejects changed action content after packet preparation");
+  assertIncludes(e2eLocal, "Approval without an allowed contact route", "Local E2E blocks approval without contact authority");
   assertIncludes(workflow, "recordSignalDeskManualContactServer", "Manual contact workflow is implemented server-side");
   assertIncludes(workflow, "Prepared email export is required", "Manual email confirmation requires a prepared export");
   assertIncludes(workflow, 'conversation?.state !== "exported"', "Manual email confirmation requires an unconsumed current export state");
@@ -889,7 +1806,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workspace, ".slice(0, 5)", "Dashboard limits new founder decisions to five");
   assertIncludes(workspace, "opportunity.allowedRouteReason", "Dashboard explains the policy-allowed route");
   assertIncludes(workspace, "proofPermissionEvidenceRef", "Content UI records proof permission evidence");
-  assertIncludes(workspace, "resolvedPublicProofScopes", "Content UI binds customer proof to granted public scopes");
+  assertIncludes(workspace, "resolvedContentAssetPublicProofScopes", "Content UI binds customer proof to the explicitly selected permission scopes");
   assertIncludes(workspace, "globalPauseDisabled", "Mobile can activate but cannot clear the emergency global pause");
   assertIncludes(workspace, "scopedPauseDisabled", "Mobile can activate but cannot clear scoped emergency pauses");
   assertIncludes(workspace, "activationOutcomeIncomplete", "Activation UI blocks incomplete two-surface outcomes");
@@ -920,7 +1837,7 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(workspace, "const decisions = inventory.slice(0, 5);", "Today decision queue is capped at five rows");
   assertIncludes(workspace, "setResearchMaxResults", "Market search max-results control");
   assertIncludes(actions, "max(30).default(10)", "Research/source provider action max is 30 rows");
-  assertIncludes(sourceProviders, "Math.min(Math.max(value, 1), 30)", "Source providers clamp to 30 rows");
+  assertIncludes(sourceProviders, "Math.min(Math.max(Math.floor(value), 1), 30)", "Source providers clamp integer row counts to 30");
   assertIncludes(workflow, "Math.min(30", "Research workflow clamps to 30 rows");
   assertIncludes(providerAdapters, "const encodedEndpointId = encodeURIComponent(endpointId);", "SignalDesk Meta endpoint ID is encoded");
   assertIncludes(providerAdapters, "${encodedEndpointId}/messages", "SignalDesk Meta endpoint uses encoded path segment");
@@ -928,10 +1845,10 @@ function verifyConnectorProviderAndInvestmentControls() {
   assertIncludes(providerAdapters, "SIGNALDESK_META_RESPONSE_PARSE_FAILED", "SignalDesk Meta response parse failure code");
   assertIncludes(providerAdapters, "readMetaProviderResponseJson", "SignalDesk Meta response parse helper");
   assertIncludes(providerAdapters, "logRuntimeFailure(SIGNALDESK_META_RESPONSE_PARSE_FAILED", "SignalDesk Meta response parse diagnostics");
-  assertIncludes(providerAdapters, "readJsonResponseWithLimit<any>(response, SIGNALDESK_META_RESPONSE_JSON_MAX_BYTES)", "SignalDesk Meta response JSON is bounded");
+  assertIncludes(providerAdapters, "readJsonResponseWithLimit<unknown>(response, SIGNALDESK_META_RESPONSE_JSON_MAX_BYTES)", "SignalDesk Meta response JSON is bounded");
   assertIncludes(providerAdapters, 'redirect: "manual",', "SignalDesk Meta provider-send fetch uses manual redirect handling");
   assertNotIncludes(providerAdapters, "response.json().catch(() => ({}))", "SignalDesk Meta adapter does not parse uncapped provider JSON");
-  assertNotIncludes(providerAdapters, "readJsonResponseWithLimit<any>(response, SIGNALDESK_META_RESPONSE_JSON_MAX_BYTES).catch(() => ({}))", "SignalDesk Meta adapter does not silently swallow bounded provider JSON parse failures");
+  assertNotIncludes(providerAdapters, "readJsonResponseWithLimit<unknown>(response, SIGNALDESK_META_RESPONSE_JSON_MAX_BYTES).catch(() => ({}))", "SignalDesk Meta adapter does not silently swallow bounded provider JSON parse failures");
   assertIncludes(firestoreRules, "signaldeskResearchRuns", "Research Agent run rules");
   assertIncludes(firestoreRules, "signaldeskResearchTableRows", "Research Agent row rules");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskResearchRuns"', "Research Agent run indexes");
@@ -1004,12 +1921,16 @@ function verifyFirebaseIsolation() {
     "firestore-signaldesk.indexes.json",
     "storage-signaldesk.rules",
     "functions-signaldesk/src/index.ts",
+    "functions-signaldesk/src/schedulers/proofPermissionLifecycle.ts",
+    "functions-signaldesk/src/schedulers/signaldeskMaintenanceScheduler.ts",
     "src/lib/firebase/signaldeskConfig.ts",
     "src/lib/firebase/signaldeskFirebaseAdmin.ts",
+    "src/lib/firebase/signaldeskFirebaseClient.ts",
     "src/constants/signaldesk/database.ts",
     "scripts/verification/smoke-signaldesk-routes.js",
     "scripts/verification/smoke-signaldesk-workflow.js",
     "scripts/verification/e2e-signaldesk-local.js",
+    "scripts/verification/test-signaldesk-proof-permission-lifecycle.ts",
     "scripts/verification/verify-signaldesk-security-rules.js",
   ].forEach((relPath) => assertExists(relPath));
 
@@ -1018,17 +1939,30 @@ function verifyFirebaseIsolation() {
   const firestoreIndexes = read("firestore-signaldesk.indexes.json");
   const storageRules = read("storage-signaldesk.rules");
   const admin = read("src/lib/firebase/signaldeskFirebaseAdmin.ts");
+  const client = read("src/lib/firebase/signaldeskFirebaseClient.ts");
   const config = read("src/lib/firebase/signaldeskConfig.ts");
   const firebaseConstants = read("src/constants/signaldesk/firebase.ts");
   const database = read("src/constants/signaldesk/database.ts");
   const rulesVerifier = read("scripts/verification/verify-signaldesk-security-rules.js");
+  const routeSmoke = read("scripts/verification/smoke-signaldesk-routes.js");
+  const functionsIndex = read("functions-signaldesk/src/index.ts");
+  const proofLifecycle = read("functions-signaldesk/src/schedulers/proofPermissionLifecycle.ts");
+  const maintenanceScheduler = read("functions-signaldesk/src/schedulers/signaldeskMaintenanceScheduler.ts");
+  const proofLifecycleTest = read("scripts/verification/test-signaldesk-proof-permission-lifecycle.ts");
+  const e2eLocal = read("scripts/verification/e2e-signaldesk-local.js");
+  const packageJson = read("package.json");
+  const workflow = read("src/lib/signaldesk/workflowServer.ts");
 
   assertIncludes(firebaseConfig, '"source": "functions-signaldesk"', "SignalDesk Firebase functions source");
+  assertIncludes(routeSmoke, 'process.env.SIGNALDESK_SMOKE_ALLOW_RATE_LIMIT_UNAVAILABLE === "1"', "Route smoke requires an explicit local fail-closed rate-limit allowance");
+  assertIncludes(routeSmoke, "unsignedWebhook.status === 503 && ALLOW_RATE_LIMIT_UNAVAILABLE", "Route smoke verifies safe webhook behavior when the local limiter is unavailable");
+  assertIncludes(routeSmoke, "unsignedOutcome.status === 503 && ALLOW_RATE_LIMIT_UNAVAILABLE", "Route smoke verifies safe outcome behavior when the local limiter is unavailable");
   assertIncludes(firebaseConfig, '"codebase": "signaldesk"', "SignalDesk Firebase functions codebase");
   assertIncludes(firebaseConfig, '"rules": "firestore-signaldesk.rules"', "SignalDesk Firestore rules config");
   assertIncludes(firebaseConfig, '"rules": "storage-signaldesk.rules"', "SignalDesk Storage rules config");
   assertIncludes(firestoreRules, "allow read, write: if false;", "SignalDesk Firestore default deny");
   assertIncludes(firestoreRules, "function canReadSignalDesk()", "SignalDesk Firestore read helper");
+  assertIncludes(firestoreRules, "return isSignalDeskPlatformAdmin() && isSignalDeskResource();", "SignalDesk Firestore reads require platform authority and SD-owned documents");
   assertIncludes(firestoreRules, "allow write: if false;", "SignalDesk Firestore denies client writes");
   assertIncludes(firestoreRules, "signaldeskStrategistMemos", "SignalDesk strategist memos are readable through rules");
   assertIncludes(firestoreRules, "signaldeskProviderEvaluations", "SignalDesk provider evaluations are readable through rules");
@@ -1064,19 +1998,32 @@ function verifyFirebaseIsolation() {
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskOperatingEnvelopes"', "SignalDesk operating envelope index");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskActivationWatches"', "SignalDesk activation watch indexes");
   assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskOutcomeSummaries"', "SignalDesk outcome summary indexes");
+  assertIncludes(firestoreIndexes, '"collectionGroup": "signaldeskProofPermissions"', "SignalDesk proof-permission expiry index");
+  assertIncludes(firestoreIndexes, '{ "fieldPath": "pId", "order": "ASCENDING" },\n        { "fieldPath": "status", "order": "ASCENDING" },\n        { "fieldPath": "expiresAt", "order": "ASCENDING" }', "SignalDesk proof-permission expiry index partitions due work by product");
+  assertIncludes(firestoreIndexes, '{ "fieldPath": "pId", "order": "ASCENDING" },\n        { "fieldPath": "proofExpiryLifecycleState", "order": "ASCENDING" },\n        { "fieldPath": "proofExpiryLifecycleRetryAt", "order": "ASCENDING" }', "SignalDesk proof-permission retry index partitions failed work by product");
+  assertIncludes(firestoreIndexes, '{ "fieldPath": "pId", "order": "ASCENDING" },\n        { "fieldPath": "proofExpiryLifecycleState", "order": "ASCENDING" }', "SignalDesk proof-permission pending index partitions recovery work by product");
   assertIncludes(firestoreIndexes, '{ "fieldPath": "targetId", "order": "ASCENDING" },\n        { "fieldPath": "updatedAt", "order": "DESCENDING" }', "SignalDesk latest target outcome index");
   assertIncludes(firestoreIndexes, '{ "fieldPath": "targetId", "order": "ASCENDING" },\n        { "fieldPath": "updatedAt", "order": "ASCENDING" }', "SignalDesk earliest target outcome index");
   assertIncludes(storageRules, "allow read, write: if false;", "SignalDesk Storage default deny");
-  assertIncludes(storageRules, "function canReadSignalDesk()", "SignalDesk Storage read helper");
+  assertNotIncludes(storageRules, "function canReadSignalDesk()", "SignalDesk Storage has no resource-free generic read helper");
+  assertIncludes(storageRules, "match /signaldesk/incidents/{allPaths=**}", "SignalDesk Storage scopes the only client-readable prefix");
+  assertIncludes(storageRules, "allow read: if isSignalDeskPlatformAdmin();", "SignalDesk incident reads require platform authority");
+  assertIncludes(storageRules, "match /signaldesk/imports/{fileName}", "SignalDesk import artifacts remain client-denied");
+  assertIncludes(storageRules, "match /signaldesk/evidence/{allPaths=**}", "SignalDesk evidence artifacts remain client-denied");
+  assertIncludes(storageRules, "match /signaldesk/exports/{allPaths=**}", "SignalDesk export artifacts remain client-denied");
   assertIncludes(rulesVerifier, "Public summary read", "SignalDesk rules verifier covers unauth summary read denial");
   assertIncludes(rulesVerifier, "Public summary write", "SignalDesk rules verifier covers unauth summary write denial");
   assertIncludes(rulesVerifier, "Public SignalDesk storage upload", "SignalDesk rules verifier covers unauth storage upload denial");
   assertIncludes(rulesVerifier, "initializeTestEnvironment", "SignalDesk rules verifier covers rules-unit semantic checks");
   assertIncludes(rulesVerifier, "signaldeskTargets", "SignalDesk rules verifier covers raw target denial");
-  assertIncludes(firebaseConstants, "MENULIST_SIGNALDESK_FIREBASE_MODE", "SignalDesk Firebase mode env");
-  assertIncludes(firebaseConstants, "MENULIST_SIGNALDESK_FIREBASE", "SignalDesk Admin credential prefix");
-  assertIncludes(config, "SIGNALDESK_FIREBASE_MODE_ENV_KEYS", "SignalDesk Firebase config uses mode env constants");
-  assertIncludes(admin, "SIGNALDESK_FIREBASE_CREDENTIAL_PREFIX", "SignalDesk Admin uses credential prefix constants");
+  assertIncludes(firebaseConstants, "SIGNALDESK_REQUIRED_FIREBASE_MODE", "SignalDesk Firebase mode is a fixed separate-project contract");
+  assertIncludes(firebaseConstants, "normalizeSignalDeskStorageBucket", "SignalDesk Firebase constants normalize storage-bucket identity");
+  assertIncludes(config, "resolveSignalDeskFirebaseBoundary", "SignalDesk Firebase config resolves one fail-closed boundary");
+  assertIncludes(config, "SIGNALDESK_REQUIRED_FIREBASE_MODE", "SignalDesk Firebase config enforces the required mode");
+  assertIncludes(config, "signaldeskAdminStorageBucket", "SignalDesk Firebase config exposes the validated admin bucket");
+  assertIncludes(config, "signaldeskClientStorageBucket", "SignalDesk Firebase config exposes the validated client bucket");
+  assertIncludes(admin, "__MENULIST_SIGNALDESK_FIREBASE_ADMIN_BOOTSTRAP__", "SignalDesk Admin bootstrap caches one validated outcome");
+  assertIncludes(client, "__MENULIST_SIGNALDESK_FIREBASE_CLIENT_BOOTSTRAP__", "SignalDesk client bootstrap caches one validated outcome");
   assertIncludes(database, 'TARGETS: "signaldeskTargets"', "SignalDesk product-local collection names");
   assertIncludes(database, 'SELF_SERVICE_CTAS: "signaldeskSelfServiceCtas"', "SignalDesk self-service CTA collection");
   assertIncludes(database, 'CONTENT_DISTRIBUTION_DRAFTS: "signaldeskContentDistributionDrafts"', "SignalDesk content distribution collection");
@@ -1093,6 +2040,220 @@ function verifyFirebaseIsolation() {
   assertIncludes(database, 'OPERATING_ENVELOPES: "signaldeskOperatingEnvelopes"', "SignalDesk operating envelope collection");
   assertIncludes(database, 'ACTIVATION_WATCHES: "signaldeskActivationWatches"', "SignalDesk activation watch collection");
   assertIncludes(database, 'REVENUE_CONTROL_SUMMARIES: "signaldeskRevenueControlSummaries"', "SignalDesk revenue summary collection");
+  assertIncludes(functionsIndex, 'export { signaldeskMaintenanceScheduler }', "SignalDesk functions export the consolidated maintenance scheduler");
+  assertIncludes(functionsIndex, "proofPermissionLifecycleEnabled", "SignalDesk health response exposes proof lifecycle state");
+  assertIncludes(maintenanceScheduler, 'schedule: "0 * * * *"', "SignalDesk maintenance scheduler runs hourly");
+  assertIncludes(maintenanceScheduler, "maxInstances: 1", "SignalDesk maintenance scheduler bounds instance overlap");
+  assertIncludes(maintenanceScheduler, 'const STATE_DOC_ID = "signaldeskMaintenanceScheduler"', "SignalDesk scheduler stores durable state in _system");
+  assertIncludes(maintenanceScheduler, 'const TASK_LOCK_PREFIX = "signaldeskMaintenanceTaskLock_"', "SignalDesk scheduler uses a per-task Firestore lease");
+  assertIncludes(maintenanceScheduler, "lastCompletedBucket", "SignalDesk scheduler suppresses duplicate successful hourly runs");
+  assertIncludes(maintenanceScheduler, "result.failureDiagnosticErrorCount > 0", "SignalDesk scheduler reports isolated diagnostic failures as activity");
+  assertIncludes(maintenanceScheduler, "lastFailedAt", "SignalDesk scheduler preserves a separate durable failure timestamp");
+  assertIncludes(maintenanceScheduler, "lastFailureCode", "SignalDesk scheduler preserves a separate durable failure code");
+  assertIncludes(maintenanceScheduler, "Failed to record proof-permission lifecycle outcome", "SignalDesk scheduler logs secondary outcome-recording failures without replacing the primary failure");
+  assertIncludes(proofLifecycle, '.where("pId", "==", SIGNALDESK_PRODUCT_CODE)', "Proof lifecycle partitions due, pending, and retry scans by product");
+  assertIncludes(proofLifecycle, '.where("status", "==", "active")\n      .where("expiresAt", "<=", now)', "Proof lifecycle selects only active permissions whose expiry is due");
+  assertIncludes(proofLifecycle, '.where("proofExpiryLifecycleState", "==", "pending")', "Proof lifecycle resumes interrupted scheduler-owned reconciliation");
+  assertIncludes(proofLifecycle, '.where("proofExpiryLifecycleState", "==", "failed")', "Proof lifecycle retries durable failed reconciliation rows");
+  assertIncludes(proofLifecycle, '.where("proofExpiryLifecycleRetryAt", "<=", now)', "Proof lifecycle retries failed rows only when their backoff is due");
+  assertIncludes(proofLifecycle, "FAILURE_RETRY_BASE_MS", "Proof lifecycle has an explicit retry base interval");
+  assertIncludes(proofLifecycle, "FAILURE_RETRY_MAX_MS", "Proof lifecycle caps exponential retry backoff");
+  assertIncludes(proofLifecycle, "failureDiagnosticErrorCount", "Proof lifecycle exposes bounded diagnostic-persistence failure accounting");
+  assertIncludes(proofLifecycle, "recordSignalDeskProofPermissionLifecycleFailure", "Proof lifecycle persists deterministic failure diagnostics");
+  assertIncludes(proofLifecycle, "if (permission.pId !== SIGNALDESK_PRODUCT_CODE) return false;", "Proof lifecycle emits no SignalDesk failure effects for transaction-current foreign-product truth");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_LIFECYCLE_FAILURE_DIAGNOSTIC_FAILED", "Proof lifecycle emits a stable bounded code when diagnostic persistence itself fails");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_LIFECYCLE_PROCESSING_FAILED", "Proof lifecycle maps non-SignalDesk processing failures to a stable public-safe code");
+  assertIncludes(proofLifecycle, "proofExpiryLifecycleRetryCount: 0", "Proof lifecycle resets retry state for a new grant-expiry cycle and after recovery");
+  assertIncludes(proofLifecycle, 'const MAX_DEPENDENCY_PAGE_SIZE = 50', "Proof lifecycle caps page writes below Firestore transaction limits");
+  assertIncludes(proofLifecycle, 'throw new Error("SIGNALDESK_PROOF_PERMISSION_PRODUCT_MISMATCH")', "Proof lifecycle fails closed on wrong-product permission data");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_CONTENT_ASSET_PUBLICATION_MARKER_INVALID", "Proof lifecycle fails visible on malformed asset publication markers");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_DRAFT_IDENTITY_MISMATCH", "Proof lifecycle validates dependent draft identity");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_DRAFT_LIFECYCLE_INVALID", "Proof lifecycle validates dependent draft lifecycle state");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_CALENDAR_IDENTITY_MISMATCH", "Proof lifecycle validates dependent calendar identity");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_CALENDAR_LINK_INVALID", "Proof lifecycle validates canonical draft-to-calendar linkage");
+  assertIncludes(proofLifecycle, "SIGNALDESK_PROOF_PERMISSION_CALENDAR_PUBLICATION_INVALID", "Proof lifecycle validates calendar publication truth");
+  assertIncludes(proofLifecycle, 'dependentHoldReconciliationKind: LIFECYCLE_KIND', "Proof lifecycle durably owns its reconciliation token");
+  assertIncludes(workflow, 'const CONTENT_AUTHORITY_RECONCILIATION_KIND = "content-authority-hold-v1"', "App-side content reconciliation declares its own token kind");
+  assertIncludes(workflow, 'reconciliationKind !== CONTENT_AUTHORITY_RECONCILIATION_KIND', "App-side reconciliation refuses scheduler-owned lifecycle tokens");
+  assertIncludes(workflow, 'throw new Error("CONTENT_AUTHORITY_RECONCILIATION_PENDING")', "Cross-runtime reconciliation ownership fails closed with a stable pending error");
+  assertIncludes(workflow, 'const CONTENT_AUTHORITY_INCIDENT_TYPE = "content-authority-publication-removal-review"', "App-side authority reconciliation opens a distinct publication-removal review incident");
+  assertIncludes(workflow, "publicationReviewRequired: true", "App-side authority reconciliation preserves explicit publication-review truth");
+  assertIncludes(workflow, "publicationReviewAssetCount", "App-side authority reconciliation accounts for review-marked published assets");
+  assertIncludes(workflow, "publishedIncidentCount", "App-side authority reconciliation accounts for created publication incidents");
+  assertIncludes(workflow, "contentAuthorityPublicationEvidenceFromIncident", "App-side authority reconciliation recovers monotonic publication evidence from prior incidents");
+  assertIncludes(workflow, "publicationUrl: evidence.publicationUrl", "App-side authority reconciliation preserves explicit null publication metadata");
+  assertIncludes(proofLifecycle, 'incidentType: "proof-publication-removal-review"', "Expired published proof opens a dedicated removal-review incident");
+  assertIncludes(proofLifecycle, 'incidentData.severity !== "high"', "Existing proof incidents fail closed on severity drift");
+  assertIncludes(proofLifecycle, '!["open", "acknowledged", "resolved"].includes', "Existing proof incidents fail closed on status drift");
+  assertIncludes(proofLifecycle, 'incidentData.proofExpiryLifecycleToken !== params.lifecycleToken', "A later grant-expiry cycle reopens a previously closed incident");
+  assertIncludes(proofLifecycle, 'incidentCount: FieldValue.increment(incidentsCreated)', "Control-room incident totals increment only for newly created incidents");
+  assertIncludes(proofLifecycle, 'openIncidentCount: FieldValue.increment(openIncidentDelta)', "Control-room open incident count increments once for create or grant-cycle reopen");
+  assertIncludes(proofLifecycle, 'status !== "rejected"', "Proof expiry preserves published and rejected draft history");
+  assertIncludes(proofLifecycle, 'status !== "held" && status !== "missed"', "Proof expiry preserves published, held, and missed calendar history");
+  assertIncludes(proofLifecycleTest, "testOverlapAndDuplicateSchedulerRuns", "Proof lifecycle emulator regression covers overlapping and duplicate scheduler runs");
+  assertIncludes(proofLifecycleTest, "testCrashResume", "Proof lifecycle emulator regression covers interrupted reconciliation recovery");
+  assertIncludes(proofLifecycleTest, "testWrongProductFailsClosed", "Proof lifecycle emulator regression covers wrong-product fail-closed behavior");
+  assertIncludes(proofLifecycleTest, "testMalformedPendingDoesNotStarveLaterPermission", "Proof lifecycle emulator regression covers malformed pending-row isolation");
+  assertIncludes(proofLifecycleTest, "testMalformedDependenciesFailVisibleWithoutStarvation", "Proof lifecycle emulator regression covers malformed dependency isolation");
+  assertIncludes(proofLifecycleTest, "testMalformedPublicationMarkerFailsVisibleWithoutStarvation", "Proof lifecycle emulator regression covers malformed publication-marker isolation");
+  assertIncludes(proofLifecycleTest, "testForeignCurrentTruthReceivesNoSignalDeskFailureEffects", "Proof lifecycle emulator regression covers transaction-current foreign-product isolation");
+  assertIncludes(proofLifecycleTest, "testFailureDiagnosticCollisionDoesNotStarveLaterPermission", "Proof lifecycle emulator regression covers diagnostic-write collision isolation");
+  assertIncludes(proofLifecycleTest, "testSchedulerReportsIsolatedFailuresAsActivity", "Proof lifecycle emulator regression covers scheduler failure activity reporting");
+  assertIncludes(proofLifecycleTest, "testSchedulerFailurePreservesPriorCompletion", "Proof lifecycle emulator regression covers preservation of prior successful scheduler history");
+  assertIncludes(proofLifecycleTest, "testPagination", "Proof lifecycle emulator regression covers bounded pagination");
+  assertIncludes(proofLifecycleTest, "testPublishedIncidentIdempotencyAndGrantCycles", "Proof lifecycle emulator regression covers publication incidents and re-grant cycles");
+  assertIncludes(proofLifecycleTest, "testExistingIncidentShapeFailsClosed", "Proof lifecycle emulator regression covers corrupt incident severity and status");
+  assertIncludes(e2eLocal, "assertContentAuthorityPublishedRemovalReconciliation", "Focused app E2E covers published authority-removal reconciliation");
+  assertIncludes(e2eLocal, "App reconciliation consuming scheduler-owned token", "Focused app E2E covers scheduler-owned token refusal");
+  assertIncludes(e2eLocal, "Direct published-draft asset was held", "Focused app E2E covers legacy direct draft-to-asset authority links");
+  assertIncludes(packageJson, '"test:signaldesk:proof-permission-lifecycle"', "Root package exposes the focused proof-permission lifecycle emulator command");
+}
+
+function verifySourcePolicyAndImportContracts() {
+  const sourcePolicyContracts = read("src/lib/signaldesk/sourcePolicyContracts.ts");
+  const targetContracts = read("src/lib/signaldesk/targetContracts.ts");
+  const csvImport = read("src/lib/signaldesk/csvImport.ts");
+  const workflow = read("src/lib/signaldesk/workflowServer.ts");
+  const sourceProviders = read("src/lib/signaldesk/sourceProviders.ts");
+  const actionRoute = read("src/app/api/signaldesk/actions/route.ts");
+  const workspace = read("src/components/signaldesk/SignalDeskWorkspace.tsx");
+  const e2eLocal = read("scripts/verification/e2e-signaldesk-local.js");
+
+  assertIncludes(sourcePolicyContracts, "SignalDeskSourcePolicyCreateSchema", "Source-policy runtime contract exists");
+  assertIncludes(sourcePolicyContracts, "allowedContactChannels", "Source-policy contract requires bounded channel authority");
+  assertIncludes(sourcePolicyContracts, 'z.literal(SIGNALDESK_PRODUCT_CODE)', "Persisted source-policy contract requires SignalDesk product ownership");
+  assertIncludes(sourcePolicyContracts, 'throw new Error("SOURCE_POLICY_IDENTITY_MISMATCH")', "Persisted source-policy contract binds document and entity identities");
+  assertIncludes(sourcePolicyContracts, "policy.allowedUse.contact === true", "Source-policy contact-channel helper is fail closed");
+  ["contact", "evidence", "import", "personalization", "providerRun", "storage"].forEach((use) => {
+    assertIncludes(sourcePolicyContracts, `${use}: z.boolean()`, `Source-policy ${use} authority is required`);
+  });
+  assertNotIncludes(sourcePolicyContracts, "import: z.boolean().optional()", "Source-policy import authority cannot default open");
+  assertNotIncludes(sourcePolicyContracts, "providerRun: z.boolean().optional()", "Source-policy provider authority cannot default open");
+  assertIncludes(sourcePolicyContracts, 'parsed.data.sourceType === "provider"', "Persisted source policies recheck provider source semantics");
+  assertIncludes(sourcePolicyContracts, 'parsed.data.refreshMethod === "provider-refresh"', "Persisted source policies recheck provider refresh semantics");
+  assertIncludes(sourcePolicyContracts, "approved > currentTime + CLOCK_SKEW_MS || reviewed > currentTime + CLOCK_SKEW_MS", "Persisted source policies reject future approval and review authority");
+  assertIncludes(sourcePolicyContracts, 'typeof value.toDate !== "function"', "Persisted source-policy timestamps require Firestore Timestamp values");
+
+  assertIncludes(targetContracts, "SignalDeskTargetImportSchema", "Target-import runtime contract exists");
+  assertIncludes(targetContracts, "SignalDeskManualTargetImportSchema", "Manual-import contract excludes provider-owned lineage fields");
+  assertIncludes(targetContracts, "Provider identity requires a trusted provider run.", "Manual import rejects spoofed provider identity");
+  assertIncludes(targetContracts, "permissionEvidenceRef", "Target-import rows carry per-row permission evidence");
+  assertIncludes(targetContracts, ").strict();", "Target-import boundary rejects unexpected fields");
+  assertIncludes(targetContracts, "satisfies SignalDeskTargetSummary", "Target summaries use an explicit public-safe projection");
+  assertIncludes(targetContracts, 'throw new Error("TARGET_PRODUCT_MISMATCH")', "Target contracts fail closed on product mismatch");
+  assertIncludes(targetContracts, 'throw new Error("TARGET_IDENTITY_MISMATCH")', "Target contracts bind document and entity identities");
+  assertIncludes(targetContracts, "parseSignalDeskSourceRunDocument", "Source-run DTOs use an explicit runtime projector");
+  assertIncludes(targetContracts, "parseSignalDeskResearchRunDocument", "Research-run DTOs use an explicit runtime projector");
+  assertIncludes(targetContracts, "parseSignalDeskResearchRowDocument", "Research-row DTOs use an explicit runtime projector");
+  assertIncludes(targetContracts, "parseSignalDeskTargetScoreDocument", "Target-score replay uses an explicit runtime projector");
+  assertIncludes(targetContracts, 'provider: z.enum(trustedSourceProviders)', "Persisted targets accept only external provider identities");
+  assertIncludes(targetContracts, "const validIdentityCoupling", "Persisted target identity version and provider lineage are semantically coupled");
+  assertIncludes(targetContracts, "Persisted email must be canonical lowercase.", "Persisted email truth is canonical and bounded");
+  assertIncludes(targetContracts, "const nullableCanonicalPhone", "Persisted phone truth requires canonical international form");
+  assertIncludes(targetContracts, "const nullableInstagramHandle", "Persisted Instagram truth requires a canonical handle");
+  assertIncludes(targetContracts, "const boundedScore = z.number().finite().min(0).max(100)", "Persisted target scores are range bounded");
+  assertIncludes(targetContracts, "fitScore: z.number().min(0).max(100)", "Persisted research-row scores are range bounded");
+  assertIncludes(targetContracts, 'typeof value.toDate !== "function"', "Persisted target timestamps require Firestore Timestamp values");
+  assertIncludes(targetContracts, "const expectedStatus", "Source-run status is derived from persisted counts");
+  assertIncludes(targetContracts, "parsed.data.duplicateCount > parsed.data.importedCount", "Source runs reject impossible duplicate counts");
+  assertIncludes(targetContracts, "parsed.data.suppressedCount > parsed.data.importedCount", "Source runs reject impossible suppression counts");
+  assertIncludes(targetContracts, "parsed.data.blockedCount > parsed.data.importedCount", "Source runs reject impossible blocked counts");
+  assertIncludes(targetContracts, "terminalCount !== parsed.data.tableRowCount", "Research-run verdict totals reconcile to the persisted row count");
+  assertIncludes(targetContracts, 'parsed.data.status === "queued" || parsed.data.status === "running"', "In-flight research runs cannot carry terminal truth");
+  assertIncludes(targetContracts, "const fitDecisionMatchesScore", "Research verdicts are coupled to persisted fit scores");
+  assertIncludes(targetContracts, "const failStateIsSafe", "Failed research rows cannot expose an actionable route");
+
+  assertIncludes(workflow, "readBoundedStrictDocuments", "Workspace strict reads paginate past malformed or foreign leading rows");
+  assertIncludes(workflow, '.orderBy("updatedAt", "desc")', "Workspace strict lists page by latest durable truth rather than document ID");
+  assertIncludes(workflow, "signaldesk_strict_latest_scan_limit_exceeded", "Bounded latest scans emit an observable limit diagnostic");
+  assertIncludes(workflow, "SignalDeskTargetImportSchema.safeParse(input)", "Server import revalidates typed route input");
+  assertIncludes(workflow, "TARGET_IMPORT_PROVIDER_LINEAGE_REQUIRED", "Direct imports cannot claim trusted provider lineage");
+  assertIncludes(workflow, "SIGNALDESK_MANUAL_IMPORT_SOURCE_TYPES", "Direct imports accept only manual source-policy types");
+  assertIncludes(workflow, "return db.runTransaction", "Target import is one transactional read-before-write unit");
+  assertIncludes(workflow, 'throw new Error("TARGET_IMPORT_PERMISSION_EVIDENCE_REQUIRED")', "Import requires evidence for each retained contact row");
+  assertIncludes(workflow, 'throw new Error("TARGET_IMPORT_DIVERGENT_DUPLICATE")', "Import rejects divergent same-identity rows");
+  assertIncludes(workflow, "const activeSourceDataLifecycle", "Target import persists explicit active source-data lifecycle authority");
+  assertIncludes(workflow, "sourceDataObservedAt: timestamp", "Target import records the verified source observation time");
+  assertIncludes(workflow, "retentionExpiresAt: sourceDataExpiresAt", "Provider retention cannot outlive source-policy authority");
+  assertIncludes(workflow, "refreshDueAt: providerRefreshDueAt", "Provider refresh due time is capped by source-policy authority");
+  assertIncludes(workflow, 'permissioned: sourcePolicyAllowsContactChannel(policy, "email")', "Email contact authority follows the approved source-policy channel");
+  assertIncludes(workflow, 'permissioned: sourcePolicyAllowsContactChannel(policy, "instagram")', "Instagram contact authority follows the approved source-policy channel");
+  assertIncludes(workflow, 'throw new Error("TARGET_SOURCE_POLICY_REBIND")', "Import rejects target source-policy rebinds");
+  assertIncludes(workflow, 'throw new Error("SOURCE_CANDIDATE_LINEAGE_CONFLICT")', "Import rejects source-candidate lineage conflicts");
+  assertIncludes(workflow, 'throw new Error("CONTACT_IDENTITY_PERMISSION_EVIDENCE_CONFLICT")', "Import rejects contact evidence rebinds");
+  assertIncludes(workflow, "retainedPermissionState", "Import preserves existing contact authority state");
+  assertIncludes(workflow, "row.canonicalPhone !== row.phone", "Import checks retained and legacy phone suppression identities");
+  assertIncludes(workflow, "computeLegacyTargetIdentity", "Provider identity migration preserves the exact legacy identity basis");
+  assertIncludes(workflow, '? "provider-record-v1"', "Provider record identity has an explicit stable version");
+  assertIncludes(workflow, '? "provider-url-v1"', "Provider URL identity has an explicit stable version");
+  assertIncludes(workflow, ': "provider-business-v1"', "Provider fallback identity is source namespaced");
+  assertIncludes(workflow, "detailProvesProviderIdentity || retentionProvesProviderIdentity", "Legacy provider identities migrate only with matching lineage proof");
+  assertIncludes(workflow, "importRequestFingerprintHash", "Manual target imports have a stable request fingerprint");
+  assertIncludes(workflow, "manualImportClaimRef", "Manual target imports claim actor-bound retry identity transactionally");
+  assertIncludes(workflow, 'throw new Error("TARGET_IMPORT_IDEMPOTENCY_CONFLICT")', "Changed manual-import retries fail closed");
+  assertIncludes(workflow, "preservedTimestampFields", "Re-import preserves mature lifecycle timestamp authority");
+  assertIncludes(workflow, "parseSignalDeskTargetSummaryDocument(targetSnap.data(), targetSnap.id)", "Target scoring validates persisted target truth before deriving a score");
+  assertIncludes(workflow, "parseSignalDeskTargetScoreDocument(priorScoreSnap.data(), priorScoreSnap.id, targetId)", "Target scoring validates durable replay truth");
+  assertIncludes(workflow, "const requestedSourcePolicyId = normalizeText(input.sourcePolicyId)", "Research requires explicit source-policy identity");
+  assertIncludes(workflow, "admin.firestore.Timestamp.fromMillis(ownerQualifiedMillis)", "Outcome target settlement persists owner qualification as Firestore Timestamp truth");
+  assertIncludes(workflow, "persistedOwnerQualifiedAt || timestamp", "Reply capture preserves persisted owner qualification instead of round-tripping the DTO string");
+  assertNotIncludes(workflow, "policy.allowedUse.import !== false", "Import authority no longer defaults open");
+
+  assertIncludes(actionRoute, 'from "@lib/signaldesk/sourcePolicyContracts"', "Action route consumes shared source-policy schema");
+  assertIncludes(actionRoute, 'from "@lib/signaldesk/targetContracts"', "Action route consumes shared target-import schema");
+  assertIncludes(actionRoute, "validatePayload(SignalDeskManualTargetImportSchema", "Manual-import route uses the provider-lineage-safe schema");
+  assertNotIncludes(actionRoute, "createSignalDeskSourcePolicyServer(access, payload.data as any)", "Source-policy route has no unsafe payload cast");
+  assertNotIncludes(actionRoute, "importSignalDeskTargetsServer(access, payload.data as any)", "Target-import route has no unsafe payload cast");
+
+  assertIncludes(sourceProviders, "type UnknownRecord = Record<string, unknown>", "Provider payloads start as unknown input");
+  assertIncludes(sourceProviders, "SignalDeskTargetImportRowSchema.safeParse(value)", "Provider rows pass through the shared bounded row contract");
+  assertIncludes(sourceProviders, "AbortSignal.timeout(timeoutMs)", "Provider calls enforce abort timeouts");
+  assertIncludes(sourceProviders, "SOURCE_PROVIDER_REQUEST_FAILED", "Provider request failures use a stable safe code");
+  assertIncludes(sourceProviders, "SOURCE_PROVIDER_TIMEOUT", "Provider timeouts use a stable safe code");
+  assertIncludes(sourceProviders, 'firstValidProviderUrl("providerRecordUrl", at(place, "googleMapsUri"))', "Google Maps URLs remain provider-record provenance only");
+  assertIncludes(sourceProviders, 'firstValidProviderUrl("currentListUrl", at(item, "currentListUrl"), at(item, "menuUrl"), at(item, "menuLink"))', "Apify current-list truth comes only from explicit menu fields");
+  assertIncludes(sourceProviders, "normalizeOptionalProviderField", "Malformed optional provider fields are dropped independently");
+  assertIncludes(sourceProviders, "normalizeInstagramHandle", "Provider Instagram URLs normalize to canonical handles");
+  assertNotIncludes(sourceProviders, "Record<string, any>", "Provider payload normalization contains no any-valued records");
+  assertNotIncludes(sourceProviders, "return normalized.slice", "Provider identity and contact fields are never silently truncated");
+
+  assertIncludes(csvImport, "SIGNALDESK_IMPORT_CSV_COLUMNS", "Manual CSV parser owns one canonical ten-column order");
+  assertIncludes(csvImport, "let inQuotes = false", "Manual CSV parser has explicit quote state");
+  assertIncludes(csvImport, "source[index + 1] === '\"'", "Manual CSV parser decodes escaped quotes");
+  assertIncludes(csvImport, "if (inQuotes) csvError", "Manual CSV parser rejects unclosed quotes");
+  assertIncludes(csvImport, "values.length !== SIGNALDESK_IMPORT_CSV_COLUMNS.length", "Manual CSV parser rejects shifted row shapes");
+  assertIncludes(csvImport, "if (dataRecords.length > MAX_ROWS)", "Manual CSV parser enforces the bounded row cap");
+  assertNotIncludes(csvImport, ".split(\"\\n\")", "Manual CSV parser does not split quoted records by newline");
+
+  assertIncludes(workspace, "policyCreateRetry?.requestKey === requestKey", "Source-policy UI retries retain a stable request identity");
+  assertIncludes(workspace, "importRetry?.requestKey === requestKey", "Manual-import UI retries retain a stable request identity");
+  assertIncludes(workspace, "parseSignalDeskTargetImportCsv(importRows)", "Manual-import UI consumes the shared CSV parser");
+  assertIncludes(workspace, "isUsableProviderPolicy(policy, sourceProvider)", "Provider UI selects only an exact usable provider policy");
+  assertIncludes(workspace, "isUsableManualImportPolicy", "Manual-import UI filters out provider-only policies");
+  assertIncludes(workspace, "permission evidence reference in column 10", "Manual import UI explains row-level permission evidence");
+  assertIncludes(e2eLocal, "assertSourcePolicyAndImportContracts", "Local E2E covers source-policy and import contracts");
+  assertIncludes(e2eLocal, 'SIGNALDESK_E2E_FOCUS === "source-import"', "Local E2E exposes a focused source/import gate");
+  assertIncludes(e2eLocal, "Source-policy exact retry created a second policy", "Local E2E covers idempotent policy replay");
+  assertIncludes(e2eLocal, '"TARGET_SOURCE_POLICY_REBIND"', "Local E2E covers source-policy rebind rejection");
+  assertIncludes(e2eLocal, "Disallowed email channel was retained as contact authority", "Local E2E prevents contact authority outside the source-policy channel list");
+  assertIncludes(e2eLocal, "Concurrent manual import created two source runs", "Local E2E covers concurrent manual-import idempotency");
+  assertIncludes(e2eLocal, "Manual import cannot consume a provider-only policy", "Local E2E covers manual/provider policy separation");
+  assertIncludes(e2eLocal, "Manual import cannot claim provider lineage", "Local E2E covers forged provider lineage rejection");
+  assertIncludes(e2eLocal, "Provider record URLs were misrepresented as current-list truth", "Local E2E covers provider-record/current-list separation");
+  assertIncludes(e2eLocal, "Provider adapter truncated an overlong record ID", "Local E2E covers provider identity non-truncation");
+  assertIncludes(e2eLocal, "One malformed optional provider field dropped an otherwise valid business", "Local E2E covers independent optional-field normalization");
+  assertIncludes(e2eLocal, "Quoted CSV comma shifted the target display name", "Local E2E covers quoted CSV delimiters");
+  assertIncludes(e2eLocal, "Out-of-range persisted target score reached the workspace", "Local E2E covers persisted score range rejection");
+  assertIncludes(e2eLocal, "Impossible source-run count reached the workspace", "Local E2E covers source-run count invariants");
+  assertIncludes(e2eLocal, "Research run count mismatch", "Local E2E covers research-run verdict reconciliation");
+  assertIncludes(e2eLocal, "Research run in-flight terminal truth", "Local E2E covers in-flight research-run invariants");
+  assertIncludes(e2eLocal, "Research row score range", "Local E2E covers persisted research score bounds");
+  assertIncludes(e2eLocal, "Research pass verdict requires a passing score", "Local E2E covers research verdict-score coupling");
+  assertIncludes(e2eLocal, "Research fail verdict cannot expose an outreach route", "Local E2E covers fail-state route safety");
+  assertIncludes(e2eLocal, "Research run requires an explicit source policy", "Local E2E covers explicit research policy authority");
+  assertIncludes(e2eLocal, "Target scoring rejects foreign target truth", "Local E2E covers strict target scoring input");
+  assertIncludes(e2eLocal, "Target score replay rejects out-of-range score truth", "Local E2E covers strict score replay validation");
+  assertIncludes(e2eLocal, "Outcome settlement stored owner-qualified target time outside Firestore Timestamp truth", "Full E2E covers outcome target timestamp persistence");
 }
 
 function verifyPublicIsolation() {
@@ -1120,6 +2281,7 @@ function verifyDocsTruth() {
   const readme = read("__docs__/menulist-signaldesk/README.md");
   const impl = read("__docs__/menulist-signaldesk/menulist-signaldesk_impl.md");
   const firebase = read("__docs__/menulist-signaldesk/menulist-signaldesk_firebase.md");
+  const testCases = read("__docs__/menulist-signaldesk/menulist-signaldesk_test-cases.md");
   const validation = read("__docs__/menulist-signaldesk/menulist-signaldesk_validation.md");
   const featureMap = read("__docs__/menulist-signaldesk/menulist-signaldesk_feature-map.md");
   const feedbackReview = read("__docs__/menulist-signaldesk/menulist-signaldesk_chatgpt-feedback-review-2026-06-24.md");
@@ -1141,9 +2303,23 @@ function verifyDocsTruth() {
   assertIncludes(impl, "observe -> monitor -> approve -> pause or redirect", "SignalDesk implementation posture");
   assertIncludes(impl, '| Product code | `PRODUCT_IDS.SIGNALDESK = "SD"` is implemented.', "SignalDesk implementation current product code");
   assertIncludes(impl, "SignalDesk-only `MENULIST_SIGNALDESK_GEMINI_AI_KEY*` pool", "SignalDesk implementation scoped AI key pool");
+  assertIncludes(impl, "18 account/use records and 17 provider-scoped budgets", "SignalDesk implementation documents exact seed registry cardinality");
+  assertIncludes(impl, "any near-match or founder marker prevents migration", "SignalDesk implementation documents exact-only legacy migration");
+  assertIncludes(impl, "July 15 Source-Policy And Transactional Import Hardening", "SignalDesk implementation documents source-policy/import hardening");
+  assertIncludes(impl, "Import refresh is not an authority-upgrade operation", "SignalDesk implementation documents contact-authority preservation");
   assertIncludes(firebase, "Dedicated SignalDesk Firebase projects", "SignalDesk Firebase dedicated project posture");
   assertIncludes(firebase, "no MenuList/Answerlattice AI-key fallback", "SignalDesk Firebase AI credential separation");
+  assertIncludes(firebase, "current CTA plus 53 unique business defaults", "SignalDesk Firebase plan documents transactional seed read cardinality");
+  assertIncludes(firebase, "A clean replay performs no foundation write or side effect", "SignalDesk Firebase plan documents clean replay behavior");
+  assertIncludes(firebase, "Transactional Source Import Contract - July 15, 2026", "SignalDesk Firebase plan documents transactional import integrity");
+  assertIncludes(firebase, "reads the current strict source-policy document", "SignalDesk Firebase plan documents read-before-write authority");
+  assertIncludes(testCases, "## Default Seed Convergence", "SignalDesk test plan covers seed convergence");
+  assertIncludes(testCases, "only an explicit current CTA resolution marks it `migrated`", "SignalDesk test plan covers explicit CTA identity closure");
+  assertIncludes(testCases, "## Source-Policy And Transactional Import Tests", "SignalDesk test plan covers strict source/import regressions");
+  assertIncludes(testCases, "Import a row retaining contact data without `permissionEvidenceRef`", "SignalDesk test plan covers row-level contact evidence");
   assertIncludes(validation, "SignalDesk AI Credential Isolation - July 11, 2026", "SignalDesk validation AI credential checkpoint");
+  assertIncludes(validation, "Transactional Default-Seed Convergence - July 15, 2026", "SignalDesk validation records the transactional seed checkpoint");
+  assertIncludes(validation, "Explicit current CTA resolution alone records", "SignalDesk validation records explicit CTA identity closure authority");
   assertIncludes(architectureReadiness, "SignalDesk AI provider calls must not fall back to MenuList `GEMINI_AI_KEY*`", "SignalDesk architecture AI credential boundary");
   assertIncludes(productionReadinessAudit, "SignalDesk AI credential-isolation checkpoint", "Production audit SignalDesk AI credential checkpoint");
   assertIncludes(changelog, "SignalDesk AI Credential Isolation", "Changelog SignalDesk AI credential checkpoint");
@@ -1159,8 +2335,9 @@ function verifyDocsTruth() {
   assertIncludes(trustPartnerRail, "Broad consumer influencer tactics are not copied", "Trust Partner Rail rejects consumer influencer copying");
   assertIncludes(contentDistributionRail, "Runtime implemented for internal testing", "Content Distribution Rail runtime status");
   assertIncludes(contentDistributionRail, "No auto-publish", "Content Distribution Rail publish boundary");
-  assertIncludes(operatingLayer, "Implementation slice approved", "Operating Layer doc status");
+  assertIncludes(operatingLayer, "Status:** Implemented", "Operating Layer doc status");
   assertIncludes(operatingLayer, "Daily Growth Mission", "Operating Layer Daily Growth Mission doc");
+  assertIncludes(operatingLayer, "versioned baseline/candidate readback plan", "Operating Layer experiment readback contract doc");
   assertIncludes(operatingLayer, "No provider send", "Operating Layer send boundary");
   assertIncludes(revenueOperatingLayer, "bounded commercial lifecycle", "Revenue layer scope");
   assertIncludes(revenueSpec, "MenuList remains authoritative", "Revenue layer MenuList truth boundary");
@@ -1178,6 +2355,7 @@ verifyRoutesAndUi();
 verifyApiSecurityAndActions();
 verifyConnectorProviderAndInvestmentControls();
 verifyFirebaseIsolation();
+verifySourcePolicyAndImportContracts();
 verifyPublicIsolation();
 verifyDocsTruth();
 

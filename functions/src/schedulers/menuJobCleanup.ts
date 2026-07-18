@@ -12,7 +12,7 @@ import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import * as functions from 'firebase-functions';
 import { DB_COLLECTIONS } from "../constants/database";
 import { FUNCTION_RETENTION_CONFIG } from "../constants/features";
-import { firestoreAdmin } from "../firebaseAdmin";
+import { firestoreAdmin, storageAdmin } from "../firebaseAdmin";
 import { createAlert } from "../monitoring/alerts";
 import { PLATFORM_NOTIFICATION_TRIGGER_TYPES } from "../sharedData/platformNotificationRegistry";
 import {
@@ -20,6 +20,15 @@ import {
     MENU_PROCESSING_STATUS,
 } from "../types";
 import { buildExtractionResultSummary } from "../utils/menuExtractionResultSummary";
+import {
+    getMenuLinkImportArtifactCleanupDecision,
+    getMenuLinkImportArtifactJobLookupId,
+} from './menuLinkImportArtifactRetention';
+
+const MENU_JOB_RETENTION_DAYS = 7;
+const MENU_LINK_IMPORT_ARTIFACT_CLEANUP_LIMIT = 100;
+const MENU_LINK_IMPORT_ARTIFACT_DELETE_FAILED_CODE = 'MENU_LINK_IMPORT_ARTIFACT_DELETE_FAILED';
+const MENU_LINK_IMPORT_ARTIFACT_INVALID_CODE = 'MENU_LINK_IMPORT_ARTIFACT_INVALID';
 
 const EXTRACTION_ALERT_SCOPE = {
     tId: 'system',
@@ -240,8 +249,7 @@ export async function cleanupOldJobsLogic(): Promise<{ deleted: number }> {
 
     logger.info('[cleanupOldJobs] Starting cleanup');
 
-    // 7 days ago
-    const cutoff = Timestamp.fromMillis(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const cutoff = Timestamp.fromMillis(Date.now() - MENU_JOB_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
     const oldJobs = await firestoreAdmin
         .collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION)
@@ -266,6 +274,100 @@ export async function cleanupOldJobsLogic(): Promise<{ deleted: number }> {
     logger.info(`[cleanupOldJobs] Deleted ${oldJobs.size} old jobs`);
 
     return { deleted: oldJobs.size };
+}
+
+/**
+ * Delete private link-import sources after the same seven-day window as their
+ * terminal extraction jobs. Storage is deleted before the metadata document so
+ * a failed delete leaves a durable retry record instead of an orphaned object.
+ */
+export async function cleanupOldMenuLinkImportArtifactsLogic(): Promise<{
+    deletedArtifacts: number;
+    deletedFiles: number;
+    errors: number;
+    scanned: number;
+    skippedActive: number;
+}> {
+    const logger = functions.logger;
+    const cutoff = Timestamp.fromMillis(Date.now() - MENU_JOB_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const artifactSnapshot = await firestoreAdmin
+        .collection(DB_COLLECTIONS.MENU_LINK_IMPORT_ARTIFACTS)
+        .where('createdAt', '<', cutoff)
+        .limit(MENU_LINK_IMPORT_ARTIFACT_CLEANUP_LIMIT)
+        .get();
+
+    if (artifactSnapshot.empty) {
+        return { deletedArtifacts: 0, deletedFiles: 0, errors: 0, scanned: 0, skippedActive: 0 };
+    }
+
+    const jobSnapshots = await firestoreAdmin.getAll(...artifactSnapshot.docs.map((doc) => {
+        const jobId = getMenuLinkImportArtifactJobLookupId(doc.data().jobId) || doc.id;
+        return firestoreAdmin.collection(MENU_IMAGE_PROCESSING_JOBS_COLLECTION).doc(jobId);
+    }));
+    const batch = firestoreAdmin.batch();
+    const bucket = storageAdmin.bucket();
+    let deletedArtifacts = 0;
+    let deletedFiles = 0;
+    let errors = 0;
+    let skippedActive = 0;
+
+    for (let index = 0; index < artifactSnapshot.docs.length; index += 1) {
+        const artifactDoc = artifactSnapshot.docs[index];
+        const jobSnapshot = jobSnapshots[index];
+        const decision = getMenuLinkImportArtifactCleanupDecision({
+            artifactId: artifactDoc.id,
+            artifact: artifactDoc.data(),
+            job: jobSnapshot.exists ? jobSnapshot.data() || {} : null,
+        });
+
+        if (!decision.eligible) {
+            if (decision.reason === 'active_job') {
+                skippedActive += 1;
+                continue;
+            }
+            errors += 1;
+            logger.warn('[cleanupOldMenuLinkImportArtifacts] Rejected unsafe artifact cleanup', {
+                artifactIdLength: artifactDoc.id.length,
+                failureCode: MENU_LINK_IMPORT_ARTIFACT_INVALID_CODE,
+                reason: decision.reason,
+            });
+            continue;
+        }
+
+        try {
+            await bucket.file(decision.storagePath).delete({ ignoreNotFound: true });
+            deletedFiles += 1;
+        } catch (error) {
+            errors += 1;
+            const errorRecord = error && typeof error === 'object' ? error as Record<string, unknown> : {};
+            logger.warn('[cleanupOldMenuLinkImportArtifacts] Failed to delete source artifact', {
+                artifactIdLength: artifactDoc.id.length,
+                failureCode: MENU_LINK_IMPORT_ARTIFACT_DELETE_FAILED_CODE,
+                sourceErrorCode: typeof errorRecord.code === 'string' || typeof errorRecord.code === 'number'
+                    ? String(errorRecord.code).slice(0, 64)
+                    : undefined,
+                sourceErrorName: error instanceof Error ? (error.name || 'Error').slice(0, 80) : 'UnknownError',
+            });
+            // Preserve the artifact metadata as the durable retry record. Deleting it
+            // here would orphan the private Storage object permanently.
+            continue;
+        }
+
+        batch.delete(artifactDoc.ref);
+        deletedArtifacts += 1;
+    }
+
+    if (deletedArtifacts > 0) {
+        await batch.commit();
+    }
+
+    return {
+        deletedArtifacts,
+        deletedFiles,
+        errors,
+        scanned: artifactSnapshot.size,
+        skippedActive,
+    };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

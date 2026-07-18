@@ -487,6 +487,58 @@ async function deleteStoredUpload(
   }
 }
 
+export function isMessagingUploadPathReferencedBySession(
+  value: unknown,
+  expectedSessionId: string,
+  storagePath: string,
+): boolean | null {
+  if (!isSessionRecord(value) || value.sessionId !== expectedSessionId) return null;
+  const uploads = normalizeRoutingUploads(value.uploads, expectedSessionId, { allowEmpty: true });
+  const replacementUploads = value.replacementUploads === undefined
+    ? []
+    : normalizeRoutingUploads(value.replacementUploads, expectedSessionId, {
+      allowEmpty: true,
+      max: MAX_MESSAGING_REPLACEMENT_UPLOADS,
+    });
+  if (!uploads || !replacementUploads) return null;
+  return [...uploads, ...replacementUploads].some((upload) => upload.storagePath === storagePath);
+}
+
+async function deleteStoredUploadIfUnreferenced(
+  upload: SessionUpload,
+  sessionId: string,
+  reason: string,
+): Promise<void> {
+  try {
+    const snapshot = await db.collection(sessionsCol).doc(sessionId).get();
+    if (snapshot.exists) {
+      const referenced = isMessagingUploadPathReferencedBySession(
+        snapshot.data(),
+        sessionId,
+        upload.storagePath,
+      );
+      if (referenced !== false) {
+        logger.warn("[SessionEngine] Stored upload cleanup deferred after persistence check", {
+          ...getSessionEngineIdLogContext("sessionId", sessionId),
+          ...getSessionEngineIdLogContext("uploadId", upload.id),
+          cleanupReason: reason.slice(0, 64),
+          persistenceState: referenced ? "referenced" : "invalid",
+        });
+        return;
+      }
+    }
+  } catch (error) {
+    logger.warn("[SessionEngine] Stored upload cleanup deferred after persistence read failure", {
+      ...getSessionEngineIdLogContext("sessionId", sessionId),
+      ...getSessionEngineIdLogContext("uploadId", upload.id),
+      cleanupReason: reason.slice(0, 64),
+      ...getSessionEngineErrorContext(error),
+    });
+    return;
+  }
+  await deleteStoredUpload(upload, sessionId, reason);
+}
+
 async function expireActiveRoutingSession(
   session: MessagingOnboardingRoutingSession,
   now: Timestamp,
@@ -980,11 +1032,7 @@ export async function processAndStoreUpload(
     // Upload to Firebase Storage with a stable Firebase download token.
     // Project files keep this URL after publish; a short-lived signed URL would
     // break source-file preview/retry flows once the owner claims the dashboard.
-    const uploadId = crypto
-      .createHash("sha256")
-      .update(`${msg.provider}:${msg.providerMessageId}:${msg.media.providerMediaId}`)
-      .digest("hex")
-      .slice(0, 40);
+    const uploadId = crypto.randomUUID().replace(/-/g, "");
     const downloadToken = crypto.randomUUID();
     const ext = getExtensionFromMime(msg.media.mimeType);
     const storagePath = `messagingOnboarding/${sessionId}/${uploadId}.${ext}`;
@@ -1409,7 +1457,7 @@ export async function addUploadToSession(
   return result;
 }
 
-async function appendStoredUploadOrCleanup(
+export async function appendStoredUploadOrCleanup(
   upload: SessionUpload,
   session: MessagingOnboardingRoutingSession,
   options: {
@@ -1423,12 +1471,12 @@ async function appendStoredUploadOrCleanup(
   try {
     result = await addUploadToSession(session.sessionId, upload, session, options);
   } catch (error) {
-    await deleteStoredUpload(upload, session.sessionId, "session_append_failed");
+    await deleteStoredUploadIfUnreferenced(upload, session.sessionId, "session_append_failed");
     throw error;
   }
 
   if (result.status === "added") return result;
-  await deleteStoredUpload(upload, session.sessionId, result.status);
+  await deleteStoredUploadIfUnreferenced(upload, session.sessionId, result.status);
 
   if (result.status === "duplicate") {
     logOnboardingEvent({
@@ -1778,7 +1826,7 @@ export async function handleMessage(
     try {
       await createSessionWithId(preGeneratedSessionId, msg, upload);
     } catch (error) {
-      await deleteStoredUpload(upload, preGeneratedSessionId, "session_create_failed");
+      await deleteStoredUploadIfUnreferenced(upload, preGeneratedSessionId, "session_create_failed");
       if (isSessionAdmissionError(error) && error.reason !== "active_session") {
         return MESSAGES.RATE_LIMITED;
       }

@@ -21,6 +21,8 @@ Before activation, record emulator/QA evidence for:
 - zero writes when the signal task is not scheduled or its Functions flag is off
 - measured read/write/runtime cost at representative project counts
 
+The dormant `stores.healthSignals` map has no query consumer and is excluded from automatic indexing. Existing exact store reads are unchanged; any historical or later guarded write avoids nested-map index fanout. The retained processor rejects before Firestore work, so this index optimization does not activate the feature.
+
 ## Historical Planning Estimate (Not Current Evidence)
 
 ## Operations Breakdown
@@ -62,4 +64,4 @@ Before activation, record emulator/QA evidence for:
 
 ---
 
-**Last Updated:** July 13, 2026
+**Last Updated:** July 17, 2026

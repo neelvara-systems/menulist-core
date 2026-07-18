@@ -15,6 +15,7 @@ export const runtime = 'nodejs';
 import { FEATURE_FLAGS } from '@config/features';
 import { AI_ACTIONS_TYPES } from '@constant/common';
 import { DB_COLLECTIONS } from '@constant/database';
+import { PERMISSIONS } from '@constant/permissions';
 import { ECOMSAI_PLATFORM_STORE_ID, ECOMSAI_PLATFORM_TENANT_ID, ECOMSAI_PLATFORM_USER_ID } from '@constant/user';
 import {
     buildMenuExtractionRoutingFields,
@@ -40,6 +41,8 @@ import {
 import { analyzeMenuIntakeIdentity, isSupportedMenuIntakeIdentityMimeType } from '@lib/menu-extraction/menuIntakeIdentityServer';
 import { checkSafeMode } from '@lib/ops/safeMode';
 import { recordFounderGrowthEvent } from '@lib/ops/founderGrowthReadModel';
+import { requireAnyStorePermission } from '@lib/permissions/server';
+import { normalizeExtractedMenuPriceTruth } from '@lib/pricing/projectPriceTruth';
 import { checkRateLimit } from '@lib/rateLimit';
 import { getRateLimitForFeature } from '@lib/rateLimit/configs';
 import { readBoundedFormDataBody, readBoundedJsonBody } from '@lib/security/boundedRequestBody';
@@ -75,6 +78,7 @@ const PUBLIC_MENU_ENTRY_UPLOAD_FAILED = 'public_menu_entry_upload_failed';
 const PUBLIC_MENU_ENTRY_POLL_FAILED = 'public_menu_entry_poll_failed';
 const PUBLIC_MENU_ENTRY_STORAGE_CLEANUP_FAILED = 'public_menu_entry_storage_cleanup_failed';
 const PUBLIC_MENU_ENTRY_COLLISION_LOOKUP_FAILED = 'public_menu_entry_collision_lookup_failed';
+const PUBLIC_MENU_ENTRY_DRAFT_PRICE_INVALID = 'public_menu_entry_draft_price_invalid';
 
 function buildPublicMenuEntryLogContext(context: {
     draftToken?: unknown;
@@ -280,6 +284,37 @@ async function checkAuthenticatedPublicMenuEntryLimit(userId: string): Promise<N
         },
     );
 }
+
+async function checkAuthenticatedPublicMenuEntryAdmission(userId: string): Promise<NextResponse | null> {
+    const rateLimitConfig = getRateLimitForFeature('PUBLIC_MENU_ENTRY_ADMISSION');
+    const userRateLimitHash = hashPublicRateLimitValue(userId);
+    const rateLimitResult = await checkRateLimit({
+        key: `public-menu-entry-admission:${userRateLimitHash}`,
+        ...rateLimitConfig,
+        failClosedOnProviderError: true,
+    });
+    if (rateLimitResult.allowed) return null;
+
+    const providerUnavailable = rateLimitResult.reason === 'provider_unavailable';
+    return NextResponse.json(
+        {
+            success: false,
+            error: providerUnavailable
+                ? 'Menu setup is temporarily unavailable. Please try again in a minute.'
+                : 'Too many menu setup requests. Please wait a moment and try again.',
+        },
+        {
+            status: providerUnavailable ? 503 : 429,
+            headers: {
+                'Retry-After': String(Math.max(1, Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000))),
+            },
+        },
+    );
+}
+
+const hasSessionScopeValue = (value: unknown): boolean => (
+    value !== undefined && value !== null && String(value).trim().length > 0
+);
 
 async function runPublicDraftIdentityCheck(draftToken: string, projectId: string, source: PublicDraftSource, sourceUrl: string) {
     if (!FEATURE_FLAGS.ENABLE_MENU_INTAKE_IDENTITY || !isSupportedMenuIntakeIdentityMimeType(source.contentType)) {
@@ -768,9 +803,6 @@ export const POST = withAuth(async (req: NextRequest, session) => {
         );
     }
 
-    const safeModeResponse = await checkSafeMode();
-    if (safeModeResponse) return safeModeResponse;
-
     const userId = String(session?.user?.id || '');
     if (!userId) {
         return NextResponse.json(
@@ -778,6 +810,30 @@ export const POST = withAuth(async (req: NextRequest, session) => {
             { status: 401 },
         );
     }
+
+    const admissionResponse = await checkAuthenticatedPublicMenuEntryAdmission(userId);
+    if (admissionResponse) return admissionResponse;
+
+    const sessionTenantPresent = hasSessionScopeValue(session?.user?.tenantId);
+    const sessionStorePresent = hasSessionScopeValue(session?.user?.storeId);
+    if (sessionTenantPresent !== sessionStorePresent) {
+        return NextResponse.json(
+            { success: false, error: 'Your account setup is incomplete. Please sign in again.' },
+            { status: 409 },
+        );
+    }
+    if (sessionTenantPresent && sessionStorePresent) {
+        const permissionResponse = await requireAnyStorePermission(
+            req,
+            session,
+            [PERMISSIONS.USE_MENU_EXTRACTION],
+            'Public menu setup extraction',
+        );
+        if (permissionResponse) return permissionResponse;
+    }
+
+    const safeModeResponse = await checkSafeMode();
+    if (safeModeResponse) return safeModeResponse;
 
     try {
         const contentLength = Number(req.headers.get('content-length') || 0);
@@ -858,14 +914,21 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             key: `public-menu-entry-status:${userRateLimitHash}:${draftRateLimitHash}`,
             limit: 90,
             window: 300,
+            failClosedOnProviderError: true,
         });
         if (!statusRateLimit.allowed) {
+            const providerUnavailable = statusRateLimit.reason === 'provider_unavailable';
             return NextResponse.json(
-                { success: false, error: 'Too many preview checks. Please wait a moment.' },
                 {
-                    status: 429,
+                    success: false,
+                    error: providerUnavailable
+                        ? 'Menu preview is temporarily unavailable. Please try again in a minute.'
+                        : 'Too many preview checks. Please wait a moment.',
+                },
+                {
+                    status: providerUnavailable ? 503 : 429,
                     headers: {
-                        'Retry-After': String(Math.ceil((statusRateLimit.resetAt - Date.now()) / 1000)),
+                        'Retry-After': String(Math.max(1, Math.ceil((statusRateLimit.resetAt - Date.now()) / 1000))),
                     },
                 },
             );
@@ -897,10 +960,25 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             );
         }
 
-        const extractedData = normalizePublicMenuDraftExtractedData(draft.extractedData);
+        let extractedData = normalizePublicMenuDraftExtractedData(draft.extractedData);
+        if (extractedData) {
+            try {
+                extractedData = normalizeExtractedMenuPriceTruth(extractedData);
+            } catch (error) {
+                extractedData = null;
+                logSecurityFailure(PUBLIC_MENU_ENTRY_DRAFT_PRICE_INVALID, error, buildPublicMenuEntryLogContext({
+                    draftToken: draftId,
+                    status: draft.extractionStatus,
+                    userId,
+                }));
+            }
+        }
+        const responseStatus = draft.extractionStatus === 'completed' && !extractedData
+            ? 'failed'
+            : draft.extractionStatus;
         const responseBody: Record<string, unknown> = {
             success: true,
-            status: draft.extractionStatus,
+            status: responseStatus,
             detectedBusinessName: draft.detectedBusinessName || null,
             detectedBusinessType: draft.detectedBusinessType || null,
             detectedBusinessCategory: draft.detectedBusinessCategory || null,
@@ -911,8 +989,8 @@ export const GET = withAuth(async (req: NextRequest, session) => {
             extractedBusinessProfile: draft.extractedBusinessProfile || null,
             imageUrl: draft.imageUrl,
             sourceType: draft.sourceType || 'image_upload',
-            error: draft.extractionStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null,
-            resultReady: draft.extractionStatus === 'completed' && Boolean(extractedData),
+            error: responseStatus === 'failed' ? PUBLIC_CREATE_MENU_DRAFT_FAILED_MESSAGE : null,
+            resultReady: responseStatus === 'completed' && Boolean(extractedData),
         };
 
         if (!statusOnly) {

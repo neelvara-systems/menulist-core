@@ -20,6 +20,7 @@ import {
     parseClockMinutes,
 } from '@lib/menu/timeSlotPresetBoundary';
 import { formatClockTime } from '@util/dateTime';
+import { getBoundedRuntimeStringContext, logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
 import { useEffect, useMemo, useState } from 'react';
 
 /**
@@ -85,6 +86,18 @@ export function validateTimeSlots(timeSlots?: CategoryTimeSlot[]): {
 
 type CurrentTimeParts = { day: number; minutes: number };
 
+const reportedTimedCategoryTimezoneFailures = new Set<string>();
+
+function logTimedCategoryTimezoneFailure(error: unknown, timeZone: string): void {
+    const key = `${timeZone.length}:${timeZone ? 'present' : 'missing'}`;
+    if (reportedTimedCategoryTimezoneFailures.has(key) || reportedTimedCategoryTimezoneFailures.size >= 25) return;
+    reportedTimedCategoryTimezoneFailures.add(key);
+    logRuntimeFailure('public_menu_decision_blocks_timezone_failed', error, {
+        ...getBoundedRuntimeStringContext('timeZone', timeZone),
+        source: 'shared_timed_category_evaluator',
+    });
+}
+
 const WEEKDAY_INDEX: Record<string, number> = {
     Sun: 0,
     Mon: 1,
@@ -120,8 +133,9 @@ function getCurrentTimePartsForTimeZone(timeZone?: string, now = new Date()): Cu
             ) {
                 return { day, minutes: (hour % 24) * 60 + minute };
             }
-        } catch {
-            // Fall back to browser/server local time.
+            logTimedCategoryTimezoneFailure(new Error('invalid_timed_category_time_parts'), timeZone);
+        } catch (error) {
+            logTimedCategoryTimezoneFailure(error, timeZone);
         }
     }
 

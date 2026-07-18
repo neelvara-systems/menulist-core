@@ -1,125 +1,45 @@
-# 📚 DOC ↔ CODE ALIGNMENT (POST-FEEDBACK)
+# Description Generation - Docs and Code Validation
 
-**Feature:** Description Generation  
-**Date:** January 31, 2026  
-**Validation Type:** Post-ChatGPT Feedback Review
+**Cross-check date:** July 15, 2026
+**Authority:** current codebase, then active docs
 
----
+## Parity result
 
-## Doc-Code Alignment Matrix
+| Contract | Code | Docs | Result |
+| --- | --- | --- | --- |
+| Desktop/mobile bulk add and refresh | shared orchestrator plus both UIs | spec/impl/mobile/help | aligned |
+| Repair Menu and Command Center | shared ADD flow with parent persistence | spec/impl/mobile | aligned |
+| Single-item first generation | `NEW_ITEM_METADATA`, free | spec/impl/help | aligned |
+| Single-item existing refresh | `REWRITE_DESCRIPTION`, paid | spec/impl/help | aligned |
+| Free metadata boundary | non-empty source copy rejected by server schema | spec/impl/firebase/audit | aligned |
+| Metadata prompt/identity boundary | sanitized prompt text plus request-local item/attribute aliases | spec/impl/firebase/tests | aligned |
+| Single-item request context | shared rewrite bounds plus localized category name and generate-only first-description prompt | spec/impl/mobile/tests | aligned |
+| Manual protection and provenance | payload filters, draft provenance, stale-translation options | spec/impl/mobile | aligned |
+| Permission and outlet policy | client guards plus server checks | spec/impl/mobile | aligned |
+| Partial output refusal | complete item/language server check | spec/impl/audit | aligned |
+| Imported/project item IDs | request-local provider aliases restored server-side | spec/impl/firebase/audit | aligned |
+| Prototype-named item IDs | null-prototype batch map plus own-key merge | impl/firebase/tests | aligned |
+| Large/multilingual files | sequential chunks capped by 100 items, approximately 180 KiB serialized item payload, and 300 item-language cells | spec/impl/firebase | aligned |
+| Multi-request paid-capacity admission | total request count travels only on the first request; server admits the scope but reserves/settles each request independently | spec/impl/firebase/tests | aligned |
+| Mobile capacity presentation | bulk, single-item, and Repair Menu description failures use enhancement-pack/Billing guidance rather than translation-credit wording | mobile/help/tests | aligned |
+| Linked-outlet multilingual override | complete description-map comparison on mobile Save | spec/impl/mobile/audit | aligned |
+| Persistence and cache | existing project DAL invalidation | impl/firebase | aligned |
+| Transaction counts/credits/privacy | compact accounting row and owner summaries | spec/impl/help | aligned |
+| Tone/length | Professional/Friendly/Premium; Standard/Detailed | spec/impl/help | aligned |
 
-| Doc Section | Status | Code Verification |
-|-------------|--------|-------------------|
-| `_spec.md` Executive Summary | ✅ | Matches `DescriptionGenerationModal.tsx` capabilities |
-| `_spec.md` What It Does | ✅ | Generate/Rewrite actions in `api.types.ts:21-24` |
-| `_spec.md` Content Sizes | ✅ | Small/Medium/Large in `route.ts:85-90` |
-| `_spec.md` Tone Options | ✅ | 4 tones in `route.ts:93-99` |
-| `_spec.md` Locked Decisions | ✅ | **NEW** - Documents design constraints (no code ref needed) |
-| `_impl.md` Architecture | ✅ | Matches actual file structure |
-| `_impl.md` API Contract | ✅ | Matches `DescriptionRequestSchema` in `apiSchemas.ts` |
-| `_impl.md` Security | ✅ | `withAuth()`, `verifyTenantAccess()`, rate limiting verified |
-| `_impl.md` Prompt Engineering | ✅ | Matches `prompt.ts:104-171` |
-| `_impl.md` Data Flow | ✅ | Matches `descriptionUtils.ts` → `generateDescriptionViaAPI.ts` → `route.ts` |
-| `_marketing.md` Positioning | ✅ | **UPDATED** - Infrastructure framing, not tool framing |
-| `_marketing.md` Demo Script | ✅ | Reflects actual user flow |
-| `README.md` Navigation | ✅ | Links to all docs |
-| `README.md` Key Files | ✅ | All paths verified |
+## Stale claims removed
 
----
+- desktop-only behavior;
+- a Professional-only tone;
+- universal auto-save for single-item drafts;
+- source-route project reads that do not occur;
+- free metadata regeneration of existing descriptions;
+- every-language readiness as first-description eligibility;
+- partial provider output as an acceptable success;
+- fixed speed, item coverage, or publish-readiness claims.
 
-## 📝 Feedback Applied
+Historical audits and replaced active documents are preserved under `_archive/`.
 
-| # | ChatGPT Point | Action Taken | Target Doc |
-|---|---------------|--------------|------------|
-| 1-4 | Security, Service Layer, No Custom Prompts, Multi-lang | Confirmed existing documentation | None |
-| 8 | Feature positioning (tool → infrastructure) | Updated marketing language | `_marketing.md` |
-| 13 | Add Doctrine Lock Section | Added §Locked Decisions | `_spec.md` |
-| 14 | Expert praise (code as SSOT) | Acknowledged | None |
+## Remaining non-source evidence
 
----
-
-## ✗ Feedback Rejected
-
-| # | ChatGPT Point | Reason |
-|---|---------------|--------|
-| 5 | "Too much user agency" | Product design opinion, not doc error |
-| 6 | "Rewrite All dangerous" | Feature works as designed; requires code change |
-| 7 | "No confidence gate" | Not implemented; cannot document non-existent |
-| 9 | "Kill tone selection" | Code change, not doc change |
-| 10 | "Collapse length to 2" | Code change, not doc change |
-| 11 | "Soft-deprecate Rewrite All" | Code change, not doc change |
-| 12 | "Add silence outcome" | Code change, not doc change |
-
----
-
-## Files Updated
-
-| File | Change | Line(s) |
-|------|--------|---------|
-| `description-generation_spec.md` | Added §Locked Decisions section | 267-291 |
-| `description-generation_marketing.md` | **CREATED** with infrastructure framing | New file |
-| `description-generation_doc-feedback-audit.md` | **CREATED** audit table | New file |
-| `description-generation_validation.md` | **CREATED** this file | New file |
-
----
-
-## Git Diff Check
-
-```bash
-# Verify DOCS ONLY changes
-git diff --name-only
-
-# Expected output (docs only):
-__docs__/projects/description-generation/description-generation_spec.md
-__docs__/projects/description-generation/description-generation_marketing.md
-__docs__/projects/description-generation/description-generation_doc-feedback-audit.md
-__docs__/projects/description-generation/description-generation_validation.md
-
-# NO src/ files should be modified
-```
-
----
-
-## 🚦 STATUS
-
-| Check | Result |
-|-------|--------|
-| Docs match codebase | ✅ VERIFIED |
-| No code files changed | ✅ CONFIRMED |
-| Feedback properly audited | ✅ 14/14 items classified |
-| Valid suggestions applied | ✅ 2 doc improvements made |
-| Invalid suggestions rejected | ✅ 6 code-change requests blocked |
-| Infrastructure framing | ✅ Marketing doc aligned |
-| Locked decisions documented | ✅ Prevents future scope creep |
-
----
-
-## Final Verdict
-
-### ✅ DOCS COMPLETE & ALIGNED
-
-**Documentation Set:**
-- `README.md` - Navigation hub
-- `description-generation_spec.md` - Product specification (with Locked Decisions)
-- `description-generation_impl.md` - Technical implementation
-- `description-generation_marketing.md` - Sales/marketing copy
-
-**Audit Trail:**
-- `description-generation_doc-feedback-audit.md` - ChatGPT feedback evaluation
-- `description-generation_validation.md` - This file
-
----
-
-## Human Review Items
-
-| Item | Question | Priority |
-|------|----------|----------|
-| Confidence gates | Is this a future roadmap item worth tracking? | Low |
-| Tone/length reduction | Should product consider simplifying options? | Medium |
-
-*These are product decisions, not documentation issues.*
-
----
-
-_Validation completed following `IDE_PROMPTS/3. VALIDATION FEEDBACK PROMPT.md` workflow._  
-_Document Status: ✅ COMPLETE_
+Provider smoke, authenticated browser/device QA, target deploy evidence, and production-host smoke remain outside this local docs/code parity result.

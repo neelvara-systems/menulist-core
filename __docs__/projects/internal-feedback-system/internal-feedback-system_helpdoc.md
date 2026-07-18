@@ -1,7 +1,7 @@
 # Guest Feedback - Owner Help
 
 **Status:** Implemented
-**Last Updated:** July 2, 2026
+**Last Updated:** July 16, 2026
 **Audience:** Support, owner education, help-center copy
 
 ---
@@ -19,7 +19,7 @@ Owners see feedback in the Feedback inbox and decide what to fix in the approved
 - Read new feedback and filter items that need attention.
 - Contact a guest when the guest voluntarily provided contact details.
 - Open WhatsApp only when the phone number is valid.
-- Use reply drafts for a short thank-you, one-detail request, or handled follow-up.
+- Copy a reply draft or open it in WhatsApp, then send it manually if appropriate.
 - Mark feedback as resolved after the issue is reviewed.
 - Download or copy a feedback QR/link for tables, receipts, or direct sharing.
 
@@ -32,6 +32,7 @@ Owners see feedback in the Feedback inbox and decide what to fix in the approved
 - Do not say MenuList guarantees better public reviews.
 - Do not say feedback edits a menu automatically.
 - Do not say reply drafts send automatically.
+- Do not promise an all-outlet HQ inbox; the current inbox follows the selected store.
 - Do not expose guest contact details outside the owner account.
 
 Run `npm run verify:guest-feedback-boundary` after any help, website, mobile, owner inbox, public submit, or Firebase feedback change.

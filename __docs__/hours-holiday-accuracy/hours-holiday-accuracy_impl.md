@@ -1,448 +1,82 @@
-# Hours Status Display — Implementation Plan (Feature #2A)
+# Working Hours, Holidays, and Time Slots — Implementation
 
-**Document Type:** Dev-Centric Technical Blueprint
-**Status:** ✅ IMPLEMENTED
-**Priority:** P0
-**Implemented On:** January 18, 2026
-**Last Updated:** July 2, 2026
-**Surfaces:** QR/Web Menu + Digital Screens + Staff Prompt
-**Actual Effort:** ~2 hours
+**Status:** Current source map
+
+**Last verified:** July 16, 2026
 
 > **Launch boundary:** Not current launch certification or deploy approval. This implementation doc is source-gated working-hours runtime evidence only; Hours release approval still requires current production-readiness audit evidence, External Certification Runbook evidence, `npm run verify:production-readiness-local`, `npm run verify:working-hours-boundary`, authenticated desktop/mobile working-hours save QA, customer-facing public menu/OBP hours output QA across timezone/open/closed/temporary-status cases, cache/deploy evidence for store-output writes, and production-host smoke.
 
----
-
 ## Source Gate
 
-This implementation doc is source-gated by `npm run verify:working-hours-boundary`.
+This implementation doc is source-gated by `npm run verify:working-hours-boundary`. Historical blueprint sections below are not launch approval; the superseded blueprint is archived under `_archive/pre-2026-07-16/`.
 
-Historical blueprint sections below are not launch approval. Current source truth is:
+## Canonical Weekly-Hours Runtime
 
-- `src/lib/hours/hoursEngine.ts` computes current open/closed state from `workingHours` and `timeZone`.
-- `src/components/atoms/StoreStatusBadge/index.tsx` renders only when working hours exist.
-- `src/components/templates/website/clientWebsite/index.tsx` shows the urgent badge only when `ENABLE_HOURS_STATUS_DISPLAY` is enabled and Output Control is not the active hours truth surface.
-- Desktop Business Settings writes `workingHours` through `updateStore()` and requires `assertStoreUpdateSucceeded()`.
-- `MobileWorkingHoursEditScreen` and the Today quick-hours sheet use optimistic local state but require `assertStoreUpdateSucceeded()` before treating the save as confirmed.
-- `updateTimeSlotPresets()` revalidates public menu/OBP cache for store-level preset writes.
-- Desktop/mobile time-slot edit/delete flows require store write acknowledgement and project cascade acknowledgement before local success state changes.
-- Hours status fallback diagnostics log bounded `hours_status_timezone_fallback_failed` metadata when the shared hours engine or OBP-specific status path has to use local/browser time after invalid timezone resolution. Malformed current-day time ranges degrade to `Hours not available`; invalid future ranges are skipped when computing next-opening copy.
-- Output Control timestamp diagnostics log bounded `hours_confidence_timestamp_parse_failed` metadata when freshness timestamp parsing unexpectedly falls back, and invalid numeric/serialized freshness values degrade to `Check with store`.
-- Holiday calendars, exception managers, extra collections, Cloud Functions, provider calls, and Storage writes are not part of the current implementation.
+`src/lib/hours/hoursEngine.ts` owns parsing, normalization, store-timezone weekday resolution, status, next-opening copy, and urgent minutes-to-change.
 
----
+- `normalizeWorkingHoursValue()` accepts blank/`closed`, one strict range, or comma-separated strict historical ranges.
+- `parseWorkingHoursRanges()` returns bounded normalized ranges.
+- `getStoreDayKey()` resolves the weekday in the store timezone with bounded fallback diagnostics.
+- `getStoreStatus()` evaluates the previous day's overnight carry before today's start portions. It uses inclusive start and exclusive end.
+- `getMinutesUntilStoreStatusChange()` returns only an immediate current-store-day boundary.
+- Invalid configured truth logs bounded `hours_status_time_range_invalid` metadata and suppresses authority.
 
-## Feature Split
+`src/lib/obp/hoursStatus.ts` is an adapter over this engine. It contains no second open/closed calculation.
 
-| Layer   | Name                 | Priority | This Doc               |
-| ------- | -------------------- | -------- | ---------------------- |
-| **#2A** | Hours Status Display | **P0**   | ✅ Covered here        |
-| **#2B** | Holiday + Exceptions | **P1**   | 🔶 Deferred (see spec) |
+## Write Boundary
 
-This implementation covers **Feature #2A only** — the minimal "Open/Closed" badge.
+`src/database/stores/index.tsx` normalizes `workingHours` on store create/update. Unknown weekday keys, non-record shapes, invalid clock values, equal endpoints, and malformed comma-separated content fail before Firestore. Nested delete markers remain supported for day removal.
 
----
+`updateStore()` retains its existing behavior:
 
-## ✅ Implementation Summary (January 18, 2026)
+1. write the scoped store patch;
+2. update the compact store summary when required;
+3. revalidate public menu/OBP store tags;
+4. advance Digital Screen content version when a relevant store-output field changed;
+5. return an acknowledgement consumed by owner surfaces.
 
-### Files Created
+No route, collection, Function, or listener was added.
 
-| File                                                                  | Purpose                                                                      |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| `src/lib/hours/hoursEngine.ts`                                        | Core computation engine - parses `workingHours`, computes open/closed status |
-| `src/lib/hours/index.ts`                                              | Module exports                                                               |
-| `src/components/templates/website/clientWebsite/StoreStatusBadge.tsx` | React component - displays status badge with live updates                    |
+## Desktop Owner Flow
 
-### Files Modified
+`src/components/templates/main-app/businessSettings/index.tsx` hydrates seven stable rows from the persisted map. A dirty flag prevents unrelated settings submissions from replaying hours. A changed-day set rebuilds only touched weekday values, preserving any untouched historical multiple-window day.
 
-| File                                                       | Change                                              |
-| ---------------------------------------------------------- | --------------------------------------------------- |
-| `src/components/templates/website/clientWebsite/index.tsx` | Integrated StoreStatusBadge into ClientMenuRenderer |
+`WorkingHoursTab.tsx` supports copy-Monday, clear, preview, normal/overnight selection, and rejects equal endpoints. The existing shared Business Settings submission stamps `hoursLastUpdatedAt` only when the deep patch contains hours.
 
-### Key Features
+Time-slot changes run through `TimeSlotPresetsTab.tsx`, `updateTimeSlotPresets()`, and the project preset cascade. The parent updates local and global store context only after acknowledgement.
 
-1. **Timezone-aware computation** — Uses store's `timeZone` field
-2. **Live updates** — Badge refreshes every 60 seconds
-3. **Next change info** — Shows "Closes at 11:00 PM" or "Opens tomorrow at 9:00 AM"
-4. **Silent fallback** — If no hours configured, badge doesn't render (no false "Closed")
-5. **Hydration-safe** — Avoids SSR/client mismatch by computing on mount
+## Mobile Owner Flow
 
-### Badge Appearance
+- `MobileHoursScreen.tsx` uses the canonical store-timezone day/status engine, refreshes its clock every minute, edits only the current store weekday, validates its range, and rolls back optimistic state on rejection.
+- `MobileWorkingHoursEditScreen.tsx` rehydrates with store truth, serializes only actual edits over the existing map, detects day removals, and shows saved copy after acknowledgement.
+- `MobileTimeSlotsScreen.tsx` shares strict range and overlap behavior with desktop, acknowledges store/cascade work, and refreshes global store context after success.
+- All screens remain inside `MobileShell` through the existing More/Today screen contracts.
 
-- **Open:** Green dot + "Open" + "Closes at X"
-- **Closed:** Red dot + "Closed" + "Opens at X"
-- Fixed position at top center of menu page
+## Category Visibility
 
----
+`src/hooks/useTimedCategories.ts` and `src/lib/menu/timeSlotPresetBoundary.ts` own normal and overnight category visibility, weekday restrictions, next-start computation, and range validation. `DecisionBlocks.tsx` delegates to `isWithinTimeSlot()` so recommendations cannot expose a category that the normal menu hides.
 
-## ⚠️ Cross-Check Summary: Over-Engineering Avoided
+Preset references are denormalized into category snapshots. Edit/delete scans tenant/store-scoped project pages of 100, updates only projects that reference the preset, uses project transactions, and revalidates changed public project caches. This is intentionally retained because preset mutations are rare and no measured workload justifies an additional reference registry.
 
-After codebase review, the original ChatGPT proposal was **significantly over-engineered**.
+## Public Output
 
-### What We're NOT Building in P0
+- Public menu/status badges call `getStoreStatus()`.
+- OBP status delegates to the engine; today/all-day display parses validated ranges.
+- `buildOpeningHours()` emits each valid range and omits malformed values.
+- FAQ hours include only validated ranges.
+- Output Control and trust signals consume the same saved working-hours source.
 
-| Feature                     | Reason                        | Status            |
-| --------------------------- | ----------------------------- | ----------------- |
-| New `StoreHoursConfig` type | Existing `workingHours` works | ❌ Deferred to P1 |
-| Holiday calendar system     | Adds cognitive load           | ❌ Deferred to P1 |
-| Exception management        | Owner burden                  | ❌ Deferred to P1 |
-| Multiple windows per day    | UI already single-window      | ❌ Deferred to P1 |
-| New API routes              | Can use existing store update | ❌ Not needed     |
-| New Zod schemas             | Existing UI validates         | ❌ Not needed     |
-
-### What We ARE Building in P0
-
-1. **Hours computation engine** — Parse existing `workingHours` → compute status
-2. **Status display components** — Show "Open now" / "Closed" on surfaces
-3. **MOL logging** — Log when `workingHours` changes
-
----
-
-## 0) Codebase Analysis (Grounded Reality)
-
-### Existing Implementation (USE AS-IS)
-
-| Component            | Path                               | Status                                                       |
-| -------------------- | ---------------------------------- | ------------------------------------------------------------ |
-| `workingHours` field | `stores/{storeId}.workingHours`    | ✅ `Record<string, string>` e.g., `{ "mon": "11:00-23:00" }` |
-| `timeZone` field     | `stores/{storeId}.timeZone`        | ✅ Already exists                                            |
-| Working Hours UI     | `WorkingHoursTab.tsx`              | ✅ Basic picker, no changes needed                           |
-| Store update flow    | `updateStore()` in DAL             | ✅ Already saves `workingHours`                              |
-| Time-slot preset flow | `updateTimeSlotPresets()` in DAL   | ✅ Saves presets and refreshes public menu/OBP cache          |
-| Schema.org hours     | `app/_client/[[...slug]]/page.tsx` | ✅ Already uses `workingHours` for SEO                       |
-
-### P0 Decision: Use Existing Format
-
-**Existing format is sufficient:**
-
-```typescript
-// Already in store document
-workingHours?: Record<string, string>;
-// Example: { "mon": "11:00-23:00", "tue": "11:00-23:00", "sat": null }
-// null or missing = closed that day
-
-timeZone?: string;
-// Example: "Asia/Kolkata"
-```
-
-**No new data model needed for P0.**
-
----
-
-## 1) Hours Computation Engine (P0 Core)
-
-**File:** `src/lib/hours/hoursEngine.ts` (NEW)
-
-```typescript
-import { format } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
-
-const WEEKDAYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const;
-const DEFAULT_TIMEZONE = "Asia/Kolkata";
-
-export type StoreOpenStatus =
-  | "OPEN_NOW"
-  | "CLOSED_NOW"
-  | "OPENS_LATER"
-  | "CLOSED_TODAY";
-
-export type HoursStatusResult = {
-  status: StoreOpenStatus;
-  message: string;
-  opensAt?: string;
-  closesAt?: string;
-};
-
-/**
- * Parse existing workingHours format
- * Input: "11:00-23:00" or null
- * Output: { start: "11:00", end: "23:00" } or null
- */
-function parseHoursString(
-  hoursStr: string | null | undefined,
-): { start: string; end: string } | null {
-  if (!hoursStr || typeof hoursStr !== "string") return null;
-  const parts = hoursStr.split("-");
-  if (parts.length !== 2) return null;
-  return { start: parts[0].trim(), end: parts[1].trim() };
-}
-
-/**
- * Format HH:mm to 12-hour display
- */
-function formatTime12h(time: string): string {
-  const [hours, minutes] = time.split(":").map(Number);
-  const period = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
-}
-
-/**
- * Get store open/closed status using existing workingHours format
- */
-export function getStoreStatus(
-  workingHours: Record<string, string> | undefined,
-  timezone: string | undefined,
-  now: Date = new Date(),
-): HoursStatusResult {
-  // Handle missing data gracefully
-  if (!workingHours || Object.keys(workingHours).length === 0) {
-    return { status: "CLOSED_TODAY", message: "Hours not set" };
-  }
-
-  // Use store timezone or default
-  const tz = timezone || DEFAULT_TIMEZONE;
-  const zonedNow = toZonedTime(now, tz);
-  const dayOfWeek = WEEKDAYS[zonedNow.getDay()];
-  const currentTime = format(zonedNow, "HH:mm");
-
-  // Get today's hours
-  const todayHours = parseHoursString(workingHours[dayOfWeek]);
-
-  // No hours for today = closed
-  if (!todayHours) {
-    return { status: "CLOSED_TODAY", message: "Closed today" };
-  }
-
-  const { start, end } = todayHours;
-
-  // Check if currently open
-  if (currentTime >= start && currentTime < end) {
-    return {
-      status: "OPEN_NOW",
-      message: `Open now · Closes ${formatTime12h(end)}`,
-      closesAt: end,
-    };
-  }
-
-  // Check if opens later today
-  if (currentTime < start) {
-    return {
-      status: "OPENS_LATER",
-      message: `Closed · Opens ${formatTime12h(start)}`,
-      opensAt: start,
-    };
-  }
-
-  // Past closing time
-  return { status: "CLOSED_NOW", message: "Closed" };
-}
-
-/**
- * Get today's hours string for display
- */
-export function getTodayHoursDisplay(
-  workingHours: Record<string, string> | undefined,
-  timezone: string | undefined,
-  now: Date = new Date(),
-): string {
-  if (!workingHours) return "Hours not set";
-
-  const tz = timezone || DEFAULT_TIMEZONE;
-  const zonedNow = toZonedTime(now, tz);
-  const dayOfWeek = WEEKDAYS[zonedNow.getDay()];
-  const todayHours = parseHoursString(workingHours[dayOfWeek]);
-
-  if (!todayHours) return "Closed today";
-  return `${formatTime12h(todayHours.start)} - ${formatTime12h(todayHours.end)}`;
-}
-```
-
----
-
-## 2) MOL Logging Extension
-
-**File:** `src/types/mol.types.ts` (MODIFY)
-
-Add to `MOLEventType`:
-
-```typescript
-| "HOURS_WEEKLY_UPDATED"
-```
-
----
-
-## 3) Hours Logger (Minimal)
-
-**File:** `src/lib/hours/hoursLogger.ts` (NEW)
-
-```typescript
-import { logMOLEvent } from "@lib/pricing/molLogger";
-
-/**
- * Log when workingHours changes
- */
-export function logHoursUpdated(params: {
-  storeId: number;
-  before: Record<string, string> | null;
-  after: Record<string, string>;
-  actorUserId: string;
-  tId: number;
-  sId: number;
-}): void {
-  setImmediate(() => {
-    logMOLEvent({
-      type: "HOURS_WEEKLY_UPDATED",
-      projectId: String(params.storeId),
-      actorUserId: params.actorUserId,
-      entityType: "STORE_HOURS",
-      entityId: String(params.storeId),
-      before: params.before ? { workingHours: params.before } : null,
-      after: { workingHours: params.after },
-      version: Date.now(),
-      tId: params.tId,
-      sId: params.sId,
-    });
-  });
-}
-```
-
----
-
-## 4) Surface Integration (P0)
-
-### 4.1 Status Display Component
-
-**File:** `src/components/atoms/StoreStatusBadge.tsx` (NEW)
-
-```typescript
-import { getStoreStatus, HoursStatusResult } from "@lib/hours/hoursEngine";
-import { Tag } from "antd";
-
-interface StoreStatusBadgeProps {
-  workingHours?: Record<string, string>;
-  timezone?: string;
-}
-
-export function StoreStatusBadge({ workingHours, timezone }: StoreStatusBadgeProps) {
-  const status = getStoreStatus(workingHours, timezone);
-
-  const colorMap: Record<string, string> = {
-    OPEN_NOW: "green",
-    CLOSED_NOW: "red",
-    OPENS_LATER: "orange",
-    CLOSED_TODAY: "default",
-  };
-
-  return (
-    <Tag color={colorMap[status.status]}>
-      {status.message}
-    </Tag>
-  );
-}
-```
-
-### 4.2 Integration Points
-
-| Surface         | File               | Integration                  |
-| --------------- | ------------------ | ---------------------------- |
-| QR/Web Menu     | Client menu header | Add `<StoreStatusBadge />`   |
-| Digital Screens | Screen layout      | Add status indicator         |
-| Staff Prompt    | Prompt header      | Add `getTodayHoursDisplay()` |
-
----
-
-## 5) File Structure (P0 Minimal)
-
-```
-src/
-├── lib/
-│   └── hours/
-│       ├── index.ts              # NEW - exports
-│       └── hoursEngine.ts        # NEW - computation (~60 lines)
-│       └── hoursLogger.ts        # NEW - MOL logging (~25 lines)
-├── components/
-│   └── atoms/
-│       └── StoreStatusBadge.tsx  # NEW - display component (~30 lines)
-└── types/
-    └── mol.types.ts              # MODIFY - add HOURS_WEEKLY_UPDATED
-```
-
-**Total new code: ~115 lines** (vs original proposal of ~500+ lines)
-
----
-
-## 6) Implementation Checklist (P0)
-
-### Day 1: Core Engine
-
-- [ ] Create `src/lib/hours/hoursEngine.ts`
-- [ ] Create `src/lib/hours/index.ts` (exports)
-- [ ] Add unit tests for `getStoreStatus()`
-
-### Day 2: MOL + Component
-
-- [ ] Add `HOURS_WEEKLY_UPDATED` to `mol.types.ts`
-- [ ] Create `src/lib/hours/hoursLogger.ts`
-- [ ] Create `StoreStatusBadge.tsx`
-
-### Day 3: Surface Integration
-
-- [ ] Add status to QR/Web menu
-- [ ] Add status to digital screens
-- [ ] Add hours to Staff Prompt
-
-### Day 4: Testing
-
-- [ ] Timezone edge cases
-- [ ] Empty/null hours handling
-- [ ] Manual QA across surfaces
-
-**Total: ~3-4 days** (reduced from 8 days)
-
----
-
-## 7) Testing Checklist (P0)
-
-| Test Case        | Input                                          | Expected                                 |
-| ---------------- | ---------------------------------------------- | ---------------------------------------- |
-| Open now         | `{ "mon": "11:00-23:00" }`, 12:00 Mon          | `OPEN_NOW`, "Open now · Closes 11:00 PM" |
-| Opens later      | `{ "mon": "11:00-23:00" }`, 09:00 Mon          | `OPENS_LATER`, "Closed · Opens 11:00 AM" |
-| Closed today     | `{ "mon": null }`, any time Mon                | `CLOSED_TODAY`, "Closed today"           |
-| Past closing     | `{ "mon": "11:00-23:00" }`, 23:30 Mon          | `CLOSED_NOW`, "Closed"                   |
-| Missing hours    | `undefined`                                    | `CLOSED_TODAY`, "Hours not set"          |
-| Timezone (India) | `{ "mon": "11:00-23:00" }`, tz: "Asia/Kolkata" | Correct for IST                          |
-
----
-
-## 8) Security Checklist (P0)
-
-- [x] No new API routes (uses existing store update)
-- [x] No new Firestore collections
-- [x] MOL logging via existing pattern
-- [x] `workingHours` already validated by UI
-- [x] Time-slot preset store writes revalidate public cache through `updateTimeSlotPresets()`
-
----
-
-## 9) Dependencies
-
-| Package       | Purpose           | Status                |
-| ------------- | ----------------- | --------------------- |
-| `date-fns`    | Date formatting   | ✅ Already installed  |
-| `date-fns-tz` | Timezone handling | ⚠️ Check if installed |
-
----
-
-## 10) P1 Roadmap (Deferred Features)
-
-When ready to expand:
-
-| Feature                         | Effort | Trigger         |
-| ------------------------------- | ------ | --------------- |
-| Multiple windows per day        | 2 days | User request    |
-| Holiday calendar (INDIA/GLOBAL) | 2 days | Market demand   |
-| Exception management            | 3 days | Chain customers |
-| New `StoreHoursConfig` type     | 1 day  | When P1 starts  |
-
----
-
-## 11) Disagreements with ChatGPT (Resolved)
-
-| ChatGPT Proposal            | Our Decision                | Reason                      |
-| --------------------------- | --------------------------- | --------------------------- |
-| New `StoreHoursConfig` type | Use existing `workingHours` | Already works, no migration |
-| Holiday calendar in P0      | Defer to P1                 | Cognitive load (Law 6)      |
-| Exception management        | Defer to P1                 | Owner burden                |
-| 8+ new files                | 3 new files                 | KISS principle              |
-| ~8 days effort              | ~3-4 days                   | Simplified scope            |
-| New API routes              | Use existing                | Store update already works  |
+## Failure and Recovery
+
+Hours status fallback diagnostics are bounded and contain metadata rather than raw weekly-hour payloads.
+Output Control timestamp diagnostics remain bounded and suppress confidence when freshness metadata cannot be parsed safely.
+
+- Invalid timezone: bounded diagnostic, consistent local fallback for day and minute.
+- Malformed hours: no open claim; `Hours not available` on the affected status.
+- Store save failure: owner surface restores previous local truth and shows fixed copy.
+- Preset store/cascade failure: no local success state; retry is safe through normalized idempotent writes/transactions.
+- Cache invalidation failure propagates through the existing DAL acknowledgement rather than reporting a confirmed owner save.
+
+## Scalability Decision
+
+The useful long-term fixes are canonical evaluation, leaf/deep patches, bounded diagnostics, no redundant reads, and existing cache reuse. A new hours collection, holiday scheduler, reference index, durable cascade ledger, or provider sync would add operational and Firebase cost without current evidence. Revisit only if project-cascade telemetry shows sustained owner-impacting latency or the product explicitly admits date exceptions.

@@ -1,5 +1,1115 @@
 # MenuList — Changelog
 
+## July 18, 2026 - Answerlattice Quality And Recovery Hardening
+
+- **Answerlattice now has one dedicated quality workflow** - the repository CI installs the pinned root and Answerlattice Functions environments, checks the dependency freeze, runs the production security policy, compiles Functions and the browser helper, type-checks the Answerlattice surface, and executes the canonical runtime/emulator readiness suite.
+- **Security updates stay compatible and measurable** - safe patch/minor upgrades were applied to exposed root and Answerlattice Functions dependencies; production critical findings and unapproved high findings now fail the source gate, while the remaining root high findings are explicitly confined to breaking `fabric`, `next`, and `next-pwa` migration families.
+- **Type checking is executable again** - the root command now preserves incremental mode required by the configured build-info file, and a scoped Answerlattice configuration provides a faster product-specific gate without replacing the full repository check.
+- **Backup and recovery are fail-closed** - new tooling maps only the dedicated QA and production projects, requires an explicit mutation opt-in, can ensure the intended daily retained backup schedule, and permits restore rehearsal only into a newly named recovery database.
+- **Cloud proof remains separate from source proof** - no backup schedule, restore database, Firebase revision, or Vercel revision was changed in this pass. The first remote CI run, authenticated backup configuration, restore rehearsal, and authorized QA deployment evidence remain pending.
+
+## July 18, 2026 - CampaignCue Meta Ads MCP Read-First Boundary
+
+- **Meta is a future evidence source, not the campaign authority** - CampaignCue records Meta's hosted Ads MCP server as a disabled option for reporting, activity logs, signal health, and troubleshooting while Business Brain, the deterministic Decision Engine, Trust Center, and owner approval remain authoritative.
+- **Mutation stays blocked** - ad/campaign/ad-set creation or editing, budget/spend changes, catalog writes, experiment/lift mutations, direct publishing, and provider metric import remain outside the active action contract.
+- **Current owner flow is unchanged** - Ads Studio still prepares source-backed ad handoff packs for manual owner or agency setup; no account connection or technical Meta workflow was added to the UI.
+- **Firebase stays at zero for this capability** - no provider connection read, metric write, collection, listener, Storage object, Function, webhook, scheduler, MCP SDK, or Meta call was added. Any future read connector must use one lazy, capped, hash-deduplicated summary per changed refresh and stay out of the default overview.
+- **Stale docs were corrected** - Ads Studio no longer implies that configured publishing or five ad-specific collections exist in the active runtime; API/source/delivery/expansion docs now share the same read-first activation gates and manual fallback.
+
+## July 18, 2026 - Full Owner Locale Key Boundary
+
+- **The source gate now follows the mounted owner app** - every MenuList owner namespace except separately governed `Website` and `CampaignCue` is covered: 3,119 strings across 49 namespaces and all 52 registered locale files.
+- **The remaining semantic values are complete** - existing translations were preserved and 122,117 exact-source values were populated with pinned local AI4Bharat IndicTrans2 and Google MADLAD-400 model revisions; Bodo and Kashmiri follow the same contract as every other owner locale.
+- **Generation is protected and reproducible** - ICU structures, variables, product names, URLs, emails, and technical terms are restored exactly; token loss uses segmented translation, provider revisions and hashes are recorded, and application is all-locale validated before any file is written.
+- **Quality anomalies are source-gated** - 826 overlong, under-translated, or exact-English values received bounded beam-search or reviewed corrections. Every locale owner subtree now matches checked-in semantic evidence, with exact English allowed only for approved invariants or reviewed same-spelling cognates.
+- **Canonical locale keys are exact** - 765 obsolete locale-only owner keys were removed, offline synchronization now prunes future stale owner keys, and verification rejects both missing and extra owner keys without touching the separately governed website or CampaignCue trees.
+- **MobileShell no longer bypasses localization** - bottom-navigation labels, its accessibility name, loading labels, and the subscription gate use dedicated message namespaces.
+- **Runtime cost remains zero** - models run only in an isolated maintainer workflow; the owner app ships static JSON and adds no Firebase read/write, API route, runtime provider call, or package dependency.
+- **Release language remains honest** - all 50 non-English packs are executable semantic-evidence coverage, not a claim of native-speaker authorship or certification.
+
+## July 18, 2026 - Answerlattice Bounded Hybrid Evidence Retrieval
+
+- **Technical literals get a deterministic fallback lane** - after canonical and approved FAQ miss, a gated query can combine exact error codes, API paths, flags, commands, status codes, or versions with resolved product entities.
+- **Authority remains upstream** - canonical answers still win, support tickets do not become truth, and the entity lane can only read active published articles in the exact workspace.
+- **Retrieval stays bounded** - the additional query runs only for eligible technical questions, reads at most 12 articles, requires an exact literal match inside each admitted article, and uses deterministic rank fusion without a planner or model reranker.
+- **Quality is rollout-gated** - the feature flag defaults off until the composite index is deployed and representative Answer Tests confirm better retrieval without citation, unsupported-claim, freshness, or abstention regressions.
+- **No product-boundary expansion** - this adds no connectors, generic enterprise search, autonomous actions, new collection, listener, scheduler, or automatic content approval.
+- **Entity dependencies stay valid after merge** - the governed merge now rewrites bounded exact-scope KB article `entityIds`, reports transferred articles, includes those writes in the transaction cap and audit result, and invalidates KB-backed retrieval.
+- **Post-save extraction invalidates retrieval state** - successful article entity-link writes now admit only active Answerlattice entity rows, normalize and cap links at ten, and bump the existing KB cache and compiled-context source versions.
+- **Entity documentation corrected to runtime truth** - post-save extraction is implemented as a best-effort trigger to the protected route when ontology is enabled; the standalone helper is not the live route and new entity candidates remain human-reviewed.
+
+## July 18, 2026 - Answerlattice Proposal Impact Preview
+
+- **Proposed truth can be checked before approval** - the Signal-to-Knowledge Queue compares current and proposed deterministic outcomes for Answer Tests explicitly linked to the target answer or product entities.
+- **The check is bounded** - critical tests are selected first, at most 10 cases run, and a proposal with no linked tests stops before retrieval with an explicit missing-proof result.
+- **Scope-change regressions remain visible** - linked-test selection retains the bounded proposal, current-answer, and candidate entity union instead of truncating removed or newly added entities behind the first source list.
+- **The check is cheap by design** - there is no provider call, support-credit operation, retained run, reservation, preview document, listener, scheduler, audit write, or cache mutation.
+- **Cost and browser failures stop predictably** - the rate limiter fails closed before Firestore work when its provider is unavailable, rate-limit responses include retry guidance, and the browser aborts a stalled preview after 30 seconds.
+- **Governance authority is unchanged** - preview status is advisory; the existing approval transaction remains responsible for entity, scope, version-overlap, audit, canonical write, and cache-invalidation enforcement.
+- **Owner review remains usable on mobile** - current and proposed outcomes stack in a responsive modal with labelled regressions, improvements, changed outcomes, and 44px actions.
+
+## July 18, 2026 - Main Website Truth And Owner Journey Audit
+
+- **Acquisition matches the real entry flow** - homepage, How It Works, and preview copy now advertise a supported photo/image upload or owned public menu/service-list/image/PDF link; direct typed-list and direct PDF upload are no longer promised by `/create-menu`.
+- **Seven-day pricing is explicit** - the starter customer URL and QR may be published and tried during setup, while paid activation before the deadline keeps the same URL live afterward; the pricing FAQ now states the no-plan day-eight behavior.
+- **Plan comparison keeps entitlements but removes overclaims** - unsupported accuracy, direct social posting, search appearance, virtual-try-on, and hype language were replaced with bounded owner-readable descriptions; the expanded comparison is localized for English and Hindi.
+- **Navigation and conversion routes are complete** - footer anchors point to real destinations, About and Contact remain visible, and `/ml/create-menu` preserves the product alias through sign-in and preview.
+- **Public proof is clean** - three industry pages no longer expose internal placeholder/replacement instructions; their placeholder SVGs are retired from public media and preserved only inside AssetOS. Onboarding/payment success dialogs no longer show editorial placeholders or unsupported plan/invoice claims.
+- **Accessibility is part of the shared contract** - mobile drawer focus is trapped and restored, desktop dropdown state is valid, Pricing exposes the shared main landmark, language options support arrow keys, create-menu upload works from the keyboard, contact fields expose labels/errors, hidden sticky actions leave the tab order, muted text has readable contrast, and reduced-motion visitors do not load the hero video.
+- **Share previews stay page-specific** - one metadata helper completes every public route and generated localized Resource with the approved Open Graph image and matching Twitter title/description instead of inheriting homepage social copy.
+- **Private app metadata is honest** - protected owner pages use MenuList owner-workspace metadata and `noindex, nofollow, nocache` instead of obsolete “everything app” metadata.
+- **Doctrine now follows truth before silence** - normal healthy operation stays quiet, while public-content approval, billing, legal, security, and exception handling may explicitly ask an owner to review or confirm.
+- **Contact acknowledgement stays bounded** - success means the enquiry row was recorded; a monitored general-enquiry consumer/alert and response owner remain production-owner work.
+- **Scope stayed safe** - no extraction, publish, public-cache, subscription, Razorpay, owner-data, Firebase, Cloud Function, provider, dependency, Vercel deployment, or production-build contract changed in this pass.
+
+## July 18, 2026 - Canonical MenuList Feature Inventory
+
+- **One maintained ledger** - the existing Feature Flow Audit Tracker is now the canonical inventory instead of relying on chat history or the older documentation catalog.
+- **Product counts are explicit** - all 41 numbered audit entries are locally source complete; 35 are MenuList-owned flows and six are adjacent-product separation audits that must not become MenuList product claims.
+- **Cross-cutting work remains visible** - eight later system audits cover localization, accessibility, owner PWA lifecycle, configuration safety, failure handling, account/tenant lifecycle, ownership/dormancy, and Firebase scale/cost without disrupting the frozen 1-41 numbering.
+- **Dedicated reviews are not double-counted** - twelve AI, Razorpay, media, extraction, AMM, recovery, public-delivery, export, API/POS, and MobileShell subflows are mapped to their owning feature families.
+- **Completion language stays bounded** - local source completion does not claim the pending deployment, provider, authenticated browser, physical-device, DNS, IAM, legal, or production-host evidence.
+
+## July 17, 2026 - Whole-Worktree Feature Cross-Check
+
+- **Owner-support time follows owner preferences** - Answerlattice owner-support activity now uses the shared locale, timezone, date-format, and time-format boundary instead of browser-default `toLocaleString()` output.
+- **Retired and current contracts are separated** - maintained Official Business Page, Presence, constitution, roadmap, and pending-audit docs describe official-link guidance inside existing Dashboard/Share surfaces instead of referencing the retired standalone behavior-nudge card. The AI usage audit now names the active Answerlattice `gemini-embedding-2`, 768-dimension, canonical `embedding` boundary while preserving older rows as historical evidence.
+- **Local verification is isolated from workstation credentials** - the canonical readiness runner removes inherited `GOOGLE_APPLICATION_CREDENTIALS` before every child gate, so deleted or real service-account paths cannot contaminate demo-emulator checks.
+- **Verifiers follow shared runtime authority** - dashboard tracker wording, Platform Pull API temporary-status delegation, legal update dates, and the nightly external-certification path now guard current source contracts instead of removed inline implementations or stale prose.
+- **Public asset truth was re-reviewed** - thirteen AssetOS slots affected by watched-source changes were inspected. Twelve remained accurate and were relocked; the QR/share proof was refreshed to say external placements are owner-confirmed, MenuList records internal readiness, and Digital Screens are set up rather than connected. AssetOS audit/review now report zero errors, warnings, or review blockers.
+- **Scope remains bounded** - this cross-check adds no Firestore read/write/listener, rule, index, Storage operation, Function, scheduler, provider call, payment mutation, AI operation, or public-cache mutation. Approved app/Vercel release, provider/browser/device smoke, and previously documented IAM-controlled Firebase deployment evidence remain pending.
+
+## July 17, 2026 - Whole-System Firebase Scale And Cost Closeout
+
+- **All-store work is no longer multiplied by timezone cohorts** - the hourly store-EOD scheduler uses a transactional UTC-day lease for authority maturation, menu drift, Guest Feedback retention, lifecycle messaging, extraction learning, Store Truth Confidence, and staleness detection.
+- **Store-local behavior is preserved** - analytics settlement, Decision Blocks, Menu Intelligence, Business Health, and Special Menu marker recovery still run for every due-store cohort; precise Special Menu transitions remain in the two-minute maintenance task.
+- **Concurrency and retries are bounded** - one scheduler instance owns the ten-minute lease, successful work cannot repeat that UTC day, and failed attempts become retryable after the bounded delay.
+- **Index manifests are deterministic** - six exact duplicate MenuList composites and one exact duplicate Answerlattice composite were removed while one identical definition remains for every query shape. Current source counts are 154/50 MenuList and 94/17 Answerlattice composites/overrides.
+- **Cost guidance matches enforced limits** - summary-document and nightly-scheduler docs use actual row/byte ceilings and operation comparisons instead of stale fixed-price arithmetic.
+- **Cross-checking follows current source truth** - the tenant-safety verifier now expects the generic `pendingEntitlementRepair` contract rather than the retired reseller-only label.
+- **Release work stays explicit** - no remote revision changed from the mixed worktree. Isolated authorized MenuList QA Functions/index and Answerlattice QA index deployments, UTC-day scheduler observation, and an equivalent billing comparison remain pending.
+
+## July 17, 2026 - SurfaceOS Planning-Only Boundary
+
+- **Reservations are not runtime** - product code `SF`, `surfaceos.app`, and `/__surfaceos` remain reserved, while the product-site placeholder is disabled and no deployment target or route exists.
+- **No speculative product was added** - SurfaceOS has no API, UI, flag, collection, Firebase target, rules/index/Storage namespace, Functions package, provider integration, environment key, billing flow, website, or help surface.
+- **Historical strategy is correctly scoped** - the March 2026 strategy is preserved under `_archive/`; its modules, architecture, ICP, pricing, provider plan, launch order, and parent-brand idea are planning input rather than approved codebase truth.
+- **Regression boundary added** - maintained planning docs and `npm run verify:surfaceos-boundary` guard the disabled, zero-cost state.
+- **Future activation is a decision, not a backlog promise** - implementation requires a fresh owner/product, architecture, security, cost, provider, mobile, public-site, and deployment decision.
+
+## July 17, 2026 - Ownership Transfer And Dormant Lifecycle Boundary
+
+- **Owner access is not ownership transfer** - desktop and mobile staff role controls now explain that the Owner role grants full operational permissions without rewriting the business account, billing records, notification recipients, or existing subscriptions.
+- **Complete transfer stays coordinated** - public Terms and maintained docs require verified support review before prior-owner access and account authorities change; no misleading partial transfer route or ledger was added.
+- **Orphaned stores remain blocked** - last-active-owner, self-destructive-change, Owner-target authority, and locked Owner-role-definition protections remain source-gated.
+- **Dormancy stays advisory** - old publish activity may trigger bounded `MENU_STALE` communication, but cannot deactivate an account, store, subscription, entitlement, or public menu; inactive stores are excluded from the confidence aggregate.
+- **Cost remains unchanged** - no new Firestore/Storage operation, collection, index, Function, scheduler, provider call, setting, or Firebase deploy was added.
+- **External work is explicit** - real support transfer/legal evidence, authenticated desktop/mobile role QA, provider notification evidence, and approved Vercel release remain pending.
+
+## July 17, 2026 - Account And Tenant Data Lifecycle Boundary
+
+- **Dual auth teardown is resilient** - NextAuth sign-out is still attempted when Firebase sign-out fails, so one provider failure cannot strand the signed web session.
+- **Previous owner truth leaves the browser session** - logout clears selected-outlet context, owner SWR caches, deployment identity, active/dismissed processing jobs, legacy unscoped project selection, captured logs, and monitoring identity while keeping device language/theme/consent/install preferences.
+- **In-memory state also ends** - tenant, store, permissions, subscription, support caches, and platform summary state are cleared as soon as the signed session disappears.
+- **All owner logout surfaces agree** - website, desktop owner, mobile owner, and forced session-expiry paths use the shared lifecycle; desktop logout failure no longer appears as a success toast.
+- **Provisioning and membership contracts remain intact** - centralized onboarding transactions, paid-onboarding compensation, staff mapping removal, final-account deactivation, refresh-token revocation, and Firebase Auth disable were cross-checked without changing their persistence contract.
+- **Privacy requests match runtime** - the website describes verified support-managed access, correction, applicable portability, and deletion requests with billing/shared-business/security/legal constraints; menu/project downloads are not presented as a full account export.
+- **Cost and release boundary** - no Firestore/Storage/Function/provider operation or Firebase deploy changed; authenticated multi-user browser/device proof, real request execution, legal review, and approved Vercel release remain pending.
+
+## July 17, 2026 - Global Failure Handling And Observability Boundary
+
+- **Recovery actions are honest** - the global-pages fallback now separates Try Again, explicit Refresh Page, and a real Help link; the old Contact Us button no longer retriggers the failed route.
+- **Ordinary crashes preserve caches** - route failure recovery no longer deletes all Cache Storage or claims context cannot be lost.
+- **Diagnostic delivery is acknowledged** - `Report sent` appears only with a monitoring event ID; without monitoring, the UI prepares copyable support details and says automatic reporting is unavailable.
+- **Fallbacks cannot recurse into the same crash** - the layout boundary uses a standalone recovery screen instead of rendering the failed child tree again.
+- **Retained diagnostics are smaller and safer** - bare email and bearer values are redacted, raw browser messages/rejection payloads are not retained, default Sentry PII is off, and replay masks text/inputs and blocks media.
+- **Unavailable is not empty** - a failed Answerlattice ticket refresh keeps last-known ticket truth rather than replacing the inbox with a confirmed empty list.
+- **Cost and release boundary** - no Firestore/Storage/Function/provider operation or deploy changed; production Sentry/replay, browser/device recovery, Vercel release, and production-host evidence remain pending.
+
+## July 17, 2026 - Feature Flags, Environment And Deployment Configuration Safety
+
+- **Boolean gates are explicit** - a configured Functions override typo no longer enables scheduled/provider work, and CampaignCue's string `"false"` no longer enables premium or segmentation model entries.
+- **Rollout values now govern selection** - model rollout percentages are finite and bounded to 0-100; zero admits no traffic and partial rollout requires a stable caller bucket.
+- **Stage conflicts remain fail closed** - Vercel server/public markers, product Firebase targets, full product env names, and public/private credential separation are source-gated together.
+- **Docs match release truth** - app flags are documented as source-controlled constants that require a release, not instant remote kill switches; environment templates now show the explicit premium default.
+- **Cost remains zero** - no remote flag store, Firestore read/write/listener, Storage object, collection, index, scheduler, or new owner setting was added.
+- **Release boundary is explicit** - the shared Functions override parser needs a scoped Functions release before remote behavior changes; the current dirty Functions workspace makes that release an owner-pending isolated step.
+
+## July 17, 2026 - Owner PWA, Connectivity And Update Lifecycle Boundary
+
+- **Private pages leave Cache Storage** - the owner worker no longer runtime-caches authenticated dashboard, sign-in or screen HTML, and its activation hook deletes the retired document-cache names.
+- **Preview cannot attach an old worker** - development and Vercel preview refuse owner-worker registration and remove stale registrations; production owner paths and standalone launches retain the intended worker.
+- **Updates are owner-controlled** - existing registrations check for updates on full load, build mismatches can be deferred for the session, build time follows owner locale/timezone, and only **Refresh now** reloads.
+- **Connectivity no longer blocks work** - one shared notice replaces the non-dismissible slow/offline modal and duplicate MobileShell state; reconnection never auto-reloads an edit.
+- **Browser cache is bounded** - source maps, unrelated product assets, website media and public locale packs are excluded from owner precache; Firebase Storage and broad file-extension runtime caches are removed.
+- **Offline behavior stays honest** - the fallback is generic, authenticated/customer truth is not cached as success, and no offline mutation queue or automatic replay was added.
+- **Release boundary is explicit** - the production app build must regenerate the checked-in worker artifact; Vercel release and authenticated install/upgrade/cache/device evidence remain pending.
+
+## July 17, 2026 - Global Accessibility And Interaction Boundary
+
+- **Zoom remains available** - maintained app, website, public-menu and adjacent product viewport exports no longer block browser or operating-system zoom.
+- **Keyboard paths are shared** - owner and website shells expose skip navigation and primary-content focus, while clickable mobile list rows and tags support Enter and Space.
+- **Mobile controls stay touch-safe** - transparent icon actions inherit the shared 44-pixel target; back, floating, dashboard, transaction, time-slot and OBP actions expose names or state.
+- **Focus and motion follow the user** - global focus-visible treatment covers native and role-based controls, and reduced-motion preferences minimize non-essential animation and smooth scrolling.
+- **Image alternatives are gated** - maintained raw TSX images have alternatives and the source verifier rejects future missing `alt` attributes.
+- **Behavior and cost are unchanged** - no Firestore operation, rule, index, Function, scheduler, provider call, mutation, billing, AI, publish, public-cache or public-truth contract changed.
+
+## July 17, 2026 - Global Locale, Time, Number And RTL Boundary
+
+- **Preference inputs fail closed** - locale, timezone, date-format, and time-format cookies are normalized against supported values before next-intl or native Intl receives them; malformed writes are rejected with stable error codes.
+- **Server rendering is deterministic** - the no-preference timezone fallback is UTC instead of depending on the local/Vercel host, while saved owner timezone preferences remain authoritative.
+- **RTL follows language** - Arabic, Persian, Hebrew, Kashmiri, Sindhi, and Urdu update the document and Ant Design direction automatically; the existing manual RTL override remains available.
+- **Owner display is consistent** - desktop/MobileShell dashboard, analytics, AI transactions, locations, special-menu timing, public-truth, and export-history paths use shared localized date/number helpers instead of browser defaults or hard-coded English/US formats.
+- **Invalid dates stay invalid** - impossible calendar dates and out-of-range clock values no longer roll into valid-looking stored instants; epoch zero remains valid and hook-free display no longer exposes raw ISO timestamps.
+- **Cost remains zero** - UI preferences stay cookie/static-registry backed. No Firestore read/write, listener, collection, rule, index, Function, scheduler, provider call, or deploy target changed.
+
+## July 17, 2026 - CampaignCue Composite-Index Cost Boundary
+
+- **Workspace-scoped queries stay simple** - active CampaignCue reads resolve one exact workspace subcollection and use document IDs, one equality filter, or one bounded single-field created/updated ordering.
+- **Twelve unused composites removed** - the prior workspace/design plus timestamp indexes had no matching collection-group or multi-field runtime query. The manifest now relies on automatic single-field indexes, reducing write fanout and index storage without changing read results.
+- **Dormant provider indexes remain dormant** - repair/quality/review collection indexes are not pre-provisioned before their queries exist.
+- **Regression guard added** - the CampaignCue aggregate verifier now rejects a composite-index manifest or cross-workspace collection-group query unless the contract is deliberately updated.
+- **Deployment boundary** - the full CampaignCue source/rules/Storage aggregate passes. The scoped `campaigncue-qa` index deploy stopped before upload at the Firebase Rules test endpoint with HTTP 403 caller permission, so no remote index changed.
+
+## July 17, 2026 - Answerlattice Pre-Launch Embedding Contract
+
+- **One launch vector space** - Answerlattice query and article embeddings now use only `gemini-embedding-2`, 768 dimensions, the canonical `embedding` field, and cache key `gemini-embedding-2:768:v1`.
+- **Migration machinery removed** - retired-model calls, `embeddingV2`, dual-write metadata, the scheduler migration task, its state document, and the second vector index are not part of the launch runtime.
+- **No backfill is needed** - no client or corpus is live, so new and changed articles enter the canonical vector space through the normal publish/re-embed lifecycle.
+- **Provider and response boundaries are tighter** - the provider-health record identifies the actual `@google/genai` gateway, and FAQ reference projection is allowlisted so vector/internal metadata cannot leak through a spread.
+- **Release boundary remains explicit** - focused embedding gates, the full Answerlattice runtime suite, final-readiness source verification, dependency freeze, and both Functions builds pass locally. Firebase deployment was not attempted because the current Functions/index workspace contains unrelated changes and the active CLI account does not expose the Answerlattice projects; no Vercel deployment or production build is included.
+
+## July 17, 2026 - GBP Disabled-Scaffold Cost Recheck
+
+- **Disabled still means zero runtime cost** - GBP Sync performs no Firestore read/write, listener, index, Storage, provider, or Functions work. All reserved token operations continue to fail closed with `GBP_TOKEN_STORE_DISABLED`.
+- **Feature comments now match code truth** - the flag documents OAuth, sync, and owner-approved hours as reserved scope instead of describing them as current behavior, and its implementation-doc link now uses the canonical lowercase path.
+- **Dormant DAL stays lighter** - `Timestamp` is imported as a type only, avoiding an unnecessary runtime Firebase client import in the server-only disabled contract.
+- **Activation remains blocked** - no OAuth route, callback, token store, provider worker, scheduler task, rule/index, owner/mobile integration, or public automatic-sync claim was added.
+
+## July 17, 2026 - Main Website Public Contact Firebase Cost Boundary
+
+- **Most website surfaces remain zero-Firebase** - static pages, localized resources, discovery files, browser-local tools, pricing/trust/legal content, and navigation add no Firestore operations.
+- **Unused payload indexes are removed** - `landingPageEnquiries.message` and `landingPageEnquiries.sourceContext` are exempt from automatic indexing because no runtime query filters or orders by them.
+- **Selective lead routing remains intact** - top-level enquiry routing/status fields and the scoped `sourceKind + createdOn` Report Leads composite remain indexed. Accepted contact submissions still perform one private document write after the existing bounded admission checks, and owner/public behavior is unchanged.
+- **Deployment boundary** - the scoped `menulist-qa` index deploy was attempted after validation and stopped before upload at the Firebase Rules test endpoint with HTTP 403 caller permission. Vercel/app runtime deployment is not required for this index-only optimization.
+
+## July 16, 2026 - Main Website Alias, Legal And Paid-Cycle Truth Boundary
+
+- **Canonical and alias navigation agree** - the shared website path provider covers FAQ, Tools, WhatsApp, Invite and reviewed locale-prefixed Resource routes on `menulist.ai` and `menulist.digital/ml`; header state and language switching strip/reapply the current base path.
+- **The language control exposes its state** - button type, expanded/menu state, checked language state and Escape-to-trigger focus return are explicit.
+- **Public legal claims match runtime** - Terms and Refund use plan-specific access, purpose-based retention, cautious generated-output rights and actual Razorpay checkout handling instead of fixed 30-day deletion, all-feature, universal-publish, absolute-ownership or provider-certification claims.
+- **Paid-cycle entitlement matches cancellation copy** - cancelled/paused subscriptions retain their purchased plan mirror only through a valid `cycleEndDate`. The existing leased maintenance scheduler expires at most 500 due rows per hourly run, repairs store/platform entitlement and preserves a retry marker on partial failure. One exact `subscriptions(status ASC, cycleEndDate ASC)` index supports the due query.
+- **Release evidence stays separate** - website, billing, pricing, Firestore emulator, tenant, MobileShell, dependency, TypeScript and Functions gates pass locally. The QA index attempt stopped at Firebase Rules HTTP 403; the Function passed predeploy lint/build then stopped at Cloud Resource Manager HTTP 403. Neither uploaded. App/Vercel release, legal approval, mutable provider and hosted browser/device/search evidence remain owner tasks.
+
+## July 16, 2026 - Internal Ops Control Room And Platform Monitoring Hardening
+
+- **Current authority is consistent** - platform layouts, direct browser monitors/store selection, Cost, Founder, Business Health, Answerlattice intake, messaging onboarding and Entity Blocks now re-prove the current persisted platform user instead of relying only on a signed role claim.
+- **Privileged limits fail closed** - newly covered platform monitor/mutation APIs return 503 before private/expensive work when the limiter provider is unavailable.
+- **Monitor failure is truthful** - Control Room, Scheduler and Extraction read failures no longer become healthy-looking zero or empty states; desktop/MobileShell show unavailable or explicitly previous data.
+- **Stored and callable data is bounded** - overview alerts, scheduler runs/settlement state and store-nightly recovery responses are normalized before UI acknowledgement. Partial and failed recovery results cannot show ordinary success copy.
+- **SAFE_MODE copy matches runtime** - the UI/config docs describe guarded AI generation/provider-upload paths, while public menus, publishing, cleanup and unrelated maintenance remain available.
+- **Alert history is bounded** - the existing consolidated scheduler now deletes at most 100 `systemAlerts` rows older than 90 days in one leased daily task. No new scheduler, collection or index was added.
+- **Deployment boundary** - the scoped `menulist-qa` `menulistMaintenanceScheduler` deploy passed predeploy lint/build and stopped before upload on Cloud Resource Manager HTTP 403 caller permission. No Function revision changed. App/Vercel release and live platform/provider/browser/device/production-host evidence remain pending.
+
+## July 16, 2026 - MenuList Help Center End-to-End Hardening
+
+- **Product separation stays explicit** - `/help-center` remains MenuList owner UI while search, content, feedback, changelog and tickets require the signed-in user's active Answerlattice product-account scope.
+- **Search responses are safer to render** - related-content structure is normalized and bounded, stored article URLs are omitted from the public projection, and related article actions build encoded internal Help Center routes from validated IDs.
+- **Ticket attachments use one contract** - UI and DAL enforce up to four supported files of at most 10 MB with matching MIME/data URL/byte size. Saved files open only from the configured Answerlattice bucket and matching ticket tenant/store path; signed URLs are not logged.
+- **Ticket history is append-only at the database boundary** - dedicated and shared Firestore rules preserve prior message/status arrays, validate one appended entry and authenticated actor, require one valid initial status, and prevent satisfaction rewrites.
+- **Owner-facing truth was corrected** - the Help Center no longer shows an unverified "All systems operational" claim, footer branding/year/legal links match current MenuList routes, support-menu copy is product-appropriate, and ticket submission no longer shows duplicate success messages.
+- **Regression coverage is executable** - the aggregate Help Center gate runs runtime response/related-content tests and attachment tests; both ticket-rule emulators cover valid current flows, history tampering and a valid 450-message append.
+- **Docs now follow code truth** - the Help Center doc set and Help Chat runtime notes describe current scoped behavior, exact costs/limits, disabled claims and release evidence instead of historical standalone/helpdesk or production-ready language.
+- **Deployment boundary** - Firestore rule source changed. The scoped `answerlattice-qa` and `menulist-qa` rule deploys were attempted after emulator validation; both stopped at the Firebaserules test endpoint with HTTP 403 caller permission before upload, so no QA rule revision changed and the exact reruns remain owner/IAM-pending. No index, Storage rule, Cloud Function, scheduler, collection, public cache, provider integration, Vercel deployment or production build was added. Authenticated browser/device/provider/SMTP and production-host evidence remain pending.
+
+## July 16, 2026 - Public Truth Tools End-to-End Hardening
+
+- **All current Public Truth lanes were re-audited from code truth** - the pass covers sixteen browser-local checks, five Print & Share makers, Tools Hub, shareable reports, consented contact handoff, Report Lead Ops, eighteen owner readiness modules, and the paid manual saved-history monitor.
+- **Public link and action destinations now share stricter boundaries** - local/private/raw IPv4, raw and IPv4-mapped IPv6, trailing-dot localhost, empty hostname labels, insecure/credentialed URLs, letter-mixed phone values, malformed `tel:`/`mailto:`, and unrecognized WhatsApp scheme/host/path shapes do not become ready customer actions. Print & Share now imports the same public HTTPS parser instead of duplicating it.
+- **URL path words no longer fake report facts** - Public Truth Check infers prices, hours, location, contact, and actions only from pasted source text or explicit owner choices, never from a URL hostname/path/query.
+- **Shareable reports fail safer** - decoded summary counts must match visible rows; primary values and report limits are required; setup jobs are derived from normalized gaps; same-origin next actions reject backslash escapes; and static copy identifies the link as an unsigned browser-local self-report requiring owner confirmation.
+- **Lead triage exposes its bounded view** - public contact source paths reject literal/encoded backslash escapes, Report Lead Ops fails closed on production limiter failure, and the UI warns when its capped matching-report query may omit older report leads.
+- **Saved monitor history is concurrency-safe** - summary/refresh limiter failures block in production and manual refresh reads/merges/writes capped history inside one Firestore transaction so overlapping refreshes do not silently overwrite each other.
+- **Regression coverage is executable** - `npm run verify:public-truth-tools` now includes `test:public-truth-tools-runtime` alongside every current tool, asset, report, lead, hub, and monitor verifier. Exact TypeScript and focused lint pass.
+- **Docs now match runtime** - maintained family, report, monitor, print/share, Public Truth Check, Booking Inquiry, WhatsApp, and Business Facts docs describe the implemented manual V2 saved-history slice and keep scheduling, multi-location execution, external adapters, email, AI/search readability, and Maps grounding explicitly disabled.
+- **Deployment boundary** - no Firestore rules/indexes, Storage rules, Cloud Functions, scheduler, provider integration, public cache mutation, Firebase deploy, Vercel deploy, or production build changed. Authenticated browser/device/contact/monitor fixture smoke, approved app/Vercel release, and production-host evidence remain pending.
+
+## July 16, 2026 - Owner Referral End-to-End Hardening
+
+- Acquisition now requires enabled acquisition/settlement flags plus a valid non-empty pilot allowlist across desktop, MobileShell, owner API, public capture, and attribution. Empty or invalid pilot configuration fails closed and env readiness reports it.
+- The invite endpoint now accepts strict `capture` or `decline` actions. Normal setup clears any older host-only referral cookie before navigation, including while acquisition is disabled, and never captures the displayed token.
+- Owner and capture throttles fail closed on limiter-provider failure in production, run before expensive permission/cryptographic work, and return `Retry-After` plus `X-RateLimit-Reset` on 429 responses.
+- Existing-unpaid attribution treats a saturated 25-row subscription-history window as prior-paid, so older payment history cannot be silently missed.
+- Settlement validates referral program/status/scopes, both direct paid wallets, and both canonical active/non-deleted/non-blocked stores. Malformed, negative, fractional, or overflow-prone Pack balances reject atomically instead of normalizing to zero.
+- Pending repair now fetches one 26-row lookahead batch, processes at most 25 candidates, and emits bounded backlog evidence instead of looping cursors inside a payment request. No scheduler or queue was added.
+- Desktop/mobile dates use the shared formatter; WhatsApp handoff failure is no longer reported as success; clipboard fallback always removes its temporary textarea.
+- Updated the complete maintained doc set, test matrix, cost model (about 11 reads and 5 writes on normal issue), inventory, report, and strict tracker. Dedicated source/emulator plus billing, reseller, public-entry, onboarding, payment, tenant, MobileShell, env, docs, type, lint, and dependency gates pass.
+- No Firestore rule/index, Storage rule, Cloud Function, provider mutation, Firebase deploy, Vercel deploy, or production build changed in this pass. Existing QA rule/index deployment remains IAM-blocked; finance/legal/team, pilot, sandbox payment, browser/device/app release, and production-host evidence remain pending.
+
+## July 16, 2026 - Menu Presence and Public-Truth Monitoring
+
+- Replaced active-project truthiness with one valid explicit-publish readiness boundary across desktop Use MenuList, Business Settings, Mobile Share, and MobileShell Presence Monitor. Feedback readiness also requires feedback enabled; screen status now says set up rather than connected.
+- Standard publish now commits project, compact project-summary, and store publish timestamps atomically. Linked-outlet publish combines summary fields into one write and updates its store; public create-menu claim adds timestamps inside existing writes.
+- Publish acknowledgements refresh the same loaded store on desktop/mobile. Presence and starter-only context updates no longer repeat Use MenuList project/screen reads or Business Settings screen reads.
+- Presence confirmation/removal now rejects unavailable stores, ignores malformed timestamps, resynchronizes local state from loaded truth, and prevents late old-store acknowledgements from changing a new store selection.
+- Removed presence-only public-cache invalidation because manual placement evidence is owner-private. Canonical store plus `storesSummary` still commit in one transaction, and removal still retracts matching activation evidence.
+- Extended the existing dry-run-first routing-summary backfill to copy valid historical publish timestamps into summary/store in one batch. Target review/apply remains owner pending.
+- Added deterministic readiness tests and expanded the focused verifier. Project/public-entry/multi-location/public-truth/tenant/setup/activation/MobileShell/summary/rules-emulator/type/lint/docs/diff gates are the local boundary.
+- No Firestore rule/index, Storage rule/object, Cloud Function, scheduler, provider, collection, listener, queue, or Firebase deploy changed. App/Vercel release and authenticated browser/MobileShell/device/production-host evidence remain pending.
+
+## July 16, 2026 - Menu Setup Progress and Activation Concierge Boundary
+
+- Setup source now requires a loaded selected project, malformed files/items fail incomplete, and valid publication timestamps replace raw truthiness.
+- Mobile More waits for selected-project provider loading. Required setup hides after publish-and-placement completion, so optional improvements no longer keep a 100%-complete checklist visible.
+- Starter summaries ignore malformed action/presence timestamps. Sharing paths assert typed store/signal/time acknowledgements and refresh same-store in-memory activation truth without another read.
+- Presence confirmation derives starter eligibility from transaction-current store truth. Removing a confirmation deletes its matching starter action in the same existing transaction, and desktop/mobile loaded state follows only after acknowledgement.
+- Rebuilt Menu Setup Progress and internal Activation Concierge docs from code truth, archived the prior narratives, and expanded setup/activation/presence source/behavior gates.
+- No new route, collection, listener, queue, rule, index, Storage path, Function, scheduler, provider, dependency, or Firebase deploy was added. App release and authenticated browser/MobileShell/device/store-switch/offline/production-host evidence remain pending.
+
+## July 16, 2026 - Public Menu Entry and Create-Menu Claim Boundary
+
+- Added cheap fail-closed owner admission before body parsing/Firebase/provider work, complete tenant/store session admission, current existing-store Menu Extraction permission, and fail-closed preview limiter behavior.
+- Capped preview at 36 status reads spaced 5 seconds apart with explicit retry; canonical extracted price truth now fails closed before unsafe preview/claim output.
+- Revalidated existing-account Publish Menu permission from the already-read transaction store, canonicalized new-account business type, validated optional public phone, and committed explicit project identity, deletion truth, collision-safe non-reserved slug, and Menu Correctness metadata together.
+- Existing accounts no longer need city. The mobile/browser chooser offers camera or saved photos, supports same-photo retry, and both post-claim session refresh handoffs are bounded.
+- Expired claimed draft receipts are now deleted while promoted project source files are preserved. Unclaimed source deletion still precedes receipt deletion and preserves retry state on failure.
+- Rebuilt Public Menu Entry docs from source truth, archived the previous narratives, aligned Menu Extraction docs, and added `verify:public-menu-entry-boundary` plus deterministic price/slug behavior tests.
+- No new collection, queue, listener, Firestore rule/index, Storage rule, provider path, or dependency was added. The scoped QA scheduler deploy passed predeploy lint/build but Cloud Resource Manager returned `403` for the caller, leaving IAM/project access owner-pending. Approved app/Vercel release, signed-in browser/device/PWA, provider/Razorpay-when-relevant, cache, and production-host evidence remain pending.
+
+## July 16, 2026 - Temporary Status End-to-End Integrity
+
+- Added one canonical Temporary Status type/message/expiry boundary and exact client expiry hook. Invalid, malformed, or expired truth is omitted from supported public/browser projections, and mounted owner/public UI no longer needs a reload to hide an expired notice.
+- `POST /api/store/temp-status` now rate-admits cheaply with a hashed fail-closed limiter, normalizes persisted customer copy, and reports cache/screen/assistant post-commit failures as `effectsPending` after the existing Firestore write has committed.
+- Desktop and both MobileShell mutation paths show success only after the bounded response is acknowledged; rejection still restores the complete previous raw status.
+- Structured data emits a store-local whole-business closure only for `closed_today`; Kitchen Closed and other notice types no longer create an inaccurate complete-business closure claim.
+- Browser and scheduled Special Menu status ownership is now source-gated, including project-owned set/clear behavior and the bounded legacy active-pointer fallback.
+- Rebuilt the maintained Temporary Status docs from current code truth, archived the previous narratives, and added deterministic normalization, expiry, schema, and response-envelope tests to `verify:temporary-status-boundary`.
+- One existing store-document write per valid manual set/clear remains the Firebase boundary. No read, collection, history, cleanup scheduler, listener, queue, rule, index, Storage, Function, or provider path was added. No Firebase deploy applies.
+- Approved app release, authenticated desktop/MobileShell mutation smoke, hosted menu/OBP/feedback/pull-API/cache/screen expiry observation, browser/device QA, and production-host evidence remain pending.
+
+## July 16, 2026 - Working Hours And Time-Slot Integrity
+
+- Consolidated store-timezone weekly status into one evaluator across public menu, OBP, Mobile Today, urgent status changes, and downstream hours output. Overnight after-midnight time belongs to the weekday where the range starts; exact close is excluded.
+- Added strict store-DAL weekday/range admission, safe multiple historical range parsing, validated OBP/structured-data/FAQ output, and deterministic behavior tests.
+- Fixed desktop empty/partial hydration and unrelated-save overwrites. Desktop/mobile now preserve untouched historical ranges; Mobile Today uses the store weekday/minute tick; full-mobile saved copy follows acknowledgement.
+- Unified Decision Block category filtering with normal time-slot visibility, retained weekday-restricted overnight behavior, allowed intentional preset overlaps on mobile like desktop, and refreshed global owner context after preset success.
+- Rebuilt maintained Hours docs from code truth and archived the superseded narratives. Holiday calendars and date-specific exception managers remain unshipped; Temporary Status or today's hours handles one-off changes.
+- No Firebase rules, indexes, Storage rules, Cloud Functions, schedulers, collections, dependencies, or provider integrations changed. App release, authenticated owner/public browser/device/PWA/cache smoke, multi-timezone live boundary evidence, and production-host verification remain pending.
+
+## July 16, 2026 - Pricing Integrity Runtime Hardening
+
+- Added one canonical 40-character persisted menu-price boundary for numeric, currency, range, multilingual, and text values across extraction, desktop/MobileShell editing, linked outlets, and existing project update/publish paths.
+- Kept text/range values out of relative arithmetic, numeric filters, outlier/analytics paths, and AI Menu Manager bulk changes. Explicit fixed-price actions can still replace them after owner confirmation.
+- Corrected missing-price, category reorder, repair, and filter logic so valid text prices and active priced options count as current price truth.
+- Aligned public list/PDP, share cards, Digital Screens, and PDF preflight/output with active option price truth while excluding inactive/unpriced options.
+- Isolated the dormant Pricing Integrity engine/queue from the active pricing barrel, rebuilt maintained docs from code truth, and archived the superseded January validation narrative.
+- Added no Firestore read/write/delete, collection, index, Storage object, Function, scheduler, queue, or polling path. App release and authenticated public/screen/PDF/browser/device evidence remain pending.
+
+## July 16, 2026 - Menu Design And Customer Presentation Hardening
+
+- Enforced the constitutional mood/layout matrix, compatible presets, owned-key config normalization, safe legacy-tabs migration, and real-boolean display defaults across desktop, MobileShell, preview, and public output.
+- Corrected baseline/metadata/warning/price contrast and unavailable-item keyboard/readability behavior. Owner pricing notes now preserve spaces during controlled editing while retaining the 140-character bound.
+- Made active option prices visible before item interaction and consistent in item details. Inactive, unpriced, and non-finite options are excluded; variant analytics no longer emit stale base prices or text-price `NaN` values.
+- Added HTTPS/root-relative public background admission with preview-only data images and removed fixed attachment from active and exported output.
+- Removed the unstable 150-item estimated-height placeholder that broke layout stability, search/category navigation, and off-screen direct item links.
+- Rebuilt maintained B2C spec/implementation/Firebase docs from code truth and archived their superseded versions. Focused design, project, public-truth/delivery, pricing, mobile, dependency, type, lint, and docs gates pass; no Firebase infrastructure or Vercel deployment applies to this source pass.
+
+## July 16, 2026 - Official Business Page Owner Mutation Integrity
+
+- Corrected desktop Business Profile address and postal fields to write canonical `addressLine` and `postalCode`, with read-only legacy fallbacks for existing records.
+- Added one shared paired/range coordinate boundary across desktop, MobileShell, and public Maps embedding. Partial, non-finite, and out-of-range values stop before persistence; zero coordinates and explicit clearing remain valid.
+- Validated owner Maps/review/reservation/order links before desktop, standalone mobile, and embedded-editor persistence, while retaining render-time defense. Malformed legacy phone data no longer emits empty Call or WhatsApp links.
+- Made OBP cover/gallery cleanup retry-safe: immediate uploads are candidates until committed references retain them, abandoned uploads clean up on reset/navigation, and failed deletes remain queued.
+- Visual profile completion now counts unique trimmed gallery URLs, so repeating one stored image cannot satisfy multiple photo requirements.
+- Bounded root outlet-count and brand-selector Firestore reads to the existing 30-outlet policy plus one overflow row. No rule, index, Function, Storage-rule, or Vercel deployment is required for this source pass.
+
+## July 16, 2026 - Reseller Onboarding, Billing, And Renewal Hardening
+
+- Made reseller onboarding retryable through a required operation UUID and normalized intent fingerprint. Subscription truth, onboarding ledger, offline-cap reservation, and reseller counters now commit atomically; exact response-loss replay writes nothing.
+- Deferred online collected-revenue recognition until payment activation and made ledger convergence transactional and one-time. Offline onboarding records collected revenue immediately without changing the canonical subscription state machine.
+- Hardened owner/provider compensation, active reseller authority, legacy reseller-profile identity, and safe Razorpay checkout URL handling. New reseller account creation now cleans up the just-created Auth/user identity if profile persistence fails.
+- Added desktop and MobileShell 3/6/12-month manual renewal with exact acknowledgement validation. Renewal preserves the stored tier, rechecks current subscription/profile truth, and atomically reacquires an offline-cap slot when an expired store is renewed.
+- Replaced the transaction-ledger plus per-subscription client-list fan-out with one bounded current-subscription query and explicit partial-state UI. The ledger remains the bounded monthly reporting and operation-replay authority.
+- Removed the unused browser Firestore reseller DAL, rebuilt maintained reseller docs from code truth, and added focused pure/emulator/source verification for replay, cap contention, revenue convergence, renewal parity, authority, and bounded reads. Razorpay test-mode, authenticated browser/PWA, app release, and production-host evidence remain owner/provider pending; no Firebase infrastructure or Vercel deployment was performed for this pass.
+
+## July 16, 2026 - Menu Correctness, Quality, Trust, And Snapshot Hardening
+
+- Aligned MCE with the canonical stored-price contract. Currency values, text prices, and ranges remain valid display values; negative/zero/anomaly arithmetic now runs only on a safely parsed single numeric value. Legacy projects can infer their extracted primary language instead of being falsely treated as English-only.
+- Added same-transaction MCE stamping to standalone publish so `_mce` cannot remain stale when publish data changes. Linked outlet persistence remains on its authenticated schema/policy transaction and is accurately documented as not persisting `_mce`.
+- Removed duplicate multilingual quality warnings by keeping description coverage primary-language-only while translation gaps remain separate. Text/range prices no longer become fabricated outliers; desktop dashboard/editor and MobileShell repair/review routing remain advisory and reuse loaded project data.
+- Restored the public offering/freshness trust line, hid malformed/stale/materially-future publish dates, and retained confidence-gated working-hours output with zero extra reads.
+- Linked outlet publish observation and snapshots now use the resolved master-plus-outlet menu while reusing the already-required master read. Snapshot payloads over 900 KiB skip before Firestore, and the maintained TTL setup now includes `menuSnapshots.expiresAt` for the existing 90-day window.
+- Rebuilt current MCE/quality/trust/canonical-truth cost and runtime boundaries, added a dedicated verifier/test suite, and aligned the stale Pricing Integrity PDF assertion with the previously completed tenant/store/project-scoped freshness helper.
+- Focused correctness/quality/trust, public-truth, editor/project, pricing, working-hours, TypeScript, scoped lint, dependency-freeze, docs-link, and diff gates pass. The docs scanner reports 0 broken links and the existing 27 video-artifact naming warnings. App release, authenticated desktop/MobileShell/public smoke, native TTL application/expiry evidence, linked snapshot inspection, and device/browser QA remain owner/release pending.
+
+## July 16, 2026 - SignalDesk Experiment Readback Contract
+
+- New SignalDesk experiment cards now require a versioned baseline window, candidate window, primary metric, bounded confounders, and next-readback time before the card can be created.
+- API and server validation reject reversed or overlapping windows, invalid readback ordering, malformed metrics, changed retry identity, `pending` review submissions, and decisions without a fresh 2-1000 character result summary. Legacy experiment cards remain visible as `readbackPlan: null` without invented evidence or migration writes.
+- The Mission workspace records and displays the readback plan, requires `target.review` plus desktop edit mode for experiment changes, and keeps the existing founder review decision authoritative. No provider, telemetry, automatic promotion, send, scheduler, collection, index, or extra Firestore operation was added.
+
+## July 16, 2026 - Decision Intelligence And CMI End-To-End Hardening
+
+- Made the current active project catalog authoritative for both Decision Blocks and CMI. Retained extraction aliases merge analytics into current IDs; deleted, inactive, and analytics-only IDs no longer consume candidate or priority positions.
+- Added a byte-mirrored app/Functions Decision Block configuration. Quick choice now requires an explicit duration within the shared category threshold and preserves valid duration `0`; Value choice uses priced-item averages; automatic popular choices require per-item behavioral evidence and use neutral public wording.
+- Valid empty project summaries now avoid the nested collection fallback. Backend Decision Block writes coalesce public cache invalidation to one attempt per affected store.
+- CMI now full-replaces its scheduler-owned projection, advances maturity only once per distinct settled analytics date, uses the preceding stable streak for fatigue, enforces the 10% time-slot threshold, removes Function-runtime-hour bias from stored priority, uses request-local audit context, and fails neutral when disabled or expired.
+- Manual recovery now validates bounded document IDs, current platform authority, canonical active store/project scope, one-store/project-only execution, and bounded responses. App/Functions Decision Blocks and CMI surfaces have explicit independent feature gates.
+- Rebuilt current Decision Intelligence/CMI specs, implementation, help, marketing, mobile, website, Firebase, and verification authority from code truth; archived stale maintained sources and corrected owner/public replacement and control claims.
+- Focused source/unit/emulator/public/editor/mobile/time/docs/dependency/type/lint/Functions/diff gates pass. The exact scoped `menulist-qa` Functions deploy completed predeploy lint/build and stopped before upload with Cloud Resource Manager HTTP 403 caller permission; authorized QA deploy and live browser/device/cache/scheduler evidence remain pending.
+
+## July 16, 2026 - Answerlattice First Trusted Answers Founder Launch Workflow
+
+- Added a Launch Setup route that reuses Answer Tests for ten editable priority support questions.
+- Added an owner-triggered product-specific pack over one existing Knowledge Intake: one bounded model call prepares exactly ten editable test cases and ten non-authoritative canonical proposal drafts with source evidence, applicability, risk, and missing-evidence metadata. The cache hashes the exact prompt-bounded source packet and launch context, so unchanged inputs reuse the completed pack without another model call or credit.
+- Added a five-minute generation lease, strict source/entity/path allowlists, atomic Intake usage settlement, failure refunds, and acceptance/publish guards requiring both a related entity and a source-supported answer. The generic ten-question set remains a fallback.
+- Added explicit widget `Solved` / `Still need help` outcomes and recontact-aware Trust Metrics without another Firestore query or write.
+- Added a fail-closed public proof registry, tool-specific pre-onboarding Markdown packages, and a founder/studio distribution runbook.
+- Added a feature-gated Daily Brief handoff that pre-fills the existing Support Board form and performs no write before owner confirmation.
+- Firebase cost impact: no new collection, listener, index, rule, or scheduler. A new pack reads one job, at most 30 ready sources, and ten exact deterministic draft IDs; it writes at most ten draft review items plus existing job/summary/usage-ledger/AI-accounting records and uses one support credit. Cached reuse reads the saved ten drafts and performs no provider call or write. Nightly outcome calculation still reuses the existing capped 500-row search-history read and Trust Metrics write.
+
+## July 16, 2026 - Answerlattice Approved Answer Proof Loop
+
+- Extended the existing Answer Tests contract with backward-compatible standard/critical risk, required/forbidden claim checks, three evidence policies, bounded article-reference IDs, and deterministic `ready` / `review` / `blocked` proof status.
+- FAQ and full-runtime retrieval reuse references already produced by the support pipeline. No LLM judge, opaque quality score, extra retrieval query, provider call, realtime listener, scheduler, collection, rule, index, or Function was added.
+- The responsive owner UI now explains release importance and evidence requirements, shows proof/evidence outcomes, and keeps proof status advisory. Tests never publish content, mutate a release, or approve a deployment.
+- Version-1 cases and retained runs normalize safely; the existing 100-case, 10-run, 25-case run, 10-case full-runtime, five-reservation, and 480 KiB summary limits remain enforced.
+
+## July 16, 2026 - Project Slug Reservation Scale Hardening
+
+- Replaced the project create/rename/duplicate scan of up to 50 arbitrary deleted menus with bounded exact queries for the requested current slug and redirect history. Recently deleted URLs still remain reserved for 90 days, query failures and capped matching sets fail closed, and no new collection, write, rule, or composite index was introduced.
+- Added pure reservation-boundary tests and source-gate assertions. The new lookup avoids billing unrelated deletion tombstones and cannot miss the relevant reservation merely because a store has accumulated more than 50 unrelated deleted projects.
+
+## July 16, 2026 - Outlet Override Reset Concurrency Hardening
+
+- Item and category override resets now use one nested Firestore field deletion with the existing outlet-local version stamp. Each reset removes one unnecessary project read and cannot replace a concurrently changed sibling override with stale map data.
+- Linked-outlet editor saves, OutletPolicy enforcement, public cache/screen refresh, desktop/MobileShell behavior, and billing flows are unchanged.
+
+## July 16, 2026 - Auth Firestore Write Sanitizer Consolidation
+
+- Google first-user creation now uses the repo’s canonical Firestore sanitizer instead of a private recursive copy. SDK values are preserved and cyclic, accessor-backed, unsupported, or unsafe-key payloads fail before the existing deterministic user transaction.
+- Authentication providers, onboarding transactions, Firebase reads/writes, claims, payment recovery, and owner-facing behavior are unchanged.
+
+## July 16, 2026 - Public Sitemap Outlet Fanout Bound
+
+- Tenant sitemap outlet discovery now enforces the existing 30-outlet product cap with one master allowance and one overflow sentinel. Valid sitemap output and read counts are unchanged; malformed legacy tenants stop after 32 store rows and omit outlet entries instead of starting unbounded project-summary fanout.
+- Public menu, OBP, Customer App, pull API, canonical metadata, and customer-facing payload contracts are unchanged.
+
+## July 16, 2026 - External Integrations And POS Webhook Hardening
+
+- POS connection-test and delivery routes now match the protected secret route's fail-closed rate-limit-provider behavior. Provider admission outages return `503` with bounded retry guidance before Firestore or outbound network work. Each admitted test/delivery now reuses its exact canonical store read for current role/lifecycle admission, removing one redundant Firestore permission read without changing writes, transactions, or provider behavior.
+- Added a maintained MenuList integration inventory separating active/configuration-dependent providers, external-consumer APIs, consent-gated analytics, manual handoffs, disabled GBP/direct-posting/owner-WhatsApp paths, and separate Answerlattice/CampaignCue/SignalDesk/MyCodex integrations.
+- Moved POS signing secrets to client-denied `posSyncSecrets` documents behind protected read/ensure/rotate APIs. Existing store-document secrets migrate transactionally during settings read, test, or delivery; client rules block new legacy secret mutation while preserving unrelated store updates during the rollout window.
+- Coupled the current project read and next menu-version claim in one delivery transaction. Completion now requires the same non-secret `secretVersion`, so concurrent older snapshots and rotated connections cannot overwrite newer truth.
+- Moved POS delivery admission from the editor component to both acknowledged shared project-DAL save branches using already-loaded non-secret store config. Description, image, translation, editor, and linked-outlet DAL saves now share one tenant/store/project debounce without adding a Firestore read for disabled stores.
+- Removed unused queue constants/types and rebuilt active POS README/spec/implementation/Firebase/mobile/help/marketing/website/test docs. Current copy states one browser-triggered attempt, app-close/background-write limitations, no retry/gzip/universal vendor/application guarantee, and provider-owned application responsibility.
+- Added `verify:menulist-external-integrations` and a POS secret Firestore emulator suite. Safe release remains ordered: compatible app, Firestore rules, legacy migration verification, then controlled staging/production receiver smoke. Vercel release and live provider evidence remain owner/release pending.
+- Final cross-checks pass MenuList tenant safety, environment-target discovery, agent readiness, public-business-truth, and the focused 1–14 verifier matrix. The shared reseller operation identifier now uses `src/lib/runtime/randomId.ts` instead of a `Math.random()` fallback. The repository-wide aggregate's remaining stop is the separate SignalDesk local-ADC diagnostic gate.
+
+## July 16, 2026 - Custom Domains And Compliance Pages End-To-End Hardening
+
+- Moved custom-domain availability from a browser Firestore uniqueness query to authenticated `GET /api/domain?candidate=` with `DATA_READ`, canonical tenant/store permission and lifecycle admission, reserved product roots, the deterministic claim, and the bounded legacy collision query. POST remains the authoritative claim.
+- Desktop and MobileShell now prefer explicit provider verification booleans over stale local store state, require acknowledged add/remove responses, and show bounded background refresh/cleanup copy when the authoritative mutation committed but a derived effect remains pending.
+- Replaced the generic DNS fallback with one shared provider-response mapper. Apex domains use Vercel's preferred IPv4/A record, subdomains use the project-specific preferred CNAME, verification challenges preserve provider values, and missing guidance shows a retry state instead of invented DNS.
+- Public compliance overrides now use a store-tagged 60-second cache invalidated by owner save/reset. Owner preview verifies canonical tenant/store identity, committed writes return `refreshPending` on invalidation failure, and public rendering keeps its generated fallback on override-read failure.
+- Compliance dates are stable instead of changing on every page load. The refund baseline no longer invents MenuList subscription rules, customer eligibility windows, processing timelines, or non-refundable categories; owner text remains plain, sanitized, and prepended to the retained baseline/platform disclosure.
+- Active compliance, URL-routing, deployment, help, website, marketing, cost, mobile, ADR, source-gate, and strict tracker docs now match runtime truth. Focused source/provider/routing/public/mobile/rules tests, TypeScript, lint, dependency, links, and diff gates pass. No Firebase infrastructure changed; app release, Vercel/DNS/TLS, authenticated browser/device policy smoke, owner/legal review, and production-host evidence remain pending.
+
+## July 16, 2026 - Print, Export And Physical Surfaces End-To-End Hardening
+
+- Native file sharing now uses one browser boundary across Menu Card Export and Menu Kit. Unsupported file sharing downloads instead, an owner-cancelled share stays quiet, and a real share failure no longer becomes a false download success. Successful native shares and successful download fallbacks both retain the existing Menu Kit delivery analytics.
+- Custom-domain availability and provider-management limiters now return retryable `503` responses when their limiter provider is unavailable, before Firestore claim/read or Vercel work. Ordinary quota exhaustion remains `429`.
+- Compliance template dates now fall back to the versioned effective date when a legacy timestamp accessor is malformed instead of failing public policy rendering.
+- Menu Card Export history and legacy quick-PDF freshness markers are tenant/store/project scoped. Equal project IDs in different outlets no longer share device-local history, project-only legacy keys are not read, and browser quota/privacy rejection cannot turn an already delivered file into a failure.
+- Switching stores reloads the selected Menu Card project/history even when the next store uses the same project ID. The older Share-modal freshness warning also clears immediately after a successful current-session download.
+- Remote PDF logo loading and printable PDF.js CDN loading now have five-second bounds. Logo failure preserves branded text/color output, while a stalled PDF.js CDN falls back to the pinned local dependency.
+- Empty or non-Latin-only QR filename labels now receive stable `menu-qr.png` / `menu-feedback-qr.png` fallbacks; existing ASCII filename behavior is unchanged.
+- PDF Surface docs now describe the current compatibility bridge and archive the removed standalone v2.2 renderer contract. Menu Card Export remains canonical. Legacy campaign Physical Surfaces is documented as read-only compatibility for already-populated summary data; current source has no writer for that field, and supported physical identity files remain Menu Kit/Print Menu Surfaces.
+- Focused print/export/QR/public-tool source gates, the browser-boundary test, exact TypeScript, scoped lint, and diff checks pass. No Firestore rule, index, Storage rule, or Cloud Function source changed; app release, authenticated browser/device sharing, visual artifact/print/QR scan review, AI-advisor provider smoke, and production-host evidence remain pending.
+
+## July 16, 2026 - Analytics, Business Health And Owner Assistant Cross-Check
+
+- Exempted `hourlyClicksByItem`, `itemNames`, `searchTerms`, `viewsByContent`, and `zeroResultSearchTerms` from unused automatic single-field indexing. Owner-visible analytics data, public writes, settlement queries, dashboards, Business Health, and Assistant behavior are unchanged; index fanout/storage improves after the pending scoped index deploy.
+- Closed handheld direct-entry permission gaps: MobileShell now requires loaded `VIEW_ANALYTICS` permission before dashboard hashes, direct Business Health mapping, or the Business Health opener can mount analytics screens. The existing shared desktop route guard and API permission checks remain unchanged.
+- Public analytics rejects impossible calendar dates before cached target Firestore reads, while preserving the current/previous store-business-day window and valid coalesced daily write.
+- Owner dashboard mark-done now rechecks the current action and writes/prunes its bounded deterministic receipt inside one Firestore transaction. Concurrent acknowledgements no longer race a stale read/update pair, and re-marking an existing receipt does not evict another receipt.
+- `verify:analytics-write-boundary` now includes an emulator case for missing/stale actions, concurrent acknowledgements, the 20-receipt cap, oldest-first pruning, and repeat-mark sibling preservation.
+- Future provider-backed Business Health answers now fail closed when the AI rate-limit provider is unavailable, and optional SAFE_MODE lookup occurs only after bounded body, selected-store, and permission admission. The current answer client remains deterministic and makes no provider call.
+- Replaced the stale overview-era Owner Dashboard authority with a concise Today-first runtime/cost contract and archived its historical 37-read/WTD/MTD material. Business Health owner help now accurately states that the surface is read-only and cannot prepare drafts or changes.
+- Focused analytics, Owner Dashboard, Business Health, documentation, type, lint, and diff evidence is recorded in the strict feature-flow tracker; release/browser/device/host evidence remains pending.
+
+## July 16, 2026 - Digital Screens End-To-End Hardening
+
+- Browser invalidation now rebuilds `screen.menuProjection` with summary/project reads inside the same Firestore transaction that advances canonical content version and the safe listener mirror. Concurrent menu saves retry instead of pairing stale items with a current version; operation counts and fallback behavior are unchanged.
+- Removed the bearer `screenToken` from the exact public listener mirror and narrowed anonymous Firestore access from broad read semantics to validated exact-document get. A focused rules emulator locks token-free enabled/disabled reads, no public listing, legacy-token denial, tenant-scoped owner writes, and token-reintroduction denial.
+- Added a guarded, dry-run-first mirror backfill and documented the required cutover order: app writers, affected Functions writers, backfill, stored-data verification, then Firestore rules. The tightened rule remains pending so legacy token-bearing mirrors are not disconnected out of order.
+- Expired custom slides are pruned from reads and mutations and no longer hold the three-slide allowance. Shared feature configuration now controls desktop/mobile limits and expiry.
+- Digital Screens owner entry points now consistently honor the feature switch and `canManageDigitalScreens` permission before reading screen state. Mobile matches desktop owner-control tracking, desktop/mobile Menu Manager omit bearer links without permission, malformed link tokens are rejected, and the public route plus liveness endpoint close when the feature is disabled.
+- Connected displays reload on disabled state. Liveness failures return retryable 503 rather than false success, and Highlights keeps its last usable cache while clamping the current slide index after a smaller refresh.
+- README, specification, implementation, Firebase/cost, mobile, help, website, marketing, improvement, owner-action, infrastructure-risk, launch-prerequisite, production-readiness, and source-gate documentation now match code truth. `npm run verify:digital-screens-boundary` passed.
+- App/Functions release, mirror migration, Firestore-rule cutover, authenticated owner/browser smoke, real TV/tablet and reconnect/offline QA, and production-host evidence remain pending owner/release tasks.
+
+## July 16, 2026 - Special Menu Scheduling And Mutation Hardening
+
+- Browser and Admin activation now validate a different `activeSpecialMenuId` against its exact scoped project. A genuinely live active menu still blocks, while missing, malformed, inactive, cancelled, expired, or ended pointer targets are replaced atomically instead of retrying forever. Normal activation adds no operation; only the already-conflicting path adds one exact read.
+- Scheduled activation/expiry now uses `specialMenuNextTransitionAt` on the existing compact project summary. A two-minute task inside `menulistMaintenanceScheduler` queries only due summaries, expires ended windows before activation, and reuses the Admin transaction/cache/screen path. The existing nightly store pass backfills missing markers and remains recovery for legacy/missed work.
+- Client create/edit/manual lifecycle/delete paths and Admin transitions recompute the due marker from fresh summary truth. A past blocked marker remains retryable; terminal menus remove it when no other live schedule remains.
+- Active/scheduled special menus can no longer be generically deactivated or deleted. Generic desktop/mobile reset/active/delete UI is suppressed where it would bypass lifecycle authority, the alternate Mobile Project Selector plus desktop project edit route special metadata through `updateSpecialMenuProject()` instead of partial `_specialMenu` writes, and mobile no longer offers an overlap override that could not honor both selected start times.
+- Cancel repairs an owned active pointer/temp banner when the store is readable while preserving the legacy ability to cancel a project/summary if a partially provisioned store document is unavailable. Desktop create success copy uses the controlled localized name and unexpected failures are observable.
+- Active Special Menu docs now reflect two-minute indexed switching, nightly recovery, overlay-empty versus replace-copy creation, one-time rather than recurring schedules, measured cost language, current live-surface limits, and deployment/QA owner steps.
+- Focused source verification, pure overlay/schedule tests, Firestore rules emulator, Admin lifecycle emulator, Functions TypeScript build/lint/preflight, root TypeScript/lint, shared project-editor/public-truth gates, and documentation links pass locally. The scoped QA deploy passed predeploy lint/build but Cloud Resource Manager rejected project access with HTTP 403 before upload; app release and deployed schedule/public/OBP/screen/expiry smoke also remain pending.
+
+## July 16, 2026 - Staff, Roles And Permissions End-To-End Hardening
+
+- Staff option discovery now applies its 32-row overflow sentinel to active stores rather than every historical tenant store. Deactivated outlets cannot make a valid tenant fail closed; the already-authorized target is merged back only for a legacy row missing `active`, under the same 31-store maximum.
+- Staff mapping admission now supports the existing maximum tenant shape of one master plus 30 outlets instead of rejecting mappings above 25. Master staff-list store discovery is capped at 32 rows and fails closed on overflow, preventing unbounded malformed-tenant reads while preserving valid staff/Auth/role behavior and write counts.
+- Managers with `canManageUsers` can still manage ordinary staff, but shared preflight and transaction-current checks now prevent them from editing, resetting, force-signing-out, deactivating, removing, or remapping an Owner account without `canAssignRoles`. Desktop and MobileShell expose the same Owner rows as read-only.
+- Staff mapping/sign-out mutations commit authoritative session-revocation metadata before best-effort Firebase refresh-token revocation, preventing rejected last-owner or concurrency attempts from signing users out. Default-role repair now recomputes inside the role/access-state transaction and preserves concurrent role edits.
+- Explicitly unverified placeholders no longer enter the private active-assignment projection or count as a remaining Owner. Successful Auth binding activates verified state and the canonical assignment in the same transaction, with emulator coverage for both sides.
+- New staff creation no longer adopts an unrelated pre-existing Firebase Auth email. Platform placeholder verification now creates a new Auth identity, transactionally binds its UID to the exact same Firestore user/mapping, compensates that created UID on failed commit, and requires explicit `existing_user_auth_bound` identity/email/verified acknowledgement before UI success.
+- Password setup email requests now have a bounded 10-second wait. Network/provider failure returns the existing explicit delivery outcome, while a post-commit audit-metadata failure remains observable without turning a successfully created or verified account into a false 500.
+- Access status now rejects inactive/deleted tenant and store truth. Staff/role clients validate nested staff, store, role, permission, mode, and identity envelopes before desktop/mobile state advances; self credential changes remain under Account access.
+- Current roles-permissions, auth handoff, Firebase-cost, mobile, help, website, marketing, verification, audit-tracker, production-readiness, and owner-action docs now match source. Focused scope/taxonomy, route parity, concurrency source/emulator, Staff Prompt, type, lint, dependency, links, and diff gates pass; app release and hosted role/session/Firebase Auth/email/Upstash/device evidence remain pending.
+
+## July 16, 2026 - Guest Feedback And Dormant Reviews Boundary Hardening
+
+- Guest Feedback retention no longer records a successful nightly task when one or more bounded delete batches failed. The existing stable scheduler failure path now exposes the retryable private-data backlog; successful delete behavior, operation counts, owner inboxes, public submission, and dormant Reviews flags are unchanged.
+- Public feedback pages now reuse the canonical public store/tenant eligibility lookup and pass only the allowlisted public store projection to the browser, removing owner contact, role, and internal store fields from the client payload.
+- Current clients send a stable retry ID. The server uses create-only deterministic feedback/event IDs plus a sanitized payload fingerprint, so a lost response can be retried without duplicate records; legacy open forms without the new field retain their prior behavior.
+- Google review-link settings now use one HTTPS Google host/path allowlist in the UI and save path. Lookalike domains, generic short links, HTTP, malformed, and oversized URLs cannot be saved or rendered.
+- Mobile feedback now performs one read per filter change, exposes records after the first 50 through cursor pagination, keeps selected detail status synchronized, and treats reply drafts as manual copy/WhatsApp handoffs with a separate resolve action.
+- The active Guest Feedback docs were rebuilt from source truth. Reviews/Reputation and Reputation Protection remain disabled, unmounted, and incomplete; provider access alone is explicitly insufficient because ingestion, state writers, inbox/posting, and mobile runtime are absent.
+- Dedicated source gates, public-business truth, TypeScript, both feedback/reviews rules emulators, communication-kit boundary, and an Admin-emulator duplicate-retry assertion pass. App release plus authenticated public/desktop/mobile/provider/custom-domain smoke remain pending owner/release work.
+
+## July 16, 2026 - Owner Notifications And Messaging Onboarding Hardening
+
+- Messaging onboarding now checks its hourly health-control lease only during the first four UTC minutes instead of every two-minute intake run, reducing the enabled idle control path from about 720 reads/day to at most 48. Pending preview, publish-confirmation, and fix retries also return sent/error counts so scheduler activity and health cannot hide provider query/send failures. No collection, index, task, or provider call was added.
+- Removed the desktop header's fabricated order notification rows and unread badge. MenuList continues to deliver real account-critical lifecycle notices through email/consented WhatsApp, while detailed recovery stays on the platform-only monitor.
+- Added a mirrored 128KB full-event boundary and current WhatsApp consent precedence to app and Functions owner-notification paths. Revoked/denied/inactive/withdrawn status now overrides old consent booleans before provider work.
+- SMTP and WhatsApp calls now have bounded waits; authenticated WhatsApp lookup/download/send requests refuse redirects; provider message IDs are normalized and capped. Repeated publish-verification failures dedupe to one store/UTC-day notification reference.
+- Reconciled the separate messaging-onboarding tunnel from signed webhook through durable intake, media/extraction, preview/fix/approve, publish/claim, outbound delivery, expiry/cleanup, and platform monitoring. Checked-in provider targets remain disabled.
+- Focused owner tests, delivery-claim emulator, monitor boundaries, the complete extraction/messaging suite, TypeScript, Functions build/lint, scoped lint, and dependency freeze pass. App/Functions release, owned SMTP/Meta setup, live provider/browser/device/public-cache/account-claim smoke, and production-host evidence remain pending.
+
+## July 16, 2026 - Global Media And Storage Lifecycle Hardening
+
+- Profile-aware owner images now upload only the selected variant persisted by current single-URL Firestore fields. Named preparation variants remain available locally, but 1-3 unused sibling Storage writes per image are removed until a real persisted multi-variant consumer exists. Public URLs, previews, immutable retry behavior, and Firestore operation counts are unchanged.
+- Deterministic Admin SDK media uploads now use create-only generation preconditions. Batch generation and prompt-cache destination retries verify existing size, cache policy, content type, and checksummed identity metadata, then reuse the existing Firebase download token instead of overwriting bytes or invalidating a persisted URL.
+- Batch review no longer deletes generated public media from browser-only selection state. Discard/cancel copy now promises only that images will not be added and that the current menu remains unchanged.
+- Image-batch retention remains bounded for Firestore metadata, pruning heavy result payloads after seven days and terminal job rows after 30 days, but physical `media/menuItem/...` deletion is disabled until global cross-project/outlet exclusive-reference proof exists. This supersedes the July 14 current-project-only cleanup claim below.
+- Prepared-media Storage rules now reject GIF bypass writes while preserving static JPEG/PNG/WebP and create-once behavior. The PWA rule comment now names the active scoped `stores/pwa-icons/...` path rather than the retired legacy proposal.
+- Shared media, raw project uploads, OBP, PWA icons, screen slide media, generated/prompt-cache images, public/menu-link intake artifacts, messaging upload boundaries, cleanup results, rules, lifecycle config, and owner/external tasks were cross-checked end to end. Focused source tests and Storage emulation pass; app release, QA Storage-rule deployment, scoped scheduler deployment, authenticated browser/device/public smoke, and bucket inventory remain pending.
+
+## July 16, 2026 - Public Customer Delivery End-To-End Hardening
+
+- Unknown supplied project slugs now reach the existing menu-not-available recovery ladder instead of silently rendering the default or first active menu. `/menu` keeps owner-claimed Layer 1 behavior and explicit-default Layer 2 behavior; no-default `/menu` fails safely.
+- The customer menu no longer serializes the full canonical store document. Explicit project/store browser DTOs remove credentials, roles, billing/licence and owner-contact state, POS/integration secrets, extraction/source-upload metadata, owner ranking/quality workflow fields, inactive content, and future unknown fields by default while retaining required public render data.
+- OBP menu CTA summaries, tenant sitemap rows, Customer App start-url admission, and MenuList pull API selection now validate immutable project tenant/store scope. Sitemap store resolution reuses the page's canonical lifecycle helper, refuses previous-host sitemap output, uses publish-compatible per-store cache tags, and resolves the bounded outlet summaries in parallel.
+- Client-menu, routing doctrine, OBP, Customer App, pull-API, Firebase-cost, audit tracker, production-readiness, and owner-action docs now reflect code truth. Focused public delivery, routing, PWA, OBP, pull-API, public-truth, summary, TypeScript, and lint gates pass; approved app release and hosted route/SEO/PWA/API/browser-payload/device smoke remain pending.
+
+## July 16, 2026 - Authentication And Onboarding End-To-End Hardening
+
+- Public phone OTP send/verify and messaging claim preview/mutation now fail closed when the shared limiter provider is unavailable. They return fixed 503 owner copy before paid WhatsApp, claim lookup/mutation, Firebase Auth, challenge verification, or token side effects; normal exhausted limits remain 429.
+- Google claim return now has a synchronous in-flight guard, preventing session rerenders from starting Firebase sync or redirecting before ownership transfer completes.
+- Firebase custom-claim minting no longer promotes a missing store role to owner. Normal users with missing/malformed roles or a forged `PLATFORM` store role fail closed; legitimate platform/support actors use a least-privileged `staff` store-role fallback while separate account-level claims retain platform authority.
+- Returning-owner Pricing, desktop Billing, and Mobile Billing identify pending onboarding payment and expose recovery only after the stored checkout URL passes the shared Razorpay HTTPS host allowlist. Pricing falls back to Billing when no safe URL exists; Billing does not open an invalid stored URL.
+- Provider-success/local-write ambiguity now re-reads the exact subscription and requires matching provider, user, tenant, store, and plan identity before suppressing cancellation or tenant/store compensation. Webhook-advanced status remains valid. Claim cache invalidation and claim-mirror failure remain observable post-commit recovery work rather than false ownership-transfer failures.
+- The pure store-scope document-ID normalizer is separated from Firebase Admin permission enforcement, so role/workspace boundary tests no longer require local ADC while server imports and valid runtime behavior remain unchanged.
+- Current auth/onboarding, phone OTP, mobile, Firebase-cost, historical-guide, audit-tracker, owner-action, and production-readiness documentation now matches source. Vercel release, live OAuth/WhatsApp/Razorpay/Firebase-claims evidence, mobile browser QA, and production-host smoke remain pending owner/release tasks.
+
+## July 16, 2026 - Multi-Location Authority And Lifecycle Hardening
+
+- Outlet creation now rechecks the current master, tenant, caller membership/permission, active-store cap, billing capacity, and bounded master-project replication inside the transaction that commits the new outlet. It refuses deleted, linked, or local-only master projects and keeps replication under the Firestore write ceiling.
+- Rename, policy, deactivation, linked-outlet save/AI policy, brand propagation, project resolution, and public rendering now use current canonical tenant/store membership and fail closed for inactive, deleted, blocked, cross-tenant, or stale-scope state. Post-commit public refresh remains isolated from the already-committed owner mutation.
+- A failed or unsupported Razorpay quantity reduction after deactivation is returned truthfully as pending with `CONTACT_SUPPORT`; retrying deactivation can reattempt provider/local reconciliation without redoing the store-state mutation. Manual/offline prepaid capacity remains unchanged by design.
+- Desktop and MobileShell Locations avoid switching to the already-active store, refresh HQ auth claims before clearing outlet context, and identify the current row from the real active context. Owner copy distinguishes successful deactivation from unresolved billing follow-up.
+- Historical onboarding blueprints were archived and replaced with concise code-truth contracts. Multi-location implementation, Firebase-cost, mobile, test, verification, help, owner-action, hub, and source-gate documentation now matches current behavior. Vercel release, authenticated hosted QA, Razorpay sandbox evidence, and deployed public/cache/device smoke remain pending owner/release actions.
+
+## July 16, 2026 - Project Publish And Public Cache Flow Hardening
+
+- Desktop and Mobile Design publish now pass the loaded project `modifiedOn` into `publishProject()`. Standalone publish rechecks that snapshot in its Firestore transaction, and linked-outlet publish forwards the same millisecond precondition to `/api/projects/outlet-save`, preventing an older design screen from overwriting newer menu truth.
+- Fire-and-forget post-publish verification remains owner-non-blocking, but unexpected promise rejection is now observed through bounded desktop/mobile diagnostics instead of becoming unhandled.
+- Functions public-cache refresh now returns separate cache and Digital Screen acknowledgements; missing cache configuration no longer prevents an explicitly requested initialized-screen version touch.
+- Scheduled special-menu `repaired` outcomes now refresh public cache and connected screens. The platform `forceRepublish` recovery path now requires an acknowledged public-cache refresh before public URL verification and fails closed with fixed temporary-unavailable copy otherwise.
+- Project-management, mobile, menu-health, incident-response, Ops, Digital Screens, special-menu, Firebase-cost, source-gate, and changelog documentation was reconciled to current code. Focused source gates plus Functions build/lint passed; deployment and hosted owner/public smoke remain release actions.
+
+## July 16, 2026 - AI Menu Manager Pending Recovery And Payload Guard
+
+- Unfinished selected-menu cards can now survive a UTC date rollover through one authenticated, exact-scope, indexed latest-pending lookup. Desktop and MobileShell continue the recovered session until its pending work is resolved; client collection listing remains denied and no active-inbox collection or scheduler was added.
+- Compact-session writes now derive bounded pending lookup metadata and enforce a conservative 700 KB application payload budget. Expendable artifact references, older receipts, and oldest messages are trimmed first; pending cards are never silently dropped.
+- Recovered session and server-backed proposal identity are validated against the actual recovered session, closing two cross-day filtering defects found by the Admin emulator cross-check.
+- Source, integrity, Admin emulator, and authenticated Firestore-rules coverage now locks rollover recovery, metadata coherence, proposal filtering, completion clearing the pending marker, and oversized-session failure behavior.
+- The Firebase compound index/rules deployment, Next.js release, and authenticated hosted owner smoke remain pending release actions; shared dirty Firebase targets were not deployed blindly.
+
+## July 15, 2026 - AI Menu Manager End-To-End Hardening
+
+- Desktop, MobileShell, standard-project, and linked-outlet approvals now carry the prepared project modification version into the existing fresh-read save transaction. A concurrent menu edit rejects the AMM save before customer-facing truth changes, without adding a Firestore operation or changing non-AMM saves.
+- Compound approval now rejects incomplete, duplicate, or mixed session/tenant/store/project groups before building or saving a patched project.
+- Browser and Admin Firestore timestamp shapes share one canonical AMM project-version boundary, and server-backed fallback mutations preserve all compact deterministic/planner/compound/clarification counters.
+- Native Firestore TTL is declared for the existing 35-day compact-session and 45-day server-backed proposal expiries. The shared index target remains pending safe authorized deployment because the worktree contains other index changes.
+- Help, implementation, Firebase-cost, mobile, validation, test, technical-flow, specification, website, checklist, and hub documentation now reflects the live approval labels, stale-write protection, group admission, planner ordering, retention, and launch-evidence boundary.
+
+## July 15, 2026 - Image Extraction End-To-End Hardening
+
+- Cross-checked desktop owner upload, mobile owner upload, authenticated menu-link import, public create-menu image/link intake, messaging onboarding, the shared durable job/worker, review/apply/discard, linked outlets, owner Transactions, cleanup/retention, monitoring, Firestore/Storage boundaries, and active documentation against codebase truth.
+- The owner job API now rejects zero-byte or duplicate-identity file declarations and any action other than the fixed `image_processing` action. Retry loading reuses the same bounded file schema so malformed historical jobs cannot spawn replacement work. Business type/category context is canonicalized through the maintained registry, with persisted project identity preferred, before it can affect dedupe or extraction prompts.
+- The pre-AI project-size gate now reserves 100KB for one file and caps larger-batch headroom at 200KB. This keeps the supported 15-file/page intake usable for normal projects while preserving the worker transaction's actual 900KB merged-document save guard and the existing reset/create-new recovery policy.
+- Source verification now locks these boundaries and exercises both a valid maximum batch and a large-project rejection. App-route deployment, authenticated browser/device QA, provider smoke, and production-host certification remain pending owner/release work; no Firebase rule, index, Storage rule, or Cloud Function behavior changed in this checkpoint.
+- The scalability contract now reflects the live 100-row recovery-query caps, 500-row terminal cleanup, five-instance extraction worker cap, two-query platform monitor, seven-day terminal retention, compact accounting, and 700KB/900KB project-document guards instead of stale unbounded-query and hardcoded vendor-price projections.
+- Project reset intentionally does not delete uploaded source objects because duplicated and projected projects can share their URLs. Active-prefix cleanup remains evidence-triggered and must prove global cross-project/outlet reference safety with a grace period and bounded work in the existing maintenance scheduler; no destructive cleanup or second queue was added.
+
+## July 15, 2026 - Multi-Language Translation End-To-End Hardening
+
+- English is now enforced as the immutable translation source across desktop, mobile, extraction normalization, repair, retries, and linked-outlet governance, while `defaultLanguage` remains the owner/customer display preference.
+- Array-of-one translation requests retain the batch response contract; route validation now accepts only known menu, project-public, and business-copy keys, requires catalog-matched language code/name pairs, caps batches at five targets, permits project-less store business-copy requests, and requires a real project ID for menu or project-public work.
+- Desktop language additions process every new language across every eligible file, preserve completed paid work on cancellation or later failure, use truthful partial-status copy, and stop reporting provider failures as success. Special-menu requests now use real base-project context.
+- Mobile add/repair flows enforce permission and the six-language cap, exclude inherited linked-outlet entities, preserve the display default, and await project persistence before success. Multi-file/multi-language failures retain the last completed paid snapshot without saving failed-file clearing. Item/category refresh controls now respect canonical source and outlet authority.
+- Owner Transactions now present item translations plus compact source/target language summaries without implying that generated text is retained in history.
+- Translation consumers now reject impossible coverage totals and incomplete batch language/key maps before editor or Business Copy merge, while valid response shapes and existing billing behavior remain unchanged.
+- Active feature, mobile, test, billing, website, marketing, help, Firebase, verification, locale, and localization-contract documentation now reflects the live 80-language registry, five RTL languages, six-language project cap, request-level charging, and pending real-provider/browser certification.
+
+## July 15, 2026 - SignalDesk Content Source Integrity
+
+- Content-source mutations now require an actor-bound operation key and settle the current content pause, immutable URL/type provenance, optional founder-approved market pod, source row, claim, timeline, audit, and cost truth in one transaction.
+- Dedicated HTTP(S) canonicalization preserves case-sensitive path/query identity while reusing matching legacy IDs; malformed persisted rows fail closed with bounded diagnostics.
+- Default seeding is create-only, pause-aware, founder-review gated, and no longer resets source lifecycle fields. The owner workspace now has explicit new/edit modes, stable retry identity, approved-pod selection, and separate source selection for assets.
+- Selected-source assets derive and transactionally enforce source URL, type, audience, and market-pod truth. Content action business conflicts now remain bounded API errors instead of generic 500 responses.
+
+## July 15, 2026 - SignalDesk Content Asset Integrity
+
+- Content-asset mutations now require an actor-bound operation key and validate the current content pause, selected source, proof permission and proof target, CTA, and founder-approved market pod inside the transaction that writes asset, source recency, claim, timeline, audit, and cost truth.
+- Concurrent retries converge, changed-input key reuse fails closed, inactive or mismatched sources and inactive or missing controls are rejected, and the action API no longer masks DTO drift with `any`.
+
+## July 15, 2026 - SignalDesk Proof Permission Integrity
+
+- Proof-permission mutations now require an actor-bound operation key and validate the current target plus immutable permission ownership inside the transaction that writes permission, claim, audit, and cost truth.
+- Concurrent retries converge, changed-input key reuse and cross-target permission reuse fail closed, and the action API no longer masks DTO drift with `any`.
+
+## July 15, 2026 - SignalDesk Content Draft Generation Integrity
+
+- Content draft generation now requires an actor-bound operation key and validates the current content pause, asset, proof permission, and CTA inside the transaction that writes drafts, claim, queue, timeline, audit, and cost truth.
+- Concurrent retries converge without duplicate review backlog or accounting effects; changed-input key reuse fails closed and the action API no longer uses `any`.
+
+## July 15, 2026 - SignalDesk Content Review Integrity
+
+- Content-draft review now requires an actor-bound operation key and validates the current content pause and draft inside the transaction that writes review, claim, timeline, audit, and cost truth.
+- Concurrent retries converge, changed-input key reuse fails closed, and the action API uses an explicit validated DTO instead of `any`.
+
+## July 15, 2026 - SignalDesk Content Scheduling Integrity
+
+- Content-draft scheduling now requires an actor-bound operation key and validates the current content pause plus current draft approval in the same transaction that writes calendar, draft, claim, timeline, audit, and cost truth.
+- Concurrent retries converge, changed-input key reuse fails closed, and the action API uses an explicit validated DTO instead of `any`.
+
+## July 15, 2026 - SignalDesk Enrichment Waterfall Integrity
+
+- Enrichment-waterfall runs now require an actor-bound operation key and validate the current provider pause, target/prior-contact state, waterfall, source policy, and provider budgets inside one transaction.
+- Concurrent and exact retries converge on one result/vendor/audit/cost effect set; changed-input key reuse fails closed. The action API now passes an explicit typed DTO instead of masking schema drift with `any`.
+
+## July 15, 2026 - SignalDesk Content Performance Integrity
+
+- Content-performance observations now require an actor-bound operation key and validate the current asset, optional draft, channel coupling, and content-distribution pause inside one transaction.
+- Concurrent retries converge without duplicate analytics, demand, audit, control, or cost effects. Independent owner-signal observations increment the daily demand summary instead of overwriting earlier evidence.
+
+## July 15, 2026 - SignalDesk Trust Partner Metrics Integrity
+
+- Trust-partner metric observations now require an actor-bound operation key and validate any deliverable against the current partner inside one transaction.
+- Concurrent retries converge without duplicate renewal evidence, audit, control, or cost effects. Daily demand summaries now increment independent observations instead of overwriting earlier outcomes.
+
+## July 15, 2026 - SignalDesk Channel Window Authority
+
+- Social channel-window updates now require an actor-bound retry key and validate target existence inside the same transaction that writes window, channel-health, claim, timeline, audit, and cost truth.
+- Exact/concurrent retries return the durable window without repeated effects; changed-input reuse and nonexistent target IDs fail closed.
+
+## July 15, 2026 - SignalDesk Demand Signal Integrity
+
+- Manual demand capture now requires an actor-bound operation key and settles the event, aggregate, claim, audit, control count, and cost in one transaction.
+- Target-scoped signals verify the current target and derive its canonical name server-side. Concurrent retries converge; changed-input reuse and unknown targets fail closed.
+
+## July 15, 2026 - Description Generation End-To-End Hardening
+
+- Mobile bulk, single-item, and Repair Menu capacity refusals now show enhancement-pack/Billing guidance instead of incorrectly calling description work a translation-credit failure; translation-only retries retain their existing message.
+- Desktop/mobile bulk, Command Center/Repair Menu, and single-item description paths now share the correct empty-source free first-pass versus existing-copy paid rewrite boundary. Existing single-item copy uses `REWRITE_DESCRIPTION`; item-level manual text in any language remains protected.
+- The free new-item metadata route now rejects direct requests carrying existing source copy, closing the server-side bypass around paid description rewrites.
+- First-description metadata prompts now sanitize instruction-like owner text and use request-local item/attribute aliases restored before strict output projection.
+- Incomplete provider item/language output now fails before accounting and persistence. Large or multilingual files process sequentially within 100-item, approximately 180 KiB item-payload, and 300 item-language output-cell caps; a failed file/batch can no longer end in a partial project save or success toast.
+- Stored item text is bounded to the route schema before byte-aware batching, avoiding validation failures from oversized imported text without changing saved project content.
+- Single-item rewrites now reuse that same bounded payload, and first-item metadata sends the localized category name instead of its opaque ID. The first-description prompt is generate-only and restricted to explicit factual context.
+- Project item IDs are now replaced with stable request-local aliases at the provider boundary and restored before accounting/client response, preventing valid imported IDs from being truncated or changed by prompt sanitization.
+- Browser batch accumulation now treats imported item IDs as own data keys, including prototype-like names. Linked-outlet mobile Save compares the full multilingual description map, so target-language updates are not discarded when source wording is unchanged.
+- Mobile refresh now requires confirmation, and desktop/mobile bulk plus single-item confirmations show the exact current refresh credit count from the shared cost and batching rules. Mobile draft provenance is preserved, freshly generated translations survive Save, and direct controls plus Command Center/Repair Menu respect the effective description permission and outlet policy.
+- Owner Transactions retain prepared/revised counts and exact credit state while explaining that history stores counts rather than generated text and that the saved menu is authoritative.
+- Multi-request paid refreshes now send their complete request count on the first request for server-side capacity admission, preventing an already-underfunded scope from consuming an early batch before a later capacity refusal. Per-request reservation, settlement, refund, single-request behavior, and old-client compatibility remain unchanged.
+- Focused orchestration coverage now verifies first-request-only admission metadata, later-batch failure with no local success publication, and provider success followed by project-save failure.
+- The shared frontend `AICapacityError` now restores its prototype under the repository's ES5 target, so description and other AI clients reliably preserve the existing 402 Billing guidance instead of converting it to a generic provider failure.
+- Active description-generation spec, implementation, Firebase/cost, mobile, help, website, marketing, validation, tests, verification, and audit docs were rebuilt from current code; replaced historical documents remain under `_archive/`.
+
+## July 15, 2026 - SignalDesk Outcome Event Idempotency
+
+- Every manual, demand-signal, and signed route-token outcome now requires a bounded operation key; non-activation outcomes no longer bypass the existing transactional claim.
+- The owner workspace retains one UUID for an unchanged failed submission. Concurrent or exact retries settle one event/summary/target/attribution/audit/cost write set, while changed-input key reuse conflicts.
+
+## July 15, 2026 - SignalDesk Transactional Route Token Issuance
+
+- Outcome-route token creation now reads the MenuList bridge pause, target suppression and route pointers, source-policy authority, and interested-conversation qualification inside the same transaction that creates the token, audit, and cost truth.
+- A concurrent pause, suppression, policy revocation/expiry, or conversation-state change now causes transaction retry and fail-closed admission instead of leaving an active token authorized from stale pre-read state.
+
+## July 15, 2026 - SignalDesk Reply Capture Idempotency
+
+- Manual inbound reply capture now requires an actor-bound retry key and commits the message, classification, conversation, target, suppression, incident/pause, queue, audit, cost, and claim in one transaction.
+- Concurrent/exact retries return one durable event; changed-input key reuse conflicts. Target lifecycle is read inside settlement, so a reply cannot downgrade a concurrently or previously converted target.
+
+## July 15, 2026 - SignalDesk Transactional Assisted Handoffs
+
+- Assisted email, WhatsApp, Instagram, and Messenger handoff preparation now validates current approval/draft/target coupling, policy, pauses, suppression, prior contact, recipient, sender or channel-window authority inside one transaction.
+- One deterministic approval/channel export makes concurrent and exact retries converge without duplicate conversation, lifecycle, audit, or cost effects. Replay returns the durable export identity with recipient data redacted.
+
+## July 15, 2026 - SignalDesk Sequencer Handoff And Send Claims
+
+- Sequencer handoff creation now validates the current approval, draft, target, policy, pauses, prior contact, provider account, sender, and recipient inside one transaction. Concurrent exact requests converge without repeated audit, timeline, step, queue, or cost effects; changed sender requests conflict with durable handoff truth.
+- Owned-email sequence steps now reserve one deterministic handoff claim and export before SMTP execution, so concurrent scheduler/operator calls cannot deliver the same step twice.
+- Send admission revalidates the queued approval, draft, target, step, source rights, pauses, suppression, prior contact, provider account, sender domain, recipient, and provider readiness transactionally. Ambiguous provider or persistence outcomes require review and are never retried automatically.
+
+## July 15, 2026 - SignalDesk Provider Send Claims
+
+- Actual email/social delivery now requires one deterministic approval/channel claim created in the same transaction that validates approval, draft, target, policy, pauses, suppression, sender/window, recipient, and prior-contact authority.
+- Concurrent sends execute the provider once. Completed retries return durable delivery truth; ambiguous provider or final-persistence failures become review-required `unresolved` claims and never automatically call the provider again.
+
+## July 15, 2026 - Image Generation Bounded Scale Hardening
+
+- Batch retention now sorts active stores and rotates a deterministic daily page of at most 200, so stores beyond the first page receive cleanup without another cursor document or owner-flow change.
+- Prompt-cache cleanup remains capped at 25 rows per pass but runs hourly, processes oldest expiries first, and records whether another expired row remains. Immutable source and transaction-current deletion protection are unchanged.
+- A transient private prompt-cache source deletion failure now retains its Firestore row so the next hourly pass can retry instead of losing the only cleanup pointer.
+- Batch admission now creates at most eight Cloud Tasks concurrently through the existing bounded-concurrency helper. Deterministic task identity, partial-enqueue handling, worker behavior, AI accounting, accepted-image persistence, and owner copy are unchanged.
+- Queue dispatch/retry/backoff certification remains part of the existing owner-pending Gate 7 task; no unverified target quota values were hardcoded.
+- The scoped `menulist-qa` scheduler deploy passed predeploy lint/build and then stopped before upload at Cloud Resource Manager HTTP 403, so the existing owner IAM/deploy action remains pending and no target runtime changed.
+
+## July 14, 2026 - Image Generation End-To-End Admission And Retention
+
+- The image-generation master flag now gates single generation, editing, batch admission/authenticated workers, project and business covers, desktop/mobile owner controls, and AI Menu Manager image actions. Existing batch results remain recoverable while new worker work is retryably paused.
+- Every batch selection path now enforces the shared 50-item limit before job creation. Mobile **Generate image** opens generation, fixed duration promises are removed, credit copy uses the shared rate, and batch settings use Lucide icons with plain **Recommended Defaults** wording.
+- Terminal generated URLs now pass through bounded, fail-closed current-project reference protection before orphan deletion, allowing interrupted browser cleanup to converge without deleting accepted images.
+- Root TypeScript, scoped lint, Functions build/preflight, AI accounting/image boundary and AI Menu Manager suites, Firestore batch rules/concurrency emulators, Storage lifecycle/rules, project persistence/cache, public-business truth, media, docs links, and dependency-freeze gates pass. The broad auth matrix remains blocked by an unrelated existing `Math.random()` use in `resellerDiagnostics.ts`. The scoped QA scheduler deploy passed predeploy lint/build but stopped before upload at Cloud Resource Manager HTTP 403, and the current workspace app env files do not define the batch worker secret; target app deployment, IAM/scheduler deployment, complete Cloud Tasks config, provider smoke, authenticated owner/browser/mobile QA, and public-render smoke remain pending.
+
+## July 14, 2026 - SignalDesk Transactional Export Preparation
+
+- Export-only email preparation now reads approval/draft/target coupling, source rights, pauses, sender readiness, suppression, contactability, and prior-contact state in one transaction before writing export/conversation/lifecycle/audit/cost truth.
+- One deterministic export ID per approval makes concurrent or lost-response retries return the existing prepared export without duplicated state or accounting.
+
+## July 14, 2026 - SignalDesk Approval Packet Refresh Integrity
+
+- Owner-triggered packet refresh now reads approval, target, draft, evidence, CTA, sender, policy, and prior-contact state in one transaction and preserves the approval's existing packet identity across concurrent terminal decisions.
+- Exact refreshes return existing packet truth without another audit/timeline/cost write. The API and server require exactly one approval or target selector.
+
+## July 14, 2026 - SignalDesk Approval Settlement Integrity
+
+- Approval now revalidates the current target, source policy, prior-contact state, draft, and approval packet inside the same transaction that settles the human decision. Policy expiry/revocation or target suppression can no longer race a stale approval.
+- Approval requires the pending draft and packet to agree on approval, target, and evidence identity, and requires the target to still identify that pair as its latest review unit. Missing, mismatched, or superseded drafts remain pending and cannot advance to export.
+
+## July 14, 2026 - Razorpay Checkout Concurrency And Bounded Reconciliation
+
+- Existing-user subscription and enhancement-pack order creation now use server-only actor/request-bound leases. Subscription attempts are recoverable through exact provider notes; top-up attempts add a unique Razorpay receipt and recover by that receipt before another provider create.
+- Successful checkout persistence now retains a two-minute exact-provider replay checkpoint instead of immediately deleting coordination state. This closes the post-commit reacquire race for requests that already passed their initial pending-state read while preserving deliberate later top-up purchases.
+- Inherited-outlet top-up orders now carry the resolved HQ billing store for compact payment audits, keeping the shared-balance purchase visible in the desktop/mobile billing history that reads the effective subscription store.
+- Provider-plan lookup now uses a leased Firestore registry in front of the existing complete bounded Razorpay scan, preventing concurrent first-use callers from creating duplicate plans.
+- Subscription diagnostic status history retains the latest 100 entries. The payment-id idempotency ledger is unchanged.
+- The consolidated subscription reconciler now runs five provider calls at a time, checkpoints complete 100-row pages, resumes under a six-minute budget, and caps detailed result samples. A daily compact billing-health summary reports stale checkout/provider/webhook state, uses the existing cooldown-aware platform alert path, and prunes at most 200 terminal/stale-processing webhook claims after 90 days.
+- Billing-health expiry queries are now status-scoped through exact checkout and webhook composite indexes; terminal webhook completion removes its processing expiry, preventing normal completed records from masking or falsely inflating recovery alerts at scale.
+- Browser payloads, owner desktop/mobile surfaces, pricing, settlement, entitlement, onboarding, and provider choice are unchanged. Firebase rules/scheduler deployment, Vercel app deployment, and disposable test-mode mutation smoke remain owner-pending external work.
+
+## July 14, 2026 - SignalDesk Transactional Draft Creation
+
+- Draft creation now transactionally revalidates current target, source policy, template, selected evidence, CTA, sender-domain state, and prior-contact conversation before it writes draft, approval packet, target projection, queue counters, audit, timeline, or cost truth.
+- Draft, approval, and packet IDs are content-addressed by the rendered message and authority-bearing inputs. Concurrent or retried identical requests return the same records and increment approval/human-review queues only once.
+
+## July 14, 2026 - SignalDesk Transactional Evidence Packets
+
+- Evidence packet creation now reads target and source-policy authority inside one transaction before writing detailed/summary packets, target next action, audit, and daily cost.
+- Packet identity includes the exact target evidence facts and policy-derived allowed-use set. Concurrent or retried identical requests converge on one packet, while changed personalization rights create distinct evidence truth.
+
+## July 14, 2026 - SignalDesk Transactional Target Scoring
+
+- Rules-only target scoring now reads the target and its source policy inside one Firestore transaction before writing score, decision snapshot, operation ledger, target projection, audit, and cost truth. Policy expiry/blocking or target suppression changes can no longer race a stale scoring batch.
+- Scoring operations are content-addressed by the exact scoring facts and rules version. Concurrent or retried identical scoring converges on one score/snapshot/ledger/cost set instead of duplicating internal operations.
+
+## July 14, 2026 - Razorpay And Subscription Lifecycle Recovery
+
+- Self-serve and Answerlattice subscription creation now prevent duplicate current/pending provider checkouts, compensate provider-created/local-persistence failures, and finalize marked upgrade/UPI quantity replacements from either browser verification or signed webhook recovery. Manual reseller subscriptions are excluded from every Razorpay self-service mutation.
+- Enhancement-pack `order.paid` webhooks now settle the immutable pending order against the transaction-current subscription exactly once when the browser callback is lost. Webhook product/scope recovery keeps MenuList and Answerlattice billing, alerts, and notifications separated.
+- Desktop/mobile recurring controls now require the directly billed signed-in store. Switched-store and inherited-outlet billing remain visible but read-only for recurring actions; inherited outlets can still add packs to the shared HQ balance.
+- Manual reseller renewal/add-location operations use a retained UUID and one Firestore transaction for subscription, immutable operation result, and revenue counters, preventing duplicate capacity or revenue after response loss. The leased subscription reconciler also repairs missed provider quantity updates.
+- Root TypeScript, scoped ESLint, Functions lint/build/preflight, billing settlement/checkout/onboarding/reseller/multi-location, tenant-safety, pricing-integrity, and dependency-freeze gates passed. The scoped QA scheduler deploy completed predeploy lint/build but stopped before upload with Cloud Resource Manager HTTP 403 for the current caller; no Vercel deploy or live Razorpay charge was run.
+
+## July 14, 2026 - SignalDesk Research Run Identity Isolation
+
+- Research run IDs now derive from the founder actor and required idempotency-key hash instead of prompt facts plus wall-clock milliseconds. Independent keys cannot collide into one run/row namespace even when identical requests begin in the same millisecond.
+- Existing exact keys remain backward-compatible because replay follows the entity ID already stored in the idempotency claim. Local E2E proves identical research input under two independent keys produces distinct run and row identities.
+
+## July 14, 2026 - SignalDesk Research Founder-Authority Serialization
+
+- Research Agent final rows/run/pod/timeline/audit/cost settlement now reads and updates the market pod inside one Firestore transaction. A founder approval, hold, or rejection committed during provider work can no longer be overwritten by a stale pre-batch pod snapshot.
+- Local E2E proves an approved pod remains active and keeps its founder review identity through a later research completion; source verification pins the transaction-local pod read.
+
+## July 14, 2026 - SignalDesk Research Replay Truth And Reachable Idempotency
+
+- Research Agent exact replays now return the durable run status instead of replacing it with a response-only `duplicate` status. Replay identity remains represented by the separate `duplicate` response flag.
+- Research Agent requests now require a bounded idempotency key at both API and server boundaries. The private browser retains one key for unchanged prompt/provider/type/policy/result-cap input after failure and clears it only after a successful response, so the atomic claim is reachable from the actual owner UI.
+
+## July 14, 2026 - SignalDesk Research Completion Acknowledgement Recovery
+
+- Research Agent completion errors now re-read the durable run and bounded rows before writing blocked compensation. If the final batch committed before acknowledgement loss, completed truth is returned and cannot be overwritten as blocked.
+- Local E2E injects an exception only after the matching research run becomes durably completed and proves the stored run and returned rows remain completed.
+
+## July 14, 2026 - SignalDesk AI Assist Unresolved-State Audit
+
+- Standalone and AI Volume child assists now settle provider/critic/escalation or unconfirmed persistence failures as exact claim-owned `unresolved` truth with one non-sensitive audit event. Exact retries become review-required without repeating ambiguous model work.
+- A lost final transaction acknowledgement probes the completed claim and deterministic worker before returning failure. Reserved spend remains conservative when provider billing may have occurred.
+
+## July 14, 2026 - SignalDesk Source Provider Unresolved-State Audit
+
+- External provider or pre-commit import failures now transition the exact owned claim from `in_progress` to `unresolved`, store only a stable non-sensitive failure code, and emit one audit event. Exact retries fail as review-required without repeating ambiguous external work.
+- Reserved spend remains conservative because the external provider billing outcome may be unknown. Local E2E proves the failed request is not repeated and the claim/audit state is stable.
+
+## July 14, 2026 - SignalDesk Optional AI Budget Shape Preservation
+
+- AI final spend always increments the approved provider-account ledger, but updates a provider-budget policy only when that optional policy exists at finalization. A missing optional policy can no longer be synthesized as a malformed spend-only document.
+- Local E2E deletes the Gemini policy, completes an assist, proves account spend remains exact, and proves the policy stays absent.
+
+## July 14, 2026 - SignalDesk Atomic Provider Import Completion
+
+- Source-provider target/source writes, provider health, deterministic vendor truth, provider-record retention, claim completion, timeline, audit, and cost truth now commit in one Firestore batch after the external result. A lost commit acknowledgement probes the exact completed claim and replays durable truth instead of reporting a false failure or repeating the provider.
+- Provider retention now follows an aligned row-to-target projection, so duplicate provider rows can converge on one target without dropping or shifting their separate provider-record provenance. Local E2E injects post-commit acknowledgement loss and verifies two duplicate FHRS records remain attached to the correct target.
+
+## July 14, 2026 - MenuList AI Accounting And Owner History Alignment
+
+- Paid AI reservations now keep the selected outlet as the operation/history scope while persisting the effective HQ billing store for inherited subscriptions. Settlement, refund, stale recovery, and frontend balance sync use that exact scope, preventing outlet charges or late responses from mutating the wrong subscription.
+- Successful/partial authenticated project extraction now atomically mirrors a compact no-credit activity into owner Transactions while retaining the detailed platform audit. Admission requires an exact owner ID plus authenticated owner-upload/menu-link source; public-draft and messaging jobs stay platform-audit-only even when they carry platform scope IDs. Desktop/mobile action filters are MenuList-only, and desktop can continue across empty capped filtered windows.
+- MenuList Billing now exposes exact purchased Pack balance and operation costs without monthly allowance/usage internals. Batch-image preview uses the shared five-credit image cost, and extraction upload/delete copy no longer makes false credit promises.
+- Source validation covers inherited-outlet reservation/recovery, scoped balance updates, extraction mirroring, owner history reachability, privacy boundaries, and shared credit-cost copy. The initial scoped `processMenuImagesJob` QA deploy and the post-cross-check retry each completed Functions lint/build and then stopped before upload at Cloud Resource Manager HTTP 403 because the caller lacks project permission; deployed extraction mirroring remains pending. The legacy `processMenuImages` callable remains disabled, and app/website release remains subject to the Vercel opt-in guard.
+
+## July 14, 2026 - SignalDesk Provider Claims And Atomic Budget Reservation
+
+- Direct source-provider requests now require an actor/request-bound idempotency key. Exact completed retries replay the durable source run and target set; changed input conflicts; active work cannot launch a second provider request.
+- Paid source-provider spend is reserved transactionally with the claim before external execution. Standalone Gemini assists reserve their initial call the same way, cannot overlap an active AI Volume envelope, and AI Volume rechecks aggregate capacity while acquiring its global lock. Concurrent Apify and Gemini E2E races each admit exactly one remaining budget slot.
+- The 2,486-check SignalDesk source verifier, local Firestore E2E, exact root TypeScript, and scoped lint pass. No Firebase infrastructure source changed; normal app release remains external.
+
+## July 14, 2026 - SignalDesk Direct AI Assist Paid-Run Claim
+
+- Standalone SignalDesk AI Assist now transactionally claims an actor/request-bound key before any model call. Concurrent exact requests converge on one durable run; changed input conflicts; final run, eval, snapshot, provider spend, cost, timeline, audit, and claim completion commit under exact claim ownership.
+- The direct browser retains the same key for an unchanged failed request, while AI Volume derives stable child keys. The 2,478-check source verifier, local Firestore E2E, exact root TypeScript, and scoped lint pass. No Firebase infrastructure source changed; normal app release remains external.
+
+## July 14, 2026 - SignalDesk AI Volume Idempotency Identity
+
+- SignalDesk AI Volume keys now bind the exact normalized founder, target order, task order, instruction, and cost ceiling. Exact and legacy-exact retries reuse the durable parent, while changed input fails closed before paid model work instead of returning an unrelated batch.
+- Parent creation records a unique worker claim. A lost transaction acknowledgement may continue only when durable truth carries that exact claim, and concurrent exact requests still execute one paid child set. The 2,473-check source verifier, local Firestore E2E, exact root TypeScript, and scoped lint pass. No Firebase infrastructure source changed; normal app release remains external.
+
+## July 14, 2026 - SignalDesk Research Provider Idempotency
+
+- SignalDesk Market Search now atomically creates its research run, initial timeline, and actor/request-bound idempotency record before any provider request. Concurrent exact retries reuse one durable run; changed input or actor fails closed instead of returning unrelated rows.
+- A committed claim whose acknowledgement is lost is recovered through an exact run/key probe. SignalDesk's 2,470-check source verifier, Firestore E2E concurrency/provider-count coverage, exact root TypeScript, and scoped lint pass. No Firebase infrastructure source changed; normal app release remains external.
+
+## July 14, 2026 - CampaignCue Campaign And Action Retry-Lease Recovery
+
+- Campaign creation, approval, scheduling, outcome, export/download, and manual-use idempotency keys now use a five-minute transaction lease. Live work conflicts, completed work replays, abandoned legacy/malformed/expired claims recover, and an expired worker cannot finish over its replacement.
+- Campaign/trust/event/summary publication and action transactions recheck exact claim ownership. The complete CampaignCue source, operating-loop, boundary, Firestore, Storage, root TypeScript, and scoped lint gates pass. No CampaignCue Firebase infrastructure source changed; normal app release remains external.
+
+## July 14, 2026 - CampaignCue CueLayers Retry-Lease Recovery
+
+- CueLayers idempotency keys now use a five-minute transaction lease with exact worker ownership. Live duplicate work still conflicts, completed work replays, and abandoned legacy, malformed, or expired claims can be retried without letting an older worker publish over the replacement.
+- Upload, autosave, repair, and export terminal writes all recheck the current claim. Focused lease tests, the complete CampaignCue source/boundary/Firestore/Storage suite, exact root TypeScript, and scoped lint pass. No CampaignCue Firebase infrastructure source changed; normal app release remains external.
+
+## July 14, 2026 - Batch Image Staging Acknowledgement-Loss Protection
+
+- Batch-item failure settlement now reports whether transaction-current truth retains a staged image/accounting result. If staging committed before an acknowledgement was lost, route-local cleanup no longer deletes the authoritative Storage images needed by idempotent accounting and append retry.
+- The item-concurrency emulator covers staged retention, while AI accounting, server boundaries, root typecheck, and scoped lint protect the cleanup handoff. This is a Next.js worker correction; no Firebase infrastructure target changed.
+
+## July 14, 2026 - Messaging Upload Acknowledgement-Loss Protection
+
+- Messaging media now uses attempt-unique Storage objects. If session creation or append throws, cleanup re-reads exact persisted session truth and deletes only when valid upload arrays prove the attempt path is unreferenced; committed sources survive a lost Firestore acknowledgement.
+- The messaging session concurrency emulator injects a post-commit transaction failure and proves the committed reference remains authoritative. Functions build, tenant-safety, complete extraction/messaging, type and lint gates pass. The scoped scheduler QA deploy completed predeploy lint/build and then stopped before upload at Cloud Resource Manager HTTP 403 because the caller lacks project permission.
+
+## July 14, 2026 - Answerlattice Compiled-Context Lease Convergence
+
+- Manual and scheduled compiled-context builders now reserve one immutable bundle version under an atomic UUID Firestore lease. Concurrent callers refuse a live lease, abandoned reservations are never reused, and only the current lease owner can publish or fail the manifest.
+- The mirrored lease/version boundary test, dedicated/shared Functions builds, root typecheck, scoped lint, and complete Answerlattice runtime gate cover the repair. The scoped `answerlatticeNightly` QA deploy completed its configured build and then stopped before upload at Cloud Resource Manager HTTP 403 because the caller lacks project permission; app/server release remains governed by the Vercel opt-in guard.
+
+## July 14, 2026 - AI Image Prompt Cache Refresh/Cleanup Convergence
+
+- Prompt-cache refresh and expiry cleanup can no longer race on one deterministic Storage object. Cache version 2 writes an immutable source version, serializes the active document replacement, and best-effort removes only the transaction-previous version.
+- The daily scheduler deletes the claimed immutable source, then transactionally deletes the cache row only when current `sourcePath` and `expiresAt` still match the expired snapshot. A concurrent refresh therefore keeps its new bytes and row.
+- Prompt-cache behavioral tests, AI accounting, Functions build/lint/preflight, exact root TypeScript, scoped lint, and diff integrity pass. Both exact-current scoped `functions:menulistMaintenanceScheduler` QA deploy attempts completed predeploy lint/build and then stopped before upload at Cloud Resource Manager HTTP 403 because the caller lacks project permission; deployed behavior remains pending.
+
+## July 14, 2026 - Answerlattice Knowledge Source Shared-Reference Protection
+
+- Deleting one safe unpublished Knowledge Intake job can no longer delete persisted source files using only that job's reference truth. The DAL accepts any valid source path in the current workspace, so another job may retain the same object.
+- Draft-article cleanup and deletion-run ownership remain transactional. Persisted source media is retained with a bounded diagnostic; failed upload-to-job handoff still cleans only attempt-owned uploads before persistence.
+- The focused deletion contract, Answerlattice runtime gate, exact TypeScript, scoped lint, and diff integrity pass. No rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Answerlattice Changelog Shared-Media Protection
+
+- Updating or deleting one changelog entry can no longer delete a persisted image using only that entry's reference truth. Changelog inputs intentionally accept an existing HTTPS image, so another entry may still publish the same immutable URL.
+- Partial-upload and invalid-action cleanup still remove only newly uploaded objects before persistence. Persisted removed-entry media is retained with a bounded diagnostic until a tenant/store-wide changelog reference inventory proves it unused.
+- The Answerlattice runtime gate, exact TypeScript, scoped lint, and diff integrity pass. No rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Menu Item Image Shared-Reference Protection
+
+- Removing a photo from one menu item can no longer delete the persisted Storage object using only one project. Duplicated menus, variants, or another item may still reference the same immutable URL.
+- Project/public truth still commits first. The removed object is retained with a bounded diagnostic until a cross-project reference inventory can prove it unused; failed upload-attempt cleanup paths remain unchanged.
+- Public-truth, complete Storage, exact TypeScript, and scoped lint gates pass after their ordering evidence was reconciled to the retention contract. No rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Tenant Logo And Blog Image Shared-Reference Protection
+
+- Tenant logos and blog images may reuse an existing Firebase URL. Successful replacement can no longer delete the prior object using only one tenant/blog row and break another public or platform consumer that shares it.
+- Newly uploaded images remain immutable and attempt-unique. Pre-persistence failures still clean only the new attempt; ambiguous writes retain it; committed prior media is retained with bounded shared-reference diagnostics until a global reference inventory proves it unused.
+- Storage, public-truth, tenant-safety, exact TypeScript, and scoped lint gates pass. No rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Static Asset Registry Shared-Preview Protection
+
+- Static asset categories, subcategories, and items can reuse an existing Firebase preview URL. Replacement and delete operations can no longer remove persisted previews using one nested record, and replacement no longer treats the client-supplied previous preview as deletion authority.
+- Persisted previews are retained with a bounded diagnostic. Immediate cleanup remains limited to an attempt-unique newly uploaded preview that fails runtime validation before any Firestore persistence attempt.
+- Storage, auth/security, exact TypeScript, and scoped lint gates pass after their source assertions were reconciled to the retention contract. No rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Font Preset Shared-File Deletion Protection
+
+- Font presets may intentionally reuse an existing Firebase Storage URL. Update/delete can no longer remove a persisted file using only one preset's truth, and hard delete no longer treats the caller's `src` value as Storage deletion authority.
+- Newly uploaded files still use immutable attempt-unique paths and retain the existing safe pre-persistence cleanup/ambiguous-write retention behavior. Replaced/deleted persisted files are retained with a bounded diagnostic until a global reference inventory can prove they are unused.
+- Storage, auth/security, exact TypeScript, and scoped lint gates pass. This removes unsafe Storage deletes and changes no Firestore rules, indexes, Functions, Firebase deploy, or Vercel deploy.
+
+## July 14, 2026 - Note Attachment Shared-Reference Protection
+
+- Notes can persist an existing attachment URL, so an object nested below one source note may still be referenced by another note. Replacement and hard-delete cleanup can no longer remove persisted objects using only the source note's reference truth.
+- Persisted attachments are retained with a bounded deferred-cleanup diagnostic. Immediate cleanup remains limited to attempt-unique uploads after server truth proves the attempted note write did not reference them.
+- The complete Storage runtime/source/emulator suite, exact TypeScript, and scoped lint pass. This removes unsafe Storage deletes and changes no Firestore rules, indexes, Functions, public output, Firebase deploy, or Vercel deploy.
+
+## July 14, 2026 - Answerlattice Chat Image Shared-Reference Protection
+
+- Chat image objects are scoped to an Answerlattice tenant/store, not to one conversation. Message compaction, branch replacement, or session deletion can therefore no longer delete a URL using only one session's reference truth and break another session that shares it.
+- Persisted images are retained with a bounded deferred-cleanup diagnostic; immediate cleanup remains limited to a newly uploaded object that failed before session persistence. Session deletion truthfully reports `storageFilesDeleted: 0` until a bounded scope-wide reference inventory can authorize reclamation.
+- Chat contract, dedicated/shared rules emulators, Answerlattice runtime source gate, exact TypeScript, and scoped lint pass. This removes Storage deletes and changes no Firestore rules, indexes, Functions, deploy target, or public output.
+
+## July 14, 2026 - Note Attachment Ambiguous-Commit Protection
+
+- A lost Firestore acknowledgement can no longer make Notes compensation delete newly uploaded attachments that the committed note already references. Create and update now perform an exact-scope server-only read-back before removing any uploaded attempt objects.
+- A confirmed full commit is reconstructed as success, a confirmed non-reference permits the existing compensation, and partial or unreadable truth retains every new object and emits a bounded ambiguity diagnostic. Reconciled updates defer cleanup of superseded old attachments because the rejected transaction cannot safely prove that deletion set.
+- The dedicated Notes regression, complete Storage source/runtime/emulator gate, public-truth and tenant-safety gates, exact TypeScript, and scoped lint pass. Normal successful writes add no read; only ambiguous acknowledgement paths add one server read. No rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - PWA Icon Ambiguous-Commit Protection
+
+- A lost Firestore acknowledgement can no longer cause replacement cleanup to delete the newly uploaded icon after the store already references it. Replacement now performs an exact-scope server-only read-back before compensating the new immutable object.
+- If server truth confirms the new URL and timestamp, the mutation is acknowledged; if it confirms a different value, the unused attempt is removed; if the outcome cannot be proved, the object is retained and a stable ambiguity diagnostic is emitted. Superseded-object cleanup also checks current server truth before deletion.
+- Customer App, public-truth, tenant-safety, exact TypeScript, and scoped lint gates pass. Successful replace/remove cleanup adds one store read; ambiguous-write reconciliation adds one read only on the failure path. No rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Master-Only Atomic Project Propagation
+
+- Creating or duplicating a project from an outlet can no longer propagate that outlet-local project into sibling stores. Propagation now verifies the canonical source store as the active, unblocked master, retains compatibility with a legacy compact row missing `isMaster`, and rejects `localOnly`, linked, deleted, cross-tenant, malformed, duplicate, or oversized scope. Every target store is revalidated inside its transaction.
+- Each outlet project and its `projects_{store}` public summary now commit in one transaction under a deterministic retry identity. Existing single compatible summary links are reused; ambiguous or conflicting persisted identities fail closed instead of being overwritten.
+- Focused behavioral, multi-location, public-truth, tenant-safety, exact TypeScript, and scoped lint gates pass. Successful propagation keeps one project plus one summary write per outlet; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Messaging Publish Post-Commit Effect Separation
+
+- Messaging onboarding publication no longer lets one cache-tag exception suppress later store, global screen, or Owner Business Assistant refresh after tenant/store/project/session truth commits.
+- The shared all-settled public-truth runner attempts every tag, screen touch, and assistant invalidation independently; a stable aggregate diagnostic records the failed-effect count without falsifying publication success.
+- Messaging, public-truth, tenant-safety, exact TypeScript, and scoped lint gates pass. Successful Firestore/Storage/cache operation counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Subscription Entitlement Post-Commit Effect Separation
+
+- Store/summary/subscription entitlement sync no longer lets one cache exception suppress later client-store, screen, or Owner Business Assistant refresh after the entitlement transaction commits.
+- The shared all-settled public-truth runner attempts each derived effect independently and emits stable billing diagnostics with the failed-effect count; authoritative entitlement synchronization remains successful.
+- Billing-entitlement, settlement, public-truth, exact TypeScript, and scoped lint gates pass. Firestore/provider counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Linked-Outlet Save Cache-Effect Separation
+
+- Linked-outlet saves no longer bundle all public cache tags into one post-commit promise. A failed menu/store tag cannot silently suppress `client-stores` or `screen-data` invalidation.
+- Image-selection and standard saves now use the shared all-settled store public-truth runner while retaining project-scoped Owner Business Assistant invalidation; both success envelopes expose pending/count metadata.
+- Multi-location, public-truth, tenant-safety, exact TypeScript, and scoped lint gates pass. Successful Firestore/cache operation counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Platform Entity-Block Post-Commit Isolation
+
+- Tenant-wide and single-store block mutations no longer return HTTP 500 after canonical store/tenant/summary block truth committed merely because one cache, Digital Screens, or Owner Business Assistant effect failed.
+- Tenant fanout now uses the shared bounded all-settled public-truth runner across every committed store; one failure cannot stop later stores or global tags. Tenant/store responses report pending/count metadata and stable diagnostics retain recovery visibility.
+- Platform-block, public-truth, tenant-safety, exact TypeScript, and scoped lint gates pass. Successful Firestore counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Subdomain Rename Post-Commit Isolation
+
+- Owner subdomain assignment and platform admin rename no longer return HTTP 500 after their store/summary/claim/audit transaction committed merely because cache, Digital Screens, or Owner Business Assistant invalidation failed.
+- Both routes use the shared all-settled public-truth runner, return pending/count metadata, and emit stable bounded diagnostics. Admin security logging now records pending derived effects instead of asserting every invalidation succeeded.
+- URL-routing, public-truth, tenant-safety, exact TypeScript, and scoped lint gates cover the current boundary. Successful Firestore counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Outlet Lifecycle Commit And Billing Compensation Boundary
+
+- Outlet creation no longer lets a post-commit cache, Digital Screens, or Owner Business Assistant failure enter the creation-failure compensation path. A successfully created outlet therefore cannot trigger Razorpay/internal quantity rollback and leave paid capacity below real store truth.
+- Create, rename, and deactivate now run public-truth effects through the shared bounded all-settled helper, return `effectsPending`/`failedEffectCount`, and emit stable bounded diagnostics without reporting committed mutations as failed.
+- Focused post-commit, multi-location, tenant-safety, public-truth, screen, and PWA gates cover the boundary. Successful Firestore/provider counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Outlet-Policy Post-Commit Effect Isolation
+
+- Outlet-policy updates no longer return HTTP 500 after the store/tenant/summary transaction has committed merely because cache, Digital Screens, or Owner Business Assistant invalidation failed.
+- Policy writes now use the shared bounded all-settled store public-truth runner and return `effectsPending` plus `failedEffectCount`; a stable diagnostic preserves recovery visibility without falsifying durable success.
+- Focused post-commit and multi-location/public/screen/PWA gates pass. Successful Firestore operation counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Brand-Propagation Post-Commit Effect Isolation
+
+- Master brand propagation no longer returns HTTP 500 after the master/outlet/summary transaction has committed merely because one cache, digital-screen, or Owner Business Assistant invalidation failed.
+- The master and every committed target outlet now use the shared bounded all-settled public-truth effect runner. One failed effect cannot stop later locations or global invalidation, and the success response reports `effectsPending` plus `failedEffectCount` while a stable bounded diagnostic retains recovery visibility.
+- Focused post-commit tests and the multi-location, public-business-truth, Digital Screens, and Customer App PWA gates pass. Successful Firestore/provider operation counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Tenant-Name Post-Commit Effect Isolation
+
+- Tenant-name propagation no longer returns HTTP 500 after its tenant/store/summary transaction has already committed merely because one cache, digital-screen, or Owner Business Assistant invalidation failed.
+- Every store effect and both global tags now run through bounded all-settled chunks. One failure cannot stop later locations; the success response reports `effectsPending` and `failedEffectCount`, and a stable bounded diagnostic preserves recovery visibility.
+- A focused regression proves full continuation and original first-error observation. The complete multi-location gate, exact TypeScript, and scoped lint pass. Successful Firestore/provider operation counts are unchanged; no rules, indexes, Functions, Firebase deploy, or Vercel deploy applies.
+
+## July 14, 2026 - Custom-Domain Product Namespace Isolation
+
+- Owner custom-domain admission now reserves every known preview/production/private-service product root, declared future product root, and every descendant host. Tenant claims cannot occupy MenuList tenant/service hosts or MenuList, Answerlattice, CampaignCue, Neelvara, MyCodex, SignalDesk, SurfaceOS, GrowthOS, or KitStamp namespaces.
+- Refusal runs before Firestore claim reservation and Vercel provider work. Product separation no longer depends on whether a domain happens to conflict at the provider.
+- The custom-domain emulator and maintained boundary gate cover exact roots, descendants, preview hosts, future roots, and unrelated owner domains. Public-truth, tenant-safety, exact TypeScript, and scoped lint gates pass. The change adds no Firebase operations, rules, indexes, Functions, Firebase deploy, Vercel deploy, or provider call for valid domains.
+
+## July 14, 2026 - Top-Up Transaction-Current Subscription Boundary
+
+- Top-up verification now proves a current subscription target before programmatic Razorpay capture, rather than discovering a missing target only after capture.
+- The credit transaction revalidates the exact current subscription's tenant/store aliases, explicit product aliases, and integer credit state. Deleted or re-scoped documents are not recreated, conflicting product/scope aliases fail closed, and credit math cannot fall back to a stale pre-capture balance.
+- Focused settlement tests cover valid, deleted, conflicting tenant/store/product, coercible-balance, and legacy MenuList shapes. The complete billing and tenant-safety source gates pass. Successful read/write/provider counts are unchanged; no Firestore rules, indexes, Cloud Functions, Firebase deploy, or Vercel deploy applies. Already-captured external payments still retain the pending top-up ledger for manual reconciliation if current subscription authority is no longer valid.
+
+## July 14, 2026 - Claim-Account Post-Commit Cache Boundary
+
+- Google and email/password claim modes no longer return a false HTTP 500 when public cache revalidation fails after the ownership transaction has committed. The completed account claim remains authoritative and successful.
+- Cache failure is recorded with stable code `claim_account_cache_revalidation_failed`, using the normalized tenant/store scope. Email/password claims continue to the recoverable custom-claims mirror instead of skipping it.
+- A focused regression test proves successful scope forwarding and failure isolation. The auth/security, public-business-truth and tenant-safety gates pin both affected modes. No Firestore rules, indexes, Cloud Functions, Firebase deploy, Vercel deploy, or operation-count change applies; failed invalidation can leave public email stale only until normal cache expiry or a later invalidation.
+
+## July 14, 2026 - Answerlattice Chat Analytics Runtime Isolation
+
+- MenuList no longer executes Answerlattice chat aggregation. Its maintenance task records a migrated/skipped result, and the retained `backfillAggregates` and `triggerAggregationManual` compatibility callables fail closed without Firestore or provider work.
+- Active product-separation doctrine now matches runtime: the old MenuList Feedback Intelligence, KB Quality, Weekly Narrative, and Health Signals workers are dormant compatibility/history source, while dedicated Answerlattice nightly aggregation and deterministic chat intelligence own current feedback/weekly output.
+- KB generation timeout recovery also moved out of the MenuList store-nightly scheduler. The dedicated Answerlattice nightly task scans at most ten stale jobs, requires exact numeric product/tenant/store scope, revalidates state transactionally, and settles the matching generation run once; MenuList retains only a migrated/skipped run-log record.
+- The exact scoped MenuList scheduler and dedicated Answerlattice nightly QA deploys passed configured predeploy lint/build, then stopped before remote mutation at Cloud Resource Manager HTTP 403 caller permission. QA revisions remain unchanged pending an authorized retry.
+- Platform Chat Backfill now calls `backfillChatAnalytics` through the dedicated Answerlattice Functions client. The callable validates exact numeric input and persisted `pId/tId/sId` store scope before scanning sessions.
+- Manual backfill acquires a transaction-backed cooldown/lease in the existing compact analytics state document, rebuilds the requested UTC days through the canonical source-hash writer, reports partial-source caps, and releases only its own lease. The browser validates the complete callable response before changing operator state.
+- Focused boundary, Answerlattice runtime, auth/security, both Functions builds, root TypeScript, and scoped lint gates cover the separation. The exact scoped MenuList and Answerlattice QA deploys passed predeploy lint/build where configured, then stopped before remote mutation at Cloud Resource Manager HTTP 403 caller permission; QA revisions remain unchanged. No Firestore rule, index, Storage rule, Vercel, or hosting change applies.
+
+## July 14, 2026 - Store Nested Mutation Concurrency
+
+- `updateStore()` now projects recognized nested maps as exact Firestore `FieldPath` leaves and converts intentional removals to field deletes. Concurrent changes to unrelated public-presence, analytics, business-copy metadata, PWA, social, feedback, POS, localized SEO, geo, business-attribute, and working-hours siblings are preserved.
+- Deep differences treat the top-level store mutation as a partial DTO, so fields omitted from an Official Page, business-copy, SEO, social, POS, Customer App, or hours action cannot become deletions. Complete nested-map callers opt into root-key removal detection only when intentional.
+- Literal dynamic keys such as dotted owner-defined social labels remain one Firestore path segment. Summary-affecting writes merge patches into transaction-current store truth before summary/list projection; direct writes retain their existing one-write cost.
+- Desktop and mobile Official Page, business-copy, SEO/analytics, Customer App metadata, Google-link, social/feedback, POS, locale, dashboard date-range, and hours callers now send exact nested patches or deep differences. Desktop photo cleanup uses the fully merged public-presence model rather than a partial write acknowledgement.
+- Focused projection tests cover changed leaves, removals, sanitizer survival, concurrent sibling preservation, dynamic dotted keys, existing dotted POS inputs, and unsafe paths. The public-business-truth source gate scans the repaired producer/consumer boundaries.
+- Standalone re-extraction review now applies menu-derived business attributes through the same transaction-current default-only DAL used by initial desktop/mobile extraction. It can no longer replace a concurrent owner attribute choice with a full map; the extra authoritative read occurs only on the post-review default derivation path, and cache invalidation remains conditional on an applied default.
+
+## July 14, 2026 - OBP Custom Business Attribute Public Truth
+
+- Disabled owner-defined attributes no longer render publicly. Shared normalization caps persisted custom attributes to the six-entry owner contract and removes duplicate IDs before owner/public consumption, including legacy or malformed store data. This adds no Firebase operation or deployment target.
+- Controlled attributes now use one known-key/strict-boolean normalizer across desktop settings, mobile settings and public projection. Malformed legacy values such as string booleans are omitted instead of appearing enabled to owners or being written back unchanged.
+- Mobile full-week and Today quick-hours saves now send only store/tenant identity, working hours, and the hours timestamp. They no longer spread the loaded store document into `updateStore()`, preventing an hours edit from restoring stale unrelated store fields.
+
+## July 14, 2026 - Extraction Listener, Monitor, And Platform Retry Integrity
+
+- The shared owner extraction listener now rejects a previous job value during a job-ID transition and clears state on subscription failure. Mobile and desktop can no longer consume a completed result from the prior project under a newly tracked job ID.
+- Extraction monitor health, quality, confidence, time, and cost aggregates now accept only bounded finite runtime values. One malformed timestamp is isolated to its row instead of collapsing the dashboard, and string, negative, non-finite, or out-of-range persisted numbers cannot corrupt operational totals.
+- Desktop platform retry now uses a dedicated platform-only server boundary. It revalidates the current persisted platform user, original failed-job contract, retry limit, tenant/store/project path, private Storage ownership, SAFE_MODE, a fail-closed rate limit, and active-job concurrency before creating the replacement job; the browser accepts only a bounded response with a canonical replacement auto-ID.
+- Three focused regression gates cover stale listener state, adversarial monitor documents, and platform retry authorization/source admission. No Firestore rules, indexes, Cloud Functions, public truth, cache, billing, or mobile mutation surface changed; the new Next.js route still requires a Vercel deployment and authenticated platform smoke before runtime certification.
+- The listener now runtime-normalizes the Firestore job document instead of casting arbitrary snapshot data into a trusted success result. Invalid persisted IDs, status, limits, quality/timing fields, localized text, file results, and preview payloads fail closed before desktop or mobile comparison; missing/denied remembered jobs become a local terminal failure instead of blocking future uploads, while malformed optional metrics on an already completed auto-save are omitted without hiding the confirmed project save.
+- Re-extraction comparison now excludes orphan items and duplicate source-file/item identities from the apply plan and presents high-severity review warnings. New standalone and outlet-local items preserve extracted variants, tags, dietary labels, spice level, duration, and active variant state so review saves match first-extraction truth.
+- Re-extraction now rejects duplicate category IDs and multiple extracted categories/items that collapse onto one persisted identity. Ambiguous rows and their dependent items remain visible as high-severity review evidence but cannot enter the save plan.
+- Comparison updates are field-level and non-destructive: invalid prices are not written, omitted category order is preserved, localized item/category translations survive primary-language changes, weak category matches never rename or reorder truth, and outlet-local price/description/name changes cannot erase owner metadata.
+- Custom similarity and weak-match thresholds are now validated and consistently control category/item classification. Focused regressions cover duplicate identities, weak matches, invalid prices, translated updates, category order preservation, and patch-only outlet saves.
+- Review persistence is transaction-current. Standalone/master applies re-read and atomically commit the current project plus `preview_ready` job; linked-outlet applies bind the job, expected outlet-local version, project mutation, and completion into the protected server transaction. Concurrent edits or terminal transitions now fail/retry without stale whole-menu overwrite or split success.
+- Review cloning preserves nested Firestore SDK values instead of flattening `Timestamp` objects. Outlet patch-only updates now trigger persistence and are counted as updates rather than additions, and the exported Zod save contract matches metadata, stable aliases, mode-specific mutation buckets, and partial local-item patches.
+- Review apply/discard now requires an explicit persisted job owner matching the current session. Missing-owner legacy or malformed jobs fail closed in both client transactions and the Admin linked-outlet route instead of relying on tenant/store scope alone.
+- Desktop and mobile review approvals are now bound to the exact project/job identity. Replacing an active review resets all action state to the new preview, its first interaction cannot mutate stale selections, and a late response from the prior apply cannot acknowledge or close the replacement review.
+- Desktop and mobile now cancel an in-flight linked-master comparison when the tracked job/project changes, so retired extracted rows cannot become the replacement review. Mobile terminal failures retain structured details only in bounded diagnostics and always show fixed translated owner copy instead of persisted worker/provider text.
+- Extracted brand/background defaults now use one minimal shared patch and are decided against transaction-current project truth. Concurrent owner design choices win, unrelated stale config/preferences are not replayed, linked outlets persist the admitted image-background preference instead of silently dropping it, and both clients install the deep authoritative saved project.
+- Auto-generated project images are now committed as defaults against transaction-current summary truth. If an owner image is uploaded while provider generation or Storage preparation is still running, the owner image wins and desktop/mobile do not install the late generated URL. The existing summary transaction, cache invalidation, immutable Storage policy, and Firestore operation count are unchanged.
+- Menu-derived business attributes now merge against transaction-current store truth in desktop, mobile, and first-extraction Functions paths through one byte-mirrored rule. Explicit owner `true` or `false` values and unrelated attributes survive; only allowed missing defaults are added, clients install the acknowledged merged map, and cache invalidation follows a committed change. Browser defaults now cost one current-store read plus at most one write; the Functions path keeps its existing one-read/optional-one-write operation count.
+
+## July 13, 2026 - Extraction Job Tenant And Store Isolation
+
+- Firestore job reads and client cancellation/review updates now require exact owner identity plus current membership in the job's tenant and store. Historical `uId` ownership no longer exposes an old job, extracted payload, or private source URL after a scope switch.
+- Client active-job discovery now constrains `tId`, `sId`, `projectId`, `uId`, and active status, with a matching composite index. Platform extraction monitoring retains its explicit platform-role read bypass.
+- A dedicated Firestore rules emulator covers same-scope reads/updates, canonical token-owner identity, tenant/store switches, foreign users, platform reads, fully scoped queries, and rejection of the retired under-scoped query.
+- The complete local readiness aggregate passes 125/125. The scoped MenuList QA rules/index deploy reached Firebase Rules validation but stopped with HTTP 403 caller permission before upload, so deployed isolation still requires an authorized retry.
+
+## July 13, 2026 - Menu Link Source Retention
+
+- Authenticated menu-link source artifacts now expire through the existing daily maintenance scheduler after the same seven-day window as terminal extraction jobs.
+- Cleanup validates exact artifact, job, tenant, store, project, owner, and private Storage-path bindings; active jobs are retained and missing already-pruned jobs remain recoverable through exact artifact metadata.
+- Storage is deleted before metadata. Unsafe bindings or failed Storage deletion preserve the metadata as the durable retry record and surface bounded scheduler failure diagnostics.
+- Each run is capped at 100 artifacts and uses the existing scheduler lease. No collection, index, rule, public truth, cache, provider, or new scheduled Function is added; focused retention/source and Functions build/lint gates pass locally.
+
+## July 13, 2026 - Completed Upload URL-Failure Cleanup
+
+- The shared resumable Storage uploader can now compensate a completed upload when download-URL resolution fails, but only when an attempt-unique caller explicitly opts in.
+- Customer App icon overrides and Answerlattice KB source uploads opt in because they use runtime-ID/UUID object paths. Cleanup deletes the exact completed attempt, logs a separate bounded failure if deletion is denied, and keeps generic caller error text.
+- Customer App Firebase docs now match runtime truth: one current override under `stores/pwa-icons/{tId}/{sId}/...`, `publicPresence.*` metadata, and dynamic generated icons that are not retained as three Storage variants.
+- The upload lifecycle regression test and full auth/security failure matrix pass. No Firebase rules, indexes, Cloud Functions, or deployment target changed.
+
+## July 13, 2026 - Image Batch Owner Outcome Convergence
+
+- Accept, discard, and cancel retries now converge when Firestore already contains the exact requested terminal status and persisted-selection outcome. A lost acknowledgement no longer leaves the result UI stuck after the durable update succeeded.
+- Exact retries complete after one transaction read with no second write and no duplicate status-history row. Different terminal statuses or different selection outcomes remain rejected.
+- Client and server batch-job projectors now preserve explicit `selectedImagesPersisted: false`; discarded/cancelled outcome truth is no longer silently omitted.
+- Focused client/server boundary suites and the complete AI-accounting hardening verifier pass. No Firebase rules, indexes, Storage rules, Cloud Functions, or deploy targets changed.
+
+## July 13, 2026 - Creative Editor Template Registry Transaction Safety
+
+- User template saves/deletes now mutate the single store index transactionally; concurrent owner actions can no longer overwrite each other's summaries.
+- Platform category writes and generic-template mirrors now commit atomically across their bounded category documents. Metadata edits use the canonical stored category copy, and deletes avoid no-op catalog writes.
+- Template documents and previews use attempt-unique immutable filenames. Replaced and cap-evicted objects are cleaned only after committed metadata proves they are unreferenced; failed acknowledgement probes preserve uncertain objects.
+- Normal Firebase operation counts remain one read/one write for store or category mutations and eight reads/eight writes for generic fan-out. Only failed/ambiguous acknowledgements may add one probe read.
+- Pure index/path tests, the source contract verifier, scoped lint, exact TypeScript, and the MenuList Storage emulator pass. The required `menulist-qa` Storage deploy is blocked before upload by Service Usage HTTP 403 project access.
+
+## July 13, 2026 - Menu Extraction Current-Permission Authority
+
+- Identity preflight, owner extraction job/retry, and authenticated link import now re-read current store authority and require persisted `canUseMenuExtraction` before privileged reads, source acquisition, Storage/artifact/job writes, or provider work.
+- Desktop and mobile block file preparation and Storage upload when extraction is not enabled. Mobile now uses the dedicated extraction capability without additionally requiring `canManageMenu`.
+- Detected business-detail suggestions require `canManageStore`; extraction authority no longer implies store-profile mutation authority.
+- Definitive 4xx job-start rejections clean up just-uploaded source objects; ambiguous transport, 5xx, and malformed-success acknowledgements remain non-destructive because a durable job may exist.
+- Valid non-platform calls add one current-store permission read at each independently callable route. Platform calls add none; rules, indexes, Functions, caches, billing, public output, and valid job shapes are unchanged.
+
+## July 13, 2026 - Menu Upload Storage Identity And Cleanup Accounting
+
+- Raw menu/document uploads now use a Firestore-generated attempt identity in their tenant-scoped Storage object ID. Concurrent retries with the same user and file name can no longer overwrite one another through a millisecond timestamp collision.
+- Desktop and mobile failed-upload cleanup now treat both rejected deletion calls and fulfilled `{ success: false }` responses as failures. Cleanup diagnostics no longer report unsuccessful Storage deletions as successful.
+- The change adds no Firestore read or write beyond the existing client-side ID allocation and keeps the existing upload, project persistence, and manual retry flow.
+
+## July 13, 2026 - Reference-Safe Media Cleanup
+
+- Menu item photos are now removed from durable project truth before best-effort Storage cleanup. A rejected editor save can no longer leave the public menu pointing at a deleted object.
+- Notes attachments now use attempt-unique object identities, so a failed update cannot overwrite and then delete the attachment referenced by the previous note revision.
+- Note hard delete reads and deletes current scoped Firestore truth transactionally, then cleans only attachment paths owned by that note. Stale caller-supplied attachment lists are no longer deletion authority.
+- OBP cover/gallery cleanup filters the final saved references, and generated project-image persistence no longer deletes shared deterministic media after metadata failure. The changes add no collection or normal-path Firestore operation beyond the Notes hard-delete transaction read.
+
+## July 13, 2026 - AI Transaction History Authorization And Browser Isolation
+
+- `/api/ai-operations` now requires current persisted `canAccessBilling` permission before any operation-ledger read. Hiding Transactions in desktop/mobile navigation is no longer the only owner-role boundary; platform sessions retain their explicit bypass through the shared permission helper.
+- The MenuList history DAL now uses no-store, same-origin credentials, and manual redirect handling before its bounded runtime response projector. Tenant/store switches cannot depend on browser-default cache or redirect behavior.
+- Three unused legacy readers that always requested an invalid 100-row page and did not honor their store/ID names were removed. Valid owner requests add one current-store permission read; platform requests add none. Ledger queries, writes, caches, public output, rules, indexes, and Functions are otherwise unchanged.
+
+## July 13, 2026 - Immutable Prepared Media Ownership
+
+- Profile-aware `media/{profile}/...` objects are now create-once at the Firebase Storage rules boundary. Repeated uploads of the same prepared content reuse the existing object instead of overwriting immutable bytes and download-token metadata.
+- Failed Firestore saves and partial variant attempts no longer delete deterministic paths that another concurrent or retried successful save may already reference.
+- This adds no Firestore collection, read, write, or reference ledger. A dedicated Storage emulator verifies overwrite denial, original-byte preservation, public read, tenant isolation, MIME/profile admission, and owner deletion.
+
+## July 13, 2026 - AI Operation Browser Response Contract
+
+- MenuList and Answerlattice transaction-history browser DALs now runtime-normalize every successful operation row before desktop or mobile state can consume it. Malformed IDs, timestamps, numeric fields, nested JSON, file/item/language structures, or continuation envelopes fail through the existing bounded local error path.
+- Cursor envelopes require one canonical document ID, `hasMore` requires that cursor, and MenuList manual continuation is accepted only for an empty capped-scan page. Unknown operation fields are omitted instead of becoming an implicit browser contract.
+- Explicitly visible platform transaction IDs remain available through the normalized DTO, while enum-like fields require their actual string values rather than object/string coercion.
+- Desktop MenuList, mobile MenuList, and Answerlattice billing history now share one typed operation DTO and safe nested-value readers. The change adds no Firestore read/write, collection, index, rule, Function, provider, cache, billing mutation, or public-output behavior.
+
+## July 13, 2026 - Answerlattice AI Operation Response Identity
+
+- Answerlattice support-credit history now applies owner/platform field allowlists before serializing Firestore values. Raw provider responses, raw batch payloads, generation configuration, and full Gemini response fields are not returned by the billing-history API.
+- The Firestore document path is the authoritative operation ID; a malformed persisted `id` field can no longer replace it. Hidden fields are not traversed and cannot break an otherwise valid page.
+- Existing Answerlattice auth, billing permission, tenant/store scope, read limits, cursor behavior, visible owner accounting fields, and Firestore costs are unchanged.
+
+## July 13, 2026 - Time-Slot Preset And Overnight Window Integrity
+
+- Store-level preset writes now require the exact active store and validate bounded, unique preset data before Firestore persistence.
+- Overnight category windows such as `22:00` to `02:00` render across midnight. Weekday-restricted overnight windows use the day on which the window starts.
+- Preset edit/delete cascades page through current-store projects and transactionally write only current `files` data for matching projects. Concurrent menu edits can no longer be replaced by a stale full-project batch snapshot.
+- Discovery remains one read per project; matching candidates add one transaction read and at most one project write. No collection, index, Cloud Function, provider call, or public-menu store read was added.
+- The maintained project, system-strengthening, working-hours, public-truth, TypeScript, lint, and focused time-slot gates cover this boundary. Hosted browser/device and live Firestore verification remain pending.
+
 ## July 13, 2026 - AI Operation Persisted Cursor Admission
 
 - MenuList and Answerlattice transaction-history routes now reject a requested cursor when its scoped ledger document no longer exists, its `createdOn` boundary is malformed, or it falls outside the active date filter.
@@ -113,6 +1223,20 @@
 ### Firebase Cost And Deployment Boundary
 
 - Standalone acceptance remains one project read plus one project write, now in one transaction. Linked-outlet acceptance uses the existing four authorization/membership reads plus two transaction reads and one project write; it does not add a per-image document or Storage copy. Public/screen/assistant cache invalidation remains post-commit. No new collection, index, rule, Storage rule, Cloud Function, scheduler, provider call, or owner setting is introduced. No Firebase deploy applies to this app-side persistence change; the separate previously changed image-batch rules/maintenance target still requires its own authorized QA deploy.
+
+## July 13, 2026 - Project Save, Publish, And Upload Integrity
+
+### Fixed
+
+- **Stored outlet linkage is authoritative** - Project save and publish read current project truth before routing and recheck standalone state transactionally. A caller cannot omit or change `masterProjectId` to bypass the linked-outlet server path.
+- **Concurrent saves and publishes use current truth** - Standalone saves derive MCE metadata from the same transaction-local project they merge. Publish derives a monotonic menu version from persisted state and sends the full post-merge project to snapshot/observation consumers.
+- **Project upload retries cannot overwrite persisted bytes** - Every project publish upload now uses a unique attempt-scoped Storage object ID. Failed uncommitted standalone attempts clean only their own object; ambiguous linked outcomes retain the object because the server may have committed it.
+- **Project file content is validated before Storage** - The DAL now accepts only JPEG, PNG, WebP and PDF, requires claimed type and data-URL MIME agreement, enforces 10 MB image/50 MB PDF limits, validates base64, and checks the file signature. The former broad SVG/document/font allowlist is removed from this project path.
+- **Generated image append respects current lifecycle** - Transactional standalone append now rejects deleted or tenant/store-conflicting project documents in addition to missing or linked state.
+
+### Firebase Cost And Deployment Boundary
+
+- Standalone save and publish intentionally use a preflight project read plus a transaction read and one project write. The added current-state evidence prevents stale linkage, deletion, MCE and version races. Upload validation is browser-local and adds no Firebase operation. Immutable upload IDs may increase retained orphan bytes after ambiguous linked requests; cleanup must be retention/reference-aware. No collection, index, rule, Function, scheduler, provider call or Firebase deploy is added by this app-side repair.
 
 ## July 13, 2026 - Tenant Storage Path And Note Attachment Integrity
 
@@ -20390,7 +21514,7 @@ Support Board nightly derived-card source-text duplication boundary.
 
 - **Owner app language support now includes the regional India expansion, the first international batch, and the final practical global pass** - `APP_LANGUAGES` now exposes `gu-IN`, `kn-IN`, `ml-IN`, `pa-IN`, `ur-IN`, `or-IN`, `as-IN`, `ne-NP`, `mai-IN`, `kok-IN`, `sd-IN`, `ks-IN`, `doi-IN`, `mni-IN`, `sat-IN`, `brx-IN`, `fr-FR`, `pt-BR`, `de-DE`, `it-IT`, `ja-JP`, `zh-CN`, `id-ID`, `vi-VN`, `th-TH`, `ko-KR`, `tr-TR`, `ms-MY`, `nl-NL`, `pl-PL`, `uk-UA`, `cs-CZ`, `ro-RO`, `el-GR`, `hu-HU`, `sv-SE`, `da-DK`, `fi-FI`, `fil-PH`, `zh-TW`, `he-IL`, `fa-IR`, and `sw-KE` alongside the existing supported app locales.
 - **Dashboard and mobile dashboard strings now cover the added languages** - The added owner-app locales now include the full `Dashboard` and `MobileDashboard` key sets, with placeholders and ICU plural strings preserved. Native-market copy review remains separate from runtime coverage.
-- **Kashmiri and Bodo are fallback-safe pending native copy** - `ks-IN` and `brx-IN` are selectable owner-app locales with English runtime fallback coverage because no reliable machine-translation source was used for those languages in this pass.
+- **Kashmiri and Bodo were initially fallback-safe** - `ks-IN` and `brx-IN` launched as selectable owner-app locales with English runtime fallback coverage. This historical limitation was superseded by the full semantic-evidence pass on July 18, 2026.
 - **The first international owner-app batch has compact runtime coverage** - French, Brazilian Portuguese, German, Italian, Japanese, Simplified Chinese, Indonesian, Vietnamese, Thai, Korean, Turkish, and Malay now have owner-app locale files, mobile shell labels, OBP fallback mapping, Ant Design component locale mapping, and public render-language mapping.
 - **The final practical global owner-app batch has compact runtime coverage** - Dutch, Polish, Ukrainian, Czech, Romanian, Greek, Hungarian, Swedish, Danish, Finnish, Filipino, Traditional Chinese, Hebrew, Persian, and Swahili now have owner-app locale files, mobile shell labels, OBP fallback mapping, and public render-language mapping. Ant Design component locale mapping is native where the library ships a locale pack; Filipino and Swahili use English Ant Design component chrome.
 - **Russian remains excluded from owner app UI locales** - Russian remains in the broader menu-content language list, but it was not added to `APP_LANGUAGES` in this global UI pass pending business/compliance review.
@@ -24205,7 +25329,7 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 - **E1 — Entity Aliases:** `aliases?: string[]` field on `AnswerlatticeEntity`. `syncAliasesToSearchIndex()` DAL function. `updateAliases()` hook action. Aliases are source of truth, synced to search index synonyms.
 - **E2 — Article-Entity Bridge:** `entityIds?: string[]` field on `KnowledgeBaseArticleType` and `IngestionJobArticle`. Connects KB articles to product ontology entities for entity-centric retrieval.
 - **E3 — Registry-Guided Extraction:** `extractEntitiesFromArticles()` now accepts existing entities as context. AI prompt includes existing entity list to prefer reuse. Post-extraction matching via `matchToExistingEntity()`. Reduces duplicate candidates.
-- **E4 — Auto-Extract on Article Save:** `extractEntitiesForArticle()` function with 5-minute debounce. Wired into `addArticle()` and `updateArticle()` DAL as fire-and-forget. TipTap JSON → plain text converter. Async — never blocks article save.
+- **E4 — Auto-Extract on Article Save:** `extractEntitiesForArticle()` was added with a 5-minute in-process debounce and TipTap-to-text conversion. The maintained post-save path now calls the protected extraction route from `addArticle()` and eligible `updateArticle()` changes; the standalone helper is not that live path.
 - **E5 — Entity Merge:** `mergeEntities()` DAL function. Transfers canonical answer refs, relations, combines aliases. Merged entity deprecated (soft delete). `merge()` hook action. Full audit trail.
 - **E6 — Entity-Enriched RAG Context:** `getEntityDescriptions()` and `buildEntityContextBlock()` in canonical retrieval. When canonical miss has entity matches, entity descriptions injected into RAG payload for better fallback answers.
 
@@ -24361,7 +25485,8 @@ All 17 AI call sites covered: 11 frontend API routes + 6 Cloud Function files. N
 
 ### Documentation
 
-- **SurfaceOS product strategy created:** Full 16,440-line ChatGPT conversation processed and consolidated into `__docs__/surface-os/README.md` (26 sections, ~800 lines).
+- **Historical correction (July 17, 2026):** This section records a planning exercise, not an approved or implemented product contract. The strategy now lives at `__docs__/surface-os/_archive/product-strategy-2026-03-06.md`; current code-truth documentation is `__docs__/surface-os/README.md`.
+- **SurfaceOS product strategy created:** Full 16,440-line ChatGPT conversation processed and consolidated into the now-archived strategy document (26 sections, ~800 lines).
 - **ChatGPT review archive created:** `__docs__/surface-os/_archive/chatgpt-review.md` — 56-section cross-check, ~85% ChatGPT accuracy assessment, every conversation message verified against documentation.
 - **Product defined:** SurfaceOS = Public Discovery Governance Infrastructure for multi-location brands. Controls how business truth appears across Google, Apple Maps, directories, and future discovery surfaces.
 
@@ -25835,3 +26960,77 @@ TEMPLATE FOR NEW ENTRIES:
 - **Answerlattice KB Embedding v2 Test Parity** — Shared and dedicated KB publishing emulator fixtures now derive the reusable vector field and dimensionality from the active runtime registry, keeping the claimed cache version, `embeddingV2` field, and vector shape coherent. Production embedding and publish behavior is unchanged.
 - **Batch Image Trigger Rate-Limit Failure Boundary** — Batch image trigger admission now returns temporary-unavailable `503` behavior with `Retry-After` when its limiter provider or strict helper fails, before body parsing, permission/capacity reads, or Cloud Tasks fanout. Ordinary quota exhaustion remains `429`; valid configured batch jobs and other shared limiter callers are unchanged.
 - **Data-Flow Catalog Command Registry** — The existing Firestore collection catalog generator is now available as `npm run audit:data-flow:catalog`, and audit tooling verifies both maintained manifest/catalog command mappings so active audit documentation cannot reference a missing command.
+- **Answerlattice Development Chat Cleanup Boundary** — The development-only chat reset now deletes only the current user's loaded sessions through the normal Answerlattice DAL. It no longer targets the MenuList Firebase client or claims to delete server-owned analytics/embedding collections, removes Firestore truth before owned-image cleanup, counts only explicit acknowledgements, and keeps failed sessions visible after partial cleanup.
+
+## July 17, 2026
+
+### Improved
+
+- **Answerlattice Controlled Guided Resolution** — Approved canonical procedures can now guide an end user through a live client workflow using stable semantic targets and client-verified workflow events. The owner-controlled widget setting defaults off; the runtime highlights and scrolls but never clicks, executes arbitrary code, captures the DOM, or changes product state. Terminal completion, abandonment, missing-target, and escalation outcomes use one exact canonical widget-history proof read plus at most one deduplicated existing signal write when signal mutation is enabled. No collection, listener, scheduler, AI call, Firebase rule/index, Storage path, or Cloud Function was added.
+- **Dormant Reviews And Reply-Assist Cost Boundary** — The Reviews/Reputation source gate now proves disabled requests stop before rate-limit, Firestore, SAFE_MODE, AI-capacity, or provider work and locks the two retained composites to the only two bounded state queries. Both feature flags remain off, the components remain unmounted, no ingestion/writer/posting transport exists, and current runtime cost remains zero.
+- **QR-To-WhatsApp Planning Boundary** — Reconciled the experiment docs with source truth and added a verifier proving the flag is disabled and unconsumed, planned routes/storage/provider behavior do not exist, normal QR files still open the live page directly, and help/website/marketing copy remains held. No Firebase or customer runtime was added.
+- **Dormant Health-Signal Correctness And Cost Boundary** — Trust, loyalty, and risk processing now fails closed before Firestore because summed daily unique counts and view ratios cannot prove weekly distinct visitors, returning customers, or trust. A dedicated gate preserves disabled flags, absent scheduler/UI consumers, publication holds, and the required counter redesign. Automatic indexing is disabled for the unqueried `stores.healthSignals` map; exact store reads remain unchanged.
+- **SignalDesk Separate-Product Cross-Check** — Revalidated the private
+  SignalDesk operating system through its runtime, project-boundary, accounting,
+  provider, workspace, rules, access, lineage, authenticated E2E,
+  proof-permission, and source-data lifecycle gates. The strict workspace test
+  fixture now matches the active accounting contract, and the auth matrix
+  enforces product-scoped Admin credentials/emulator identity instead of a
+  generic host ADC fallback. Provider sending, real outreach, MenuList writes,
+  and production activation remain blocked.
+- **GrowthOS Concurrent Kit Persistence** — Growth Kit generation now uses
+  collision-resistant UUID-backed document IDs and commits the kit plus its
+  latest-kit summary in one Firestore batch. Successful operation cost remains
+  two writes, while same-millisecond overwrite and partial projection risks are
+  removed.
+- **KitStamp Planning Boundary** — Added an executable source gate that keeps
+  KitStamp at approved planning-only status and rejects accidental routes, APIs,
+  Firebase infrastructure, Functions, environment variables, provider/billing
+  paths, or publishing behavior before product activation.
+- **MyCodex Private Rewrite Boundary** — Direct requests to the internal
+  `/sites/mycodex` rewrite namespace now return a no-store, noindex 404 before
+  product-host rewriting. Approved private-reader host and local routes retain
+  their existing session, PWA, offline, audio, and static/no-DB behavior.
+- **Embedded Owner Capabilities** — Category icon suggestions now match complete
+  normalized words/phrases instead of unsafe substrings; behavior guidance uses
+  only mounted Dashboard and desktop/mobile Share surfaces; item-photo capture
+  remains on the shared media preparation path; and visual completion uses
+  business-only copy when project-photo evidence is unavailable. No duplicate
+  storage, route, listener, provider, or owner setting was added.
+
+- **QA Deployment Status** — The scoped MenuList QA
+  `firestore:indexes,functions:processMenuImagesJob`
+  deployment passed Functions lint/build and stopped before upload at the
+  Firebase Rules test endpoint with HTTP 403 caller permission. No remote QA
+  index or Function revision changed; authorized Firebase deployment remains
+  pending.
+- **Continuous Menu Intelligence Firebase Cost** — Removed unused automatic single-field indexes from the private per-item confidence, priority, rank, suppression, time-eligibility, and audit fields. Exact-document reads and nightly state writes are unchanged, while index fanout and index storage no longer grow with those nested fields after the scoped index deployment.
+- **Menu Snapshot Retention Coverage** — Corrected the retention path for nested publish snapshots. The maintenance scheduler now rotates across all known stores, including inactive stores, instead of repeatedly scanning only the first 200 active rows; the ineffective collection-group TTL setup claim was removed. Snapshot creation and owner/public behavior are unchanged.
+- **Reseller Client And Entitlement Recovery Scale** — Reseller client queries now apply newest-first ordering before their existing bounded limit, backed by two scoped subscription indexes. Shared pending billing-entitlement repair now runs even when the reseller feature is disabled, so ordinary paid-cycle mirror failures remain recoverable without a new task or collection.
+- **Store Identity And Official Page Index Cost** — Disabled unused automatic indexes for the nested Official Page content, business-copy metadata, business attributes, and working-hours maps on `stores`. Existing routing indexes, exact store reads, owner writes, summary propagation, public cache invalidation, and desktop/mobile/public behavior are unchanged; index fanout and storage reduce after the scoped index deployment.
+- **Menu Design Observation Write Cost** — The canonical project save now computes operational change once and reuses it for master-update signaling and multi-outlet observation. Presentation-only theme/layout/color/background saves no longer append a noisy `menuChangeLog` row, while actual item, price, availability, variant, and category changes retain both optional operational writes.
+- **Working Hours Preset Index Cost** — Disabled the unused automatic index for `stores.timeSlotPresets`. Exact store reads/writes and the existing paged category cascade remain unchanged, while nested preset array/map index fanout is removed after the scoped index deployment.
+- **Temporary Status Index Cost** — Disabled the unused automatic index for the bounded `stores.tempStatus` map. Manual/special-menu writes, read-time expiry, public projections, and cache/screen/Assistant refresh behavior are unchanged; set/clear index fanout reduces after the scoped index deployment.
+- **Public Menu Entry Draft Index Cost** — Removed the obsolete `publicMenuDrafts(claimed, expiresAt)` composite and disabled automatic indexing for large extracted menu/profile/source/attribution maps. Existing owner dedupe and expiry cleanup retain their bounded scalar queries; intake, polling, claim, publish, and Storage retention behavior are unchanged.
+- **Menu Setup Activation Evidence Index Cost** — Disabled automatic indexing for the nested `stores.starterActivationSignals` map. Setup progress and Activation Concierge continue to use already-loaded exact store truth, while each acknowledged placement action avoids unnecessary nested-map index fanout after the scoped index deployment.
+- **Menu Presence Confirmation Index Cost** — Disabled automatic indexing for `stores.menuPresence`. Existing atomic store/summary writes, activation evidence, published-menu readiness, and desktop/mobile owner behavior remain unchanged while confirmation/removal writes avoid unnecessary nested-map index entries after deployment.
+- **Owner Referral Scale Recheck** — Revalidated the rollout-off referral flow against its exact queries and payment ledger. The current deterministic document, two capped composites, stateless token, event-driven repair, and immutable reward rows remain the smallest correct model; no speculative counter, scheduler, cleanup scan, or extra read model was added.
+- **Report Lead Ops Query Cost** — Added a scoped `landingPageEnquiries(sourceKind, createdOn)` composite and changed manual Report Leads refreshes to read only consented shareable-report enquiries. Public reports remain browser-local and unstored; authorization, rate limiting, result caps, filters, warnings, and contact-write behavior are unchanged.
+- **Help Center Ticket Index Fanout** — Disabled automatic indexing for support-ticket messages, status history, document metadata, and internal logs in both Answerlattice-dedicated and shared Firebase configs. Scoped ticket queries, listeners, append-only mutations, attachments, and owner/platform UI behavior remain unchanged.
+- **Platform Summary Index Fanout** — Disabled automatic indexing for the nested store and project maps in `platformSummary`. Exact summary reads and scalar operational queries remain intact, while central store/project projection writes no longer create index entries proportional to summary width after deployment.
+- **Answerlattice Founder Operating Journey** — Activated management owners now enter Daily Brief from the Answerlattice base route after factual launch proof is ready; incomplete or unavailable proof continues to Activation. Activation adds the existing bounded Answer Tests summary to its launch verification, presents one ordered founder path, and keeps detailed diagnostics secondary. Daily Brief now shows one primary action plus up to three secondary actions, explicit resolution/recontact evidence, launch verification, and an owner-triggered `I shipped a change` handoff into the existing changelog/release/drift flow.
+- **Answerlattice Review And Governance Clarity** — Knowledge Intake review cards now show bounded linked-source excerpts, applicability, and missing-evidence warnings from the already-loaded bundle. Core governance tabs remain visible while specialized tools move behind an explicit Advanced menu; permissions, flags, direct routes, and runtime behavior are unchanged.
+
+### Fixed
+
+- **Answerlattice First 10 Proof Freshness** — A retained passing run no longer keeps launch readiness after a priority question or governed canonical/KB/documentation/entity/release source changes. New runs retain six bounded source-version counters, Activation compares them with the current exact-scoped compact summary, legacy proof requires one rerun, internal counters are not returned to the browser, and case creation/edit timestamps are now server-owned so a client cannot preserve stale proof with forged time values.
+
+### Cost Impact
+
+- Daily Brief uses six compact summary reads on an uncached brief request and zero on its 60-second cache. Activation uses eight compact reads, including the bounded Answer Tests and current source-version summaries. The First 10 launch screen opts into two compact reads, a launch-screen case save adds one compact current-proof read after its existing transaction, and each newly executed launch run uses two compact source-version reads: one retained pre-execution snapshot and one post-execution current-proof check. The standard Answer Tests screen retains one summary read and skips post-save/post-run proof reads. Base-route stage selection uses one compact activation-summary read. Source evidence, progressive navigation, launch journey rendering, cost disclosure, and the changelog deep link add no listeners, scheduler work, provider calls, or collections before an owner uses an existing mutation flow.
+
+## July 18, 2026
+
+### Fixed
+
+- **Owner Dashboard Locale Completeness** — Completed the mounted `Common`, `AppSettings`, `Settings`, `Dashboard`, and `MobileDashboard` message boundary across all 52 registered locale files, added the missing mobile app-settings language label and canonical settings entry summary, repaired stale ICU variables and Odia mixed-script provider artifacts, and aligned ambiguous app-settings and business-hours analytics copy with actual runtime behavior. The semantic pass covered 22,272 values in the 464-string boundary, including a focused 1,872-value recheck of ambiguity-prone copy. At that time Bodo and Kashmiri still used readable English fallback; the July 18, 2026 full-owner semantic-evidence pass superseded that limitation without adding a Firebase operation, owner data mutation, or public-menu behavior change.

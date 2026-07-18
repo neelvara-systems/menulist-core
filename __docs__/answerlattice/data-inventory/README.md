@@ -57,7 +57,7 @@ Answerlattice stores data in six broad layers:
 - Knowledge Intake redacts common secrets before storing source text and does not retain raw media after extraction, but it does keep source text, excerpts, hashes, review items, usage ledger rows, and published outputs until an explicit compaction/retention policy is implemented.
 - Signal events, integration events, delivery logs, and rate counters have `expiresAt` fields and Firestore TTL overrides. Signal writers use a 365-day retention window, while friction daily stats retain their bounded 90-day scheduler cleanup.
 - Scheduler run logs, generic notification logs, owner notification events/deliveries/rate counters, and public contact enquiries now get explicit Answerlattice `expiresAt` fields.
-- Chat session hard delete now deletes chat image Storage objects. Support ticket hard delete now deletes top-level ticket documents and message attachments after reading the persisted ticket.
+- Chat session hard delete retains tenant/store-scoped image objects because another session may reference the same URL; immediate deletion requires future scope-wide non-reference proof. Support ticket hard delete removes top-level ticket documents and message attachments after reading the persisted ticket.
 - Compiled context bundles already reduce public/runtime reads. The existing nightly scheduler now removes old public/private bundle versions, keeping active plus the previous two ready versions.
 - Firestore TTL field overrides now cover integration rows plus scheduler logs, notification logs, owner-notification rows, query embeddings, public contact enquiries, and `aiSearchHistory`.
 
@@ -74,7 +74,7 @@ Answerlattice stores data in six broad layers:
 | Retention diagnostics | Retention cleanup task failures now use fixed failure codes and bounded source-error metadata instead of raw exception text. |
 | Notifications | Added 90-day expiry to generic notification logs, owner-notification events, and deliveries; added 2-day expiry to owner notification rate counters. |
 | Contact enquiries | Added 365-day expiry to public Answerlattice contact submissions. |
-| Attachments | Hard delete now cleans chat image URLs and support ticket message attachments, not only ticket top-level documents. |
+| Attachments | Chat persisted-image cleanup is deferred until scope-wide non-reference can be proved; support ticket hard delete cleans ticket documents and message attachments. |
 | Context bundles | Existing nightly scheduler now deletes old versioned Storage objects for public/private context bundles. |
 | TTL/index policy | Added TTL field overrides only for non-query `expiresAt` fields; cleanup queries use existing timestamp fields instead. |
 

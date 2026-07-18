@@ -50,7 +50,7 @@ Create a separate special menu for any occasion. Your daily menu stays exactly w
 
 ### 2. Set it today, it appears when you want
 
-Schedule your Diwali menu weeks in advance. It shows up on your page exactly when you set it. No last-minute rush.
+Schedule your Diwali menu weeks in advance. MenuList checks the boundary every two minutes, so the live menu normally changes within a few minutes of the time you set.
 
 ### 3. Never forget to switch back
 
@@ -70,7 +70,7 @@ No new tool to learn. Create your special menu the same way you create your regu
 
 ### Step 1: Create your special menu
 
-Click "Create Special Menu" and choose whether to start from your current menu or start fresh. Add your festival items, seasonal dishes, or event specials.
+Click "Create Special Menu". Replace mode starts from your current menu; Add as special section starts with empty temporary rows. Add the festival items, seasonal dishes, or event specials you need.
 
 ### Step 2: Set the dates
 
@@ -86,7 +86,7 @@ MenuList handles the scheduled switch. Your special menu appears on the public l
 
 ### Restaurants & Cafés
 
-> "We run a special brunch menu every Sunday. Before MenuList, we'd edit the menu Saturday night and forget to switch back Monday morning. Now it happens automatically."
+> "For this Sunday’s brunch, we prepared a separate menu in advance. It appeared for the scheduled window and our regular menu returned afterward."
 
 ### Bakeries & Sweet Shops
 
@@ -94,11 +94,11 @@ MenuList handles the scheduled switch. Your special menu appears on the public l
 
 ### Bars & Pubs
 
-> "Match-day specials, happy hours, ladies night — each one has its own menu now. I set them up once and they cycle as scheduled."
+> "For each match-day window, we schedule a separate menu instead of editing the regular one."
 
 ### Salons & Spas
 
-> "Wedding season packages show up on our page from January to March, then disappear. Customers see exactly what's relevant."
+> "We schedule our wedding-season packages for a defined date range, then the regular service menu returns."
 
 ---
 
@@ -106,7 +106,7 @@ MenuList handles the scheduled switch. Your special menu appears on the public l
 
 ### Can I have multiple special menus scheduled?
 
-Yes. You can prepare your Diwali menu, Christmas menu, and New Year menu all in advance. They activate and deactivate on schedule. Only one can be active at a time.
+Yes. You can prepare separate one-time Diwali, Christmas, and New Year schedules in advance. Only one can be active at a time. Recurring schedules are not part of the current flow.
 
 ### What happens to my regular menu?
 
@@ -153,4 +153,4 @@ special menu, festival menu, seasonal menu, temporary menu, menu switching, rest
 
 ---
 
-**Last Updated:** February 21, 2026
+**Last Updated:** July 16, 2026

@@ -37,7 +37,7 @@ export default function WebsiteThemeSwitcher() {
             title={t(`ThemeSwitcher.${key}`)}
             onClick={() => setTheme(value)}
           >
-            <Icon size={17} />
+            <Icon size={17} aria-hidden="true" />
           </button>
         );
       })}

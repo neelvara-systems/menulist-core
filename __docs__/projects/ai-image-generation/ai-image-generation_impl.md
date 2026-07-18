@@ -1,8 +1,8 @@
 # AI Image Generation — Implementation
 
 **Feature:** Menu Image Generation & Editing
-**Status:** Source/emulator hardened; QA Firestore-rules deployment blocked by IAM
-**Last Updated:** July 13, 2026
+**Status:** Source-gate hardened; target app/Functions deployment, provider smoke, and authenticated owner QA remain pending
+**Last Updated:** July 15, 2026
 **Audience:** Developers, Future Maintainers
 
 ---
@@ -14,6 +14,22 @@ July 13 durability/security follow-up: Each registered job/item now has a determ
 July 13 project-selection follow-up: accepting reviewed batch images no longer clones and merges the browser's complete `project.files` snapshot. `BatchImageGenerationResultView` emits a bounded `ImageBatchProjectSelection[]`; the shared project DAL validates project/session scope plus the exact configured Firebase Storage bucket and same-store generated-media path, then appends by URL against current persisted truth. Standalone projects use a browser Firestore transaction and resolve the bucket from the active Firebase app. Linked outlets call the authenticated outlet-save operation `append_image_batch_selection`, whose Admin transaction resolves the server bucket, reads current outlet and master projects, enforces `imageOverride` for inherited items, writes local files or item overrides, and returns the complete latest outlet state. A same-path URL from another Firebase bucket is rejected before persistence. Desktop and mobile drain active/pending saves before this append so an older autosave cannot remove accepted images. Fabric/editor state is unaffected, no second image collection is introduced, and the owner action remains idempotent on repeated URLs.
 
 July 13 credit-reservation follow-up: single generation, image editing, and non-cache batch workers now atomically reserve exact positive integer units before provider work. The existing operation document is a hidden `reserved` shell until successful accounting promotes it to `consumed`; provider or non-retry failure restores the exact charged recurring/top-up buckets once. Batch workers use the deterministic job/item operation ID, retain that reservation only while staged output remains retryable, and recover it on terminal/cancelled/max-attempt acknowledgement. An expired third-attempt execution now transactionally records the item/job failure and retention markers instead of leaving a permanent `processing` row. Prompt-cache hits remain zero-unit and do not reserve.
+
+July 13 owner-outcome convergence follow-up: `finished`, `discarded`, and `cancelled` owner actions remain strict terminal transitions, but a retry after a lost Firestore acknowledgement now succeeds when both the stored status and `selectedImagesPersisted` value exactly match the requested outcome. The transaction returns without another write or duplicate status-history row. A different terminal status or different selection outcome still fails closed. Client and server runtime projectors preserve both explicit `true` and explicit `false` selection outcomes so discarded/cancelled truth is not erased during normalization.
+
+July 14 end-to-end cross-check: `ENABLE_AI_IMAGE_GENERATION` is now a real admission boundary rather than a declaration-only flag. Single generation, editing, batch trigger, authenticated worker, project-cover helper, business-cover helper, shared item modal, item editing, desktop/mobile project cover, and desktop/mobile Official Business Page cover entry points all enforce it. Existing batch results stay reviewable while the flag is off; admitted worker tasks return retryable `503` without provider/accounting/Storage/job-state work.
+
+July 14 owner/scale follow-up: every batch selection path now applies the shared 50-item maximum before configuration or job creation, including category select, select-all-visible, quick-select-missing, and mobile initial missing-image selection. Mobile **Generate image** opens the generation tab instead of the upload tab. Fixed duration estimates were removed, and the owner preview uses the shared content-credit rate. The batch settings card now uses Lucide icons and **Recommended Defaults** copy.
+
+July 16 Storage lifecycle correction: browser-only selection, one batch row, and one current project cannot prove a public generated-media URL is globally unreferenced because project duplication and outlet projection can preserve the same URL. Batch review actions therefore never delete generated objects, and scheduler retention is metadata-only: it prunes `itemsList` after seven days and deletes terminal job rows after 30 days. Physical media deletion stays disabled until a global reference ledger or equivalent exclusive-reference proof exists. Deterministic Admin uploads and prompt-cache destination copies are create-only and reuse the existing Firebase download token on an identity-matched retry.
+
+July 14 assistant-entry follow-up: AI Menu Manager image task definitions now require both its image-action flag and `ENABLE_AI_IMAGE_GENERATION`. Desktop/mobile prompt groups and attention/photo-gap replies hide generation actions when the master flag is off, while the existing command API independently rejects disabled actions.
+
+July 15 bounded-scale follow-up: the batch trigger now reuses `mapWithConcurrency()` and creates no more than eight Cloud Tasks concurrently. Per-item task identity, partial-enqueue failure projection, owner copy, job transitions, accounting, and worker behavior are unchanged. The daily image-batch retention task sorts active store IDs and selects a deterministic UTC-day page of at most 200 stores, so stores after the first page are no longer starved without introducing another cursor document. Prompt-cache cleanup remains capped at 25 documents per pass, queries the oldest expiry first, records whether another expired row remains, and runs hourly in the existing leased scheduler. A transient private-source delete failure retains the cache row for the next hourly retry instead of orphaning an undiscoverable Storage object. Job documents and subscription balances remain intentionally unchanged; a subcollection or sharded-accounting redesign is not justified without measured contention.
+
+### Current-document boundary
+
+The July 14 runtime notes, architecture sections, and code evidence are authoritative. Later historical audit tables and design explorations are retained for decision history only; stale statements such as “no batch limit,” declaration-only feature-flag completion, disabled accounting, an active Imagen path, or future Phase 2/3 commitments are not current runtime truth.
 
 ## Table of Contents
 
@@ -239,7 +255,7 @@ interface BatchImageGenerationJobType {
 └───────────┘  └────────┘
 ```
 
-Terminal status writes set retention markers on the job document. `itemsExpiresAt` is seven days after the terminal transition and is used by `menulistMaintenanceScheduler` to prune the heavy `itemsList` payload; `expiresAt` is 30 days after the terminal transition and is used to delete the terminal job document. For old `completed`, `failed`, and `discarded` jobs, the scheduler attempts same-tenant/store generated-image Storage cleanup before pruning item URLs. `finished` and `cancelled` jobs skip Storage deletion because those statuses can include owner-accepted project images.
+Terminal status writes set retention markers on the job document. `itemsExpiresAt` is seven days after the terminal transition and is used by `menulistMaintenanceScheduler` to prune the heavy `itemsList` payload; `expiresAt` is 30 days after the terminal transition and is used to delete the terminal job document. Public `media/menuItem/{tId}/{sId}/` objects are retained because current job/project state does not prove exclusive ownership across retries, duplicates, and outlet projections.
 
 ---
 
@@ -308,7 +324,7 @@ const ImageGenerationRequestSchema = z.object({
 
 **Endpoint:** `POST /api/image-generation/batch-trigger`
 
-The batch trigger route rejects request bodies above 16MB after auth/Safe Mode/batch rate limit and before schema validation, linked-outlet policy checks, capacity preflight, job updates, or Cloud Task fanout.
+The batch trigger route rejects request bodies above 4MB after auth/Safe Mode/batch rate limit and before schema validation, linked-outlet policy checks, capacity preflight, job updates, or Cloud Task fanout.
 
 Batch trigger failure responses, job status reasons, per-task enqueue failure summaries, and runtime diagnostics use owner-safe text, stable local failure codes, source error name/code/status metadata, and bounded project/job/item presence/length metadata only. Prompt-block failures return `itemsWithoutPromptsCount` instead of raw item IDs or names, and task-start local logs record generation config shape plus item counts instead of sanitized config payloads or raw item ID arrays. Raw Cloud Tasks/provider exceptions, task names, project IDs, item IDs, item names, and prompt/config payloads are not returned to the browser or written into batch-trigger diagnostics/logs.
 
@@ -351,10 +367,11 @@ Worker requirements:
 
 - `project-id` header must match `FIREBASE_PROJECT_ID`.
 - `x-menulist-task-secret` must match `BATCH_IMAGE_GENERATION_WORKER_SECRET`.
-- Worker request bodies are capped at 16MB after the secret/header check and before job reads or provider work.
+- Worker request bodies are capped at 256KB after the secret/header check and before job reads or provider work.
 - Payload is validated with `BatchImageGenerationWorkerRequestSchema`.
 - Batch image worker rate-limit boundary: after secret/header admission, bounded body parsing, worker schema validation, and project/job scope normalization, the worker applies the shared `BATCH_IMAGE_WORKER` limiter with a hashed tenant/store key before reading the batch job, checking capacity, calling the provider, uploading Storage objects, writing AI accounting, or updating job progress. The 600-per-minute per-store ceiling preserves normal Cloud Tasks bursts from valid 50-item batches and retries while bounding retry storms or worker-secret abuse.
 - Worker reads the batch job through Admin SDK, verifies project/job match and requested item ID, then transactionally claims one lease; active duplicates retry later and completed/failed/terminal deliveries acknowledge without provider work.
+- Staging acknowledgement is not treated as commit truth. Failure settlement reports whether transaction-current execution still retains a staged item/accounting pair; route-local uploaded paths are eligible for cleanup only when current truth does not retain that staged result. A commit followed by acknowledgement loss therefore keeps the images available for idempotent accounting/final append retry.
 - Worker builds deterministic prompts before provider work and checks AI capacity using the prompt/image quantity.
 - Shared `runImageGenerationPrompts()` executes one prompt directly and caps multi-prompt execution at a small concurrency limit.
 - Worker prepares generated item images through `uploadBase64MediaImageAdmin()` / `prepareMediaImageAdmin()` before uploading to public `media/menuItem/{tId}/{sId}/...` paths without relying on an owner browser session.
@@ -364,6 +381,7 @@ Worker requirements:
 - The client listener keeps the existing bounded Firestore query and logs setup/snapshot failures and normal debug breadcrumbs through shared hook diagnostics with project/tenant/store/job presence-length metadata only.
 - The batch results view keeps the existing accept, discard, cancel, and retry flows, but action failures log fixed `image_batch_result_*` codes with bounded project/job/count/status metadata instead of raw browser exception objects.
 - Batch job create/update writes use explicit acknowledgement guards in `src/database/imageBatchProcessing/index.tsx`. Batch start requires a persisted job ID before triggering work; cancel, upload/finish, discard, retry, and failed-start marking require a matching job/status acknowledgement before owner success copy or completion callbacks advance.
+- Owner terminal updates are acknowledgement-idempotent. The transaction first projects current persisted truth, returns read-only success only for the exact same status and `selectedImagesPersisted` outcome, and otherwise applies the normal transition validator before appending one bounded status-history entry.
 
 ### 4. Image Editing
 
@@ -531,6 +549,8 @@ export async function enqueueImageGenerationTask(data) {
 ```
 
 The Cloud Tasks client is initialized lazily. Client initialization failures and task creation failures use `cloud_tasks_client_initialization_failed` and `cloud_tasks_batch_image_task_create_failed` diagnostics with configuration booleans, bounded project/job/item/task-name metadata, and source error name/code/status only.
+
+`/api/image-generation/batch-trigger` creates tasks through the shared bounded-concurrency helper with a limit of eight concurrent `createTask` requests. It still returns the same per-item fulfilled/rejected result shape and persists the same partial/all-enqueue failure state; the cap only smooths task-creation bursts for valid batches of up to 50 items. Queue dispatch rate, worker concurrency, and retry/backoff remain target Cloud Tasks configuration and must be captured during Gate 7 certification rather than invented in application code.
 
 ### Real-time Listener
 
@@ -708,22 +728,22 @@ safetySettings: [
 
 ## Recommendations & Technical Debt
 
-### Critical Issues (P0) — Must Fix
+### Historical Critical Issues (P0) — Resolved
 
-| Issue                            | Location                        | Impact                                  | Fix                               |
-| -------------------------------- | ------------------------------- | --------------------------------------- | --------------------------------- |
-| Transaction recording disabled   | `route.ts:264`                  | Token usage not tracked, billing broken | Uncomment `logTransaction()` call |
-| Debugger statement in production | `batch-generation/route.ts:164` | Breaks production execution             | Remove `debugger` statement       |
-| Console.log statements           | Multiple files                  | Performance, security                   | Replace with `logger` utility     |
+| Historical issue | Current resolution |
+| --- | --- |
+| Transaction recording disabled | Shared capacity reservation, accounting settlement/refund, and owner-history presentation are active and source-gated |
+| Debugger statement in worker | Removed; verifier rejects its return |
+| Raw console diagnostics | Reviewed routes use bounded runtime diagnostics; verifier rejects retired raw-output patterns |
 
 ### High Priority (P1) — Security & Cost
 
-| Improvement               | Current State      | Recommendation                                        | Effort |
-| ------------------------- | ------------------ | ----------------------------------------------------- | ------ |
-| Cloud Task Authentication | Header-based only  | Add OIDC token verification per Google best practices | Medium |
-| Cost Estimation           | Post-generation    | Show estimated cost before batch start                | Low    |
-| Batch Size Limit          | No limit           | Add max 50 items to prevent runaway costs             | Low    |
-| Rate Limit Bypass         | No Cloud Task auth | Validate task origin with service account             | Medium |
+| Improvement | Current State | Recommendation | Effort |
+| --- | --- | --- | --- |
+| Cloud Task Authentication | Project header plus timing-safe shared worker secret | Preserve current boundary; an OIDC migration needs an explicit architecture/deployment decision | Architecture decision |
+| Cost Presentation | Shared credit estimate before start; actual successful-output accounting after work | Do not show provider-currency estimates without current target pricing evidence | Closed |
+| Batch Size Limit | 50 items enforced in UI, schema, client/server projectors, and worker job truth | Keep the shared maximum aligned across every entry | Closed |
+| Worker Rate Limit | Authenticated worker has its own bounded limiter | Keep task retries/idempotency tests source-gated | Closed |
 
 ### Medium Priority (P2) — Code Quality
 
@@ -777,18 +797,18 @@ const enhancedPrompt = `
 | Optimization            | Current                | Recommended                                              | Savings Est.    |
 | ----------------------- | ---------------------- | -------------------------------------------------------- | --------------- |
 | **Context Caching**     | Not used               | Use Gemini explicit context caching for repeated prompts | 20-40%          |
-| **Batch Inference**     | Cloud Tasks (per-item) | Use Vertex AI Batch Prediction for 50+ items             | 50% per request |
+| **Batch Inference**     | Cloud Tasks, maximum 50 items | Keep current architecture unless measured target-provider evidence justifies a migration | Unverified |
 | **Image Deduplication** | None                   | Hash prompts, cache results for identical requests       | Variable        |
 | **Model Selection**     | Always Gemini image model | Keep `gemini-2.5-flash-image` as default until `gemini-3.1-flash-image` passes output and billing regression checks | Risk control |
 
 #### Vertex AI Batch Prediction (Alternative to Cloud Tasks)
 
 ```typescript
-// For large batches (50+ items), consider Vertex AI Batch Prediction
+// Historical alternative only. Current source admits at most 50 items and uses Cloud Tasks.
 // Source: https://cloud.google.com/vertex-ai/generative-ai/docs/multimodal/batch-prediction-gemini
 
 // Benefits:
-// - 50% cost reduction vs real-time
+// - Any pricing claim requires a fresh target-provider measurement
 // - No Cloud Tasks management
 // - Built-in retry and error handling
 // - Results in BigQuery or Cloud Storage
@@ -875,12 +895,12 @@ BATCH_IMAGE_GENERATION_WORKER_SECRET=generate-a-long-random-secret
 
 ---
 
-## Development Checklist (Pending Implementation)
+## Historical development checklist (non-authoritative)
 
 > **Source**: Cross-check of codebase + external review validation (Jan 2026)
-> **Validation**: Each item verified against actual code before inclusion
+> **Validation**: Retained for decision history. The current-document boundary and current source above are authoritative; these rows are not an automatic roadmap.
 
-### Critical Fixes (P0) — Must Complete Before Next Release
+### Historical critical fixes
 
 | #   | Task                                | Location                                                     | Verified Issue                                            | Status                            |
 | --- | ----------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- | --------------------------------- |
@@ -888,9 +908,9 @@ BATCH_IMAGE_GENERATION_WORKER_SECRET=generate-a-long-random-secret
 | 2   | **Enable transaction logging**      | `src/app/api/image-generation/route.ts`                      | Image generation usage was not reliably accounted         | ✅ Done (June 11, 2026)           |
 | 3   | **Add batch size limit**            | `src/lib/validation/apiSchemas.ts`                           | No max item count validation, risk of runaway costs       | ✅ Done (max 50)                  |
 | 4   | **Replace console.log with logger** | `src/lib/google/cloudTask/index.ts`, `src/lib/apiUtils`      | Security & performance issue                              | ✅ Done for audited API path      |
-| 5   | **Add feature flag**                | `src/config/features.ts`                                     | Missing ENABLE_AI_IMAGE_GENERATION flag                   | ✅ Done (Jan 30, 2026)            |
+| 5   | **Enforce image-generation master flag** | Routes, cover helpers, owner UI, AI Menu Manager | Declaration alone did not close runtime entry points | ✅ Done (July 14, 2026) |
 
-### Security Hardening (P1) — This Sprint
+### Historical security hardening
 
 | #   | Task                                 | Location                    | Issue                                                 | Status     |
 | --- | ------------------------------------ | --------------------------- | ----------------------------------------------------- | ---------- |
@@ -898,7 +918,7 @@ BATCH_IMAGE_GENERATION_WORKER_SECRET=generate-a-long-random-secret
 | 6   | **Add input validation to worker**   | `batch-generation/route.ts` | Worker accepts payload without Zod validation         | ✅ Done |
 | 7   | **Validate task origin**             | `batch-generation/route.ts` | No verification that request comes from task enqueue  | ✅ Done with project header + shared secret |
 
-### Code Quality (P2) — Next Sprint
+### Historical code-quality ideas
 
 | #   | Task                                          | Location                                | Issue                                                       | Status     |
 | --- | --------------------------------------------- | --------------------------------------- | ----------------------------------------------------------- | ---------- |
@@ -908,21 +928,21 @@ BATCH_IMAGE_GENERATION_WORKER_SECRET=generate-a-long-random-secret
 | 11  | **Integrate `imageQualityGuard.ts`**          | Generation flow                         | Quality guard exists but not applied to AI-generated images | ⬜ Pending |
 | 12  | **Prepare generated images before upload**    | Upload flow                             | Browser accepted images and batch worker saves must not persist raw provider bytes | ✅ Done via media-profile preparation (`prepareMediaImage()` and `prepareMediaImageAdmin()`) |
 
-### UX Improvements (P2) — Next Sprint
+### Historical UX ideas
 
 | #   | Task                                  | Location                             | Issue                                                    | Status     |
 | --- | ------------------------------------- | ------------------------------------ | -------------------------------------------------------- | ---------- |
-| 13  | **Add cost estimation before batch**  | `BatchImageGenerationView.tsx`       | Users don't see estimated cost before starting           | ⬜ Pending |
+| 13  | **Add cost estimation before batch**  | `batchImageGeneration/index.tsx`     | Users did not see estimated cost before starting         | ✅ Done with the shared content-credit estimate |
 | 14  | **Add partial batch retry**           | `BatchImageGenerationResultView.tsx` | Can only retry entire batch, not individual failed items | ⬜ Pending |
 | 15  | **Integrate `GenerationHistory.tsx`** | `AiImageGenerator/index.tsx`         | Component built but not integrated                       | ⬜ Pending |
 
-### Testing (P2) — Next Sprint
+### Historical testing ideas
 
 | #   | Task                                       | Status     |
 | --- | ------------------------------------------ | ---------- |
 | 16  | **Add unit tests for prompt sanitization** | ⬜ Pending |
 | 17  | **Add unit tests for prompt construction** | ⬜ Pending |
-| 18  | **Add integration tests for batch flow**   | ⬜ Pending |
+| 18  | **Add integration tests for batch flow**   | ✅ Source/rules/concurrency regression coverage; live target smoke remains an owner release step |
 
 ---
 
@@ -966,7 +986,7 @@ The system may **assist** but must **never decide** which image represents an it
 
 ---
 
-## Future Migration Path (Design Only — No Implementation Commitment)
+## Historical Migration Exploration (Superseded; No Implementation Commitment)
 
 > **Status**: DESIGN-ONLY — No timelines, no promises
 > **Purpose**: Enable future evolution without blocking current USP
@@ -982,7 +1002,7 @@ The system may **assist** but must **never decide** which image represents an it
 
 This phase must remain **fully supported forever**.
 
-### Phase 2: Guided (Future, Optional)
+### Historical guided concept (not committed)
 
 System may:
 
@@ -996,7 +1016,7 @@ System must NOT:
 - Block manual override
 - Explain reasoning
 
-### Phase 3: Silent (Future, Very Careful)
+### Historical silent concept (not committed)
 
 "Ready when you are" — images prepared but never auto-applied.
 
@@ -1033,8 +1053,8 @@ System must NOT:
 | #   | ChatGPT Claim                      | Valid?     | Evidence                                      | Action                |
 | --- | ---------------------------------- | ---------- | --------------------------------------------- | --------------------- |
 | 1   | "Too many choices exposed"         | ⚠️ Partial | UI shows ~6 options, not 12+ as claimed       | No change needed      |
-| 2   | "No batch size limit"              | ✅ Valid   | `batch-trigger/route.ts` lacks max count      | Added to P0 checklist |
-| 3   | "Transaction recording disabled"   | ✅ Valid   | `route.ts:264` commented out                  | Added to P0 checklist |
+| 2   | "No batch size limit"              | Historical finding | Resolved: shared 50-item admission across UI/client/server | Closed July 14 |
+| 3   | "Transaction recording disabled"   | Historical finding | Resolved: shared reservation/accounting is active | Closed |
 | 4   | "Debugger in production"           | ✅ Valid   | `batch-generation/route.ts:164`               | Added to P0 checklist |
 | 5   | "USP = Inline Menu Image Creation" | ✅ Valid   | Code confirms item-scoped, no asset workflow  | Added to Guardrails   |
 | 6   | "Scope freeze rules"               | ✅ Valid   | These features don't exist, good to document  | Added to Guardrails   |
@@ -1323,7 +1343,7 @@ If this metric is below 60%, the system is asking users to do the system's job.
 **Improvement Opportunities**:
 | ID | Issue | Suggested Fix | Priority |
 |----|-------|---------------|----------|
-| ✅ UX-20 | No time estimate | Show "Estimated: ~5 minutes for 20 items" | P1 | **DONE** |
+| ✅ UX-20 | Unsupported timing uncertainty | Do not promise a fixed duration; show bounded item/image count | P1 | **DONE (updated July 14)** |
 | ✅ UX-21 | No cost indicator | Show credit/cost estimate before starting | P1 | **DONE** |
 | ✅ UX-22 | No quick action | Add "Generate All Missing Images" one-click button | P2 | **DONE** |
 
@@ -1345,7 +1365,7 @@ If this metric is below 60%, the system is asking users to do the system's job.
 | ID | Issue | Suggested Fix | Priority |
 |----|-------|---------------|----------|
 | UX-23 | Same overwhelming options | For batch: show only Style + Aspect Ratio, hide rest | P1 |
-| ✅ UX-24 | No defaults button | Add "Use Smart Defaults" toggle that hides all options | P1 | **DONE** |
+| ✅ UX-24 | No defaults button | Add "Use Recommended Defaults" toggle that hides all options | P1 | **DONE** |
 | UX-25 | Scary agreement | Soften: "I understand images are AI-generated" with info icon | P3 |
 
 ---
@@ -1358,7 +1378,7 @@ June 29 follow-up: accept/upload, discard, cancel, and retry failure diagnostics
 
 June 30 follow-up: batch job create and owner result-action updates now require explicit acknowledgement before the UI advances. `ImageUploadModal` fails closed when `addImageBatchProcessingJob()` does not return a job ID and requires failed-start status marking to acknowledge `failed`. `BatchImageGenerationResultView` requires matching `cancelled`, `finished`, `discarded`, or `queued` acknowledgements before success copy or `onComplete()` runs. Rejected acknowledgement codes are `image_upload_batch_job_create_rejected`, `image_upload_batch_job_mark_failed_rejected`, `image_batch_result_cancel_update_rejected`, `image_batch_result_upload_update_rejected`, `image_batch_result_discard_update_rejected`, and `image_batch_result_retry_update_rejected`.
 
-July 1 follow-up: terminal batch jobs now receive `itemsExpiresAt` and `expiresAt` retention markers from both browser and Admin SDK status-update paths. `menulistMaintenanceScheduler` runs `image_batch_job_retention_cleanup` inside the existing leased scheduler, pruning `itemsList` after seven days and deleting terminal job docs after 30 days. Old `completed`, `failed`, and `discarded` jobs attempt same-tenant/store `media/menuItem/{tId}/{sId}/` Storage cleanup before item URL pruning; `finished` and `cancelled` jobs skip Storage deletion to avoid deleting owner-accepted project images.
+July 1 follow-up (corrected July 16): terminal batch jobs receive `itemsExpiresAt` and `expiresAt` retention markers from both browser and Admin SDK status-update paths. `menulistMaintenanceScheduler` runs `image_batch_job_retention_cleanup` inside the existing leased scheduler, pruning `itemsList` after seven days and deleting terminal job docs after 30 days. It does not delete public generated-media objects without global exclusive-reference proof. The task scans a deterministic UTC-day page of at most 200 sorted active stores and rotates across all pages instead of repeatedly selecting only the first 200.
 
 July 5 follow-up: Batch image result stored-error display boundary. Failed batch result owner copy no longer renders stored `imageBatchProcessingJobs.error` / `activeJobData.error` text. `BatchImageGenerationResultView` uses fixed recovery copy from source so legacy or raw stored job-error strings cannot become owner-visible, while worker/trigger writes, result actions, listener reads, and diagnostics remain unchanged.
 
@@ -1375,7 +1395,7 @@ July 5 follow-up: Batch image result stored-error display boundary. Failed batch
 | ID | Issue | Suggested Fix | Priority |
 |----|-------|---------------|----------|
 | ✅ UX-26 | Multiple modals | Single confirmation with clear consequences | P2 | **DONE** |
-| ✅ UX-27 | Unclear consequences | Add: "3 selected → will be added. 2 unselected → will be deleted." | P1 | **DONE** |
+| ✅ UX-27 | Unclear consequences | State exactly which selected images will be added and that discarding leaves current menu images unchanged; do not promise immediate physical deletion. | P1 | **DONE** |
 | ✅ UX-28 | Decision fatigue | Default to "Upload All" with option to review | P2 | **DONE** |
 
 ---
@@ -1435,11 +1455,11 @@ July 5 follow-up: Batch image result stored-error display boundary. Failed batch
 | **UX-10** | Unhelpful placeholder      | Changed to "Add special instructions (optional - we'll use your item details)" | `ChatWidgetUi.tsx`                               |
 | **UX-16** | Green border confusing     | Added clear visual indicator: "Editing this image → Click another to switch"   | `EditImageModal.tsx`                             |
 | **UX-17** | No enhancement previews    | Added friendly names, icons, "what it does" + before/after examples            | `EditImageModal.tsx`                             |
-| **UX-20** | No time estimate           | Added "~X min • Y images" estimate on batch selection                          | `batchImageGeneration/index.tsx`                 |
+| **UX-20** | Unsupported fixed time estimate | Removed fixed duration; selection shows bounded item/image count                 | `batchImageGeneration/index.tsx`                 |
 | **UX-21** | No cost indicator          | Added credit cost estimate (e.g., "15 credits")                                | `batchImageGeneration/index.tsx`                 |
 | **UX-22** | No quick action            | Added "Quick Select: All Items Without Images" button                          | `batchImageGeneration/index.tsx`                 |
-| **UX-24** | No defaults button         | Added "Use Smart Defaults" toggle card (ON by default, hides all options)      | `BatchImageGenerationView.tsx`                   |
-| **UX-27** | Unclear consequences       | Shows "X images will be added, Y images will be deleted" with color coding     | `BatchImageGenerationResultView.tsx`             |
+| **UX-24** | No defaults button         | Added "Use Recommended Defaults" toggle card (ON by default, hides options)    | `BatchImageGenerationView.tsx`                   |
+| **UX-27** | Unclear consequences       | Shows selected-image save outcome and truthful discard copy without claiming global Storage deletion | `BatchImageGenerationResultView.tsx`             |
 | **UX-28** | Decision fatigue           | Default to "Upload All" (all images pre-selected)                              | `BatchImageGenerationResultView.tsx`             |
 | **UX-11** | No prompt examples         | Added rotating examples: "e.g., on a rustic wooden table"                      | `ChatWidgetUi.tsx`                               |
 | **UX-14** | No visual previews         | Added emoji + description tooltips on hover for attributes                     | `MultiSelectAttributeSelector.tsx`               |

@@ -238,4 +238,4 @@ Build Menu Card Export as a routed Print Menu workflow under Use MenuList. The r
 6. Create PDF or packet.
 7. Reuse or regenerate from history.
 
-This is the long-term successor to PDF Surface. PDF Surface remains the lightweight predecessor until route parity is proven.
+This was the research decision that established Menu Card Export as the successor to PDF Surface. Route parity is now implemented; PDF Surface remains only as a compatibility bridge for legacy or flag-off callers.

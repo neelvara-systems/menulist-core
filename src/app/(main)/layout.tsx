@@ -18,29 +18,21 @@ import OwnerAppUpdatePrompt from '../../components/common/OwnerAppUpdatePrompt'
 import MenuListAnswerlatticeWidgetEmbed from '../../components/answerlattice/MenuListAnswerlatticeWidgetEmbed'
 
 export const metadata: Metadata = {
-  title: 'MenuList AI Dashboard Main',
-  description: 'The everything app',
-  generator: `
-  
-  ᴾʳᵉˢᵉⁿᵗⁱⁿᵍ ʸᵒᵘ...
-        ▀▄▀▄▀▄🄴🄲🄾🄼🅂🄰🄸▀▄▀▄▀▄
-    ✳  🎀  𝒯𝒽𝑒 𝑒𝓋𝑒𝓇𝓎𝓉𝒽𝒾𝓃𝑔 𝒶𝓅𝓅  🎀  ✳
-    
-  `,
+  title: 'MenuList Owner Dashboard',
+  description: 'Private MenuList workspace for business owners and their teams.',
   manifest: "/manifest.json",
-  keywords: ["Ecommerce", "Artificial Intelligence"],
-  authors: [
-    { name: "Dnyaneshwar Garudkar" },
-    { name: "Dnyaneshwar Garudkar", url: "https://garudkar.in" },
-  ],
+  authors: [{ name: "MenuList", url: "https://menulist.ai" }],
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+  },
 };
 
 export const viewport: Viewport = {
   themeColor: APP_THEME_COLOR,
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
   viewportFit: 'cover',
 }
 

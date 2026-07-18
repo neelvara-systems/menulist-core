@@ -3,7 +3,9 @@ export const dynamic = 'force-dynamic';
 import { DB_COLLECTIONS } from "@constant/database";
 import { FEATURE_FLAGS } from "@config/features";
 import { parsePlatformStoreSummary } from "@data/shared/storeSummaryBoundary";
+import { getCurrentPlatformUser } from "@lib/auth/currentPlatformUser";
 import { admin, authAdmin } from "@lib/firebase/firebaseAdmin";
+import { runStorePublicTruthPostCommitEffects } from "@lib/cache/storePublicTruthPostCommit";
 import { isValidFirestoreDocumentId } from "@lib/firebase/firestoreDocumentId";
 import {
     getBoundedFirebaseAdminStringContext,
@@ -306,18 +308,6 @@ async function updateTenantBlockStateAtomically({
     });
 }
 
-async function revalidateStorePublicCache(storeId: string | number, tenantId?: string | number) {
-    revalidateTag(`menu-store-${storeId}`);
-    revalidateTag(`store-${storeId}`);
-    revalidateTag('client-stores');
-    revalidateTag('screen-data');
-    await touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks');
-    await invalidateOwnerBusinessAssistantPacketCache({
-        tId: tenantId,
-        sId: storeId,
-    });
-}
-
 async function syncUserBlockAuthState({
     desiredDisabled,
     entity,
@@ -474,6 +464,7 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
     const rateLimit = await checkRateLimit({
         key: `${PLATFORM_ENTITY_BLOCK_RATE_LIMIT_KEY}:${operatorRateLimitHash}`,
         ...rateLimitConfig,
+        failClosedOnProviderError: true,
     });
 
     if (!rateLimit.allowed) {
@@ -489,9 +480,14 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
         }, 'high');
 
         return NextResponse.json(
-            { error: "Too many entity block attempts. Please try again later.", retryAfter: waitSeconds },
             {
-                status: 429,
+                error: rateLimit.reason === 'provider_unavailable'
+                    ? "Entity block controls are temporarily unavailable."
+                    : "Too many entity block attempts. Please try again later.",
+                retryAfter: waitSeconds,
+            },
+            {
+                status: rateLimit.reason === 'provider_unavailable' ? 503 : 429,
                 headers: {
                     'Retry-After': String(waitSeconds),
                     'X-RateLimit-Limit': String(rateLimitConfig.limit),
@@ -500,6 +496,14 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                 },
             },
         );
+    }
+
+    const currentPlatformUser = await getCurrentPlatformUser(session);
+    if (!currentPlatformUser) {
+        logger.security('Authorization Failed - Platform Entity Blocks Current Role', {
+            ...getBoundedSecurityRouteContext(session, request),
+        }, 'high');
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const bodyResult = await readBoundedJsonBody(request, PLATFORM_ENTITY_BLOCK_MAX_BODY_BYTES, {
@@ -549,13 +553,31 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                 tenantScope,
             });
             committed = true;
-            for (let offset = 0; offset < result.affectedStoreIds.length; offset += TENANT_BLOCK_EFFECT_CHUNK_SIZE) {
-                await Promise.all(result.affectedStoreIds
-                    .slice(offset, offset + TENANT_BLOCK_EFFECT_CHUNK_SIZE)
-                    .map((storeId) => revalidateStorePublicCache(storeId, tenantScope.documentId)));
+            const postCommit = await runStorePublicTruthPostCommitEffects({
+                chunkSize: TENANT_BLOCK_EFFECT_CHUNK_SIZE,
+                storeIds: result.affectedStoreIds.map(String),
+                tenantId: tenantScope.documentId,
+                deps: {
+                    invalidateAssistant: (storeId, effectTenantId) => (
+                        invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: storeId })
+                    ),
+                    revalidate: (tag) => revalidateTag(tag),
+                    touchScreen: (storeId) => (
+                        touchDigitalScreenContentVersionForStoreServer(storeId, 'platformEntityBlocks')
+                    ),
+                },
+            });
+            if (postCommit.effectsPending) {
+                logFirebaseAdminDiagnostic('platform_entity_block_tenant_post_commit_effect_failed', {
+                    blocked,
+                    failedEffectCount: postCommit.failedEffectCount,
+                    storeCount: result.affectedStoreIds.length,
+                });
             }
 
             return NextResponse.json({
+                effectsPending: postCommit.effectsPending,
+                failedEffectCount: postCommit.failedEffectCount,
                 entity: {
                     ...result.entity,
                     tenantId,
@@ -629,9 +651,32 @@ export const POST = withPlatformAuth(async (request: NextRequest, session) => {
                 };
             });
             committed = true;
-            await revalidateStorePublicCache(storeScope.documentId, result.tenantDocumentId);
+            const postCommit = await runStorePublicTruthPostCommitEffects({
+                chunkSize: 1,
+                storeIds: [storeScope.documentId],
+                tenantId: result.tenantDocumentId || '',
+                deps: {
+                    invalidateAssistant: (effectStoreId, effectTenantId) => (
+                        effectTenantId
+                            ? invalidateOwnerBusinessAssistantPacketCache({ tId: effectTenantId, sId: effectStoreId })
+                            : Promise.resolve()
+                    ),
+                    revalidate: (tag) => revalidateTag(tag),
+                    touchScreen: (effectStoreId) => (
+                        touchDigitalScreenContentVersionForStoreServer(effectStoreId, 'platformEntityBlocks')
+                    ),
+                },
+            });
+            if (postCommit.effectsPending) {
+                logFirebaseAdminDiagnostic('platform_entity_block_store_post_commit_effect_failed', {
+                    blocked,
+                    failedEffectCount: postCommit.failedEffectCount,
+                });
+            }
 
             return NextResponse.json({
+                effectsPending: postCommit.effectsPending,
+                failedEffectCount: postCommit.failedEffectCount,
                 entity: {
                     ...result.entity,
                     storeId,

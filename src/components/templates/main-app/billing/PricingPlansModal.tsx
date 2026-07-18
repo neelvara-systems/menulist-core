@@ -101,7 +101,6 @@ const PlanCardComponent = ({
                     icon: <LuZap size={20} color={token.colorText} />,
                 };
     const price = plan[`price${currency}`].price;
-    const monthlyCreditAllowance = plan[`price${currency}`].monthlyCredits || "Custom";
     const allPlatformFeatures = PlatformFeaturesList.B2C;
 
     const featuresListIds = plan.planId === 'starter' ?
@@ -159,8 +158,8 @@ const PlanCardComponent = ({
                     {!renderFeatureItems && plan.planId !== 'custom' && (
                         <List.Item style={ListItemStyle}>
                             <LuCheck style={{ color: token.colorSuccess, marginRight: 8 }} />
-                            <Text>{monthlyCreditAllowance} Monthly Credits</Text>
-                            <Tooltip title={`Includes ${monthlyCreditAllowance} monthly credits.`}>
+                            <Text>Content enhancements included</Text>
+                            <Tooltip title="Images, descriptions, and translations are included with the plan. Add a pack when you need extra capacity.">
                                 <LuInfo style={{ marginLeft: 8, color: token.colorInfoActive, cursor: 'pointer' }} />
                             </Tooltip>
                         </List.Item>

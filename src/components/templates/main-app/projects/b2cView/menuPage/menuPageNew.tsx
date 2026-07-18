@@ -31,6 +31,7 @@ import {
     getDecisionFactValue,
 } from '@lib/menu/itemDecisionFacts';
 import { buildCanonicalItemUrl } from '@lib/menu/itemTruthUrls';
+import { normalizePublicMenuBackground } from '@lib/menu/publicMenuBackground';
 import { getOfferingLabels } from '@lib/menu-kit/businessTypeLabels';
 import {
     buildPublicMenuSearchDocument,
@@ -44,7 +45,9 @@ import { getPublicMenuSpecialNote } from '@lib/menu/publicMenuSpecialNote';
 import { getMenuItemImageAltText } from '@lib/media/altText';
 import { normalizeOBPExternalHttpsUrl, normalizeOBPGoogleMapsUrl } from '@lib/obp/publicLinks';
 import { buildTelHref, buildWhatsAppPhoneParam } from '@lib/phone/phoneNumber';
-import { formatMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { formatMenuPrice, parseSingleMenuPrice } from '@lib/pricing/formatMenuPrice';
+import { getActivePublicItemPriceAttributes, getPublicItemListPriceLabel } from '@lib/pricing/publicItemPricePresentation';
+import { getActiveTempStatus } from '@lib/tempStatus/statusBoundary';
 import { slugify } from '@lib/utils/slugify';
 import { StoreDataType } from '@type/platform/store';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -134,12 +137,6 @@ const upsertClientCanonical = (href?: string | null) => {
     element.setAttribute('href', href);
 };
 
-const isActiveTempStatus = (tempStatus?: { expiresAt?: string } | null): boolean => {
-    if (!tempStatus?.expiresAt) return false;
-    const expiresAt = new Date(tempStatus.expiresAt).getTime();
-    return Number.isFinite(expiresAt) && expiresAt > Date.now();
-};
-
 const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefined => {
     switch (filter) {
         case 'popular':
@@ -156,9 +153,6 @@ const getAttributeFilterAnalyticsLabel = (filter: FilterType): string | undefine
             return undefined;
     }
 };
-
-const hasDisplayPrice = (price: unknown): boolean =>
-    price !== undefined && price !== null && String(price).trim() !== '';
 
 const isElementScrollable = (element: HTMLElement | null): element is HTMLElement =>
     !!element && element.scrollHeight > element.clientHeight + 1;
@@ -339,7 +333,7 @@ function MenuPageNew({
         [activeLanguage, primaryLanguage, projectData, storeDetails],
     );
     const activeTempStatus = useMemo(
-        () => (isActiveTempStatus(storeDetails?.tempStatus) ? storeDetails.tempStatus : null),
+        () => getActiveTempStatus(storeDetails?.tempStatus),
         [storeDetails?.tempStatus],
     );
 
@@ -420,15 +414,6 @@ function MenuPageNew({
     // P0.2 - State Persistence: Track if state was restored from session
     const [stateRestored, setStateRestored] = useState(false);
 
-    // #31: Progressive rendering — for large menus (150+ items), only render categories
-    // near the viewport. Distant categories show lightweight placeholders until scrolled into view.
-    const PROGRESSIVE_THRESHOLD = 150; // Only activate for menus with 150+ items
-    const totalItemCount = useMemo(() => {
-        return projectData?.files?.reduce((sum: number, file: any) =>
-            sum + (file.extractedData?.data?.items?.length || 0), 0) || 0;
-    }, [projectData?.files]);
-    const useProgressiveRender = totalItemCount >= PROGRESSIVE_THRESHOLD;
-    const [visibleCategoryIds, setVisibleCategoryIds] = useState<Set<string>>(new Set());
     const [categoryVisibilityTick, setCategoryVisibilityTick] = useState(0);
 
     useEffect(() => {
@@ -853,44 +838,6 @@ function MenuPageNew({
         };
     }, [allCategories, effectiveStickyControlsOffset, enableScrollSpy, getActiveScrollContainer, releaseCategoryNavigationLock]);
 
-    // #31: Progressive rendering observer — mark categories visible as they approach viewport
-    useEffect(() => {
-        if (!useProgressiveRender) return;
-        // Always show first 3 categories immediately (above-the-fold content)
-        const initialVisible = new Set(allCategories.slice(0, 3).map((c: any) => c.id));
-        setVisibleCategoryIds(initialVisible);
-
-        const observer = new IntersectionObserver(
-            (entries) => {
-                setVisibleCategoryIds(prev => {
-                    const next = new Set(prev);
-                    let changed = false;
-                    for (const entry of entries) {
-                        if (entry.isIntersecting) {
-                            const catId = entry.target.getAttribute('data-category-id');
-                            if (catId && !next.has(catId)) {
-                                next.add(catId);
-                                changed = true;
-                            }
-                        }
-                    }
-                    return changed ? next : prev;
-                });
-            },
-            { rootMargin: '500px 0px' } // Pre-load 500px before visible
-        );
-
-        // Observe all category sentinel elements after render
-        requestAnimationFrame(() => {
-            allCategories.forEach((cat: any) => {
-                const el = document.getElementById(`cat-${cat.id}`);
-                if (el) observer.observe(el);
-            });
-        });
-
-        return () => observer.disconnect();
-    }, [useProgressiveRender, allCategories]);
-
     // Debounce search
     useEffect(() => {
         const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
@@ -1235,6 +1182,7 @@ function MenuPageNew({
         const category = allCategories.find((cat: any) => cat.id === categoryId);
         const analyticsCategoryName = getMenuAnalyticsText(category?.name)
             || (typeof item.category === 'object' ? getMenuAnalyticsText(item.category) : undefined);
+        const activePriceAttributes = getActivePublicItemPriceAttributes(item);
 
         if (item.available === false) {
             if (analyticsPreferences.trackMenuViews && storeDetails?.tenantId && storeDetails?.storeId && projectData?.projectId) {
@@ -1263,8 +1211,8 @@ function MenuPageNew({
                 category: analyticsCategoryName,
                 categoryId,
                 categoryName: analyticsCategoryName,
-                price: showItemPrices
-                    ? (typeof item.price === 'string' ? parseFloat(item.price.replace(/[^0-9.]/g, '')) : item.price)
+                price: showItemPrices && activePriceAttributes.length === 0
+                    ? (parseSingleMenuPrice(item.price) ?? undefined)
                     : undefined,
                 currency: currencyCode,
             });
@@ -1631,13 +1579,16 @@ function MenuPageNew({
         ? (isDesktop ? '100dvh' : '100svh')
         : 'calc(100dvh - 76px)';
     const mobileStickySafeOverflowX: React.CSSProperties['overflowX'] = isPublicSurface && !isDesktop ? 'visible' : 'clip';
-    const menuBackgroundImageStyle: React.CSSProperties | null = backgroundImage
+    const safeMenuBackgroundImage = normalizePublicMenuBackground(backgroundImage, {
+        allowDataPreview: previewMode,
+    });
+    const menuBackgroundImageStyle: React.CSSProperties | null = safeMenuBackgroundImage
         ? {
-            backgroundImage: `${moodConfig.backgroundOverlay ? `${moodConfig.backgroundOverlay}, ` : ''}url("${backgroundImage}")`,
+            backgroundImage: `${moodConfig.backgroundOverlay ? `${moodConfig.backgroundOverlay}, ` : ''}url("${safeMenuBackgroundImage}")`,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundRepeat: 'no-repeat',
-            backgroundAttachment: previewMode ? 'scroll' : 'fixed',
+            backgroundAttachment: 'scroll',
             backgroundColor: moodConfig.background,
         }
         : null;
@@ -1788,7 +1739,7 @@ function MenuPageNew({
 
     const categoryHeaderStyle: React.CSSProperties = {
         fontFamily: moodConfig.headingFont,
-        fontSize: isCompactGrid ? 13 : isMobile ? 14 : 15,
+        fontSize: isCompactGrid ? 14 : isMobile ? 14 : 15,
         fontWeight: 700,
         color: moodConfig.headingColor,
         margin: 0,
@@ -1915,7 +1866,7 @@ function MenuPageNew({
 
     const itemDescStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
-        fontSize: isCompactGrid ? 11 : isMobile ? 12 : 13,
+        fontSize: isCompactGrid ? 12 : isMobile ? 12 : 13,
         color: moodConfig.descriptionColor || moodConfig.bodyColor,
         margin: 0,
         marginTop: 3,
@@ -1928,10 +1879,9 @@ function MenuPageNew({
 
     const priceStyle: React.CSSProperties = {
         fontFamily: moodConfig.bodyFont,
-        fontSize: isCompactGrid ? 12 : isMobile ? 13 : 14,
+        fontSize: isCompactGrid ? 13 : isMobile ? 14 : 15,
         fontWeight: 600,
         color: moodConfig.priceColor,
-        opacity: 0.88,
         marginTop: 'auto',
         lineHeight: 1.3,
         ...(moodConfig.itemStyle.priceStyle === 'badge' && moodConfig.itemStyle.priceBadgeColor && {
@@ -1940,6 +1890,27 @@ function MenuPageNew({
             borderRadius: 4,
             width: 'fit-content',
         }),
+    };
+
+    const itemOptionPriceRowStyle: React.CSSProperties = {
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 5,
+        marginTop: 6,
+    };
+
+    const itemOptionPriceStyle: React.CSSProperties = {
+        background: `${moodConfig.accentColor}08`,
+        border: `1px solid ${moodConfig.itemStyle.borderColor}`,
+        borderRadius: 999,
+        color: moodConfig.bodyColor,
+        fontFamily: moodConfig.bodyFont,
+        fontSize: 12,
+        fontWeight: 500,
+        lineHeight: '17px',
+        maxWidth: '100%',
+        overflowWrap: 'anywhere',
+        padding: '2px 7px',
     };
 
     const itemFactRowStyle: React.CSSProperties = {
@@ -2366,9 +2337,6 @@ function MenuPageNew({
                                 const categoryHeaderFrameStyle = getCategoryHeaderFrameStyle();
                                 const renderedDividerStyle = getDividerStyle();
 
-                                // #31: Progressive rendering — show placeholder for off-screen categories
-                                const isCategoryVisible = !useProgressiveRender || visibleCategoryIds.has(category.id);
-
                                 return (
                                     <section
                                         key={category.id}
@@ -2412,14 +2380,7 @@ function MenuPageNew({
                                             {renderedDividerStyle && <div style={renderedDividerStyle} />}
                                         </header>
 
-                                        {!isCategoryVisible ? (
-                                            // #31: Lightweight placeholder — estimated height based on item count
-                                            <div style={{
-                                                height: items.length * 88,
-                                                background: 'transparent',
-                                            }} />
-                                        ) : (
-                                            <div style={{
+                                        <div style={{
                                                 display: gridColumns > 1 ? 'grid' : 'flex',
                                                 gridTemplateColumns: gridColumns > 1 ? `repeat(${gridColumns}, 1fr)` : undefined,
                                                 flexDirection: gridColumns > 1 ? undefined : 'column',
@@ -2430,6 +2391,8 @@ function MenuPageNew({
                                                     const itemName = getMenuText(item.name, 'Menu item');
                                                     const itemDescription = getMenuText(item.description);
                                                     const itemDecisionChips = getItemDecisionChips(item);
+                                                    const activePriceAttributes = getActivePublicItemPriceAttributes(item);
+                                                    const itemListPriceLabel = getPublicItemListPriceLabel(item, currencySymbol);
                                                     const shouldSpanFullGridRow =
                                                         isCompactGrid &&
                                                         gridColumns === 2 &&
@@ -2457,8 +2420,8 @@ function MenuPageNew({
                                                             style={{
                                                                 ...getItemStyle(),
                                                                 ...(shouldSpanFullGridRow ? { gridColumn: '1 / -1' } : {}),
-                                                                opacity: isAvailable ? 1 : 0.5,
-                                                                cursor: isAvailable ? 'pointer' : 'not-allowed',
+                                                                cursor: 'pointer',
+                                                                borderStyle: isAvailable ? undefined : 'dashed',
                                                                 boxShadow: isHighlighted ? `0 0 0 3px ${moodConfig.accentColor}30` : undefined,
                                                                 borderColor: isHighlighted ? `${moodConfig.accentColor}80` : undefined,
                                                             }}
@@ -2468,8 +2431,8 @@ function MenuPageNew({
                                                                 : ''
                                                             }
                                                             role="button"
-                                                            tabIndex={isAvailable ? 0 : -1}
-                                                            aria-label={itemName}
+                                                            tabIndex={0}
+                                                            aria-label={isAvailable ? itemName : `${itemName}, ${unavailableLabel}`}
                                                         >
                                                             {reserveItemImageSlot && (
                                                                 <div
@@ -2529,17 +2492,32 @@ function MenuPageNew({
                                                                     <h3 style={itemNameStyle}>
                                                                         {renderHighlightedText(itemName, searchHighlightTerm, moodConfig.accentColor)}
                                                                     </h3>
-                                                                    {showItemPrices && !item.attributes?.length && hasDisplayPrice(item.price) && (
+                                                                    {showItemPrices && itemListPriceLabel && (
                                                                         <span style={{
                                                                             ...priceStyle,
                                                                             alignSelf: isCompactGrid ? 'flex-start' : undefined,
                                                                             marginTop: 0,
                                                                             whiteSpace: 'nowrap',
                                                                         }}>
-                                                                            {formatMenuPrice(item.price, currencySymbol, { fractionDigits: 2 })}
+                                                                            {itemListPriceLabel}
                                                                         </span>
                                                                     )}
                                                                 </div>
+                                                                {showItemPrices && activePriceAttributes.length > 0 && (
+                                                                    <div aria-label="Available option prices" style={itemOptionPriceRowStyle}>
+                                                                        {activePriceAttributes.map((attribute, attributeIndex) => (
+                                                                            <span
+                                                                                key={`${String(attribute.id ?? 'option')}-${attributeIndex}`}
+                                                                                style={itemOptionPriceStyle}
+                                                                            >
+                                                                                {getMenuText(attribute.name, 'Option')}: {' '}
+                                                                                <strong style={{ color: moodConfig.priceColor }}>
+                                                                                    {formatMenuPrice(attribute.price as string | number, currencySymbol, { fractionDigits: 2 })}
+                                                                                </strong>
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                )}
                                                                 {itemDecisionChips.length > 0 && (
                                                                     <div style={itemFactRowStyle} aria-label="Item details">
                                                                         {itemDecisionChips.map((chip) => (
@@ -2555,7 +2533,7 @@ function MenuPageNew({
                                                                     </p>
                                                                 )}
                                                                 {!isAvailable && (
-                                                                    <span style={{ fontSize: 11, fontWeight: 500, color: '#ef4444', marginTop: 4 }}>
+                                                                    <span style={{ fontSize: 12, fontWeight: 600, color: moodConfig.priceColor, marginTop: 4 }}>
                                                                         {unavailableLabel}
                                                                     </span>
                                                                 )}
@@ -2564,7 +2542,6 @@ function MenuPageNew({
                                                     );
                                                 })}
                                             </div>
-                                        )}
                                     </section>
                                 );
                             })}
@@ -2706,7 +2683,6 @@ function MenuPageNew({
                                 timeZone={storeDetails?.timeZone}
                                 theme={bottomMetaTheme}
                                 showBorder={false}
-                                showContextLine={false}
                             />
                         )}
                     </section>

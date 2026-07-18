@@ -50,6 +50,10 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Storage paths | Generate deterministic immutable paths with workspace/design/sourcePackage/job/reconstruction/version/repair/export ids; prevent path traversal. |
 | Signed URL stripping | Runtime URLs convert back to `cue-asset://` or asset id before persistence. |
 | Asset URI scheme | Durable documents use `cue-asset://assetId`; hydration fails if the asset does not belong to the same workspace/design. |
+| Editor document boundary | Root and page elements preserve gradients, QR/print fields, editor flags, and product-owned image refs; unknown metadata and external durable refs are stripped/rejected. |
+| Persisted record boundary | Design/job records reject wrong workspace/design ids, invalid enums, malformed pointers/artifact maps, invalid revisions, and unbounded values. |
+| Layer-index boundary | Rejects duplicate layer/element ids, cross-workspace paths, invalid content/hash/size/dimensions, inconsistent asset ids, and missing fallback assets. |
+| Image byte boundary | PNG/JPEG/WebP byte MIME and dimensions are derived server-side; trailing bytes, truncated containers, oversized pixels, and each WebP dimension encoding are covered. |
 | Schema validation | Reconstruction document rejects missing confidence/provenance/fallback. |
 | Schema migration | Old `CreativeEditorDocumentSnapshot` fixtures open after a schema version bump through the migration reader. |
 | Observation bundle | Model outputs remain observations and cannot directly become Fabric objects. |
@@ -62,6 +66,7 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Layer cap | Excess candidates merge/downgrade instead of overloading editor. |
 | Status transitions | Invalid job transitions fail. |
 | Idempotency | Retried worker step does not duplicate artifacts or mark double completion. |
+| Idempotency identity | Same key with another actor/action/request hash or malformed persisted result ids fails closed; old autosave replay cannot claim a newer design revision. |
 | Cost estimator | Rejects job when budget/limits are exceeded. |
 | Model registry | Chooses low-cost/default model for normal jobs and premium model only when route policy plus capacity allow it. |
 | Model registry | Ignores disabled/deprecated entries and never writes exact model id assumptions into durable editor state. |
@@ -87,6 +92,8 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Repair | Rate-limited and requires existing design/layer. |
 | Export | Flushes/uses saved runtime state, not stale browser-only state. |
 | Export | Rejects when `exportRequest.sourceRevision` does not match `cueLayerDesigns.current.revision`. |
+| Export | Rejects a submitted editor document whose canonical durable fingerprint differs from the saved snapshot. |
+| Export | Rejects rendered width/height that differ from the saved editor canvas. |
 | Worker lease | Stale lease can retry without duplicating completed artifacts. |
 | Job cancel | Soft cancel stops remaining expensive steps and leaves cleanup-safe artifacts. |
 
@@ -144,7 +151,7 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Pixel fidelity | Source-to-reconstruction render diff passes for a golden poster and fails for a deliberately shifted layer. |
 | Text fidelity | Protected price/date/phone/business-name changes block editable text even when visual similarity is high. |
 | Structural usefulness | Over-fragmented outputs are merged/downgraded and cannot mark the job `ready` by layer count alone. |
-| Export fidelity | Server-rendered PNG matches saved editor preview within threshold before download is marked ready. |
+| Export fidelity | Active v1 binds browser-rendered PNG bytes to the exact saved document and canvas size. Future server-rendered provider mode must add pixel-diff fidelity before marking high-confidence decomposition ready. |
 | Quality report | Firestore stores only compact gate summary; full report and diff artifacts are stored in Storage/GCS. |
 
 ## Cost Tests
@@ -156,7 +163,7 @@ This isolates schema, storage, editor, validation, and export bugs from nondeter
 | Active v1 upload writes | Writes original image, source package JSON with inline truth snapshots, layer index JSON, editor snapshot JSON, design doc, job doc, version doc, and optional idempotency completion only. Does not write separate truth snapshot JSON, projection JSON, reconstruction JSON, quality report JSON/doc, job event, or cost record. |
 | Autosave typing | Debounced; no write per keystroke. |
 | Autosave layer index reuse | Normal text/shape edits write one editor snapshot and version pointer but do not rewrite the unchanged layer index. |
-| Reopen design | Reads pointer doc plus one runtime artifact, not full history. |
+| Reopen design | Reads the design pointer plus bounded editor-snapshot and layer-index artifacts, not full history, and signs only referenced image assets. |
 | Repair fallback | Writes one repair request only; no repair patch artifact or correction-event doc until provider repair is enabled. |
 | Export | Creates one export record and one output artifact, registers Asset Library metadata, and does not write duplicate export report JSON or job event. |
 | Duplicate image upload | Dedupes or warns when hash already exists. |

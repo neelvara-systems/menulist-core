@@ -1,5 +1,7 @@
 import { readJsonResponseWithLimit } from '@lib/security/boundedResponseBody';
 import { logRuntimeFailure } from '@lib/runtime/runtimeDiagnostics';
+import { normalizeAnswerlatticePublicRelatedContent } from '@lib/answerlattice/productSurfaceContent';
+import type { AnswerlatticeSurfaceContentItem } from '@type/answerlattice';
 import type { KnowledgeBaseArticleType } from '@type/knowledgeBase';
 
 export const HELP_CENTER_SEARCH_RESPONSE_JSON_MAX_BYTES = 1024 * 1024;
@@ -15,7 +17,7 @@ export type HelpCenterSearchResponse = {
     id?: string;
     craftedAnswer: string;
     references: KnowledgeBaseArticleType[];
-    relatedContent?: unknown;
+    relatedContent?: AnswerlatticeSurfaceContentItem;
     suggestedQuestions?: string[];
     imageProcessed?: boolean;
     answerSource?: string;
@@ -74,7 +76,11 @@ export const isHelpCenterSearchResponse = (value: unknown): value is HelpCenterS
         )
     )
     && (value.imageProcessed === undefined || typeof value.imageProcessed === 'boolean')
-    && (value.answerSource === undefined || typeof value.answerSource === 'string')
+    && (value.answerSource === undefined || (typeof value.answerSource === 'string' && value.answerSource.length <= 32))
+    && (
+        value.relatedContent === undefined
+        || normalizeAnswerlatticePublicRelatedContent(value.relatedContent) !== null
+    )
 );
 
 const getHelpCenterSearchResponseLogContext = (
@@ -165,5 +171,12 @@ export const readHelpCenterSearchResponse = async (
         throw error;
     }
 
-    return payload;
+    const relatedContent = payload.relatedContent === undefined
+        ? undefined
+        : normalizeAnswerlatticePublicRelatedContent(payload.relatedContent) || undefined;
+
+    return {
+        ...payload,
+        ...(relatedContent ? { relatedContent } : {}),
+    };
 };

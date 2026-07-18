@@ -4,6 +4,7 @@ const https = require("https");
 const BASE_URL = new URL(process.env.SIGNALDESK_SMOKE_BASE_URL || "http://localhost:3000");
 const ALIAS_HOST = process.env.SIGNALDESK_SMOKE_ALIAS_HOST || "menulist.digital";
 const PUBLIC_HOST = process.env.SIGNALDESK_SMOKE_PUBLIC_HOST || "menulist.ai";
+const ALLOW_RATE_LIMIT_UNAVAILABLE = process.env.SIGNALDESK_SMOKE_ALLOW_RATE_LIMIT_UNAVAILABLE === "1";
 
 const results = [];
 
@@ -142,7 +143,13 @@ async function main() {
     body: JSON.stringify({ eventType: "actor.run.succeeded", runId: "smoke" }),
     method: "POST",
   });
-  assert(unsignedWebhook.status === 400, "Apify webhook rejects missing signature", `received ${unsignedWebhook.status}`);
+  if (unsignedWebhook.status === 503 && ALLOW_RATE_LIMIT_UNAVAILABLE) {
+    assert(headerIncludes(unsignedWebhook, "cache-control", "no-store"), "Unavailable webhook response is not cached");
+    assert(Number(unsignedWebhook.headers["retry-after"] || 0) > 0, "Unavailable webhook response includes retry guidance");
+    assert(unsignedWebhook.body.includes("Webhook temporarily unavailable"), "Unavailable webhook response is generic and safe");
+  } else {
+    assert(unsignedWebhook.status === 400, "Apify webhook rejects missing signature", `received ${unsignedWebhook.status}`);
+  }
 
   const unknownWebhook = await request("/api/signaldesk/webhooks/unknown", {
     body: JSON.stringify({ eventType: "smoke" }),
@@ -154,7 +161,13 @@ async function main() {
     body: JSON.stringify({ eventId: "smoke-outcome" }),
     method: "POST",
   });
-  assert(unsignedOutcome.status === 400, "Outcome bridge rejects missing signature", `received ${unsignedOutcome.status}`);
+  if (unsignedOutcome.status === 503 && ALLOW_RATE_LIMIT_UNAVAILABLE) {
+    assert(headerIncludes(unsignedOutcome, "cache-control", "no-store"), "Unavailable outcome response is not cached");
+    assert(Number(unsignedOutcome.headers["retry-after"] || 0) > 0, "Unavailable outcome response includes retry guidance");
+    assert(unsignedOutcome.body.includes("Outcome bridge temporarily unavailable"), "Unavailable outcome response is generic and safe");
+  } else {
+    assert(unsignedOutcome.status === 400, "Outcome bridge rejects missing signature", `received ${unsignedOutcome.status}`);
+  }
 
   console.log(`SignalDesk route/API smoke passed (${results.length} checks)`);
 }

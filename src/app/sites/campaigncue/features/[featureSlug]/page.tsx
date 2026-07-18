@@ -273,10 +273,10 @@ function CueLayersPreview() {
                 </section>
                 <LuArrowRight aria-hidden="true" />
                 <section>
-                    <span>Text candidate</span>
-                    <span>Offer block</span>
-                    <span>Photo layer</span>
-                    <span>Flat-safe fallback</span>
+                    <span>Original locked</span>
+                    <span>Add verified text</span>
+                    <span>Add shapes or QR</span>
+                    <span>Save and export</span>
                 </section>
             </div>
         </MiniChrome>
